@@ -1,3 +1,4 @@
+import '../js/crash-boot.js';   // before the lobby's modules: a throw while they load is still reported
 import { api, signOut } from './wallet.js';
 import { buyRide, buyTickets, claimRefund, waitPaid, ORDER_SIG } from './pay.js';
 import { salesOpen, pendingOrder, reconcileOrder } from './tickets-api.js';

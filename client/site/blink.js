@@ -4,6 +4,7 @@
    Action requests are anonymous on purpose (credentials 'omit'): action APIs answer CORS `*`, which a browser refuses for a credentialed request,
    and the spec says the GET must not identify the user – so these are not hosts.js API calls; only the default page URL comes from hosts.js.
    Server text only via textContent (el()). */
+import '../js/crash-boot.js';   // before the blink modules: a throw while they load is still reported
 import { el } from './dom.js';
 import { chooseWallet, rememberWallet } from './wallet.js';
 import { signAndSend } from './pay.js';

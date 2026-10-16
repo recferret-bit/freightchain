@@ -60,6 +60,7 @@ model RideReplay {
   @@unique([rideId, seq])
   @@index([rideId, queuedAt(sort: Desc)])
   @@index([status, queuedAt])
+  @@index([status, isPaid(sort: Desc), queuedAt(sort: Asc)])
   @@schema("verdict")
 }
 

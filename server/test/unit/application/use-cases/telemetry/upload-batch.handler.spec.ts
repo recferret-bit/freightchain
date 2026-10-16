@@ -87,7 +87,7 @@ describe('UploadBatchHandler', () => {
     expect(stored[2]!.summary.world).toEqual(summariseBatch(2, b2!.t0, b2!.t1, b2!.samples, b2!.inputs, roadPlanFor(ride.seed, ride.trip), b0!.samples).world);   // measured with batch 0's tail
   });
 
-  it('takes the batches in order: batch n+1 waits (429, the game retries) until batch n is stored – a pass on the cut is always measured (pentest M10)', async () => {
+  it('takes the batches in order: batch n+1 waits (429, the game retries) until batch n is stored – a pass on the cut is always measured (audit M10)', async () => {
     const { ctx, up } = setup();
     const ride = await ctx.freeRide('w', true);
     ctx.clock.advance(60);

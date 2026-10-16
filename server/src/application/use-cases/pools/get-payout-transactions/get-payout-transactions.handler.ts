@@ -14,7 +14,7 @@ import { GetPayoutTransactionsQuery, type PayoutTransactionsDto, type PayoutTxDt
 /**
  * Admin only (the wallet in TREASURY_PUBKEY – the program's authority): the payouts of an active pool once its rides are over (`playDeadline`), ranked by the VERIFIED
  * completed rides paid with its tickets (always – shadow mode is for the public boards, never for money) (top 3 25 / 15 / 10 parts of 70, top 20 share 20 parts –
- * domain/economy/pool-payouts.ts), as unsigned transactions the admin signs in Phantom (the admin pays their fee). Program v4 (pentest H5-B): the ranking is first
+ * domain/economy/pool-payouts.ts), as unsigned transactions the admin signs in Phantom (the admin pays their fee). Program v4 (audit H5-B): the ranking is first
  * COMMITTED as a winners root (public until its lock ends – `payFrom`), then each rank is paid with its Merkle proof, then the pool closes; a committed root that
  * no longer is the ranking is vetoed (the admin's lever, M7). Ranks the chain shows paid are left out. The server holds no key.
  */

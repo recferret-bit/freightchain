@@ -85,7 +85,7 @@ export class Pool {
   /** the road every ride of this pool is driven on – one seed for the whole pool, so all its riders compete on the same ride */
   get rideSeed(): number { return this.p.rideSeed; }
   get seedCommitment(): string | null { return this.p.seedCommitment ?? null; }
-  /** program v4 (pentest L4): the road is not sealed yet – no ride may be served (its seed is not known) */
+  /** program v4 (audit L4): the road is not sealed yet – no ride may be served (its seed is not known) */
   get awaitsSeal(): boolean { return (this.p.sealSlot ?? 0) > 0 && !this.p.seedCommitment; }
   get winnersRoot(): string | null { return this.p.winnersRoot ?? null; }
   get payFrom(): Date | null { return this.p.payFrom ?? null; }
@@ -94,7 +94,7 @@ export class Pool {
   get isActive(): boolean { return this.p.status === 'active'; }
   /** the nominal shift of this pool's tier (s) */
   get shiftSeconds(): number { return rideTier(this.p.tier, 0).seconds; }
-  /** A pool's results count only the rides that ENDED by its play deadline (pentest H6: a ride started days after it still ranked and was paid). */
+  /** A pool's results count only the rides that ENDED by its play deadline (audit H6: a ride started days after it still ranked and was paid). */
   rideWindow(): { endBy: Date } { return { endBy: this.p.playDeadline }; }
   /** The last moment a ticket of this pool can be spent on a ride: the sale end – no new sales and no new rides after it (the user's rule, Oct 2026: the
       play window after the sale – 3 h on the 1 h series – only lets shifts already on the road finish) – and never later than a shift of `minSeconds` can

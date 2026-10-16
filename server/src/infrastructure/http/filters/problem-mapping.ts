@@ -1,7 +1,7 @@
 import { HttpException } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
 import { ZodError } from 'zod';
-import { DomainError, ServiceUnavailableError } from '../../../domain/shared/errors.js';
+import { DomainError, ServiceUnavailableError, UnprocessableEntityError } from '../../../domain/shared/errors.js';
 import { problemTypeFor, titleForCode, type ProblemDetails, type ProblemFieldError } from '../../../domain/shared/problem-details.js';
 
 export interface ProblemContext {
@@ -9,7 +9,7 @@ export interface ProblemContext {
   instance: string;
 }
 
-const STATUS_CODES: Record<number, string> = { 400: 'bad_request', 401: 'unauthorized', 403: 'forbidden', 404: 'not_found', 409: 'conflict', 413: 'payload_too_large', 429: 'rate_limited' };
+const STATUS_CODES: Record<number, string> = { 422: 'unprocessable', 400: 'bad_request', 401: 'unauthorized', 403: 'forbidden', 404: 'not_found', 409: 'conflict', 413: 'payload_too_large', 429: 'rate_limited' };
 
 function problem(ctx: ProblemContext, status: number, code: string, extra: Partial<ProblemDetails> = {}): ProblemDetails {
   return { type: problemTypeFor(code), title: titleForCode(code), status, code, requestId: ctx.requestId, instance: ctx.instance, ...extra };
@@ -34,6 +34,7 @@ export function toProblem(exception: unknown, ctx: ProblemContext): ProblemDetai
     const detail = errors.length === 1 ? (errors[0]?.message ?? 'Request validation failed') : errors.map((e) => `${e.path || '(body)'}: ${e.message}`).join('; ');
     return problem(ctx, 400, 'validation_error', { detail, errors });
   }
+  if (exception instanceof UnprocessableEntityError) return problem(ctx, 422, exception.errorCode, { detail: exception.message, errors: exception.errors, warnings: exception.warnings });
   if (exception instanceof DomainError) {
     return problem(ctx, exception.statusCode, exception.errorCode, {
       detail: exception.message, ...(exception instanceof ServiceUnavailableError && exception.checks ? { checks: exception.checks } : {}),

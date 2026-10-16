@@ -10,11 +10,11 @@ Not trees: cactus, bush, rock, tuft, termite, cairn, drift. The validator return
 node .claude/skills/3d-assets/validate.mjs "the user's sentence"
 ```
 
-Exit 1: stop. Quote `errors`. Do not edit a builder, and do not call `image_gen` or `three_d.py`. A passing run prints `expect`. One trunk. No wheels. Canopy follows `expect.canopy` (`required` or `forbidden`). Birch is bare: a leaf canopy on a birch is rejected, and a leafless birch is valid.
+Exit 1: stop. Quote `errors`. Do not edit an entity. A passing run prints `expect`. One trunk. No wheels. Canopy follows `expect.canopy` (`required` or `forbidden`). Birch is bare: a leaf canopy on a birch is rejected, and a leafless birch is valid.
 
 ## Edit
 
-`client/js/themes/_shared/props-basic.js`: `spruce`, `roundTree`, `gumTree`, `birch`. Kind stays `tree` (`KINDS` in `client/js/world/props.js`). Do not add a kind. Origin on the ground, y up. The trunk cylinder is centred at half its height so its base is y = 0.
+`client/shared/entity/seed/prop/`: `spruce`, `round-tree`, `gum-tree`, `birch`. Kind stays `tree` (roster.js → `KINDS` in `client/js/world/props.js`). Do not add a kind. Exactly one part is tagged `trunk` (the validator checks it). Origin on the ground, y up. The trunk cylinder is centred at half its height so its base is y = 0.
 
 Viewer labels: spruce, broadleaf tree, gum tree, birch.
 

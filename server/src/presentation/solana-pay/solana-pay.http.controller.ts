@@ -6,7 +6,7 @@ import { solanaPayAccountSchema, solanaPayIdParamsSchema, type SolanaPayAccount,
 import { CrossOriginPublic } from '../../infrastructure/http/guards/origin.guard.js';
 
 /** Public Solana Pay transaction requests. No session: the phone wallet GETs the label, then POSTs the account that will sign. */
-@CrossOriginPublic()   // any site may POST here without a session (pentest H7: the Origin guard skips it)
+@CrossOriginPublic()   // any site may POST here without a session (audit H7: the Origin guard skips it)
 @Controller('api/solana-pay')
 export class SolanaPayHttpController {
   constructor(private readonly queryBus: QueryBus) {}

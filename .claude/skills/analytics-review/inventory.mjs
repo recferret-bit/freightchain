@@ -78,7 +78,8 @@ for (const path of files) {
   }
 }
 
-const factories = [...factorySrc.matchAll(/serverEvent\(\s*'([a-z][a-z0-9_]*)'/g)].map((m) => m[1]);
+// clientPlaneEvent is the crash count: same allowlist, source stays client.
+const factories = [...factorySrc.matchAll(/(?:serverEvent|clientPlaneEvent)\(\s*'([a-z][a-z0-9_]*)'/g)].map((m) => m[1]);
 const factorySet = new Set(factories);
 
 const problems = [];
@@ -90,8 +91,8 @@ const note = (title, rows) => {
 
 note('track() name is not a client event', [...calls.keys()].filter((n) => !clientEvents.includes(n)).sort());
 note('client event has no track() call', clientEvents.filter((n) => !calls.has(n)));
-note('serverEvent() name is not a server event', [...factorySet].filter((n) => !serverEvents.includes(n)).sort());
-note('server event has no serverEvent() call', serverEvents.filter((n) => !factorySet.has(n)));
+note('factory name is not a server event', [...factorySet].filter((n) => !serverEvents.includes(n)).sort());
+note('server event has no factory call', serverEvents.filter((n) => !factorySet.has(n)));
 note('event name missing from docs/analytics/index.html', [...clientEvents, ...serverEvents].filter((n) => !explainer.includes(`<code>${n}</code>`)));
 note('literal property the relay would drop', droppedKeys);
 

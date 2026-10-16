@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { EnvService } from '../infrastructure/config/env.service.js';
 import { truncateAllTables } from '../infrastructure/prisma/truncate.js';
 import { runAdmin } from './admin-commands.js';
+import { runEntitiesExport } from './entities-export.js';
 
 export const HELP = `
 Freight Chain server CLI
@@ -43,6 +44,8 @@ Commands:
                with pool-* reasons so they stay UNDER REVIEW – an admin's decision is never touched; idempotent; logged (event pool-attention)
   stats:reconcile [--wallet ADDRESS] [--fix]
                Recompute the statistics tables (per rider + global) from the rides and donations, report the drift; --fix rewrites the rows (quiet app, see docs/statistics.md)
+  entities:export
+               Write every PUBLISHED 3D model revision back over client/shared/entity/seed/<kind>/<id>.js and regenerate seed/index.js (review + commit it)
   retention:sweep
                Run the retention sweeps now (recordings older than TELEMETRY_RETENTION_DAYS, sign-ins older than SIGNIN_RETENTION_DAYS)
   --help       Show this help
@@ -94,6 +97,7 @@ export async function runCli(argv: readonly string[]): Promise<number> {
   const [command] = argv;
   if (command === 'migrate') return runMigrate();
   if (command === 'db:reset') return runDbReset();
+  if (command === 'entities:export') { const env = environment(); return env ? runEntitiesExport(env) : 1; }
   const admin = command ? await runAdmin(command, argv.slice(1)) : null;
   if (admin !== null) return admin;
   console.log(HELP);

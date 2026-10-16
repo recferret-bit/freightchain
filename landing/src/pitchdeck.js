@@ -1,7 +1,8 @@
-/* Freight Chain pitch deck (pitchdeck.<apex>, landing/pitchdeck.html – the "Poster" theme, src/pitchdeck.css). Makes NO request of its own: every file is the landing build's.
+/* Freight Chain pitch deck (pitchdeck.<apex>, landing/pitchdeck.html – the "Poster" theme, src/pitchdeck.css). Makes no request of its own until an unhandled crash. Every file is the landing build's.
    The slides are author-written constants (pitchdeck/data.js), so they go in with innerHTML (the landing's no-innerHTML rule is for server text; this takes none).
    This file is the engine: it renders the slides, turns pages (bottom-bar arrows, keys, a swipe – never a plain click), loads each slide's media only when it is near,
    scales the 1920×1080 stage, and wires the parts in pitchdeck/*.js. Keys: → / space next · ← back · F fullscreen · Home / End. */
+import '../../client/js/crash-boot.js';   // before the deck's modules: a throw while they load is still reported. No cookie on this host.
 import { SLIDES } from './pitchdeck/data.js';
 import { reduced, view, stage, deck, replay, toStage, pop, wakeFrames } from './pitchdeck/core.js';
 import { initTicker, holdTicker, ticker } from './pitchdeck/ticker.js';

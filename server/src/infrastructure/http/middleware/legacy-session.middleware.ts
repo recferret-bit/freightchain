@@ -4,7 +4,7 @@ import { legacyCookieOptions } from '../interceptors/session-cookie.interceptor.
 import { readCookie, SESSION_COOKIE } from '../session-cookie.js';
 
 /**
- * Production only (pentest H7-B): the session moved from the apex-wide `fc_session` to the API host's own `__Host-fc_session`. A browser that still sends the
+ * Production only (audit H7-B): the session moved from the apex-wide `fc_session` to the API host's own `__Host-fc_session`. A browser that still sends the
  * old cookie gets it expired here – it is never read again, and left alone it would keep reaching every sibling host until it runs out (SESSION_TTL_DAYS).
  */
 export function legacySessionMiddleware(env: EnvService) {

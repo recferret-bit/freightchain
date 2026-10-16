@@ -64,7 +64,7 @@ The live site is [freightchain.fun](https://freightchain.fun). The program in th
 
 The entire project was built in two weeks during the hackathon, entering in the final 6 days of the submission window—the truck simulation and cockpit, the five routes, traffic, climate, the server, the lobby, the landing, the whitepaper, verified play, live watch, the admin page, the garage, promo codes, and the escrow program. Coding agents also read [`AGENTS.md`](AGENTS.md).
 
-## Penetration test and contracts audit
+## Security check and contracts audit
 
 On 13 Oct 2026 twelve AI auditors attacked this repository: Claude Opus 5.5, GPT-6.1 Sol, Gemini 3.1 Pro and Grok 4.7. Six surfaces: the escrow program, the server money paths, identity and admin, the anti-cheat, the client, and the infrastructure. Each surface had two auditors from different vendors who could not see each other's work. A finding counts only if both raised it, or one raised it with a test that reproduces it. Disputed claims went to a third vendor. Local checkout and LiteSVM only: no production, no chain writes.
 
@@ -81,7 +81,7 @@ This is not a third-party audit. The program stays "not audited" until one is do
 | H5, H4, M6, M8, L4 · program: the payout key was the whole prize gate, pledges not bound to their ride, a review window that committed nothing, sponsorships kept by a failed pool, a road seed the opener could pick | Program v4: a winners root public for the review before any prize is paid, per-ride attestations, sponsor refunds, `seal_road`. 154 LiteSVM tests plus the localnet suites. **Not on devnet yet.** Devnet still runs v3, where these findings are open |
 | M1, M11, M12, M5, most lows · the blink page relays any action, no CSP / HSTS, no subresource integrity, verdict codes on public rides | Open (fix plan WP6 to WP8) |
 
-The original review supplied proof-of-concept reproductions that became regression tests. Its report and PoC status are archived at the reviewed commit. The current reusable pentest tool keeps new reports and PoCs in gitignored run directories. Read: [the report](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/reports/2026-10-13/index.md) ([HTML](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/reports/2026-10-13/report.html)), [the fix plan with every decision](docs/reviews/pentest-2026-10/fix-plan.md), [PoC status](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/pocs/status.json), and [whitepaper chapter 08](https://whitepaper.freightchain.fun/#audit). The suite itself is the `pentest-audit` skill.
+The original review supplied proof-of-concept reproductions that became regression tests. Its report and PoC status are archived at the reviewed commit. The current reusable audit tool keeps new reports and PoCs in gitignored run directories. Read: [the report](https://github.com/recferret-bit/freightchain/tree/16870e81) ([HTML](https://github.com/recferret-bit/freightchain/tree/16870e81)), [the fix plan with every decision](docs/reviews/audit-2026-10/fix-plan.md), [PoC status](https://github.com/recferret-bit/freightchain/tree/16870e81), and [whitepaper chapter 08](https://whitepaper.freightchain.fun/#audit). The suite itself is the `security-audit` skill.
 
 ## Post-Colosseum hackathon updates
 
@@ -89,7 +89,7 @@ The submission went in on **12 Oct 2026**. Work continued after that snapshot. T
 
 ### Security review after submission
 
-On 13 Oct twelve AI auditors from four vendors reviewed six surfaces in blind pairs. Quorum adjudication reduced 69 raw findings to 7 high and 13 medium; 4 claims were corrected or refuted. Fixes for all 7 highs and 9 mediums are in source, with reproductions turned into regression tests. App fixes shipped on Oct 15; the program-v4 fixes still need their separate devnet upgrade. This was our own review, not a third-party audit. See [the findings and their release state](#penetration-test-and-contracts-audit) and [the fix plan](docs/reviews/pentest-2026-10/fix-plan.md).
+On 13 Oct twelve AI auditors from four vendors reviewed six surfaces in blind pairs. Quorum adjudication reduced 69 raw findings to 7 high and 13 medium; 4 claims were corrected or refuted. Fixes for all 7 highs and 9 mediums are in source, with reproductions turned into regression tests. App fixes shipped on Oct 15; the program-v4 fixes still need their separate devnet upgrade. This was our own review, not a third-party audit. See [the findings and their release state](#security-check-and-contracts-audit) and [the fix plan](docs/reviews/audit-2026-10/fix-plan.md).
 
 ### What changed
 
@@ -104,7 +104,7 @@ On 13 Oct twelve AI auditors from four vendors reviewed six surfaces in blind pa
 | 16 Oct | Shared road geometry, route curves, physics and full traffic AI; required hashed traffic-frame evidence (rules v7) | New rides cannot omit required evidence or downgrade themselves; removed cars and ignored traffic responses reject | Committed in `b58c9921`; next app release |
 | 16 Oct | Real headless browser regression matrix: honest drives, natural finish, slow execution, real crash and five modified-client cases | Checks the full game → API → database → saved-verdict/replay path, including re-hashed attacks | Nine controlled local scenarios passed; no claim of exhaustive attack coverage |
 | 16 Oct | Landing pitch-deck preview and phone motion controls for the deck's SOL coins | The deck is easier to discover and its coin toy responds to phone tilt | Committed; next app release |
-| 16 Oct | Reusable pentest targets, Docker/MCP isolation and native review profiles | Review tooling can inspect local or GitHub repositories; each adapter still reports its own readiness and limits | Repository tooling; no new external audit claimed |
+| 16 Oct | Reusable audit targets, Docker/MCP isolation and native review profiles | Review tooling can inspect local or GitHub repositories; each adapter still reports its own readiness and limits | Repository tooling; no new external audit claimed |
 | 16 Oct | Whitepaper v0.2: evidence-flow and browser-outcome charts, protocol and release limits | Readers can distinguish recorded evidence, server checks and settlement trust | This documentation revision; next app release |
 
 The production replay worker was restarting at the read-only check. Its explicit `TRUST_PROXY=0` startup fix is included with the pending simulation release; a deployment must verify that the worker becomes healthy. The app's health endpoint was ready. No deployment is implied by this recap.
@@ -112,7 +112,7 @@ The production replay worker was restarting at the read-only check. Its explicit
 ## Contents
 
 - [Traction](#traction)
-- [Penetration test and contracts audit](#penetration-test-and-contracts-audit)
+- [Security check and contracts audit](#security-check-and-contracts-audit)
 - [Post-Colosseum hackathon updates](#post-colosseum-hackathon-updates)
 - [Open the site](#open-the-site)
 - [Ten minutes](#ten-minutes)
@@ -125,9 +125,11 @@ The production replay worker was restarting at the read-only check. Its explicit
 - [The road](#the-road)
 - [Money](#money)
 - [Sites](#sites)
+- [Technical](#technical)
 - [Repository](#repository)
 - [Skills](#skills)
 - [Run it](#run-it)
+- [3D entity editor and AI generation](#3d-entity-editor-and-ai-generation)
 - [Tests](#tests)
 
 ## Open the site
@@ -139,7 +141,7 @@ The production replay worker was restarting at the read-only check. Its explicit
 | Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is a guest run |
 | Ride receipt | `freightchain.fun/r/:id` | Live or finished ride, explorer link, X card. Open one from [REPLAYS](https://freightchain.fun/lobby.html#replays) |
 | Pitch deck | [pitchdeck.freightchain.fun](https://pitchdeck.freightchain.fun) | Eight playable slides. ← → in the floating tip (or the keys), F full screen; on a phone big corner buttons, one full screen button, full screen on the first tap, and an ask for motion sensors (allowed, the spawned SOL falls with the tilt). Live |
-| Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes, no API |
+| Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes; the 3D model editor for listed wallets (`EDITOR_WALLETS`) |
 | API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON under `/api/`. Anything else on that host 404s |
 | Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |
 | Program | [Explorer, devnet](https://explorer.solana.com/address/8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p?cluster=devnet) | Upgradeable. Initialized. Not audited |
@@ -158,7 +160,7 @@ One minute: open the [landing](https://freightchain.fun) and press PLAY FREE RID
 5. Watch someone from LIVE, or open REPLAYS. The watch page draws the truck from the recording, about 25 seconds behind, on a road rebuilt from the ride seed.
 6. Open the [program](https://explorer.solana.com/address/8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p?cluster=devnet) and the [contract spec](docs/pool-program/index.html). When a pool is on sale, the lobby sells a ticket into it (`PAYMENT_MODE=program`) and shows a Solana Pay code for the same transaction on a phone. If the lobby says SOON, there is nothing to buy.
 7. From this repo, `npm run test:localnet` runs the program on a local validator and checks the lamports. Walkthrough: [`docs/localnet-e2e/index.html`](docs/localnet-e2e/index.html).
-8. Read [Penetration test and contracts audit](#penetration-test-and-contracts-audit): what twelve AI auditors found, what is fixed, and what is still open. `./pentest/bin/pentest pocs` reruns every proof of concept.
+8. Read [Security check and contracts audit](#security-check-and-contracts-audit): what twelve AI auditors found, what is fixed, and what is still open. `./audit/bin/audit pocs` reruns every proof of concept.
 
 A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter (default 60). The speed governor stays 28 m/s.
 
@@ -241,11 +243,11 @@ Badges: 34 soulbound compressed NFTs, 9 ladders, Metaplex Bubblegum v2, minted b
 | Garage, promo codes | Yes | Garage is a lobby tab: wheel, paint, gearbox, dice, needles. Nothing there changes the handling. Promo codes sit on the profile |
 | Public ride receipts, X card, in-game share | Yes | Live. The driver posts from their own account |
 | Sign-in with `solana:signIn`, .sol names | Yes | Live |
-| Escrow, per-km pledges, attestation-gated `pay_prize` | Yes. Devnet runs program v3; this source is v4, not deployed yet (see [the audit](#penetration-test-and-contracts-audit)). Not Anchor 3: the crate is Anchor 1.2 | Server is in program mode since 11 Oct 2026, still devnet. A buy exists only while a pool is open. The job can pay a verified top 20 after review. The FAQ says no prize has been paid out |
+| Escrow, per-km pledges, attestation-gated `pay_prize` | Yes. Devnet runs program v3; this source is v4, not deployed yet (see [the audit](#security-check-and-contracts-audit)). Not Anchor 3: the crate is Anchor 1.2 | Server is in program mode since 11 Oct 2026, still devnet. A buy exists only while a pool is open. The job can pay a verified top 20 after review. The FAQ says no prize has been paid out |
 | Staking yield | No. A draft that named JitoSOL was removed before deploy. Nothing is staked | No |
 | Solana Pay, Actions | Yes | Devnet. Dialect listing is not done |
 | Badge cNFTs | Yes | Devnet. Mainnet waits on the same gates as the program |
-| Token, mainnet, third-party audit, captcha | No. An AI penetration test is [done](#penetration-test-and-contracts-audit) | No |
+| Token, mainnet, third-party audit, captcha | No. An AI security check is [done](#security-check-and-contracts-audit) | No |
 
 Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits on an audit, the devnet exit list, and an explicit deploy. Trust the program id in [`lib.rs`](programs/freightchain-pools/programs/freightchain_pools/src/lib.rs) and on the explorer.
 
@@ -274,7 +276,7 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 | What the server checks | [Anti-cheat](docs/anti-cheat/index.html) · [player page](docs/verified-play/index.html) |
 | What a spectator sees | [Replays and donations](docs/replay-and-donations/index.html) |
 | Whether the money tests pass | [Localnet walkthrough](docs/localnet-e2e/index.html) |
-| What the penetration test found, and what is fixed | [Penetration test and contracts audit](#penetration-test-and-contracts-audit) · [whitepaper 08](https://whitepaper.freightchain.fun/#audit) · [report](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/reports/2026-10-13/index.md) |
+| What the security check found, and what is fixed | [Security check and contracts audit](#security-check-and-contracts-audit) · [whitepaper 08](https://whitepaper.freightchain.fun/#audit) · [report](https://github.com/recferret-bit/freightchain/tree/16870e81) |
 | How the server is put together | [backend-architecture.md](docs/backend-architecture.md) |
 
 ## The truck
@@ -402,11 +404,15 @@ flowchart LR
   paper["whitepaper.freightchain.fun"] --> api
   deck["pitchdeck.freightchain.fun<br/>analytics only"] --> api
   admin["admin.freightchain.fun<br/>page and /api/admin"] --> api
-  story["storybook.freightchain.fun<br/>meshes only"]
+  story["storybook.freightchain.fun<br/>meshes + model editor"]
   api --> pg[(PostgreSQL)]
   api --> redis[(Redis, stats & replay queue)]
   worker["worker container<br/>replay:worker"] --> pg
   worker --> redis
+  ai["editor-worker container<br/>five-slot AI queue"] --> pg
+  ai --> mcp["entity MCP"]
+  mcp --> api
+  ai --> providers["AI providers"]
   api --> chain["Solana devnet"]
 ```
 
@@ -424,19 +430,105 @@ Running totals (rides, time, kilometres, crashes, donations) count every started
 
 The intro clip is real gameplay, 14.8 seconds, with the in-game synth: [`media/out/video/intro/intro.mp4`](media/out/video/intro/intro.mp4).
 
+## Technical
+
+### Backend (`server/`)
+
+The backend is a strict native-ESM TypeScript service built on **NestJS 12**, **Prisma 6**, **PostgreSQL 17**, and **Redis 7**, structured around **Clean Architecture**, **Hexagonal Ports & Adapters**, and **CQRS**. Every architectural boundary, HTTP contract rule, line-count cap (`≤ 500` lines per file), and test-pyramid requirement is enforced at test time by source-level audits in [`server/test/architecture/`](server/test/architecture). Full specification: [`docs/backend-architecture.md`](docs/backend-architecture.md).
+
+#### Architecture & Layers
+
+Dependencies point strictly inward (`presentation → application → domain ← infrastructure`):
+
+```mermaid
+flowchart TB
+  subgraph Presentation["presentation/ · Thin HTTP Controllers & Zod DTOs"]
+    ctrl["Controllers (@ZodBody / @ZodQuery / @ZodParams)"]
+  end
+  subgraph Application["application/ · CQRS Use-Cases, Services & Abstract Ports"]
+    bus["CommandBus / QueryBus Handlers"]
+    svc["Orchestration Services (Verdict, Settlement, Stats, Attestation…)"]
+    ports["Abstract *Port Tokens (Repositories, Clock, Cache, Chain, Queue…)"]
+  end
+  subgraph Domain["domain/ · Pure TypeScript Aggregates, Value Rules & Simulation"]
+    ent["Rich Entities (Ride, Player, Pool, RideTicket, Pledge, RideBatch, RideVerdict…)"]
+    sim["Shared Kernel (@freightchain/shared) · ReplayEngine · Traffic & Road Rules"]
+  end
+  subgraph Infrastructure["infrastructure/ · Concrete Adapters, Schedulers & Persistence"]
+    prisma["Prisma 6 Repositories & Mappers (10 PG Schemas)"]
+    redis["Redis 7 (Cache, Throttler, Replay Queue, Presence, Ops Logs, Locks)"]
+    chain["Solana RPC · Anchor Codecs · Bubblegum v2 cNFT · SNS"]
+    sched["Background Schedulers & Dedicated Workers (replay:worker, editor:worker)"]
+  end
+
+  ctrl --> bus
+  bus --> svc
+  bus --> ent
+  bus --> ports
+  svc --> ent
+  svc --> sim
+  svc --> ports
+  prisma -. implements .-> ports
+  redis -. implements .-> ports
+  chain -. implements .-> ports
+  sched --> bus
+  sched --> svc
+```
+
+| Layer | Path | Responsibility & Boundaries |
+| --- | --- | --- |
+| **Domain** | [`server/src/domain/`](server/src/domain) | Pure TypeScript with zero framework, database, or I/O imports (`domain` + `bs58` + `@freightchain/shared` only). Encapsulates aggregate entities with private state (`Ride`, `Player`, `Pool`, `RideTicket`, `Pledge`, `RideBatch`, `RideVerdict`, `RideReplay`, `PromoCode`), deterministic road/obstacle/physics/traffic rules, Merkle trees, and typed `DomainError`s. |
+| **Application** | [`server/src/application/`](server/src/application) | Defines `abstract class *Port` DI tokens (`application/ports/`), CQRS command and query handlers (`application/use-cases/`), and cross-aggregate application services (`VerdictService`, `TicketSettlementService`, `PoolRegistryService`, `AttestationService`, `HonkMintService`, `StatsService`, `AchievementService`, `EditorJobRunnerService`). Never imports Prisma, Redis, or Solana SDKs. |
+| **Infrastructure** | [`server/src/infrastructure/`](server/src/infrastructure) | Implements every port: Prisma repositories and domain-to-row mappers (`infrastructure/prisma/`), Redis adapters (`infrastructure/cache/`, `infrastructure/live/`, `infrastructure/verdict/`), Solana RPC and program codecs (`infrastructure/solana/`), SPL Name Service (`infrastructure/sns/`), `jose` JWT tokens and `tweetnacl` Ed25519 verifiers (`infrastructure/auth/`), PostHog EU batching (`infrastructure/analytics/`), HTTP guards/interceptors/filters (`infrastructure/http/`), and background schedulers (`infrastructure/scheduling/`). |
+| **Presentation** | [`server/src/presentation/`](server/src/presentation) | Thin controllers and Zod request schemas. Controllers never touch `@Req()` / `@Res()`, never throw Nest `HttpException`s, and never execute business logic directly—every route dispatches a single Command or Query to the bus and returns a typed DTO. |
+
+#### Tools & Technology Stack
+
+| Category | Tools & Libraries | Role in the Backend |
+| --- | --- | --- |
+| **Runtime & Framework** | Node.js (native ESM), TypeScript 6 (`strict`), NestJS 12 (`@nestjs/core`, `@nestjs/cqrs`, `@nestjs/throttler`), Express | Modular dependency injection, CQRS command/query bus, per-route and per-wallet/IP rate limiting, and HTTP pipeline. |
+| **Database & Schemas** | PostgreSQL 17, Prisma 6 (multi-file schema), hand-reviewed forward-only SQL migrations | Partitioned into 10 bounded-context PostgreSQL schemas: `player`, `ride`, `economy`, `achievement`, `telemetry`, `verdict`, `admin`, `live`, `stats`, and `asset`. Zero schema drift enforced against `prisma/migrations/`. |
+| **Cache, Queues & Coordination** | Redis 7 (`ioredis`) | Shared rate-limit counters (`RedisThrottlerStorage`), asynchronous replay verification queue (`RedisReplayQueueAdapter`), atomic Lua-scripted spectator and site presence (`RedisSitePresenceAdapter`, `RedisViewerPresenceAdapter`), distributed scheduler leases (`SET NX PX`), and cluster-wide admin log ring (`fc:ops:logs`). |
+| **Validation, Auth & Wire Contract** | Zod 3, `jose` (`HS256`), `tweetnacl`, `bs58`, RFC 9457 `application/problem+json` | `@ZodBody` / `@ZodQuery` / `@ZodParams` validation, surface-isolated `HttpOnly` JWT cookies (`fc_session`, `fc_admin`, `fc_editor`), CAIP-122 `solana:signIn` verification, wallet-signed admin/publish proofs, and `ProblemDetailsFilter` with `X-Request-Id` tracing. |
+| **Blockchain & Shared Kernel** | `@solana/web3.js`, `@solana/spl-token`, Metaplex Umi + Bubblegum v2, `@freightchain/shared` | Anchor escrow pool codecs and event polling, HONK token emission/burn verification, soulbound compressed NFT achievement minting, `.sol` reverse/forward resolution, and deterministic road/physics/traffic simulation shared with the browser client. |
+| **AI Model Editor & MCP** | `@anthropic-ai/sdk`, `openai`, `@modelcontextprotocol/sdk` | Dedicated 5-slot `editor:worker` driving LLM tool-use loops against the isolated `mcp/` Streamable HTTP server with short-lived per-job capability tokens. |
+| **Testing & Linting** | Vitest 4, Supertest, `oxlint --type-aware`, Prettier | Unit, architecture, migration, in-memory HTTP scenario, and real PostgreSQL integration + concurrency suites (`freightchain_test`). |
+
+#### Core Engineering Patterns
+
+- **Hexagonal Determinism (`ClockPort`, `EntropyPort`, `EnvService`)**: Domain and application code never call `Date.now()`, `new Date()`, `Math.random()`, or `process.env`. Wall-clock time comes exclusively from `ClockPort`, IDs/nonces/seeds from `EntropyPort`, and validated configuration from `EnvService`. Unit and HTTP scenario suites advance time deterministically via `FakeClock` without sleeping.
+- **Strict Pessimistic Lock Ordering & Optimistic Concurrency**: Every wallet operation on rides, free credits, tickets, payments, or pledges runs inside one interactive PostgreSQL transaction under `SELECT … FOR UPDATE` on the `Player` row (`findByWalletForUpdate`). Cross-entity mutations obey a strict lock hierarchy (**`Player` → `Pool` → `RideTicket` / `Pledge`**) to eliminate deadlocks. Concurrent state transitions on `Ride`, `Player`, `Pool`, `RideTicket`, and `RideVerdict` enforce optimistic `version` checks with automatic retry (`withVersionRetry`), while live stream effects serialize per ride via transaction-scoped advisory locks (`pg_advisory_xact_lock`).
+- **Stateless Horizontal Scaling**:
+  - **Cluster-Wide Presence & Ops Logs**: Live site visitors and stream spectators are tracked in Redis sorted sets via single-roundtrip Lua scripts (`ZADD` + `ZREMRANGEBYSCORE` + `ZCARD` + `PEXPIRE`) with automatic circuit-breaker fallback to in-memory adapters if Redis is unreachable. Structured operational logs mirror to a bounded Redis ring so `/api/admin/logs` returns cluster-wide entries across all replicas.
+  - **Distributed Scheduler & Signer Leases**: Background loops (`ProgramWatcher`, `PoolCrankScheduler`, `PoolPayoutScheduler`, `AchievementMintScheduler`, `DailyFreeRideScheduler`, `StaleRideScheduler`, `TelemetryRetentionScheduler`) and `AttestationService` acquire atomic Redis locks (`CachePort.tryLock` / `releaseLock`) before polling RPCs, sweeping tables, or signing on-chain transactions.
+  - **Deduplicated Worker Queues**: Replay verification jobs coordinate between `app` and `replay:worker` replicas via `RedisReplayQueueAdapter` with in-flight claim tracking (`isInFlight`) and idempotent `expectedPendingReplayId` checks so a completed replay is never re-simulated twice.
+  - **Bounded Hot-Path Caches**: Immutable seed-derived `RoadPlan` obstacle chunks (`MAX_CACHED_CHUNKS = 4096`), decompressed `RideBatch` payloads (256-entry LRU in `RideBatchMapper`), and `.sol` SNS lookups (24 h hit / 30 min miss) are cached in bounded structures to keep `/api/watch/:id`, `/api/live`, and `/api/rides/:id/batches` off the CPU and event loop.
+- **Architectural Self-Auditing (`server/test/architecture/`)**: Automated specs parse the TypeScript AST/source to verify that layers never leak imports, every port is bound in `InfrastructureModule`, every route uses `@Zod*` decorators and dispatches through the CQRS bus, every ride-ending path updates `StatsService` under the player lock, and every controller, handler, service, guard, interceptor, filter, and repository has its corresponding unit and PostgreSQL integration spec.
+
+#### Core Backend Features
+
+1. **Wallet Authentication & Multi-Surface Access Control**: One-prompt Wallet Standard `solana:signIn` (CAIP-122) and legacy `signMessage` fallback backed by atomic single-use nonces (`DELETE … RETURNING`). Separate cookies, secrets, and host/origin guards isolate player sessions (`fc_session`), admin sessions (`fc_admin` on `admin.<domain>` + per-action Ed25519 `AdminProof` signatures), and 3D editor sessions (`fc_editor` on `storybook.<domain>`).
+2. **Ride Lifecycle & Server-Controlled World**: Manages free levels (`EASY`, `MEDIUM`, `HARD`), lazy + midnight UTC free-ride refills, and paid shifts (`1h`, `4h`, `8h`). The server assigns the ride seed (provably derived from on-chain `SlotHashes` for pools), route, and start hour, and serves the canonical obstacle plan (`GET /api/watch/:id/road`).
+3. **Telemetry Ingestion, Anti-Cheat & 10 Hz Replay Engine**: Accepts gzip-compressed, SHA-256 hash-chained 10 Hz telemetry batches (`POST /api/rides/:id/batches`) and computes RFC 6962 Merkle roots over accepted batches. Validates admission bounds, hole damage, off-road tolerances, human input timing, and required frame-level traffic proof (`trafficVersion=1`), then executes full 10 Hz physics and traffic reconstruction in `ReplayEngine` using `@freightchain/shared`.
+4. **On-Chain Escrow Mirror, Tickets, Pledges & Solana Actions**: `ProgramWatcher`, webhook ingestion, and `FinalityService` mirror on-chain pool accounts and settle ticket purchases and per-km sponsor pledges with fork/drop safety. Exposes Solana Pay QR transactions and CORS-enabled Solana Actions / Blinks (`/actions.json`, `/api/actions/*`), plus automated cranking (`PoolCrankScheduler`) and Merkle-root/attestation prize settlement (`PoolPayoutScheduler`).
+5. **HONK Tokenomics, Garage & Promo Codes**: Credits capped HONK checkpoints on verified paid finishes (`HonkMintService`), verifies on-chain HONK burns for cab visuals, persists all-or-nothing 9-slot Garage loadouts, and processes scheduled/capped promo codes.
+6. **Live Spectating, Replays, Donations & Cached Statistics**: Serves ~25 s delayed live streams and multi-speed replays (`1×`, `4×`, `16×`) from incremental batch cursors, rate-limited CB chat, driver mutes, Solana Pay tips, advisory-locked spectator road/weather/time effects, and 15 s cached global/player/daily statistics.
+7. **Soulbound Badge cNFTs & 3D Entity Editor**: Evaluates 34 achievement tiers across 9 ladders and mints soulbound Metaplex Bubblegum v2 compressed NFTs after a review delay (`AchievementMintScheduler`). Serves ETag-cached 3D entity bundles (`/api/entities/bundle`), append-only entity revisions, wallet-signed publishing, and PostgreSQL-queued AI generation jobs (`EditorJobRunnerService`).
+
 ## Repository
 
 - [`.claude/`](.claude) — project skills. The index is [Skills](#skills).
 - [`client/`](client) — the game, the lobby, admin, the receipt page, the model viewer, and [`client/shared/`](client/shared) (pure ES modules shared with the server). Vanilla ES modules and three.js r160. No bundler, no React.
 - [`shared/`](shared) — workspace package (`@freightchain/shared`) re-exporting [`client/shared/`](client/shared) (`prng.js`, `road.js`, `traffic.js`, `physics.js`) for both browser client and backend `ReplayEngine`.
-- [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `postgres`, `redis`). `npm run deploy` ships `git archive HEAD`.
+- [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `editor-worker`, `postgres`, `redis`, `mcp`). `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icons, banners, badge art.
 - [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at.
 - [`landing/`](landing) — the `/` page, the whitepaper and the pitch deck. Vite.
+- [`mcp/`](mcp) — the entity MCP server: the `3d-assets` skill as tools for the AI model editor (Streamable HTTP for the server's bridge, stdio for Claude Code). Production HTTP counters are shared in Redis with a restricted MCP user; AI jobs use a shared PostgreSQL queue with atomic admission and claims; the bridge owns its tool policy, AI writes remain checked drafts, and publishing requires a wallet signature.
 - [`media/`](media) — promo clips and the chiptune synth.
-- [`pentest/`](pentest) — one-shot Docker sandbox + MCP stdio bridge (`docker-agent-orchestrator.mjs`, `docker-mcp-bridge.mjs`) orchestrating local agentic CLIs (`claude`, `codex`, `grok`, `agy`) inside an airgapped container, plus sealed source snapshots, private-outbox workers and selected-file `review-with-cli` coordination; `check-agents` checks Docker + all 4 MCP-bridged CLIs, and `check-model-cli --all` inventories selected-file relay profiles. Separate brokers live under `pentest/native/{codex-review,grok-review}`. `grok-docker setup/login` builds the Linux Grok broker and obtains a separate Docker-volume login; `--provider grok-docker` runs inference inside Docker behind provider-only HTTPS egress. Detail: [`pentest/README.md`](pentest/README.md).
+- [`audit/`](audit) — one-shot Docker sandbox + MCP stdio bridge (`docker-agent-orchestrator.mjs`, `docker-mcp-bridge.mjs`) orchestrating local agentic CLIs (`claude`, `codex`, `grok`, `agy`) inside an airgapped container, plus sealed source snapshots, private-outbox workers and selected-file `review-with-cli` coordination; `check-agents` checks Docker + all 4 MCP-bridged CLIs, and `check-model-cli --all` inventories selected-file relay profiles. Separate brokers live under `audit/native/{codex-review,grok-review}`. `grok-docker setup/login` builds the Linux Grok broker and obtains a separate Docker-volume login; `--provider grok-docker` runs inference inside Docker behind provider-only HTTPS egress. Detail: [`audit/README.md`](audit/README.md).
 - [`programs/`](programs/freightchain-pools) — the Anchor program. Anchor 1.2.
-- [`server/`](server) — NestJS 12, Prisma, PostgreSQL, and `replay:worker`.
+- [`server/`](server) — NestJS 12, Prisma, PostgreSQL, the replay worker, and the dedicated AI worker (`npm run editor:worker`).
 
 Also at the root: `package.json`, `docker-compose.yml` (PostgreSQL on `127.0.0.1:15433`, Redis and `worker` optional under profiles), [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md).
 
@@ -473,17 +565,17 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `test-census` | Count the tests by pyramid layer, grade test coverage per feature, user flow, controller and route (static attribution, line + branch coverage, the routes each browser suite hits), name gaps, and rewrite the Tests block below and docs/test-coverage.md | `npm run test:census` · `npm run test:census -- features` · `npm run test:census -- coverage` · `npm run test:census -- run` · `npm run test:census -- readme` |
 | `level-check` | Each free level (EASY / MEDIUM / HARD) is what it promises and passable by a human: the road each level's shift covers (junctions, forks, lanes, bends, sinkhole traps), then a human-paced driver on the real truck with ASSIST off on many seeds × all routes – finish rate, hull, vehicles hit, against the level's limits | `node .claude/skills/level-check/check.mjs` |
 | `trip-design` | The road per ride tier – the free run and the 1 h / 4 h / 8 h shifts: bends, traffic, roadside, whether it ends by itself at the line, its length and finish distance – measured with the real game modules and looked at in Chrome | `node .claude/skills/trip-design/measure.mjs` · `node .claude/skills/trip-design/shots.mjs` |
-| `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome, server traffic validation against removed cars / ignored damage / missing proof, API-level verdict and upload checks, signed admin decisions, the profile, retention + bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` (traffic only: `bash .claude/skills/run-tests/e2e.sh traffic`) |
-| `3d-assets` | Review and fix a mesh in the model viewer (`client/viewer.html`), or add, update, or generate a car, tree, or building. `validate.mjs` rejects an impossible spec before any mesh or generated model | `node .claude/skills/3d-assets/validate.mjs --self-test` · `node .claude/skills/3d-assets/validate.mjs "<spec>"` · `node .claude/skills/3d-assets/shot.mjs` · `node .claude/skills/3d-assets/shot.mjs <id>` |
-| `pentest-audit` | Multi-agent security audit inside a one-shot Docker sandbox via MCP stdio bridge (`claude`, `codex`, `grok`, `agy`), plus selected-file static review (`review-with-cli`) and provider diagnostics | `./pentest/bin/pentest check-agents` · `./pentest/bin/pentest run --repo <path>` · `./pentest/bin/pentest check-model-cli --all` · `./pentest/bin/pentest review-with-cli --repo <path> --file <file> --provider claude --model <model> --out <empty-dir>` · `node --test pentest/scripts/*.test.mjs` |
+| `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome (dispatch prompts answered / ignored), server traffic validation against removed cars / ignored damage / missing proof, API-level bots with hand-built recordings (every verdict code), the upload protocol, the admin's signed decisions, the profile in Chrome, retention + the CLI's bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` (traffic only: `bash .claude/skills/run-tests/e2e.sh traffic`) |
+| `3d-assets` | Review and fix a model in the model viewer (`client/viewer.html`) – every 3D model is a data-only entity (`client/shared/entity/seed/`) – or add, update, or generate a car, tree, or building. The same procedure is the AI editor's MCP (`mcp/`). `validate.mjs` rejects an impossible spec before any mesh or generated model | `node .claude/skills/3d-assets/validate.mjs --self-test` · `node .claude/skills/3d-assets/validate.mjs "<spec>"` · `node .claude/skills/3d-assets/shot.mjs` · `node .claude/skills/3d-assets/shot.mjs <id>` |
+| `security-audit` | Multi-agent security audit inside a one-shot Docker sandbox via MCP stdio bridge (`claude`, `codex`, `grok`, `agy`), plus selected-file static review (`review-with-cli`) and provider diagnostics | `./audit/bin/audit check-agents` · `./audit/bin/audit run --repo <path>` · `./audit/bin/audit check-model-cli --all` · `./audit/bin/audit review-with-cli --repo <path> --file <file> --provider claude --model <model> --out <empty-dir>` · `node --test audit/scripts/*.test.mjs` |
 | `grill-fix` | Grills the business value of the feature and waits for your answers (a vague answer is challenged once), then three sequential reviews of the change, each by a different model, against the idea and those answers. Fixes bugs, gaps, misconfiguration, and security holes between passes, then checks the tests and the code quality. Does not deploy | `/grill-fix` |
 | `coin-grill` | Three-pass Solana token and tokenomics audit of a spec file: name, ticker, decimals, `u64` supply bound, authorities, utility, allocations, vesting, minting and burning, hype, marketing, main project fit, and 36-month supply and demand, writing a styled HTML report with issues, scores, and proposals | `node .claude/skills/coin-grill/grill.mjs <path> [--out <report.html>]` · `node .claude/skills/coin-grill/grill.mjs --self-test` |
 
-`pentest run` starts a one-shot Docker container (`pentest-sandbox:local`), executes all build, test, scanner, and harness checks inside the container, disconnects network egress, and runs the local agentic CLIs (`claude`, `codex`, `grok`, `agy`) against `docker-mcp-bridge.mjs` before destroying the container (`--blocked` records an offline preflight without starting Docker). `review-with-cli --repo <local-dir> --file <relative-file> --provider claude --model <model> --out <empty-dir>` combines selected-file Docker review and the fixed host consumer in one command. The explicit `codex-native` selector uses a separately compiled Codex-derived broker, not the installed CLI or Claude; it requires a current all-gates admission receipt and native ChatGPT authentication. Native admission passed locally and a real `gpt-6.1-sol` inert-source review completed with validated output and owned-resource cleanup on 2026-10-15. `check-model-cli --all` inventories Claude, Codex, Grok, Agy, Gemini and Ollama; use `check-model-cli --provider codex-native` separately for the native profile. Readiness is not a successful inference test. The separate Claude 2.1.300/Haiku inert-source review also completed; neither smoke test establishes universal compatibility or a whole-repository audit. Manual `review-local` and separate `connect-terminal` remain available. Missing admission/auth/capabilities, unsupported providers and unknown events fail closed. Host-profile credentials stay outside Docker; `grok-docker` instead obtains a fresh login in its dedicated Docker volume. Model/tool provenance remains unverified. The [live-model guide](pentest/docs/live-model.md) documents the routes and verification limits.
+`audit run` starts a one-shot Docker container (`audit-sandbox:local`), executes all build, test, scanner, and harness checks inside the container, disconnects network egress, and runs the local agentic CLIs (`claude`, `codex`, `grok`, `agy`) against `docker-mcp-bridge.mjs` before destroying the container (`--blocked` records an offline preflight without starting Docker). Grok trusts only the generated workspace; failed exits, provider refusals, usage limits and missing verdicts remain incomplete with explicit log diagnostics. `review-with-cli --repo <local-dir> --file <relative-file> --provider claude --model <model> --out <empty-dir>` combines selected-file Docker review and the fixed host consumer in one command. The explicit `codex-native` selector uses a separately compiled Codex-derived broker, not the installed CLI or Claude; it requires a current all-gates admission receipt and native ChatGPT authentication. Native admission passed locally and a real `gpt-6.1-sol` inert-source review completed with validated output and owned-resource cleanup on 2026-10-15. `check-model-cli --all` inventories Claude, Codex, Grok, Agy, Gemini and Ollama; use `check-model-cli --provider codex-native` separately for the native profile. Readiness is not a successful inference test. The separate Claude 2.1.300/Haiku inert-source review also completed; neither smoke test establishes universal compatibility or a whole-repository audit. Manual `review-local` and separate `connect-terminal` remain available. Missing admission/auth/capabilities, unsupported providers and unknown events fail closed. Host-profile credentials stay outside Docker; `grok-docker` instead obtains a fresh login in its dedicated Docker volume. Model/tool provenance remains unverified. The [live-model guide](audit/docs/live-model.md) documents the routes and verification limits.
 
 A new, renamed, or removed skill updates this table in the same change. The rule is [`AGENTS.md`](AGENTS.md) → "Maps stay current".
 
-`grok-native` is an experimental separate public-source build, not installed Grok 1.0.52. It uses a fresh existing first-party OIDC login, without automatic refresh, store repair, API-key billing or another reviewer. A bounded classifier implicated `tool_choice` in the initial HTTP 400. Restoring upstream's empty-tool wire encoding resolved it; a real inert review exited 0 with requested `grok-4.7`, client-reported `grok-4.7-build`, validated output and verified cleanup. Model prose remains unverified. See the [Grok-native guide](pentest/docs/live-model.md#grok-native-broker-experimental).
+`grok-native` is an experimental separate public-source build, not installed Grok 1.0.52. It uses a fresh existing first-party OIDC login, without automatic refresh, store repair, API-key billing or another reviewer. A bounded classifier implicated `tool_choice` in the initial HTTP 400. Restoring upstream's empty-tool wire encoding resolved it; a real inert review exited 0 with requested `grok-4.7`, client-reported `grok-4.7-build`, validated output and verified cleanup. Model prose remains unverified. See the [Grok-native guide](audit/docs/live-model.md#grok-native-broker-experimental).
 
 ## Run it
 
@@ -491,7 +583,10 @@ A new, renamed, or removed skill updates this table in the same change. The rule
 npm run db:up && npm run db:migrate && npm run server:dev   # API and pages on :3000
 npm run landing:dev                                         # Vite on :5173, proxies /api to :3000
 npm run client:serve                                        # the game alone
-npm run check                                               # client, landing, server unit tests, media
+npm run check                                               # client, landing, server unit tests, mcp, media
+npm run editor:mcp                                          # the entity MCP for the AI model editor on :3100 (EDITOR_MCP_TOKEN from server/.env)
+npm run server:build && npm run editor:worker                # separate AI worker; same server/.env, explicit shared JWT_SECRET
+npm run mcp:check                                           # the MCP's own tests
 npm run server:integration                                  # PostgreSQL, its own freightchain_test database
 npm run program:test                                        # LiteSVM, no network
 npm run program:verify                                      # reproducible build against the pinned hash
@@ -499,6 +594,137 @@ npm run test:localnet                                       # the program on a l
 ```
 
 `npm run check` needs `npm run install:landing` and `npm run install:media` once. The program tools need the Solana toolchain on `PATH` ([`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md)). Deploy: [`deploy/README.md`](deploy/README.md). Env keys: [`docs/configuration.md`](docs/configuration.md). There is no CI.
+
+## 3D entity editor and AI generation
+
+The [model viewer](https://storybook.freightchain.fun) is also the editor for wallets listed in `EDITOR_WALLETS`. Vehicles, props, furniture, landmarks, gantries and reusable parts share a data-only entity format. An entity describes geometry, materials, parameters and animation roles; it cannot contain executable JavaScript. The literal parser, expression interpreter, validator and analytic measurements are shared by the browser, API and MCP. Collision rules, vehicle sizes, landmark footprints, placement order and other gameplay contracts remain in code and are validated separately from appearance.
+
+Seed models live in [`client/shared/entity/seed/`](client/shared/entity/seed). PostgreSQL's `asset` schema adds append-only revisions above those seeds. **HEAD** is the latest editor revision; **PUBLISHED** is the revision players receive. The public `/api/entities/bundle` combines seeds with published revisions and has a content hash, ETag and cache headers. Saving or generating a draft changes HEAD only. Publishing requires an editor's wallet signature over the selected entity and revision and records an audit entry. Restore copies an older revision into a new draft; it does not erase history. An entity edit changes its appearance; placing a new model in the world can also require a reviewed roster or route change.
+
+### How requests run
+
+```mermaid
+flowchart LR
+  editor["Viewer: CHAT / SOURCE / HISTORY"] --> api["NestJS API: authenticate, validate, admit"]
+  api --> queue[("PostgreSQL: jobs, events, revisions")]
+  queue --> worker["Dedicated editor-worker: claim up to five jobs"]
+  worker --> provider["External AI provider"]
+  worker --> mcp["Entity MCP: seven bounded tools"]
+  mcp --> callback["API: verify job scope, validate, save draft"]
+  callback --> queue
+  editor --> publish["Wallet-signed publish"]
+  publish --> bundle["Public entity bundle used by the game"]
+```
+
+The API checks access, provider/model availability, the selected HEAD, daily allowance and the `3d-assets` request specification before committing a queued job. Impossible requests such as a two-wheel car are refused before a model is called. The API does not execute generations. A separate `editor:worker` process polls PostgreSQL every second, claims work atomically and drives the provider through a bounded agent loop. Text, tool calls, tool results, usage and status are stored as ordered job events for the chat. The general `replay:worker` processes driving verification and has no AI execution role.
+
+The MCP is a separate Node service using the Model Context Protocol SDK: Streamable HTTP for the application and stdio for local coding tools. Its tools are `list_entities`, `get_entity`, `get_format`, `validate_spec`, `check_entity`, `diff_entity` and `save_draft`. HTTP tool calls carry a short-lived job capability back to the API; the API verifies the current job, editor allowlist, write scope, deadline and base revision. A job targeting an existing model can edit that model and create up to four new helper parts. A job without a selected entity can create up to four new entities and revise its own creations. Concurrent human edits cause `stale_base` instead of being overwritten.
+
+The bridge owns the system workflow and tool contracts in [`editor-tool-policy.ts`](server/src/domain/editor/editor-tool-policy.ts). Remote tool descriptions, prompts, entity notes and model text cannot grant extra permissions. Every AI save requires a successful check of the exact source and entity id; the check is consumed by the save. The MCP and API validate again independently. Prompt injection can still influence a model's in-scope draft, so inspect the preview and diff before signing publication. The model has no publication tool, shell tool or arbitrary URL tool.
+
+### Run locally
+
+Use the server's normal development prerequisites and database configuration from [`server/.env.example`](server/.env.example). Install the server and MCP dependencies if needed:
+
+```sh
+npm run install:server
+npm --prefix mcp ci
+```
+
+Configure `server/.env`; keep it out of Git. API and worker must use the same database, provider/model configuration, timeout, MCP token and explicit JWT signing secret.
+
+| Key | What to set |
+| --- | --- |
+| `EDITOR_WALLETS` | Comma-separated editor wallet public keys; editor access is independent of `ADMIN_WALLETS` |
+| `JWT_SECRET` | A generated secret of at least 32 characters shared by API and worker; the API's random development fallback cannot work across processes |
+| `EDITOR_MCP_TOKEN` | A generated secret of at least 24 characters shared by API, worker and MCP; empty disables AI editing |
+| `EDITOR_MCP_URL` | `http://127.0.0.1:3100` locally |
+| Provider key | One or more of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZAI_API_KEY`; a configured key makes that provider available |
+| Provider selection | Optional `EDITOR_DEFAULT_PROVIDER` and `EDITOR_MODEL_ANTHROPIC`, `EDITOR_MODEL_OPENAI`, `EDITOR_MODEL_GEMINI`, `EDITOR_MODEL_ZAI`; see [configuration](docs/configuration.md) for defaults and z.ai endpoint selection |
+| `EDITOR_FAKE_LLM` | `1` for a scripted local provider with no paid model calls; production refuses this setting |
+| `REDIS_URL` | Optional locally; required for production AI editing and shared rate limits |
+
+Start the database and apply migrations, then leave the API running:
+
+```sh
+npm run db:up
+npm run db:migrate
+npm run server:dev
+```
+
+Start these in two additional terminals from the repository root:
+
+```sh
+npm run editor:mcp
+```
+
+```sh
+npm run server:build && npm run editor:worker
+```
+
+All three processes read `server/.env`. The MCP command defaults its API callback origin to `http://127.0.0.1:3000`; set `FC_APP_URL` when using another API address. The worker runs compiled code: rebuild and restart it after server changes. For shared local rate limits, start `docker compose up -d --wait redis` and set `REDIS_URL=redis://:freight_dev_redis@127.0.0.1:16380` with the default local Compose credentials; the next process start picks it up.
+
+Open `http://localhost:3000/viewer.html`, click **EDIT**, and connect an allowlisted wallet. Select a model, then use:
+
+1. **SOURCE** to edit and save a validated draft by hand, or **CHAT** to choose an offered provider/model and describe a change. Chat shows `queued`, `running`, tool activity and the terminal result; cancel revokes the job's capability. Cancellation of a provider request already submitted is best effort.
+2. The viewer to inspect the draft's shape, dimensions, materials and animation roles. **HISTORY** previews revisions and shows their differences and AI request provenance.
+3. **PUBLISH** in HISTORY to sign the exact entity/revision and make it available through the public bundle. Publication reaches other API processes on their next bundle recheck; HTTP caches can delay visibility. **RESTORE** creates another draft for review and publication.
+
+Manual editing works without an AI provider. For an AI smoke test, use the scripted provider; it exercises the real MCP and draft path but does not demonstrate live-provider asset quality or throughput. To put published database revisions back into the shipped seed files, run `npm run entities:export` against the intended database, then review and commit the generated changes.
+
+For Claude Code editing the seed files directly, run `claude mcp add fc-entities -- node mcp/src/stdio.js` from the checkout. This stdio mode needs no API or database: `save_draft` changes a seed file on disk, which you review and commit. It does not publish a database revision.
+
+### Concurrency, queue and cost limits
+
+The fallback is **five running jobs globally plus queued overflow**, not five per API or worker process. PostgreSQL serializes admission and claims in short transactions; provider calls never hold those locks. Queued rows survive API/worker restarts. Each wallet and each selected entity may have only one open job, queued or running. Five simultaneous jobs therefore require five editor wallets targeting distinct models or creating new ones.
+
+| Runtime setting | Default | Effect |
+| --- | ---: | --- |
+| `editor_jobs_parallel` | 5 | Global running claims; 0 pauses new claims |
+| `editor_jobs_per_day` | 40 | Jobs admitted per editor wallet per UTC day |
+| `editor_max_steps` | 24 | Agent turns per job |
+| `editor_max_output_tokens` | 32000 | Cumulative output token budget |
+| `editor_max_input_ktokens` | 500 | Cumulative input budget, in thousands of tokens, including repeated history |
+
+These are signed admin **GameSetting** values, not environment variables. A stored value overrides the fallback: on an existing installation, open admin → Settings → **AI editor: parallel jobs** → `5` → **SIGN & SAVE**. Lowering concurrency leaves current claims running and blocks new starts until the count falls below the new value.
+
+`EDITOR_JOB_TIMEOUT_MS` defaults to `600000`: a queued job expires ten minutes after admission; a running job has a separate fixed deadline ten minutes after its claim. Interrupted running jobs are failed on shutdown or expiry and are never automatically replayed, because provider work might already have incurred charges or saved drafts. Review the existing draft before submitting a replacement. There is no separate global queue-length cap; admission is constrained by allowlisting, one open job per wallet and daily limits.
+
+PostgreSQL was chosen over Bull/BullMQ because job admission, ownership, deadlines, events and revisions already live there. Keeping claims with that durable state avoids synchronizing a second queue with database transactions. Redis remains the shared rate-limit and cache service; the unrelated replay queue also uses Redis. More editor-worker replicas share the same five-slot budget and do not increase it automatically.
+
+Five slots are a scheduling guarantee, not a measured provider throughput. If jobs average two minutes, the idealized rate is 150 jobs/hour and a second wave of five waits about two minutes, before throttling and errors. Measure queue wait, duration, provider 429s, MCP validation latency, worker memory/event-loop lag and game API p95 before raising concurrency. Validation still consumes API/MCP CPU on the shared host. Add a bounded queue and separate wait timeout if demand grows; use bounded validation workers if validation becomes the bottleneck.
+
+### Rate limits and production operation
+
+Production Compose has six services with AI editing enabled: NestJS `app`, driving-verification `worker`, `editor-worker`, `mcp`, PostgreSQL 17 and Redis 7. Host nginx serves the split sites and proxies the API. The API retains provider keys for provider discovery; only the AI worker opens model sessions. The MCP receives no provider or wallet-signing key.
+
+| Boundary | Default protection |
+| --- | --- |
+| Editor API | 240 requests/minute per editor wallet, otherwise IP; 10 requests/second per IP |
+| MCP → API callbacks | 600 requests/minute and 20 requests/second per verified job; unverified capabilities share a bucket |
+| Internal MCP HTTP | 40 requests/second per socket source IP, shared in Redis across MCP replicas |
+
+API defaults are controlled by `THROTTLE_EDITOR_LIMIT`, `THROTTLE_EDITOR_RPS`, `THROTTLE_MCP_LIMIT` and `THROTTLE_MCP_RPS`. One generation makes several MCP requests; request limits are not generation counts. Protected API buckets and MCP fail closed when Redis is unavailable. MCP uses the counter-only `fc-mcp` Redis ACL identity restricted to `fc:mcp-rl:*`; Redis uses `noeviction` so memory pressure cannot discard rate-limit counters. Editor sessions are separate from admin sessions, enforce the storybook host and same-origin changes, and can also be restricted with `EDITOR_IP_ALLOWLIST`.
+
+The AI worker has no HTTP listener or published port, a 1 GB memory limit, 128-process limit, read-only root, temporary `/tmp`, dropped capabilities and no crank, payout or badge-mint secret. Its atomic `/tmp/fc-editor-worker-health-<pid>.json` marker records successful database polls; the container requires PID 1's marker to be less than 15 seconds old. Readiness checks do not spend provider tokens or verify provider account availability. Shutdown stops claims, aborts provider work and drains terminal writes for up to eight seconds before storage disconnects. Database failures revoke readiness and abort local provider calls.
+
+The MCP publishes no port in production and runs with a read-only root, 512 MB memory limit and restricted networks. It checks its bearer token, refuses browser origins and unknown Hosts, bounds bodies and request time, refuses JSON-RPC batches and redirects, and keeps raw credential-bearing exceptions out of logs. nginx blocks public access to `/api/editor/mcp/*`; the API still verifies every callback independently.
+
+The release scripts start MCP and the AI worker when `EDITOR_MCP_TOKEN` is configured, require their health checks, and stop the outgoing AI worker before changing API versions. Automatic and manual rollback select matching optional services, including older versions without a dedicated worker. Deployment and secret setup are described in [`deploy/README.md`](deploy/README.md); committing these changes does not deploy them.
+
+For a job stuck in `queued`, check the worker process, database access, fresh health marker and stored parallel setting. For missing providers or capability failures, compare the configured key names, provider/model selection, shared `JWT_SECRET`, MCP token and callback URL across the relevant processes without printing secrets. For `429`, honor `Retry-After` and check both configured budgets and Redis health. For `stale_base`, reload and review the current HEAD before asking again. A `failed` job can still have saved a draft; inspect HISTORY before resubmitting.
+
+### Validation and references
+
+The completed review passed `npm run check` (**2,080 server tests across 348 files**, plus client, landing, MCP and media checks), **522 PostgreSQL integration tests across 46 files**, the real Chrome editor suite with separate API/worker processes and real MCP, and an isolated production-container restart/database-outage smoke test. Scripted providers avoid paid calls. Tests cover five active plus five queued jobs, shared admission/claim races, cancellation, expired capabilities, exact-source checks, signed publication and release/rollback. Live-provider throughput remains unmeasured.
+
+```sh
+npm run check
+TEST_DATABASE_URL=postgresql://freight:freight_dev_password@localhost:15433/freightchain_entity_editor_review_test npm run server:integration
+bash .claude/skills/run-tests/e2e.sh editor
+```
+
+Integration tests must use a dedicated test database. See the [security review and residual limitations](docs/reviews/entity-editor-security.md), [editor architecture](docs/agents/editor.md), [HTTP contract](docs/editor-api.md), [entity format](docs/agents/world.md#entities-every-3d-model-is-data) and [configuration reference](docs/configuration.md).
 
 ## Tests
 

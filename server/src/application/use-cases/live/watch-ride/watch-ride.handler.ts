@@ -59,7 +59,7 @@ export class WatchRideHandler implements IQueryHandler<WatchRideQuery, WatchDto>
       })),
       events: withoutMuted(events.map(toRideEventDto), muted),
       totals,
-      viewers: !live ? 0 : viewer && leave ? (this.viewers.leave(ride.id, source, viewer), this.viewers.count(ride.id, now)) : viewer ? this.viewers.seen(ride.id, source, viewer, now) : this.viewers.count(ride.id, now),
+      viewers: !live ? 0 : viewer && leave ? (await this.viewers.leave(ride.id, source, viewer), await this.viewers.count(ride.id, now)) : viewer ? await this.viewers.seen(ride.id, source, viewer, now) : await this.viewers.count(ride.id, now),
       features: liveFeatures(this.rules.get().live, ride),
     };
   }

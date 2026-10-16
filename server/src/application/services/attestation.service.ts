@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { RideStatus } from '../../domain/rides/ride-status.js';
 import { ConflictError } from '../../domain/shared/errors.js';
 import { computeTelemetryMerkleRoot } from '../../domain/telemetry/telemetry-merkle.js';
@@ -8,10 +8,11 @@ import { PoolRepositoryPort } from '../ports/economy/pool.repository.port.js';
 import { RideRepositoryPort } from '../ports/rides/ride.repository.port.js';
 import { RideBatchRepositoryPort } from '../ports/telemetry/ride-batch.repository.port.js';
 import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.repository.port.js';
+import { CachePort } from '../ports/shared/cache.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
 import { HasherPort } from '../ports/shared/hasher.port.js';
 
-/** What the chain should say about one pledged ride (program v4 RideAttestation – pentest H4: a pledge settles on ITS ride, never on the driver's best one). */
+/** What the chain should say about one pledged ride (program v4 RideAttestation – audit H4: a pledge settles on ITS ride, never on the driver's best one). */
 export type RideFacts =
   | { status: 'verified'; telemetryRoot: Uint8Array; verifiedKm: number }
   /** rejected: its sponsors get everything back */
@@ -46,9 +47,10 @@ export class AttestationService {
     private readonly pools: PoolRepositoryPort,
     private readonly hasher: HasherPort,
     private readonly clock: ClockPort,
+    @Optional() private readonly cache?: CachePort,
   ) {}
 
-  /** The verdict of `rideId` as an attestation of pool `poolId`, read afresh every time (pentest M7: a verdict revoked after an attestation was written). */
+  /** The verdict of `rideId` as an attestation of pool `poolId`, read afresh every time (audit M7: a verdict revoked after an attestation was written). */
   async factsOf(poolId: number, rideId: string): Promise<RideFacts> {
     const ride = await this.rides.findById(rideId);
     if (!ride || ride.poolId !== poolId) return { status: 'none' };
@@ -74,7 +76,19 @@ export class AttestationService {
     const key = `${poolId}:${rideId}`;
     const pending = this.inFlight.get(key);
     if (pending) return pending;
-    const promise = this.attest(poolId, rideId);
+    const promise = (async () => {
+      const lockKey = `attest:${key}`;
+      const acquired = this.cache ? await this.cache.tryLock(lockKey, 30_000) : true;
+      if (!acquired) {
+        const facts = await this.factsOf(poolId, rideId);
+        return { status: facts.status, signature: null };
+      }
+      try {
+        return await this.attest(poolId, rideId);
+      } finally {
+        if (this.cache) await this.cache.releaseLock(lockKey);
+      }
+    })();
     this.inFlight.set(key, promise);
     try { return await promise; } finally { this.inFlight.delete(key); }
   }

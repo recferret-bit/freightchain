@@ -39,6 +39,10 @@ export class MemoryReplayQueueAdapter extends ReplayQueuePort {
     if (!this.pending.has(job.rideId)) this.pending.set(job.rideId, job);
   }
 
+  async isInFlight(rideId: string): Promise<boolean> {
+    return this.inflight.has(rideId);
+  }
+
   async depth(): Promise<number> {
     return this.pending.size + this.inflight.size;
   }

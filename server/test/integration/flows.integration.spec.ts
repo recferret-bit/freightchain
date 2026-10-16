@@ -18,6 +18,8 @@ import { TELEMETRY_ENV, telemetryScenarios } from '../scenarios/telemetry.scenar
 import { analyticsScenarios } from '../scenarios/analytics.scenarios.js';
 import { VERDICT_ENV, verdictScenarios } from '../scenarios/verdict.scenarios.js';
 import { ADMIN_ENV, adminScenarios } from '../scenarios/admin.scenarios.js';
+import { EDITOR_ENV, editorScenarios } from '../scenarios/editor.scenarios.js';
+import { EDITOR_JOBS_ENV, editorJobScenarios } from '../scenarios/editor-jobs.scenarios.js';
 import { PROMOS_ENV, promoScenarios } from '../scenarios/promos.scenarios.js';
 import { promoAbuseScenarios } from '../scenarios/promos-abuse.scenarios.js';
 import { LIVE_ENV, LIVE_FLAGS_ENV, LIVE_OFF_ENV, liveFlagsScenarios, liveOffScenarios, liveScenarios } from '../scenarios/live.scenarios.js';
@@ -35,6 +37,8 @@ for (const [name, env, scenarios] of [
   ['verified play: the verdict and the boards', VERDICT_ENV, verdictScenarios],
   ['verified traffic frame proof', TRAFFIC_PROOF_ENV, trafficProofScenarios],
   ['admin: review queue, overrides, sign-ins, logs', ADMIN_ENV, adminScenarios],
+  ['3D models: the public bundle and the editor (drafts, history, restore, signed publish)', EDITOR_ENV, editorScenarios],
+  ['3D models: the AI editor jobs (spec gate, the fake model through the MCP callbacks, caps, cancel)', EDITOR_JOBS_ENV, editorJobScenarios],
   ['payments, the prize pool and leaderboards', PAYMENTS_ENV, paymentScenarios],
   ['lobby: live feed, profile, achievements', LOBBY_ENV, lobbyScenarios],
   ['statistics: rides, time, distance, crashes, donations – per rider and global', STATS_ENV, statsScenarios],

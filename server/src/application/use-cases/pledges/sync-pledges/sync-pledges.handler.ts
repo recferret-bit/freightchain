@@ -19,7 +19,7 @@ const ABANDON_AFTER_MS = 60 * 60_000;
 /**
  * The pledge job (after every payout pass): the rows follow the chain, and the payout key ends what can be ended.
  *   1. every pending / active pledge is read back from its account's own transactions (create, and a settle / refund anyone may have sent) – the chain is the truth;
- *   2. an active pledge whose RIDE has a decided attestation of its driver (program v4, pentest H4 – the payout job records one per pledged ride before it closes
+ *   2. an active pledge whose RIDE has a decided attestation of its driver (program v4, audit H4 – the payout job records one per pledged ride before it closes
  *      the pool) → settle_pledge, once the chain clock is past its `settleFrom` (the review lock, L5);
  *   3. an active pledge of a pool that is over (failed, cancelled, closed, or past its settle grace) whose ride has no decided attestation → refund_pledge.
  * Both are permissionless on chain; the payout key only pays the fee. A failure is noted and retried next pass.
@@ -79,7 +79,7 @@ export class SyncPledgesHandler implements ICommandHandler<SyncPledgesCommand, P
     const live = await this.pools.findById(p.poolId);
     // money the admin has not released waits (WP2 review): a held pool, one with rides under review, one stopped in error
     if (live?.isActive && (live.hold || ['held', 'waiting_review', 'error'].includes(live.payoutState))) return p;
-    // the attestation is made to say what the verdicts say NOW while it can still be rewritten (pentest M7)
+    // the attestation is made to say what the verdicts say NOW while it can still be rewritten (audit M7)
     if (live?.isActive) await this.attestation.attestRide(p.poolId, p.rideId);
     const att = await this.payout.rideAttestationOf(p.poolId, p.rideId);
     const now = await this.payout.chainNow();

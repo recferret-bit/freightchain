@@ -1,5 +1,5 @@
 //! v4 settlement: `commit_winners` (a Merkle root over rank, wallet, lamports), the permissionless `pay_prize` against it, `veto_winners`, and
-//! `close_pool` / `close_ticket` (pentest H5-B / M6).
+//! `close_pool` / `close_ticket` (audit H5-B / M6).
 #[macro_use]
 mod common;
 
@@ -397,7 +397,7 @@ fn expected(total: u64, prize_bps: u64, seed_bps: u64, platform_bps: u64) -> (u6
     (prize, seed, fee - plat, plat)
 }
 
-/// Also the v4 form of pentest s1-gpt `probe_money_is_conserved_across_random_lifecycles` (settle path): random winners paid through a root,
+/// Also the v4 form of audit s1-gpt `probe_money_is_conserved_across_random_lifecycles` (settle path): random winners paid through a root,
 /// every output of the close re-computed, nothing created or lost.
 #[test]
 fn close_pool_splits_exactly_for_random_amounts() {

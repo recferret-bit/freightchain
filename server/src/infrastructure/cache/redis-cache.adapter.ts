@@ -43,6 +43,22 @@ export class RedisCacheAdapter extends CachePort implements OnModuleDestroy {
     try { await this.redis.del(...keys); } catch (e) { this.fail(e); }
   }
 
+  override async tryLock(key: string, ttlMs: number): Promise<boolean> {
+    if (this.isDown()) return true;
+    try {
+      const res = await this.redis.set(`lock:${key}`, '1', 'PX', Math.max(100, Math.round(ttlMs)), 'NX');
+      return res === 'OK';
+    } catch (e) {
+      this.fail(e);
+      return true;
+    }
+  }
+
+  override async releaseLock(key: string): Promise<void> {
+    if (this.isDown()) return;
+    try { await this.redis.del(`lock:${key}`); } catch (e) { this.fail(e); }
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.redis.quit().catch(() => undefined);
   }

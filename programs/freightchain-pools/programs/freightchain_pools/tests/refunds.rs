@@ -186,7 +186,7 @@ fn resent_batch_after_partial_progress_is_rebuilt_from_remaining() {
     assert_eq!(e.pool(id).refunded, 2 * PRICE);
 }
 
-/// pentest s1-claude poc_05 (M8): the sponsorship of a failed pool goes back to its sponsor, not to the seed treasury.
+/// audit s1-claude poc_05 (M8): the sponsorship of a failed pool goes back to its sponsor, not to the seed treasury.
 #[test]
 fn close_pool_after_refunds_returns_sponsorship_and_sweeps_rent() {
     let mut e = Env::new();
@@ -224,7 +224,7 @@ fn close_pool_after_refunds_returns_sponsorship_and_sweeps_rent() {
     assert_eq!((ev[0].seed, ev[0].fee, ev[0].rent_returned), (0, 0, e.rent_min()));
 }
 
-/// pentest s1-claude poc_05 (M8): two sponsors (one sponsoring twice = one receipt with the sum); a stranger cranks every refund.
+/// audit s1-claude poc_05 (M8): two sponsors (one sponsoring twice = one receipt with the sum); a stranger cranks every refund.
 #[test]
 fn failed_pool_refunds_every_sponsor_before_it_closes() {
     let mut e = Env::new();
@@ -359,7 +359,7 @@ fn close_sponsor_receipt_only_after_settled_returns_the_rent() {
     assert_err!(e.close_sponsor_receipt(id2, &sp.pubkey()), PoolError::NotSettled);
 }
 
-/// pentest s1-claude poc_05b (M8): an ABSENT operator's expired pool gives the sponsorship back too.
+/// audit s1-claude poc_05b (M8): an ABSENT operator's expired pool gives the sponsorship back too.
 #[test]
 fn expired_pool_returns_the_sponsorship() {
     let mut e = Env::new();

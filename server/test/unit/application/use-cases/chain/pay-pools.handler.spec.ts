@@ -141,7 +141,7 @@ describe('PayPoolsHandler – the payout job (program v4: commit the winners, pa
     expect((await pay()).pools[0]?.state).toBe('paid');
   });
 
-  describe('the commit (program v4 – pentest H5-B)', () => {
+  describe('the commit (program v4 – audit H5-B)', () => {
     it('is made at the play deadline and nothing is paid before payFrom (`committed`, the payFrom in the note); from payFrom the prizes go out', async () => {
       const { ctx, payout, run, mirror, onChain, t } = await setup();
       await poolRide(ctx, W.alice, 9_000); await poolRide(ctx, W.bob, 5_000);
@@ -238,7 +238,7 @@ describe('PayPoolsHandler – the payout job (program v4: commit the winners, pa
     });
   });
 
-  describe('a verdict decided AFTER the plan (pentest M7)', () => {
+  describe('a verdict decided AFTER the plan (audit M7)', () => {
     it('a ride put under review after the commit stops the money (waiting_review, plan kept); rejected by the admin it changes the ranking – error, nothing more is paid, even with the root vetoed (partly paid)', async () => {
       const { ctx, payout, run, onChain, toPayFrom } = await setup();
       await poolRide(ctx, W.alice, 9_000);

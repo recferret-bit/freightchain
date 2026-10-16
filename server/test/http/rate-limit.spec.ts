@@ -37,7 +37,7 @@ describe('rate limiting', () => {
     await anon().get('/api/tiers').expect(200); // other routes are unaffected
   });
 
-  it('the stricter budgets hold for every spelling Express routes to the same handler – /API/AUTH/…, a trailing slash (pentest M9)', async () => {
+  it('the stricter budgets hold for every spelling Express routes to the same handler – /API/AUTH/…, a trailing slash (audit M9)', async () => {
     harness = await createHarness('memory', { THROTTLE_AUTH_LIMIT: '2' });
     const wallet = (await import('../support/client.js')).newWallet().address;
     await anon().post('/API/AUTH/nonce').send({ wallet }).expect(200);

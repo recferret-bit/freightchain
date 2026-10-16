@@ -9,6 +9,28 @@ CURRENT="$(cat "$STATE/current" 2>/dev/null || true)"; PREVIOUS="$(cat "$STATE/p
 cc() { local tag="$1"; shift; RELEASE="$tag" APP_PORT="$APP_PORT" docker compose --env-file "$ENVF" -f "$ROOT/releases/$tag/deploy/docker-compose.prod.yml" "$@" </dev/null; }   # </dev/null: the script itself arrives on stdin (ssh) – a compose command must not swallow the rest of it
 healthy() { curl -fsS -m 5 "http://127.0.0.1:$APP_PORT/api/health/ready" >/dev/null 2>&1; }
 
+extras() {
+  local tag="$1" service
+  grep -Eq '^EDITOR_MCP_TOKEN=.{24,}' "$ENVF" || return 0
+  for service in mcp editor-worker; do
+    if cc "$tag" config --services | grep -qx "$service"; then printf '%s ' "$service"; fi
+  done
+}
+switch_release() {
+  local from="$1" to="$2" services
+  if cc "$from" config --services | grep -qx editor-worker; then cc "$from" stop editor-worker || return 1; fi
+  services="$(extras "$to")"
+  if ! printf '%s\n' "$services" | grep -qw mcp && cc "$from" config --services | grep -qx mcp; then cc "$from" stop mcp || return 1; fi
+  cc "$to" up -d --no-build app worker $services
+}
+extras_healthy() {
+  local tag="$1" service id
+  for service in $(extras "$tag"); do
+    id="$(cc "$tag" ps -q "$service")"
+    [ -n "$id" ] && [ "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$id" 2>/dev/null)" = healthy ] || return 1
+  done
+}
+
 case "$CMD" in
   status)
     echo "release   current=${CURRENT:-none}  previous=${PREVIOUS:-none}"
@@ -34,15 +56,15 @@ case "$CMD" in
     [ -n "$PREVIOUS" ] || { echo "no previous release to roll back to" >&2; exit 1; }
     [ -f "$ROOT/releases/$PREVIOUS/deploy/docker-compose.prod.yml" ] || { echo "release $PREVIOUS is gone (pruned)" >&2; exit 1; }
     echo "rolling back $CURRENT → $PREVIOUS"
-    cc "$PREVIOUS" up -d --no-build app worker
-    for i in $(seq 1 30); do healthy && break; sleep 2; done
-    if healthy; then
+    SWITCHED=true; if ! switch_release "$CURRENT" "$PREVIOUS"; then SWITCHED=false; fi
+    for i in $(seq 1 30); do healthy && extras_healthy "$PREVIOUS" && break; sleep 2; done
+    if [ "$SWITCHED" = true ] && healthy && extras_healthy "$PREVIOUS"; then
       echo "$CURRENT" > "$STATE/previous"; echo "$PREVIOUS" > "$STATE/current"; ln -sfn "$ROOT/releases/$PREVIOUS" "$ROOT/current"
       printf '%s  ROLLBACK to %s\n' "$(date -u +%FT%TZ)" "$PREVIOUS" >> "$STATE/releases.log"
       echo "now serving $PREVIOUS (the database keeps any newer migrations – they are forward-only)"
     else
       echo "ROLLBACK FAILED – $PREVIOUS is not healthy; putting $CURRENT back" >&2
-      cc "$CURRENT" up -d --no-build app worker; exit 1
+      switch_release "$PREVIOUS" "$CURRENT"; exit 1
     fi
     ;;
   stats)   # statistics reconcile through the running app container's CLI: a report (read-only), or FIX=1 = rewrite the rows. WALLET=<address> = one rider

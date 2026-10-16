@@ -83,6 +83,8 @@ model Ride {
   @@index([status, trip]) // the free leaderboard per level: completed free rides on one level's trip
   @@index([wallet, ranked, startedAt]) // ranked starts this prize week, under the player lock
   @@index([tier, ranked, status, startedAt]) // the weekly skill board
+  @@index([status, paidAt(sort: Desc), seq(sort: Desc)]) // the /api/live upcoming rides list
+  @@index([status, roundId]) // the round leaderboard
   @@schema("ride")
 }
 

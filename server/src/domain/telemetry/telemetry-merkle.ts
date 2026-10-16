@@ -12,7 +12,7 @@ export interface TelemetryLeafInput {
   body?: unknown;
 }
 
-/** the leaf tag of a batch the client could not hash, bound by the SERVER's hash of its content (pentest 2026-10, fix-plan M13: every such leaf used to be
+/** the leaf tag of a batch the client could not hash, bound by the SERVER's hash of its content (audit 2026-10, fix-plan M13: every such leaf used to be
     SHA-256(0x00), whatever the batch held). Its own tag keeps every root of a recording without such batches what it was – no root version is needed. */
 export const SERVER_HASHED_LEAF = 0x02;
 

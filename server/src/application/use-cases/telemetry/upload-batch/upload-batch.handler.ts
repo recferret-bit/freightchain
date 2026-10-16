@@ -20,7 +20,7 @@ import { UploadBatchCommand } from './upload-batch.command.js';
  * The batch is stored in ONE transaction under the wallet's player row lock with the ride read inside it – the same lock /end's judgement takes – so the
  * two serialise: either the judgement sees this batch, or this upload sees the ride already ended and re-judges after its commit. No batch is ever left unjudged.
  * Batches are taken IN ORDER: batch n+1 waits (429 – the game retries it) until batch n is stored, decided on the same read that supplies the tail it is
- * measured with – else a hole pass on the cut between them would never be measured (pentest M10; the game's queue is strictly ordered anyway).
+ * measured with – else a hole pass on the cut between them would never be measured (audit M10; the game's queue is strictly ordered anyway).
  */
 @CommandHandler(UploadBatchCommand)
 export class UploadBatchHandler implements ICommandHandler<UploadBatchCommand, BatchReceiptDto> {

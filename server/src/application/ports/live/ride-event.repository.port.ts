@@ -16,6 +16,6 @@ export abstract class RideEventRepositoryPort {
   /** The driver's game applied it: stores the stamp unless one is there already (first wins). True = this call stored it. */
   abstract saveApplied(event: RideEvent, tx?: TransactionHandle): Promise<boolean>;
   /** The ride's feed after event id `afterId`, oldest first, at most `limit`. */
-  abstract listAfter(rideId: string, afterId: number, limit: number): Promise<RideEvent[]>;
+  abstract listAfter(rideId: string, afterId: number, limit: number, tx?: TransactionHandle): Promise<RideEvent[]>;
   abstract totals(rideId: string): Promise<LiveTotalsByRide>;
 }

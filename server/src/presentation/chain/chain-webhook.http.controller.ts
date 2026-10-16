@@ -7,7 +7,7 @@ import { chainWebhookBodySchema, type ChainWebhookBody } from './dto/chain.dto.j
 import { CrossOriginPublic } from '../../infrastructure/http/guards/origin.guard.js';
 
 /** The chain pushing to us (QuickNode Streams filtered to the pool program, or a Helius webhook): 404 without WEBHOOK_SECRET, 401 with a wrong one. */
-@CrossOriginPublic()   // any site may POST here without a session (pentest H7: the Origin guard skips it)
+@CrossOriginPublic()   // any site may POST here without a session (audit H7: the Origin guard skips it)
 @Controller('api/chain')
 export class ChainWebhookHttpController {
   constructor(private readonly commandBus: CommandBus) {}

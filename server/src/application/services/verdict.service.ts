@@ -66,8 +66,8 @@ export class VerdictService {
   ) {}
 
   /** null = nothing to judge (only completed shifts can rank, so only they are judged). A verdict an admin decided is returned as is. */
-  async judge(rideId: string): Promise<RideVerdict | null> {
-    const result = await this.transactions.run((tx) => this.judgeLocked(rideId, false, tx));
+  async judge(rideId: string, expectedPendingReplayId?: string): Promise<RideVerdict | null> {
+    const result = await this.transactions.run((tx) => this.judgeLocked(rideId, false, tx, false, expectedPendingReplayId));
     await this.mintRide(result);
     return result?.verdict ?? null;
   }
@@ -107,6 +107,7 @@ export class VerdictService {
       const pendingRows = await this.replays.listPending(limit - jobs.length);
       for (const row of pendingRows) {
         if (!seenRides.has(row.rideId)) {
+          if (this.replayQueue && await this.replayQueue.isInFlight(row.rideId)) continue;
           seenRides.add(row.rideId);
           jobs.push({ rideId: row.rideId, replayId: row.id, isPaid: row.isPaid, enqueuedAt: row.snapshot().queuedAt.getTime() });
         }
@@ -121,7 +122,7 @@ export class VerdictService {
       while (cursor < jobs.length) {
         const job = jobs[cursor++]!;
         try {
-          const v = await this.judge(job.rideId);
+          const v = await this.judge(job.rideId, job.replayId);
           if (this.replayQueue) await this.replayQueue.acknowledge(job.rideId, job.replayId);
           stats.processed++;
           if (v?.status === VerdictStatus.Verified) stats.verified++;
@@ -173,7 +174,7 @@ export class VerdictService {
     await this.emission.mint(result.verdict.rideId, result.wallet, chain.tier, chain.bands, dayIndex(this.clock.now()));
   }
 
-  private async judgeLocked(rideId: string, force: boolean, tx: TransactionHandle, guardSwept = force): Promise<{ verdict: RideVerdict; before: string | null; minted: bigint | null; wallet: string } | null> {
+  private async judgeLocked(rideId: string, force: boolean, tx: TransactionHandle, guardSwept = force, expectedPendingReplayId?: string): Promise<{ verdict: RideVerdict; before: string | null; minted: bigint | null; wallet: string } | null> {
     const ride = await this.rides.findById(rideId, tx);
     if (!ride || !ride.isInStatus(RideStatus.Completed)) return null;
     await this.players.findByWalletForUpdate(ride.wallet, tx);
@@ -186,14 +187,17 @@ export class VerdictService {
     const now = this.clock.now();
     let replayReasons: VerdictReason[] = [];
     if (this.replays) {
-      const [fullBatches, events, latestReplay] = await Promise.all([
-        this.batches.listByRide(rideId, tx),
-        this.rideEvents ? this.rideEvents.listAfter(rideId, 0, 500) : Promise.resolve([]),
-        this.replays.findLatestByRide(rideId, tx),
-      ]);
+      const latestReplay = await this.replays.findLatestByRide(rideId, tx);
+      if (expectedPendingReplayId && latestReplay && latestReplay.id === expectedPendingReplayId && latestReplay.status !== VerdictStatus.Pending && existing) {
+        return { verdict: existing, before: existing.status, minted: null, wallet: ride.wallet };
+      }
       if (existing?.isOverridden && !force && (!latestReplay || latestReplay.status !== VerdictStatus.Pending)) {
         return { verdict: existing, before: existing.status, minted: null, wallet: ride.wallet };
       }
+      const [fullBatches, events] = await Promise.all([
+        this.batches.listByRide(rideId, tx),
+        this.rideEvents ? this.rideEvents.listAfter(rideId, 0, 500, tx) : Promise.resolve([]),
+      ]);
       const simOut = ReplayEngine.verify(ride, fullBatches, events);
       const replay = latestReplay && latestReplay.status === VerdictStatus.Pending
         ? latestReplay

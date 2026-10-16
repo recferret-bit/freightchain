@@ -113,9 +113,12 @@ import { StatsRepositoryPort } from '../application/ports/stats/stats.repository
 import { StatsPrismaRepository } from './prisma/repositories/stats.prisma.repository.js';
 import { MemoryCacheAdapter } from './cache/memory-cache.adapter.js';
 import { RedisCacheAdapter } from './cache/redis-cache.adapter.js';
+import { RateLimitStorage, RedisThrottlerStorage } from './http/redis-throttler.storage.js';
 import { MemoryViewerPresenceAdapter } from './live/viewer-presence.memory.adapter.js';
+import { RedisViewerPresenceAdapter } from './live/viewer-presence.redis.adapter.js';
 import { SitePresencePort } from '../application/ports/live/site-presence.port.js';
 import { MemorySitePresenceAdapter } from './live/site-presence.memory.adapter.js';
+import { RedisSitePresenceAdapter } from './live/site-presence.redis.adapter.js';
 import { NameServicePort } from '../application/ports/sns/name-service.port.js';
 import { SnsNameServiceAdapter } from './sns/sns-name-service.adapter.js';
 import { RideReplayRepositoryPort } from '../application/ports/verdict/ride-replay.repository.port.js';
@@ -123,6 +126,21 @@ import { RideReplayPrismaRepository } from './prisma/repositories/ride-replay.pr
 import { ReplayQueuePort } from '../application/ports/verdict/replay-queue.port.js';
 import { MemoryReplayQueueAdapter } from './verdict/memory-replay-queue.adapter.js';
 import { RedisReplayQueueAdapter } from './verdict/redis-replay-queue.adapter.js';
+import { EntityRepositoryPort } from '../application/ports/entities/entity.repository.port.js';
+import { EntityPrismaRepository } from './prisma/repositories/entity.prisma.repository.js';
+import { EditorTokenPort } from '../application/ports/editor/editor-token.port.js';
+import { JoseEditorTokenSigner } from './auth/jose.editor-token-signer.js';
+import { EditorGuard } from './http/guards/editor.guard.js';
+import { LlmProviderPort } from '../application/ports/editor/llm-provider.port.js';
+import { LlmRegistryAdapter } from './llm/llm-registry.adapter.js';
+import { McpClientPort } from '../application/ports/editor/mcp-client.port.js';
+import { McpSdkClientAdapter } from './mcp/mcp-sdk.client.adapter.js';
+import { JobTokenPort } from '../application/ports/editor/job-token.port.js';
+import { JoseJobTokenSigner } from './auth/jose.job-token-signer.js';
+import { EditorJobRepositoryPort } from '../application/ports/editor/editor-job.repository.port.js';
+import { EditorJobPrismaRepository } from './prisma/repositories/editor-job.prisma.repository.js';
+import { McpJobGuard } from './http/guards/mcp-job.guard.js';
+import { ClearEditorCookieInterceptor, SetEditorCookieInterceptor } from './http/interceptors/editor-cookie.interceptor.js';
 
 /** Every port the application layer declares is bound to its adapter here – the only place that knows which implementation runs. */
 const ports: Provider[] = [
@@ -146,6 +164,12 @@ const ports: Provider[] = [
   { provide: SignatureVerifierPort, useClass: NaclSignatureVerifier },
   { provide: TokenSignerPort, useClass: JoseTokenSigner },
   { provide: AdminTokenPort, useClass: JoseAdminTokenSigner },
+  { provide: EditorTokenPort, useClass: JoseEditorTokenSigner },
+  { provide: EntityRepositoryPort, useClass: EntityPrismaRepository },
+  { provide: LlmProviderPort, useClass: LlmRegistryAdapter },
+  { provide: McpClientPort, useClass: McpSdkClientAdapter },
+  { provide: JobTokenPort, useClass: JoseJobTokenSigner },
+  { provide: EditorJobRepositoryPort, useClass: EditorJobPrismaRepository },
   { provide: RideRepositoryPort, useClass: RidePrismaRepository },
   { provide: DailySeedRepositoryPort, useClass: DailySeedPrismaRepository },
   { provide: RideQueryPort, useClass: RideQueryPrismaRepository },
@@ -173,13 +197,14 @@ const ports: Provider[] = [
   { provide: ChainEventRepositoryPort, useClass: ChainEventPrismaRepository },
   { provide: ChainCursorRepositoryPort, useClass: ChainCursorPrismaRepository },
   { provide: RideEventRepositoryPort, useClass: RideEventPrismaRepository },
-  { provide: ViewerPresencePort, useClass: MemoryViewerPresenceAdapter },
-  { provide: SitePresencePort, useClass: MemorySitePresenceAdapter },
+  { provide: ViewerPresencePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): ViewerPresencePort => (env.redisUrl ? new RedisViewerPresenceAdapter(env.redisUrl, clock) : new MemoryViewerPresenceAdapter()) },
+  { provide: SitePresencePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): SitePresencePort => (env.redisUrl ? new RedisSitePresenceAdapter(env.redisUrl, clock) : new MemorySitePresenceAdapter()) },
   { provide: RideMuteRepositoryPort, useClass: RideMutePrismaRepository },
   { provide: DonationOrderRepositoryPort, useClass: DonationOrderPrismaRepository },
   { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },
   { provide: StatsRepositoryPort, useClass: StatsPrismaRepository },
   { provide: CachePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): CachePort => (env.redisUrl ? new RedisCacheAdapter(env.redisUrl, clock) : new MemoryCacheAdapter(clock)) },
+  { provide: RateLimitStorage, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): RedisThrottlerStorage | null => (env.redisUrl ? RedisThrottlerStorage.connect(env.redisUrl, clock) : null) },
   { provide: NameServicePort, useClass: SnsNameServiceAdapter },
   { provide: GeoLocatorPort, useClass: HeaderGeoAdapter },
   { provide: PrizeGeoPort, useClass: EnvPrizeGeoAdapter },
@@ -188,7 +213,7 @@ const ports: Provider[] = [
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);
 
 @Module({
-  providers: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
-  exports: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, LogRing, JsonLogger, ...portTokens],
+  providers: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, EditorGuard, McpJobGuard, SetEditorCookieInterceptor, ClearEditorCookieInterceptor, { provide: LogRing, useValue: new LogRing() }, JsonLogger, ...ports],
+  exports: [PrismaService, PlayerAuthGuard, AdminGuard, OptionalSessionGuard, SetSessionCookieInterceptor, ClearSessionCookieInterceptor, SetAdminCookieInterceptor, ClearAdminCookieInterceptor, EditorGuard, McpJobGuard, SetEditorCookieInterceptor, ClearEditorCookieInterceptor, LogRing, JsonLogger, RateLimitStorage, ...portTokens],
 })
 export class InfrastructureModule {}

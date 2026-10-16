@@ -1,3 +1,4 @@
+import '../../client/js/crash-boot.js';   // before the rest of this page: a throw while it loads is still reported
 import { GAME_BASE, SITE_BASE, STORYBOOK_BASE } from '../../client/js/hosts.js';   // '' on localhost; on a real domain the game is on ride.<apex>, the lobby on the apex, the model viewer on storybook.<apex>
 import { track, flushSoon } from '../../client/js/analytics.js';
 import { reportWebVitals } from '../../client/js/web-vitals.js';   // web vitals and the page view both post through analytics.js to API_BASE (api.<apex> in production)
@@ -5,7 +6,6 @@ import { isMobileDevice } from '../../client/js/mobile.js';
 import { bindAnchors } from './anchor.js';
 
 bindAnchors();   // before the contents observer, so a #onchain load is already on the chapter it highlights
-
 reportWebVitals('whitepaper');
 track('whitepaper_viewed', { surface: 'whitepaper' });   // once per load, same idea as landing_viewed
 document.getElementById('play-top')?.addEventListener('click', async (e) => {

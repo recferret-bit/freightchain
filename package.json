@@ -15,10 +15,13 @@
     "server:test": "npm --prefix server test",
     "client:check": "npm --prefix client run check",
     "client:serve": "client/serve.sh",
-    "check": "npm run client:check && npm run landing:lint && npm run landing:build && npm run landing:test && npm run server:build && npm run server:typecheck && npm run server:test && npm run media:check",
+    "check": "npm run client:check && npm run landing:lint && npm run landing:build && npm run landing:test && npm run server:build && npm run server:typecheck && npm run server:test && npm run mcp:check && npm run media:check",
     "db:up": "npm --prefix server run db:up",
     "db:down": "npm --prefix server run db:down",
     "db:migrate": "npm --prefix server run prisma:deploy",
+    "editor:mcp": "FC_APP_URL=${FC_APP_URL:-http://127.0.0.1:3000} node --env-file-if-exists=server/.env mcp/src/http.js",
+    "mcp:check": "npm --prefix mcp test",
+    "entities:export": "npm --prefix server run build && npm --prefix server run entities:export",
     "server:integration": "npm --prefix server run test:integration:stack",
     "server:typecheck": "npm --prefix server run typecheck",
     "program:build": "cd programs/freightchain-pools && anchor build --arch v0",
@@ -42,6 +45,7 @@
     "media:game-sfx": "node media/audio/cli.mjs game",
     "media:check": "npm --prefix media run lint && npm --prefix media test",
     "install:media": "npm --prefix media install",
-    "build": "npm run landing:build && npm run server:build"
+    "build": "npm run landing:build && npm run server:build",
+    "editor:worker": "npm --prefix server run editor:worker"
   }
 }

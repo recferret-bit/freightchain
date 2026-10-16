@@ -164,7 +164,7 @@ describe('SIWS Adversarial Verification Suite', () => {
 
       await expect(
         handler.execute(new VerifySignInCommand(walletA, sig1, { ip: null, userAgent: null }, msg2, ch.nonce!)),
-      ).rejects.toThrow(new UnauthorizedError('the signed text is not the issued challenge'));   // refused before the signature is even read (pentest M2)
+      ).rejects.toThrow(new UnauthorizedError('the signed text is not the issued challenge'));   // refused before the signature is even read (audit M2)
     });
 
     it('rejects cross-key signature forgery (keypair B signs message claiming wallet A)', async () => {

@@ -1,3 +1,4 @@
+import '../js/crash-boot.js';   // before the receipt loads: a throw while it loads is still reported
 import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
 import { ridePageUrl, rideShareText, xIntent } from '../js/ui/share.js';
 import { isMobileDevice, showMobileToast } from '../js/mobile.js';

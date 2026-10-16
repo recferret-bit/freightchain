@@ -29,6 +29,7 @@ export interface RoadPlanDto {
 }
 
 export const ROAD_PLAN_VERSION = 1;
+const MAX_CACHED_CHUNKS = 4096;
 
 export class RoadPlan {
   private readonly cache = new Map<number, PlannedHole | null>();
@@ -47,6 +48,7 @@ export class RoadPlan {
     const known = this.cache.get(ci);
     if (known !== undefined) return known;
     const h = HOLES_ON ? rollChunkHole(ci, this.layout, this.holeChance, this.holeFirst, ROAD_PLAN_MAX_S) : null;
+    if (this.cache.size >= MAX_CACHED_CHUNKS) this.cache.delete(this.cache.keys().next().value!);
     this.cache.set(ci, h);
     return h;
   }

@@ -83,7 +83,7 @@ export function checkSamples(batches: readonly BatchFacts[], layout: Pick<RoadLa
 }
 
 /** The game time a batch really recorded: its declared span, but no more than its samples cover – neither in count (10 Hz) nor in their own span –
-    so neither empty batches declaring [t0, t1] nor two samples 15 s apart nor 150 rows of one instant pass for a recorded batch (pentest H1). */
+    so neither empty batches declaring [t0, t1] nor two samples 15 s apart nor 150 rows of one instant pass for a recorded batch (audit H1). */
 export const recordedSecondsOf = (b: BatchFacts): number => {
   const s = b.summary, span = s.first && s.last ? s.last[0] - s.first[0] + 1 / SAMPLE_HZ : 0;
   if (s.fault) return Math.max(0, b.t1 - b.t0);   // its samples stop at the fault, which rejects on its own – no coverage noise beside it
@@ -110,7 +110,7 @@ export function checkAgreement(ride: RideFacts, batches: readonly BatchFacts[]):
 }
 
 /** How the samples move: no long gap between two of them, and a position that does not run ahead of its own speedometer – the game integrates s from v,
-    so over a whole ride Σ Δs ≈ Σ v·Δt (pentest H3: a generator advancing s at 50 m/s with v on the 28 m/s governor). Measured since 2026-10: a ride with
+    so over a whole ride Σ Δs ≈ Σ v·Δt (audit H3: a generator advancing s at 50 m/s with v on the 28 m/s governor). Measured since 2026-10: a ride with
     a batch from before (no `gap` / `motion` in its summary) gets no opinion on that part. `layout` = the ride's road: a fork's road switch at a batch
     boundary is left out as inside a batch. */
 export function checkMotion(ride: RideFacts, batches: readonly BatchFacts[], layout: Pick<RoadLayout, 'forkSwitch'> | null = null): { reasons: VerdictReason[]; maxGap?: number; speedExcess?: number } {

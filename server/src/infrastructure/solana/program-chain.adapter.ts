@@ -69,7 +69,7 @@ export function payPrizeIx(c: PoolProgramCodec, caller: string | PublicKey, i: {
     { pool_id: i.poolId, rank: i.rank - 1, lamports: i.lamports, proof: i.proof.map((p) => Uint8Array.from(p)) });
 }
 
-/** base64 of 32 zero bytes = not sealed yet (v4) – never a road seed (pentest WP5: a road derived from zeros would be the same for every pool) */
+/** base64 of 32 zero bytes = not sealed yet (v4) – never a road seed (audit WP5: a road derived from zeros would be the same for every pool) */
 const nonZero = (b64: string | undefined): string | undefined => (b64 && Buffer.from(b64, 'base64').some((x) => x !== 0) ? b64 : undefined);
 
 /** A Series account (one per tier, `set_series`) as the domain's SeriesChainState; null = not this program's series. */

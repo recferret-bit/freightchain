@@ -105,4 +105,26 @@ describe('VerdictService', () => {
     expect(await ctx.honkRepo.balance('w')).toBe(100_000_000n);
     expect(ctx.db.honkMints.size).toBe(1);
   });
+
+  it('processQueue processes queued replays and skips DB fallback rows that are currently in-flight on the queue', async () => {
+    const { ctx, ride } = await ended(true);
+    await ctx.verdicts.enqueueVerification(ride.id);
+    const pendingBefore = await ctx.replayRepo.findLatestByRide(ride.id);
+    expect(pendingBefore?.status).toBe('pending');
+
+    // Simulate another worker holding the queue job in-flight while the queue itself is empty
+    const claimed = await ctx.replayQueue.dequeueBatch(1);
+    expect(claimed).toHaveLength(1);
+    expect(await ctx.replayQueue.isInFlight(ride.id)).toBe(true);
+
+    // Fallback DB scan skips the ride while it is in-flight
+    expect(await ctx.verdicts.processQueue(5)).toEqual({ processed: 0, verified: 0, flagged: 0, rejected: 0, failed: 0 });
+    expect((await ctx.replayRepo.findLatestByRide(ride.id))?.status).toBe('pending');
+
+    // Once acknowledged, DB fallback picks up the pending row and completes the replay
+    await ctx.replayQueue.acknowledge(ride.id, claimed[0]!.replayId);
+    expect(await ctx.verdicts.processQueue(5)).toEqual({ processed: 1, verified: 1, flagged: 0, rejected: 0, failed: 0 });
+    expect((await ctx.replayRepo.findLatestByRide(ride.id))?.status).toBe('verified');
+    expect((await ctx.verdictRepo.findByRide(ride.id))?.status).toBe(VerdictStatus.Verified);
+  });
 });

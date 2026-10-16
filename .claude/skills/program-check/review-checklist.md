@@ -50,7 +50,7 @@ are the Trail of Bits scanner's job; these are the ones only someone who knows t
 
 ## Escrow attacks
 
-The generic map lives in the `pentest-audit` skill: OWASP Smart Contract Top 10 2026 as it applies on Solana, Sealevel, and Ackee's common attack vectors. The OWASP Solana Programs Top 10 has no published rows. Do not invent S01–S10. These are the escrow questions this vault still has to answer.
+The generic map lives in the `security-audit` skill: OWASP Smart Contract Top 10 2026 as it applies on Solana, Sealevel, and Ackee's common attack vectors. The OWASP Solana Programs Top 10 has no published rows. Do not invent S01–S10. These are the escrow questions this vault still has to answer.
 
 - [ ] After any CPI, a balance used for a later decision is read from a reloaded account, not the pre-CPI copy (Ackee account-reloading). `n/a` only when that instruction does no CPI before the read.
 - [ ] `invoke_signed` / `new_with_signer` for the vault signs the system program or another fixed program id, never an account the caller passed (Ackee pda-privileges).

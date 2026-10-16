@@ -33,7 +33,7 @@ const GRACE_WARNING_MS = 3 * 86_400_000;
 const UNREVIEWED_LIMIT = 100;
 
 /**
- * The payout job (docs/escrow-open-items.md, programs/freightchain-pools "Payout key"; program v4 – pentest H5-B): for every ACTIVE pool whose rides are over
+ * The payout job (docs/escrow-open-items.md, programs/freightchain-pools "Payout key"; program v4 – audit H5-B): for every ACTIVE pool whose rides are over
  * (`playDeadline`, by the CHAIN clock), unless an admin holds it:
  *   1. the pool-level checks run first (PoolAttentionService.markPool: a distance outlier, two ranked wallets on one IP, a brand-new wallet in the top 3 – each
  *      puts its ride back under review); then every completed ride of the pool must have been decided – a verified verdict, or an admin's decision. One ride
@@ -105,7 +105,7 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
 
       let rows = await this.payouts.listByPool(pool.id);
       if (!rows.length) await this.attention.markPool(pool.id); // before the plan only: once written, the plan is what gets committed
-      const unreviewed = await this.rides.poolUnreviewed(pool.id, UNREVIEWED_LIMIT);   // EVERY pass, plan or not (pentest M7): a ride put under review after the plan stops the money too
+      const unreviewed = await this.rides.poolUnreviewed(pool.id, UNREVIEWED_LIMIT);   // EVERY pass, plan or not (audit M7): a ride put under review after the plan stops the money too
       if (unreviewed.length) {
         const n = unreviewed.length >= UNREVIEWED_LIMIT ? `${UNREVIEWED_LIMIT}+` : String(unreviewed.length);
         return await done(pool, 'waiting_review', `${n} ride(s) of this pool wait for an admin's decision`);
@@ -206,13 +206,13 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     return null;
   }
 
-  /** The admin's HOLD as stored NOW (pentest L11: the job read it once per pass, so a HOLD acknowledged mid-pass did not stop the prizes after it). null = not held. */
+  /** The admin's HOLD as stored NOW (audit L11: the job read it once per pass, so a HOLD acknowledged mid-pass did not stop the prizes after it). null = not held. */
   private async heldNow(poolId: number): Promise<string | null> {
     const p = await this.pools.findById(poolId);
     return p?.hold ? (p.hold.note ?? `held by ${p.hold.by}`) : null;
   }
 
-  /** The unpaid plan against the verified ranking NOW (pentest M7): a verdict decided after the plan (a ride rejected, another accepted) changes who should be
+  /** The unpaid plan against the verified ranking NOW (audit M7): a verdict decided after the plan (a ride rejected, another accepted) changes who should be
       paid – stop, with what moved, for the admin. null = the plan still is the ranking. */
   private async planDrift(pool: Pool, rows: readonly PoolPayoutRecord[]): Promise<string | null> {
     const now = (await this.rides.poolRanking(pool.id, TOP20_SIZE, true)).map((r) => r.wallet);

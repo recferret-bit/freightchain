@@ -26,7 +26,7 @@ describe('PoolAttentionService', () => {
   const veterans = async (ctx: UnitContext) => { for (const w of ['a', 'b', 'c']) await ctx.player(w); ctx.clock.advance(2 * 86_400); };
   const codes = async (ctx: UnitContext, id: string) => (await ctx.verdictRepo.findByRide(id))?.reasons.map((r) => r.code);
 
-  it('a recording copied from another rider of the pool (re-hashed under the thief\'s ride id) is marked pool-duplicate-recording on the copy only (pentest H2)', async () => {
+  it('a recording copied from another rider of the pool (re-hashed under the thief\'s ride id) is marked pool-duplicate-recording on the copy only (audit H2)', async () => {
     const { ctx, service } = setup();
     await veterans(ctx);
     const store = async (rideId: string, bodies: BatchBody[]) => {

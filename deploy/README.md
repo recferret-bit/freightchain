@@ -17,7 +17,7 @@ Docker runs the app + PostgreSQL; the host's nginx terminates TLS (Let's Encrypt
 | `admin.freightchain.fun` | the admin page (`client/admin.html`) **and the only host of `/api/admin/*`** | **HTTP basic auth** on everything (not on certbot's ACME path), `/` → `admin.html`, the rest proxied (the page calls the API on its own host) – its own site file `freightchain-admin` (template `nginx/admin.conf.template`) |
 
 One certificate covers all six. The pages call the API cross-origin: the client derives `api.<apex>` / `ride.<apex>` from its own host (`client/js/hosts.js`; on localhost / an IP / `file://` everything stays one origin),
-the server allows `https://<apex>`, `https://ride.<apex>`, `https://whitepaper.<apex>`, and `https://pitchdeck.<apex>` (`CORS_ORIGINS`; the last two only post analytics, the deck without credentials) with credentials, and the session cookie is host-only on `api.<apex>` (`__Host-fc_session`, pentest H7-B: the lobby, the game and the landing all call the API there – a sibling subdomain neither receives it nor can plant one); a state-changing request whose Origin is not one of these (or the request's own) is 403, and the API takes JSON only (forms are 415). `storybook.` / `whitepaper.` / `pitchdeck.` serve only their own files – in the templates: `setup.sh` writes a site file only when it is absent, so an existing server keeps its old storybook / whitepaper files until they are rewritten (pentest plan WP6, one `deploy:setup` with M11). The whitepaper origin is there so web vitals can post to `api.<apex>`.
+the server allows `https://<apex>`, `https://ride.<apex>`, `https://whitepaper.<apex>`, and `https://pitchdeck.<apex>` (`CORS_ORIGINS`; the last two only post analytics, the deck without credentials) with credentials, and the session cookie is host-only on `api.<apex>` (`__Host-fc_session`, audit H7-B: the lobby, the game and the landing all call the API there – a sibling subdomain neither receives it nor can plant one); a state-changing request whose Origin is not one of these (or the request's own) is 403, and the API takes JSON only (forms are 415). `storybook.` / `whitepaper.` / `pitchdeck.` serve only their own files – in the templates: `setup.sh` writes a site file only when it is absent, so an existing server keeps its old storybook / whitepaper files until they are rewritten (audit plan WP6, one `deploy:setup` with M11). The whitepaper origin is there so web vitals can post to `api.<apex>`.
 `APP_DOMAIN` (shown in the wallet's sign-in message) is the apex, because riders sign in on the lobby. All of these are derived from `DEPLOY_DOMAIN` – never set them by hand.
 **Another domain / subdomain later:** add a template under `deploy/nginx/` like `storybook.conf.template` (its own site file installed by `scripts/remote/setup.sh` when absent, so a server that is already set up gets it too), add the name to `NAMES` there + the DNS record, add a smoke check, make `client/js/hosts.js` strip its prefix, then run `npm run deploy:setup` (`deploy` also runs it by itself while a site file is missing) – and add its origin to `CORS_ORIGINS` if its pages call the API.
 
@@ -72,7 +72,7 @@ Container logs rotate at 5 × 50 MB per service (`logging:` in `docker-compose.p
 1. build the image `freightchain-server:<release>` from the uploaded commit (server + `client/` + the landing's Vite build; the landing's tests gate the image – `LANDING_DIR` is set by the Dockerfile)
 2. `pg_dump | gzip` → `backups/db-<release>.sql.gz` (skipped on the very first deploy)
 3. one-off `migrate` with the new image (migrations are forward-only)
-4. swap the app container, poll `/api/health/ready` (≤ 60 s)
+4. stop the outgoing AI worker; swap app/replay worker and (when configured) MCP + editor-worker; check API readiness and MCP/AI-worker health
 5. **on failure: automatic rollback** to the previous release (its image is still there); the failed release is deleted
 6. on success: update `current` / `previous`, prune old releases, images and backups
 
@@ -85,7 +85,7 @@ Container logs rotate at 5 × 50 MB per service (`logging:` in `docker-compose.p
   state/                  current, previous, setup-done, releases.log (700)
   current -> releases/<tag>
 ```
-Docker project `freightchain-prod`: `postgres` (no published port, named volume `pgdata`) and `app` (published on `127.0.0.1:<APP_PORT>` only – Docker-published ports bypass ufw, so never bind them publicly).
+Docker project `freightchain-prod`: `postgres` (no published port, named volume `pgdata`), `redis`, the replay `worker`, optional `mcp` + `editor-worker`, and `app` (published on `127.0.0.1:<APP_PORT>` only – Docker-published ports bypass ufw, so never bind them publicly).
 
 ## What the first deploy changes on the server
 - creates `/srv/freightchain/…`
@@ -110,9 +110,11 @@ The tab icon, the Phantom connect-popup logo and the home-screen icon are plain 
 
 ## Redis (the statistics cache)
 
-`docker-compose.prod.yml` runs a `redis` service (redis:7-alpine, 64 MB, LRU, no persistence): **password** `REDIS_PASSWORD` (hex, in `deploy/.env` – `deploy:init` generates it; on an existing `.env` add it with `echo "REDIS_PASSWORD=$(openssl rand -hex 24)" >> deploy/.env`; `validate-env` and compose refuse a deploy without it), **no published port**, only on the `cache` network (`internal: true`: no internet route, shared with the app alone – PostgreSQL cannot see it), unprivileged user, read-only filesystem. The app's `REDIS_URL` is built from the password by the compose file. `release.sh` starts it with PostgreSQL; the smoke test checks `GET /api/stats`. It caches the public statistics for 15 s – losing it costs nothing (a cache miss reads PostgreSQL). Repair drifted statistics: the `stats-reconcile` skill; on the box `docker compose … exec app node dist/cli/index.js stats:reconcile [--fix]`.
+`docker-compose.prod.yml` runs a `redis` service (redis:7-alpine, 64 MB, noeviction, no persistence): **password** `REDIS_PASSWORD` (hex, in `deploy/.env` – `deploy:init` generates it; on an existing `.env` add it with `echo "REDIS_PASSWORD=$(openssl rand -hex 24)" >> deploy/.env`; `validate-env` and compose refuse a deploy without it), **no published port**, only on the `cache` network (`internal: true`: no internet route, shared with API/replay/AI workers and the MCP's restricted counter user – PostgreSQL cannot see it), unprivileged user, read-only filesystem. The app's `REDIS_URL` is built from the password by the compose file. `release.sh` starts it with PostgreSQL; the smoke test checks `GET /api/stats`. It caches the public statistics for 15 s – a cache miss reads PostgreSQL; protected auth/editor/MCP limits fail closed during Redis outages. Repair drifted statistics: the `stats-reconcile` skill; on the box `docker compose … exec app node dist/cli/index.js stats:reconcile [--fix]`.
 
 ## Caveats
 - Nothing is deployed from the working tree – only the commit. `--allow-dirty` just silences the guard.
 - One server, brief downtime while the app container is swapped (no blue/green).
 - Not a security boundary: the mock-era client checks are unchanged; see `docs/agents/verified-play.md`.
+
+The dedicated AI worker runs `node dist/app/editor-worker.js` from the server image, with no HTTP listener or published port, a read-only filesystem and a 1 GB memory cap. PostgreSQL owns its five-slot global queue. Its health check requires a fresh successful queue poll; it is started only when the entity MCP is configured. API, worker and MCP share provider/model configuration and the MCP token; API and worker share JWT_SECRET for job capabilities. No money-moving keys are passed to the AI worker. Queue markers are removed on failure/shutdown. Manual and automatic rollback stop the outgoing AI worker and use optional services available in the target release.

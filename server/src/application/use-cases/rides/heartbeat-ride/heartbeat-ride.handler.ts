@@ -15,6 +15,7 @@ import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { isDemoWallet } from '../../../services/demo.js';
 import { StatsService } from '../../../services/stats.service.js';
 import { RideLookupService } from '../../../services/ride-lookup.service.js';
+import { withVersionRetry } from '../../../services/version-retry.js';
 import { HeartbeatRideCommand } from './heartbeat-ride.command.js';
 
 /** A progress report every ~10 s. The server judges it (see Ride.applyReport); one too soon after the last is ignored. A lost optimistic lock is a 409 – the client just beats again.
@@ -39,16 +40,25 @@ export class HeartbeatRideHandler implements ICommandHandler<HeartbeatRideComman
     const now = this.clock.now();
     if (!ride.canAcceptHeartbeat(now, this.rules.get())) return toRideDto(ride, null, now); // ignored, but the open prompt still rides along
     const before = progressRatio(ride.distance, ride.completeDist);
-    const accepted = ride.applyReport(report, now, this.rules.get()); // a report that fails the ride is persisted too
     const rules = this.rules.get(), interval = ride.isFree && !rules.challengeFreeRides ? 0 : rules.challengeIntervalSeconds; // CHALLENGE_FREE_RIDES=off: none on the free run
+    const accepted = ride.applyReport(report, now, rules); // a report that fails the ride is persisted too
     if (accepted) ride.issueChallenge(now, interval, { id: this.entropy.hex(6), rnd: parseInt(this.entropy.hex(4), 16) / 0x1_0000_0000 });
     // a report that fails the ride ENDS it: its totals join the statistics in the same commit (every other beat is a plain save)
-    const saved = accepted ? await this.rides.save(ride) : await this.transactions.run(async (tx) => {
+    let firstAttempt = true;
+    const saved = accepted ? await this.rides.save(ride) : await withVersionRetry(() => this.transactions.run(async (tx) => {
       await this.players.findByWalletForUpdate(wallet, tx);   // player row first (the lock order of every ride writer – see EndRideHandler)
-      const s = await this.rides.save(ride, tx);
+      let target = ride;
+      if (!firstAttempt) {
+        const fresh = await this.rides.findById(rideId, tx);
+        if (!fresh || !fresh.isInStatus(RideStatus.Running)) throw new ConflictError(`ride is ${fresh?.status ?? 'missing'}`);
+        fresh.applyReport(report, now, rules);
+        target = fresh;
+      }
+      firstAttempt = false;
+      const s = await this.rides.save(target, tx);
       await this.stats.recordRide(s.snapshot(), tx);
       return s;
-    });
+    }));
     if (!accepted) await this.stats.invalidate(wallet);
     const props = saved.snapshot();
     const demo = (): boolean => isDemoWallet(this.rules.get(), wallet);

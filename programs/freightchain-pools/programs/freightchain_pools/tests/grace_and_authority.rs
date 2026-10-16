@@ -236,9 +236,9 @@ fn permissionless_close_of_fully_refunded_pool() {
     assert_eq!((e.vault(id), e.pool(id).status), (0, 4));
 }
 
-// ---- 3. pause: only before the grace (pentest H5 d) ---------------------------------------------------
+// ---- 3. pause: only before the grace (audit H5 d) ---------------------------------------------------
 
-/// pentest s1-claude poc_01b (pause stops prize payments from a compromised payout key) and H5 d (after the grace no admin can freeze a pool).
+/// audit s1-claude poc_01b (pause stops prize payments from a compromised payout key) and H5 d (after the grace no admin can freeze a pool).
 #[test]
 fn pause_stops_settlement_before_the_grace_and_never_after() {
     let mut e = Env::new();
@@ -324,7 +324,7 @@ fn propose_and_accept_authority() {
     assert_err!(e.propose_authority(&old, old.pubkey()), PoolError::Unauthorized);
 }
 
-/// pentest L8: a payout key the OLD admin named must not keep committing winners under the new one; the new admin names its own.
+/// audit L8: a payout key the OLD admin named must not keep committing winners under the new one; the new admin names its own.
 #[test]
 fn accept_authority_clears_the_payout_key_and_the_new_admin_names_its_own() {
     let mut e = Env::new();

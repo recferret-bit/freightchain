@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { jsonOnlyMiddleware } from '../../../../src/infrastructure/http/middleware/json-only.middleware.js';
 
-/* Pentest H7: the API takes JSON – any other body (a form, text/plain, an <a ping>: no CORS preflight) is a 415 before any parser, but for the /end beacon. */
+/* Audit H7: the API takes JSON – any other body (a form, text/plain, an <a ping>: no CORS preflight) is a 415 before any parser, but for the /end beacon. */
 const run = (method: string, path: string, type?: string): unknown => {
   const req = { method, path, headers: type ? { 'content-type': type } : {}, is: (t: string | string[]) => [t].flat().some((x) => (x.startsWith('+') ? (type ?? '').split(';')[0].endsWith(x) : (type ?? '').startsWith(x))) } as unknown as Request;
   let passed: unknown = 'not called';

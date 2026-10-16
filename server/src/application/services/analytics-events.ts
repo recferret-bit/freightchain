@@ -26,6 +26,11 @@ function serverEvent(event: string, distinctId: string, dedupeKey: string | null
   return { event, distinctId, uuid: null, dedupeKey, timestamp, set, setOnce, properties: { ...properties, source: 'server' } };
 }
 
+/** Same row shape, but `source` stays `client`. A judge tile filtered to `source=server` must not count a browser crash. */
+function clientPlaneEvent(event: string, distinctId: string, timestamp: Date, properties: Props): AnalyticsEvent {
+  return { event, distinctId, uuid: null, dedupeKey: null, timestamp, properties: { ...properties, source: 'client' } };
+}
+
 function withRoute(properties: Props, route: string | null, setOnce?: Props): { properties: Props; setOnce?: Props } {
   const id = routeId(route);
   return { properties: { ...properties, route_id: id }, setOnce: id ? { ...setOnce, first_route: id } : setOnce };
@@ -216,4 +221,11 @@ export function roundOpened(roundId: number, startsAt: Date, endsAt: Date, carry
 
 export function roundClosed(roundId: number, carryLamports: number, now: Date): AnalyticsEvent {
   return serverEvent('round_closed', SYSTEM_DISTINCT_ID, `round-close:${roundId}`, now, { round_id: roundId, carry_lamports: carryLamports });
+}
+
+/** One accepted browser crash, counted beside `$exception`. No message and no stack: those stay on the issue. */
+export function clientCrashed(p: { distinctId: string; now: Date; surface: string; error: string; inApp: boolean | null; release: string | null }): AnalyticsEvent {
+  const properties: Props = { surface: p.surface, error: p.error, in_app: p.inApp }; // `error` is the name (TypeError), never the text
+  if (p.release) properties['release'] = p.release;
+  return clientPlaneEvent('client_crashed', p.distinctId, p.now, properties);
 }

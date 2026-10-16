@@ -22,6 +22,8 @@ model RideEvent {
 
   @@unique([rideId, slotKey, slot])
   @@index([rideId, id])
+  @@index([rideId, appliedAt])
+  @@index([kind, createdAt])
   @@schema("live")
 }
 

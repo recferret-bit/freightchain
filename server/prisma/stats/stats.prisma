@@ -21,6 +21,7 @@ model PlayerStats {
   updatedAt       DateTime
 
   @@index([metres]) // the admin STATS tab: top riders by distance
+  @@index([rides]) // global stats active drivers count (rides > 0)
   @@schema("stats")
 }
 

@@ -80,6 +80,14 @@ export class MemoryDb {
   nextSeq(): number { return ++this.seq; }
   nextRoundId(): number { return ++this.roundSeq; }
 
+  /** asset.Entity / asset.EntityRevision (the 3D model editor's history) */
+  entities = new Map<string, import('../../../src/domain/entities/entity.js').EntityRecord & { publishedAt: Date | null }>();
+  entityRevisions: import('../../../src/domain/entities/entity.js').RevisionRecord[] = [];
+  /** asset.EditorJob prompts by job id (the revision list shows them) */
+  editorJobPrompts = new Map<string, string>();
+  editorJobs = new Map<string, import('../../../src/domain/editor/editor-job.js').EditorJobRecord>();
+  editorJobEvents = new Map<string, import('../../../src/domain/editor/editor-job.js').JobEventRecord[]>();
+
   reset(): void {
     this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear(); this.replays.clear();
     this.rounds = []; this.payments = []; this.unlocks = []; this.mints = []; this.signIns = []; this.adminActions = [];
@@ -89,5 +97,6 @@ export class MemoryDb {
     this.rideEvents = []; this.rideMutes.clear(); this.donationOrders.clear(); this.playerStats.clear(); this.globalStats = null; this.dailyStats.clear();
     this.settings.clear(); this.dailySeeds.clear(); this.pledges.clear();
     this.honkMints.clear(); this.honkAccounts.clear(); this.honkBurns.clear(); this.honkVisuals.clear(); this.honkEmission = 0n;
+    this.entities.clear(); this.entityRevisions = []; this.editorJobPrompts.clear(); this.editorJobs.clear(); this.editorJobEvents.clear();
   }
 }

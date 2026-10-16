@@ -1,5 +1,5 @@
 import { Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
-import { AnalyticsPort, type AnalyticsEvent } from '../../application/ports/analytics/analytics.port.js';
+import { AnalyticsPort, type AnalyticsEvent, type ExceptionCapture } from '../../application/ports/analytics/analytics.port.js';
 import { EnvService } from '../config/env.service.js';
 import { analyticsUuid, isUuid } from './uuid-v5.js';
 
@@ -14,7 +14,7 @@ const SHUTDOWN_MS = 500;
 @Injectable()
 export class PostHogAnalyticsAdapter extends AnalyticsPort implements OnApplicationShutdown {
   private readonly log = new Logger(PostHogAnalyticsAdapter.name);
-  private readonly queue: AnalyticsEvent[] = [];
+  private readonly queue: { name: string; row: Record<string, unknown> }[] = [];
   private readonly fetchImpl: typeof fetch;
   private readonly key: string | null;
   private readonly host: string;
@@ -34,9 +34,17 @@ export class PostHogAnalyticsAdapter extends AnalyticsPort implements OnApplicat
   enabled(): boolean { return this.on; }
 
   capture(event: AnalyticsEvent): void {
+    this.push(event.event, this.wire(event));
+  }
+
+  captureException(report: ExceptionCapture): void {
+    this.push('$exception', this.wireException(report));
+  }
+
+  private push(name: string, row: Record<string, unknown>): void {
     try {
       if (!this.on || !this.key) return;
-      this.queue.push(event);
+      this.queue.push({ name, row });
       if (this.queue.length >= FLUSH_AT) {
         void this.flush();
         return;
@@ -63,7 +71,7 @@ export class PostHogAnalyticsAdapter extends AnalyticsPort implements OnApplicat
       const res = await this.fetchImpl(`${this.host}/batch/`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ api_key: this.key, batch: batch.map((event) => this.wire(event)) }),
+        body: JSON.stringify({ api_key: this.key, batch: batch.map((item) => item.row) }),
         signal: budgetMs > 0 ? ac.signal : undefined,
       });
       await res.body?.cancel?.().catch(() => undefined);
@@ -76,17 +84,17 @@ export class PostHogAnalyticsAdapter extends AnalyticsPort implements OnApplicat
     }
   }
 
-  private note(status: number, batch: AnalyticsEvent[]): void {
+  private note(status: number, batch: { name: string }[]): void {
     this.log.log(this.outcome('ok', status, batch));
   }
 
-  private warn(status: number, batch: AnalyticsEvent[]): void {
+  private warn(status: number, batch: { name: string }[]): void {
     this.log.warn(this.outcome('failed', status, batch));
   }
 
   /** Status, count, names. The request body and the project token never reach the log. */
-  private outcome(kind: 'ok' | 'failed', status: number, batch: AnalyticsEvent[]): string {
-    const names = batch.map((event) => event.event).join(',');
+  private outcome(kind: 'ok' | 'failed', status: number, batch: { name: string }[]): string {
+    const names = batch.map((item) => item.name).join(',');
     return `analytics flush ${kind} status=${status} events=${batch.length} name=${names}`;
   }
 
@@ -100,5 +108,26 @@ export class PostHogAnalyticsAdapter extends AnalyticsPort implements OnApplicat
     const row: Record<string, unknown> = { event: event.event, distinct_id: event.distinctId, timestamp: event.timestamp.toISOString(), properties };
     if (uuid && isUuid(uuid)) row['uuid'] = uuid;
     return row;
+  }
+
+  /** A real `$exception`. Frames are oldest-first; the last one is the throw site. No uuid: PostHog groups the issue. */
+  private wireException(report: ExceptionCapture): Record<string, unknown> {
+    const properties: Record<string, unknown> = {
+      source: 'client', $lib: 'freightchain-web', surface: report.surface, $exception_level: 'error',
+      $process_person_profile: true, // an $exception with this unset is stored with no person row, so it never joins the player and cannot be deleted
+      $exception_list: [{
+        type: report.type, value: report.value,
+        mechanism: { handled: false, synthetic: false, type: 'generic' },
+        stacktrace: {
+          type: 'raw',
+          frames: report.frames.map((frame) => ({
+            platform: 'web:javascript', filename: frame.filename, function: frame.function,
+            lineno: frame.lineno, colno: frame.colno, in_app: frame.inApp,
+          })),
+        },
+      }],
+    };
+    if (report.release) properties['release'] = report.release;
+    return { event: '$exception', distinct_id: report.distinctId, timestamp: report.timestamp.toISOString(), properties };
   }
 }

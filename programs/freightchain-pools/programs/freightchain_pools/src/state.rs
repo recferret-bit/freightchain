@@ -133,7 +133,7 @@ pub struct Attestation {
     pub bump: u8,
 }
 
-/// v4 (pentest H4): the server's verdict on ONE ride, written by the payout key – a pledge on that ride settles on it (`verified_km`), and only from
+/// v4 (audit H4): the server's verdict on ONE ride, written by the payout key – a pledge on that ride settles on it (`verified_km`), and only from
 /// `settle_from` (the review lock: every RideAttestationRecorded is public that long first). Final once a pledge was settled on it.
 #[account]
 #[derive(InitSpace)]
@@ -151,7 +151,7 @@ pub struct RideAttestation {
     pub bump: u8,
 }
 
-/// v4 (pentest M8): what `sponsor` put into a pool – `refund_sponsor` pays it back if the pool fails.
+/// v4 (audit M8): what `sponsor` put into a pool – `refund_sponsor` pays it back if the pool fails.
 #[account]
 #[derive(InitSpace)]
 pub struct SponsorReceipt {
@@ -223,7 +223,7 @@ impl Config {
         *key == self.authority || self.payout_authority.as_ref() == Some(key)
     }
 
-    /// `paused` stops a pool's settlement steps only before its settle grace ends: afterwards no admin is needed, so no admin can freeze it (pentest H5 d).
+    /// `paused` stops a pool's settlement steps only before its settle grace ends: afterwards no admin is needed, so no admin can freeze it (audit H5 d).
     pub fn paused_before_grace(&self, pool: &Pool, now: i64) -> Result<bool> {
         Ok(self.paused && now < pool.grace_end()?)
     }

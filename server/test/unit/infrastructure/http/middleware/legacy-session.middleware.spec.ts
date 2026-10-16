@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { legacySessionMiddleware } from '../../../../../src/infrastructure/http/middleware/legacy-session.middleware.js';
 import type { EnvService } from '../../../../../src/infrastructure/config/env.service.js';
 
-/* Pentest H7-B: the apex-wide fc_session of before is expired wherever it still comes in – production only. */
+/* Audit H7-B: the apex-wide fc_session of before is expired wherever it still comes in – production only. */
 const run = (env: Partial<EnvService>, cookie?: string) => {
   const cleared: unknown[][] = [];
   let next = false;

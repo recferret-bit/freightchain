@@ -1,5 +1,5 @@
 //! The tier schedule (`set_series` / `open_next_pool`), the payout key (`set_payout_authority`), the review window (`payout_at`) and the v4 lock
-//! (`pay_from`), the Config floors, and the pentest H5 / M6 regressions.
+//! (`pay_from`), the Config floors, and the audit H5 / M6 regressions.
 mod common;
 
 use common::*;
@@ -356,7 +356,7 @@ fn a_day_of_the_one_hour_series() {
     assert_eq!(e.series(1).unwrap().pools_opened, 2);
 }
 
-// ---- the Config floors (pentest H5 / H6: min_review_secs, min_finish_secs) -----------------------------------------
+// ---- the Config floors (audit H5 / H6: min_review_secs, min_finish_secs) -----------------------------------------
 
 /// The production floors: a series or a pool keeps at least min_finish_secs (3 h) of play after its sale and min_review_secs (1 h) of review.
 #[test]
@@ -456,7 +456,7 @@ fn the_lock_is_the_longer_of_the_review_window_and_min_review_secs() {
     e.pay_rank(wide, 0).unwrap();
 }
 
-// ---- pentest regressions (2026-10, H5 / M6): the v4 form of every PoC about pay_prize, the attestation as a prize gate and the review window -------
+// ---- audit regressions (2026-10, H5 / M6): the v4 form of every PoC about pay_prize, the attestation as a prize gate and the review window -------
 
 /// a pool at the production floors (3 h to finish, the 1 h minimum review), `tickets` sold
 fn floored_pool(e: &mut Env, tickets: u16) -> u32 {
@@ -482,11 +482,11 @@ fn payout_key(e: &mut Env) -> Keypair {
     payout
 }
 
-// pentest poc_01 (H5, s1-claude-01) and s1gpt_03 (H5): a stolen payout key alone can no longer move a prize. It can only commit a root, which is
+// audit poc_01 (H5, s1-claude-01) and s1gpt_03 (H5): a stolen payout key alone can no longer move a prize. It can only commit a root, which is
 // public for the whole lock (min_review_secs at least) before it pays – the admin vetoes it in that time; attesting and paying in one transaction
 // is impossible, and the key cannot close the pool to sweep the share either.
 #[test]
-fn pentest_h5_a_stolen_payout_key_cannot_pay_itself_before_the_admin_can_veto() {
+fn audit_h5_a_stolen_payout_key_cannot_pay_itself_before_the_admin_can_veto() {
     let mut e = Env::with_floors();
     let p0 = floored_pool(&mut e, 10);
     let p1 = floored_pool(&mut e, 10);
@@ -529,9 +529,9 @@ fn pentest_h5_a_stolen_payout_key_cannot_pay_itself_before_the_admin_can_veto() 
     e.veto_winners(p0, &a).unwrap();
 }
 
-// pentest poc_01b (H5, s1-claude-01): pausing the program stops prize payments (before the settle grace).
+// audit poc_01b (H5, s1-claude-01): pausing the program stops prize payments (before the settle grace).
 #[test]
-fn pentest_h5_pause_stops_prize_payments() {
+fn audit_h5_pause_stops_prize_payments() {
     let mut e = Env::with_floors();
     let id = floored_pool(&mut e, 10);
     let payout = payout_key(&mut e);
@@ -550,9 +550,9 @@ fn pentest_h5_pause_stops_prize_payments() {
     assert_eq!(e.bal(&thief), t0);
 }
 
-// pentest poc_03 (M6, s1-claude-03): a winner is paid once, at its rank, the amount of its leaf; a paid root is frozen (no veto, no second commit).
+// audit poc_03 (M6, s1-claude-03): a winner is paid once, at its rank, the amount of its leaf; a paid root is frozen (no veto, no second commit).
 #[test]
-fn pentest_m6_the_same_winner_cannot_be_paid_twice_and_a_paid_root_is_frozen() {
+fn audit_m6_the_same_winner_cannot_be_paid_twice_and_a_paid_root_is_frozen() {
     let mut e = Env::with_floors();
     let id = floored_pool(&mut e, 10);
     let payout = payout_key(&mut e);
@@ -574,10 +574,10 @@ fn pentest_m6_the_same_winner_cannot_be_paid_twice_and_a_paid_root_is_frozen() {
     assert_err!(e.commit_winners(id, &payout, &[(winner, share / 2)]), PoolError::WinnersCommitted);
 }
 
-// pentest safe_cross_pool_attestation_and_driver_substitution_are_refused (s1-claude control, H5): v4 form – a proof of one pool does not pay in
+// audit safe_cross_pool_attestation_and_driver_substitution_are_refused (s1-claude control, H5): v4 form – a proof of one pool does not pay in
 // another, one winner's proof does not pay another wallet, a stranger cannot commit, the whole share + 1 cannot be committed.
 #[test]
-fn pentest_h5_cross_pool_proofs_and_wallet_substitution_are_refused() {
+fn audit_h5_cross_pool_proofs_and_wallet_substitution_are_refused() {
     let mut e = Env::with_floors();
     let p0 = floored_pool(&mut e, 10);
     let p1 = floored_pool(&mut e, 10);
@@ -601,10 +601,10 @@ fn pentest_h5_cross_pool_proofs_and_wallet_substitution_are_refused() {
     e.pay_rank(p1, 0).unwrap();
 }
 
-// pentest safe_close_and_expire_guards (s1-claude control) in v4: no early close / expiry by a stranger; nothing paid = MustExpire after the grace;
+// audit safe_close_and_expire_guards (s1-claude control) in v4: no early close / expiry by a stranger; nothing paid = MustExpire after the grace;
 // a pool that paid a prize cannot be expired; an expired pool pays no prize; a stranger's close sends the caller nothing.
 #[test]
-fn pentest_close_and_expire_guards_hold_with_a_committed_root() {
+fn audit_close_and_expire_guards_hold_with_a_committed_root() {
     let mut e = Env::new();
     let mk = |e: &mut Env| {
         let id = e.create_pool(freightchain_pools::CreatePoolParams { min_tickets: 2, max_tickets: 0, max_per_wallet: 100, ..default_params() });

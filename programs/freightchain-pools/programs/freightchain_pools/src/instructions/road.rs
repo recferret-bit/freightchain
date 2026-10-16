@@ -20,7 +20,7 @@ pub struct SealRoad<'info> {
     pub slot_hashes: UncheckedAccount<'info>,
 }
 
-/// Permissionless (pentest L4): fix the pool's road seed from the hash of the FIRST slot at or after `pool.seal_slot` – a slot after the pool opened, so
+/// Permissionless (audit L4): fix the pool's road seed from the hash of the FIRST slot at or after `pool.seal_slot` – a slot after the pool opened, so
 /// neither the opener nor the caller chose it, and the caller's timing changes nothing (the same entry whenever it is called). If that entry has left
 /// the SlotHashes window (nobody sealed for ~3 minutes), the target is re-armed a few slots ahead.
 pub fn handle_seal_road(ctx: Context<SealRoad>, pool_id: u32) -> Result<()> {

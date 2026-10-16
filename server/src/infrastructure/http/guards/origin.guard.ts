@@ -1,6 +1,7 @@
 import { Injectable, SetMetadata, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ForbiddenError } from '../../../domain/shared/errors.js';
+import { ForbiddenError, NotFoundError } from '../../../domain/shared/errors.js';
+import { apiPath } from '../api-path.js';
 import { EnvService } from '../../config/env.service.js';
 import type { RequestWithPlayer } from '../types/http-request.js';
 
@@ -13,12 +14,15 @@ const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const hostOf = (request: RequestWithPlayer): string => String(request.headers.host ?? '').replace(/:\d+$/, '').toLowerCase();
 
 /**
- * Pentest H7 (login CSRF, a sibling host changing state with the shared session cookie): every state-changing request a BROWSER sends carries Origin, and
+ * Audit H7 (login CSRF, a sibling host changing state with the shared session cookie): every state-changing request a BROWSER sends carries Origin, and
  * a sibling subdomain is the SAME site, so SameSite does not stop it and a form or text/plain POST is a CORS "simple" request the allowlist never sees.
  * So for POST / PUT / PATCH / DELETE: no Origin (a server, the CLI, a wallet app) passes; `Origin: null` (a sandboxed frame, a redirect chain – forceable)
  * never does; the request's own origin passes (the admin page, the apex's /api proxy, dev on localhost); otherwise only CORS_ORIGINS – and on the admin
- * host nothing but the admin host itself. Controllers marked @CrossOriginPublic() (blinks, Solana Pay, the webhook) are open to any origin by design.
+ * and storybook hosts nothing but the host itself. Controllers marked @CrossOriginPublic() (blinks, Solana Pay, the webhook) are open to any origin by design.
  * (GET stays open: the only GETs with an effect are the presence "leave" keepalives, by design.)
+ * The storybook host (EnvService.editorHost, the model viewer) answers only the 3D model API – /api/entities/* and /api/editor/* – every other route is a
+ * 404 there, whatever the method (nginx proxies nothing else; this is the second wall, pentest H7). Its editor POSTs must be same-origin: a sibling
+ * (the apex, ride.*) is the same SITE, so the SameSite=Strict editor cookie would ride along.
  */
 @Injectable()
 export class OriginGuard implements CanActivate {
@@ -31,6 +35,9 @@ export class OriginGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     if (context.getType() !== 'http') return true;
     const request = context.switchToHttp().getRequest<RequestWithPlayer>();
+    const path = apiPath(request.path ?? '');
+    const editorHost = this.env.editorHost;
+    if (editorHost && hostOf(request) === editorHost && !/^\/api\/(entities|editor)\//.test(path)) throw new NotFoundError('not found');
     if (!UNSAFE.has(request.method)) return true;
     if (this.reflector.getAllAndOverride<boolean>(CROSS_ORIGIN_PUBLIC, [context.getHandler(), context.getClass()])) return true;
     const origin = request.headers.origin;
@@ -38,8 +45,9 @@ export class OriginGuard implements CanActivate {
     let from: string;
     try { from = new URL(origin).host.toLowerCase(); } catch { throw new ForbiddenError('a request from this page is not accepted here', 'bad_origin'); }   // 'null' and junk
     const host = hostOf(request), sameOrigin = from === String(request.headers.host ?? '').toLowerCase();   // host AND port: another localhost port is another origin
-    const adminHost = this.env.adminHost;
-    if (adminHost && host === adminHost) { if (sameOrigin) return true; }
+    // the model viewer posts one crash to api.<apex>. That origin is not a general CORS origin, and the storybook host itself still 404s this route.
+    if (path === '/api/client-error' && editorHost && from === editorHost && host !== this.env.adminHost && host !== editorHost) return true;
+    if (host === this.env.adminHost || host === editorHost) { if (sameOrigin) return true; }
     else if (sameOrigin || this.allowed.has(origin.replace(/\/$/, ''))) return true;
     throw new ForbiddenError('a request from this page is not accepted here', 'bad_origin');
   }

@@ -90,7 +90,7 @@ describe('PoolTicketsService', () => {
       expect((await ctx.tickets.find('w', 1))?.balance).toBe(1);
     });
 
-    it('program v4 (pentest L4): a pool whose road is not sealed yet spends nothing – 409 road_not_sealed, the ticket kept; once sealed it rides', async () => {
+    it('program v4 (audit L4): a pool whose road is not sealed yet spends nothing – 409 road_not_sealed, the ticket kept; once sealed it rides', async () => {
       const { ctx, svc, give } = await setup();
       await ctx.pools.upsert(aPool({ id: 1, status: 'active', sealSlot: 900 }));
       await give(1, 1);

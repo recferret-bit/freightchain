@@ -21,6 +21,10 @@ class FakePort extends AnalyticsPort {
     if (this.throwOnCapture) throw new Error('capture failed');
     this.captured.push(row);
   }
+
+  captureException(): void {
+    if (this.throwOnCapture) throw new Error('capture failed');
+  }
 }
 
 describe('emitAnalytics', () => {

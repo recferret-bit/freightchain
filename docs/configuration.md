@@ -70,10 +70,13 @@ Change one with the signed admin API (`GET /api/admin/settings`, then the challe
 | `SESSION_TTL_DAYS` | `7` | Rider session cookie lifetime |
 | `APP_DOMAIN` / `APP_ORIGIN` | `localhost:3000` / `http://localhost:3000` | Shown in the wallet's sign-in message – must be the page the rider signs in on (derived in prod) |
 | `CLIENT_DIR` / `LANDING_DIR` | `../client` / `../landing/dist` | Static roots. No landing build = `/` serves the placeholder `client/index.html` |
-| `COOKIE_DOMAIN` | unset (host-only cookie) | Split hosts only: the apex, so all subdomains share the session. Bare host, no scheme/port |
+| `COOKIE_DOMAIN` | unset (host-only cookie) | Split hosts only: the apex, so all subdomains share the session. Bare host, no scheme/port. It also names the admin and storybook hosts: production refuses to boot without it while `ADMIN_WALLETS` or `EDITOR_WALLETS` is set |
 | `CORS_ORIGINS` | empty (CORS off) | Split hosts only: comma-separated origins allowed to call the API with the cookie. Derived as `https://<apex>,https://ride.<apex>,https://whitepaper.<apex>` (`deploy/scripts/lib.sh`). The whitepaper origin is for web vitals. |
 | `TRUST_PROXY` | – (**required in prod**) | Reverse-proxy hops. Production nginx = `1` (the deploy check insists). Wrong value = per-IP rate limits wrong |
-| `THROTTLE_LIMIT` / `THROTTLE_AUTH_LIMIT` / `THROTTLE_PROMO_LIMIT` | `600` / `30` / `30` | Requests per minute per wallet-or-IP; the second applies to `/api/auth/*` (per IP), the third to `POST /api/promo/redeem` (per IP – code guessing; wallets are free to make) |
+| `THROTTLE_LIMIT` / `THROTTLE_AUTH_LIMIT` / `THROTTLE_PROMO_LIMIT` | `600` / `30` / `30` | Requests per minute per wallet-or-IP; the second applies to `/api/auth/*` and `/api/editor/auth/*` (per IP), the third to `POST /api/promo/redeem` (per IP – code guessing; wallets are free to make) |
+| `THROTTLE_ENTITIES_LIMIT` / `THROTTLE_EDITOR_LIMIT` | `120` / `240` | Per minute: `/api/entities/*` (the 3D model bundle) per IP; `/api/editor/*` per editor wallet, else per IP. `THROTTLE_LIMIT` skips both paths |
+| `THROTTLE_AUTH_RPS` / `THROTTLE_ENTITIES_RPS` / `THROTTLE_EDITOR_RPS` | `5` / `5` / `10` | Per second, per IP, on sign-in, the bundle and the editor. Budgets aggregate across methods/controllers. With `REDIS_URL`, every throttle bucket is shared in Redis; protected buckets fail closed on Redis failure |
+| `THROTTLE_MCP_LIMIT` / `THROTTLE_MCP_RPS` | `600` / `20` | `/api/editor/mcp/*` per verified job, per minute and per second. An unverified token shares one bucket |
 
 ### Game rules & economy
 
@@ -130,7 +133,7 @@ Ranked starts read the country from edge headers (`CF-IPCountry` and `CF-Region-
 | `ONCHAIN_SESSION_TTL_HOURS` | `24` | max 168 |
 | `WEBHOOK_SECRET` | unset | **Secret**, ≥ 16 chars. Unset = `POST /api/chain/webhook` answers 404 |
 | `CRANK_SECRET` | unset | **Secret** base58 keypair (or `solana-keygen` JSON array) paying the fees of the pool crank: `fail_pool`, `expire_pool`, refunds (8 per tx), `close_pool` of a refunded pool. Fee money only; unset = no crank (players still CLAIM REFUND from their wallet) |
-| `REDIS_URL` | unset | `redis://[:password@]host:6379` – the cache behind `GET /api/stats`, the landing's all-time totals and the profile's driving record (docs/statistics.md). Unset = an in-process cache (dev, tests). Production compose runs a `redis` service and sets it to `redis://redis:6379`. A Redis that is down is a cache miss, never an error |
+| `REDIS_URL` | unset | `redis://[:password@]host:6379` – the cache behind `GET /api/stats`, the landing's all-time totals and the profile's driving record (docs/statistics.md). Unset = an in-process cache (dev, tests). Production compose runs a `redis` service and sets it to `redis://redis:6379`. A Redis that is down is a cache miss for statistics; protected rate-limit buckets reject requests until it recovers. Production AI editing requires Redis |
 | `CRANK_INTERVAL_MS` | `60000` | The crank's schedule (with `CRANK_SECRET` and a program); `0` = only `node dist/cli/index.js pool:crank` |
 | `PAYOUT_SECRET` | unset | **Secret** base58 keypair (or `solana-keygen` JSON array) the admin names on chain as `Config.payout_authority` (`pool-admin.mjs set-payout-authority`). After a pool's review window it pays the ranked prizes and closes the pool; it can do nothing else and pays only its own fees. Unset = no automatic payouts (the admin pays from the admin page) |
 | `PAYOUT_INTERVAL_MS` | `300000` | The payout job's schedule (with `PAYOUT_SECRET` and a program); `0` = only `node dist/cli/index.js pool:payout` |
@@ -145,6 +148,30 @@ Ranked starts read the country from edge headers (`CF-IPCountry` and `CF-Region-
 | `ADMIN_SESSION_TTL_MINUTES` | `120` | max 1440; no silent renewal. |
 
 The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD` ≥ 16 chars), a wallet sign-in, and a wallet signature for every change.
+
+### 3D model editor (docs/agents/editor.md)
+
+| Key | Default | Notes |
+|---|---|---|
+| `EDITOR_WALLETS` | empty | Comma-separated base58 wallets that may edit and publish the game's 3D models on `storybook.<apex>`. **Empty = no editor** (every `/api/editor` route 404s; the viewer stays read-only) |
+| `EDITOR_JWT_SECRET` | derived from `JWT_SECRET` | ≥ 32 chars. Rotating it signs all editors out |
+| `EDITOR_SESSION_TTL_MINUTES` | `240` | max 1440 |
+| `EDITOR_IP_ALLOWLIST` | empty | Optional comma-separated IPs / CIDRs (IPv4 / IPv6); empty = any IP. Needs `TRUST_PROXY` right behind nginx |
+
+| `EDITOR_MCP_TOKEN` | empty | ≥ 24 chars, **secret**, shared with the `mcp` service (`npm run deploy:init` generates it). Empty = no AI editor (`/me` offers no provider, a job is a 503, release.sh does not start `mcp` or `editor-worker`) |
+| `EDITOR_MCP_URL` | `http://127.0.0.1:3100` | the entity MCP (prod compose: `http://mcp:3100`); `npm run editor:mcp` runs it locally |
+| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` / `ZAI_API_KEY` | empty | **Secrets.** A provider is offered when its key is set |
+| `ZAI_BASE_URL` | `https://api.z.ai/api/paas/v4` | z.ai's OpenAI-compatible endpoint (pay as you go); a GLM Coding Plan key uses `https://api.z.ai/api/coding/paas/v4` |
+| `EDITOR_DEFAULT_PROVIDER` | empty | `anthropic` / `openai` / `gemini` / `zai` / `fake`; empty or not enabled = the first enabled |
+| `EDITOR_MODEL_ANTHROPIC` / `_OPENAI` / `_GEMINI` / `_ZAI` | `claude-opus-5-5` / `gpt-6` / `gemini-3.1-pro-preview` / `glm-5.2` | model id defaults – check them when a provider renames a model |
+| `EDITOR_JOB_TIMEOUT_MS` | `600000` | 10 s – 1 h; a longer job is aborted, one left by a restart is failed |
+| `EDITOR_FAKE_LLM` | `0` | **Test only**: `1` offers the scripted fake model (browser e2e of the editor). Refused in production |
+
+Runtime knobs of the AI editor are `player.GameSetting` rows (signed admin settings API): `editor_jobs_per_day` (40), `editor_max_steps` (24), `editor_max_output_tokens` (32000), `editor_max_input_ktokens` (500: input tokens per job, thousands), `editor_jobs_parallel` (5; 0 pauses the AI editor).
+
+Run the AI worker separately with `npm run server:build && npm run editor:worker`. API and worker must share their database, timeout, provider configuration and explicit `JWT_SECRET` (including in local development). API, worker and MCP must share the MCP token. Generation is not started by the HTTP API. The API retains provider keys for provider discovery; model sessions execute only in the worker. Production starts and health-checks `editor-worker` alongside MCP.
+
+The editor API additionally requires: host = `storybook.<apex>` (nginx proxies only `/api/entities/` and `/api/editor/` there), the `X-FC-Editor: 1` header on changes, and a wallet signature for every publish.
 
 ### Product analytics
 
@@ -227,3 +254,5 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 
 - `POSTHOG_*` in the gitignored env files is intentional and the two files differ. Local `server/.env` pins `POSTHOG_ENABLED=0` (the local compose file is Postgres only and must not turn capture on). Production `deploy/.env` sets `POSTHOG_ENABLED=1`, EU host, project 297915, token not tracked. The live site sends when the running image includes this code. Do not point the host at `us.i.posthog.com`. Do not delete the keys to “clean up”. `POSTHOG_DISABLED=1` still wins.
 - `deploy/.env.example` omits `CRANK_SECRET` / `PAYOUT_SECRET` / `POSTHOG_KEY` real values on purpose (dummies and an empty token) and does not list `COOKIE_DOMAIN` / `CORS_ORIGINS` / `APP_*` (derived).
+
+The MCP container receives `REDIS_URL=redis://fc-mcp@redis:6379`; it authenticates the restricted `fc-mcp` ACL user with `EDITOR_MCP_TOKEN`. This user can only increment and expire `fc:mcp-rl:*` counters. Its Redis healthcheck gates release success. Output-token settings are cumulative across an entire job, rather than a fresh allowance each turn.

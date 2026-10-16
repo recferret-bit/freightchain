@@ -6,7 +6,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 
 ## Repo
 
-`client/` the game (`play.html`, `js/`, `shared/`) + site pages (lobby, admin, viewer, `r.html`, `blink.html`, `site/`) · `shared/` workspace package (`@freightchain/shared`) re-exporting `client/shared/` · `landing/` the `/` page + whitepaper + pitch deck (Vite) · `server/` the API + `replay:worker` (Clean Architecture, `prisma/`, `test/`) · `programs/freightchain-pools` the escrow program · `media/` promo clips + sound · `pentest/` multi-agent penetration testing suite for any repo (`--repo <path>` or `--github <url>`) · `deploy/` production deploy · `design/` icons, banners · `docs/` architecture + explainers · `.claude/skills/` project skills · `docker-compose.yml` local PostgreSQL (:15433) + optional Redis & worker.
+`client/` the game (`play.html`, `js/`, `shared/`) + site pages (lobby, admin, viewer, `r.html`, `blink.html`, `site/`) · `shared/` workspace package (`@freightchain/shared`) re-exporting `client/shared/` · `landing/` the `/` page + whitepaper + pitch deck (Vite) · `server/` the API + `replay:worker` + dedicated AI worker (`npm run editor:worker`; Clean Architecture, `prisma/`, `test/`) · `programs/freightchain-pools` the escrow program · `mcp/` the entity MCP (the 3d-assets skill as tools for the AI model editor; `npm run editor:mcp`, `npm run mcp:check`) · `media/` promo clips + sound · `audit/` multi-agent security check suite for any repo (`--repo <path>` or `--github <url>`) · `deploy/` production deploy · `design/` icons, banners · `docs/` architecture + explainers · `.claude/skills/` project skills · `docker-compose.yml` local PostgreSQL (:15433) + optional Redis & worker.
 
 ## Where the detail is (`docs/agents/`)
 
@@ -21,6 +21,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | statistics | `statistics.md` |
 | live board, live streams, replays, donations | `live.md` |
 | admin page, observing production | `admin-ops.md` |
+| 3D model editor: entity storage + revisions, the bundle API, editor sign-in, signed publish | `editor.md` |
 | free levels, tutorial + assist, free rides, trips | `free-rides.md` |
 | garage, promo codes | `garage-promo.md` |
 | money, escrowed pools, the program toolchain | `escrow.md` |
@@ -58,6 +59,8 @@ Client:
 - Reach the API and other hosts only through `client/js/hosts.js` with `credentials: 'include'` – never a bare `/api/…` or `/play.html` (landing included). A new subdomain = its own nginx template + `deploy/scripts/remote/setup.sh` + smoke check, and `hosts.js` must strip the prefix.
 - Modules are acyclic (`sim/*` never imports `cockpit/*`; `cockpit/*` never imports the scene). Canvas size from the shared `view` object. Tunables in `js/config.js`. Use `store()` not raw `localStorage`.
 - Theme materials only inside `create*()` via `basic()` / `trackMat()`; every single-sided material tracked or in `flipMats()` (mirrors). `mesh.position.set()`, never assign `position`.
+- Production AI editor rate limits require Redis; MCP uses its own counter-only ACL user, protected routes fail closed on Redis failure, PostgreSQL owns the shared AI job queue, and only the dedicated editor worker executes generations (`docs/agents/editor.md`).
+- Every 3D model is a data-only entity (`client/shared/entity/`, world.md "Entities"); gameplay (collision, footprints, landmark order, sirens, vehicle sizes) is `roster.js` / `VEHICLES`, never an entity. A refactor of the builders passes `npm run test:parity` + `trace:diff`.
 - User-tuned, leave alone unless asked: `SHAKE_START 0.45`, `SHAKE_MOVING 0.09`, `SHAKE_RPM 0.315`, `START_ENGINE_OFF = true`. Numeric tuning requests are relative to the current value ("lower it twice" = halve it).
 - Serve over http (`client/serve.sh` or `npm run server:dev` on :3000); `file://` can't load the modules. Driving is desktop-only; spectating streams/replays works on mobile.
 
@@ -68,7 +71,7 @@ Achievements: ids are FROZEN (add a tier, never retune one); unlock rows are app
 Analytics: capture is opt-in (`POSTHOG_ENABLED=1`); never print `POSTHOG_KEY`; don't flip `$create_alias`.
 
 Secrets: read env files by key name only, never print values; never commit `deploy/.env` / `deploy/secrets/`; example files hold dummies.
-Pentest: `pentest run` uses a one-shot Docker sandbox (`pentest-sandbox:local`) + MCP stdio bridge (`docker-agent-orchestrator.mjs`, `docker-mcp-bridge.mjs`) for `claude`, `codex`, `grok` and `agy` (`check-agents` checks readiness; `--blocked` writes an offline blocked record); selected-file `review-with-cli` has Claude, `codex-native`, `grok-native` and `grok-docker` profiles; `grok-docker setup/login` builds a Linux broker and creates its own Docker-volume login, never imports host credentials; guide: `pentest/docs/live-model.md`.
+Audit: `audit run` uses a one-shot Docker sandbox (`audit-sandbox:local`) + MCP stdio bridge (`docker-agent-orchestrator.mjs`, `docker-mcp-bridge.mjs`) for `claude`, `codex`, `grok` and `agy` (`check-agents` checks Docker/version availability, not inference; `--blocked` writes an offline blocked record); Grok trusts only the generated workspace; failed exits and missing verdicts stay incomplete with log diagnostics; selected-file `review-with-cli` has Claude, `codex-native`, `grok-native` and `grok-docker` profiles; `grok-docker setup/login` builds a Linux broker and creates its own Docker-volume login, never imports host credentials; guide: `audit/docs/live-model.md`.
 
 AGY: use Argon (Pro) for heavy reasoning and planning (via `/boost` or subagents); use Gemini Flash 3.8 for implementation and routine code changes.
 

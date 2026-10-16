@@ -18,7 +18,7 @@ export interface PledgeKeys {
   driver: string;
 }
 
-/** A pledged ride's attestation on chain (program v4 RideAttestation – pentest H4: a pledge settles on ITS ride, not on the driver's best one). */
+/** A pledged ride's attestation on chain (program v4 RideAttestation – audit H4: a pledge settles on ITS ride, not on the driver's best one). */
 export interface RideAttestationState {
   driver: string;
   status: number;
@@ -30,7 +30,7 @@ export interface RideAttestationState {
 }
 
 /**
- * The payout job's door to the chain (PAYOUT_SECRET – the key the admin named as the program's `payout_authority`). Program v4 (pentest H5-B): the key COMMITS a
+ * The payout job's door to the chain (PAYOUT_SECRET – the key the admin named as the program's `payout_authority`). Program v4 (audit H5-B): the key COMMITS a
  * pool's winners root (public for the review lock, vetoable by the cold admin), records the attestation of each pledged ride, and closes a pool once every committed
  * rank is paid; `pay_prize` / `settle_pledge` / `refund_pledge` are permissionless and it only sends them (pays their fees). Money goes only where the committed root,
  * the pledge or the pool's declared treasuries say. Without PAYOUT_SECRET `address` is null and the payout job does nothing (the admin acts from the admin page).

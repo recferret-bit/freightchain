@@ -45,7 +45,7 @@ export abstract class PoolChainPort {
   /** Unsigned `fail_pool` (when `needsFail`) + `refund` for `buyer`, signed by `caller` (anyone); the price goes to the buyer, the rent to the ticket's rent payer.
       ConflictError when the buyer holds no Ticket account (never bought, or refunded already). */
   abstract buildRefundTransaction(input: { caller: string; poolId: number; buyer: string; needsFail: boolean }): Promise<BuiltTransaction>;
-  /** Unsigned `commit_winners` for the admin to sign AND send in Phantom (program v4, pentest H5-B): the pool's winners root – nobody is paid before its lock. */
+  /** Unsigned `commit_winners` for the admin to sign AND send in Phantom (program v4, audit H5-B): the pool's winners root – nobody is paid before its lock. */
   abstract buildCommitWinnersTransaction(input: { authority: string; poolId: number; root: Uint8Array; total: number; count: number }): Promise<BuiltTransaction>;
   /** Unsigned `veto_winners` (the cold admin only, while no committed rank is paid): strikes the root, the payout job commits again (M7: the admin's lever). */
   abstract buildVetoWinnersTransaction(input: { authority: string; poolId: number }): Promise<BuiltTransaction>;

@@ -1,3 +1,4 @@
+import '../../client/js/crash-boot.js';   // before the rest of this page: a throw while it loads is still reported
 import { api, signIn, walletName } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
 import { API_BASE, GAME_BASE, PITCHDECK_BASE, SITE_BASE, STORYBOOK_BASE, WHITEPAPER_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
 import { track, flushSoon } from '../../client/js/analytics.js';

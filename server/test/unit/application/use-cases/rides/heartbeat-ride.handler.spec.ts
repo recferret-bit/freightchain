@@ -85,4 +85,22 @@ describe('HeartbeatRideHandler', () => {
     expect(await beat(ride.id, { s: 9000 })).toMatchObject({ status: 'failed' });
     expect(await ctx.stats.player('w')).toMatchObject({ rides: 1, ridesCompleted: 0, metres: 20, crashesVehicle: 1 });   // what the ride had before the bad report
   });
+
+  it('retries a terminal failing heartbeat when a concurrent version bump causes VersionConflictError', async () => {
+    const { ctx, beat } = setup();
+    const ride = await ctx.freeRide('w', true);
+    ctx.clock.advance(2);
+    const origSave = ctx.rides.save.bind(ctx.rides);
+    let attempts = 0;
+    ctx.rides.save = async (r) => {
+      if (++attempts === 1) {
+        const current = await ctx.rides.findById(ride.id);
+        await origSave(current!); // bump version concurrently
+      }
+      return origSave(r);
+    };
+    expect(await beat(ride.id, { s: 5000 })).toMatchObject({ status: 'failed' });
+    expect(attempts).toBe(2);
+    expect((await ctx.reload(ride.id)).status).toBe('failed');
+  });
 });

@@ -20,7 +20,10 @@ node tools/build-standalone.mjs  # optional: one self-contained dist/freightchai
 ```
 play.html             the game page: markup + importmap + <script type="module" src="js/main.js">
 css/style.css         HUD, toast, menu overlay
-js/main.js            entry: wires modules, runs the frame loop
+js/main.js            entry: wires modules, runs the frame loop. Its first import is js/crash-boot.js
+js/crash-boot.js      first import of every page (game, viewer, lobby, admin, blink, receipt, landing, whitepaper, pitch deck): installs the unhandled-error hook before the rest of the page loads
+js/crash-page.js      which document it is (host + path). Production whitepaper / pitch deck / storybook / admin are `/` on their own host
+js/crash.js           the hook: one scrubbed stack to POST /api/client-error. Nothing runs at its own import
 js/config.js          CFG – every tunable constant (ride length, shake strengths…)
 js/util.js            clamp, approach, rnd (hash noise), mulberry32 (the seeded PRNG), `store` (localStorage that never throws – use it, not raw localStorage), fmt (mm:ss), MONO font
 js/state.js           `st` (truck/ride state; `rideStart()` = the per-ride fields and their start values, shared with `resetRide`), `input`, `disp` (sprung gauge values), drivetrain constants, `clock`
@@ -40,7 +43,8 @@ js/world/scene.js     renderer, scene, camera, canvasTex() (nothing route-specif
 js/world/environment.js  `env` = the applied route's sky / terrain / mountains / road material / props / furniture; applyTheme()
 js/world/daynight.js  day/night: exposure + night sky/fog fade (`dn.k`, re-applied every frame so route switches keep it), headlight pool decal; js/world/glow.js = lamp glow sprites
 js/world/theme-manager.js  selectTheme(id): applies a route + its road curvature + trailer livery, rebuilds chunks, remembers the choice
-js/world/props.js     shared geometry, mk(), KINDS (destructible-prop table: hp/r/dmg/slow per kind), `destroyed` set
+js/world/props.js     shared geometry (GEO = the entity geometries), mk(), KINDS (destructible-prop table: hp/r/dmg/slow per kind), `destroyed` set
+js/world/entities.js  the entity registry (every 3D model is a data-only config, client/shared/entity/) + entity-build.js: builds one into three.js (`prop()`, `buildInto()`) – see world.md "Entities"
 js/world/pool.js      object pools (`ObjectPool`, `mesh()`, `group()`, `releaseTree()`) – leaf module, see "Object pools"
 js/world/spacing.js   the roadside spacing rule (leaf, no three.js): footprints, ranks (building > furniture > hole-warning sign > scenery), GAP 1.2 m, `insideChunk` – chunks.js places in rank order and DROPS what would stand inside / too close to something else; unit-tested (`client/test/spacing.test.mjs`, `npm run test:unit`) and re-checked on every route x layout by the headless test ("road content …")
 js/world/chunks.js    `RoadObjectManager` (`roadObjects`): 32 m road chunks streamed around the truck (road strips + junctions + depot + the route's props/furniture), built from / recycled into the pools
@@ -49,8 +53,8 @@ js/world/junctions.js junction aprons, side roads, stop lines, traffic-light mas
 js/world/depot.js     the start: yard, warehouse + docks, parked trailers, exit / speed-limit signs (chunk 0)
 js/world/trailer.js   the trailer (only visible in mirrors)
 js/world/holes.js     road holes + warning signs: the meshes (+ the red ring of a replay's NO IMPACT hole); re-exports net/obstacles.js; see "Road holes"
-js/world/vehicles.js  traffic vehicle types (VEHICLES table: size/mass/speed/allowed presets) + mesh builders; `vehicleMats` feed FLIP_MATS
-js/viewer.js          model viewer catalogue (`viewer.html`, storybook): the same builders — skill `3d-assets`
+js/world/vehicles.js  `buildVehicle` (entity of the type's id; VEHICLES table re-exported from client/shared/traffic.js); `vehicleMats` feed FLIP_MATS
+js/viewer.js          model viewer (`viewer.html`, storybook); its catalogue is js/catalogue.js (the same entities, DOM-free) — skill `3d-assets`
 js/sim/traffic.js     traffic: main road + crossroads side roads, spawn zones, AI PRESETS (IDM car-following + lanes + signals), truck contact (aligned: scratch / bump / direct hit; at an angle: closing speed)
 js/world/render.js    per-frame 3D render, camera shake, trailer hitch, mirror passes, resize()
 js/sim/physics.js     drivetrain (clutch/gears/stall/ignition), steering, ride end conditions
@@ -68,7 +72,7 @@ js/cockpit/index.js   drawCockpit(): picks the style + red impact flash
 js/cockpit/inputs.js  a replay's input display: flashing yellow borders on the dash controls the driver used (pointer + ring for a click), key caps for the keys
 js/ui/game.js         ride flow: menu / start / end / pause / resetRide, and the walk-off (top right while driving, and on the pause screen): I MISS THE YARD is the lobby, I'M DONE is the landing — each names where it goes, and asks YES / I'M STAYING first
 js/themes/_shared/theme.js  defineTheme(): assembles a route from its folder's modules + plain data (see "Themes")
-js/themes/_shared/landmarks/  roadside buildings (motel, hotel, restaurant, gas, police): TYPES → interchangeable implementations; see "Landmarks"
+js/themes/_shared/landmarks/  roadside buildings (motel, hotel, restaurant, gas, police): TYPES = ROSTER.landmark → entities; signs / facades / flags painters, site(); see world.md "Landmarks"
 js/themes/            ONE FOLDER PER ROUTE – see "Themes (routes)" below
 js/ui/input.js        keyboard + dash-button mouse input
 js/ui/toast.js        transient messages

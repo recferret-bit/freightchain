@@ -1,3 +1,4 @@
+import '../js/crash-boot.js';   // before the admin modules: a throw while they load is still reported
 import { ADMIN_BASE, SITE_BASE } from '../js/hosts.js';
 import { b58, chooseWallet, ensureAccount, provider, rememberWallet } from './wallet.js';
 import { shortAddr } from './pools.js';

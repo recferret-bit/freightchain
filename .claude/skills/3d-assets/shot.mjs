@@ -7,7 +7,7 @@ import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const { launch, sleep } = await import(pathToFileURL(path.join(root, 'client/tools/cdp.mjs')).href);
+const { launch, sleep, withEntities } = await import(pathToFileURL(path.join(root, 'client/tools/cdp.mjs')).href);
 
 const LEGEND = 'pastWidestBox = outer X of a cylinder turned onto X (a wheel) minus outer X of the widest box — a stripe or a pane can be that box. gaps = one mesh and the nearest mesh under it, when that opening is 8 cm–3 m, the footprints overlap, and no third mesh fills the opening. Ground slabs are not a support. minY = lowest mesh point (the grid is y = 0). faces = boxes with 6 materials; three.js order is +x -x +y -y +z -z; faceX / faceZ mean that pair shares one material. A gap is a candidate — the PNG decides. Black edge lines are hidden; the grid stays.';
 
@@ -123,7 +123,7 @@ const port = +process.env.PORT || 9336;
 const { send, ev, shot, problems, SHOTS, finish } = await launch({ port, shotsDir: 'fc-storybook-shots', evalProblems: true });
 let failed = false;
 try {
-  await send('Page.navigate', { url: base + '/viewer.html' });
+  await send('Page.navigate', { url: await withEntities(base + '/viewer.html') });
   let ready = false;
   for (let i = 0; i < 40 && !ready; i++) {
     ready = await ev('typeof window.__viewer') === 'object';

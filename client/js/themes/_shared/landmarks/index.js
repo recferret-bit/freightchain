@@ -3,21 +3,18 @@ import { GEO, mk } from '../../../world/props.js';
 import { canvasTex } from '../../../world/scene.js';
 import { rnd } from '../../../util.js';
 import { basic, trackMat } from '../mats.js';
-import { motel, hotel } from './lodging.js';
-import { restaurant } from './food.js';
-import { gas } from './fuel.js';
-import { police } from './police.js';
 import { drawFlag } from './flags.js';
-
-const DISK = new THREE.CylinderGeometry(1, 1, 1, 48);   // GEO.cyl is a 7-gon; the kiosk board is round. Shared, never disposed.
+import { buildInto } from '../../../world/entity-build.js';
+import { ROSTER } from '../../../../shared/entity/roster.js';
 
 /* Roadside LANDMARKS: static buildings beside the road (motels, hotels, gas stations, police stop points, restaurants).
    Abstract on two levels:
-   – a TYPE (key of TYPES) is a kind of place; it owns a list of interchangeable IMPLEMENTATIONS { id, hl, hd, make(g, c) } (see lodging.js…).
-     Add an implementation: push a row to a type's array. Add a type: new array here + a default name list + a weight in the theme.
+   – a TYPE (key of TYPES) is a kind of place; it owns a list of interchangeable IMPLEMENTATIONS { id, hl, hd }: the footprint and order are
+     gameplay (client/shared/entity/roster.js), the model is the entity of that id (client/shared/entity/seed/landmark/<id>.js).
+     Add an implementation: an entity + a roster row (at the END of its type). Add a type: a roster list + a default name list + a weight in the theme.
    – a theme only supplies a look (palette, names, frequency, mix, flag id) through createLandmarks(config) – never geometry.
    At most one landmark per 32 m chunk (deterministic per chunk), set back from the road on an apron, solid like a building (KINDS.building). */
-export const TYPES = { motel, hotel, restaurant, gas, police };
+export const TYPES = ROSTER.landmark;
 const NAMES = { motel: ['MOTEL', 'INN', 'LODGE'], hotel: ['HOTEL', 'GRAND', 'RESORT'], restaurant: ['DINER', 'CAFE', 'GRILL', 'EATS'], gas: ['GAS', 'FUEL', 'DIESEL'], police: ['POLICE', 'CHECK'] };
 const PAL = {   // CSS colours; walls = per-site variants. A theme overrides only what it wants to change.
   walls: ['#e8d9b8', '#d9b99a', '#b9d4cf'], roof: '#7a4a38', trim: '#f2efe6', glass: '#5f8fa8', door: '#7a3b2a', lot: '#3b3b3e', metal: '#8a8f96', dark: '#23252a',
@@ -34,7 +31,7 @@ export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weigh
     const [bg, fg] = SIGN[style];
     return trackMat(new THREE.MeshBasicMaterial({ map: canvasTex(256, 128, (g, w, h) => {
       g.fillStyle = bg; g.fillRect(0, 0, w, h); g.strokeStyle = fg; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16);
-      let px = 70; do g.font = `bold ${px -= 4}px sans-serif`; while (g.measureText(text).width > w - 44);
+      let px = 70; do g.font = `bold ${px -= 4}px sans-serif`; while (px > 14 && g.measureText(text).width > w - 44);
       g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2 + 4);
     }, false) }));
   });
@@ -70,17 +67,13 @@ export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weigh
   function model(L) {   // the finished model for a site (also used by the model viewer)
     const root = new THREE.Group(), g = new THREE.Group(), wall = m.walls[L.wi];
     const ids = flag == null ? [] : Array.isArray(flag) ? flag : [flag];
-    const c = { m, wall, wi: L.wi, facade: (cols, rows) => facadeMat(L.wi, cols, rows), flags: ids.map(flagPair),
-      // chunky box, word on every vertical face: a thin board only reads when you are beside it, and from the road it is an edge
-      sign: (style, w, h, x, y, z, text = L.name) => {
-        const face = signMat(style, text), edge = signEdge(style), d = Math.max(h * .85, Math.min(w * .8, h * 1.5));
-        return mk(GEO.box, [face, face, edge, edge, face, face], d, h, w, x, y + h / 2, z);   // BoxGeometry groups: ±x ±y ±z
-      },
-      disk: (style, r, x, y, z, text) => {   // y is the centre. Groups: side, +y cap, −y cap
-        const d = mk(DISK, [signEdge(style), diskFace(style, text, false), diskFace(style, text, true)], r, .2, r, x, y, z);
-        d.rotation.z = Math.PI / 2; return d;
-      } };
-    L.v.make(g, c);
+    const flags = ids.map(flagPair);
+    // the painters behind the entity's material descriptors (a sign is a chunky box with the word on every vertical face – plan.js;
+    // a disk's groups are side, +y cap, −y cap)
+    // Expressions can take interior parameter values the validator cannot enumerate; painter work stays bounded at runtime too.
+    const ctx = { slot: n => (n === 'wall' ? wall : m[n] ?? null), facade: (cols, rows) => facadeMat(L.wi, Math.max(1, Math.min(32, Math.floor(cols) || 1)), Math.max(1, Math.min(32, Math.floor(rows) || 1))), sign: (style, text) => signMat(style, text ?? L.name), edge: signEdge,
+      disk: (style, text, back) => diskFace(style, text, back), flag: (i, side) => flags[i]?.[side] ?? m.red };
+    buildInto(g, L.v.id, { flags: flags.length }, ctx);
     const wa = L.near - 6.1 + L.hd + .6;   // apron: tarmac from UNDER the shoulder (the ribbon draws over it, so no seam of bare ground) to the middle of the footprint
     g.add(mk(GEO.box, m.apron, wa, .04, L.hl * 2 + 2, -wa / 2, .02, 0));
     g.rotation.y = L.side > 0 ? 0 : Math.PI; root.add(g);   // models face -x (toward the road for right-hand sites)

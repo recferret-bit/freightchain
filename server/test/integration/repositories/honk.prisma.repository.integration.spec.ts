@@ -49,7 +49,8 @@ describe('HonkPrismaRepository (PostgreSQL)', () => {
       inTx(prisma, (tx) => mint.credit(ride('same'), tx)),
       inTx(prisma, (tx) => mint.credit(ride('same'), tx)),
     ]);
-    expect([a, b].sort((x, y) => Number(x === null) - Number(y === null))).toEqual([100n * U, null]);
+    expect([a, b]).toContain(100n * U);
+    expect([a, b]).toContain(null);
     expect(await prisma.honkMint.count()).toBe(1);
     expect(await repo.balance('w')).toBe(100n * U);
     expect((await prisma.honkSupply.findUnique({ where: { id: 1 } }))?.minted).toBe(100n * U);

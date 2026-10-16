@@ -102,6 +102,8 @@ model Pool {
   pledges       Pledge[]
 
   @@index([status, prepDeadline])
+  @@index([status, playDeadline])
+  @@index([status, payoutAt(sort: Desc)])
   @@index([roundId])
   @@index([createdAt]) // the admin POOLS list: newest first
   @@schema("economy")

@@ -31,13 +31,17 @@
     "cli": "node dist/cli/index.js",
     "cli:migrate": "node dist/cli/index.js migrate",
     "db:reset": "node dist/cli/index.js db:reset",
-    "treasury:init": "node scripts/treasury-init.mjs"
+    "entities:export": "node dist/cli/index.js entities:export",
+    "treasury:init": "node scripts/treasury-init.mjs",
+    "editor:worker": "node dist/app/editor-worker.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.134.0",
     "@metaplex-foundation/mpl-bubblegum": "^6.0.0",
     "@metaplex-foundation/mpl-core": "^1.10.0",
     "@metaplex-foundation/umi": "^1.6.0",
     "@metaplex-foundation/umi-bundle-defaults": "^1.6.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/cqrs": "^12.1.0",
@@ -51,6 +55,7 @@
     "compression": "^1.8.2",
     "ioredis": "^6.0.0",
     "jose": "^6.2.10",
+    "openai": "7.34.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "tweetnacl": "^1.0.3",
@@ -80,5 +85,20 @@
   },
   "prisma": {
     "schema": "./prisma"
+  },
+  "overrides": {
+    "undici": "6.28.1",
+    "ethjs-unit": {
+      "bn.js": "4.12.5"
+    },
+    "number-to-bn": {
+      "bn.js": "4.12.5"
+    },
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.0"
+    },
+    "@solana/web3.js": {
+      "jayson": "5.0.0"
+    }
   }
 }

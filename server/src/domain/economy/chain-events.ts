@@ -8,7 +8,7 @@ import type { PaidTierId } from '../rides/ride-tier.js';
    AuthorityProposed / AuthorityChanged / SeriesSet / PayoutAuthoritySet are program events too, but not POOL events: the decoder skips them (they still occupy their `index`). */
 
 export const CHAIN_EVENT_KINDS = ['PoolCreated', 'TicketBought', 'PoolActivated', 'Sponsored', 'PoolFailed', 'PoolCancelled', 'PoolExpired', 'Refunded', 'PrizePaid', 'PoolClosed',
-  // program v4 (pentest WP5): the road sealed (L4), the winners committed / vetoed (H5-B), a pledged ride's attestation (H4), a sponsor refunded (M8)
+  // program v4 (audit WP5): the road sealed (L4), the winners committed / vetoed (H5-B), a pledged ride's attestation (H4), a sponsor refunded (M8)
   'RoadSealed', 'WinnersCommitted', 'WinnersVetoed', 'RideAttestationRecorded', 'SponsorRefunded'] as const;
 export type ChainEventKind = (typeof CHAIN_EVENT_KINDS)[number];
 
@@ -145,7 +145,7 @@ export interface PoolChainState {
   seedSlot?: number;
   /** base58 */
   seedSlotHash?: string;
-  // ---- program v4 (pentest WP5); undefined on an account without them
+  // ---- program v4 (audit WP5); undefined on an account without them
   /** the slot whose hash will seal the road; 0 once sealed */
   sealSlot?: number;
   /** the platform cut snapshotted when the pool opened */

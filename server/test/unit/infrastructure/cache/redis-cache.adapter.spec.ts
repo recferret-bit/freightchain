@@ -7,7 +7,13 @@ vi.mock('ioredis', () => ({
     constructor(_url: string, opts: unknown) { fake.opts = opts; }
     on(event: string, fn: (e?: Error) => void) { fake.handlers.set(event, fn); return this; }
     async get(k: string) { fake.calls++; if (fake.failing) throw new Error('down'); return fake.store.get(k) ?? null; }
-    async set(k: string, v: string, _ex: string, ttl: number) { if (fake.failing) throw new Error('down'); fake.store.set(k, `${v}`); fake.store.set(`ttl:${k}`, String(ttl)); return 'OK'; }
+    async set(k: string, v: string, _ex: string, ttl: number, nx?: string) {
+      if (fake.failing) throw new Error('down');
+      if (nx === 'NX' && fake.store.has(k)) return null;
+      fake.store.set(k, `${v}`);
+      fake.store.set(`ttl:${k}`, String(ttl));
+      return 'OK';
+    }
     async del(...keys: string[]) { if (fake.failing) throw new Error('down'); for (const k of keys) fake.store.delete(k); return keys.length; }
     quit() { return fake.quit(); }
   },
@@ -28,6 +34,17 @@ describe('RedisCacheAdapter', () => {
     expect(await cache.get('k')).toBeNull();
     expect(cache.kind).toBe('redis');
     expect(fake.opts).toMatchObject({ keyPrefix: 'fc:', commandTimeout: 300 });
+  });
+
+  it('acquires and releases distributed locks via SET NX PX and fails open when Redis is down', async () => {
+    const cache = new RedisCacheAdapter('redis://x:6379', clock);
+    expect(await cache.tryLock('job-1', 5000)).toBe(true);
+    expect(await cache.tryLock('job-1', 5000)).toBe(false);
+    await cache.releaseLock('job-1');
+    expect(await cache.tryLock('job-1', 5000)).toBe(true);
+
+    fake.failing = true;
+    expect(await cache.tryLock('job-2', 5000)).toBe(true);
   });
 
   it('a Redis that is down is a miss, not an error – one warning per outage', async () => {

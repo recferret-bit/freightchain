@@ -1,4 +1,4 @@
-import { RoadPlan, type PlannedHole } from '../road/road-plan.js';
+import { roadPlanFor, type RoadPlan, type PlannedHole } from '../road/road-plan.js';
 import { HOLE_REF_SPEED, LW, CHUNK_LEN } from '../road/road-rules.js';
 import { worldFor } from '../rides/ride-rules.js';
 import {
@@ -87,7 +87,7 @@ export class TrafficSimulator {
   constructor(
     readonly seed: number,
     readonly trip: string | null,
-    readonly plan: RoadPlan = RoadPlan.forSeed(seed, trip),
+    readonly plan: RoadPlan = roadPlanFor(seed, trip),
     readonly route: string = worldFor(seed).route,
     readonly placed: readonly (PlannedHole & { appliedT: number })[] = [],
     readonly assist = false,
@@ -116,7 +116,7 @@ export class TrafficSimulator {
 
   get cars(): SimVehicle[] { return this.simulation.cars; }
 
-  static forRide(seed: number, trip: string | null, plan: RoadPlan = RoadPlan.forSeed(seed, trip)): TrafficSimulator {
+  static forRide(seed: number, trip: string | null, plan: RoadPlan = roadPlanFor(seed, trip)): TrafficSimulator {
     return new TrafficSimulator(seed, trip, plan);
   }
 

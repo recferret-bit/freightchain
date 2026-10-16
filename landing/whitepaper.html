@@ -83,7 +83,7 @@
       <tr><td>Blinks (Solana Actions): buy a ticket or open a ride from a shared link</td><td><span class="pill ok">LIVE · DEVNET</span> <span class="pill plan">ON 𝕏 AFTER THE HACKATHON</span></td><td><a href="#onchain">05</a></td></tr>
       <tr><td>Achievement badges as soulbound compressed NFTs</td><td><span class="pill ok">LIVE · DEVNET</span></td><td><a href="#rewards">04</a></td></tr>
       <tr><td>Garage colours</td><td><span class="pill ok">LIVE</span></td><td><a href="#rewards">04</a></td></tr>
-      <tr><td>Penetration test &amp; contracts audit by twelve AI auditors (not a third-party audit)</td><td><span class="pill ok">DONE OCT 13</span> <span class="pill wip">PROGRAM V4 PENDING</span></td><td><a href="#audit">08</a></td></tr>
+      <tr><td>Security check &amp; contracts audit by twelve AI auditors (not a third-party audit)</td><td><span class="pill ok">DONE OCT 13</span> <span class="pill wip">PROGRAM V4 PENDING</span></td><td><a href="#audit">08</a></td></tr>
       <tr><td>Prize payouts, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">09</a></td></tr>
     </tbody>
   </table></div>
@@ -796,7 +796,7 @@
 
 <!-- ───────── 08 · LIMITS & RISKS ───────── -->
 <section id="audit" class="ch">
-  <header class="ch-h"><i>08</i><h2>Penetration test &amp; contracts audit</h2><p>Twelve AI auditors attacked the code on Oct 13. What they found, and what is fixed.</p></header>
+  <header class="ch-h"><i>08</i><h2>Security check &amp; contracts audit</h2><p>Twelve AI auditors attacked the code on Oct 13. What they found, and what is fixed.</p></header>
   <p>Six surfaces – the escrow program, money paths, identity and admin, anti-cheat, client, infrastructure – were each attacked by two agents from different vendors (Claude, GPT, Gemini, Grok), blind to each other. A finding counts only if two of them raised it, or one raised it with a test that reproduces it; disputed claims went to a third vendor. 69 raw findings became <b>7 high</b> and <b>13 medium</b>; 4 claims were corrected or refuted. It is <b>not a third-party audit</b>: the program stays unaudited until one is done (<a href="#risks">09</a>).</p>
   <div class="tblwrap"><table class="tbl">
     <thead><tr><th>Finding</th><th>State</th></tr></thead>
@@ -809,7 +809,7 @@
       <tr><td>Blink relay, no CSP / HSTS / SRI, public verdict codes, the lows (M1, M11, M12, M5)</td><td><span class="pill plan">OPEN</span></td></tr>
     </tbody>
   </table></div>
-  <p class="dim">The review supplied reproductions that became regression tests. The original report and PoC status are archived at the reviewed commit; the current reusable pentest tool keeps new run outputs outside tracked source. <a href="https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/reports/2026-10-13/index.md">Report</a> · <a href="https://github.com/recferret-bit/freightchain/blob/main/docs/reviews/pentest-2026-10/fix-plan.md">fix plan</a> · <a href="https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/pocs/status.json">PoC status</a>.</p>
+  <p class="dim">The review supplied reproductions that became regression tests. The original report and PoC status are archived at the reviewed commit; the current reusable audit tool keeps new run outputs outside tracked source. <a href="https://github.com/recferret-bit/freightchain/tree/16870e81">Report</a> · <a href="https://github.com/recferret-bit/freightchain/blob/main/docs/reviews/audit-2026-10/fix-plan.md">fix plan</a> · <a href="https://github.com/recferret-bit/freightchain/tree/16870e81">PoC status</a>.</p>
 </section>
 
 <section id="risks" class="ch">
@@ -833,7 +833,7 @@
   <ol class="legs">
     <li class="done"><b>Built</b> (mid-Sep – Oct 2026) The driving sim; sign-in with Solana; server-timed rides; verified-play recording and verdicts (shadow); shared simulation and required traffic-frame checks built for the next app release; signed admin review; live streams, replays, chat, paid donations; the escrow program and its server mirror, written and tested; garage, promo codes, cosmetics; analytics half wired.</li>
     <li class="now"><b>Devnet release</b> (Oct 13 – Nov 30) The verified program build on devnet; the first real pools – tickets bought, a missed goal refunded, prizes paid; verdict thresholds (prompts included) tuned on real rides, then enforced; analytics finished; twenty outside drivers; a heavy load test; a small crew of four – a CPO / COO hybrid, QA, community and support, a content creator.</li>
-    <li><b>Mainnet</b> (Dec 2026) Legals (the skill prizes, terms, privacy, regions blocked where needed); an outside penetration test of the API, sessions and admin zone; a program review on the published build; the load test repeated on the release candidate; mainnet pools with published rules; a public Dune board of the program.</li>
+    <li><b>Mainnet</b> (Dec 2026) Legals (the skill prizes, terms, privacy, regions blocked where needed); an outside security check of the API, sessions and admin zone; a program review on the published build; the load test repeated on the release candidate; mainnet pools with published rules; a public Dune board of the program.</li>
     <li><b>Long haul</b> (2027) Garage parts and promo cosmetics as NFTs; sponsors, per-km pledges and convoys on top of tips; a storybook workshop where SOL buys attempts at a new prop, vehicle or landmark and drivers vote what ships; an input-only fixed-point replay core.</li>
   </ol>
   <p class="dim">Cut on purpose: an ICO, pay-to-win parts, mobile and Telegram, paid ads before someone owns growth, a big team, an eight-hour mandatory ride with forced stops, a second chain.</p>

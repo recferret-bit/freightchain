@@ -10,5 +10,7 @@ describe('analytics event names', () => {
     expect(CLIENT_EVENTS).toContain('ride_unpaused');
     expect(CLIENT_EVENTS).not.toContain('ride_resumed');
     expect(SERVER_EVENTS).toContain('ride_resumed');
+    expect(SERVER_EVENTS).toContain('client_crashed');
+    expect(CLIENT_EVENTS).not.toContain('client_crashed');
   });
 });

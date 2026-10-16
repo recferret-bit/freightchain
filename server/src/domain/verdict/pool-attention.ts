@@ -18,7 +18,7 @@ import type { VerdictReason } from './verdict.dto.js';
  *   pool-duplicate-recording  (on the LATER ride of a pair only) two rides of the pool whose recordings hold the same line across the road – within
  *                          DUPLICATE_D_METRES on DUPLICATE_SHARE of at least DUPLICATE_MIN_COMMON shared PRINT_METRES steps (batch-summary.ts `print`): every
  *                          rider of a pool drives the same road, and the public replay (GET /api/watch/:id) hands out every sample – a copy re-hashed under
- *                          another ride id passes every per-recording check (pentest H2). The earlier upload is the original.
+ *                          another ride id passes every per-recording check (audit H2). The earlier upload is the original.
  * Marks are APPEND-ONLY: a later run whose median moved does not take an earlier mark back – the admin's decision does. The details are shown to the
  * rider (GET /api/rides/:id carries the reasons), so they never name an IP address, another wallet or a sign-in time.
  */

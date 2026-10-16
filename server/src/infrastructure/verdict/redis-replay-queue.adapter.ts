@@ -93,6 +93,17 @@ export class RedisReplayQueueAdapter extends ReplayQueuePort implements OnModule
     }
   }
 
+  async isInFlight(rideId: string): Promise<boolean> {
+    if (await this.fallback.isInFlight(rideId)) return true;
+    if (this.isDown()) return false;
+    try {
+      return (await this.redis.hexists(INFLIGHT_HASH, rideId)) === 1;
+    } catch (e) {
+      this.fail(e);
+      return false;
+    }
+  }
+
   async depth(): Promise<number> {
     const fb = await this.fallback.depth();
     if (this.isDown()) return fb;

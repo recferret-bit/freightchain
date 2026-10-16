@@ -28,7 +28,7 @@ pub struct RecordRideAttestation<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// v4 (pentest H4): the server's verdict on ONE ride, for the pledges on it – VERIFIED with its whole km and its recording's Merkle root, FLAGGED (the
+/// v4 (audit H4): the server's verdict on ONE ride, for the pledges on it – VERIFIED with its whole km and its recording's Merkle root, FLAGGED (the
 /// sponsors get everything back) or UNVERIFIED (undecided). It may be rewritten (a verdict changed in review) until a pledge was settled on it; a
 /// pledge settles on it only from `settle_from`, so every record is public for the review lock first.
 pub fn handle_record_ride_attestation(
@@ -109,7 +109,7 @@ pub struct CloseRideAttestation<'info> {
     pub rent_payer: UncheckedAccount<'info>,
 }
 
-/// v4 (pentest L7): permissionless – a finished pool (settled / cancelled) with no open pledge left gives its ride attestations' rent back.
+/// v4 (audit L7): permissionless – a finished pool (settled / cancelled) with no open pledge left gives its ride attestations' rent back.
 pub fn handle_close_ride_attestation(ctx: Context<CloseRideAttestation>, _pool_id: u32, _ride_id: [u8; 32]) -> Result<()> {
     let p = &ctx.accounts.pool;
     require!(p.status == STATUS_SETTLED || p.status == STATUS_CANCELLED, PoolError::NotSettled);
@@ -143,7 +143,7 @@ pub struct CloseAttestation<'info> {
     pub rent_to: UncheckedAccount<'info>,
 }
 
-/// v4 (pentest L7): permissionless – a v3 per-driver attestation of a finished pool gives its rent back (v4 pays prizes from the winners root and
+/// v4 (audit L7): permissionless – a v3 per-driver attestation of a finished pool gives its rent back (v4 pays prizes from the winners root and
 /// pledges from ride attestations; v3 pledges were all resolved before the upgrade).
 pub fn handle_close_attestation(ctx: Context<CloseAttestation>, _pool_id: u32, _driver: Pubkey) -> Result<()> {
     let status = crate::state::pool_status_raw(&ctx.accounts.pool.to_account_info())?;

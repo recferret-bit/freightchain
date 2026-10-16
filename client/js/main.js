@@ -1,3 +1,4 @@
+import './crash-boot.js';   // before every other import: a throw while this page loads is still reported
 import * as cosmetics from './cosmetics.js';
 import { CFG } from './config.js';
 import { curv } from './road.js';
@@ -20,6 +21,7 @@ import { showMenu, startRide, resetRide } from './ui/game.js';
 import { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } from './world/holes.js';
 import { updateDayNight, setNight, setPhase, setClock, lockClock } from './world/daynight.js';
 import { selectTheme, lockTheme } from './world/theme-manager.js';
+import { loadEntities } from './world/entities.js';
 import { THEMES } from './themes/index.js';
 import { initOnline, online } from './online.js';
 import { tickTelemetry, telemetry, beginTrafficFrame, endTrafficFrame } from './telemetry.js';
@@ -55,6 +57,7 @@ function frame(now) {
   if (guide.tutorial || guide.assist) updateGuide();   // the free ride's tutorial dialog + assist tips (guide.js)
   renderWorld(); drawCockpit();
 }
+await loadEntities();   // every 3D model is an entity from the API's bundle (world/entities.js); nothing below may build one before it
 selectTheme(THEMES[0].id, true); setClock(12, true, true);   // the prototype's world: Route 66 at noon (no picker, nothing remembered). A real ride gets the SERVER's route + start hour just below
 await initOnline();   // only with ?ride=<id> (see online.js); offline it returns at once
 const wantOffline = offlineWanted() && !online.ride && !online.error;   // the guest run is every page that is not a ride (?ride=, or a failed load of one) or a replay (?watch=)

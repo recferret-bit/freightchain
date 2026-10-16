@@ -51,8 +51,8 @@ const MONTHS = [['NOV', 'M1 · 2026'], ['DEC', 'M2'], ['JAN', 'M3 · 2027'], ['F
 const PLAN = [
   { k: 'MAINNET', sub: 'once the audit clears', c: '#14f195', from: 2, to: 2, t: 'Beta launch', n: 'capped pools first',
     more: 'Real SOL pools, capped at first. Same program, same proofs.' },
-  { k: 'LOAD · AUDIT', sub: 'load test, pentest, audit', c: '#ffcf5a', from: 1, to: 2, t: 'Load test → pentest fixes → audit', n: 'server + escrow program',
-    more: 'Load-test the API and the replay worker, close every pentest finding, then a third-party audit of the escrow program.' },
+  { k: 'LOAD · AUDIT', sub: 'load test, security checks, audit', c: '#ffcf5a', from: 1, to: 2, t: 'Load test → security fixes → audit', n: 'server + escrow program',
+    more: 'Load-test the API and the replay worker, close every audit finding, then a third-party audit of the escrow program.' },
   { k: 'COMMUNITY', sub: 'players and streamers', c: '#b98cff', from: 1, to: 4, t: 'Streamers · Discord · weekly challenges', n: 'build in public, every week',
     more: 'People before money: streamer partnerships, a Discord and weekly challenges, so the first pools already have an audience.' },
   { k: 'TOKEN LAUNCH', sub: 'TEN4', c: '#ffffff', from: 4, to: 4, t: 'TEN4 on chain', n: 'liquidity → pool',

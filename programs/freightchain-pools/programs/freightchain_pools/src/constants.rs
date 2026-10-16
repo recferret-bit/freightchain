@@ -7,9 +7,9 @@ pub const TICKET_SEED: &[u8] = b"ticket";
 pub const SERIES_SEED: &[u8] = b"series";
 pub const ATTESTATION_SEED: &[u8] = b"attestation";
 pub const PLEDGE_SEED: &[u8] = b"pledge";
-/// v4 (pentest H4): a pledge settles on ITS ride's attestation, not on the driver's best ride in the pool
+/// v4 (audit H4): a pledge settles on ITS ride's attestation, not on the driver's best ride in the pool
 pub const RIDE_ATTESTATION_SEED: &[u8] = b"ride_attestation";
-/// v4 (pentest M8): what one sponsor put into one pool – refunded if the pool fails
+/// v4 (audit M8): what one sponsor put into one pool – refunded if the pool fails
 pub const SPONSOR_RECEIPT_SEED: &[u8] = b"sponsor_receipt";
 
 /// The SlotHashes sysvar (anchor-lang 1.2 does not re-export its module)
@@ -44,7 +44,7 @@ pub const STATUS_CANCELLED: u8 = 4;
 
 /// v4 defaults of the two Config floors (`migrate_config_v4` / `initialize`; the cold admin may change them with `set_config` – localnet runs
 /// minute-long pools on a real validator clock, so the floors cannot be constants):
-/// the review window every pool keeps after its play deadline, and the time between a winners root's commit and its first prize (pentest H5).
+/// the review window every pool keeps after its play deadline, and the time between a winners root's commit and its first prize (audit H5).
 pub const DEFAULT_MIN_REVIEW_SECS: i64 = 3_600;
 /// the play window after the sale: no sale and no new ride after the sale end, so the shifts on the road need this long to finish (the last call).
 pub const DEFAULT_MIN_FINISH_SECS: i64 = 10_800;
@@ -57,7 +57,7 @@ pub const WINNER_LEAF_TAG: &[u8] = b"fc-winner";
 /// sweep the unpaid prizes, so a commit that cannot be paid out in time is a trap).
 pub const COMMIT_GRACE_MARGIN_SECS: i64 = 86_400;
 
-/// v4 (pentest L4): a new pool's road is sealed from the hash of a slot this many slots after the one it opened in – nobody, not the opener, can pick it.
+/// v4 (audit L4): a new pool's road is sealed from the hash of a slot this many slots after the one it opened in – nobody, not the opener, can pick it.
 pub const SEAL_DELAY_SLOTS: u64 = 8;
 /// The SlotHashes sysvar keeps the newest 512 entries: a target that has left it can no longer be read and is re-armed.
 pub const SLOT_HASHES_WINDOW: u64 = 512;

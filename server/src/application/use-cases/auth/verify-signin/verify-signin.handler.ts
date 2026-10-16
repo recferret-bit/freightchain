@@ -86,7 +86,7 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
         }
       }
 
-      // The signed text must BE the issued challenge, byte for byte (line endings aside) – pentest M2: a preamble, a duplicated field or one the challenge never
+      // The signed text must BE the issued challenge, byte for byte (line endings aside) – audit M2: a preamble, a duplicated field or one the challenge never
       // set (Not Before, Request ID, Resources) used to pass because only seven parsed fields were compared. The wallet builds the text from our fields with the
       // standard formatter (formatSignInMessage mirrors it); a wallet that rewrites it is refused here and the client falls back to signing the plain challenge.
       const expected = challenge.messageFor(wallet);
