@@ -896,8 +896,10 @@ const html = `<!DOCTYPE html>
             </div>
 
             <div class="finding-section">
-              <div class="finding-section-title">Root Cause & Attack Vector</div>
+              <div class="finding-section-title">Source Analysis & Impact</div>
               <p style="margin-bottom: 8px;">${f.findings?.[0]?.preconditions ? `<strong>Preconditions:</strong> ${esc(f.findings[0].preconditions)}` : ''}</p>
+              ${f.findings?.[0]?.analysis ? `<p>${esc(f.findings[0].analysis)}</p>` : ''}
+              ${f.findings?.[0]?.validation ? `<p><strong>Validation and limits:</strong> ${esc(f.findings[0].validation)}</p>` : ''}
               ${Array.isArray(f.findings?.[0]?.attack) ? `
                 <ul class="attack-list">
                   ${f.findings[0].attack.map(step => `<li>${esc(step)}</li>`).join('')}
@@ -945,7 +947,7 @@ const html = `<!DOCTYPE html>
         <thead>
           <tr>
             <th>Security Invariant / Control</th>
-            <th>Attack Method</th>
+            <th>Review Evidence</th>
             <th>Auditor</th>
             <th>Verdict</th>
           </tr>

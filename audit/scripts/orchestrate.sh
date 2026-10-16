@@ -19,7 +19,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AUDIT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-TARGET_DIR="" OUTPUT_DIR="" TARGET_NAME="" SURFACE="all" AGENT_LIST="claude,grok,agy,codex" RPC=""
+TARGET_DIR="" OUTPUT_DIR="" TARGET_NAME="" SURFACE="all" AGENT_LIST="claude,grok,agy,codex" RPC="" RESUME_FROM=""
 TARGET_MODE="local" TARGET_SOURCE="" TARGET_REF="" TARGET_COMMIT=""
 MODEL_ALL="" MODELS_CSV="" PLAN=0 BLOCKED="${AUDIT_BLOCKED_RUN:-0}"
 MODEL_CLI_CLAUDE="" MODEL_CLI_GROK="" MODEL_CLI_AGY="" MODEL_CLI_CODEX=""
@@ -98,6 +98,7 @@ while [[ $# -gt 0 ]]; do
     --model-codex) MODEL_CLI_CODEX="${2:?--model-codex needs a slug}"; shift 2 ;;
     --plan) PLAN=1; shift ;;
     --blocked) BLOCKED=1; shift ;;
+    --resume-from) RESUME_FROM="${2:?--resume-from needs a report directory}"; shift 2 ;;
     --rpc) RPC="${2:?--rpc needs an https URL}"; shift 2 ;;
     *) echo "orchestrate: unknown option $1" >&2; exit 1 ;;
   esac
@@ -113,6 +114,8 @@ TARGET_SOURCE="${TARGET_SOURCE:-$TARGET_DIR}"
 [ -n "$MODEL_CLI_AGY" ] && valid_model "$MODEL_CLI_AGY"
 [ -n "$MODEL_CLI_CODEX" ] && valid_model "$MODEL_CLI_CODEX"
 [ -n "$MODELS_CSV" ] && apply_models_csv "$MODELS_CSV"
+
+[ -z "$RPC" ] || { echo "source security review does not contact deployed RPCs" >&2; exit 2; }
 
 # --- surfaces: generic attack areas, not tied to any one codebase --------------------
 # id|slug|name|focus
@@ -181,7 +184,7 @@ echo " Surface:  $SURFACE"
 echo " Agents:   ${ENABLED[*]}"
 echo " Models:   $MODEL_LINE"
 echo " Output:   ${OUTPUT_DIR:-<plan>}"
-echo " Policy:   one-shot Docker MCP bridge; legacy adapters blocked (terminal connector is separate)"
+echo " Policy:   persistent ACP sessions + one-shot Docker MCP bridge; committed reports are authoritative"
 echo "=========================================================="
 
 if [ "$PLAN" -eq 1 ]; then
@@ -207,9 +210,9 @@ REQUEST_FILE="$(mktemp "${TMPDIR:-/tmp}/audit-review-request.XXXXXX")"
 trap 'rm -f -- "$REQUEST_FILE"' EXIT
 node -e '
 const fs = require("node:fs");
-const [file, target, out, name, mode, source, ref, commit, surface, agents, models, rpc] = process.argv.slice(1);
-fs.writeFileSync(file, JSON.stringify({target, out, name, mode, source, ref, commit, surface, agents: agents.split(","), models: JSON.parse(models), rpc: rpc || ""}), {mode: 0o600});
-' "$REQUEST_FILE" "$TARGET_DIR" "$OUTPUT_DIR" "$TARGET_NAME" "$TARGET_MODE" "$TARGET_SOURCE" "$TARGET_REF" "$TARGET_COMMIT" "$SURFACE" "$AGENTS_CSV" "$MODELS_JSON" "$RPC"
+const [file, target, out, name, mode, source, ref, commit, surface, agents, models, rpc, resumeFrom] = process.argv.slice(1);
+fs.writeFileSync(file, JSON.stringify({target, out, name, mode, source, ref, commit, surface, agents: agents.split(","), models: JSON.parse(models), rpc: rpc || "", resumeFrom: resumeFrom || null}), {mode: 0o600});
+' "$REQUEST_FILE" "$TARGET_DIR" "$OUTPUT_DIR" "$TARGET_NAME" "$TARGET_MODE" "$TARGET_SOURCE" "$TARGET_REF" "$TARGET_COMMIT" "$SURFACE" "$AGENTS_CSV" "$MODELS_JSON" "$RPC" "$RESUME_FROM"
 
 code=0
 if [ "${BLOCKED:-${AUDIT_BLOCKED_RUN:-0}}" = "1" ]; then

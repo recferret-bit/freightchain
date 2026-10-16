@@ -36,6 +36,13 @@ export function editorSignInChallenge(input: AdminSignInInput): AuthChallenge {
   return new AuthChallenge(editorSignInKey(input.wallet), c.message, c.expiresAt);
 }
 
+/** 1-click editor sign-in, before the wallet is known. Its own key, so it can never be consumed as a rider sign-in (`nonce:`). */
+export const editorNonceKey = (nonce: string): string => `editor-nonce:${nonce}`;
+export function editorAnonymousChallenge(input: Omit<AdminSignInInput, 'wallet'>): AuthChallenge {
+  const c = AuthChallenge.issue({ ...input, statement: EDITOR_SIGNIN_STATEMENT, version: '1', chainId: 'solana:devnet' });
+  return new AuthChallenge(editorNonceKey(input.nonce), c.message, c.expiresAt);
+}
+
 /* ───────── signed actions: every change on the admin page is signed by the admin's wallet, for exactly that change ─────────
    The server builds the text (what, which ride, which decision, the note), the wallet signs it, the action presents the signature; the server consumes the
    stored text, checks it describes THIS request and verifies the signature over it. A stolen admin session alone cannot change a verdict, and the audit

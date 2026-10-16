@@ -10,7 +10,7 @@
     "landing:lint": "npm --prefix landing run lint",
     "landing:test": "npm --prefix landing test",
     "treasury:init": "npm --prefix server run treasury:init",
-    "server:dev": "npm --prefix server run start:dev",
+    "server:dev": "sh -c 'set -a; [ -f deploy/local/dev.env ] && . ./deploy/local/dev.env; set +a; npm --prefix server run start:dev'",
     "server:build": "npm --prefix server run build",
     "server:test": "npm --prefix server test",
     "client:check": "npm --prefix client run check",
@@ -30,6 +30,7 @@
     "test:localnet": "bash .claude/skills/localnet-e2e/run.sh",
     "test:census": "node .claude/skills/test-census/census.mjs",
     "program:idl": "cp programs/freightchain-pools/target/idl/freightchain_pools.json programs/freightchain-pools/idl/freightchain_pools.json",
+    "infra:local": "bash deploy/scripts/local.sh",
     "deploy": "bash deploy/scripts/deploy.sh",
     "deploy:init": "bash deploy/scripts/init.sh",
     "deploy:setup": "bash deploy/scripts/setup.sh",
@@ -46,6 +47,6 @@
     "media:check": "npm --prefix media run lint && npm --prefix media test",
     "install:media": "npm --prefix media install",
     "build": "npm run landing:build && npm run server:build",
-    "editor:worker": "npm --prefix server run editor:worker"
+    "editor:worker": "sh -c 'set -a; [ -f deploy/local/dev.env ] && . ./deploy/local/dev.env; set +a; npm --prefix server run editor:worker'"
   }
 }

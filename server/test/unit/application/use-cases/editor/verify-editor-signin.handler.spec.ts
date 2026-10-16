@@ -37,4 +37,16 @@ describe('VerifyEditorSignInHandler', () => {
     await expect(h.execute(new VerifyEditorSignInCommand(W, 'bad'))).rejects.toThrow(/no valid editor challenge/);
     await expect(h.execute(new VerifyEditorSignInCommand(bs58.encode(nacl.sign.keyPair().publicKey), 'x'))).rejects.toBeInstanceOf(NotFoundError);
   });
+
+  it('a 1-click challenge is signed with the address filled in, and a stranger is still a 404', async () => {
+    const { ctx, ask, h } = setup();
+    const dto = await ask.execute(new RequestEditorChallengeCommand(null));
+    const text = dto.message!.replace('{{address}}', W);
+    const r = await h.execute(new VerifyEditorSignInCommand(W, sign(text), { ip: null, userAgent: null }, null, text, dto.nonce!));
+    expect(r.editor.wallet).toBe(W);
+    expect(ctx.db.challenges.has(`editor-nonce:${dto.nonce}`)).toBe(false);
+    const again = await ask.execute(new RequestEditorChallengeCommand(null));
+    const stranger = bs58.encode(nacl.sign.keyPair().publicKey);
+    await expect(h.execute(new VerifyEditorSignInCommand(stranger, 'x', { ip: null, userAgent: null }, null, again.message!.replace('{{address}}', stranger), again.nonce!))).rejects.toBeInstanceOf(NotFoundError);
+  });
 });

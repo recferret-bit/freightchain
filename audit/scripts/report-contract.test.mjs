@@ -6,6 +6,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { expectedAuditors, loadAuditors, providerOf, validateAuditor, readReportText } from './report-contract.mjs';
+import { commitSubmission } from './audit-submission.mjs';
+import { digest } from './agent-session-store.mjs';
 import { loadAuditorFindings } from './crosscheck.mjs';
 
 const scripts = path.dirname(fileURLToPath(import.meta.url));
@@ -307,4 +309,28 @@ test('host launchers do not supply permission-bypass flags', () => {
   const source = fs.readFileSync(path.join(scripts, 'orchestrate.sh'), 'utf8');
   assert.doesNotMatch(source, /--dangerously-skip-permissions|--always-approve/);
   assert.match(source, /output directory must be empty/);
+});
+
+
+test('ACP report validation requires the committed identity and rejects altered derived output', t => {
+  const f = fixture(t);
+  f.save('claude');
+  f.meta.submissionAuthority = 'mcp_commit';
+  f.put('meta.json', f.meta);
+  assert.equal(loadAuditors(f.dir).health.state, 'incomplete');
+  const name = 'claude-s1-auth';
+  const assignment = { surface: 'S1' };
+  const identity = { name, agent: 'claude', role: 'auditor', model: 'requested-model', sourceDigest: 'a'.repeat(64), assignmentDigest: digest(assignment), surface: 'S1' };
+  fs.mkdirSync(path.join(f.dir, 'harness/identities'));
+  fs.mkdirSync(path.join(f.dir, 'harness/assignments'));
+  f.put(`harness/identities/${name}.json`, identity);
+  f.put(`harness/assignments/${name}.json`, assignment);
+  f.put('source-manifest.json', { digest: identity.sourceDigest });
+  commitSubmission(f.dir, name, identity, [finding(), controls], 'Source only');
+  assert.equal(loadAuditors(f.dir).health.state, 'validated_outputs');
+  f.put(`auditors/${name}.json`, [controls]);
+  assert.equal(loadAuditors(f.dir).health.state, 'incomplete');
+  f.put(`auditors/${name}.json`, [finding(), controls]);
+  f.put(`harness/assignments/${name}.json`, { surface: 'S2' });
+  assert.equal(loadAuditors(f.dir).health.state, 'incomplete');
 });

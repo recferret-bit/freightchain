@@ -1,351 +1,110 @@
-# Multi-Agent Security Audit Suite
+# Multi-Agent Source Security Review
 
-A reusable adversarial review suite for **any repository**. It has exactly two target modes and no project-specific code:
+Review an authorized local repository or GitHub snapshot with Claude, Codex, Grok and AGY. The workflow inspects source, configuration, dependencies and existing test coverage, produces evidence-backed findings, and recommends fixes.
 
-`audit run` launches a **one-shot Docker sandbox container** (`audit-sandbox:local`) that executes all automated build, test, scanner, and harness lead checks (`harness.mjs`, `cargo build`, `cargo test`, `cargo audit`, `osv-scanner`, `gitleaks`, `semgrep`, `npm/pnpm/yarn audit`, `cargo-build-sbf`, local ZAP) inside the container, disconnects the container from its egress proxy network (airgapping it), and holds it open while the host orchestrator (`scripts/docker-agent-orchestrator.mjs`) invokes the local agentic CLIs (`claude`, `codex`, `grok`, `agy`). Each CLI runs in an isolated empty host directory with its built-in host tools disabled and connects over stdio to the MCP bridge (`scripts/docker-mcp-bridge.mjs`), performing all code inspection, PoC checks, and report submission inside the running one-shot Docker container via `docker exec --user 10001:10001`. When the surface audit and peer cross-check passes finish, the orchestrator saves all reports and PoCs to the host report directory, kills and removes the one-shot Docker container/volumes/networks, and runs quorum adjudication (`verify-and-adjudicate.mjs`) and HTML report generation (`generate-html-report.mjs`). Pass `--blocked` (or `AUDIT_BLOCKED_RUN=1`) for an offline blocked preflight record without starting Docker or CLIs.
+`audit run` uses the enforced `source_security_review_v1` workflow. Reviewers can browse and search the captured source, consult static leads, run fixed existing tests inside an offline Docker container, and submit a report. The bridge provides no arbitrary command or PoC-generation interface. Deployed RPC comparisons and legacy adversarial-session recovery are rejected.
 
-- **Visual Architecture & Operations Page**: [`docs/index.html`](docs/index.html) (`docs/style.css`) — standalone HTML + CSS explainer in the same style as `report.html` with SVG architecture diagrams, container lifecycle timeline, MCP bridge schemas, CLI isolation profiles, and scoring charts.
-- **Full Technical Reference**: [`docs/how-it-works.md`](docs/how-it-works.md)
-
-`review-local` is a separate **data-only user-terminal relay**, not an authenticated adapter or a fallback for `run`. It hands selected local source to your terminal and accepts your structured review result. Inference/provider/tool behavior remains unverified; no model process is launched.
-
-The explicit host-terminal `connect-terminal --provider claude --model <model> --socket <path>` consumer can automate that handoff using a fixed tool-free Claude CLI profile and an existing subscription login. `--provider codex-native` selects a separate Codex-derived broker only after all native/Node/Docker admission gates pass; it never invokes the unmodified `codex` executable or substitutes Claude. Missing admission/auth/capabilities fail before claiming; other CLIs remain unsupported. `review-local` itself still launches no model, and no credentials enter Docker. See [automatic local CLI integration](docs/live-model.md#automatic-local-cli-route).
-
-`review-with-cli` composes that same bounded selected-file path in one command. `check-agents` verifies Docker and all four local agentic CLIs (`claude`, `codex`, `grok`, `agy`) for the MCP bridge orchestrator, while `check-model-cli --all` reports installed/ready/blocked/unavailable states for the selected-file relay profiles.
-
-For whole-repository runs, `check-agents` checks Docker and CLI version availability, not successful authentication or inference. Grok receives `--trust` only for the generated empty workspace, allowing its project MCP server to start without trusting target files. Codex uses `--ignore-user-config` to exclude global hooks and MCP configuration while retaining native authentication. AGY streams JSONL diagnostics (only its successful terminal result is eligible for stdout report recovery). Its named hook allows only the audit MCP server, the staged skill and completion; all other tools and integrations are denied by default. See the upstream [Grok folder-trust diagnostic](https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/07-mcp-servers.md) and [AGY hook contract](https://www.agy.dev/docs/hooks).
-
-Surface audits, peer reviews and selected-file inference have no runner time limit. The runner keeps their transports open and emits a heartbeat every 30 seconds with elapsed time and, for agentic reviews, time since the last output. Private `harness/heartbeat-<reviewer>.json` records (`heartbeat.json` for selected-file reviews) distinguish running sessions from exited processes. Silence does not cancel reasoning or close inspection. Ctrl-C/SIGTERM still cancels the owned process group and cleans up its Docker resources. Heartbeats do not override provider-side session limits, quotas or refusals.
-
-`workers.json` records observed process exits, elapsed time, log paths and failure reasons; process errors cannot become successful reviews merely because report files exist. Missing verdicts, malformed reports and invalid citations are rejected rather than filled with generated evidence. CLIs that corrupt nested object arrays can submit the complete object as a JSON string through `report_json`; terminal JSON must match the saved MCP report, so an empty workaround cannot silently discard findings. A surface with no entry points still submits an empty report explaining its coverage. Internal AGY recovery may resume a saved conversation for one surface only when the prior timed-out job, model, conversation and source digest match. This submission-only recovery has no time limit, starts no Docker container and copies prior sandbox coverage with an explicit provenance note; the original failed attempt remains recorded. Incomplete terminal/HTML reports explain failures using retained logs. Provider refusals and quotas require resolving access or waiting for reset; the runner does not change models, billing or prompts to evade them.
-
-| mode | flag | what happens |
-|---|---|---|
-| local | `--repo <path>` | copies source into the one-shot Docker container, runs in-container checks + MCP-bridged multi-agent audit, saves reports, and destroys the container |
-| remote | `--github <url>` | clones into `/tmp/audit-targets`, runs the one-shot Docker + MCP-bridged audit, and optionally deletes the clone (`--clean`) |
-
-It provides:
-1. **In-container lead harness & stack-specific attack planner** (`scripts/harness.mjs` + `scripts/audit-plans.mjs`), executed inside the one-shot Docker sandbox before network disconnect, then a manual pass in PTES / OWASP WSTG order (map entry points, triage leads, confirm). Automatically detects whether the project has **HTTP, gRPC, WebSockets, Databases, or Crypto/Solana**, and builds separate audit and attack check plans (`attack-plans.md`, `stack-profile.json`) for `http`, `grpc`, `websockets`, `databases`, `crypto`, `scopes_roles` (horizontal IDOR, vertical role/admin plane escalation, cross-scope token/ticket confusion), `bots_economy` (headless bots breaking prize-pool games, telemetry/replay forgery, seed lookahead, cutoff/revocation bypass, Sybil farming), and `api_dto_abuse` (enumeration oracles in response DTOs/messages such as `"user already registered"`, plus over-broad DTO field leaks). Regex leads for Sealevel, Trail of Bits introspection, Ackee's Solana attack vectors, escrow custody, OWASP sinks, and CI/container hardening. The OWASP Solana Programs Top 10 is unpublished and is not invented here. Lockfiles via `cargo-audit` (cached RustSec DB) and `npm audit --package-lock-only`. When installed: `gitleaks`, `semgrep` (`p/owasp-top-ten` only), `osv-scanner` (lockfiles only). Hits are leads, not findings.
-2. **One-shot Docker sandbox** (`scripts/sandbox.sh` + `scripts/sandbox-inside.mjs`), running all builds, tests, scanners, and harness leads inside a non-root container (`uid 10001`), disconnecting network egress before agent review, and guaranteeing container/volume/network teardown on exit. Detail is in [Separate build sandbox](#separate-build-sandbox-legacy).
-3. **Host orchestrator & MCP stdio bridge** (`scripts/docker-agent-orchestrator.mjs`, `scripts/docker-mcp-bridge.mjs`): stages `security-audit/SKILL.md` into each agent's isolated workspace and connects host agentic CLIs (`claude`, `codex`, `grok`, `agy`) to the airgapped one-shot Docker container via MCP tools (`get_audit_context`, `get_attack_plan`, `list_files`, `read_file`, `search_code`, `run_container_check`, `write_poc`, `submit_audit_report`, `submit_crosscheck_report`). Also retains read-only worker isolation (`worker-isolation.mjs`, `worker-supervisor.mjs`, `worker-runtime.mjs`) for bounded sealed snapshots and blocked preflight records.
-4. **Model-claim adjudication**: validates expected output files and worker exits, groups only matching titles with overlapping citations, and applies later model cross-check statements. Agreement is not proof, and control contradictions are not automatically detected. Legacy title-substring tiebreak overrides are excluded.
-5. **Reports**: `findings-and-scores.json`, `verified-safe.json`, `report.html`, and `findings-by-model.html`. Current runs clearly disclose blocked or failed jobs and missing coverage; they never count an unlaunched reviewer as a clean result.
-6. **PoC safety gate**: Node/TypeScript files are refused on the host. Existing Rust checks run inside the sandbox; command failures are errors, not reproduced findings, and diagnostics are retained.
-
-## Directory structure
-
-```
-audit/
-├── bin/audit                    # CLI entry point
-├── docs/
-│   ├── index.html                 # visual explainer page (SVG schemas, lifecycle & scoring charts)
-│   ├── style.css                  # report-matched stylesheet for docs/index.html
-│   ├── how-it-works.md            # full technical walkthrough of the one-shot Docker + MCP bridge
-│   └── live-model.md              # selected-file relay & native broker guide
-├── docker/
-│   ├── sandbox.Dockerfile         # toolchain image; the target's Dockerfile is never used
-│   └── entrypoint.sh              # target runs as uid 10001; no setuid in that container
-├── scripts/
-│   ├── resolve-target.sh          # --repo / --github -> a directory (clone, validate, cleanup)
-│   ├── harness.mjs                # read-only lead scan (Solana classes, web sinks, lockfile advisories)
-│   ├── audit-plans.mjs            # stack detection & 8-domain attack plans (http, grpc, ws, db, crypto, scopes/roles, bots/economy, api/dto)
-│   ├── sandbox.sh                 # one-shot disposable container: builds, installs, audits, harness, hold lifecycle
-│   ├── sandbox-inside.mjs         # the commands + harness that run inside that container
-│   ├── sandbox-lib.mjs            # copy, plan, and the sandbox.md table
-│   ├── sandbox-proxy.mjs          # allowlist egress proxy (crates.io, npm, Yarn, GitHub)
-│   ├── sandbox.test.mjs           # checks for the lib and the proxy
-│   ├── orchestrate.sh             # multi-agent orchestrator entrypoint (one-shot Docker + MCP bridge, adjudication, HTML)
-│   ├── docker-agent-orchestrator.mjs # host orchestrator managing one-shot Docker lifecycle & agentic CLIs
-│   ├── docker-mcp-bridge.mjs      # MCP stdio server bridging host CLIs into the running Docker container
-│   ├── docker-mcp-bridge.test.mjs # unit + live Docker/MCP end-to-end tests
-│   ├── crosscheck.mjs             # the other models' claims for the second pass
-│   ├── report-contract.mjs        # shared output validation and incomplete-run accounting
-│   ├── report-contract.test.mjs   # benign report-integrity and refusal fixtures
-│   ├── worker-isolation.mjs       # sealed source inventories, job contracts, blocked adapters
-│   ├── worker-supervisor.mjs      # parent ledger, private containers/outboxes, bounded collection
-│   ├── worker-runtime.mjs         # fixed inert fixture/runtime modes, no general command tools
-│   ├── worker-isolation.test.mjs  # snapshot/contract and fail-closed CLI tests
-│   ├── worker-isolation.docker.mjs # explicit real Docker boundary fixtures
-│   ├── terminal-review-contract.mjs # bounded source/result frames and terminal-safe display
-│   ├── terminal-relay.mjs         # owner-only Unix socket, fixed data-only methods
-│   ├── terminal-review-client.mjs # claim/status and stdin result submission; no command execution
-│   ├── terminal-local-review.mjs  # explicit selected-file local-review entry point
-│   ├── terminal-relay.test.mjs    # strict protocol/state/refusal unit checks
-│   ├── terminal-relay.docker.mjs  # inert Docker → terminal → private output round trip
-│   ├── model-cli-claude.mjs       # fixed restricted/tools-empty subscription CLI adapter
-│   ├── model-cli-codex-native.mjs # bounded native broker adapter, current receipt required
-│   ├── model-cli-grok-native.mjs  # fixed public-source Grok profile; cached OIDC only
-│   ├── model-cli-profile.mjs      # fixed profile selection, no executable/argv plugins
-│   ├── model-cli-status.mjs       # fixed provider inventory; no unsupported auth/inference
-│   ├── static-cli-review.mjs      # one preflighted session + automatic selected-file relay
-│   ├── static-cli-review.docker.mjs # one-command fake-CLI/Docker success and failure cleanup
-│   ├── terminal-model-connector.mjs # preflight, automatic claim/inference/submit
-│   ├── terminal-model-connector.test.mjs # fake-CLI profile/auth/output/cancellation checks
-│   ├── terminal-model-connector.docker.mjs # automatic Docker/fake-CLI round trip
-│   ├── connector-fixtures.mjs    # test-only local CLI double; no live model/auth/network
-│   ├── verify-and-adjudicate.mjs  # unverified model claims, cross-check statements, heuristic scoring
-│   ├── generate-html-report.mjs   # report.html and findings-by-model.html
-│   └── run-pocs.sh                # PoC runner
-├── skills/security-audit/SKILL.md  # operator instructions; never loaded as runtime configuration from a target
-├── pocs/                          # local drop for `audit pocs` (gitignored; empty in git)
-└── reports/<timestamp>-<repo>/    # local drop, one directory per run (gitignored)
-    ├── meta.json                  # requested settings, expected outputs and observed worker exit codes (not attestation)
-    ├── harness/                   # lead files, sandbox.md, and sandbox-run/ (full command logs)
-    ├── auditors/                  # per-agent .md / .json / .log, plus crosscheck-<agent>.json
-    ├── pocs/<auditor>/            # PoC files the auditors wrote (never inside the target)
-    ├── files/                     # .so and IDL copied off the sandbox before its volume is removed
-    ├── findings-and-scores.json
-    ├── verified-safe.json
-    ├── report-health.json         # validated_outputs or incomplete; neither certifies safety
-    ├── workers.json               # parent-owned requested jobs, explicit blocked states
-    ├── source-manifest.json       # captured text-source hashes and explicit omissions
-    ├── report.html
-    └── findings-by-model.html
-```
-
-## Usage
-
-### Grok inference inside Docker
+## Start
 
 ```sh
-./audit/bin/audit grok-docker setup
-./audit/bin/audit grok-docker login
-./audit/bin/audit check-model-cli --provider grok-docker
-./audit/bin/audit review-with-cli --repo /path/to/local-repo --file src/example.mjs --provider grok-docker --model grok-4.7 --out /tmp/grok-review
+./audit/bin/audit setup-agents
+./audit/bin/audit check-agents
+./audit/bin/audit run --repo /path/to/authorized-repo
+./audit/bin/audit run --github owner/repo --ref v1.2.0
+./audit/bin/audit run --repo /path/to/repo --agents claude,codex --surface s4
+./audit/bin/audit run --repo /path/to/repo --plan
 ```
 
-`setup` builds and tests the pinned native broker for Linux and installs the official Grok 1.0.52 CLI in the image for login only. The broker excludes the full agent shell/tool/UI dependency; preparation verifies its projected native routing function against upstream. The Docker build uses one compilation job and reusable build caches. It requires the verified public source cache and private compiler prerequisites described below. `login` performs a fresh official device login; approve the displayed URL/code in your own browser. Credentials remain in `freightchain-grok-isolated-auth-v1`, a dedicated Docker volume. No host login store or source is copied into it. Runtime images are selected by immutable local image ID with current recipe bindings.
+`setup-agents` installs the exact lockfile-pinned adapters under `runtime/` with lifecycle scripts disabled. Existing official CLIs and subscription logins stay in place. No API-key, provider or model fallback is introduced. Defaults remain Claude `opus`, Codex `gpt-6.1-sol`, Grok `grok-4.7`, AGY `gemini-4-argon-high`.
 
-The native inference client is non-root, read-only, tools-empty and limited to one bounded review. It mounts its auth volume read-only and receives approved source over stdin. Its internal network reaches only a separate CONNECT proxy allowing `cli-chat-proxy.grok.com:443` and `auth.x.ai:443`; no API-key fallback, published ports, host source/home/socket mounts or target execution. The source worker remains network-disabled. The selected-file limit remains three files/64 KiB; this profile does not yet use a 500k-token source context. Inference requires the separate Docker login; host-profile smoke tests do not prove it works with that login.
+`check-agents` checks Docker, executable versions and adapter availability only. `check-agents --live` explicitly makes real provider requests against an inert fixture to verify MCP reads, native session loading and report submission. That qualifies transport, not security coverage or permission for a previously refused task. The earlier four-provider qualification predates this workflow; old records retain their original scope.
 
-`node --test audit/scripts/grok-docker.docker.mjs` tests this client boundary and success/refusal/cancellation cleanup with a dummy broker and disposable auth volume; no provider is called. Unit coverage is `model-cli-grok-docker.test.mjs` in the standard test glob.
+## Workflow and boundaries
 
-### Grok native broker (experimental; inert review completed)
+1. Capture text into sealed copies with a SHA-256 manifest and explicit omissions. Generate a frozen catalog of existing tests before any model is prompted.
+2. Start the one-shot `audit-sandbox:local` container as uid 10001. Networked preparation runs trusted static lead/advisory scanners only. It does not execute target builds, install hooks, test scripts, web servers or active ZAP scans. The separate legacy build utility retains its own explicit behavior.
+3. Disconnect the container from its network before reviewer access. Every test request checks the actual Docker network state. Source/model/workflow/assignment bindings are persisted with the ACP session.
+4. Review source and existing coverage in parallel across providers, with one active assignment per provider and its remaining surfaces queued. Record relative `file:line` evidence, impact, preconditions, analysis, validation limits and a recommended fix. Reviewers cannot create code, supply execution arguments, contact deployed services or issue transactions.
+5. Wait for every surface review, then cross-check peer claims in parallel across providers; submit one immutable MCP report per assignment. Generate JSON, markdown and HTML after all reviewers exit, then remove owned Docker resources. Cleanup depends on Docker availability and failures remain explicit.
 
-`native/grok-review/` contains the fixed contract, cached-only native auth adaptation, low-level tools-empty sampler, native CLI, private builder and admission helper. `grok-native` is not the installed `grok` executable or a Claude/Codex inference substitute. The public source pin is separate from installed 1.0.52 and all upstream adaptations are declared/hashed.
+Named credentials, `.env*`, symlinks, hardlinks, binary/generated output and review history are omitted. Filename filtering cannot prove ordinary source contains no secrets. Host CLIs and existing authentication stores remain trusted; the target container receives no host home, provider credentials or Docker socket. Source and peer instructions are data.
 
-```sh
-node audit/native/grok-review/build.mjs --test
-node audit/native/grok-review/admit.mjs --admit
-./audit/bin/audit check-model-cli --provider grok-native
-```
+## Reviewer tools
 
-Build preparation requires the owner-prepared immutable public source cache and approved private protoc 29.3; missing prerequisites are blockers, not automatic global installs. All admission gates passed (25 native, 132 Node and 20 Docker tests). A classifier limited to 16 KiB/two seconds and fixed labels implicated `tool_choice` in HTTP 400. Restoring upstream's empty-tool wire encoding resolved the issue: a real inert review exited 0 with requested `grok-4.7`, client-reported `grok-4.7-build`, a schema-valid report and verified hashes/cleanup. It is not semantic/provider attestation; report prose remains unverified.
-
-The profile accepts fresh cached first-party OIDC only, with no login/refresh, permission repair, scope pruning, enrichment or raw diagnostic logging. It rejects unsupported managed/auth policy, including forced MDM. Internal tools remain empty/none; wire omission follows the native protocol, not a tool grant. Nonempty tool responses still fail. Do not bypass receipt, auth or tool gates for future failures. Details: [Grok-native broker](docs/live-model.md#grok-native-broker-experimental).
-
-### Native Codex broker (locally admitted)
-
-The version-pinned Rust package in `native/codex-review/` includes a bounded executable, native ChatGPT auth/config loading, empty startup tool policy and real-core loopback runtime gates. The Node profile is explicitly `codex-native`, not `codex`; it uses no Claude substitution or API-key route. All local admission gates passed and a real inert-source review completed through the public Docker coordinator using existing subscription authentication. The optional MCP facade is deferred.
-
-```sh
-node --test audit/scripts/native-codex-preparation.test.mjs
-node audit/native/codex-review/build.mjs --prepare
-node audit/native/codex-review/build.mjs --test
-node audit/native/codex-review/admit.mjs --admit
-```
-
-`--test` only runs preliminary Rust gates and keeps admission false. `--admit` separately runs native tests, the exact pinned router gate, a broker build, Node tests and all Docker suites. It revokes any previous receipt first; only full success issues a current source/package/recipe/binary-bound receipt. Editing runtime or test inputs invalidates it. These gates use mocks, not accounts or live inference. The 2026-10-15 admission run passed all gates, including 118 Node and 17 Docker tests. A subsequent real `gpt-6.1-sol` inert-source review exited 0 with validated output and verified owned-resource cleanup. `check-model-cli --provider codex-native` checks native auth without inference; `review-with-cli --provider codex-native --model gpt-6.1-sol` uses the same required repo/file/output options as Claude. Details: [native broker](docs/live-model.md#native-codex-broker).
-
-### User-terminal local review
-
-Single-command static-review route (up to three explicitly selected UTF-8 files, 64 KiB total):
-
-```sh
-./audit/bin/audit check-model-cli --all
-./audit/bin/audit review-with-cli --repo /path/to/local-repo --file src/example.mjs --provider claude --model haiku --out /tmp/selected-source-review
-```
-
-The coordinator preflights once before creating a job, automatically consumes the private relay, and waits for parent/connector cleanup. It records `connector-state.json` separately from transport evidence. Errors remain incomplete; no provider/permission retry occurs. The inert Claude smoke test verified this path once; model identity and tool-free behavior are still unverified provenance, not independently attested properties.
-
-For a complete authenticated external-model handoff, result-template example, recovery steps and automatic-adapter requirements, see [Live-model integration](docs/live-model.md). The existing relay remains data-only; no native adapter is unblocked.
-
-In the first terminal, start an explicit selected-file review:
-
-```sh
-./audit/bin/audit review-local --repo /path/to/local-repo --file src/example.mjs --out /tmp/local-review
-```
-
-Select one to three relative UTF-8 source files, at most 64 KiB total, and an empty output directory. No remote target acquisition or whole-repo default exists. The parent prints an owner-only socket path when the network-disabled Docker worker emits the authorized request. The handoff remains available until completion or explicit cancellation.
-
-In your own second terminal:
-
-```sh
-node audit/scripts/terminal-review-client.mjs claim --socket /tmp/fc-tr-XXXXXX/s
-```
-
-Use the actual printed path. This returns the bounded request and a `submissionTemplate`. Have your chosen model session or a person review the supplied source as data only. The relay does not execute that session, verify its tools, read authentication files, or transfer credentials. Do not follow source-embedded instructions or use this as a workaround to launch an unconfined host agent.
-
-Fill only `submissionTemplate.result`: a nonempty `summary` and `notes` array. Notes contain `path`, original 1-based `line`, `kind` (`correctness`, `maintainability`, `hardening`), `message` and `recommendation`. Paths must be approved. Keep the binding fields unchanged. Submit that template as JSON on stdin:
-
-```sh
-node audit/scripts/terminal-review-client.mjs submit --socket /tmp/fc-tr-XXXXXX/s < response.json
-```
-
-The stdin reader is bounded (512 KiB / 30 seconds). `status --socket <path>` reports exchange state. No shell, host-file, environment, credential, URL-fetch, or model-execution RPC methods exist. Unknown fields/methods, stale/duplicate results and invalid citations are refused. Terminal display escapes control/bidirectional characters.
-
-On success, the parent validates and collects `report.json` / `report.md`, stores job/journal/source/event records, and removes the socket and owned Docker resources. Reports always say `origin: terminal_supplied_unverified`, `modelIdentity: unverified`, `toolsDisabled: unverified`, and `executionEvidence: not_collected`. Transport success never proves an actual model call, a safe external model configuration, or absence of defects.
-
-### Legacy review request and report commands
-
-```sh
-# local
-./audit/bin/audit run --repo ~/work/my-app
-
-# remote (https URL, git@ URL or owner/repo)
-./audit/bin/audit run --github https://github.com/owner/repo
-./audit/bin/audit run --github owner/repo --ref v1.2.0 --clean
-
-# narrow it down
-./audit/bin/audit run --repo . --surface s1                 # currently writes a blocked/incomplete record
-./audit/bin/audit run --github owner/repo --agents claude,grok
-
-# models. Precedence is --model-<vendor>, then --models, then --model, then the default.
-./audit/bin/audit run --repo . --plan                      # print the agent/model table and exit
-./audit/bin/audit run --repo . --surface s1 --model-codex gpt-6.1-sol
-./audit/bin/audit run --repo . --models claude=opus,grok=grok-4.7,agy=gemini-4-argon-high,codex=gpt-6.1-sol
-./audit/bin/audit run --repo . --agents codex --model gpt-6.1-sol
-
-# existing reports (default: the newest under audit/reports/)
-./audit/bin/audit verify [<report-dir>]
-./audit/bin/audit report [<report-dir>]
-./audit/bin/audit html   [<report-dir>]
-
-# PoCs against a target (Rust files run in the sandbox)
-./audit/bin/audit pocs --repo . --pocs ./my-pocs
-
-# Legacy RPC request is recognized but not executed while review transport is blocked.
-./audit/bin/audit run --repo . --rpc https://api.devnet.solana.com
-```
-
-### Flags
-
-- `--repo|--path|-r <path>` local target. `--github|--gh|-g <url>` remote target. Exactly one is required.
-- `--ref|--branch <branch|tag|sha>` (github only) revision to check out; a commit must be the full 40-character sha. Default: the default branch.
-- `--workdir <dir>` (github only) clone base. Default `$AUDIT_TMP`, else `/tmp/audit-targets`.
-- `--clean` (github only) delete the clone when the run ends. Default: keep it so `file:line` citations can be re-read.
-- `--surface|-s <s1..s6|all>` default `all`. `--out|-o <dir>` report directory. `--agents|-a claude,grok,agy,codex` default: all four requested adapters. Missing bridge capability is recorded as blocked, never silently skipped.
-- `--plan` prints the resolved agent and model table and exits before the harness.
-- `--rpc <https URL>` is a legacy compatibility request, not executed by the blocked review path. No deployed comparison is claimed. The separate legacy comparison helper's URL restrictions remain unchanged.
-- `pocs`: `--pocs <dir>` PoC files (default `audit/pocs`, a gitignored local drop). `*.rs` without `#[test]` is skipped. No `Cargo.lock` means the Rust PoCs are not started.
-
-Only `github.com` is accepted for `--github`; other hosts and option-like input are refused. Clones disable git hooks and never prompt for credentials (a private repo needs your existing `gh auth login` / ssh setup).
-
-## Read-only worker boundary
-
-The parent captures UTF-8 text source into fresh inodes, with a sorted path/content-hash inventory and aggregate digest. Limits: 2 MiB per file, 128 MiB total, 10,000 files, 50,000 directory entries, depth 32. Symlinks, special files, hardlinks, invalid UTF-8, credential names/directories, generated review history and the current report path are omitted explicitly. All `.env*` files, including examples, are excluded from review snapshots. Runtime mounts require an owned sealed capture handle, not caller-supplied digest claims. The fixed trusted runtime files are also captured and sealed once; worker and collector use those same bytes. Repository policy/CI/AGENTS text is data, not worker configuration. Filename filtering cannot prove arbitrary source text contains no secret. The digest identifies captured bytes, not a globally atomic live-checkout view.
-
-Each inert worker uses a preprovisioned immutable Node image, never an automatic pull or target Dockerfile. It runs as uid/gid 10001, no network, private IPC/PID namespaces, no capabilities, no-new-privileges, read-only rootfs, private home/scratch, 128 MiB memory, one CPU and 64 PIDs. Host homes, CLI sessions, ambient provider keys, SSH/Docker sockets, live source, peer jobs and parent reports/manifests are not mounted. Only fixed trusted runtime files, sealed source and that job's read-only input are mounted.
-
-The private outbox is a distinct, size-limited 16 MiB tmpfs Docker volume. A separate trusted collector holds it read-only while the worker runs, preserving its contents after the worker stops. Collection executes only a fixed trusted reader in that collector, exporting fixed bounded regular files over stdout; no archive extraction, worker-selected host paths or shared report bind mount. The parent validates and hashes exports. Original and cross-check jobs have distinct IDs/outboxes and frozen assigned-claim digests. Test outputs are labeled **inert fixture, not an audit** and never enable a subscription adapter.
-
-Parent-observed lifecycle distinguishes blocked, failed, timed_out, cancelled, rejected_output and collected. Worker sessions remain open until completion or cancellation; control-command/log/output bounds are recorded. Docker log rotation is capped. SIGINT/SIGTERM and cancellation reap the whole worker; cleanup verifies unique ownership labels before removal and records failures rather than deleting unrelated resources. Docker daemon failure can prevent verified cleanup; the daemon, host and trusted runtime remain part of the trusted computing base.
-
-Inert fixture journals are retained in a fresh parent-only `recordDirectory`, never mounted in a worker or collector. Terminal state, bounded logs and cleanup results survive scratch removal. Journal I/O failures cannot suppress owned Docker cleanup and prevent artifacts being released as a successful run. Tests explicitly dispose their own journals; other callers must retain them or use the ownership-checked cleanup API. Tests may supply an explicit execution deadline; normal reviews have none. Setup/control/collection commands have separate bounded budgets. Unsupported live transport never reaches these execution stages.
-
-The default test image is the cached immutable Node digest recorded in `worker-isolation.mjs`. An operator-supplied image identity for inert tests must also be immutable and preprovisioned, with an accepted environment/runtime contract. No credentials are fetched, read or copied to make a backend work. Live `run` requests remain blocked until a separate reviewed delegated-auth bridge exists; there is no host fallback or hidden bypass flag.
-
-## Separate build sandbox (legacy)
-
-This build/scanner runtime is separate from read-only reviewers and is **not started by the currently blocked `run` path**. Its image/cache/export mechanisms remain available to existing standalone tooling. The first explicit use builds `audit-sandbox:local`. Its source-side writable result records are not upgraded to authenticated evidence by the new reviewer boundary.
-
-The copy drops symlinks, `.git`, build/dependency directories, credential directories (`.ssh`, `.aws`, `.docker`, `.kube`, `secrets`), `.env` (`.example`, `.sample`, and `.template` are kept), common credential config files, `id.json`, keypair JSON, private-key and certificate file names. Name exclusions do not prove arbitrary source files contain no secrets. The target's Dockerfile is not used. Host home is not mounted, except suite-owned read-only caches; the Docker socket is not mounted.
-
-The target process is uid 10001 with every capability dropped. A short root init, limited to `CHOWN`, `DAC_OVERRIDE`, and `FOWNER`, prepares the work volume. Defaults are 8 GB (`AUDIT_SANDBOX_MEMORY`), 2 CPUs (`AUDIT_SANDBOX_CPUS`), and 45 minutes (`AUDIT_SANDBOX_BUDGET_MS`). OpenSSL build scripts use the image library (`OPENSSL_NO_VENDOR=1`). A finished build says the upstream tarball was not fetched.
-
-The container's only egress is an allowlist proxy, HTTPS on port 443, to these hosts and no others:
-
-`crates.io`, `index.crates.io`, `static.crates.io`, `registry.npmjs.org`, `registry.yarnpkg.com`, `github.com`, `api.github.com`, `codeload.github.com`, `objects.githubusercontent.com`, `release-assets.githubusercontent.com`, `github-releases.githubusercontent.com`.
-
-Private, link-local, and metadata addresses are refused. `openssl.org` and Solana platform-tool hosts are not on the list.
-
-The allowlist limits destinations, not data leaving to allowed hosts. Sandbox commands share writable results storage with the reporter, so its rows are not authenticated evidence against target processes. The model CLIs are outside this build sandbox. Do not use a credential-bearing host for untrusted repository reviews.
-
-Three things happen on the host, outside that container. PyPI, Go, and Maven offline databases are downloaded when those lockfiles exist (`requirements.txt`, `poetry.lock`, `Pipfile.lock`, `pdm.lock`, `uv.lock`, `go.mod`, `pom.xml`, `gradle.lockfile`) and mounted read-only. A pinned Solana version prefetches platform-tools with the Solana Foundation image, from a one-file crate this suite writes, and mounts the cache read-only. `--rpc` sends `getAccountInfo` to the URL you passed. The container never sees that URL.
-
-| check | runs when |
+| Tool | Behavior |
 |---|---|
-| `cargo build` / `cargo test --locked` | a `Cargo.lock` is present. Dependency `build.rs` scripts execute |
-| `build.sh` / `test.sh` | the script is at the repository root or one directory down |
-| `anchor build` | `Anchor.toml` pins `anchor_version`, or a manifest pins `anchor-lang` |
-| `npm ci` / `pnpm install --frozen-lockfile` | that lockfile is present |
-| `yarn install` | `yarn.lock` is the only JavaScript lock in that package. Classic Yarn uses `--frozen-lockfile` and `registry.npmjs.org`. A Berry lock (`yarn.lock` v2 or `__metadata`) activates Yarn 4.9.2 through the npm registry, then runs `yarn install --immutable` |
-| `npm audit` / `pnpm audit` / `yarn audit` | the matching lock is present. Yarn exit 0–31 is a severity bitmask and still counts as finished. A body of `{"type":"error"}` is `failed` |
-| `cargo audit` | a `Cargo.lock` is present |
-| `osv-scanner` | a lockfile is present. crates.io and npm databases are in the image. The host databases above cover PyPI, Go, and Maven. The container does not reach the OSV API. Rust call analysis runs when a `Cargo.lock` is present |
-| `cargo-build-sbf` | `solana_version`, or `workspace.metadata.cli` `solana`, is an exact `x.y.z`. The build uses `solanafoundation/solana-verifiable-build:<version>` on the allowlist network. The source is read-only. The `.so` is written under `harness/sandbox-run/sbf-out`. An unpinned version is not guessed |
-| OWASP ZAP | `package.json` has `scripts.start` and an npm, pnpm, or yarn lock in that directory. The sandbox starts it. ZAP talks only to `127.0.0.1:3000` on that network |
+| `get_audit_context` | Review scope, source leads and peer assignments. |
+| `get_review_plan` | Source-focused checks for detected protocols and risk domains. |
+| `list_files`, `read_file`, `search_code` | Bounded inspection under approved container roots. |
+| `list_existing_tests` | Advertise test IDs from the captured source catalog. |
+| `run_existing_tests` | Run one fixed existing suite after verifying its manifest and offline containment. Accepts only `test_id`. |
+| `submit_audit_report` | Commit source findings and reviewed control assertions. |
+| `submit_crosscheck_report` | Commit a verdict with evidence for every assigned peer claim. |
 
-`ran` means the command finished. A scanner exit 1 means it reported advisories, and that is still `ran`. `failed` means the command started and exited non-zero. `impossible` means it was not started. A failed or impossible row is not a pass. The table is `harness/sandbox.md`, the same table is appended to `harness/summary.md`, and the HTML report counts the rows. Logs are under `harness/sandbox-run/`. Built programs are under `files/`.
+The removed `run_container_check`, `write_poc` and `get_attack_plan` methods fail even when called directly. ACP permission checks and AGY hooks use the same fixed tool set as the bridge.
 
-Two rows are standing. They are not a gap in the run: no production host is probed, and deployed bytes are compared only when `--rpc` is passed. Without a built `.so`, or without a program id, `--rpc` does not query. Every other failed or impossible row is a gap.
+The test catalog recognizes `package.json` with a test script (`npm --offline --ignore-scripts run test`), Cargo packages/workspaces (`cargo test --locked --offline`) and `test.sh` (`bash --noprofile --norc ./test.sh`). No flags, executable, directory, environment, URL or test code can be supplied by the model. Manifest hashes are checked before execution; test processes and their descendants have a 90-second limit. Dependencies must already be available in the container. Missing dependencies, unsupported runners, failing tests and timeouts remain coverage gaps; no replacement test or package installation is attempted. Existing tests execute repository code and their output does not independently prove vulnerability reproduction.
 
-These are not run: clippy, `anchor test`, Trivy, Checkov, Hadolint, Anchor Crucible, and Trident. The target's compose file is not started. ZAP is not pointed at a host named in the repository. A missing lockfile keeps that install and that audit impossible. Versions are not invented with `npm install` or `cargo update`. `program-check` (`npm run program:verify`) remains the Freight Chain escrow gate: the pinned verifiable hash, LiteSVM on that `.so`, and clippy. This sandbox does not replace it.
+Existing-test executions share one lock across the report's MCP bridge processes so tests cannot overlap in the sandbox. Waiting for that lock is bounded to five minutes, separate from the 90-second execution limit. A crashed bridge's lock is never stolen because its Docker test may still be running; a blocked request reports the gap and a new review or `--resume-from` into a new output directory uses a fresh sandbox and lock.
 
-## Agents
+## Sessions and recovery
 
-| requested adapter | historical CLI | requested default model | asserted provider |
-|---|---|---|---|
-| `claude` | `claude --model` | `opus` | Anthropic |
-| `grok` | `grok -m` | `grok-4.7` | xAI |
-| `agy` | `agy --model` | `gemini-4-argon-high` | Google |
-| `codex` | `codex exec -m` | `gpt-6.1-sol` | OpenAI |
+Codex uses maintained `codex-acp` 2.2.2 over its native app-server; Claude uses maintained `claude-agent-acp` 0.92.0. Grok uses native ACP stdio with a private MCP-only profile and isolated configuration, referencing its original login in place. AGY uses an ACP compatibility adapter around native structured streams and saved conversation IDs, with a default-deny tool hook. [Runtime details](runtime/README.md).
 
-These are compatibility identifiers and requested defaults, not active invocations or attested served identities. The old host CLI launchers are removed. No `CODEX_HOME`, CLI home/session store or personal configuration is imported into a worker. Every subscription adapter currently reports `subscription_bridge_unverified`; installed CLIs and successful logins do not override that policy.
+Reviews have no reasoning deadline. A 30-second heartbeat distinguishes agent, transport and process activity. The preparation budget ends when checks finish and does not terminate a held review container. Setup/control operations and individual test runs retain bounded waits. Heartbeats cannot extend provider quotas, server-side limits or account permissions.
 
-Set a model in one of three ways. The first match wins:
+Private session state binds workflow, source digest, requested model, reviewer, role and assignment. Unexpected transport loss permits one exact-session reconnect when supported. Provider refusal, quota, authentication or malformed protocol errors never trigger automatic retries.
 
-1. `--model-claude`, `--model-grok`, `--model-agy`, `--model-codex` set one vendor.
-2. `--models claude=<slug>,grok=<slug>,agy=<slug>,codex=<slug>` sets any subset. Vendors left out fall through to `--model`, then the table.
-3. `--model <slug>` sets the same slug on every selected agent.
+```sh
+./audit/bin/audit run --repo /path/to/repo --agents claude,codex --surface s4 \
+  --resume-from /path/to/previous-review --out /path/to/new-review
+```
 
-Anything still unset uses the table. A slug is one token: letters, digits, and `.`, `_`, `:`, `-`.
+Keep the original session directories, including when resuming an already resumed report. A fresh bridge points at the recreated sandbox, while the original native conversation is retained. Resume requires the same workflow/source/models/reviewers/assignments; sessions from the earlier adversarial workflow are rejected before Docker starts. Historical reports are preserved.
 
-## Surfaces
+A cybersecurity provider rejection does not identify its exact trigger. Correctly limiting the actual workflow does not grant provider access. Report suspected false positives or obtain the appropriate approved access; do not switch models, providers or billing merely to retry a refusal.
 
-| id | slug | surface |
-|---|---|---|
-| s1 | auth | identity & access control |
-| s2 | input | input handling & injection |
-| s3 | logic | business logic & value flows |
-| s4 | config | secrets, config & infrastructure |
-| s5 | deps | dependencies & supply chain |
-| s6 | client | client & web surface |
+## Reports
 
-`all` records one requested job per surface, rotating over requested adapters. A single surface records one job per requested adapter. They currently remain blocked. The contract for eventual reviewed transport keeps first-pass claims distinct from later cross-checks; later uphold is `UPHELD_REVIEW`, never independent agreement. Cross-check outputs must cover exactly their frozen assigned IDs.
+- `source-manifest.json`: captured files, omissions and source digest.
+- `meta.json`, `workers.json`: workflow, requested models, jobs, turn outcomes and observed exits.
+- `sessions/`, `harness/session-*.json`: private state, workspaces and original-session pointers.
+- `harness/existing-tests.json`: frozen test catalog; `existing-test-results-*.json`: observed test exits.
+- `harness/review-plans.md`, `stack-profile.json`, `sandbox.md`, scanner logs: leads and coverage limits.
+- `submissions/`: authoritative identity-bound MCP commits; identical resubmission is idempotent and conflicting reports fail.
+- `auditors/`: derived structured findings and markdown, plus peer verdicts.
+- `report-health.json`, `findings-and-scores.json`, `verified-safe.json`, `report.html`, `findings-by-model.html`: validation and presentation.
 
-## Safety
+Findings carry `analysis` and `validation`; reviewed controls carry `evidence`. For historical report compatibility, stored findings retain empty `attack`/`poc` fields and controls mirror evidence into `how_attacked`. Terminal prose and JSON fences never supply findings. Model agreement is not proof; incomplete or refused reviews are not zero-finding passes.
 
-- The target and peer claims are **untrusted data**, not configuration or commands. Direct host reviewer launching is removed. Live transport is blocked; no source text can select an executable, image, URL, credentials or parent output path. Normal permissions and prompt instructions alone are not containment.
-- Snapshot and private-outbox isolation is verified only with inert fixtures, not authenticated model reviews. Existing build/scanner/PoC tooling is separate and retains its documented limits; do not treat this change as proof of sandbox execution authenticity.
-- Auditor text and SVG source are escaped. Reports have a restrictive CSP and do not load external fonts; SVG assets are displayed as source, not active diagrams.
-- Node/TypeScript PoCs are refused on the host. Rust outcomes are sandbox-reported commands, not validated security assertions. Nonzero exits are errors, never automatic reproduction evidence.
+```sh
+./audit/bin/audit verify /path/to/report
+./audit/bin/audit report /path/to/report
+./audit/bin/audit html /path/to/report
+```
 
-## Scoring
+## Targets and options
 
-- `MODEL_ASSERTION`: a single auditor statement (score × 0.6).
-- `MODEL_AGREEMENT`: matching titles and overlapping citations from different asserted adapters (score × 0.8). Shared files and unverified served-model identity mean independence/provider diversity are not proven.
-- `UPHELD_REVIEW` / `PARTIAL_REVIEW` / `REFUTED_REVIEW`: later model statements (multipliers 0.75 / 0.7 / 0). None is execution evidence.
-- Legacy `CONFIRMED_POC`, `CONFIRMED_QUORUM` and title-substring tiebreak overrides are not emitted or applied. No authenticated execution record is collected. `verified_safe` is an unverified model assertion; automatic contradiction escalation is not implemented.
+Choose exactly one `--repo|--path|-r <dir>` or `--github|--gh|-g <github-url|owner/repo>`. Remote targets support `--ref|--branch <branch|tag|full-sha>`, `--workdir <clone-base>` and `--clean`; clones disable git hooks and do not prompt for credentials. Snapshot exclusions and capture budgets are recorded rather than silently filled in.
 
-Severity weights: critical 10.0, high 8.5, medium 5.5, low 2.5, info 1.0.
+`--surface|-s` selects `s1..s6|all` (identity, input, business logic, config, dependencies, client). `all` distributes six surfaces across selected reviewers; one surface requests every selected reviewer. `--agents|-a` selects reviewers; `--out|-o` must be new/empty. Model precedence: `--model-<vendor>`, `--models vendor=model,...`, `--model`, default. `--blocked` writes an offline record and `--plan` prints settings. `--rpc` is outside source-review scope and rejected.
 
-Scores are heuristic priorities, not calibrated probabilities. `meta.models` records requested slugs; charts explicitly label served identity unverified. Only expected, schema-valid auditor files contribute. Missing markdown/JSON, failed workers, invalid or unexpected data yield `report-health.json` with `state: incomplete` and exit 2, while preserving inspectable reports. Valid outputs use `validated_outputs`, never a clean-audit certificate. Older reports lacking exit/inventory data are incomplete rather than grandfathered as passes. New runs require an empty output directory.
+## Separate selected-file and legacy utilities
 
-## Defensive regression checks
+`review-with-cli --repo <dir> --file <relative-file> --provider <profile> --model <model> --out <empty-dir>` retains its bounded selected-file workflow (up to three files / 64 KiB), with Claude and receipt-gated `codex-native`, `grok-native`, `grok-docker` profiles. `review-local` and `connect-terminal` retain the data-only handoff. These are separate workflows, not fallback routes after a rejection. Native broker recipes require fresh admission when inputs change; missing pinned source/protoc prerequisites remain explicit. `grok-docker setup/login` obtains a separate Docker-volume login without importing host credentials. [Full guide](docs/live-model.md).
 
-`node --test audit/scripts/*.test.mjs` exercises benign data-contract, secret-copy, refusal and rendering fixtures. Check syntax with `bash -n <file>` separately for `audit/bin/audit` and every `audit/scripts/*.sh` file. These do not invoke model CLIs, scanners, builds, target code, or live audits.
+The standalone legacy `pocs` utility and broader build sandbox are outside `audit run` and are never exposed as reviewer tools. Their historical files/reports are retained; the source-review skill does not invoke them.
 
-The inert one-shot fixture (`SANDBOX_FAST=1`) reuses a preprovisioned local sandbox image when available, so cached fixture verification does not require Docker Hub. Normal audits still build the sandbox image and fail closed on build/network errors.
+## Verify
 
-Run the explicit real-Docker suite with `node --test audit/scripts/worker-isolation.docker.mjs`. It requires Docker and the cached immutable Node image, starts only inert fixture containers, performs no model calls/target builds/scans, and checks cleanup. It is separate from the Docker-free `*.test.mjs` command.
+```sh
+node --test --test-concurrency=2 audit/scripts/*.test.mjs
+node --test audit/scripts/*.docker.mjs
+bash -n audit/bin/audit
+bash -n audit/scripts/orchestrate.sh
+bash -n audit/scripts/sandbox.sh
+```
 
-Remaining integration: supported controls for other providers, the optional MCP facade, and any future legacy-orchestration cutover. Local native admission and the authorized inert Codex review completed; the Claude inert-source smoke test completed separately. Authenticating legacy build-sandbox execution records remains outside this change.
+Fixtures are labeled inert and make no provider requests. `review-workflow.test.mjs` checks tool denial, fixed arguments, source bindings and report scope; Docker fixtures verify offline existing tests, tamper/network refusal, lifecycle, session recovery and cleanup. Keep both `security-audit/SKILL.md` copies identical.
 
-`node --test audit/scripts/terminal-relay.docker.mjs` runs the inert Docker-to-terminal-client round trip, cancellation and no-response deadline checks. The terminal responder is simulated; no model inference occurs.
-
-`node --test audit/scripts/terminal-model-connector.docker.mjs` runs automatic Docker → fake local tool-free CLI → validated result collection. No manual result copy is needed in this test, but it does not contact a real model or credential store.
-
-Reusable skill wording checks are in `skills/security-audit/evals.json`. They classify incomplete reports, source-only evidence and untrusted instructions; do not execute the audit pipeline for those cases. They do not benchmark vulnerability discovery.
-
-The suite is named `audit/`, its command is `./audit/bin/audit`, and its mirrored skill is `security-audit`. Public copy uses audit and security check. Original review logs and applied SQL migration bytes remain unchanged to preserve evidence and migration checksums. Native broker recipe changes require fresh build/admission receipts; a stale binary or receipt cannot authorize inference.
+[Architecture](docs/how-it-works.md) · [Visual guide](docs/index.html)

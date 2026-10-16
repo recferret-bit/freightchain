@@ -14,16 +14,13 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { renderAttackPlansMarkdown, renderSurfaceSkillGuidance } from './audit-plans.mjs';
-import { citation, validCrosscheckRow, validateAuditor, writeReportFile } from './report-contract.mjs';
+import { renderReviewPlansMarkdown, renderSurfaceSkillGuidance } from './audit-plans.mjs';
+import { citation, validCrosscheckRow, validateAuditor, readReportJson, writeReportFile } from './report-contract.mjs';
+import { commitSubmission, deriveSubmission, validateSubmissionIdentity } from './audit-submission.mjs';
+import { REVIEW_WORKFLOW, REVIEW_SCOPE, REVIEW_TOOLS, selectExistingTest, EXISTING_TEST_RUNNER } from './review-workflow.mjs';
+import { withExistingTestLock } from './existing-test-lock.mjs';
 
-const ALLOWED_COMMANDS = new Set([
-  'cargo', 'anchor', 'rustc', 'osv-scanner', 'gitleaks', 'semgrep',
-  'npm', 'pnpm', 'yarn', 'node', 'python3', 'git', 'sh', 'bash',
-  'grep', 'find', 'ls', 'cat', 'head', 'tail', 'wc', 'sha256sum',
-]);
-
-const CONTAINER_ROOTS = ['/work/src', '/out/harness', '/out/crosscheck', '/out/pocs', '/out/files', '/out/auditors'];
+const CONTAINER_ROOTS = ['/work/src', '/out/harness', '/out/crosscheck', '/out/auditors'];
 const SAFE_ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
 
 export function resolveDockerBin(explicit) {
@@ -45,6 +42,7 @@ export function parseBridgeArgs(argv) {
     agent: process.env.AUDIT_AGENT || '',
     surface: (process.env.AUDIT_SURFACE || 'S1').toUpperCase(),
     finalizeOnly: false,
+    identityFile: '',
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -56,8 +54,16 @@ export function parseBridgeArgs(argv) {
     else if (a === '--agent') opts.agent = argv[++i] || '';
     else if (a === '--surface') opts.surface = (argv[++i] || 'S1').toUpperCase();
     else if (a === '--finalize-only') opts.finalizeOnly = true;
+    else if (a === '--identity-file') opts.identityFile = argv[++i] || '';
   }
   opts.dockerBin = resolveDockerBin(opts.dockerBin);
+  if (opts.identityFile) {
+    const rel = path.relative(opts.reportDir, opts.identityFile);
+    opts.submissionIdentity = readReportJson(opts.reportDir, rel);
+    const name = opts.role === 'crosscheck' ? `crosscheck-${opts.agent}` : opts.auditor;
+    validateSubmissionIdentity(opts.submissionIdentity, name);
+    if (opts.submissionIdentity.agent !== opts.agent || opts.submissionIdentity.role !== opts.role) throw new Error('Bridge submission identity mismatch');
+  }
   return opts;
 }
 
@@ -74,11 +80,13 @@ export function renderMarkdownFromFindings(auditor, surface, findings, verifiedS
   if (typeof summaryText === 'string' && summaryText.trim().length > 20) return `${summaryText.trim()}\n`;
   const lines = [`# Security Audit Report — ${auditor} (${surface})`, '', `## Findings (${findings.length})`, ''];
   if (!findings.length) {
-    lines.push('No exploitable vulnerabilities were confirmed on this surface.', '');
+    lines.push('No supported findings were reported for the reviewed scope.', '');
   } else {
     for (const [i, f] of findings.entries()) {
       lines.push(`### ${i + 1}. [${String(f.severity).toUpperCase()}] ${f.title}`);
       lines.push(`- **Surface**: ${f.surface}`, `- **Confidence**: ${f.confidence}`, `- **Locations**: ${(f.location || []).join(', ')}`, `- **Impact**: ${f.impact}`);
+      if (f.analysis) lines.push(`- **Source analysis**: ${f.analysis}`);
+      if (f.validation) lines.push(`- **Validation and limits**: ${f.validation}`);
       if (f.preconditions) lines.push(`- **Preconditions**: ${f.preconditions}`);
       if (Array.isArray(f.attack) && f.attack.length) {
         lines.push('- **Attack Path**:', ...f.attack.map((step) => `  1. ${step}`));
@@ -87,7 +95,7 @@ export function renderMarkdownFromFindings(auditor, surface, findings, verifiedS
       lines.push(`- **Fix**: ${f.fix}`, '');
     }
   }
-  lines.push(`## Verified Safe Controls (${verifiedSafe.length})`, '');
+  lines.push(`## Reviewed Control Assertions (${verifiedSafe.length})`, '');
   if (!verifiedSafe.length) lines.push('- No additional safe controls recorded.');
   else for (const c of verifiedSafe) lines.push(`- **${c.control}** (${c.holds ? 'holds' : 'broke'}): ${c.how_attacked}`);
   lines.push('');
@@ -175,8 +183,8 @@ export function toolDefinitions(role = 'auditor') {
       inputSchema: objSchema({}),
     },
     {
-      name: 'get_attack_plan',
-      description: 'Read the dedicated attack & audit check plan and codebase entry-point leads for a protocol or risk domain (http, grpc, websockets, databases, crypto, scopes_roles, bots_economy, api_dto_abuse, or all).',
+      name: 'get_review_plan',
+      description: 'Read the source security review plan and codebase entry-point leads for a protocol or risk domain (http, grpc, websockets, databases, crypto, scopes_roles, bots_economy, api_dto_abuse, or all).',
       annotations: SAFE_ANNOTATIONS,
       inputSchema: objSchema({
         domain: strProp('Domain filter: http | grpc | websockets | databases | crypto | scopes_roles | bots_economy | api_dto_abuse | all (default: surface-relevant plans)'),
@@ -184,7 +192,7 @@ export function toolDefinitions(role = 'auditor') {
     },
     {
       name: 'list_files',
-      description: 'List files inside the one-shot Docker container (/work/src, /out/harness, /out/files, /out/crosscheck, /out/pocs).',
+      description: 'List files inside the one-shot Docker container (/work/src, /out/harness, /out/crosscheck).',
       annotations: SAFE_ANNOTATIONS,
       inputSchema: objSchema({ path: strProp('Directory path (default: /work/src)'), max_depth: intProp('Max recursion depth (1..6, default 3)') }),
     },
@@ -210,25 +218,16 @@ export function toolDefinitions(role = 'auditor') {
       }, ['pattern']),
     },
     {
-      name: 'run_container_check',
-      description: 'Run a bounded command (e.g. cargo, anchor, node, grep, osv-scanner, gitleaks) inside /work/src in the network-isolated one-shot Docker container.',
+      name: 'list_existing_tests',
+      description: 'List fixed test IDs discovered in the captured source before review. No commands or test code can be supplied.',
       annotations: SAFE_ANNOTATIONS,
-      inputSchema: objSchema({
-        command: strProp('Executable name (cargo, anchor, rustc, node, npm, grep, find, etc.)'),
-        args: strArr('Arguments array'),
-        cwd: strProp('Working directory relative to /work/src (default: .)'),
-        timeout_ms: intProp('Timeout in ms (default 30000, max 120000)'),
-      }, ['command']),
+      inputSchema: objSchema({}),
     },
     {
-      name: 'write_poc',
-      description: 'Write a Proof-of-Concept file inside the container under /out/pocs and optionally execute Rust #[test] PoCs inside the container.',
-      annotations: SAFE_ANNOTATIONS,
-      inputSchema: objSchema({
-        filename: strProp('PoC file name (e.g. poc_overflow.rs)'),
-        content: strProp('PoC source code'),
-        run_rust_test: boolProp('Compile and execute Rust #[test] inside the container'),
-      }, ['filename', 'content']),
+      name: 'run_existing_tests',
+      description: 'Run one catalogued existing test suite inside the verified network-disconnected Docker container. Dependencies must already be available; failures remain coverage gaps.',
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      inputSchema: objSchema({ test_id: strProp('An ID returned by list_existing_tests; no additional arguments are accepted') }, ['test_id']),
     },
   ];
 
@@ -265,12 +264,12 @@ export function toolDefinitions(role = 'auditor') {
             severity: { type: 'string', enum: ['critical', 'high', 'medium', 'low', 'info'] },
             confidence: { type: 'string', enum: ['confirmed', 'probable'] },
             location: strArr(), impact: strProp(), preconditions: strProp(),
-            attack: strArr(), poc: strProp(), fix: strProp(),
-          }, ['title', 'surface', 'severity', 'confidence', 'location', 'impact', 'preconditions', 'attack', 'poc', 'fix']),
+            analysis: strProp('Source-based explanation of the missing or incorrect control; no exploit instructions'), validation: strProp('Source inspection or existing test evidence, including limitations'), fix: strProp(),
+          }, ['title', 'surface', 'severity', 'confidence', 'location', 'impact', 'preconditions', 'analysis', 'validation', 'fix']),
         },
         verified_safe: {
           type: 'array',
-          items: objSchema({ control: strProp(), how_attacked: strProp(), holds: boolProp() }, ['control', 'how_attacked', 'holds']),
+          items: objSchema({ control: strProp(), evidence: strProp('Source inspection or existing test evidence'), holds: boolProp() }, ['control', 'evidence', 'holds']),
         },
         markdown_summary: strProp(),
       }, []),
@@ -285,6 +284,14 @@ export function toolDefinitions(role = 'auditor') {
 
 export async function callBridgeTool(ctx, name, args = {}) {
   const { dockerBin, container, reportDir, role, auditor, agent, surface } = ctx;
+  if (!REVIEW_TOOLS.has(name)) throw new Error('Tool unavailable in source security review: ' + name);
+
+  if (ctx.submissionIdentity) {
+    const file = `harness/bridge-${ctx.submissionIdentity.name}.json`;
+    let events = [];
+    try { events = readReportJson(reportDir, file); } catch { /* first tool call */ }
+    writeReportFile(reportDir, file, JSON.stringify([...events, { tool: name, at: new Date().toISOString() }].slice(-200)));
+  }
   if (['submit_audit_report', 'submit_crosscheck_report'].includes(name) && Object.hasOwn(args, 'report_json')) {
     if (Object.keys(args).length !== 1 || typeof args.report_json !== 'string' || Buffer.byteLength(args.report_json) > 2 * 1024 * 1024) throw new Error('Supply only report_json, containing the complete JSON report (maximum 2 MiB).');
     args = JSON.parse(args.report_json);
@@ -293,7 +300,7 @@ export async function callBridgeTool(ctx, name, args = {}) {
 
   if (name === 'get_audit_context') {
     const parts = [
-      '# Docker Audit Context', `- Container: ${container}`, `- Role: ${role}`, `- Agent: ${agent || 'unknown'}`,
+      '# Docker Security Review Context', REVIEW_SCOPE, `- Container: ${container}`, `- Role: ${role}`, `- Agent: ${agent || 'unknown'}`,
       `- Auditor ID: ${auditor || 'n/a'}`, `- Assigned Surface: ${surface}`, `- Target Source Root (in container): /work/src`,
       `- Harness Leads Root (in container): /out/harness`, '',
       renderSurfaceSkillGuidance(surface), '',
@@ -304,10 +311,10 @@ export async function callBridgeTool(ctx, name, args = {}) {
     if (reportDir && fs.existsSync(path.join(reportDir, 'harness', 'stack-profile.json'))) {
       try {
         const profile = JSON.parse(fs.readFileSync(path.join(reportDir, 'harness', 'stack-profile.json'), 'utf8'));
-        parts.push('## Surface Attack & Audit Check Plans', renderAttackPlansMarkdown(profile, surface).slice(0, 12_000));
+        parts.push('## Surface Source Security Review Plans', renderReviewPlansMarkdown(profile, surface).slice(0, 12_000));
       } catch { /* ignore malformed profile */ }
-    } else if (reportDir && fs.existsSync(path.join(reportDir, 'harness', 'attack-plans.md'))) {
-      parts.push('## Attack & Audit Check Plans', fs.readFileSync(path.join(reportDir, 'harness', 'attack-plans.md'), 'utf8').slice(0, 12_000));
+    } else if (reportDir && fs.existsSync(path.join(reportDir, 'harness', 'review-plans.md'))) {
+      parts.push('## Source Security Review Plans', fs.readFileSync(path.join(reportDir, 'harness', 'review-plans.md'), 'utf8').slice(0, 12_000));
     }
     if (reportDir && fs.existsSync(path.join(reportDir, 'harness', 'solana.md'))) {
       parts.push('## Solana Leads', fs.readFileSync(path.join(reportDir, 'harness', 'solana.md'), 'utf8').slice(0, 6000));
@@ -319,20 +326,20 @@ export async function callBridgeTool(ctx, name, args = {}) {
     return parts.join('\n');
   }
 
-  if (name === 'get_attack_plan') {
+  if (name === 'get_review_plan') {
     const reqDomain = String(args.domain || '').trim().toLowerCase();
     if (reportDir && fs.existsSync(path.join(reportDir, 'harness', 'stack-profile.json'))) {
       const profile = JSON.parse(fs.readFileSync(path.join(reportDir, 'harness', 'stack-profile.json'), 'utf8'));
       if (reqDomain && reqDomain !== 'all') {
         const match = (profile.domains || []).find((d) => d.id === reqDomain);
         if (match) {
-          return renderAttackPlansMarkdown({ ...profile, domains: [match] }, '');
+          return renderReviewPlansMarkdown({ ...profile, domains: [match] }, '');
         }
       }
-      return renderAttackPlansMarkdown(profile, reqDomain === 'all' ? '' : surface);
+      return renderReviewPlansMarkdown(profile, reqDomain === 'all' ? '' : surface);
     }
-    if (reportDir && fs.existsSync(path.join(reportDir, 'harness', 'attack-plans.md'))) {
-      return fs.readFileSync(path.join(reportDir, 'harness', 'attack-plans.md'), 'utf8');
+    if (reportDir && fs.existsSync(path.join(reportDir, 'harness', 'review-plans.md'))) {
+      return fs.readFileSync(path.join(reportDir, 'harness', 'review-plans.md'), 'utf8');
     }
     return renderSurfaceSkillGuidance(surface);
   }
@@ -421,60 +428,53 @@ export async function callBridgeTool(ctx, name, args = {}) {
     return res.stdout;
   }
 
-  if (name === 'run_container_check') {
-    const cmd = String(args.command || '').trim();
-    if (!ALLOWED_COMMANDS.has(cmd)) {
-      throw new Error(`Command '${cmd}' is not in the container allowlist (${[...ALLOWED_COMMANDS].join(', ')})`);
-    }
-    const cmdArgs = Array.isArray(args.args) ? args.args.map(String) : [];
-    const cwd = resolveContainerPath(args.cwd || '.', '/work/src');
-    const timeoutMs = Math.min(Math.max(Number(args.timeout_ms) || 30_000, 1000), 120_000);
-    const res = await execInContainer(dockerBin, container, [cmd, ...cmdArgs], { cwd, timeoutMs });
-    return `Exit code: ${res.code}\nSTDOUT:\n${res.stdout || '(empty)'}\nSTDERR:\n${res.stderr || '(empty)'}`;
-  }
-
-  if (name === 'write_poc') {
-    const safeName = path.basename(String(args.filename || 'poc.rs')).replace(/[^A-Za-z0-9._-]/g, '_');
-    const content = String(args.content || '');
-    if (!safeName || !content.trim()) throw new Error('filename and content are required');
-    const sub = auditor || agent || 'agent';
-    const containerPocDir = `/out/pocs/${sub}`;
-    await execInContainer(dockerBin, container, ['node', '-e', `
-      const fs = require('node:fs'), path = require('node:path');
-      fs.mkdirSync(process.argv[1], { recursive: true });
-      fs.writeFileSync(path.join(process.argv[1], process.argv[2]), process.argv[3]);
-    `, containerPocDir, safeName, content]);
-    if (reportDir) {
-      const hostPocDir = path.join(reportDir, 'pocs', sub);
-      fs.mkdirSync(hostPocDir, { recursive: true });
-      fs.writeFileSync(path.join(hostPocDir, safeName), content);
-    }
-    let testOutput = '';
-    if (args.run_rust_test && safeName.endsWith('.rs') && content.includes('#[test]')) {
-      const testStem = `audit_${safeName.replace(/\.rs$/, '').replace(/[^A-Za-z0-9_]/g, '_').slice(0, 40)}`;
-      const prep = await execInContainer(dockerBin, container, ['node', '-e', `
-        const fs = require('node:fs'), path = require('node:path');
-        const candidates = ['/work/src', ...fs.readdirSync('/work/src', { withFileTypes: true }).filter(e => e.isDirectory()).map(e => path.join('/work/src', e.name))];
-        const pkg = candidates.find(d => fs.existsSync(path.join(d, 'Cargo.toml')));
-        if (!pkg) { process.stdout.write('NO_CARGO_PKG'); process.exit(0); }
-        fs.mkdirSync(path.join(pkg, 'tests'), { recursive: true });
-        fs.writeFileSync(path.join(pkg, 'tests', process.argv[1] + '.rs'), process.argv[2]);
-        process.stdout.write(pkg);
-      `, testStem, content]);
-      const pkgDir = prep.stdout.trim();
-      if (pkgDir && pkgDir !== 'NO_CARGO_PKG') {
-        const cargoRes = await execInContainer(dockerBin, container, ['cargo', 'test', '--locked', '--test', testStem], { cwd: pkgDir, timeoutMs: 90_000 });
-        testOutput = `\nRust PoC test (exit ${cargoRes.code}):\n${cargoRes.stdout}\n${cargoRes.stderr}`;
+  if (name === 'list_existing_tests' || name === 'run_existing_tests') {
+    if (Object.keys(args).some(key => name === 'list_existing_tests' || key !== 'test_id')) throw new Error('Existing test tools accept only a catalogued test_id');
+    const catalog = readReportJson(reportDir, 'harness/existing-tests.json');
+    const sourceDigest = ctx.submissionIdentity?.sourceDigest;
+    // Validate every catalog row before advertising it; commands are reconstructed.
+    const entries = catalog.tests?.map(entry => selectExistingTest(catalog, entry.id, sourceDigest));
+    if (!entries || catalog.workflow !== REVIEW_WORKFLOW) throw new Error('Existing test catalog unavailable');
+    if (name === 'list_existing_tests') return JSON.stringify({ scope: 'existing_offline_tests_only', tests: entries.map(({ id, kind, cwd, description }) => ({ id, kind, cwd, description })) });
+    const entry = selectExistingTest(catalog, args.test_id, sourceDigest);
+    return withExistingTestLock(reportDir, async () => {
+      const inspected = spawnSync(dockerBin, ['inspect', '--format', '{"running":{{json .State.Running}},"mode":{{json .HostConfig.NetworkMode}},"networks":{{json .NetworkSettings.Networks}}}', container], { encoding: 'utf8', timeout: 8000, maxBuffer: 64 * 1024 });
+      let network;
+      try { network = JSON.parse(inspected.stdout); } catch { throw new Error('Cannot verify offline test containment'); }
+      if (inspected.status !== 0 || network.running !== true || typeof network.mode !== 'string' || network.mode === 'host' || network.mode.startsWith('container:') || !network.networks || Object.keys(network.networks).some(key => key !== 'none')) throw new Error('Tests require a network-disconnected container');
+      const result = await execInContainer(dockerBin, container, ['node', '-e', EXISTING_TEST_RUNNER], { input: JSON.stringify(entry), timeoutMs: 100_000 });
+      const key = ctx.submissionIdentity?.name || auditor || agent;
+      if (key) {
+        const file = `harness/existing-test-results-${key}.json`;
+        let prior = []; try { prior = readReportJson(reportDir, file); } catch { /* first test */ }
+        writeReportFile(reportDir, file, JSON.stringify([...prior, { testId: entry.id, sourceDigest: catalog.sourceDigest, kind: entry.kind, cwd: entry.cwd, exitCode: result.code, at: new Date().toISOString(), scope: 'existing_offline_test_only' }].slice(-200)));
       }
-    }
-    return `Saved PoC to ${containerPocDir}/${safeName}.${testOutput}`;
+      return `Existing test ${entry.id}; exit code: ${result.code}\nSTDOUT:\n${result.stdout || '(empty)'}\nSTDERR:\n${result.stderr || '(empty)'}`;
+    });
   }
 
   if (name === 'submit_audit_report') {
+    if (role !== 'auditor') throw new Error('Audit submission is unavailable in this bridge role');
     if (!auditor) throw new Error('Bridge was not configured with an --auditor identity');
+    const reviewMode = ctx.submissionIdentity?.workflow === REVIEW_WORKFLOW;
+    if (reviewMode) {
+      if (!Array.isArray(args.findings) || !Array.isArray(args.verified_safe)) throw new Error('Expected security review findings and control evidence');
+      args = { ...args, findings: args.findings.map(finding => {
+        if (typeof finding.analysis !== 'string' || !finding.analysis.trim() || typeof finding.validation !== 'string' || !finding.validation.trim() || finding.attack?.length || finding.poc) throw new Error('Security review requires source analysis and validation, not exploit steps or PoCs');
+        return { ...finding, attack: [], poc: '' };
+      }), verified_safe: args.verified_safe.map(control => {
+        if (typeof control.evidence !== 'string' || !control.evidence.trim()) throw new Error('Security review control requires evidence');
+        return { ...control, how_attacked: control.evidence };
+      }) };
+    }
     const { payload, findings, verifiedSafe } = normalizeFindingsPayload(args, auditor, surface);
     const md = renderMarkdownFromFindings(auditor, surface, findings, verifiedSafe, args.markdown_summary);
     const jsonText = `${JSON.stringify(payload, null, 2)}\n`;
+    if (ctx.submissionIdentity) {
+      const submission = commitSubmission(reportDir, auditor, ctx.submissionIdentity, payload, args.markdown_summary || '');
+      deriveSubmission(reportDir, submission, renderMarkdownFromFindings);
+      return `Report committed for ${auditor}: ${findings.length} findings, ${verifiedSafe.length} control assertions. Submission hash: ${submission.hash}. Finish with a short acknowledgement; the coordinator generates the report files.`;
+    }
     if (reportDir) {
       fs.mkdirSync(path.join(reportDir, 'auditors'), { recursive: true });
       writeReportFile(reportDir, `auditors/${auditor}.json`, jsonText);
@@ -492,6 +492,7 @@ export async function callBridgeTool(ctx, name, args = {}) {
   }
 
   if (name === 'submit_crosscheck_report') {
+    if (role !== 'crosscheck') throw new Error('Peer submission is unavailable in this bridge role');
     if (!agent) throw new Error('Bridge was not configured with an --agent identity');
     let assignedClaims = [];
     if (reportDir) {
@@ -500,6 +501,11 @@ export async function callBridgeTool(ctx, name, args = {}) {
     }
     const normalized = normalizeCrosscheckPayload(args.verdicts || args, assignedClaims);
     const jsonText = `${JSON.stringify(normalized, null, 2)}\n`;
+    if (ctx.submissionIdentity) {
+      const submission = commitSubmission(reportDir, `crosscheck-${agent}`, ctx.submissionIdentity, normalized);
+      deriveSubmission(reportDir, submission, renderMarkdownFromFindings);
+      return `Peer report committed for ${agent}: ${normalized.length} verdicts. Submission hash: ${submission.hash}. Finish with a short acknowledgement.`;
+    }
     if (reportDir) {
       fs.mkdirSync(path.join(reportDir, 'auditors'), { recursive: true });
       writeReportFile(reportDir, `auditors/crosscheck-${agent}.json`, jsonText);

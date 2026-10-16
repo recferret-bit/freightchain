@@ -14,10 +14,12 @@ import {
 } from './docker-mcp-bridge.mjs';
 import {
   analyzeStackAndPlans,
-  renderAttackPlansMarkdown,
+  renderReviewPlansMarkdown,
   renderSurfaceSkillGuidance,
 } from './audit-plans.mjs';
-import { buildAuditorPrompt, buildCliInvocation, extractJsonFromOutput, runOrchestratedAudit, validateTerminalAgreement } from './docker-agent-orchestrator.mjs';
+import { buildAuditorPrompt, runOrchestratedAudit } from './docker-agent-orchestrator.mjs';
+import { buildSessionLaunch } from './agent-session-launch.mjs';
+import { buildCliInvocation } from './agent-launch.mjs';
 import { readReportJson, validateAuditor, validCrosscheckRow } from './report-contract.mjs';
 
 test('normalizeCitation strips container prefixes and ensures file:line format', () => {
@@ -116,7 +118,7 @@ test('reviews have no deadline and only explicit finalization restricts inspecti
   assert.equal(submitted.result.isError, false);
 });
 
-test('MCP JSON-RPC handler supports initialize, tools/list, get_attack_plan, and submit tools', async (t) => {
+test('MCP JSON-RPC handler supports initialize, tools/list, get_review_plan, and submit tools', async (t) => {
   const reportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-mcp-test-'));
   t.after(() => fs.rmSync(reportDir, { recursive: true, force: true }));
 
@@ -145,12 +147,14 @@ test('MCP JSON-RPC handler supports initialize, tools/list, get_attack_plan, and
     method: 'tools/list',
   });
   const names = listRes.result.tools.map((tool) => tool.name);
-  assert.ok(names.includes('get_attack_plan'));
+  assert.ok(names.includes('get_review_plan'));
   assert.ok(names.includes('list_files'));
   assert.ok(names.includes('read_file'));
   assert.ok(names.includes('search_code'));
-  assert.ok(names.includes('run_container_check'));
-  assert.ok(names.includes('write_poc'));
+  assert.ok(names.includes('list_existing_tests'));
+  assert.ok(names.includes('run_existing_tests'));
+  assert.ok(!names.includes('run_container_check'));
+  assert.ok(!names.includes('write_poc'));
   assert.ok(names.includes('submit_audit_report'));
 
   const planRes = await handleRpcMessage(ctx, {
@@ -158,7 +162,7 @@ test('MCP JSON-RPC handler supports initialize, tools/list, get_attack_plan, and
     id: 3,
     method: 'tools/call',
     params: {
-      name: 'get_attack_plan',
+      name: 'get_review_plan',
       arguments: { domain: 'api_dto_abuse' },
     },
   });
@@ -244,7 +248,7 @@ test('analyzeStackAndPlans detects http, grpc, websockets, databases, crypto, sc
   assert.ok(byId.bots_economy.totalLeads > 0);
   assert.ok(byId.scopes_roles.totalLeads > 0);
 
-  const md = renderAttackPlansMarkdown(profile, 'S1');
+  const md = renderReviewPlansMarkdown(profile, 'S1');
   assert.match(md, /Scopes, Roles & Access Control Misvalidation/);
   assert.match(md, /API Abuse, Response DTO Leakage & Enumeration Oracles/);
   assert.match(md, /User already registered/);
@@ -264,7 +268,7 @@ test('buildCliInvocation configures isolated MCP bridge workspaces for claude, c
 
   for (const agent of ['claude', 'codex', 'grok', 'agy']) {
     const workDir = fs.mkdtempSync(path.join(root, `work-${agent}-`));
-    const inv = buildCliInvocation({
+    const spec = buildSessionLaunch({
       agent,
       model: 'test-model',
       prompt: 'Audit prompt',
@@ -272,22 +276,25 @@ test('buildCliInvocation configures isolated MCP bridge workspaces for claude, c
       bridgeArgs,
       env,
     });
+    const inv = spec.invocation;
     assert.equal(inv.cwd, workDir);
     assert.ok(fs.existsSync(path.join(workDir, '.claude', 'skills', 'security-audit', 'SKILL.md')));
     assert.ok(fs.existsSync(path.join(workDir, '.agents', 'skills', 'security-audit', 'SKILL.md')));
     if (agent === 'claude') {
-      assert.ok(fs.existsSync(path.join(workDir, 'mcp.json')));
-      assert.ok(inv.args.includes('--strict-mcp-config'));
-      assert.equal(inv.args[inv.args.indexOf('--tools') + 1], '');
+      assert.deepEqual(spec.sessionMeta.claudeCode.options.tools, []);
+      assert.equal(spec.sessionMeta.claudeCode.options.persistSession, true);
     } else if (agent === 'codex') {
-      assert.ok(inv.args.includes('--ignore-rules'));
-      assert.ok(inv.args.includes('--ignore-user-config'));
-      assert.ok(inv.args.some((a) => a.startsWith('mcp_servers={audit_docker=')));
+      const config = JSON.parse(inv.env.CODEX_CONFIG);
+      assert.equal(config.model, 'test-model');
+      assert.equal(config.features.shell_tool, false);
+      assert.deepEqual(Object.keys(config.mcp_servers), ['audit_docker']);
     } else if (agent === 'grok') {
-      assert.ok(fs.existsSync(path.join(workDir, '.grok', 'config.toml')));
-      assert.ok(inv.args.includes('--trust'), 'only the generated workspace is trusted, so its MCP server can start');
-      assert.equal(inv.args[inv.args.indexOf('--tools') + 1], '');
+      assert.deepEqual(inv.args.slice(0, 2), ['agent', '--no-leader']);
+      assert.equal(spec.transport, 'native_acp');
+      assert.match(fs.readFileSync(inv.args.at(-2), 'utf8'), /mcp__audit_docker__/);
+      assert.ok(inv.env.GROK_AUTH_PATH.endsWith('/auth.json'));
     } else if (agent === 'agy') {
+      const inv = buildCliInvocation({ agent, model: 'test-model', prompt: 'Audit prompt', workDir, bridgeArgs, env });
       assert.equal(inv.args[inv.args.indexOf('--output-format') + 1], 'stream-json');
       assert.equal(inv.args.at(-1), '--print=Audit prompt', 'AGY print takes a prompt value, never the next option');
       assert.ok(!inv.args.includes('--print'));
@@ -306,26 +313,13 @@ test('buildCliInvocation configures isolated MCP bridge workspaces for claude, c
   }
 });
 
-test('extractJsonFromOutput extracts fenced and inline JSON payloads', () => {
-  const sample = 'Here is my analysis:\n```json\n[{"verified_safe": []}]\n```\nDone.';
-  assert.deepEqual(extractJsonFromOutput(sample), [{ verified_safe: [] }]);
-  assert.deepEqual(extractJsonFromOutput('Prose before [{"id":"claude-s1-auth#0","verdict":"upheld"}] after'), [{ id: 'claude-s1-auth#0', verdict: 'upheld' }]);
-  const frames = [{ type: 'assistant', message: 'Tool input is not a final report' }, { type: 'result', result: sample }];
-  assert.deepEqual(extractJsonFromOutput(frames.map(row => JSON.stringify(row)).join('\n')), [{ verified_safe: [] }]);
-  assert.equal(extractJsonFromOutput(JSON.stringify({ type: 'assistant', input: [{ verified_safe: [] }] })), null);
-  assert.equal(extractJsonFromOutput(JSON.stringify({ type: 'result', is_error: true, result: sample })), null);
-  assert.deepEqual(extractJsonFromOutput(JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: sample } })), [{ verified_safe: [] }]);
-  assert.equal(extractJsonFromOutput(JSON.stringify({ event: 'step_update', step_update: { text_delta: sample } })), null);
-  assert.equal(extractJsonFromOutput(JSON.stringify({ event: 'result', result: { status: 'ERROR', response: sample } })), null);
-});
-
 test('AGY report finalization refuses a different source snapshot before starting Docker', async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-finalization-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const target = path.join(root, 'source');
   fs.mkdirSync(target);
   fs.writeFileSync(path.join(target, 'sample.js'), 'export const inert = true;\n');
-  await assert.rejects(runOrchestratedAudit({ target, out: path.join(root, 'out'), surface: 's3', agents: ['agy'], models: { agy: 'test' }, resume: { sourceDigest: 'wrong-source', conversationId: '35216cfc-0324-47d7-a5c4-a3e393c5c9dc' } }), /original source snapshot/);
+  await assert.rejects(runOrchestratedAudit({ target, out: path.join(root, 'out'), surface: 's3', agents: ['agy'], models: { agy: 'test' }, resume: { sourceDigest: 'wrong-source', conversationId: '35216cfc-0324-47d7-a5c4-a3e393c5c9dc' } }), /excludes deployed RPC comparisons and legacy/);
 });
 
 test('end-to-end one-shot Docker container + MCP bridge orchestrates audit, crosscheck, adjudication, and container teardown', async (t) => {
@@ -346,6 +340,9 @@ test('end-to-end one-shot Docker container + MCP bridge orchestrates audit, cros
     '}',
   ].join('\n') + '\n');
 
+  fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({ scripts: { test: 'node --test existing.test.cjs' } }));
+  fs.writeFileSync(path.join(targetDir, 'existing.test.cjs'), "const test=require('node:test');const assert=require('node:assert/strict');test('inert existing fixture',()=>assert.equal(2+2,4));\n");
+
   const binDir = path.join(root, 'bin');
   fs.mkdirSync(binDir);
   const shimScript = `#!${process.execPath}
@@ -354,19 +351,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const cwd = process.cwd();
-let cmd, args;
-if (fs.existsSync(path.join(cwd, 'mcp.json'))) {
-  const cfg = JSON.parse(fs.readFileSync(path.join(cwd, 'mcp.json'), 'utf8'));
-  cmd = cfg.mcpServers.audit_docker.command;
-  args = cfg.mcpServers.audit_docker.args;
-} else if (fs.existsSync(path.join(cwd, '.grok', 'config.toml'))) {
-  const toml = fs.readFileSync(path.join(cwd, '.grok', 'config.toml'), 'utf8');
-  cmd = JSON.parse(toml.match(/command\\s*=\\s*(.+)/)[1]);
-  args = JSON.parse(toml.match(/args\\s*=\\s*(\\[.+\\])/)[1]);
-} else {
-  process.exit(1);
-}
-
+const cfg = JSON.parse(fs.readFileSync(path.join(cwd, 'mcp.json'), 'utf8'));
+const { command: cmd, args } = cfg.mcpServers.audit_docker;
 const child = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'inherit'] });
 let seq = 1;
 const pending = new Map();
@@ -394,6 +380,16 @@ function rpc(method, params = {}) {
   });
 }
 
+import readline from 'node:readline';
+const emit = msg => process.stdout.write(JSON.stringify({jsonrpc:'2.0',...msg}) + '\\n');
+const sid = 'inert-acp-review';
+readline.createInterface({input:process.stdin}).on('line', async line => {
+ const msg=JSON.parse(line);
+ if(msg.method==='initialize')emit({id:msg.id,result:{protocolVersion:1,agentCapabilities:{loadSession:true}}});
+ else if(msg.method==='session/load')emit({id:msg.id,result:{}});
+ else if(msg.method==='session/new')emit({id:msg.id,result:{sessionId:sid}});
+ else if(msg.method==='session/cancel')emit({id:msg.id,result:{stopReason:'cancelled'}});
+ else if(msg.method==='session/prompt') {
 await rpc('initialize', { protocolVersion: '2024-11-05' });
 const toolsRes = await rpc('tools/list');
 const toolNames = toolsRes.result.tools.map((t) => t.name);
@@ -401,13 +397,14 @@ const toolNames = toolsRes.result.tools.map((t) => t.name);
 const listOut = await rpc('tools/call', { name: 'list_files', arguments: { path: '/work/src' } });
 const searchOut = await rpc('tools/call', { name: 'search_code', arguments: { pattern: 'UncheckedAccount' } });
 const readOut = await rpc('tools/call', { name: 'read_file', arguments: { path: 'src/lib.rs', start_line: 1, end_line: 10 } });
-const checkOut = await rpc('tools/call', { name: 'run_container_check', arguments: { command: 'ls', args: ['-la', '/work/src'] } });
+const catalogOut = await rpc('tools/call', { name: 'list_existing_tests', arguments: {} });
+const entry = JSON.parse(catalogOut.result.content[0].text).tests.find(test => test.kind==='npm');
+const checkOut = await rpc('tools/call', { name: 'run_existing_tests', arguments: { test_id: entry.id } });
+if(checkOut.result.isError || !checkOut.result.content[0].text.includes('exit code: 0')) throw Error('Existing offline fixture did not pass');
+const denied = await rpc('tools/call', { name: 'run_container_check', arguments: {command:'node',args:['-e','process.exit(0)']} });
+if(!denied.result.isError)throw Error('Arbitrary execution was accepted');
 
 if (toolNames.includes('submit_audit_report')) {
-  await rpc('tools/call', {
-    name: 'write_poc',
-    arguments: { filename: 'poc_vault.rs', content: '#[test]\\nfn exploit() {}\\n', run_rust_test: false },
-  });
   await rpc('tools/call', {
     name: 'submit_audit_report',
     arguments: {
@@ -420,15 +417,15 @@ if (toolNames.includes('submit_audit_report')) {
           location: ['src/lib.rs:4'],
           impact: 'Attacker can pass an arbitrary vault account without owner or seed verification.',
           preconditions: 'Withdraw instruction is callable.',
-          attack: ['Invoke Withdraw with attacker-controlled vault account'],
-          poc: 'See poc_vault.rs',
+          analysis: 'The vault field uses UncheckedAccount without constraints at src/lib.rs:4.',
+          validation: 'Static source inspection and an unrelated existing fixture test only; no exploit was constructed.',
           fix: 'Use Account<\\'info, Vault> with seeds and has_one constraints.',
         },
       ],
       verified_safe: [
         {
           control: 'Container read/search verification',
-          how_attacked: 'Verified via MCP tools: ' + [listOut, searchOut, readOut, checkOut].every((r) => !r.result.isError),
+          evidence: 'Verified via MCP tools: ' + [listOut, searchOut, readOut, checkOut].every((r) => !r.result.isError),
           holds: true,
         },
       ],
@@ -455,28 +452,39 @@ if (toolNames.includes('submit_audit_report')) {
 }
 
 child.stdin.end();
-process.exit(Number(process.env.AUDIT_FIXTURE_EXIT || 0));
+emit({id:msg.id,result:{stopReason:'end_turn'}});
+process.exitCode = Number(process.env.AUDIT_FIXTURE_EXIT || 0);
+ }
+});
 `;
 
   for (const name of ['claude', 'grok']) {
     fs.writeFileSync(path.join(binDir, name), shimScript, { mode: 0o755 });
   }
 
+  const adapterFile = path.join(binDir, 'inert-acp.mjs');
+  fs.writeFileSync(adapterFile, shimScript, { mode: 0o755 });
+  const runnerFile = path.join(root, 'fixture-runner.mjs');
+  fs.writeFileSync(runnerFile, `
+import fs from 'node:fs';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {runOrchestratedAudit} from ${JSON.stringify(path.join(scriptsDir, 'docker-agent-orchestrator.mjs'))};
+import {runReviewSession} from ${JSON.stringify(path.join(scriptsDir, 'agent-session.mjs'))};
+const [target,out,agents,resumeFrom]=process.argv.slice(2);
+const request={target,out,name:'inert-bridge-fixture',surface:'s1',agents:agents.split(','),models:{claude:'fixture-model',grok:'fixture-model'},...(resumeFrom?{resumeFrom}:{})};
+const result=await runOrchestratedAudit(request,{review:options=>runReviewSession(options,{launch:({workDir})=>{
+ const server={name:'audit_docker',command:process.execPath,args:[${JSON.stringify(path.join(scriptsDir, 'docker-mcp-bridge.mjs'))},...options.bridgeArgs],env:[]};
+ fs.writeFileSync(path.join(workDir,'mcp.json'),JSON.stringify({mcpServers:{audit_docker:server}}));
+ return {invocation:{executable:process.execPath,args:[${JSON.stringify(adapterFile)}],cwd:workDir,env:process.env},mcpServers:[server],transport:'inert_acp_fixture'};
+}})});
+const html=spawnSync(process.execPath,[${JSON.stringify(path.join(scriptsDir, 'generate-html-report.mjs'))},out],{stdio:'inherit'});
+process.exitCode=result.stageFailures.length||html.status!==0?2:0;
+`);
   const outDir = path.join(root, 'report');
-  const run = spawnSync('bash', [
-    path.join(scriptsDir, 'orchestrate.sh'),
-    '--target', targetDir,
-    '--out', outDir,
-    '--surface', 's1',
-    '--agents', 'claude,grok',
-  ], {
-    encoding: 'utf8',
-    timeout: 90_000,
-    env: {
-      ...process.env,
-      SANDBOX_FAST: '1',
-      PATH: `${binDir}${path.delimiter}${process.env.PATH}`,
-    },
+  const run = spawnSync(process.execPath, [runnerFile, targetDir, outDir, 'claude,grok'], {
+    encoding: 'utf8', timeout: 90_000,
+    env: { ...process.env, SANDBOX_FAST: '1', PATH: `${binDir}${path.delimiter}${process.env.PATH}` },
   });
 
   assert.equal(run.status, 0, `orchestrate failed:\nSTDOUT:\n${run.stdout}\nSTDERR:\n${run.stderr}`);
@@ -491,14 +499,33 @@ process.exit(Number(process.env.AUDIT_FIXTURE_EXIT || 0));
 
   assert.equal(fs.existsSync(path.join(outDir, 'harness', 'solana.md')), true);
   assert.match(fs.readFileSync(path.join(outDir, 'harness', 'solana.md'), 'utf8'), /src\/lib\.rs:4/);
-  assert.equal(fs.existsSync(path.join(outDir, 'harness', 'attack-plans.md')), true);
+  assert.equal(fs.existsSync(path.join(outDir, 'harness', 'review-plans.md')), true);
   assert.equal(fs.existsSync(path.join(outDir, 'harness', 'stack-profile.json')), true);
-  assert.match(fs.readFileSync(path.join(outDir, 'harness', 'attack-plans.md'), 'utf8'), /Cryptography, Web3 Signatures & On-Chain Custody/);
-  assert.equal(fs.existsSync(path.join(outDir, 'pocs', 'claude-s1-auth', 'poc_vault.rs')), true);
+  assert.match(fs.readFileSync(path.join(outDir, 'harness', 'review-plans.md'), 'utf8'), /Cryptography, Web3 Signatures & On-Chain Custody/);
+  assert.equal(fs.existsSync(path.join(outDir, 'pocs', 'claude-s1-auth')), false);
+  assert.equal(readReportJson(outDir, 'harness/existing-test-results-claude-s1-auth.json')[0].exitCode, 0);
   assert.match(fs.readFileSync(path.join(outDir, 'report.html'), 'utf8'), /OUTPUTS VALIDATED/);
 
+  const resumedOut = path.join(root, 'resumed-report');
+  const resumed = spawnSync(process.execPath, [runnerFile, targetDir, resumedOut, 'claude,grok', outDir], {
+    encoding: 'utf8', timeout: 90_000,
+    env: { ...process.env, SANDBOX_FAST: '1', PATH: `${binDir}${path.delimiter}${process.env.PATH}` },
+  });
+  assert.equal(resumed.status, 0, `Saved assignment resume failed: ${resumed.stderr}`);
+  assert.equal(readReportJson(resumedOut, 'meta.json').resumedFrom, fs.realpathSync(outDir));
+  assert.equal(readReportJson(resumedOut, 'report-health.json').state, 'validated_outputs');
+  for (const job of readReportJson(resumedOut, 'workers.json').jobs) assert.equal(fs.realpathSync(job.sessionDirectory), fs.realpathSync(path.join(outDir, 'sessions', job.name)));
+  const continuedOut = path.join(root, 'continued-report');
+  const continued = spawnSync(process.execPath, [runnerFile, targetDir, continuedOut, 'claude,grok', resumedOut], {
+    encoding: 'utf8', timeout: 90_000,
+    env: { ...process.env, SANDBOX_FAST: '1', PATH: `${binDir}${path.delimiter}${process.env.PATH}` },
+  });
+  assert.equal(continued.status, 0, `Chained resume must retain the original native session: ${continued.stderr}`);
+  assert.equal(readReportJson(continuedOut, 'report-health.json').state, 'validated_outputs');
+  assert.equal(readReportJson(continuedOut, 'harness/session-claude-s1-auth.json').directory, readReportJson(resumedOut, 'harness/session-claude-s1-auth.json').directory);
+
   const failedOut = path.join(root, 'failed-report');
-  const failed = spawnSync('bash', [path.join(scriptsDir, 'orchestrate.sh'), '--target', targetDir, '--out', failedOut, '--surface', 's1', '--agents', 'claude'], {
+  const failed = spawnSync(process.execPath, [runnerFile, targetDir, failedOut, 'claude'], {
     encoding: 'utf8', timeout: 90_000,
     env: { ...process.env, SANDBOX_FAST: '1', AUDIT_FIXTURE_EXIT: '1', PATH: `${binDir}${path.delimiter}${process.env.PATH}` },
   });
@@ -507,7 +534,7 @@ process.exit(Number(process.env.AUDIT_FIXTURE_EXIT || 0));
   assert.equal(JSON.parse(fs.readFileSync(path.join(failedOut, 'workers.json'))).jobs[0].observedExitCode, 1);
   assert.equal(JSON.parse(fs.readFileSync(path.join(failedOut, 'report-health.json'))).state, 'incomplete');
 
-  for (const output of [run.stdout, failed.stdout]) {
+  for (const output of [run.stdout, resumed.stdout, continued.stdout, failed.stdout]) {
     const owned = output.match(/Container (audit-sbx-[\w-]+) is ready/);
     assert.ok(owned, 'Fixture must identify its owned container');
     const inspect = spawnSync('docker', ['inspect', owned[1]], { encoding: 'utf8' });
@@ -526,13 +553,9 @@ test('JSON-string report submission preserves nested findings and controls', asy
   const saved = readReportJson(root, 'auditors/agy-s3-logic.json');
   assert.equal(saved[0].title, report.findings[0].title);
   assert.deepEqual(saved[1].verified_safe, report.verified_safe);
-  const terminal = JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: '```json\n' + JSON.stringify(saved) + '\n```' } });
-  assert.doesNotThrow(() => validateTerminalAgreement(terminal, saved, ctx.auditor, 'S3'));
-  assert.throws(() => validateTerminalAgreement(terminal, [{ verified_safe: [] }], ctx.auditor, 'S3'), /conflicts/);
   for (const args of [{ report_json: '{}', findings: [] }, { report_json: '[2]' }, { report_json: '{' }, { report_json: JSON.stringify({ findings: [2], verified_safe: [] }) }]) {
     await assert.rejects(callBridgeTool(ctx, 'submit_audit_report', args));
   }
-  assert.throws(() => validateTerminalAgreement('```json\n[{"location":"src/rules.rs:12"},{"verified_safe":[]}]\n```', saved, ctx.auditor, 'S3'));
 });
 
 test('JSON-string peer verdicts still require complete assignment coverage', async (t) => {

@@ -26,7 +26,7 @@ export function putEntity(e) { byId.set(e.id, e); cache = new Map(); }
 
 const isNode = typeof globalThis.process !== 'undefined' && !!globalThis.process.versions?.node;
 const page = typeof location === 'undefined' ? null : location;
-const local = h => /^(localhost|127\.\d+\.\d+\.\d+|\[?::1\]?|[\w-]+\.localhost)$/.test(h) || /^\d+(\.\d+){3}$/.test(h);
+const local = h => /^(localhost|127\.\d+\.\d+\.\d+|\[?::1\]?|([\w-]+\.)*localhost)$/.test(h) || /^\d+(\.\d+){3}$/.test(h);   // ride.freightchain.localhost is still this machine
 export const bakedOnly = () => isNode || !page || page.protocol === 'file:' || new URLSearchParams(page.search).get('entities') === 'baked';
 const baked = async () => (await import('../../shared/entity/seed/index.js')).default;
 

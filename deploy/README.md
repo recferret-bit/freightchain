@@ -3,6 +3,8 @@
 Semi-automatic deploy to one Linux server: **you run one command, it shows the plan, asks, then does everything**.
 Docker runs the app + PostgreSQL; the host's nginx terminates TLS (Let's Encrypt, no Cloudflare) and proxies to `127.0.0.1`.
 
+On this machine, `npm run infra:local` (or `npm run deploy` when `DEPLOY_HOST` is loopback) runs those same sites over HTTP at `http://freightchain.localhost`. The app stays on the host at :3000. See `deploy/scripts/local.sh`.
+
 ## Six names, one app
 `DEPLOY_DOMAIN` is the **apex** (`freightchain.fun`); the other five names are added automatically:
 
@@ -16,7 +18,7 @@ Docker runs the app + PostgreSQL; the host's nginx terminates TLS (Let's Encrypt
 | `whitepaper.freightchain.fun` | the whitepaper (`landing/whitepaper.html`, the landing's second Vite page – built into the same `landing/dist`) | `/` → `whitepaper.html`, its hashed `/assets` + `/media` proxied, `/api/` is 404 – its own site file `freightchain-whitepaper` (template `nginx/whitepaper.conf.template`). The page posts web vitals to `api.<apex>` (`API_BASE`). `CORS_ORIGINS` includes `https://whitepaper.<apex>` for that. |
 | `admin.freightchain.fun` | the admin page (`client/admin.html`) **and the only host of `/api/admin/*`** | **HTTP basic auth** on everything (not on certbot's ACME path), `/` → `admin.html`, the rest proxied (the page calls the API on its own host) – its own site file `freightchain-admin` (template `nginx/admin.conf.template`) |
 
-One certificate covers all six. The pages call the API cross-origin: the client derives `api.<apex>` / `ride.<apex>` from its own host (`client/js/hosts.js`; on localhost / an IP / `file://` everything stays one origin),
+One certificate covers all six. The pages call the API cross-origin: the client derives `api.<apex>` / `ride.<apex>` from its own host (`client/js/hosts.js`; on a bare localhost, an IP, or `file://` everything stays one origin; `freightchain.localhost` splits like production),
 the server allows `https://<apex>`, `https://ride.<apex>`, `https://whitepaper.<apex>`, and `https://pitchdeck.<apex>` (`CORS_ORIGINS`; the last two only post analytics, the deck without credentials) with credentials, and the session cookie is host-only on `api.<apex>` (`__Host-fc_session`, audit H7-B: the lobby, the game and the landing all call the API there – a sibling subdomain neither receives it nor can plant one); a state-changing request whose Origin is not one of these (or the request's own) is 403, and the API takes JSON only (forms are 415). `storybook.` / `whitepaper.` / `pitchdeck.` serve only their own files – in the templates: `setup.sh` writes a site file only when it is absent, so an existing server keeps its old storybook / whitepaper files until they are rewritten (audit plan WP6, one `deploy:setup` with M11). The whitepaper origin is there so web vitals can post to `api.<apex>`.
 `APP_DOMAIN` (shown in the wallet's sign-in message) is the apex, because riders sign in on the lobby. All of these are derived from `DEPLOY_DOMAIN` – never set them by hand.
 **Another domain / subdomain later:** add a template under `deploy/nginx/` like `storybook.conf.template` (its own site file installed by `scripts/remote/setup.sh` when absent, so a server that is already set up gets it too), add the name to `NAMES` there + the DNS record, add a smoke check, make `client/js/hosts.js` strip its prefix, then run `npm run deploy:setup` (`deploy` also runs it by itself while a site file is missing) – and add its origin to `CORS_ORIGINS` if its pages call the API.

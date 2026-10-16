@@ -10,6 +10,7 @@ const outDir = process.env.SANDBOX_OUT || '/out';
 const budgetMs = Number(process.env.SANDBOX_BUDGET_MS || 45 * 60 * 1000);
 const deadline = Date.now() + budgetMs;
 const checks = [];
+const reviewOnly = process.env.SANDBOX_REVIEW_ONLY === '1';
 
 function save(note) {
   fs.mkdirSync(outDir, { recursive: true });
@@ -483,6 +484,7 @@ async function main() {
   try {
   fs.mkdirSync('/work/src', { recursive: true });
   fs.cpSync('/src', '/work/src', { recursive: true, force: true });
+  if (reviewOnly && process.env.SANDBOX_POCS === '1') throw new Error('Source review excludes PoCs');
   if (process.env.SANDBOX_POCS === '1') {
     await runPocs();
     save('rust pocs');
@@ -507,7 +509,9 @@ async function main() {
     ['osv-lock', () => osv(false)],
     ['osv-call', () => osv(true)],
   ];
-  if (process.env.SANDBOX_FAST !== '1') {
+  if (reviewOnly) {
+    for (const id of want) put(id, 'impossible', 'Source security review: target builds, install hooks, active scans and tests are disabled during networked preparation. Existing tests may run through the fixed MCP catalog after network disconnection.');
+  } else if (process.env.SANDBOX_FAST !== '1') {
     for (const [id, fn] of owned) {
       if (!want.has(id)) continue;
       if (timeLeft() < 20_000) {
@@ -534,7 +538,8 @@ async function main() {
     fs.mkdirSync(path.join(outDir, 'auditors'), { recursive: true });
     fs.mkdirSync(path.join(outDir, 'pocs'), { recursive: true });
     fs.mkdirSync(path.join(outDir, 'crosscheck'), { recursive: true });
-    while (timeLeft() > 0 && !fs.existsSync(path.join(outDir, 'sandbox.release'))) {
+    // The preparation budget ends at checks.done; reviewers have no deadline.
+    while (!fs.existsSync(path.join(outDir, 'sandbox.release'))) {
       await new Promise((r) => setTimeout(r, 400));
     }
   }

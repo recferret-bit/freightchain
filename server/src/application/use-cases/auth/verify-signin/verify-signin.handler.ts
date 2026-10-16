@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { AuthChallenge, extractNonce, parseSignInMessage } from '../../../../domain/auth/auth-challenge.entity.js';
+import { isLocalSignInDomain } from '../../../../domain/auth/sign-in-host.js';
 import { parseWalletAddress } from '../../../../domain/players/wallet-address.js';
 import { UnauthorizedError } from '../../../../domain/shared/errors.js';
 import { ChallengeRepositoryPort } from '../../../ports/auth/challenge.repository.port.js';
@@ -59,9 +60,9 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
         throw new UnauthorizedError('bad signature');
       }
 
-      // Domain binding: must match appDomain or gameDomain
+      // Domain binding: the app, the game host, or (outside production) the local page the challenge named.
       const allowedDomains = [rules.appDomain, rules.gameDomain].filter((d): d is string => d !== null);
-      if (!allowedDomains.includes(parsed.domain)) {
+      if (!allowedDomains.includes(parsed.domain) && !(rules.localSignIn && isLocalSignInDomain(parsed.domain))) {
         throw new UnauthorizedError('domain mismatch');
       }
 

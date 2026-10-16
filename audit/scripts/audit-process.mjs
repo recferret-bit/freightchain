@@ -11,6 +11,22 @@ export const FAILURE_MESSAGES = {
   invalid_report: 'Submitted report failed contract validation.',
   setup_error: 'Audit process could not be configured or started.',
   missing_exit: 'Worker exit status is missing; successful completion is unverified.',
+  transport_lost: 'Agent transport disconnected; saved session remains available for recovery.',
+  auth_required: 'The agent requires its existing subscription login before this review can continue.',
+  cancelled: 'Review cancelled; its saved session and submitted evidence were retained.',
+  protocol_error: 'Agent returned invalid or unsupported protocol messages.',
+  control_timeout: 'Agent setup/control operation did not complete; review reasoning has no time limit.',
+  runtime_missing: 'Pinned ACP runtime is missing; run audit setup-agents before starting a review.',
+  runtime_version_rejected: 'Installed ACP adapter does not match the pinned runtime version.',
+  session_identity_rejected: 'Saved session does not match this reviewer, model, source or assignment.',
+  session_directory_rejected: 'Session directory permissions or file type are invalid.',
+  session_record_failed: 'Session progress could not be saved; review stopped to preserve recovery consistency.',
+  resume_unsupported: 'This agent does not advertise support for loading the saved session.',
+  model_changed: 'Agent selected a different model; no automatic model substitution is permitted.',
+  turn_incomplete: 'Agent ended its turn without a successful completion status.',
+  provider_error: 'Agent/provider rejected the turn; inspect its private session record.',
+  native_turn_failed: 'Native CLI did not produce a successful structured turn result.',
+  permission_denied: 'Agent requested a host capability unavailable to this audit session.',
 };
 
 // Labels explain failures without copying source, credentials, or provider payloads into diagnostics.
@@ -19,6 +35,7 @@ export function classifyAuditFailure(result, fallback = 'missing_report') {
   let reason = fallback;
   if (/flagged for possible cybersecurity risk|apply for Daybreak access/i.test(output)) reason = 'provider_policy';
   else if (/you.ve hit your (?:session|usage|weekly) limit|usage limit (?:reached|exceeded)|quota exceeded|RESOURCE_EXHAUSTED/i.test(output)) reason = 'usage_limit';
+  else if (/authentication required|auth required|subscription_login_required|not logged in|please (?:log|sign) in/i.test(output)) reason = 'auth_required';
   else if (/audit (?:MCP|tool).*?(?:not (?:show up|attached)|empty)|audit_docker.*?(?:unavailable|not attached)|project MCP server (?:never attached|is not attached)|folder untrusted/i.test(output)) reason = 'mcp_unavailable';
   else if (result.timedOut || result.code === 124) reason = 'timeout';
   else if (result.code == null) reason = 'missing_exit';

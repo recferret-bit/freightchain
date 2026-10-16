@@ -9,7 +9,7 @@ import { UnauthorizedError } from '../../../../../src/domain/shared/errors.js';
 import { formatSignInMessage } from '../../../../../src/domain/auth/auth-challenge.entity.js';
 import { NaclSignatureVerifier } from '../../../../../src/infrastructure/auth/nacl.signature-verifier.js';
 import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
-import { unitContext } from '../../../../support/unit-context.js';
+import { unitContext, unitRules } from '../../../../support/unit-context.js';
 
 class StubTokens extends TokenSignerPort {
   async sign(wallet: string) { return { token: `token-for-${wallet}`, expiresAt: new Date(0) }; }
@@ -89,6 +89,19 @@ describe('VerifySignInHandler', () => {
     await expect(
       handler.execute(new VerifySignInCommand(wallet, sig, { ip: null, userAgent: null }, phishingMsg, ch.nonce!)),
     ).rejects.toThrow(new UnauthorizedError('domain mismatch'));
+  });
+
+  it('local sign-in: a localhost challenge verifies', async () => {
+    const local = unitContext(unitRules({ localSignIn: true }));
+    const ask = new RequestChallengeHandler(local.challenges, local.rules, local.clock, local.entropy);
+    const check = new VerifySignInHandler(local.challenges, new NaclSignatureVerifier(), new StubTokens(), local.sessions, local.rules, local.clock, local.signIns, new RecordingAnalytics(), local.meProfile);
+    const ch = await ask.execute(new RequestChallengeCommand(undefined, 'http://localhost:5173'));
+    const msg = formatSignInMessage({
+      domain: ch.domain!, address: wallet, statement: ch.statement, uri: ch.uri, version: ch.version, chainId: ch.chainId,
+      nonce: ch.nonce!, issuedAt: ch.issuedAt!, expirationTime: ch.expirationTime,
+    });
+    const res = await check.execute(new VerifySignInCommand(wallet, sign(msg), { ip: null, userAgent: null }, msg, ch.nonce!));
+    expect(res.profile.wallet).toBe(wallet);
   });
 
   it('native SIWS address mismatch: rejects message signed for another address', async () => {

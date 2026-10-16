@@ -1,0 +1,23 @@
+# Local stand-in for the production nginx sites. HTTP only, apex freightchain.localhost.
+# The app stays on the host (:3000). This file publishes nothing but port 80 and has no app secrets.
+name: freightchain-edge
+
+services:
+  edge:
+    image: nginx:1.27-alpine
+    container_name: freightchain-edge
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "80:80"
+    volumes:
+      - ./local/out/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./local/out/conf.d:/etc/nginx/conf.d:ro
+      - ./local/out/snippets:/etc/nginx/snippets:ro
+      - ./local/out/sites:/etc/nginx/sites:ro
+      - ./local/out/htpasswd:/etc/nginx/freightchain-admin.htpasswd:ro
+      - edge_cache:/var/cache/nginx
+
+volumes:
+  edge_cache:

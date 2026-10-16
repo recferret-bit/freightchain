@@ -12,7 +12,7 @@ const optionsFor = (f) => ({ repo: f.root, out: path.join(f.root, 'review'), fil
 function parentFor(f, onReadyHook = () => {}) {
   return async (options, { signal, onReady }) => {
     fs.mkdirSync(options.out, { mode: 0o700 });
-    const relay = await createTerminalRelay(f.request, { signal, deadlineMs: 5000 });
+    const relay = await createTerminalRelay(f.request, { signal });
     try {
       relay.activate(f.request);
       onReady({ socketPath: relay.socketPath });

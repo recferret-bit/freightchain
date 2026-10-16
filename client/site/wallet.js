@@ -1,17 +1,13 @@
-/* Wallet sign-in for the site pages (landing, lobby): connect an injected Solana wallet (Phantom / Solflare), sign the server's challenge,
-   the server sets the httpOnly session cookie. No libraries – a 20-line base58 encoder is all the browser needs. */
-const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-export function b58(bytes) {
-  let n = 0n; for (const b of bytes) n = (n << 8n) | BigInt(b);
-  let out = ''; while (n > 0n) { out = ALPHABET[Number(n % 58n)] + out; n /= 58n; }
-  for (const b of bytes) { if (b) break; out = '1' + out; }
-  return out;
-}
-
+/* Wallet sign-in for the site pages (landing, lobby): the shared handlers in js/wallet/ open the wallet, this file talks to the player API
+   and the server sets the httpOnly session cookie. */
 import { API_BASE } from '../js/hosts.js';
 import { track } from '../js/analytics.js';
 import { store } from '../js/util.js';
-import { wallets, walletLabel } from './wallet-standard.js';
+import { b58 } from '../js/wallet/b58.js';
+import { chooseWallet as chooseShared, getSignInMethod, signInWith } from '../js/wallet/handlers.js';
+import { wallets, walletLabel } from '../js/wallet/standard.js';
+
+export { b58, getSignInMethod };
 
 const REJECT = /reject|cancel|closed/i;
 
@@ -63,15 +59,11 @@ export function walletName(p = provider()) {
   return p.standard ? 'standard' : 'injected';
 }
 
-/** Which wallet signs in: none → the install / open-in-wallet panel (then throws no_provider); one → it; several → the picker. */
-export async function chooseWallet() {
-  if (typeof window !== 'undefined' && window.__fcDevWallet) return window.__fcDevWallet;
-  const all = wallets();
-  if (all.length === 1) return all[0];
-  const { pickWallet } = await import('./wallet-picker.js');
-  const p = await pickWallet(all, walletLabel, store.get(PICKED));
-  if (!p) throw stamp(new Error(all.length ? 'No wallet chosen.' : 'No Solana wallet found – install Phantom or Solflare'), all.length ? 'connect_rejected' : 'no_provider');
-  return p;
+/** Which wallet signs in: none → the install / open-in-wallet panel (then throws no_provider); one → it; several → the picker.
+ *  `onPick` runs in the click that chose the wallet. */
+export async function chooseWallet(onPick) {
+  try { return await chooseShared(store.get(PICKED), onPick); }
+  catch (e) { throw stamp(e, e?.stage ?? 'unknown'); }
 }
 
 /** Connects `p` to `address` (the account the server built the transaction for) or says plainly that the wallet is on another account. */
@@ -99,80 +91,22 @@ export async function payingWallet(address) {
 const refused = e => e?.code === 4001 || REJECT.test(e?.message ?? '');
 const stamp = (e, stage) => { if (e && typeof e === 'object') e.stage = stage; return e; };
 
-/** Detects SIWS capability: Wallet Standard feature or window provider method */
-export function getSignInMethod(p = provider()) {
-  if (!p) return null;
-  if (p.standard) return p.features['solana:signIn'] ? input => p.signIn(input) : null;   // through the adapter: it keeps the account the wallet signed in with
-  if (typeof p.features?.['solana:signIn']?.signIn === 'function') {
-    return async (input) => {
-      const res = await p.features['solana:signIn'].signIn(input);
-      return Array.isArray(res) ? res[0] : res;
-    };
-  }
-  if (typeof p.signIn === 'function') {
-    return async (input) => {
-      const res = await p.signIn(input);
-      return Array.isArray(res) ? res[0] : res;
-    };
-  }
-  return null;
-}
-
 /** Attempts 1-click Native SIWS; returns session on success or null to trigger fallback */
 async function tryNativeSignIn(p, wallet_name) {
-  const signInMethod = getSignInMethod(p);
-  if (!signInMethod) return null;
-
+  if (!getSignInMethod(p)) return null;
   let challenge;
-  try {
-    challenge = await api('auth/nonce', {}, { report: false });
-  } catch {
-    return null;
-  }
-
-  const knownWallet = p.publicKey?.toString();
-  const signInInput = {
-    domain: challenge.domain,
-    statement: challenge.statement,
-    uri: challenge.uri,
-    version: challenge.version,
-    chainId: challenge.chainId,
-    nonce: challenge.nonce,
-    issuedAt: challenge.issuedAt,
-    expirationTime: challenge.expirationTime,
-    ...(challenge.address ? { address: challenge.address } : (knownWallet ? { address: knownWallet } : {})),
-  };
-
+  try { challenge = await api('auth/nonce', {}, { report: false }); } catch { return null; }
   track('wallet_signature_requested', { wallet_name });
-
-  let out;
-  try {
-    out = await signInMethod(signInInput);
-  } catch (e) {
-    if (refused(e)) throw stamp(e, 'sign_rejected');   // the visitor said no: no second prompt
-    return null;   // the wallet's signIn is broken / unsupported for this input: fall back to connect + signMessage
-  }
-
-  if (!out?.signature) return null;
-
-  const wallet = out.account?.address ?? (out.account?.publicKey ? b58(out.account.publicKey) : p.publicKey?.toString());
-  if (!wallet) return null;
-
-  const signature = b58(out.signature);
-  const message = out.signedMessage ? new globalThis.TextDecoder().decode(out.signedMessage) : challenge.message;
-  const nonce = challenge.nonce;
-
-  try {
-    return await api('auth/verify', { wallet, signature, message, nonce }, { report: false });
-  } catch (e) {
-    if (e?.status === 401) return null;   // the wallet changed a field of the issued sign-in text: the server-built message (connect + signMessage) still works
-    throw stamp(e, 'verify_failed');
-  }
+  let signed;
+  try { signed = await signInWith(p, challenge); }   // the shared handler: one sheet, or null when this wallet cannot sign in that way
+  catch (e) { if (refused(e)) throw stamp(e, 'sign_rejected'); return null; }   // the visitor said no: no second prompt
+  if (!signed) return null;
+  try { return await api('auth/verify', { wallet: signed.wallet, signature: signed.signature, message: signed.message, nonce: signed.nonce }, { report: false }); }
+  catch (e) { if (e?.status === 401) return null; throw stamp(e, 'verify_failed'); }   // a rewritten sign-in text: connect + signMessage still works
 }
 
-/** Legacy 2-step sign-in: connect() + signMessage() */
-async function legacySignIn(p, wallet_name) {
-  try { await p.connect(); } catch (e) { throw stamp(e, refused(e) ? 'connect_rejected' : 'unknown'); }
+/** signMessage after the wallet is already connected. */
+async function legacyAfterConnect(p, wallet_name) {
   const wallet = p.publicKey.toString();   // Phantom and Solflare both expose it after connect(); connect()'s return shape differs
   let challenge;
   try { challenge = await api('auth/nonce', { wallet }, { report: false }); } catch (e) { throw stamp(e, 'nonce_failed'); }
@@ -180,6 +114,12 @@ async function legacySignIn(p, wallet_name) {
   let res;
   try { res = await p.signMessage(new TextEncoder().encode(challenge.message), 'utf8'); } catch (e) { throw stamp(e, refused(e) ? 'sign_rejected' : 'unknown'); }   // Phantom: { signature }, Solflare: the bytes
   try { return await api('auth/verify', { wallet, signature: b58(res.signature ?? res) }, { report: false }); } catch (e) { throw stamp(e, 'verify_failed'); }
+}
+
+/** Legacy 2-step sign-in: connect() + signMessage() */
+async function legacySignIn(p, wallet_name) {
+  try { await p.connect(); } catch (e) { throw stamp(e, refused(e) ? 'connect_rejected' : 'unknown'); }
+  return legacyAfterConnect(p, wallet_name);
 }
 
 /** 1-click SIWS with seamless fallback to legacy message signing */
@@ -197,12 +137,13 @@ export async function signInOrFallback(p = provider()) {
   }
 }
 
-/** CONNECT: choose the wallet (picker when several), remember it for the payments on this origin, then sign in. */
+/** CONNECT: the wallet the visitor picks, then the same one-prompt sign-in production uses (Wallet Standard solana:signIn). */
 export async function signIn() {
   let p;
-  try { p = await chooseWallet(); } catch (e) { track('sign_in_failed', { stage: e?.stage ?? 'unknown', http_status: null, code: null, wallet_name: 'none' }); throw e; }
+  try { p = await chooseWallet(); }
+  catch (e) { track('sign_in_failed', { stage: e?.stage ?? 'unknown', http_status: null, code: null, wallet_name: 'none' }); throw e; }
   const session = await signInOrFallback(p);
-  rememberWallet(p);   // only a wallet that actually signed in becomes the paying one
+  rememberWallet(p);
   return session;
 }
 /** The wallet the payments on this origin use from now on (provider() looks it up by label). */

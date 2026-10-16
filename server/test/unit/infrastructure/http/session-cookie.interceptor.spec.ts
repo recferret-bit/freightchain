@@ -3,10 +3,10 @@ import { lastValueFrom, of } from 'rxjs';
 import { ClearSessionCookieInterceptor, SetSessionCookieInterceptor } from '../../../../src/infrastructure/http/interceptors/session-cookie.interceptor.js';
 import type { EnvService } from '../../../../src/infrastructure/config/env.service.js';
 
-const responseSpy = () => {
+const responseSpy = (hostname?: string) => {
   const calls: { method: string; args: unknown[] }[] = [];
   const response = { cookie: (...args: unknown[]) => calls.push({ method: 'cookie', args }), clearCookie: (...args: unknown[]) => calls.push({ method: 'clearCookie', args }) };
-  return { calls, ctx: { switchToHttp: () => ({ getResponse: () => response }) } as unknown as ExecutionContext };
+  return { calls, ctx: { switchToHttp: () => ({ getResponse: () => response, getRequest: () => ({ hostname }) }) } as unknown as ExecutionContext };
 };
 const handlerOf = <T>(value: T): CallHandler<T> => ({ handle: () => of(value) });
 
@@ -27,6 +27,13 @@ describe('SetSessionCookieInterceptor', () => {
     await lastValueFrom(new SetSessionCookieInterceptor(dev('example.test')).intercept(ctx, handlerOf({ profile: {}, session: { token: 't', expiresAt: new Date(0) } }) as never));
     expect(calls[0]?.args[0]).toBe('fc_session');
     expect(calls[0]?.args[2]).toMatchObject({ secure: false, domain: 'example.test' });
+  });
+
+  it('a localhost page does not get Domain=freightchain.localhost: the browser would drop that cookie', async () => {
+    const { calls, ctx } = responseSpy('localhost');
+    await lastValueFrom(new SetSessionCookieInterceptor(dev('freightchain.localhost')).intercept(ctx, handlerOf({ profile: {}, session: { token: 't', expiresAt: new Date(0) } }) as never));
+    expect(calls[0]?.args[2]).toMatchObject({ httpOnly: true, sameSite: 'lax', secure: false, path: '/' });
+    expect(calls[0]?.args[2]).not.toHaveProperty('domain');
   });
 });
 

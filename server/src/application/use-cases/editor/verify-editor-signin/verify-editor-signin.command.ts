@@ -7,6 +7,8 @@ export class VerifyEditorSignInCommand {
     public readonly signature: string,
     public readonly client: ClientInfo = { ip: null, userAgent: null },
     public readonly requestId: string | null = null,
+    public readonly message: string | null = null,
+    public readonly nonce: string | null = null,
   ) {}
 }
 

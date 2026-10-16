@@ -27,23 +27,36 @@ function fakeWallet(name, { accounts = [account(1)], chains = ['solana:devnet', 
 
 test('Wallet Standard discovery: app-ready reaches a wallet that loaded first, register-wallet a late one; non-Solana wallets are left out', () => {
   assert.ok(early?.register, 'the module announced app-ready with { register }');
-  early.register(fakeWallet('Early'));
+  early.register(fakeWallet('Early'), fakeWallet('MetaMask'));
   window.dispatchEvent(Object.assign(new Event('wallet-standard:register-wallet'), { detail: api => api.register(fakeWallet('Late'), fakeWallet('EthOnly', { chains: ['eip155:1'] })) }));
   assert.deepEqual(wallets().map(p => p.name), ['Early', 'Late']);
   assert.equal(CHAIN, 'solana:devnet');
   assert.equal(isSolanaWallet({ chains: ['solana:devnet'], features: { 'standard:connect': {} } }), false, 'a wallet that signs nothing is not listed');
 });
 
-test('a wallet found both ways is listed once (the standard one); a legacy-only wallet stays', () => {
+test('a wallet found both ways is listed once (the standard one); a legacy-only wallet stays', async () => {
   const phantom = fakeWallet('Phantom');
   early.register(phantom);
   window.phantom = { solana: { isPhantom: true } }; window.solana = window.phantom.solana; window.solflare = { isSolflare: true };
   const names = wallets().map(p => (p.standard ? p.name : 'legacy:' + (p.isSolflare ? 'Solflare' : 'Phantom')));
   assert.deepEqual(names.filter(n => /Phantom|Solflare/.test(n)), ['Phantom', 'legacy:Solflare']);
+  const calls = [];
+  phantom.features['solana:signIn'] = { version: '1.0.0', signIn: async (input) => { calls.push(input.domain); return [{ account: account(1), signature: new Uint8Array(64), signedMessage: new Uint8Array() }]; } };
+  const injectedCalls = [];
+  window.phantom.solana.connect = async () => { injectedCalls.push('connect'); return { publicKey: { toString: () => 'PhantomAddr111' } }; };
+  window.phantom.solana.signIn = async (input) => { injectedCalls.push(input.domain); return { publicKey: { toString: () => 'PhantomAddr111' }, signature: new Uint8Array(64), signedMessage: new Uint8Array() }; };
+  const adapted = adapt(phantom);
+  await adapted.connect();
+  await adapted.signIn({ domain: 'freightchain.localhost' });
+  assert.deepEqual(calls, ['freightchain.localhost']);
+  assert.deepEqual(injectedCalls, [], 'sign-in is solana:signIn, the same call production uses');
   assert.equal(walletName(adapt(phantom)), 'phantom');
   assert.equal(walletName(adapt(fakeWallet('Some New Wallet'))), 'standard', 'analytics get a fixed set, never a free-text name');
   assert.equal(walletName(window.solflare), 'solflare');
   delete window.phantom; delete window.solana; delete window.solflare;
+  window.solana = { isMetaMask: true };
+  assert.equal(wallets().some(p => p.isMetaMask), false, 'an injected MetaMask is not offered');
+  delete window.solana;
   assert.ok(provider(), 'provider() is synchronous and finds a wallet');
 });
 

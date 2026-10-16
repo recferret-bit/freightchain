@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
-import { editorSignInKey } from '../../../../domain/admin/admin-proof.js';
+import { editorNonceKey, editorSignInKey } from '../../../../domain/admin/admin-proof.js';
 import { parseWalletAddress } from '../../../../domain/players/wallet-address.js';
 import { NotFoundError, UnauthorizedError } from '../../../../domain/shared/errors.js';
 import { AdminActionRepositoryPort } from '../../../ports/admin/admin-action.repository.port.js';
@@ -28,13 +28,15 @@ export class VerifyEditorSignInHandler implements ICommandHandler<VerifyEditorSi
     private readonly clock: ClockPort,
   ) {}
 
-  async execute({ wallet: raw, signature, client, requestId }: VerifyEditorSignInCommand): Promise<EditorSignInResultDto> {
+  async execute({ wallet: raw, signature, client, requestId, message, nonce }: VerifyEditorSignInCommand): Promise<EditorSignInResultDto> {
     const wallet = parseWalletAddress(raw);
     if (!this.rules.get().editorWallets.has(wallet)) throw new NotFoundError('not found');
-    const challenge = await this.challenges.consume(editorSignInKey(wallet));
+    const challenge = await this.challenges.consume(nonce ? editorNonceKey(nonce) : editorSignInKey(wallet));
     const now = this.clock.now();
     if (!challenge || challenge.isExpired(now)) throw new UnauthorizedError('no valid editor challenge – request a new one');
-    if (!this.verifier.verify(challenge.message, signature, wallet)) {
+    const text = message ?? challenge.message;
+    if (message && message.replace(/\r\n/g, '\n') !== challenge.messageFor(wallet)) throw new UnauthorizedError('the signed text is not the issued challenge');
+    if (!this.verifier.verify(text, signature, wallet)) {
       this.logger.warn({ event: 'editor-signin', msg: `editor sign-in of ${wallet} refused: bad signature`, wallet, ip: client.ip, ok: false });
       throw new UnauthorizedError('bad signature');
     }

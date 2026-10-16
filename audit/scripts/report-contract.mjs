@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { classifyAuditFailure, FAILURE_MESSAGES } from './audit-process.mjs';
+import { REVIEW_WORKFLOW } from './review-workflow.mjs';
+import { readCanonicalSubmission } from './audit-submission.mjs';
 
 const LEVELS = new Set(['critical', 'high', 'medium', 'low', 'info']);
 const CONFIDENCE = new Set(['confirmed', 'probable']);
@@ -99,6 +103,19 @@ export function validCrosscheckRow(row) {
     && (row.severity == null || (typeof row.severity === 'string' && LEVELS.has(row.severity)));
 }
 
+function verifyCommittedOutput(root, meta, name, data) {
+  if (meta.submissionAuthority !== 'mcp_commit') return;
+  const identity = readReportJson(root, `harness/identities/${name}.json`);
+  const manifest = readReportJson(root, 'source-manifest.json');
+  const assignment = readReportJson(root, `harness/assignments/${name}.json`);
+  const assignmentDigest = crypto.createHash('sha256').update(JSON.stringify(assignment)).digest('hex');
+  if (identity.model !== meta.models?.[identity.agent] || identity.sourceDigest !== manifest.digest || identity.assignmentDigest !== assignmentDigest) throw new Error('Submission source/model/assignment mismatch');
+  if (meta.workflow === REVIEW_WORKFLOW && identity.workflow !== REVIEW_WORKFLOW) throw new Error('Submission workflow mismatch');
+  const submission = readCanonicalSubmission(root, name, identity);
+  if (meta.workflow === REVIEW_WORKFLOW && identity.role === 'auditor' && (data.slice(0, -1).some(row => row.attack.length || row.poc || !text(row.analysis) || !text(row.validation)) || data.at(-1).verified_safe.some(row => !text(row.evidence)))) throw new Error('Source review evidence contract mismatch');
+  if (!isDeepStrictEqual(submission.report.payload, data)) throw new Error('Derived report differs from the canonical submission');
+}
+
 export function validateAuditor(data, name) {
   if (!NAME.test(name)) throw new Error('unknown auditor identity');
   const [, , surface, slug] = name.match(/^(claude|grok|agy|codex)-(s[1-6])-(\w+)$/);
@@ -177,6 +194,7 @@ export function loadAuditors(root) {
   for (const name of expected) {
     try {
       const data = validateAuditor(readReportJson(root, `auditors/${name}.json`), name);
+      verifyCommittedOutput(root, meta, name, data);
       // Require both declared outputs, without interpreting markdown as evidence.
       const md = path.join(root, 'auditors', `${name}.md`);
       const stat = fs.lstatSync(md);
@@ -198,7 +216,10 @@ export function loadAuditors(root) {
     if (!ids.length) continue;
     assignments[adapter] = ids;
     if (meta.crosscheckExits?.[adapter] !== 0) errors.push(`${adapter}: missing or failed cross-check exit. ${failureDetail(adapter, true)}`);
-    try { readReportJson(root, `auditors/crosscheck-${adapter}.json`); } catch { errors.push(`${adapter}: expected cross-check output is missing or invalid.`); }
+    try {
+      const data = readReportJson(root, `auditors/crosscheck-${adapter}.json`);
+      verifyCommittedOutput(root, meta, `crosscheck-${adapter}`, data);
+    } catch { errors.push(`${adapter}: expected cross-check output is missing or invalid.`); }
   }
   for (const adapter of Object.keys(record(meta.crosscheckExits) ? meta.crosscheckExits : {})) {
     if (!assignments[adapter]) errors.push('Unexpected cross-check worker was excluded.');

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const MCP_TOOLS = new Set(['get_audit_context', 'get_attack_plan', 'list_files', 'read_file', 'search_code', 'run_container_check', 'write_poc', 'submit_audit_report', 'submit_crosscheck_report']);
+import { REVIEW_TOOLS as MCP_TOOLS } from './review-workflow.mjs';
 
 export function auditToolDecision(input, skillFiles = []) {
   const name = input?.toolCall?.name;

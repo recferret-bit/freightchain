@@ -1,12 +1,14 @@
-# Live-model integration through the user-terminal relay
+# Live-model integration: ACP audits and selected-file reviews
 
 ## What works today
 
 `review-local` connects an isolated Docker source reader to a host-terminal result. It does not itself authenticate or start a model. You can either submit a result manually, or use the explicit `connect-terminal` consumer to invoke a supported inference-only local CLI and submit its validated result automatically.
 
-The legacy multi-surface `run` adapters remain blocked. The terminal connector has fixed Claude and receipt-gated `codex-native`/`grok-native` profiles for separate source-built brokers. All three completed inert-source live reviews. Grok's initial HTTP 400 was resolved by restoring upstream's empty-tool encoding after bounded classification implicated `tool_choice`. The separate `grok-docker` profile runs the Grok broker inside Docker with a fresh Docker-volume device login; the host-profile smoke tests do not establish authenticated Docker inference. Unmodified Codex/Grok CLIs and Agy remain unsupported automatically. A login/read-only mode/deny rule is not an equivalent tool-free interface. Do not restore host audit launchers, copy sessions into Docker or substitute API billing.
+Whole-repository `run` enforces `source_security_review_v1`: source/configuration/dependency inspection, evidence and fixes, and catalogued existing tests only after verified Docker network disconnection. It excludes arbitrary commands, PoCs and deployed probes; legacy adversarial sessions cannot resume into it. It uses persistent ACP sessions and the Docker MCP bridge for Claude, Codex, Grok and AGY. See [the source-review workflow](../README.md) for installation, qualification and `--resume-from`. All four passed real inert transport/resume/submission checks on 2026-10-16, before the restricted source-review workflow was introduced. This does not resolve the original Codex provider-policy refusal or establish whole-repository security coverage.
 
-The supported review scope is static correctness, maintainability and defensive hardening of explicitly selected local text. No source execution, scans, host probing, exploit steps or PoC generation are part of this workflow.
+The rest of this guide describes the **separate selected-file relay**, with its narrower tool-free profiles and independent admission receipts. It is not an automatic fallback for ACP audit failures. Historical native-broker verification below describes the tested source/recipe at that time; changed recipes require fresh admission. Missing pinned private source/protoc prerequisites keep those optional rebuilds unavailable.
+
+The selected-file review scope is static correctness, maintainability and defensive hardening of explicitly selected local text. No source execution, scans, host probing, exploit steps or PoC generation are part of this workflow.
 
 ## Prerequisites
 
@@ -14,7 +16,7 @@ The supported review scope is static correctness, maintainability and defensive 
 - Docker must be running with the immutable Node image referenced by `audit/scripts/worker-isolation.mjs` already provisioned. The supervisor does not pull or install it automatically.
 - Prepare a local source directory you are authorized to disclose. Select one to three relative UTF-8 files, at most 64 KiB combined. Named credentials, `.env*`, symlinks and other excluded entries cannot be selected. Filename exclusions do not detect every secret embedded in ordinary source: inspect the selected material before sending it to a provider.
 - Open your authenticated model session before starting the job. Use a text-only conversation or an independently verified tools-disabled interface. Do not feed untrusted source into an unrestricted credential-bearing coding agent.
-- The handoff expires after two minutes by default. If your external model takes longer, restart with a new empty output directory and new binding fields; there is no resume or deadline-bypass option.
+- Selected-file handoffs and inference have no default reasoning deadline. Explicit caller-supplied test deadlines remain supported; cancellation still invalidates a handoff. Selected-file relay claim bindings cannot be replayed as an ACP session resume.
 
 ## Grok with the authenticated inference client inside Docker
 
@@ -102,7 +104,7 @@ This replaces manual claim/copy/submit: the connector preflights before claiming
 
 The host adapter uses a fresh private neutral directory; restricted mode; an empty built-in tool list; strict empty MCP configuration; disabled skills; explicit hook/automatic-memory disable settings and `forceLoginMethod: claudeai`; ignored user/project/local settings; no session persistence; and a minimal environment. The login-method setting is passed per invocation, not written to global configuration. It never invokes a shell or accepts executable/argv/URL/env plugins. Provider/API-key overrides, proxies, `NODE_OPTIONS`, shell startup variables and token overrides are not forwarded. These controls do not attest suppression of every user/ancestor instruction file or plugin-context input. The installed official CLI, its normal login store and trusted user/administrator context remain trusted computing base.
 
-CLI inspection is bounded to 5 seconds for version/help and 10 seconds for auth; inference is limited to 60 seconds and combined stdout/stderr to 2 MiB. The connector polls claimed-job state during inference and cancels its owned CLI process group if the relay expires/disappears. Connector cancellation also cancels relay I/O. A submission already accepted during a cancellation race cannot be rolled back; inspect the parent record rather than assuming cancellation means no result was stored. Prompts, account details, stderr and reasoning are not logged or printed. Machine output must report empty tool/MCP inventories; tool-use, control/execution events, ambiguous success flags, formatter output, prose-wrapped JSON or invalid citations are rejected. No automatic retry changes provider/model or weakens restrictions.
+CLI inspection is bounded to 5 seconds for version/help and 10 seconds for auth; inference has no default deadline and combined stdout/stderr is bounded to 2 MiB. The connector polls claimed-job state during inference and cancels its owned CLI process group if the relay expires/disappears. Connector cancellation also cancels relay I/O. A submission already accepted during a cancellation race cannot be rolled back; inspect the parent record rather than assuming cancellation means no result was stored. Prompts, account details, stderr and reasoning are not logged or printed. Machine output must report empty tool/MCP inventories; tool-use, control/execution events, ambiguous success flags, formatter output, prose-wrapped JSON or invalid citations are rejected. No automatic retry changes provider/model or weakens restrictions.
 
 Connector status distinguishes `requestedModel` from `cliReportedModel`; the latter is client-reported metadata, not served-provider attestation. Login readiness does not independently establish subscription entitlement, quota or billing; inference can still be refused by the official client/provider. Existing reports retain unverified terminal provenance. A fake-CLI integration test is not live inference. If the supported subscription login is absent, real-model testing remains blocked even when all simulated tests pass.
 
@@ -214,7 +216,7 @@ Keep source-bearing claim/result/journal files private and follow your provider'
 
 ## Failure and recovery
 
-- **`audit run` stays blocked despite a ready Claude login:** this is the unconditional legacy multi-surface integration gate, not a login failure. Passing lint, installing ESLint/Prisma or a successful `check-model-cli` does not remove it. Existing machine records retain `subscription_bridge_unverified` for that legacy path. The separate `review-local` / `connect-terminal` workflow supports only the selected-file static review scope described above; it is not a whole-repository audit launcher.
+- **ACP review incomplete:** inspect the job failure reason, private session state and report health. Install adapters with `setup-agents`, check transport with explicit `check-agents --live`, or use `--resume-from` after a transport interruption. Provider refusals require resolving provider access; quotas require waiting for reset. Historical blocked records remain historical. `check-model-cli` inventories the separate selected-file workflow.
 - **Docker/image unavailable:** provision the required runtime separately; do not fall back to a host reviewer.
 - **No request/timeout:** inspect the parent journal. Start a fresh job/output directory rather than replaying a stale result.
 - **Invalid citation/schema:** correct only the result data while the claim remains active.

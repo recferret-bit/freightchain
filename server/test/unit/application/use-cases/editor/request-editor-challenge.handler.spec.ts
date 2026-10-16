@@ -15,4 +15,15 @@ describe('RequestEditorChallengeHandler', () => {
     expect(ctx.db.challenges.has(`editor:${W}`)).toBe(true);
     await expect(h.execute(new RequestEditorChallengeCommand(other))).rejects.toBeInstanceOf(NotFoundError);
   });
+
+  it('no wallet yet: a 1-click challenge the wallet fills in, under its own key', async () => {
+    const ctx = unitContext(unitRules({ editorWallets: new Set(['nobody']), editorDomain: 'storybook.freight.test', editorOrigin: 'https://storybook.freight.test' }));
+    const h = new RequestEditorChallengeHandler(ctx.challenges, ctx.rules, ctx.clock, ctx.entropy);
+    const dto = await h.execute(new RequestEditorChallengeCommand(null));
+    expect(dto.domain).toBe('storybook.freight.test');
+    expect(dto.chainId).toBe('solana:devnet');
+    expect(dto.message).toContain('{{address}}');
+    expect(dto.message).toContain('EDITOR sign-in to Freight Chain');
+    expect(ctx.db.challenges.has(`editor-nonce:${dto.nonce}`)).toBe(true);
+  });
 });

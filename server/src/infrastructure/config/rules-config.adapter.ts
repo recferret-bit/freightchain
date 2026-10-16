@@ -18,7 +18,7 @@ export class EnvRulesConfigAdapter extends RulesConfigPort {
     this.rules = {
       freeOnSignup: FREE_ON_SIGNUP, freeRidesMax: FREE_RIDES_MAX, freeRideSeconds: env.freeRideSeconds, hbMinIntervalMs: env.hbMinIntervalMs, hbTimeoutMs: env.hbTimeoutMs,   // HB_TIMEOUT_MS (150 s): background tabs throttle timers to ~1/min, so be generous; the game pauses (and keeps beating) when hidden
       quoteTtlMs: QUOTE_TTL_MS, nonceTtlMs: NONCE_TTL_MS, demoWallets: env.demoWallets, demoScale: env.demoScale,
-      initialSeedLamports: env.initialSeedLamports, treasury: env.treasuryPubkey, appDomain: env.appDomain, appOrigin: env.appOrigin,
+      initialSeedLamports: env.initialSeedLamports, treasury: env.treasuryPubkey, appDomain: env.appDomain, appOrigin: env.appOrigin, localSignIn: !env.isProduction,
       paymentMode: env.paymentMode, programId: env.ticketProgramId, feeTreasury: env.feeTreasury, seedTreasury: env.seedTreasury, watchIntervalMs: env.watchIntervalMs,
       orderTtlMs: env.orderTtlMs, commitment: env.solanaCommitment, crankEnabled: env.crankSecret !== undefined, achievementCollection: env.achievementCollection, achievementTree: env.achievementTree,
       priorityFee: env.priorityFee,

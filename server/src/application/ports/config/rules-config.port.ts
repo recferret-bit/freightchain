@@ -19,6 +19,8 @@ export interface RulesConfig {
   treasury: string;
   appDomain: string;
   appOrigin: string;
+  /** false in production. When true, a sign-in from localhost / *.localhost names that page (Phantom drops any other domain with no window). */
+  localSignIn: boolean;
   /** split deployment: the game host (ride.<apex>) – a sign-in requested from there names it in the message, so the wallet sees its own page's domain */
   gameDomain: string | null;
   gameOrigin: string | null;

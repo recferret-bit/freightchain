@@ -12,7 +12,7 @@ import { ZodBody } from '../../infrastructure/http/decorators/zod.js';
 import { EditorGuard, EditorPublic } from '../../infrastructure/http/guards/editor.guard.js';
 import { ClearEditorCookieInterceptor, SetEditorCookieInterceptor } from '../../infrastructure/http/interceptors/editor-cookie.interceptor.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
-import { challengeBodySchema, verifyBodySchema, type ChallengeBody, type VerifyBody } from '../auth/dto/auth.dto.js';
+import { requestChallengeBodySchema, verifyBodySchema, type RequestChallengeBody, type VerifyBody } from '../auth/dto/auth.dto.js';
 
 /** The 3D model editor's sign-in (storybook.<apex>): a wallet in EDITOR_WALLETS signs a message → the fc_editor cookie. To anybody else every route is a 404. */
 @Controller('api/editor')
@@ -24,13 +24,13 @@ export class EditorAuthHttpController {
   ) {}
 
   @Post('auth/nonce') @HttpCode(200) @EditorPublic()
-  nonce(@ZodBody(challengeBodySchema) body: ChallengeBody): Promise<ChallengeDto> {
-    return this.commandBus.execute<RequestEditorChallengeCommand, ChallengeDto>(new RequestEditorChallengeCommand(body.wallet));
+  nonce(@ZodBody(requestChallengeBodySchema) body: RequestChallengeBody): Promise<ChallengeDto> {
+    return this.commandBus.execute<RequestEditorChallengeCommand, ChallengeDto>(new RequestEditorChallengeCommand(body.wallet ?? null));
   }
 
   @Post('auth/verify') @HttpCode(200) @EditorPublic() @UseInterceptors(SetEditorCookieInterceptor)
   verify(@ZodBody(verifyBodySchema) body: VerifyBody, @CurrentClient() client: ClientInfo, @CurrentRequestId() requestId: string): Promise<EditorSignInResultDto> {
-    return this.commandBus.execute<VerifyEditorSignInCommand, EditorSignInResultDto>(new VerifyEditorSignInCommand(body.wallet, body.signature, client, requestId));
+    return this.commandBus.execute<VerifyEditorSignInCommand, EditorSignInResultDto>(new VerifyEditorSignInCommand(body.wallet, body.signature, client, requestId, body.message ?? null, body.nonce ?? null));
   }
 
   @Post('auth/logout') @HttpCode(200) @EditorPublic() @UseInterceptors(ClearEditorCookieInterceptor)

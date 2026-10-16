@@ -1,5 +1,5 @@
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
-import { editorSignInChallenge } from '../../../../domain/admin/admin-proof.js';
+import { EDITOR_SIGNIN_STATEMENT, editorAnonymousChallenge, editorSignInChallenge } from '../../../../domain/admin/admin-proof.js';
 import { parseWalletAddress } from '../../../../domain/players/wallet-address.js';
 import { NotFoundError } from '../../../../domain/shared/errors.js';
 import { ChallengeRepositoryPort } from '../../../ports/auth/challenge.repository.port.js';
@@ -11,7 +11,8 @@ import { RequestEditorChallengeCommand } from './request-editor-challenge.comman
 
 const NONCE_BYTES = 16;
 
-/** Step 1 of the editor sign-in (storybook.<apex>): the message for a wallet in EDITOR_WALLETS. Anyone else: 404 – nothing to probe. */
+/** Step 1 of the editor sign-in (storybook.<apex>). With a wallet: the message for an EDITOR_WALLETS address, anyone else 404.
+ *  Without one: a 1-click challenge (the address is filled in by the wallet). The allowlist is checked when the signature comes back. */
 @CommandHandler(RequestEditorChallengeCommand)
 export class RequestEditorChallengeHandler implements ICommandHandler<RequestEditorChallengeCommand, ChallengeDto> {
   constructor(
@@ -22,10 +23,20 @@ export class RequestEditorChallengeHandler implements ICommandHandler<RequestEdi
   ) {}
 
   async execute(command: RequestEditorChallengeCommand): Promise<ChallengeDto> {
-    const wallet = parseWalletAddress(command.wallet);
     const rules = this.rules.get();
+    const nonce = this.entropy.hex(NONCE_BYTES);
+    const now = this.clock.now();
+    if (!command.wallet) {
+      const challenge = editorAnonymousChallenge({ domain: rules.editorDomain, origin: rules.editorOrigin, nonce, now, ttlMs: rules.nonceTtlMs });
+      await this.challenges.upsert(challenge);
+      return {
+        message: challenge.message, domain: rules.editorDomain, statement: EDITOR_SIGNIN_STATEMENT, uri: rules.editorOrigin,
+        version: '1', chainId: 'solana:devnet', nonce, issuedAt: now.toISOString(), expirationTime: challenge.expiresAt.toISOString(),
+      };
+    }
+    const wallet = parseWalletAddress(command.wallet);
     if (!rules.editorWallets.has(wallet)) throw new NotFoundError('not found');
-    const challenge = editorSignInChallenge({ wallet, domain: rules.editorDomain, origin: rules.editorOrigin, nonce: this.entropy.hex(NONCE_BYTES), now: this.clock.now(), ttlMs: rules.nonceTtlMs });
+    const challenge = editorSignInChallenge({ wallet, domain: rules.editorDomain, origin: rules.editorOrigin, nonce, now, ttlMs: rules.nonceTtlMs });
     await this.challenges.upsert(challenge);
     return { message: challenge.message };
   }

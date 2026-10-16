@@ -14,7 +14,7 @@ const invocation = (cwd, script) => ({ executable: process.execPath, args: ['-e'
 
 test('audit process preserves provider refusal and real exit code', async (t) => {
   const f = fixture(t);
-  const result = await runAgentProcess(invocation(f.dir, 'console.error("This content was flagged for possible cybersecurity risk."); process.exit(1)'), 5000, f.log);
+  const result = await runAgentProcess(invocation(f.dir, 'console.error("This content was flagged for possible cybersecurity risk."); process.exit(1)'), null, f.log);
   assert.equal(result.code, 1);
   assert.equal(result.timedOut, false);
   assert.equal(classifyAuditFailure(result).reason, 'provider_policy');
@@ -45,6 +45,7 @@ test('process failures have bounded labels without echoing provider output', () 
   const secret = 'DO_NOT_ECHO_SAMPLE_PAYLOAD';
   for (const [input, expected] of [
     [{ code: 1, stderr: `You've hit your session limit ${secret}` }, 'usage_limit'],
+    [{ code: 1, stderr: `Authentication required ${secret}` }, 'auth_required'],
     [{ code: 0, stdout: `The project MCP server never attached ${secret}` }, 'mcp_unavailable'],
     [{ code: 124 }, 'timeout'],
     [{ code: 1 }, 'process_error'],

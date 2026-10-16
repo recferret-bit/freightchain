@@ -211,14 +211,14 @@ Typical local setup:
 cp server/.env.example server/.env   # edit nothing for a first run
 npm run db:up && npm run db:migrate
 npm run treasury:init                # dev treasury key → server/data/treasury.json
-npm run server:dev                   # :3000 – site, game and API on one origin
+npm run server:dev                   # :3000, behind http://freightchain.localhost (npm run infra:local)
 ```
 
 ## Client settings
 
 - **`client/js/config.js` (`CFG`)** – every gameplay constant, with comments. Deliberate values not to touch without asking: `SHAKE_START 0.45`, `SHAKE_MOVING 0.09`, `SHAKE_RPM 0.315`, `START_ENGINE_OFF true`.
   `RIDE_MIN_SECONDS` is **300 (a test value); production = 1800**. Tuning requests are relative to the current value. Which constant to touch, which mirror must move with it, and the check to run: the `gameplay-balance` skill (`cd client && npm run check`).
-- **Hosts** – never hard-code `/api/…` or `/play.html`; use `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE` / `WHITEPAPER_BASE` / `ADMIN_BASE` from `client/js/hosts.js`. On localhost, an IP or `file://` they are `''` (one origin).
+- **Hosts** – never hard-code `/api/…` or `/play.html`; use `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE` / `WHITEPAPER_BASE` / `ADMIN_BASE` from `client/js/hosts.js`. On a bare localhost, an IP or `file://` they are `''` (one origin). `freightchain.localhost` splits like production.
 - **Browser `localStorage` keys** (per player, not config you ship): `freightchain.truck` (F2 handling tuning), `freightchain.radio`, `freightchain.assist` (the lobby's ASSIST checkbox), `freightchain.level` (the free level picked in the lobby: 1 EASY · 2 MEDIUM · 3 HARD), `freightchain.admin`. The analytics branch also writes `freightchain.anon` (`anon_<uuid v4>`).
   A stale value is the first suspect for "works in a fresh browser only" – clear them.
 - **In-game F2 panel** – live sliders for truck handling. (The route and the time of day are not settings: the server assigns them to each ride.)

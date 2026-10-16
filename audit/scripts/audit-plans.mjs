@@ -12,7 +12,7 @@
  *   7. Bot / Headless Automation Resistance & Economy Integrity (`bots_economy`)
  *   8. API Abuse & Response DTO / Error Oracle Leakage (`api_dto_abuse`)
  *
- * Generates structured `stack-profile.json` and `attack-plans.md` under `/out/harness`
+ * Generates structured `stack-profile.json` and `review-plans.md` under `/out/harness`
  * and provides surface-tailored check plans for the MCP bridge and agent orchestrator.
  */
 
@@ -350,7 +350,7 @@ export function analyzeStackAndPlans(targetRoot) {
       detected: spec.alwaysActive,
       markerHits: [],
       leads: spec.leads.map((l) => ({ id: l.id, title: l.title, note: l.note, hits: [] })),
-      checks: spec.checks,
+      checks: REVIEW_CHECKS[spec.id] || ['Inspect cited source and existing tests; record coverage limits.'],
     });
   }
 
@@ -409,10 +409,21 @@ export function analyzeStackAndPlans(targetRoot) {
   };
 }
 
-export function renderAttackPlansMarkdown(profile, surfaceFilter = '') {
+const REVIEW_CHECKS = {
+  http: ['Trace authentication, authorization, request validation, response fields and error handling in source.', 'Inspect CORS, CSRF, rate-limit and request-size configuration; cite missing controls and existing tests.'],
+  grpc: ['Inspect protobuf schemas, authentication metadata, message bounds, deadlines and stream cancellation in source.', 'Check existing tests for authorization and resource-limit handling; do not send traffic to services.'],
+  websockets: ['Trace upgrade authentication, Origin checks, room membership and per-message authorization in source.', 'Inspect frame bounds, cleanup, rate limits and existing coverage.'],
+  databases: ['Trace queries, transactions, lock ordering, uniqueness constraints and rollback behavior.', 'Inspect parameter binding and existing concurrency tests; disclose untested schedules.'],
+  crypto: ['Trace signer/owner checks, authority binding, PDA seeds, nonce expiry, custody and payout invariants.', 'Inspect dependency pins and existing signature/account-validation tests without constructing transactions or PoCs.'],
+  scopes_roles: ['Map resource ownership and role checks from authenticated identity to each handler.', 'Compare admin, player and public entry points and cite inconsistent boundaries in source.'],
+  bots_economy: ['Inspect server authority, replay validation, uniqueness, deadlines and economic state transitions.', 'Assess abuse resistance from source and existing tests; do not build automation clients or forged recordings.'],
+  api_dto_abuse: ['Compare response DTOs and errors with authorization and data-minimization requirements.', 'Trace field selection and enumeration differences in source; do not probe accounts or endpoints.'],
+};
+
+export function renderReviewPlansMarkdown(profile, surfaceFilter = '') {
   const filter = String(surfaceFilter || '').toUpperCase();
   const lines = [
-    '# Stack Inventory & Tailored Attack Check Plans',
+    '# Stack Inventory & Source Security Review Plans',
     '',
     `Files scanned: ${profile.scannedFiles} | Active domains: ${profile.detectedStacks.join(', ') || 'none'}`,
     '',
@@ -439,8 +450,8 @@ export function renderAttackPlansMarkdown(profile, surfaceFilter = '') {
     if (d.markerHits.length) {
       lines.push(`- **Detected Stack Markers**: ${d.markerHits.slice(0, 6).map((m) => `\`${m}\``).join(', ')}`);
     }
-    lines.push('', '### Mandatory Attack & Audit Checks');
-    for (const [idx, chk] of d.checks.entries()) {
+    lines.push('', '### Source Review Checks');
+    for (const [idx, chk] of (REVIEW_CHECKS[d.id] || ['Inspect the cited source and existing tests; record evidence and coverage limits.']).entries()) {
       lines.push(`${idx + 1}. ${chk}`);
     }
     lines.push('', '### Codebase Entry Points & Leads');

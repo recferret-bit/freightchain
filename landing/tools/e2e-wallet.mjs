@@ -81,10 +81,10 @@ const click = () => ev(`document.getElementById('connect').click()`);
 
 // 1 · no wallet extension: the dialog offers the extensions; closing it leaves a clear message, nothing breaks, no session
 await send('Network.clearBrowserCookies'); await open('none');
-await click(); await until(`document.querySelector('dialog[open]')`);
-check('no wallet: the dialog links the Phantom and Solflare downloads', (await ev(`[...document.querySelectorAll('dialog[open] a')].map(a => a.href).join(' ')`)) === 'https://phantom.com/download https://solflare.com/download');
+await click(); await until(`document.querySelector('[data-fc-wallets]')`);
+check('no wallet: the dialog links the Phantom and Solflare downloads', (await ev(`[...document.querySelectorAll('[data-fc-wallets] a')].map(a => a.href).join(' ')`)) === 'https://phantom.com/download https://solflare.com/download');
 await shot('no-wallet-dialog');
-await ev(`[...document.querySelectorAll('dialog[open] button')].find(b => b.textContent === 'CANCEL').click()`); await until(`document.getElementById('msg').classList.contains('bad')`);
+await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].find(b => b.textContent === 'CANCEL').click()`); await until(`document.getElementById('msg').classList.contains('bad')`);
 check('no wallet installed: clear message, button usable again', /No Solana wallet/.test(await ev(`document.getElementById('msg').textContent`)) && (await ev(`!document.getElementById('connect').disabled`)));
 check('…and no session cookie', !(await session()));
 
@@ -155,10 +155,10 @@ check('…/api/me is that wallet', (await ev(`fetch(${JSON.stringify(API + '/api
 
 // 9 · two wallets: the picker lists both (icons are data: URIs); the one picked signs in
 await send('Network.clearBrowserCookies'); await open('std2');
-const second = await ev('window.__addr()'); await click(); await until(`document.querySelector('dialog[open]')`);
-check('two wallets: the picker lists both', (await ev(`[...document.querySelectorAll('dialog[open] button')].map(b => b.textContent).filter(t => t !== 'CANCEL').join(',')`)) === 'First,Second');
+const second = await ev('window.__addr()'); await click(); await until(`document.querySelector('[data-fc-wallets]')`);
+check('two wallets: the picker lists both', (await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].map(b => b.textContent).filter(t => t !== 'CANCEL').join(',')`)) === 'First,Second');
 await shot('wallet-picker');
-await ev(`[...document.querySelectorAll('dialog[open] button')].find(b => b.textContent.startsWith('Second')).click()`);
+await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].find(b => b.textContent.startsWith('Second')).click()`);
 check('…the picked wallet signs in', (await until(`location.pathname === '/lobby.html'`, 12000)) && (await ev(`fetch(${JSON.stringify(API + '/api/me')}, { credentials: 'include' }).then(r => r.json())`)).wallet === second);
 
 // 10 · a rejected one-click sign-in stops there – no connect + signMessage second prompt
@@ -168,11 +168,11 @@ check('…and no session cookie', !(await session()));
 
 // 11 · a phone browser with no wallet: "open this page in the wallet" universal links (phantom.com / solflare.com browse), the current URL encoded
 await send('Network.clearBrowserCookies'); await open('none', '/?mobile=1');
-await click(); await until(`document.querySelector('dialog[open]')`);
+await click(); await until(`document.querySelector('[data-fc-wallets]')`);
 const here = await ev('location.href'), origin = await ev('location.origin');
-check('phone, no wallet: Open in Phantom / Solflare browse links', (await ev(`[...document.querySelectorAll('dialog[open] a')].map(a => a.href).join(' ')`)) === `https://phantom.com/ul/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://solflare.com/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)}`);
+check('phone, no wallet: Open in Phantom / Solflare browse links', (await ev(`[...document.querySelectorAll('[data-fc-wallets] a')].map(a => a.href).join(' ')`)) === `https://phantom.com/ul/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://solflare.com/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)}`);
 await shot('phone-open-in-wallet');
-await ev(`[...document.querySelectorAll('dialog[open] button')].find(b => b.textContent === 'CANCEL').click()`);
+await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].find(b => b.textContent === 'CANCEL').click()`);
 
 const problems = c.filt().filter(p => !/401|Failed to load resource/.test(p));
 check('no page errors', problems.length === 0, problems.join(' | ').slice(0, 200));

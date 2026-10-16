@@ -15,11 +15,13 @@ OUT=""
 RPC=""
 POCS=""
 POCS_ONLY=0
+REVIEW_ONLY=0
 HOLD_FILE=""
 READY_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --review-only) REVIEW_ONLY=1; shift ;;
     --target) TARGET="$2"; shift 2 ;;
     --out) OUT="$2"; shift 2 ;;
     --rpc) RPC="$2"; shift 2 ;;
@@ -33,6 +35,8 @@ done
 [ -n "$TARGET" ] && [ -d "$TARGET" ] || { echo "sandbox: --target <dir> is required" >&2; exit 2; }
 [ -n "$OUT" ] || { echo "sandbox: --out <dir> is required" >&2; exit 2; }
 [ -z "$POCS" ] || [ -d "$POCS" ] || { echo "sandbox: --pocs directory not found" >&2; exit 2; }
+
+[ "$REVIEW_ONLY" -eq 0 ] || { [ -z "$RPC" ] && [ "$POCS_ONLY" -eq 0 ]; } || { echo "source security review excludes RPC comparisons and PoCs" >&2; exit 2; }
 
 OUT="$(cd "$OUT" && pwd -P)"
 HARNESS="$OUT/harness"
@@ -233,7 +237,7 @@ prefetch_tools() {
   return 1
 }
 
-if [ "$POCS_ONLY" -eq 0 ]; then
+if [ "$POCS_ONLY" -eq 0 ] && [ "$REVIEW_ONLY" -eq 0 ]; then
   SOLANA_EARLY="$(node "$LIB" solana "$RUN/plan.json" 2>/dev/null || true)"
   if [ -n "$SOLANA_EARLY" ]; then
     TOOLS_DIR="$(prefetch_tools "${SOLANA_EARLY%%$'\t'*}" || true)"
@@ -276,7 +280,7 @@ export no_proxy="$NO_PROXY"
 export GIT_TERMINAL_PROMPT=0
 
 ZAP_PENDING=0
-if [ "$POCS_ONLY" -eq 0 ] && node -e 'const r=JSON.parse(require("node:fs").readFileSync(process.argv[1],"utf8")); process.exit(r.some(c=>c.id==="zap"&&c.result==="pending")?0:1)' "$RUN/assess.json"; then
+if [ "$POCS_ONLY" -eq 0 ] && [ "$REVIEW_ONLY" -eq 0 ] && node -e 'const r=JSON.parse(require("node:fs").readFileSync(process.argv[1],"utf8")); process.exit(r.some(c=>c.id==="zap"&&c.result==="pending")?0:1)' "$RUN/assess.json"; then
   ZAP_PENDING=1
   docker pull ghcr.io/zaproxy/zaproxy:stable >"$RUN/zap-pull.log" 2>&1 &
   ZAP_PULL=$!
@@ -322,6 +326,7 @@ if ! docker run -d --name "$SBX" \
   -e SANDBOX_OUT=/out \
   -e SANDBOX_BUDGET_MS="$BUDGET_MS" \
   -e SANDBOX_POCS="$POCS_ONLY" \
+  -e SANDBOX_REVIEW_ONLY="$REVIEW_ONLY" \
   -e SANDBOX_HOLD="${HOLD_FILE:+1}" \
   -e SANDBOX_FAST="${SANDBOX_FAST:-0}" \
   -e HTTP_PROXY -e HTTPS_PROXY -e http_proxy -e https_proxy -e NO_PROXY -e no_proxy \
@@ -396,7 +401,7 @@ elif [ "$ZAP_PENDING" -eq 1 ] && [ "$SEEN" -eq 0 ]; then
 fi
 
 SOLANA_LINE=""
-if [ "$POCS_ONLY" -eq 0 ] && [ "${SANDBOX_FAST:-0}" != "1" ]; then
+if [ "$POCS_ONLY" -eq 0 ] && [ "$REVIEW_ONLY" -eq 0 ] && [ "${SANDBOX_FAST:-0}" != "1" ]; then
   SOLANA_LINE="$(node "$LIB" solana "$RUN/plan.json" 2>/dev/null || true)"
 fi
 if [ -n "$SOLANA_LINE" ]; then
@@ -486,6 +491,18 @@ if [ -n "$HOLD_FILE" ] && running; then
   docker network disconnect "$NET" "$PROXY" >/dev/null 2>&1 || true
   docker rm -f "$PROXY" >/dev/null 2>&1 || true
   docker network disconnect "$NET" "$SBX" >/dev/null 2>&1 || true
+  # Refuse handoff if disconnect failed; no reviewer receives a networked sandbox.
+  if ! docker inspect --format '{{json .NetworkSettings.Networks}}' "$SBX" | node -e '
+    let data = "";
+    process.stdin.on("data", chunk => data += chunk);
+    process.stdin.on("end", () => {
+      try { const networks = JSON.parse(data); process.exit(networks && Object.keys(networks).every(key => key === "none") ? 0 : 1); }
+      catch { process.exit(1); }
+    });
+  '; then
+    echo "sandbox: cannot verify network disconnection; refusing reviewer handoff" >&2
+    exit 1
+  fi
   if [ -n "$READY_FILE" ]; then
     node -e '
       const fs = require("node:fs");

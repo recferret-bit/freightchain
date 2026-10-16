@@ -5,6 +5,7 @@ import { ChallengeRepositoryPort } from '../../../ports/auth/challenge.repositor
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { EntropyPort } from '../../../ports/shared/entropy.port.js';
+import { signInHost } from '../../../../domain/auth/sign-in-host.js';
 import { RequestChallengeCommand, type ChallengeDto } from './request-challenge.command.js';
 
 const NONCE_BYTES = 16;
@@ -27,9 +28,7 @@ export class RequestChallengeHandler implements ICommandHandler<RequestChallenge
   async execute(command: RequestChallengeCommand): Promise<ChallengeDto> {
     const wallet = command.wallet ? parseWalletAddress(command.wallet) : null;
     const rules = this.rules.get();
-    const game = rules.gameOrigin !== null && rules.gameDomain !== null && command.origin === rules.gameOrigin;
-    const domain = game ? (rules.gameDomain as string) : rules.appDomain;
-    const uri = game ? (rules.gameOrigin as string) : rules.appOrigin;
+    const { domain, uri } = signInHost(command.origin, rules);
     const nonce = this.entropy.hex(NONCE_BYTES);
     const now = this.clock.now();
     const ttlMs = rules.nonceTtlMs;

@@ -1,5 +1,7 @@
 # Generated build output (client: node tools/build-standalone.mjs; landing: vite build; server: nest build) – regenerate, don't commit
 dist/
+# local nginx edge (npm run infra:local) – rendered from the templates; the dummy admin hash is in here
+deploy/local/out/
 # the e2e harness's private builds (.claude/skills/run-tests/e2e.sh) – removed at the end of a run, these catch a killed one
 server/.e2e-build-*/
 server/.e2e-tsconfig-*.json

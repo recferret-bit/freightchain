@@ -11,7 +11,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { analyzeStackAndPlans, renderAttackPlansMarkdown } from './audit-plans.mjs';
+import { analyzeStackAndPlans, renderReviewPlansMarkdown } from './audit-plans.mjs';
 
 const SKIP_DIRS = new Set([
   'node_modules', 'target', 'dist', 'build', '.git', 'vendor', 'coverage', '.next',
@@ -514,7 +514,7 @@ async function scan(target, outDir, noDeps) {
   const web = writeWeb(root);
   const config = writeConfig(root);
   const stackProfile = analyzeStackAndPlans(root);
-  const attackPlansMd = renderAttackPlansMarkdown(stackProfile);
+  const attackPlansMd = renderReviewPlansMarkdown(stackProfile);
   const deps = noDeps ? '# Dependency leads\n\nSkipped (--no-deps).\n' : await depScan(root);
   const tools = noDeps ? '# Scanner leads\n\nSkipped (--no-deps).\n' : await writeTools(root, outDir);
   fs.writeFileSync(path.join(outDir, 'solana.md'), solana.body);
@@ -522,7 +522,7 @@ async function scan(target, outDir, noDeps) {
   fs.writeFileSync(path.join(outDir, 'config.md'), config.body);
   fs.writeFileSync(path.join(outDir, 'deps.md'), deps);
   fs.writeFileSync(path.join(outDir, 'tools.md'), tools);
-  fs.writeFileSync(path.join(outDir, 'attack-plans.md'), attackPlansMd);
+  fs.writeFileSync(path.join(outDir, 'review-plans.md'), attackPlansMd);
   fs.writeFileSync(path.join(outDir, 'stack-profile.json'), `${JSON.stringify(stackProfile, null, 2)}\n`);
   const summary = [
     '# Harness',
@@ -532,11 +532,11 @@ async function scan(target, outDir, noDeps) {
     `solana stack: ${marks.length ? 'yes' : 'no'} (${solana.leads} leads, ${solana.files} rust files)`,
     `web: ${web.files} source files, ${web.leads} leads`,
     `config: ${config.files} files, ${config.leads} leads`,
-    `attack plans: attack-plans.md (http, grpc, websockets, databases, crypto, scopes_roles, bots_economy, api_dto_abuse)`,
+    `attack plans: review-plans.md (http, grpc, websockets, databases, crypto, scopes_roles, bots_economy, api_dto_abuse)`,
     `deps: ${noDeps ? 'skipped' : 'deps.md'}`,
     `scanners: ${noDeps ? 'skipped' : 'tools.md'}`,
     '',
-    'Leads are not findings. Map entry points, then triage the file and attack-plans.md for your surface.',
+    'Leads are not findings. Map entry points, then triage the file and review-plans.md for your surface.',
     '',
   ].join('\n');
   fs.writeFileSync(path.join(outDir, 'summary.md'), summary);
@@ -550,7 +550,7 @@ function selfTest() {
   const web = writeWeb(path.join(fx, 'web'));
   const config = writeConfig(path.join(fx, 'config'));
   const profile = analyzeStackAndPlans(fx);
-  const plansMd = renderAttackPlansMarkdown(profile);
+  const plansMd = renderReviewPlansMarkdown(profile);
   const must = [
     ['unchecked-account', solana.body], ['account-info', solana.body], ['try-from-slice', solana.body],
     ['init-if-needed', solana.body], ['create-program-address', solana.body], ['raw-invoke', solana.body],
@@ -571,7 +571,7 @@ function selfTest() {
     if (until.includes('good.rs') || until.includes('good.js') || until.includes('good.py') || until.includes('good.yml')) bad.push(`${id}: good file matched`);
   }
   if (!plansMd.includes('[SCOPES_ROLES]') || !plansMd.includes('[BOTS_ECONOMY]') || !plansMd.includes('[API_DTO_ABUSE]')) {
-    bad.push('attack-plans.md: missing cross-cutting plans');
+    bad.push('review-plans.md: missing cross-cutting plans');
   }
   if (solana.body.includes('find_program_address') && /create-program-address[\s\S]*good\.rs/.test(solana.body)) bad.push('canonical bump matched');
   const lamportsRe = SOLANA_PATTERNS.find((p) => p.id === 'direct-lamports').re;

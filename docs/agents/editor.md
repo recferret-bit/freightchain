@@ -74,7 +74,7 @@ Throttle bucket `editor` (`THROTTLE_EDITOR_LIMIT`) counts per editor wallet, els
 
 `OriginGuard` 404s every other API path on the storybook host, whatever the method. That is the second wall behind nginx (pentest H7). Storybook is treated like the admin host (pentest M4): `browserCors` sends no CORS headers there, and `OriginGuard` takes changes only from storybook itself – an allowlisted sibling (the apex, ride.*) is the same SITE, so the SameSite=Strict cookie would ride along.
 
-The wallet signs only what the page checked (`client/js/editor/index.js`): a publish text must name the entity and revision that were clicked, and on storybook.* both texts must start with the page's host.
+The wallet signs only what the page checked (`client/js/editor/index.js`): a publish text must name the entity and revision that were clicked, and on storybook.* both texts must start with the page's host. Connect uses the shared handlers (`client/js/wallet/handlers.js`, the same `solana:signIn` as the landing page) against a 1-click editor challenge; a wallet with no sign-in connects and signs the wallet-bound text. `window.solana` is what the editor e2e installs. Storybook does not serve `/site/`, so the editor imports `js/wallet/`, not the lobby's copy.
 
 The admin wallet may be an editor too (one address in both `ADMIN_WALLETS` and `EDITOR_WALLETS`): the sessions, JWT keys, audiences, challenge keys (`admin:` / `editor:` / `action:` / `editor-action:`) and throttle trackers are all separate; `e2e.sh admin` and `e2e.sh editor` run with one wallet in both lists. Publishing is open to every `EDITOR_WALLETS` wallet (signed, audited).
 
@@ -157,7 +157,7 @@ For a mean job duration of `D` seconds, five fully utilized slots have a nominal
 **Local recipe:**
 1. In `server/.env`, set `EDITOR_WALLETS=<your wallet>`, `EDITOR_MCP_TOKEN=<24+ chars>`, and one AI key, or `EDITOR_FAKE_LLM=1`; set an explicit `JWT_SECRET` of at least 32 characters shared by API and worker.
 2. Run `npm run server:dev` (:3000), `npm run editor:mcp` (:3100; `FC_APP_URL` defaults to `http://127.0.0.1:3000`), and `npm run server:build && npm run editor:worker` in separate terminals. All read the same `server/.env`. Restart the worker after rebuilding; the dev API watcher does not restart it.
-3. Open `http://localhost:3000/viewer.html` and sign in with the wallet.
+3. Open `http://storybook.freightchain.localhost/` (`npm run infra:local`) and sign in with the wallet. The editor API answers only on that host once `deploy/local/dev.env` sets `COOKIE_DOMAIN`.
 
 ## Tools
 

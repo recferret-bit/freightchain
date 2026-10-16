@@ -2,15 +2,26 @@
 # npm run deploy [-- -y] [--skip-checks] [--allow-dirty] [--no-smoke] [--dry-run]
 # Semi-automatic: checks → shows exactly what will happen → asks → uploads the COMMITTED code (git archive HEAD) → the server builds, backs up, migrates,
 # swaps, health-checks and rolls back on failure → a sign-in smoke test against the public URL → an IndexNow ping (the sitemap's URLs).
+# A loopback DEPLOY_HOST (localhost, 127.0.0.1, ::1) starts the local HTTP edge instead (deploy/scripts/local.sh, http://freightchain.localhost).
 . "$(dirname "$0")/lib.sh"
 
 SKIP_CHECKS=0; ALLOW_DIRTY=0; SMOKE=1; ASSUME_YES=0; DRY_RUN=0
 for a in "$@"; do case "$a" in
   -y|--yes) ASSUME_YES=1 ;; --skip-checks) SKIP_CHECKS=1 ;; --allow-dirty) ALLOW_DIRTY=1 ;; --no-smoke) SMOKE=0 ;; --dry-run) DRY_RUN=1 ;;
-  -h|--help) sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; *) die "unknown option $a (see --help)" ;; esac; done
+  -h|--help) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; *) die "unknown option $a (see --help)" ;; esac; done
 
-need_cmd git; need_cmd ssh; need_cmd node; need_cmd tar
-load_env; refuse_placeholders; check_admin_auth
+need_cmd git; need_cmd node; need_cmd tar
+load_env
+# This machine, not the production server. No ssh, no certificate, no production env on the wire.
+case "$DEPLOY_HOST" in
+  localhost|127.0.0.1|::1|[::1])
+    info "DEPLOY_HOST is loopback – local edge at http://freightchain.localhost (no ssh, no TLS)"
+    if [ "$DRY_RUN" = "1" ]; then ok "dry run: would start the local edge; nothing was changed"; exit 0; fi
+    exec bash "$DEPLOY_DIR/scripts/local.sh"
+    ;;
+esac
+need_cmd ssh
+refuse_placeholders; check_admin_auth
 cd "$REPO_ROOT"
 
 # ---- 1. what exactly is being deployed: a COMMIT, never the working tree

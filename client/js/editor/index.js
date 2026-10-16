@@ -1,5 +1,5 @@
 import { get, post } from './api.js';
-import { connect, sign } from './wallet.js';
+import { editorSignIn, sign } from './wallet.js';
 import { mountChat } from './chat.js';
 import { mountHistory } from './history.js';
 import { mountSource } from './source.js';
@@ -63,10 +63,8 @@ export function mountEditor(viewer) {
   }
   async function refreshMe() { try { st.me = await get('me'); } catch { st.me = null; st.head = null; headGeneration++; emit(); } paintAuth(); if (st.me) await st.loadHead(); }
   async function signIn() {
-    const wallet = await connect(); status('sign the message in your wallet…');
-    const { message } = await post('auth/nonce', { wallet });
-    if (onStorybook && !message.startsWith(`${location.host} wants you to sign in`)) throw new Error('the sign-in text names another site – not signed');
-    await post('auth/verify', { wallet, signature: await sign(message) });
+    status('Approve the sign-in message in your wallet…');
+    await editorSignIn();
     status(''); await refreshMe();
   }
   st.on(() => {

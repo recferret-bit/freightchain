@@ -207,7 +207,7 @@ test('public run preflight blocks before host CLIs, scanners or Docker are invok
   assert.equal(fs.existsSync(marker), false);
   assert.match(run.stderr, /legacy multi-surface adapters are not integrated/);
   assert.match(run.stderr, /A ready Claude login does not enable audit run/);
-  assert.match(run.stdout, /legacy adapters blocked \(terminal connector is separate\)/);
+  assert.match(run.stdout, /persistent ACP sessions/);
   const html = fs.readFileSync(path.join(out, 'report.html'), 'utf8');
   assert.match(html, /Live transport is blocked/);
   assert.match(html, /INCOMPLETE REVIEW/);
@@ -219,6 +219,6 @@ test('plan-only selection preserves requested models without launching a backend
   const run = spawnSync('bash', [path.join(scripts, 'orchestrate.sh'), '--target', source, '--plan', '--agents', 'codex', '--model-codex', 'requested-model'], { encoding: 'utf8', timeout: 5000 });
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /codex=requested-model/);
-  assert.match(run.stdout, /legacy adapters blocked/);
+  assert.match(run.stdout, /persistent ACP sessions/);
   assert.equal(fs.readdirSync(source).length, 1);
 });

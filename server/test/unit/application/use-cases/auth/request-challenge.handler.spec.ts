@@ -54,6 +54,20 @@ describe('RequestChallengeHandler', () => {
     expect((await handler.execute(new RequestChallengeCommand(wallet, 'https://ride.freight.test'))).message).toMatch(/^freight\.test wants/); // single origin: no game host
   });
 
+  it('outside production a local page is named; any other origin stays the app domain', async () => {
+    const local = unitContext(unitRules({ localSignIn: true, gameDomain: 'ride.freight.test', gameOrigin: 'https://ride.freight.test' }));
+    const h = new RequestChallengeHandler(local.challenges, local.rules, local.clock, local.entropy);
+    const vite = await h.execute(new RequestChallengeCommand(wallet, 'http://localhost:5173'));
+    expect(vite.domain).toBe('localhost:5173');
+    expect(vite.uri).toBe('http://localhost:5173');
+    expect((await h.execute(new RequestChallengeCommand(wallet, 'http://freightchain.localhost'))).domain).toBe('freightchain.localhost');
+    expect((await h.execute(new RequestChallengeCommand(wallet, 'https://ride.freight.test'))).domain).toBe('ride.freight.test');
+    for (const origin of ['https://evil.example', 'http://localhost.evil.com', null]) {
+      expect((await h.execute(new RequestChallengeCommand(wallet, origin))).domain).toBe('freight.test');
+    }
+    expect((await handler.execute(new RequestChallengeCommand(wallet, 'http://localhost:5173'))).domain).toBe('freight.test');
+  });
+
   it('a new challenge replaces the pending one', async () => {
     const first = await handler.execute(new RequestChallengeCommand(wallet));
     const second = await handler.execute(new RequestChallengeCommand(wallet));
