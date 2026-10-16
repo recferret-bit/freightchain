@@ -356,8 +356,9 @@ describe('concurrency (PostgreSQL)', () => {
       await sponsor.agent.post(`/api/pledges/${pledge.id}/confirm`).send({ signature: sig }).expect(200);
       harness.payoutChain.payoutAddress = 'Payout11111111111111111111111111111111111111';
       // the ride the attestation rests on: completed, recorded, VERIFIED, 4.3 km (the pledge job reads the rides again before it settles – pentest M7)
+      sec(200); // 4.3 km needs a plausible drive; the recording must pass the road work bounds before testing settlement races.
       await prisma.ride.update({ where: { id: ride.id }, data: { status: 'completed', lastS: 4_300, endedAt: harness.clock.now() } });
-      for (const b of recording(ride.id, { seconds: 20, distance: 4_300 })) await driver.agent.post(`/api/rides/${ride.id}/batches`).send(b);
+      for (const b of recording(ride.id, { seconds: 200, distance: 4_300 })) await driver.agent.post(`/api/rides/${ride.id}/batches`).send(b).expect(200);
       await prisma.rideVerdict.upsert({ where: { rideId: ride.id }, update: { status: 'verified', reasons: [] }, create: { rideId: ride.id, status: 'verified', reasons: [], scores: {}, rulesVersion: 4, judgedAt: harness.clock.now() } });
       harness.payoutChain.attestations.set(`1:${ride.id}`, { driver: driver.address, telemetryRoot: new Uint8Array(32), verifiedKm: 4, status: 1, settleFrom: new Date(0), settledPledges: 0 });   // v4: per RIDE
       const bus = harness.app.get(CommandBus);
