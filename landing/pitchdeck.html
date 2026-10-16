@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Freight Chain · Pitch Deck</title>
+<meta name="description" content="The Freight Chain pitch deck: a truck-cab game with an escrowed prize pool on Solana. Arrow keys to move, F for full screen.">
+<!-- not for search: the deck is a presentation, not a product page (noindex; robots.txt must not Disallow it or the tag is never read) -->
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#050505">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FC Pitch Deck">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/media/pitchdeck/pitchdeck.webmanifest">   <!-- its own: the shared one starts at the lobby, so a home-screen shortcut of the deck opened the site -->
+<link rel="preload" href="/src/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/src/fonts/jetbrains-mono-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/src/pitchdeck.css">
+</head>
+<body>
+<div id="stage"><div id="deck"></div><div id="pager" aria-hidden="true"></div><div id="bar"></div></div>
+<div id="ticker" aria-hidden="true"><div class="tk"></div></div>
+<div id="help"><span class="k"><b class="pb" data-go="-1" role="button" tabindex="0" aria-label="Previous slide">←</b><i>FREIGHT CHAIN · PITCH DECK · use arrows</i><b class="pb" data-go="1" role="button" tabindex="0" aria-label="Next slide">→</b></span><span class="t">FREIGHT CHAIN · PITCH DECK · swipe</span></div>
+<button type="button" class="nav" id="prev" data-go="-1" aria-label="Previous slide">←</button><button type="button" class="nav" id="next" data-go="1" aria-label="Next slide">→</button>
+<div id="safe" aria-hidden="true"></div>
+<button type="button" id="fs" aria-label="Full screen" hidden>⛶</button>
+<div id="fs-hint" hidden><p>Full screen on iPhone:<br>tap <b>Share</b> <span>⎋</span> then <b>Add to Home Screen</b>,<br>open the deck from the icon.</p><small>tap to close</small></div>
+<div id="turn" hidden><div class="phone"></div><p>Turn your phone sideways</p><button type="button" id="turn-skip">show anyway</button></div>
+<div id="tilt" hidden><p>Let the SOL fall with your phone.</p><button type="button" id="tilt-yes">Allow sensors</button><button type="button" id="tilt-no">Not now</button></div>
+<noscript><p style="position:fixed;inset:0;margin:0;padding:40px;background:#050505;color:#fff;font:20px monospace">FREIGHT CHAIN · PITCH DECK needs JavaScript.</p></noscript>
+<script type="module" src="/src/pitchdeck.js"></script>
+</body>
+</html>

@@ -100,7 +100,7 @@
 <section aria-labelledby="s-funnels">
   <div class="head">
     <span class="eyebrow">Person-scoped funnels</span>
-    <h2 id="s-funnels">Ten funnels, each with a window</h2>
+    <h2 id="s-funnels">Eleven funnels, each with a window</h2>
     <p class="soft">A drop means that person did not fire the next event inside the window. That is sometimes a product bug and sometimes a judge who only looked at the pool. Click-together: Funnels → step → property filter → the window written here → breakdown one of <code>is_demo</code>, <code>is_free</code>, <code>tier_id</code>, <code>stage</code>, <code>fail_code</code>. Leave “exclude events between steps” off except where an exclusion is written. Ordered steps are already the order. PostHog does not OR a step, so free and paid are two funnels, and session restore is two funnels.</p>
   </div>
 
@@ -225,6 +225,17 @@
     </ol></div>
     <p>Client clicks only, so it does not depend on <code>$create_alias</code>. The boxes are top to bottom: age, then the loss offer. A rider who ticks loss first does not convert. Window 7 days, the same clock as activation. Off the judge board. The server event <code>agreements_accepted</code> is the commit, and is not a step here.</p>
   </article>
+  <article class="card">
+    <div class="top"><h3>11 · Pitch deck</h3><span class="chip ok">7 days</span></div>
+    <div class="funnel"><ol>
+      <li><span class="n">1</span><span><code>pitchdeck_link_clicked</code> (the landing pitch-deck band and the footer; a link shared elsewhere starts at 2)</span></li>
+      <li><span class="n">2</span><span><code>pitchdeck_viewed</code></span></li>
+      <li><span class="n">3</span><span><code>pitchdeck_slide_viewed</code> · <code>index=3</code> (the insight slide)</span></li>
+      <li><span class="n">4</span><span><code>pitchdeck_slide_viewed</code> · <code>index=8</code> (the end)</span></li>
+      <li><span class="n">5</span><span><code>pitchdeck_interaction</code> (any toy)</span></li>
+    </ol></div>
+    <p>Browser only, anonymous, and per origin: <code>pitchdeck.&lt;apex&gt;</code> has its own anon id, so step 1 (apex) does not join step 2 by person. Compare the counts, or filter step 2 on <code>from=landing</code>. <code>source</code> on this event is the relay's client plane, not where the visitor came from. Attraction per slide: a bar chart of <code>pitchdeck_slide_viewed</code> broken down by <code>slide</code>, and the average of <code>pitchdeck_slide_time.ms</code> by <code>slide</code>. Interest: <code>pitchdeck_interaction</code> by <code>what</code>. Installs: <code>pitchdeck_viewed</code> with <code>standalone=true</code>. Share links: break <code>pitchdeck_viewed</code> down by <code>src</code>. Off the judge board. This funnel is the recipe. It is not a saved insight.</p>
+  </article>
 </section>
 
 <section aria-labelledby="s-server">
@@ -281,7 +292,7 @@
 
 <section aria-labelledby="s-client">
   <div class="head">
-    <span class="eyebrow">Browser events · 45 names, allowlisted properties</span>
+    <span class="eyebrow">Browser events · 50 names, allowlisted properties</span>
     <h2 id="s-client">What the player did before the server knew</h2>
     <p class="soft">The relay stamps <code>source=client</code> and, when the cookie verifies, the session wallet. Properties are strings of at most 200 characters, or an integer, a boolean, or null. A float drops that event, not the whole batch. At most 20 keys. Anything not in the allowlist is removed. These names are hard-deleted even if someone allowlists them later: <code>signature</code>, <code>transaction</code>, <code>seed</code>, <code>nonce</code>, <code>message</code>, <code>token</code>, <code>cookie</code>, <code>authorization</code>, <code>detail</code>, <code>secret</code>, <code>anon_id</code>.</p>
   </div>
@@ -329,7 +340,7 @@
         <tr><td><code>play_top_clicked</code></td><td>The top play control.</td><td><code>signed_in</code></td></tr>
         <tr><td><code>leaderboard_filtered</code></td><td>A board render succeeded.</td><td><code>board</code>: round, all, free</td></tr>
         <tr><td><code>pending_ride_shown</code> / <code>pending_ride_start_clicked</code></td><td>The waiting-ride banner, once per ride per load, and its START IT button.</td><td><code>ride_id</code>, and <code>tier_id</code> on the shown event</td></tr>
-        <tr><td><code>ride_paused</code> / <code>ride_unpaused</code></td><td>Pause transitions on an online ride. Not per frame. The corner leave control pauses before its question; staying unpauses.</td><td><code>source</code>: key, visibility, or bail. The unpause name is not <code>ride_resumed</code>.</td></tr>
+        <tr><td><code>ride_paused</code> / <code>ride_unpaused</code></td><td>Pause transitions on an online ride. Not per frame. The corner leave control pauses before its question; staying unpauses.</td><td><code>via</code>: key, visibility, or bail. <code>source</code> is the relay's client plane and is not this value. The unpause name is not <code>ride_resumed</code>.</td></tr>
         <tr><td><code>ride_end_requested</code></td><td>The client asked to end, before the server answered.</td><td><code>outcome</code> shift|failed, <code>client_complete</code>, <code>fail_code</code>. Never a completion metric. It exists to see “the browser painted COMPLETE, the server said abandoned”.</td></tr>
         <tr><td><code>cab_chain_link_clicked</code></td><td>A ticket ride's ON CHAIN strip or the seal row of its START / end panel (<code>client/js/ui/cab-chain.js</code>): an explorer link was opened.</td><td><code>link</code> pool|seal|pledge</td></tr>
         <tr><td><code>ride_share_clicked</code></td><td>POST ON 𝕏 for this ride. The dash button under PARK while driving, the end-screen button, the public receipt at <code>/r/&lt;id&gt;</code>, and the watcher's own locked pledge on the watch page. A guest run and a replay do not send it. The post text is not a property.</td><td><code>surface</code> dash|end|receipt|pledge, <code>link=ride</code>, <code>ride_id</code></td></tr>
@@ -340,7 +351,12 @@
         <tr><td><code>chain_card_flipped</code></td><td>A landing UNDER THE HOOD card turned over: a tap, or a mouse hover that lasts 0.6 s. Once per card per load.</td><td><code>card</code>: proof, pledge, sns, blink, siws</td></tr>
         <tr><td><code>faq_item_opened</code></td><td>A landing FAQ card was opened. Once per item per load. Every card starts closed, so loading the page is not an event. A mouse hover counts only after 0.6 s, so a pointer passing down the list is not a read. A click or a key counts at once.</td><td><code>item</code>: wallet, free, buy, token, prize, vault, shift, watch, install, earn. <code>via</code>: hover, click, key</td></tr>
         <tr><td><code>social_clicked</code></td><td>A rendered social link: FIND US, and the same X and YouTube addresses in the market table (including the hiring DMs).</td><td><code>net</code> x|youtube. Discord and Telegram stay null, so those buttons are not created. ON THE ROAD · WATCH is not this event.</td></tr>
-        <tr><td><code>web_vital</code></td><td>Once per metric per document, on the landing, the whitepaper, and the lobby. FCP and TTFB as soon as they exist. LCP at the first input or when the page hides. CLS and INP when the page hides. No interaction means no INP. Not on <code>play.html</code> or <code>viewer.html</code>.</td><td><code>surface</code> landing|whitepaper|lobby, <code>metric</code> LCP|INP|CLS|FCP|TTFB, <code>value</code> (milliseconds, except CLS which is the score × 1000, so 0.1 is <code>100</code>), <code>rating</code> good|needs-improvement|poor, <code>navigation</code> navigate|reload|back_forward|prerender. A float is dropped, same as every other client event. Not one of the five judge numbers.</td></tr>
+        <tr><td><code>web_vital</code></td><td>Once per metric per document, on the landing, the whitepaper, the pitch deck, and the lobby (<code>surface</code> landing|whitepaper|pitchdeck|lobby). FCP and TTFB as soon as they exist. LCP at the first input or when the page hides. CLS and INP when the page hides. No interaction means no INP. Not on <code>play.html</code> or <code>viewer.html</code>.</td><td><code>surface</code> landing|whitepaper|pitchdeck|lobby, <code>metric</code> LCP|INP|CLS|FCP|TTFB, <code>value</code> (milliseconds, except CLS which is the score × 1000, so 0.1 is <code>100</code>), <code>rating</code> good|needs-improvement|poor, <code>navigation</code> navigate|reload|back_forward|prerender. A float is dropped, same as every other client event. Not one of the five judge numbers.</td></tr>
+        <tr><td><code>pitchdeck_link_clicked</code></td><td>The landing pitch-deck band or the footer PITCH DECK link was clicked. The deck's conversion step 0: landing click, then <code>pitchdeck_viewed</code> with <code>from=landing</code>.</td><td><code>surface=landing</code></td></tr>
+        <tr><td><code>pitchdeck_viewed</code></td><td>Once per document load of <code>pitchdeck.&lt;apex&gt;</code> (an opening). Sent without the session cookie.</td><td><code>surface=pitchdeck</code>, <code>from</code>: landing, whitepaper, homescreen (the installed shortcut), direct (no referrer), other. <code>source</code> is stamped <code>client</code> by the relay and is not this value. <code>src</code> the link's own <code>?src=</code> tag (letters, digits, <code>_-</code>, at most 40; else null); <code>touch</code> and <code>standalone</code> booleans</td></tr>
+        <tr><td><code>pitchdeck_slide_viewed</code></td><td>The first time each slide shows in a load: the attraction funnel (slides 1 to 8; slide 8 reached = watched to the end). Once per slide per load.</td><td><code>slide</code>: product, game, insight, play, money, chain, plan, market; <code>index</code> 1 to 8; <code>via</code>: load, key, button, swipe, hash</td></tr>
+        <tr><td><code>pitchdeck_slide_time</code></td><td>The visible milliseconds on a slide, sent when the slide changes or the page is left or hidden. Under 1.5 s is not sent; capped at 600 s. A slide revisited sends again.</td><td><code>slide</code>, <code>index</code>, <code>ms</code> (integer)</td></tr>
+        <tr><td><code>pitchdeck_interaction</code></td><td>The first use of each toy per load: engagement beyond reading.</td><td><code>slide</code> (where it happened), <code>what</code>: donate, adopt, tier, coin_drag, split, exit_sign, honk, lane, card, plan_bar, fullscreen, install_hint, tilt. <code>split</code> is the 70/20/10 bar, on hover or tap. <code>tilt</code> is allowing motion sensors so spawned SOL falls with the phone.</td></tr>
       </tbody>
     </table>
   </div>
@@ -416,7 +432,7 @@
   <div class="head">
     <span class="eyebrow">One chart · web_vital</span>
     <h2 id="s-vitals">Page speed</h2>
-    <p>One Trends insight, not five. It describes the landing, the whitepaper, and the lobby. It says nothing about a ride. PostHog's own Web Vitals page reads <code>$web_vitals</code> from <code>posthog-js</code>, which this site does not load, so that page stays empty on purpose.</p>
+    <p>One Trends insight, not five. It describes the landing, the whitepaper, the pitch deck, and the lobby. It says nothing about a ride. PostHog's own Web Vitals page reads <code>$web_vitals</code> from <code>posthog-js</code>, which this site does not load, so that page stays empty on purpose.</p>
   </div>
   <ul class="limits">
     <li><b>The insight.</b><span>New Trends insight. Event <code>web_vital</code>. Aggregation <b>Total count</b>. Date range of your choice. <b>+ Add breakdown</b> on the event property <code>metric</code>, then again on the event property <code>rating</code>. Chart type: the bar chart that totals the whole date range. Save it as <b>Page speed</b>. Do not add it to dashboard 1006663.</span></li>
@@ -486,7 +502,7 @@
   <span>Freight Chain · product analytics</span>
   <span>on main</span>
   <span><a href="https://eu.posthog.com/project/297915/dashboard/1006663">EU dashboard 1006663</a></span>
-  <span>as of Oct 13, 2026</span>
+  <span>as of Oct 16, 2026</span>
 </footer>
 
 </div>

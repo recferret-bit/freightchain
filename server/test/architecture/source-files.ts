@@ -28,10 +28,13 @@ export function sourceFiles(): SourceFile[] {
     });
 }
 
-/** Module specifiers a file imports (static `from '…'` and `import('…')`). */
+/** Module specifiers a file imports (`from '…'`, `import '…'`, `import('…')`).
+    Whitespace is required before a static specifier: a quoted property named `from` is not an import. */
 export function importsOf(text: string): string[] {
   const found: string[] = [];
-  for (const m of text.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)) if (m[1]) found.push(m[1]);
+  for (const re of [/\bfrom\s+['"]([^'"]+)['"]/g, /\bimport\s+['"]([^'"]+)['"]/g, /\bimport\s*\(\s*['"]([^'"]+)['"]/g]) {
+    for (const m of text.matchAll(re)) if (m[1]) found.push(m[1]);
+  }
   return found;
 }
 

@@ -1,0 +1,44 @@
+# nginx site for pitchdeck.__ROOT__ – the pitch deck (landing/pitchdeck.html, built by Vite into the landing dist), one more name for the same app container. Installed as its OWN site file
+# (/etc/nginx/sites-available/freightchain-pitchdeck) by deploy/scripts/remote/setup.sh when absent, so an already-installed main site (and certbot's edits to it) is never rewritten.
+# `/` shows pitchdeck.html (the app would serve the landing there); its hashed /assets and /media come from the app; the API is not exposed on this name.
+# ONLY the deck's own files are served here (pentest H7 pattern): the deck's one request is anonymous analytics (POST /api/telemetry to api.<apex>, credentials omitted), so this name is in CORS_ORIGINS for that; still, a page of the client tree served on it
+# (the lobby, blink.html, a receipt) would act with that trust – every other path is sent to the apex, where those pages live (its own links still work).
+server {
+    listen 80;
+    listen [::]:80;
+    server_name pitchdeck.__ROOT__;
+
+    client_max_body_size 1m;
+
+    location = / {
+        proxy_pass http://127.0.0.1:__PORT__/pitchdeck.html;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ { return 404; }
+
+    location ~ ^/(assets|media|badges|icons)/ {
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+    location ~ ^/(favicon\.ico|manifest\.webmanifest|robots\.txt)$ {
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    location / { return 302 https://__ROOT__$request_uri; }
+}

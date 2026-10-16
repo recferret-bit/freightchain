@@ -107,7 +107,7 @@ Dependency rule: modules are **acyclic** (checked with esbuild's metafile). `ui/
 ### The sim is not replayable
 Don't assume a ride can be replayed or validated by re-running the sim:
 - The sim uses floats (`Math.sin/cos`), a **variable `dt`** (clamped to 0.05 s) and **`Math.random()`** inside gameplay (steering-pull side, bug splats, dust, debris).
-  A server-replayable core needs a fixed 60 Hz tick, seeded PRNG, fixed-point math, and the inputs as a recorded tick stream. `sim/physics.js` + `road.js` are the part to port.
+  A server-replayable core needs a fixed 60 Hz tick, seeded PRNG, fixed-point math, and the inputs as a recorded tick stream. The force law, road geometry/network, route curvature and traffic AI now live in renderer-independent `client/shared/` factories; the browser wrappers retain the driving behavior. Sharing code alone does not recover omitted frame state: historical traffic/coasting reconstruction only flags for review. New online rides record hashed lossless traffic frames for strict server validation without changing the variable frame clock or offline simulation.
 - `CFG.COMPLETE_DIST`, the speed governor and the road generator (net/network.js + the theme's `curv`) would all need to be identical in the server sim. The layout IS a pure function of
   the ride seed (`roads.seed`, own mulberry32), but the centre-line is integrated in floats.
 

@@ -37,6 +37,27 @@ are the Trail of Bits scanner's job; these are the ones only someone who knows t
 - [ ] After `play_deadline + SETTLE_GRACE_SECS` (14 days) a lost admin cannot lock money: no prize paid → `expire_pool` → full refunds; prizes paid → anyone may `close_pool`, and money still goes only to the declared treasuries. A permissionless close with `prizes_paid == 0` must fail (`MustExpire`), otherwise the prize share would be swept to the operator's seed treasury.
 - [ ] No instruction lets the caller choose where money goes except `pay_prize`'s `to` (admin-signed, capped) and `refund`'s `buyer` (bound to the ticket PDA).
 
+## Sealevel classes outside the Trail of Bits six
+
+`coral-xyz/sealevel-attacks` (Anchor's security page points at this set). The scanner's six are signer, owner, arbitrary CPI, bump canonicalisation, sysvar address, and instruction introspection. These six still need a source read. A grep hit is a lead.
+
+- [ ] Account-data matching: a stored key matches the account passed (`has_one` / `constraint`), not only the right type.
+- [ ] Type cosplay: account types are separated by discriminator. No shared layout lets one account deserialise as another.
+- [ ] Re-initialisation: `init_if_needed` rejects an already-live account, or the instruction cannot reset authority.
+- [ ] Duplicate mutable accounts: two `mut` accounts of the same type cannot be the same key (`constraint = a.key() != b.key()`).
+- [ ] PDA sharing: seeds include every key that must not share the account. A single global seed is a shared account.
+- [ ] Closing accounts: `close` pays a constrained destination, wipes the data, and the same instruction cannot revive it.
+
+## Escrow attacks
+
+The generic map lives in the `pentest-audit` skill: OWASP Smart Contract Top 10 2026 as it applies on Solana, Sealevel, and Ackee's common attack vectors. The OWASP Solana Programs Top 10 has no published rows. Do not invent S01–S10. These are the escrow questions this vault still has to answer.
+
+- [ ] After any CPI, a balance used for a later decision is read from a reloaded account, not the pre-CPI copy (Ackee account-reloading). `n/a` only when that instruction does no CPI before the read.
+- [ ] `invoke_signed` / `new_with_signer` for the vault signs the system program or another fixed program id, never an account the caller passed (Ackee pda-privileges).
+- [ ] A pubkey stored on the pool or the ticket that authorises a payment (`buyer`, treasuries, `rent_payer`) is an equality constraint, not assumed because the PDA address matched.
+- [ ] A direct lamport write cannot move the vault below `rent_min` except the close path that asserts 0, and it cannot be aimed at an account this program does not own.
+- [ ] `slot_hashes` is the SlotHashes sysvar. The seed commitment written at create cannot be replaced later.
+
 ## Build provenance
 - [ ] `verifiable-build.hash` matches a fresh `solana-verify build` (check.sh stage 1); the deployed program hash (once deployed) matches it (`check.sh onchain`).
 - [ ] `declare_id!`, `Anchor.toml` and `idl/freightchain_pools.json` `address` agree; the placeholder id is replaced before a real deploy (`anchor keys sync`) – which changes the pin.

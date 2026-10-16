@@ -118,8 +118,9 @@ describe('the recording against the server\'s road', () => {
   it('off the tarmac for longer than the game allows → offroad-ignored; the game\'s counter drains twice as fast back on the road', () => {
     let s = plan.layout.knownFrom + 2000;
     while (plan.layout.near(s - 400, s + 2000).length) s += 500;
-    expect(codes(judge(drive(s, s + 800, { v: 20, d: 30 })))).toEqual(['offroad-ignored:reject']); // 40 s in the sand
-    expect(judge(drive(s, s + 300, { v: 20, d: 30 })).reasons).toEqual([]); // 15 s: the game would still be going
+    const sand = (metres: number) => drive(s, s + metres, { v: 20, d: 30 }).map((r) => [r2(r[0]! + s / 20), ...r.slice(1)]); // an excerpt after reaching this stretch
+    expect(codes(judge(sand(800)))).toEqual(['offroad-ignored:reject']); // 40 s in the sand
+    expect(judge(sand(300)).reasons).toEqual([]); // 15 s: the game would still be going
     expect(offroadPeak([[0, 15], [16, 30]])).toBe(27); // 15, −2 for the second back on the road, +14
     expect(offroadPeak([[0, 15], [30, 40], [41, 56]])).toBe(23); // drained to 0 by the 15 s back on the road, then 10, −2, +15
   });

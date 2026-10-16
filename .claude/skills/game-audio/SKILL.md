@@ -49,3 +49,5 @@ Meme ids, for `audio.sfx.extra`: `boom scratch airhorn bruh ding levelup riser w
 - `npm run media:store` and `npm run media:game-sfx` are the only writers of the committed sounds. Do not hand-edit wavs or mp3s.
 - Lint and tests: `npm --prefix media run lint` and `npm --prefix media test` (no Chrome: synth, spec, cues, mix, the store byte for byte, every `make.mjs` mode on ffmpeg, the decoded mp3s). A new recipe or score gets a test there.
 - After a voice or recipe change, run the matching writer before the tests. The store test fails closed until `npm run media:store`. The game-sfx test fails closed until `npm run media:game-sfx`.
+
+- **Finished sound for a post** (a score or sfx mix, or a clip's final audio): also copy it to `social/<name>/` (gitignored, repo root) and tell the user the path; the render itself stays in `media/out/audio/<name>/`.

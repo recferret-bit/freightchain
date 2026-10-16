@@ -10,54 +10,21 @@ Paid entries are SOL on Solana devnet. The program holds the money. There is no 
 
 <!-- traction:start -->
 
-Public numbers for a reviewer, read 2026-10-14 09:40 UTC. Each headline was fetched three times. A partial page, a deleted post, a repost, a premiere, or a count the second source did not support is not in a headline. Links go to the page the number was read from.
+Public numbers for a reviewer, read 2026-10-16 18:56 UTC. PostHog and the public stats endpoint were each read more than once. A count the second read did not support is not in a headline.
 
 <table><tr>
-<td align="center" width="20%"><h2>2,468</h2><b>YouTube views</b><br>6 videos · 9 subscribers<br><a href="https://www.youtube.com/@FreightChainGame">@FreightChainGame</a></td>
-<td align="center" width="20%"><h2>21</h2><b>X posts</b><br><a href="https://x.com/FreightChainSol">@FreightChainSol</a><br>6 followers</td>
-<td align="center" width="20%"><h2>530</h2><b>X views on public posts</b><br>5 of 21 posts have a public view count</td>
-<td align="center" width="20%"><h2>32</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
-<td align="center" width="20%"><h2>27.9 km</h2><b>driven</b><br>2 drivers · 5 crashes</td>
+<td align="center" width="50%"><h2>32</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
+<td align="center" width="50%"><h2>27.9 km</h2><b>driven</b><br>2 drivers · 5 crashes</td>
 </tr>
 <tr>
-<td align="center" width="20%"><h2>131</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-14 UTC</td>
-<td align="center" width="20%"><h2>12</h2><b>whitepaper readers</b><br>PostHog · same window</td>
-<td align="center" width="20%"><h2>59</h2><b>wallet sign-ins</b><br>real wallets · demo excluded</td>
+<td align="center" width="20%"><h2>208</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-16 UTC</td>
+<td align="center" width="20%"><h2>22</h2><b>whitepaper readers</b><br>PostHog · same window</td>
+<td align="center" width="20%"><h2>73</h2><b>wallet sign-ins</b><br>real wallets · demo excluded</td>
 <td align="center" width="20%"><h2>3</h2><b>real shifts started</b><br>29 demo starts</td>
 <td align="center" width="20%"><h2>6</h2><b>shifts finished</b><br>6 demo · 0 real</td>
 </tr></table>
 
 The second row is PostHog Cloud EU, project 297915. Probe events (`surface=prod-check`) are out. Ride counts are `source=server`. Demo wallets are separate from real ones. Client `ride_completed` is not counted.
-
-YouTube channel About says 443 views. That figure lags the videos and was not used. The headline is the sum of the videos below.
-Profile counts 21 posts. 5 are on the public posts tab with a view count checked twice. Logged-out X does not serve the replies tab, so those views are not guessed.
-
-### YouTube
-
-Watch-page `viewCount` for every video on the Videos and Shorts tabs. The grid count had to land within 5%.
-
-| Video | Views |
-| --- | ---: |
-| [Rating every NPC driver 1–10 (this one got 0)](https://www.youtube.com/watch?v=oJ6UpOxY-l8) | 960 |
-| [3 ways to fail the free level 💀](https://www.youtube.com/watch?v=hgXhGdLwSvE) | 952 |
-| [Rating every road 1–10](https://www.youtube.com/watch?v=3xCB4uJ_SAw) | 394 |
-| [Boss levels: 3 min, 5 min, 15 min, 1 hour](https://www.youtube.com/watch?v=2usi9vHQ-Z0) | 121 |
-| [FreightChain: The Road Never Ends. Your Shift Does.](https://www.youtube.com/watch?v=cFyQ9XlN5nQ) | 32 |
-| [Freight Chain: What We Built for Colosseum (in 59 seconds)](https://www.youtube.com/watch?v=QiH7NEoWH48) | 9 |
-| **Sum** | **2,468** |
-
-### X
-
-Profile post count is the number both public mirrors returned. View counts are the posts tab, checked against the status endpoint.
-
-| Post | Views |
-| --- | ---: |
-| [FreightChain is a long-haul truck game in the browser. You drive the cab yourself. The road never ends. Your shift does. One mistake ends th](https://x.com/FreightChainSol/status/2109242074876739715) | 139 |
-| [Looking for 20 people to sit in a truck cab for 3 minutes and tell me where it hurts. Free, no download. https://t.co/bqJQEIE96a #FreightCha](https://x.com/FreightChainSol/status/2109385632560591255) | 125 |
-| [In 1995, Desert Bus made you drive 8 real-time hours from Tucson to Las Vegas for 1 point. We kept the 8 hours and replaced the point with a](https://x.com/FreightChainSol/status/2109921865888071894) | 113 |
-| [A week ago i remembered 'Desert Bus' game. I thought, how to make it modern and kind a hyped ? Week ago, i have it.. #indiegame #desertbus #](https://x.com/FreightChainSol/status/2109769147496145392) | 99 |
-| [Just did multi-agent penetration and Solana program audit using Warp, my fav tool @warpdotdev Im not using any IDE for a long time, and i al](https://x.com/FreightChainSol/status/2109986407875760450) | 54 |
-| **Sum of these posts** | **530** |
 
 ### The product
 
@@ -87,7 +54,7 @@ Waiting: FC · Promo from an invite view; FC · Promo from a submitted code.
 | Window | Landing people | Real finishes | Demo finishes | Real sign-ins |
 | --- | ---: | ---: | ---: | ---: |
 | 8–12 Oct 2026 (judge board) | 106 | 0 | 6 | 54 |
-| 8 Oct 2026 through 2026-10-14 UTC | 131 | 0 | 6 | 59 |
+| 8 Oct 2026 through 2026-10-16 UTC | 208 | 0 | 6 | 73 |
 
 Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/traction/latest.json`.
 
@@ -107,41 +74,40 @@ This is not a third-party audit. The program stays "not audited" until one is do
 
 | Finding | State |
 | --- | --- |
-| H1, H3, M10, M13 · anti-cheat: an empty recording judged verified, about 1.9× the speed governor, hidden hole passes | Fixed in code (verdict rules v4). Not in production until the next deploy |
-| H2 · another rider's recording replayed as your own | Fixed in code: a copied recording is flagged for review. Next deploy |
-| H6, M7 · rides after the play deadline still ranked; a revoked verdict still paid | Fixed in code. Sales and new rides also stop at the sale end. Next deploy |
-| H7, M2, M3, M4, M9 · session cookie scope, login CSRF, logout, admin CORS, the sign-in text, rate limits | Fixed in code. Production players are signed out once. Next deploy |
+| H1, H3, M10, M13 · anti-cheat: an empty recording judged verified, about 1.9× the speed governor, hidden hole passes | Shipped in the Oct 15 app release (rules v4); production boards remain in shadow mode |
+| H2 · another rider's recording replayed as your own | Shipped Oct 15: a copied recording is flagged for review |
+| H6, M7 · rides after the play deadline still ranked; a revoked verdict still paid | Shipped Oct 15. Sales and new rides also stop at the sale end |
+| H7, M2, M3, M4, M9 · session cookie scope, login CSRF, logout, admin CORS, the sign-in text, rate limits | Shipped Oct 15. Player sessions were invalidated with the session change |
 | H5, H4, M6, M8, L4 · program: the payout key was the whole prize gate, pledges not bound to their ride, a review window that committed nothing, sponsorships kept by a failed pool, a road seed the opener could pick | Program v4: a winners root public for the review before any prize is paid, per-ride attestations, sponsor refunds, `seal_road`. 154 LiteSVM tests plus the localnet suites. **Not on devnet yet.** Devnet still runs v3, where these findings are open |
 | M1, M11, M12, M5, most lows · the blink page relays any action, no CSP / HSTS, no subresource integrity, verdict codes on public rides | Open (fix plan WP6 to WP8) |
 
-`./pentest/bin/pentest pocs` runs every proof of concept. A fixed one that comes back fails the run. Read: [the report](pentest/reports/2026-10-13/index.md) ([HTML](pentest/reports/2026-10-13/report.html)), [the fix plan with every decision](docs/reviews/pentest-2026-10/fix-plan.md), [PoC status](pentest/pocs/status.json), and [whitepaper chapter 08](https://whitepaper.freightchain.fun/#audit). The suite itself is the `pentest-audit` skill.
+The original review supplied proof-of-concept reproductions that became regression tests. Its report and PoC status are archived at the reviewed commit. The current reusable pentest tool keeps new reports and PoCs in gitignored run directories. Read: [the report](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/reports/2026-10-13/index.md) ([HTML](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/reports/2026-10-13/report.html)), [the fix plan with every decision](docs/reviews/pentest-2026-10/fix-plan.md), [PoC status](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/pocs/status.json), and [whitepaper chapter 08](https://whitepaper.freightchain.fun/#audit). The suite itself is the `pentest-audit` skill.
 
 ## Post-Colosseum hackathon updates
 
-The submission went in on 12 Oct 2026. Below is what changed after it. **State** says where a change runs: production is release `20261013-085127-7a9d5e68` (13 Oct). "Next deploy" means it is in `main` and not on the public site yet.
+The submission went in on **12 Oct 2026**. Work continued after that snapshot. The app release checked on **16 Oct** is `20261015-152742-16870e81`; a code change in `main` is not automatically a production deployment. Program upgrades are separate from app releases.
 
-### Pentest v1, in short
+### Security review after submission
 
-On 13 Oct twelve AI auditors from four vendors attacked six surfaces in pairs, blind to each other. A quorum adjudicated their findings: 69 raw findings became 7 high and 13 medium, and 4 claims were refuted. Each fix turned its proof of concept into a regression test. The fixes for all 7 highs and 9 of the 13 mediums are in `main`; the program part waits for the devnet upgrade. It is not a third-party audit. Read the [Pentest v1 report](pentest/reports/2026-10-13/index.md) ([HTML](pentest/reports/2026-10-13/report.html)), and see [Penetration test and contracts audit](#penetration-test-and-contracts-audit) for the state of each finding.
+On 13 Oct twelve AI auditors from four vendors reviewed six surfaces in blind pairs. Quorum adjudication reduced 69 raw findings to 7 high and 13 medium; 4 claims were corrected or refuted. Fixes for all 7 highs and 9 mediums are in source, with reproductions turned into regression tests. App fixes shipped on Oct 15; the program-v4 fixes still need their separate devnet upgrade. This was our own review, not a third-party audit. See [the findings and their release state](#penetration-test-and-contracts-audit) and [the fix plan](docs/reviews/pentest-2026-10/fix-plan.md).
 
-### Changes
+### What changed
 
-| Date | Change | Product effect | State |
+| Date | Change after submission | Product effect | Release state as of 16 Oct |
 | --- | --- | --- | --- |
-| 13 Oct | Wallets: Wallet Standard discovery, a wallet picker, one-prompt sign-in with the chain id, phone-pay fixes | Any Wallet Standard wallet signs in with one prompt. Paying from a phone works | Live |
-| 13 Oct | Landing and README copy: repeated and untrue lines cut; the README names the live program | The site claims only what runs | Live |
-| 13 Oct | Pentest v1 and its fix plan: three planning iterations, every item decided by the owner | Every known hole is named, with a proof of concept and a definition of done | [Report](pentest/reports/2026-10-13/index.md) · [plan](docs/reviews/pentest-2026-10/fix-plan.md) |
-| 13 Oct | Mobile: driving is desktop-only; a phone gets a toast that points to streams and replays | A phone visitor lands on something that works | Next deploy |
-| 13 Oct | Landing hero: stills of the current cab, with the CB and the on-chain strip | The first screen shows the game as it is | Next deploy |
-| 14 Oct | Anti-cheat rules v4 (H1, H3, M10, M13), copied recordings flagged (H2) | An empty or sped-up recording, or another rider's drive, no longer passes as verified | Next deploy |
-| 14 Oct | Pools: a ride counts only if it ended by the play deadline; a revoked verdict never pays; no new sales or rides after the sale end (H6, M7) | The board a buyer sees is the board that pays. Every rider who starts has time to finish | Next deploy |
-| 14 Oct | Sessions: host-only cookie, an origin guard, the exact sign-in text, logout that clears (H7, M2, M3, M4, M9) | Another site or subdomain cannot act as a player. Players are signed out once at the deploy | Next deploy |
-| 14 Oct | Escrow program v4: a winners root public through the review before any prize is paid, with an admin veto; per-ride pledge attestations; sponsor refunds; the road sealed from a later slot (H4, H5, M6, M8, L4) | A stolen payout key cannot pay itself. A pledge pays only on the ride it backed. A failed pool returns sponsorships. Nobody picks the road | Built: 154 program tests, localnet e2e green. Not on devnet yet |
-| 14 Oct | Devnet 1h series: 3 hours to finish after the sale ends | Matches the last-call rule above | Devnet |
-| 14 Oct | Verified play: a shared physics library and a 10 Hz server replay of traffic, holes and paid obstacles; admin replay list and worker | A client that ignores traffic or a donated pothole is caught | Next deploy |
-| 14 Oct | Watch: one X post after a locked pledge | A sponsor can share who they backed | Next deploy |
-| 14 Oct | Sound: WAV and mp3 checks pinned; a late sample stays audible | No silent effect after a long ride | Next deploy |
-| 14 Oct | Traction: this README's scoreboard refreshed from live social and PostHog reads | Reviewers see current numbers | README |
+| 13 Oct | Wallet Standard discovery, wallet picker, one-prompt sign-in and phone-pay fixes | More wallets can sign in and pay with fewer steps | Shipped in the Oct 15 app release |
+| 13–14 Oct | Desktop-only driving, current cab imagery, clearer landing and README copy | Phone visitors can watch; the product pages show the actual game | Shipped in the Oct 15 app release |
+| 14 Oct | Anti-cheat v4: recording coverage, speed and hole checks; copied-recording flags | Empty, accelerated or copied traces receive a verdict; production boards still use shadow mode | Shipped in the Oct 15 app release |
+| 14 Oct | Session and admin isolation; pool sale/play deadlines and payout rechecks | Cross-site requests are constrained; late rides and revoked verdicts cannot become eligible winners | Shipped in the Oct 15 app release; contract rules still depend on the program version |
+| 14 Oct | Escrow v4: public winners root, review lock and veto, per-ride pledge attestations, sponsor refunds, later-slot road seal | Settlement commits to a published result and to the ride a sponsor backed | Built and tested; separate devnet program upgrade pending |
+| 14–15 Oct | Playable eight-slide pitch deck, shareable pledges, sound checks and refreshed traction snapshot | Reviewers can explore the product and economy; the README dates its measurements | App changes shipped Oct 15; traction remains the dated snapshot above |
+| 16 Oct | Shared road geometry, route curves, physics and full traffic AI; required hashed traffic-frame evidence (rules v7) | New rides cannot omit required evidence or downgrade themselves; removed cars and ignored traffic responses reject | Committed in `b58c9921`; next app release |
+| 16 Oct | Real headless browser regression matrix: honest drives, natural finish, slow execution, real crash and five modified-client cases | Checks the full game → API → database → saved-verdict/replay path, including re-hashed attacks | Nine controlled local scenarios passed; no claim of exhaustive attack coverage |
+| 16 Oct | Landing pitch-deck preview and phone motion controls for the deck's SOL coins | The deck is easier to discover and its coin toy responds to phone tilt | Committed; next app release |
+| 16 Oct | Reusable pentest targets, Docker/MCP isolation and native review profiles | Review tooling can inspect local or GitHub repositories; each adapter still reports its own readiness and limits | Repository tooling; no new external audit claimed |
+| 16 Oct | Whitepaper v0.2: evidence-flow and browser-outcome charts, protocol and release limits | Readers can distinguish recorded evidence, server checks and settlement trust | This documentation revision; next app release |
+
+The production replay worker was restarting at the read-only check. Its explicit `TRUST_PROXY=0` startup fix is included with the pending simulation release; a deployment must verify that the worker becomes healthy. The app's health endpoint was ready. No deployment is implied by this recap.
 
 ## Contents
 
@@ -172,6 +138,7 @@ On 13 Oct twelve AI auditors from four vendors attacked six surfaces in pairs, b
 | Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow, validation, streams, risks |
 | Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is a guest run |
 | Ride receipt | `freightchain.fun/r/:id` | Live or finished ride, explorer link, X card. Open one from [REPLAYS](https://freightchain.fun/lobby.html#replays) |
+| Pitch deck | [pitchdeck.freightchain.fun](https://pitchdeck.freightchain.fun) | Eight playable slides. ← → in the floating tip (or the keys), F full screen; on a phone big corner buttons, one full screen button, full screen on the first tap, and an ask for motion sensors (allowed, the spawned SOL falls with the tilt). Live |
 | Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes; the 3D model editor for listed wallets (`EDITOR_WALLETS`) |
 | API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON under `/api/`. Anything else on that host 404s |
 | Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |
@@ -199,12 +166,12 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 
 Each row is something a reviewer can open. The limit is in the same row as the claim. The pictures are diagrams, not receipts.
 
-<img src="landing/public/media/chain/proof.svg" alt="Diagram: 15-second batches hash up into one Merkle root" width="220"> <img src="landing/public/media/chain/pledge.svg" alt="Diagram: a per-km pledge pays the verified distance and returns the rest" width="220"> <img src="landing/public/media/chain/siws.svg" alt="Diagram: one wallet sign-in prompt bound to freightchain.fun and a single-use nonce" width="220"> <img src="landing/public/media/chain/sns.svg" alt="Diagram: a leaderboard row shown as a .sol name" width="220"> <img src="landing/public/media/chain/blink.svg" alt="Diagram: an X card with a ticket button and a Solana Pay code" width="220">
+<img src="landing/public/media/chain/proof.svg" alt="Diagram: accepted batch hashes form one Merkle root" width="220"> <img src="landing/public/media/chain/pledge.svg" alt="Diagram: a per-km pledge pays the verified distance and returns the rest" width="220"> <img src="landing/public/media/chain/siws.svg" alt="Diagram: one wallet sign-in prompt bound to freightchain.fun and a single-use nonce" width="220"> <img src="landing/public/media/chain/sns.svg" alt="Diagram: a leaderboard row shown as a .sol name" width="220"> <img src="landing/public/media/chain/blink.svg" alt="Diagram: an X card with a ticket button and a Solana Pay code" width="220">
 
 | What | Solana piece | What it does, and what it does not | Code |
 | --- | --- | --- | --- |
 | Road seed | `create_pool` / `open_next_pool` read the newest SlotHashes entry and store `SHA-256(pool id as little-endian u32 ‖ slot hash ‖ slot as little-endian u64)` | No caller passes the seed. Everyone in the pool drives the road derived from that commitment. The program does not draw the road itself | [`create_pool.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/create_pool.rs) · [`provable-seed.ts`](server/src/domain/road/provable-seed.ts) |
-| Recording root | RFC 6962 Merkle tree over the ride's 15 s batch hashes | The attestation names which recording it covers. The program does not recompute the drive | [`telemetry-merkle.ts`](server/src/domain/telemetry/telemetry-merkle.ts) |
+| Recording root | RFC 6962 Merkle tree over the ride's accepted batch hashes | The attestation names which recording it covers. The program does not recompute the drive | [`telemetry-merkle.ts`](server/src/domain/telemetry/telemetry-merkle.ts) |
 | Prize gate | `Attestation` PDA `[attestation, pool account, driver]`: root, verified km, verified or flagged. `pay_prize` requires VERIFIED and verified km above 0 | The admin or the payout key signs it. Either key may also sign `pay_prize`. Recording does not wait for `payout_at`. Paying does. It is the server's verdict, not a proof of the physics | [`settle.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/settle.rs) |
 | Per-km pledge | `Pledge` `[pledge, ride_id, sponsor]`. The sponsor signs `create_pledge` | A VERIFIED attestation pays `cap × min(verified km, target) / target`. FLAGGED pays 0. If paying the driver would leave that account under rent, the sponsor gets the cap back. `refund_pledge` returns the cap only when the pool is refunding, cancelled, or settled, or still active 14 days after `payout_at`, and there is no verified or flagged attestation. Neither instruction checks a review window. Both are permissionless | [`pledge.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/pledge.rs) |
 | Sign-in | `solana:signIn` (CAIP-122), Wallet Standard | One prompt where the wallet supports it. Older wallets fall back to connect plus `signMessage`. The server checks the fields it issued and burns `nonce:<nonce>` on the first try | [`wallet.js`](client/site/wallet.js) · [`sign-in.ts`](server/src/domain/auth/sign-in.ts) |
@@ -267,8 +234,9 @@ Badges: 31 soulbound compressed NFTs, 8 ladders, Metaplex Bubblegum v2, minted b
 | Piece | In this repository | On the public site |
 | --- | --- | --- |
 | Driving game, five routes, three free levels, paid tiers | Yes | Free rides are live. A paid tier shows SOON until a pool of that tier is open. 4 h and 8 h have no series |
-| Server-timed shifts, hash-chained recordings, verdicts | Yes. Rules version 4 | Live, shadow mode. The verdict is stored and shown. Paid boards still rank without it |
-| Server-rebuilt road, 10 Hz replay verification (`@freightchain/shared`), and hole / traffic / live-event checks | Yes | Live in the judge and replay worker (`verdict.RideReplay` + `verdict.RideReplayFlag`) |
+| Server-timed shifts, hash-chained recordings, verdicts | Yes. Rules v7 in source | Rules v4 shipped Oct 15, shadow mode. The verdict is stored and shown. Paid boards still rank without it |
+| Server road and hole checks, recording verdicts | Yes | Rules v4 shipped; paid boards default to shadow mode |
+| Shared road/physics/traffic simulation and required traffic-frame evidence (rules v7) | Yes | Committed; next app release. Replay-worker startup correction included |
 | Live watch, replays, CB chat, devnet tips | Yes | Paid rides can be watched, with chat. A running free ride cannot. Replays work after it ends. Tips are devnet transfers to the driver. Game effects are off on the public site |
 | Garage, promo codes | Yes | Garage is a lobby tab: wheel, paint, gearbox, dice, needles. Nothing there changes the handling. Promo codes sit on the profile |
 | Public ride receipts, X card, in-game share | Yes | Live. The driver posts from their own account |
@@ -293,7 +261,7 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 - The seed treasury is not rolled into the next pool by a job.
 - The pinned build hash is not the explorer's verified badge. That badge is not submitted. A matching hash is not an audit.
 - [`docs/escrow-open-items.md`](docs/escrow-open-items.md) still opens with a "not deployed" paragraph. Ignore that paragraph.
-- Browser frames use IEEE-754 floats and variable `dt`, while the backend `ReplayEngine` steps the shared physics (`@freightchain/shared`) at fixed `0.05 s` substeps across the 10 Hz sample trace, allowing a small speed tolerance (`3.5 m/s` over sustained mismatches) before raising `physics-speed-mismatch`.
+- Browser frames use IEEE-754 floats and variable `dt`. New traffic evidence preserves that frame timing, but remains client-reported state. The 10 Hz physics reconstruction is approximate: acceleration bounds can reject; carried-coasting discrepancies only flag. Full replay from raw inputs alone is not built.
 - Float32 road vertices jitter past about 100 km.
 - Session keys are not built. Staking is not built.
 
@@ -306,7 +274,7 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 | What the server checks | [Anti-cheat](docs/anti-cheat/index.html) · [player page](docs/verified-play/index.html) |
 | What a spectator sees | [Replays and donations](docs/replay-and-donations/index.html) |
 | Whether the money tests pass | [Localnet walkthrough](docs/localnet-e2e/index.html) |
-| What the penetration test found, and what is fixed | [Penetration test and contracts audit](#penetration-test-and-contracts-audit) · [whitepaper 08](https://whitepaper.freightchain.fun/#audit) · [report](pentest/reports/2026-10-13/index.md) |
+| What the penetration test found, and what is fixed | [Penetration test and contracts audit](#penetration-test-and-contracts-audit) · [whitepaper 08](https://whitepaper.freightchain.fun/#audit) · [report](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/reports/2026-10-13/index.md) |
 | How the server is put together | [backend-architecture.md](docs/backend-architecture.md) |
 
 ## The truck
@@ -351,35 +319,43 @@ Read: [`client/js/trips.js`](client/js/trips.js) · [`ride-tier.ts`](server/src/
 
 ## How a finish is checked
 
-Online rides upload every key and dash event, plus a 10 Hz sample of the truck, in SHA-256 hash-chained batches of 15 seconds. Every completed shift passes through **two verification tiers** before it is marked `verified`, `flagged`, or `rejected`:
+Online rides record **10 Hz truck samples and input events**, plus **lossless per-frame traffic evidence** for new protocol-version-1 rides. The server stamps the required version at start. The client seals these rides' SHA-256 hash-chained batches after **2 game seconds or 500 frames**, whichever comes first; historical recordings used 15-second batches.
 
-1. **Fast batch-summary & road checks (`RideVerdict.judge`)** — runs synchronously over the per-batch summaries, RFC 6962 Merkle chain, server road layout, natural sinkholes, off-road timer, human input-timing statistics, and dispatch challenges.
-2. **10 Hz backend replay verification (`ReplayEngine` + `@freightchain/shared`)** — re-simulates the drive tick-by-tick at 10 Hz (`0.05 s` physics substeps) using the exact ES modules shared with the browser client (`@freightchain/shared`: `prng.js`, `road.js`, `traffic.js`, `physics.js`). It runs synchronously inside `VerdictService` and asynchronously in the dedicated `worker` service (`node dist/cli/index.js replay:worker` + Redis `ReplayQueuePort`), persisting `verdict.RideReplay` and structured `verdict.RideReplayFlag` records inspectable on the admin page (`#replays` and `#ride/<id>`).
+Two verification stages check that evidence:
 
-Paid boards rank verified shifts only when `VERDICT_ENFORCE` is on. Production leaves it off, so the boards ignore the verdict. A prize, if the job pays one, still requires a verified verdict and an on-chain `Attestation` PDA (`[b"attestation", pool, driver]`).
+1. **Admission and summary checks.** Finite values, travel and work budgets are bounded before road lookups. Batch order, hash links, coverage, motion, the server's holes, input timing and challenges feed `RideVerdict.judge`. Uploads and judging share the player's row lock.
+2. **Shared simulation checks.** `ReplayEngine` uses `@freightchain/shared` for road geometry, route curves, longitudinal physics and the full seeded traffic AI. Version 1 runs traffic at the submitted frame timing, checks cab/trailer contacts and hull response, and binds the 10 Hz samples to simulated post-contact frames. Verification can run synchronously or through the replay worker; stored replay sessions and reasons are inspectable on the admin page.
 
 ```mermaid
 flowchart LR
-  batches["Hash-chained 15 s batches<br/>+ RFC 6962 Merkle root"] --> bounds["Fast judge:<br/>chain, governor, road & human timing"]
-  batches --> replay["10 Hz ReplayEngine worker<br/>(@freightchain/shared)"]
-  replay --> corr["Seeded PRNG traffic (4-substep CCD)<br/>+ spectator donation events"]
-  bounds --> verdict["RideVerdict + RideReplayFlag<br/>(verified / flagged / rejected)"]
-  corr --> verdict
-  verdict --> person["Signed admin review<br/>+ On-chain Attestation PDA"]
+  ride["Server sets seed, route,<br/>assist and traffic version"] --> samples["10 Hz truck samples<br/>and input events"]
+  ride --> frames["Required traffic frames<br/>inside the batch hash"]
+  samples --> bounds["Hash, coverage, road<br/>and physics checks"]
+  frames --> traffic["Shared traffic AI<br/>at recorded frame timing"]
+  traffic --> binding["Match truck samples<br/>and collision response"]
+  bounds --> verdict["Stored verdict + replay<br/>verified / flagged / rejected"]
+  binding --> verdict
+  verdict --> review["Signed admin review"]
 ```
 
-- **Server-timed clock & hash chain:** Heartbeats carry the clock. Distance may grow at most 28 m/s × 1.2 × the gap, plus 20 m. No heartbeat for 150 seconds ends the ride. The server recomputes every SHA-256 on arrival and folds batch hashes into an RFC 6962 Merkle root (`telemetry_root`). A wrong hash rejects the shift; an unhashed batch only flags.
-- **Physics bounds & agreement:** Over the governor, a step the truck cannot make, or a sample out of order: reject. The recording has to end near the reported distance, cover the driven time, and show gas if the truck moved.
-- **The server's road & sinkholes:** The holes are the server's, derived from the pool's on-chain `SlotHashes` seed commitment. A wheel deep in a planned pit at speed has to cost hull (`dmg × (v/28)²`, rear axles × 0.6). Two ignored holes reject (`obstacle-ignored`). Long off-road (> 27 s) rejects (`offroad-ignored`). Speed gained while the gas pedal is released rejects (`accel-without-gas`).
-- **10 Hz physics & drivetrain replay (`@freightchain/shared`):** `ReplayEngine` steps `stepLongitudinalPhysics` across every sample pair (`0.05 s` substeps) using the recorded pedal, gear, clutch, and switch state. Speed gain exceeding `1.8×` the maximum drivetrain acceleration across `≥ 3` steps raises `physics-speed-mismatch` (`reject`).
-- **Deterministic PRNG traffic & 4-substep swept CCD:** Using `createTrafficSim` from `@freightchain/shared` seeded with `(ride.seed ^ 0x9e3779b9) >>> 0`, the backend spawns and steps the exact same lane and cross-traffic vehicles at 10 Hz (`0.1 s`) and runs 4-substep swept cab + trailer contact detection (`checkTruckTrafficSwept`, `±1.25 m` cab / `±1.3 m` trailer half-width, `+3.3 m` / `-14.7 m` longitudinal extents). A direct hit (`closingSpeed ≥ 7 m/s`, `overlap ≥ 40 %`) that did not end the shift rejects (`traffic-collision-ignored`); 2+ scrape impacts without hull loss reject (`traffic-damage-ignored`, 1 flags).
-- **Spectator donation & live event correlation:** Paid spectator effects (`live.RideEvent`: `potholes`, `trench`, `sinkhole`, `night`, `day`) are correlated against the 10 Hz sample trace. Unstamped effects past the horizon flag (`event-unapplied`), ignored donated obstacles reject (`donated-obstacle-ignored`), and tampered day/night clock shifts after a `night`/`day` donation flag (`event-clock-mismatch`).
-- **Human timing & challenge channel:** Hold lengths, repeated gaps, and instant releases flag the shift (≥ 8 presses; coarse clocks skip the two checks they break). The heartbeat can name a prompt with a 20 s window (`CHALLENGE_KINDS` is empty today).
-- **Signed admin review:** Every completed paid ride stays under review until the checks accept it or an admin signs ACCEPTED or REJECTED. Replays and red flags can be inspected or re-verified on `admin.<apex>#replays`. A late upload does not overturn a signed decision.
+| Evidence or check | What it establishes | Limit |
+| --- | --- | --- |
+| Hash chain and RFC 6962 root | Which accepted recording the verdict names; inconsistent hashes or links reject | A modified client can recompute hashes. Hashes alone do not prove honest play |
+| Required traffic frames (`trafficVersion=1`) | Missing, malformed, uncovered or sample-inconsistent proof rejects; ignored fatal or damaging contacts reject | The server checks reported poses and timing, not an authenticated browser or a full raw-input replay |
+| Historical samples (`trafficVersion=0`) | Shared traffic reconstruction supplies review flags | Sparse 10 Hz data omits exact frame timing and trailer angle; it cannot support the same traffic guarantees |
+| Road and physics | Hole damage, off-road time, motion and acceleration must fit the ride; carried-coasting discrepancies flag | Float simulation has tolerances; a bot using the real game can still pass |
+| Spectator events | Stamped donated holes and day/night shifts are checked against hull and clock | Separate from the traffic proof; a missing stamp can require review |
+| Timing and review | Uniform holds, repeated gaps and instant presses flag; admin decisions are signed | The challenge-kinds table is empty and a captcha is not built |
 
-What this does not do: browser frames still run at variable `dt` in IEEE-754 floats, so `ReplayEngine` allows a `1.8×` per-step acceleration ratio margin (with a `0.25 m/s` floor) before raising `physics-speed-mismatch`. A careful bot that plays the real game with human-like timing can still pass automatic checks unless caught by prompts or review. Thresholds are first guesses. A captcha before a paid start and before a prize claim is not built. Recordings are kept 90 days (flagged and unjudged ones are kept until reviewed).
+`TRAFFIC_PROOF_REQUIRED=true` is the default for newly started rides. Missing optional replay columns or display-only car tracks does not bypass traffic validation. Explicit false is reserved for compatibility; old rides retain their server-stored version.
 
-Codes and thresholds: [`docs/anti-cheat/index.html`](docs/anti-cheat/index.html) · [`verdict-rules.ts`](server/src/domain/verdict/verdict-rules.ts) · [`replay-engine.ts`](server/src/domain/verdict/replay-engine.ts).
+**Local end-to-end evidence, 16 Oct:** nine controlled headless Chrome scenarios passed against the real game, Nest and PostgreSQL. Three honest drives verified (normal, natural automatic finish, CPU throttling); a real fatal collision failed the ride; deleting cars, deleting cars plus optional replay data, ignoring damage, stripping proof and malformed proof were rejected. Hashes were rebuilt where the attack changed a batch. Disabling the validator made the removed-cars negative test fail. These are regression checks, not a detection rate, an independent audit or a full-length load test.
+
+Run the browser matrix with `bash .claude/skills/run-tests/e2e.sh traffic`. Shared-kernel parity also uses captured browser fixtures across five routes and three trips. See the [whitepaper source and diagrams](landing/whitepaper.html).
+
+Paid boards require verified verdicts only when `VERDICT_ENFORCE` is on; production defaults to shadow mode. Prize settlement still requires a verified verdict. Devnet program v3 gates prizes with per-driver attestations; source program v4 uses a reviewed winners root for prizes and per-ride attestations for pledges. The program enforces settlement, not driving physics.
+
+Codes and implementation: [anti-cheat explainer](docs/anti-cheat/index.html) · [verdict rules](server/src/domain/verdict/verdict-rules.ts) · [frame verifier](server/src/domain/verdict/traffic-proof.ts) · [replay engine](server/src/domain/verdict/replay-engine.ts). Recordings are kept for 90 days; flagged and never-judged completed rides are retained.
 
 Live watch uses the same batches, so a paid ride sits about 25 seconds behind. There are no WebSockets. A running free ride cannot be watched, chatted on, or tipped. A finished one can be replayed at 1×, 4×, and 16× while the recording is kept. A tip on a paid ride is a devnet SOL transfer from the spectator to the driver. The platform does not hold it. Game effects are off on the public site. A free ride has them forced off, and a paid ride only gets them when `LIVE_EFFECTS` is `all`. Production sets it to `free`. [`docs/replay-and-donations/index.html`](docs/replay-and-donations/index.html)
 
@@ -397,7 +373,7 @@ Patterns are `country`, `highway`, `arterial`, and `town`. A lane change is a 12
 
 [`road-drift.spec.ts`](server/test/unit/domain/road/road-drift.spec.ts) runs the game's modules beside the server port: 40 seeds, segments, junctions, and every natural hole out to 60 km. Curvature is not in that compare. The judge works in `s` and `d`.
 
-`update(dt)` in [`physics.js`](client/js/sim/physics.js) steps the clutch, gears, stall, and steering, delegating longitudinal engine/gearbox/brake physics and axle hole damage to [`client/shared/physics.js`](client/shared/physics.js). The engine stalls in gear with the clutch out and rpm under 450. Speed clamps at 28 m/s forward and 6 m/s in reverse. Frame `dt` is clamped to 0.05 s. The backend `ReplayEngine` runs the same shared longitudinal physics and swept traffic collision functions at 10 Hz (`0.05 s` substeps). Float32 road vertices start to jitter past about 100 km.
+`update(dt)` in [`physics.js`](client/js/sim/physics.js) steps the clutch, gears, stall, and steering, delegating longitudinal force calculation to [`client/shared/physics.js`](client/shared/physics.js). The engine stalls in gear with the clutch out and rpm under 450. Speed clamps at 28 m/s forward and 6 m/s in reverse. Frame `dt` is clamped to 0.05 s. The backend reconstructs the sampled drive with shared forces and traffic AI (`≤0.05 s` substeps); it cannot recover omitted frame state. Float32 road vertices start to jitter past about 100 km.
 
 Read: [`client/shared/`](client/shared) · [`network.js`](client/js/net/network.js) · [`patterns.js`](client/js/net/patterns.js) · [`obstacles.js`](client/js/net/obstacles.js) · [`road-plan.ts`](server/src/domain/road/road-plan.ts) · [`replay-engine.ts`](server/src/domain/verdict/replay-engine.ts)
 
@@ -417,13 +393,14 @@ Admin changes pass three gates: nginx basic auth, an admin session, then a walle
 
 ## Sites
 
-Six names, one app. [`client/js/hosts.js`](client/js/hosts.js) picks the host. On localhost every base is empty and the pages share an origin.
+Seven names, one app. [`client/js/hosts.js`](client/js/hosts.js) picks the host. On localhost every base is empty and the pages share an origin.
 
 ```mermaid
 flowchart LR
   landing["freightchain.fun<br/>landing and lobby"] --> api["api.freightchain.fun<br/>NestJS"]
   ride["ride.freightchain.fun<br/>the game"] --> api
   paper["whitepaper.freightchain.fun"] --> api
+  deck["pitchdeck.freightchain.fun<br/>analytics only"] --> api
   admin["admin.freightchain.fun<br/>page and /api/admin"] --> api
   story["storybook.freightchain.fun<br/>meshes + model editor"]
   api --> pg[(PostgreSQL)]
@@ -459,10 +436,10 @@ The intro clip is real gameplay, 14.8 seconds, with the in-game synth: [`media/o
 - [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `editor-worker`, `postgres`, `redis`, `mcp`). `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icons, banners, badge art.
 - [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at.
-- [`landing/`](landing) — the `/` page and the whitepaper. Vite.
+- [`landing/`](landing) — the `/` page, the whitepaper and the pitch deck. Vite.
 - [`mcp/`](mcp) — the entity MCP server: the `3d-assets` skill as tools for the AI model editor (Streamable HTTP for the server's bridge, stdio for Claude Code). Production HTTP counters are shared in Redis with a restricted MCP user; AI jobs use a shared PostgreSQL queue with atomic admission and claims; the bridge owns its tool policy, AI writes remain checked drafts, and publishing requires a wallet signature.
 - [`media/`](media) — promo clips and the chiptune synth.
-- [`pentest/`](pentest) — multi-agent penetration testing and quorum security review suite (Claude, Grok, Agy CLIs).
+- [`pentest/`](pentest) — one-shot Docker sandbox + MCP stdio bridge (`docker-agent-orchestrator.mjs`, `docker-mcp-bridge.mjs`) orchestrating local agentic CLIs (`claude`, `codex`, `grok`, `agy`) inside an airgapped container, plus sealed source snapshots, private-outbox workers and selected-file `review-with-cli` coordination; `check-agents` checks Docker + all 4 MCP-bridged CLIs, and `check-model-cli --all` inventories selected-file relay profiles. Separate brokers live under `pentest/native/{codex-review,grok-review}`. `grok-docker setup/login` builds the Linux Grok broker and obtains a separate Docker-volume login; `--provider grok-docker` runs inference inside Docker behind provider-only HTTPS egress. Detail: [`pentest/README.md`](pentest/README.md).
 - [`programs/`](programs/freightchain-pools) — the Anchor program. Anchor 1.2.
 - [`server/`](server) — NestJS 12, Prisma, PostgreSQL, the replay worker, and the dedicated AI worker (`npm run editor:worker`).
 
@@ -485,8 +462,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `posthog-test` | Local analytics smoke: the relay, and one batch accepted by the EU ingest | `bash .claude/skills/posthog-test/smoke.sh` |
 | `posthog-map` | Landing, whitepaper, lobby, and game checks, then a visual map of every event | `bash .claude/skills/posthog-map/run.sh` |
 | `posthog-audit` | Compare the EU insights to the spec and list the fixes. Does not write unless you say to apply | `node .claude/skills/posthog-audit/audit.mjs` |
-| `social-fetch` | X and YouTube post counts and views (@FreightChainSol, @FreightChainGame). Repeats the read and drops a partial page, a tombstone, a repost, or a count the second source does not support | `node .claude/skills/social-fetch/fetch.mjs` |
-| `daily-tracktion-update` | Rewrite the Traction block from social-fetch, the PostHog insight audit, and the public stats API. Does not deploy and does not apply insight fixes | `node .claude/skills/daily-tracktion-update/update.mjs` |
+| `daily-tracktion-update` | Rewrite the Traction block from the PostHog insight audit and the public stats API. Does not deploy and does not apply insight fixes | `node .claude/skills/daily-tracktion-update/update.mjs` |
 | `prod-db` | Production PostgreSQL, read-only: players, rides, verdicts, payments, the review queue | `npm run ops -- query list` · `npm run ops -- query wallet <address>` · `npm run ops -- sql "SELECT …"` |
 | `prod-logs` | Production logs, read-only: the app, Postgres, and nginx | `npm run ops -- logs --since 30m` · `npm run ops -- logs --errors` |
 | `program-check` | The escrow program: reproducible build against the pinned hash, tests on that `.so`, clippy, audit | `npm run program:verify` |
@@ -500,11 +476,16 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `test-census` | Count the tests by pyramid layer, grade test coverage per feature, user flow, controller and route (static attribution, line + branch coverage, the routes each browser suite hits), name gaps, and rewrite the Tests block below and docs/test-coverage.md | `npm run test:census` · `npm run test:census -- features` · `npm run test:census -- coverage` · `npm run test:census -- run` · `npm run test:census -- readme` |
 | `level-check` | Each free level (EASY / MEDIUM / HARD) is what it promises and passable by a human: the road each level's shift covers (junctions, forks, lanes, bends, sinkhole traps), then a human-paced driver on the real truck with ASSIST off on many seeds × all routes – finish rate, hull, vehicles hit, against the level's limits | `node .claude/skills/level-check/check.mjs` |
 | `trip-design` | The road per ride tier – the free run and the 1 h / 4 h / 8 h shifts: bends, traffic, roadside, whether it ends by itself at the line, its length and finish distance – measured with the real game modules and looked at in Chrome | `node .claude/skills/trip-design/measure.mjs` · `node .claude/skills/trip-design/shots.mjs` |
-| `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome (dispatch prompts answered / ignored), API-level bots with hand-built recordings (every verdict code), the upload protocol, the admin's signed decisions, the profile in Chrome, retention + the CLI's bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` |
+| `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome (dispatch prompts answered / ignored), server traffic validation against removed cars / ignored damage / missing proof, API-level bots with hand-built recordings (every verdict code), the upload protocol, the admin's signed decisions, the profile in Chrome, retention + the CLI's bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` (traffic only: `bash .claude/skills/run-tests/e2e.sh traffic`) |
 | `3d-assets` | Review and fix a model in the model viewer (`client/viewer.html`) – every 3D model is a data-only entity (`client/shared/entity/seed/`) – or add, update, or generate a car, tree, or building. The same procedure is the AI editor's MCP (`mcp/`). `validate.mjs` rejects an impossible spec before any mesh or generated model | `node .claude/skills/3d-assets/validate.mjs --self-test` · `node .claude/skills/3d-assets/validate.mjs "<spec>"` · `node .claude/skills/3d-assets/shot.mjs` · `node .claude/skills/3d-assets/shot.mjs <id>` |
-| `pentest-audit` | Adversarial penetration review across on-chain escrow, server money, anti-cheat, identity, client, and infra; multi-agent quorum review | `./pentest/bin/pentest run --surface all` · `./pentest/bin/pentest report` |
+| `pentest-audit` | Multi-agent security audit inside a one-shot Docker sandbox via MCP stdio bridge (`claude`, `codex`, `grok`, `agy`), plus selected-file static review (`review-with-cli`) and provider diagnostics | `./pentest/bin/pentest check-agents` · `./pentest/bin/pentest run --repo <path>` · `./pentest/bin/pentest check-model-cli --all` · `./pentest/bin/pentest review-with-cli --repo <path> --file <file> --provider claude --model <model> --out <empty-dir>` · `node --test pentest/scripts/*.test.mjs` |
+| `grill-fix` | Grills the business value of the feature and waits for your answers (a vague answer is challenged once), then three sequential reviews of the change, each by a different model, against the idea and those answers. Fixes bugs, gaps, misconfiguration, and security holes between passes, then checks the tests and the code quality. Does not deploy | `/grill-fix` |
+
+`pentest run` starts a one-shot Docker container (`pentest-sandbox:local`), executes all build, test, scanner, and harness checks inside the container, disconnects network egress, and runs the local agentic CLIs (`claude`, `codex`, `grok`, `agy`) against `docker-mcp-bridge.mjs` before destroying the container (`--blocked` records an offline preflight without starting Docker). `review-with-cli --repo <local-dir> --file <relative-file> --provider claude --model <model> --out <empty-dir>` combines selected-file Docker review and the fixed host consumer in one command. The explicit `codex-native` selector uses a separately compiled Codex-derived broker, not the installed CLI or Claude; it requires a current all-gates admission receipt and native ChatGPT authentication. Native admission passed locally and a real `gpt-6.1-sol` inert-source review completed with validated output and owned-resource cleanup on 2026-10-15. `check-model-cli --all` inventories Claude, Codex, Grok, Agy, Gemini and Ollama; use `check-model-cli --provider codex-native` separately for the native profile. Readiness is not a successful inference test. The separate Claude 2.1.300/Haiku inert-source review also completed; neither smoke test establishes universal compatibility or a whole-repository audit. Manual `review-local` and separate `connect-terminal` remain available. Missing admission/auth/capabilities, unsupported providers and unknown events fail closed. Host-profile credentials stay outside Docker; `grok-docker` instead obtains a fresh login in its dedicated Docker volume. Model/tool provenance remains unverified. The [live-model guide](pentest/docs/live-model.md) documents the routes and verification limits.
 
 A new, renamed, or removed skill updates this table in the same change. The rule is [`AGENTS.md`](AGENTS.md) → "Maps stay current".
+
+`grok-native` is an experimental separate public-source build, not installed Grok 1.0.52. It uses a fresh existing first-party OIDC login, without automatic refresh, store repair, API-key billing or another reviewer. A bounded classifier implicated `tool_choice` in the initial HTTP 400. Restoring upstream's empty-tool wire encoding resolved it; a real inert review exited 0 with requested `grok-4.7`, client-reported `grok-4.7-build`, validated output and verified cleanup. Model prose remains unverified. See the [Grok-native guide](pentest/docs/live-model.md#grok-native-broker-experimental).
 
 ## Run it
 

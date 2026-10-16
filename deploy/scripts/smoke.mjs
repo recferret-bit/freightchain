@@ -1,4 +1,4 @@
-// Smoke test of a RUNNING deployment: [SMOKE_ADMIN_AUTH=user:pass] node smoke.mjs <site-url> [--api <url>] [--game <url>] [--storybook <url>] [--whitepaper <url>] [--admin <url>] [--treasury <pubkey>] [--no-signin]
+// Smoke test of a RUNNING deployment: [SMOKE_ADMIN_AUTH=user:pass] node smoke.mjs <site-url> [--api <url>] [--game <url>] [--storybook <url>] [--whitepaper <url>] [--pitchdeck <url>] [--admin <url>] [--treasury <pubkey>] [--no-signin]
 // <site-url> = the apex (landing + lobby); --api / --game default to it (single-origin run, e.g. a local server). The sign-in goes to the API with the site's Origin, like the browser does.
 // Checks the page, health, the price list and – the check that catches the "Secure cookie over http" trap – a real wallet sign-in with a throwaway keypair:
 // the session cookie's flags, then an authenticated call with it. (The sign-in creates ONE throwaway player row in the target database.)
@@ -8,10 +8,10 @@ import { join } from 'node:path';
 
 const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:\/\//.test(a)) ?? '').replace(/\/$/, '');
-if (!base) { console.error('usage: node smoke.mjs <site-url> [--api <url>] [--game <url>] [--storybook <url>] [--whitepaper <url>] [--admin <url>] [--treasury <pubkey>] [--no-signin]'); process.exit(2); }
+if (!base) { console.error('usage: node smoke.mjs <site-url> [--api <url>] [--game <url>] [--storybook <url>] [--whitepaper <url>] [--pitchdeck <url>] [--admin <url>] [--treasury <pubkey>] [--no-signin]'); process.exit(2); }
 const flag = (n) => (args.includes(n) ? args[args.indexOf(n) + 1] : undefined);
 const api = (flag('--api') ?? base).replace(/\/$/, ''), game = flag('--game')?.replace(/\/$/, '');
-const storybook = flag('--storybook')?.replace(/\/$/, ''), whitepaper = flag('--whitepaper')?.replace(/\/$/, ''), admin = flag('--admin')?.replace(/\/$/, '');
+const storybook = flag('--storybook')?.replace(/\/$/, ''), whitepaper = flag('--whitepaper')?.replace(/\/$/, ''), pitchdeck = flag('--pitchdeck')?.replace(/\/$/, ''), admin = flag('--admin')?.replace(/\/$/, '');
 const adminAuth = process.env.SMOKE_ADMIN_AUTH ? { authorization: `Basic ${Buffer.from(process.env.SMOKE_ADMIN_AUTH).toString('base64')}` } : null;
 const split = api !== base;
 const treasury = args.includes('--treasury') ? args[args.indexOf('--treasury') + 1] : undefined;
@@ -57,6 +57,17 @@ if (whitepaper) {
   const css = wBody.match(/href="(\/assets\/[^"]+\.css)"/)?.[1];
   check('its stylesheet loads from the same host', !!css && (await at(whitepaper)(css)).status === 200, css ?? 'no stylesheet link');
 }
+if (pitchdeck) {
+  const d = await at(pitchdeck)('/'), dBody = await d.text();
+  check('the pitch deck answers (pitchdeck.* /)', d.status === 200 && /<title>Freight Chain · Pitch Deck<\/title>/.test(dBody), `${d.status}`);
+  check('the pitch deck host does not expose the API', (await at(pitchdeck)('/api/health/live')).status === 404);
+  const css = dBody.match(/href="(\/assets\/[^"]+\.css)"/)?.[1];
+  check('its stylesheet loads from the same host', !!css && (await at(pitchdeck)(css)).status === 200, css ?? 'no stylesheet link');
+  const clip = await at(pitchdeck)('/media/pitchdeck/promo-clip.mp4');
+  check('its media loads from the same host (the clip)', clip.status === 200, `${clip.status}`);
+  const man = await at(pitchdeck)('/media/pitchdeck/pitchdeck.webmanifest'), manBody = await man.json().catch(() => null);
+  check('its own manifest (the home-screen shortcut opens the deck, not the lobby)', man.status === 200 && manBody?.start_url?.startsWith('/') && !manBody.start_url.includes('lobby'), `${man.status} ${manBody?.start_url}`);
+}
 if (https) {   // search: robots + sitemap from the landing build; behind nginx (the fc-seo snippet) the game host's / and the apex's /whitepaper.html 301 to the page's one public URL
   const r = await at(base)('/robots.txt'), rBody = await r.text();
   check('robots.txt answers as text and names the sitemap', r.status === 200 && /text\/plain/.test(r.headers.get('content-type') ?? '') && /^Sitemap: https:\/\//m.test(rBody), `${r.status} ${r.headers.get('content-type')}`);
@@ -64,6 +75,7 @@ if (https) {   // search: robots + sitemap from the landing build; behind nginx 
   check('sitemap.xml answers as XML', sm.status === 200 && /xml/.test(sm.headers.get('content-type') ?? '') && /<urlset/.test(await sm.text()), `${sm.status} ${sm.headers.get('content-type')}`);
   if (game) { const g = await at(game)('/?x=1'); check('the game host\'s / is the landing: 301 to the apex, query kept', g.status === 301 && g.headers.get('location') === `${base}/?x=1`, `${g.status} → ${g.headers.get('location')}`); }
   if (whitepaper) { const w = await at(base)('/whitepaper.html'); check('the apex\'s /whitepaper.html: 301 to the whitepaper host', w.status === 301 && w.headers.get('location') === `${whitepaper}/`, `${w.status} → ${w.headers.get('location')}`); }
+  if (pitchdeck) { const d = await at(base)('/pitchdeck.html'); check('the apex\'s /pitchdeck.html: 301 to the pitch deck host', d.status === 301 && d.headers.get('location') === `${pitchdeck}/`, `${d.status} → ${d.headers.get('location')}`); }
   const www = base.replace('://', '://www.'), wr = await at(www)('/?x=1').catch(() => null);   // optional host: no DNS record (or no certificate yet) = skipped, not failed
   if (wr) check('www. 301s to the apex, query kept', wr.status === 301 && wr.headers.get('location') === `${base}/?x=1`, `${wr.status} → ${wr.headers.get('location')}`);
   else console.log(`- www. not reachable (no DNS record / certificate yet) – skipped`);
@@ -112,7 +124,7 @@ if (tiersBody.paymentMode === 'program') {
 if (!args.includes('--no-signin')) {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   if (split) {   // the browser's CORS preflight from the site (and from the game) must pass, with the cookie allowed
-    for (const from of [base, game].filter(Boolean)) {
+    for (const from of [base, game, pitchdeck].filter(Boolean)) {
       const pre = await get('/api/auth/nonce', { method: 'OPTIONS', headers: { origin: from, 'access-control-request-method': 'POST', 'access-control-request-headers': 'content-type' } });
       check(`CORS: ${new URL(from).host} may call the API with credentials`, pre.headers.get('access-control-allow-origin') === from && pre.headers.get('access-control-allow-credentials') === 'true', `${pre.status}`);
     }

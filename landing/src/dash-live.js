@@ -8,6 +8,7 @@ const FPS = 30;
 
 /* `scenes` = which table the cards' data-live names come from (the landing's by default); `lazy` = a card draws its first still frame only once it is near the viewport (the whitepaper has two dozen of them and no poster images). A scene may add `fit` (object-fit of its canvas), `t0` (the loop second of the still frame) and `mark(t)` (a rect, design px, outlined in amber). Call it ONCE with every card: the cockpit modules are singletons. */
 export async function startLiveDash(cards, scenes = SCENES, { lazy = false } = {}) {
+  if (!scenes) scenes = SCENES;   // a null scenes arg keeps the landing cards on the default table and turns lazy on
   const cv = Object.assign(document.createElement('canvas'), { id: 'cockpit', hidden: true, width: W * DPR, height: H * DPR });
   const toast = Object.assign(document.createElement('div'), { id: 'toast', hidden: true });
   document.body.append(cv, toast);   // the cockpit modules look these up at import time
@@ -56,21 +57,27 @@ export async function startLiveDash(cards, scenes = SCENES, { lazy = false } = {
   };
 
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const io = new IntersectionObserver(es => { for (const e of es) panels.find(p => p.el === e.target).seen = e.isIntersecting; }, { rootMargin: '80px' });
+  let last = performance.now(), raf = 0;
+  const wants = p => (!p.shown && (p.seen || !lazy)) || (p.seen && p.active && !still);
+  const arm = () => { if (!raf && !document.hidden && panels.some(wants)) raf = requestAnimationFrame(frame); };
+  const frame = now => {
+    raf = 0;
+    if (document.hidden || !panels.some(wants)) return;   // a still card does not keep a frame scheduled
+    const dt = (now - last) / 1000;
+    if (dt < 1 / FPS - .002) { arm(); return; }
+    last = now; const step = Math.min(dt, .1);
+    for (const p of panels) if (wants(p)) draw(p, step);   // every card draws one still frame first; reduced motion keeps it that way
+    arm();
+  };
+  const io = new IntersectionObserver(es => { for (const e of es) { const p = panels.find(x => x.el === e.target); p.seen = e.isIntersecting; if (e.isIntersecting) arm(); } }, { rootMargin: '80px' });
   panels.forEach(p => io.observe(p.el));
   /* animate only while the pointer is over a card, or after a tap (a tap toggles it; tapping another card hands the animation over) */
   for (const p of panels) {
-    p.el.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') p.active = true; });
+    p.el.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') { p.active = true; arm(); } });
     p.el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') p.active = false; });
-    p.el.addEventListener('focusin', () => { p.active = true; }); p.el.addEventListener('focusout', () => { p.active = false; });   // keyboard: Tab onto a card
-    p.el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; const on = !p.active; for (const q of panels) q.active = false; p.active = on; });
+    p.el.addEventListener('focusin', () => { p.active = true; arm(); }); p.el.addEventListener('focusout', () => { p.active = false; });   // keyboard: Tab onto a card
+    p.el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; const on = !p.active; for (const q of panels) q.active = false; p.active = on; if (on) arm(); });
   }
-  let last = performance.now();
-  const frame = now => {
-    requestAnimationFrame(frame);
-    const dt = (now - last) / 1000; if (dt < 1 / FPS - .002 || document.hidden) return;
-    last = now; const step = Math.min(dt, .1);
-    for (const p of panels) if ((!p.shown && (p.seen || !lazy)) || (p.seen && p.active && !still)) draw(p, step);   // every card draws one still frame first; reduced motion keeps it that way
-  };
-  requestAnimationFrame(frame);
+  document.addEventListener('visibilitychange', arm);
+  arm();
 }

@@ -1,7 +1,7 @@
 import { CFG } from '../config.js';
 import { net } from './network.js';
 import { trip } from '../trips.js';
-import { HOLES, rollChunkHole } from '../../shared/road.js';
+import { HOLES, rollChunkHole, shapeHole as shape } from '../../shared/road.js';
 export { HOLES };
 
 /* Road holes as DATA (no three.js – world/holes.js draws them, sim/damage.js drives over them, sim/traffic.js steers round them).
@@ -19,7 +19,6 @@ const CH = CFG.CHUNK_LEN;
 export const plan = { seed: null, holes: new Map(), windows: [], fallback: new Set(), mismatches: [] };   // fallback: chunks the local roll had to answer for (no plan there yet)
 const cache = new Map(), placed = new Map();   // cache: the local roll · placed: holes a spectator paid for (live streams), next to the chunk's own hole
 
-const shape = (id, ci, type, s, lat) => { const T = HOLES[type]; return { id, ci, type, s, lat, ells: T.ells, l0: lat + Math.min(...T.ells.map(e => e.dl - e.b)), l1: lat + Math.max(...T.ells.map(e => e.dl + e.b)), ext: Math.max(...T.ells.map(e => Math.abs(e.ds) + e.a)) }; };
 
 /** the game's own roll for chunk ci – shared/road.js rollChunkHole */
 export function rollHole(ci) {

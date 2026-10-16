@@ -1,6 +1,7 @@
 import { BadRequestError } from '../shared/errors.js';
 import type { RoadPlan } from '../road/road-plan.js';
 import { summariseBatch, type BatchSummary } from './batch-summary.js';
+import { unsafeSamples } from './sample-safety.js';
 import { BATCH_MAX_BYTES, SAMPLE_COUNT_SLACK, SAMPLE_HZ, SAMPLE_RATE_SLACK, TRAFFIC_MAX_BYTES, TRAFFIC_MAX_FRAMES, type RecordingAllowance } from './telemetry-rules.js';
 
 /** One input event: milliseconds since the ride started (wall time), the key / dash-button code, 1 = pressed 0 = released. */
@@ -20,6 +21,8 @@ export interface BatchBody {
   hash: string | null;
   /** the nearby traffic for replays (frames [t, …7 numbers per vehicle]) – not part of the canonical text, never judged; absent = none recorded */
   traffic?: number[][];
+  /** Hashed lossless frame inputs for the server-stamped traffic protocol. */
+  trafficProof?: string;
 }
 
 export interface RideBatchProps {
@@ -64,7 +67,7 @@ export class RideBatch {
 
   /** The text both sides hash – key order fixed, `hash` itself left out. The client builds the same string (client/js/telemetry.js). */
   static canonical(body: Omit<BatchBody, 'hash'>): string {
-    return JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs });
+    return JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs, ...(body.trafficProof !== undefined ? { trafficProof: body.trafficProof } : {}) });
   }
 
   /** Accept an upload: sane time span and sample count for it, size cap, and – given the ride's `allowance` – no more game time, batches or bytes
@@ -79,6 +82,8 @@ export class RideBatch {
     const bytes = (canonicalText ?? RideBatch.canonical(body)).length; // the caller usually built the text already, to hash it
     if (bytes > BATCH_MAX_BYTES) throw new BadRequestError('batch too large', 'bad_batch');
     if (allowance && storedBytes + bytes > allowance.maxBytes) throw new BadRequestError('the recording is larger than the time since the start allows', 'bad_batch');
+    const unsafe = unsafeSamples(body.seq, body.t1, body.samples, prefix);
+    if (unsafe) throw new BadRequestError(unsafe, 'bad_batch');
     if (body.traffic && (body.traffic.length > TRAFFIC_MAX_FRAMES || JSON.stringify(body.traffic).length > TRAFFIC_MAX_BYTES)) body = { ...body, traffic: undefined };   // dropped, never refused
     return new RideBatch({
       rideId, seq: body.seq, prevHash: body.prevHash, hash: body.hash, hashOk: body.hash !== null && body.hash === serverHash, serverHash,

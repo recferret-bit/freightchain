@@ -1,3 +1,4 @@
+import { TRAFFIC_PROOF_ENV, trafficProofScenarios } from '../scenarios/traffic-proof.scenarios.js';
 import { createHarness, type Harness } from '../support/harness.js';
 import { FLOW_ENV, flowScenarios } from '../scenarios/flow.scenarios.js';
 import { httpContractScenarios } from '../scenarios/http-contract.scenarios.js';
@@ -34,6 +35,7 @@ for (const [name, env, scenarios] of [
   ['live streams: the production flags (chat + effects on free rides, paid donations)', LIVE_FLAGS_ENV, liveFlagsScenarios],
   ['live streams: chat and donations switched off', LIVE_OFF_ENV, liveOffScenarios],
   ['verified play: the verdict and the boards', VERDICT_ENV, verdictScenarios],
+  ['verified traffic frame proof', TRAFFIC_PROOF_ENV, trafficProofScenarios],
   ['admin: review queue, overrides, sign-ins, logs', ADMIN_ENV, adminScenarios],
   ['3D models: the public bundle and the editor (drafts, history, restore, signed publish)', EDITOR_ENV, editorScenarios],
   ['3D models: the AI editor jobs (spec gate, the fake model through the MCP callbacks, caps, cancel)', EDITOR_JOBS_ENV, editorJobScenarios],

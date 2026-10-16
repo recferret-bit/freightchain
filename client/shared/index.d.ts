@@ -1,4 +1,8 @@
 export function rnd(n: number): number;
+export const TRAFFIC_PROOF_WIDTH: number;
+export const TRAFFIC_PROOF_MAX_CHARS: number;
+export function encodeTrafficProof(rows: readonly (readonly number[])[]): string;
+export function decodeTrafficProof(text: string): number[][] | null;
 export function mulberry32(a: number): () => number;
 export function clamp(v: number, a: number, b: number): number;
 export function approach(v: number, t: number, r: number, dt: number): number;
@@ -114,6 +118,9 @@ export interface RolledHole {
   lat: number;
 }
 
+export interface ShapedHole extends RolledHole { ells: readonly HoleEllipse[]; l0: number; l1: number; ext: number }
+export function shapeHole(id: string, ci: number, type: string, s: number, lat: number): ShapedHole;
+
 export function rollChunkHole(
   ci: number,
   net: { readonly Sm: number; plain(s: number, pad: number): boolean; lanes(s: number, dir: 1 | -1): number },
@@ -221,6 +228,20 @@ export const REPLAY_SIM_HZ: number;
 export const REPLAY_PHYSICS_SUBSTEPS: number;
 export const EVENT_APPLY_GRACE_MS: number;
 export const GEAR_RATIOS: readonly number[];
+export interface LongitudinalState {
+  v: number; gear: number; clutch: number; gas: number; brake: number; rpm: number;
+  engineOn: boolean; park: boolean; rev: boolean;
+}
+export interface LongitudinalConfig {
+  MAX_SPEED: number; REVERSE_MAX: number;
+  TRUCK: { POWER: number; MASS: number; GEAR_EXP: number; DRAG: number; ROLL_RES: number; BRAKE: number };
+  TORQUE_PEAK: number; TORQUE_LOW_W: number; TORQUE_HIGH_W: number; TORQUE_MIN: number;
+  PARK_BRAKE: number; OFFROAD_DRAG: number;
+}
+export function longitudinalForces(state: LongitudinalState, config: LongitudinalConfig, powerFactor: number, brakeEfficiency: number, offroad: boolean): { acceleration: number; drive: number; overrev: boolean };
+export function integrateLongitudinal(state: LongitudinalState, config: LongitudinalConfig, powerFactor: number, brakeEfficiency: number, offroad: boolean, dt: number, substeps?: number): number;
+export const REV_RATIO: number;
+export const REDLINE: number;
 export const RATIOS: readonly number[];
 export const TRUCK_MASS: number;
 export const TRUCK_POWER: number;
@@ -249,3 +270,49 @@ export function stepLongitudinalPhysics(
   dt: number,
   substeps?: number,
 ): { vSim: number; vMaxPossible: number };
+
+export interface RoadPoint { x: number; z: number; t: number }
+export interface RoadGeometry {
+  roadAt(s: number): RoadPoint;
+  curv(s: number): number;
+  setRoadProfile(fn: (s: number) => number): void;
+  invalidateRoad(s: number): void;
+}
+export interface SimulationTrip extends TripTrafficKnobs { bends: number; road?: Partial<TripRoad> }
+export interface SharedFork { f0: number; f1: number; choice: number }
+export interface SharedRoadNetwork {
+  seed: number; Sm: number; clock: number; straight: boolean;
+  reset(seed: number): SharedRoadNetwork;
+  setStyle(style: { curv: (s: number) => number }): void;
+  lanes(s: number, dir: number): number;
+  onRoad(s: number, d: number): boolean;
+  forkAt(s: number): SharedFork | null;
+  setChoice(fork: SharedFork, choice: number): boolean;
+}
+export interface TrafficTruckState { s: number; d: number; psi: number; tyaw: number; v: number; vel: number; hull: number; rev: boolean; crashV: number }
+export interface SharedTrafficVehicle {
+  id: number; pick: number; def: VehicleDef; P: PresetDef; preset: string; dir: 1 | -1;
+  s: number; lat: number; v: number; vDes: number; lane: number; target: number; lv: number;
+  t: number; ph: number; lcT: number; cool: number; touch: number; worst: number; counted: boolean; over: boolean;
+  dLat: number | null; dV: number; hz: boolean; state: string;
+  road: { main?: boolean; j?: { id: string }; at(s: number): RoadPoint };
+}
+export interface SharedTrafficContact { car: SharedTrafficVehicle; damage: number; closing: number; kind: 'crash' | 'bump' | 'scrape' }
+export interface SharedTrafficSimulation {
+  cars: SharedTrafficVehicle[]; readonly spawned: number;
+  resetTraffic(seed?: number): void;
+  updateTraffic(dt: number): string | null;
+  clearStretch(s0: number, s1: number): void;
+  spawn(type: string, preset: string, zone?: string, dist?: number, lat?: number): SharedTrafficVehicle | null;
+}
+export const SIMULATION_CONFIG: LongitudinalConfig & Readonly<Record<string, unknown>>;
+export const SIMULATION_TRIPS: Readonly<Record<string, SimulationTrip>>;
+export const ROUTE_CURVATURE: Readonly<Record<string, (s: number) => number>>;
+export function createRoadGeometry(): RoadGeometry;
+export function createRoadNetwork(options: { config: object; geometry: RoadGeometry; trip: SimulationTrip }): SharedRoadNetwork;
+export function createTrafficSimulation(options: {
+  config: object; state: TrafficTruckState; roadAt: RoadGeometry['roadAt']; net: SharedRoadNetwork;
+  holes: typeof HOLES; holesNear: (s0: number, s1: number) => readonly ShapedHole[]; trip: SimulationTrip;
+  hurt?: (damage: number, closing: number, label: string, silent?: boolean) => void;
+  onContact?: (contact: SharedTrafficContact) => void;
+}): SharedTrafficSimulation;

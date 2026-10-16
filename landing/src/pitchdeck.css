@@ -1,0 +1,496 @@
+/* The deck's two faces, self-hosted (latin subset of Google Fonts' Anton and JetBrains Mono) – the page makes no third-party request. */
+@font-face{font-family:"Anton";font-style:normal;font-weight:400;font-display:swap;src:url(./fonts/anton-latin.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:500 800;font-display:swap;src:url(./fonts/jetbrains-mono-latin.woff2) format("woff2")}
+/* The stage is 1920×1080, scaled to fit (pitchdeck.js fit()). It is position:fixed, so its unscaled 1920 px never widen a phone's layout viewport (an absolute stage did: the page loaded zoomed out). The "Poster" look: black, condensed caps, red / yellow / white, the Solana purple→green bar. */
+:root{--bg:#050505;--panel:#111;--ink:#fff;--muted:#9a9a9a;--accent:#ffcf5a;--accent2:#ff3b2f;--good:#14f195;--line:#2a2a2a;
+  --head:"Anton",Impact,"Arial Narrow Bold",sans-serif;--body:"JetBrains Mono",ui-monospace,monospace;--sol:linear-gradient(90deg,#9945ff,#14f195);--radius:16px}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--ink);-webkit-tap-highlight-color:transparent}
+::selection{background:#9945ff;color:#fff}   /* text selection: Solana purple (::selection can't take a gradient) */
+.tap{position:absolute;z-index:12;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,#14f19577 0%,#9945ff66 40%,#9945ff00 70%);box-shadow:inset 0 0 0 2px #14f19566;animation:tapring .55s cubic-bezier(.2,.8,.2,1) forwards}   /* the touch highlight (script: pop('tap')) */
+@keyframes tapring{from{scale:.25;opacity:1}to{scale:1.35;opacity:0}}
+#stage{--ex:0px;--pl:112px;--pr:112px;--pt:96px;--pb:96px;position:fixed;left:50%;top:0;width:1920px;height:1080px;transform-origin:50% 0;overflow:hidden;font-family:var(--body);
+  background:radial-gradient(circle at 85% 15%,#2a0f4a 0%,#0000 40%),radial-gradient(circle at 15% 95%,#0b3a26 0%,#0000 40%),#050505}
+#deck{position:absolute;inset:0}
+.slide{position:absolute;inset:0;padding:var(--pt) var(--pr) var(--pb) var(--pl);display:grid;gap:calc(64px + var(--ex) * .6);opacity:0;visibility:hidden;transition:opacity .5s,visibility 0s .5s}
+.slide.on{opacity:1;visibility:visible;transition:opacity .5s}
+.slide:not(.on) :is(.shot,.tags span,.badge,canvas.glyph,.truck svg,.truck .wh){animation-play-state:paused}   /* a hidden slide only fades; its floats, wheels and rumble do not keep ticking */
+.slide:not(.on) :is(.shot,.tags span)::before,.slide:not(.on) .pin i::after{animation-play-state:paused}
+.slide>*{min-width:0}
+figure{margin:0}
+.shot{position:absolute;overflow:hidden;padding:6px;border-radius:var(--radius);background:var(--sol);box-shadow:0 0 0 4px #050505,0 0 0 8px transparent,0 40px 90px #000;outline:4px solid transparent}
+.shot img,.shot video{display:block;width:100%;height:100%;object-fit:cover;border-radius:calc(var(--radius) - 6px)}
+.vis{position:relative;height:100%}
+.copy{position:relative;z-index:2;align-self:center}
+/* the left copy block (label · title · points) sits at the same height on every slide that has one – the game slide (01) is the reference: its label's top is at 154 px */
+.L-wall>.copy,.L-bleed>.copy,.L-split>.copy,.L-money>.copy{align-self:start;margin-top:58px}
+.lbl{display:inline-block;margin-bottom:28px;padding:10px 20px;border-radius:999px;border:2px solid #9945ff;font:700 22px/1 var(--body);letter-spacing:4px;text-transform:uppercase;color:#fff}
+h1{margin:0 0 44px;font:400 150px/.92 var(--head);text-transform:uppercase;color:var(--ink)}
+h1::after{content:"";display:block;width:260px;height:12px;margin-top:34px;border-radius:6px;background:var(--sol)}
+h1 small{display:block;margin-top:22px;font:700 28px var(--body);letter-spacing:4px;text-transform:uppercase;color:var(--accent)}
+h1 em{font-style:normal;color:var(--accent)}
+.pts{list-style:none;margin:0;padding:0;display:grid;gap:20px}
+.pts li{position:relative;padding-left:44px;font:700 30px/1.2 var(--body);text-transform:uppercase;letter-spacing:.5px;color:var(--ink)}
+.pts li::before{content:"";position:absolute;left:0;top:.3em;width:16px;height:16px;border-radius:50%;background:var(--accent2)}
+.pts b{color:var(--accent)}
+.fine{margin-top:36px;font:700 22px var(--body);letter-spacing:5px;color:var(--good)}
+#bar{position:absolute;left:0;bottom:0;height:5px;background:var(--sol);transition:width .4s;z-index:20}
+@media print{#help,#bar,.nav{display:none}}
+#pager{position:absolute;right:var(--pr);bottom:calc(var(--pb) - 52px);z-index:10;display:flex;font:500 18px/26px var(--body);letter-spacing:3px;color:var(--muted);transform-origin:100% 100%}
+#pager .dg{display:inline-block;height:26px;overflow:hidden;width:calc(1ch + 3px)}   /* one digit tall: the column rolls behind this window */
+#pager .col{display:flex;flex-direction:column}
+#pager .col>span{height:26px;line-height:26px}
+#pager .of{white-space:pre}
+#pager.tick{animation:pagertick .6s ease-out 1}
+@keyframes pagertick{0%{transform:scale(1)}35%{transform:scale(1.05);color:var(--ink)}100%{transform:scale(1)}}
+
+/* 00 wall: four screens of what got built */
+.L-wall{grid-template-columns:720px 1fr}
+.L-wall h1{font-size:128px}
+.L-wall .pts li{font-size:28px}
+.L-wall .w1{width:760px;height:428px;left:0;top:40px}
+.L-wall .w2{width:700px;height:394px;left:330px;top:250px;z-index:2}
+.L-wall .w3{width:600px;height:338px;left:20px;top:520px}
+.L-wall .w4{width:360px;height:333px;left:560px;top:640px;z-index:3}
+.tags{position:absolute;right:0;top:0;display:flex;flex-direction:column;gap:12px;align-items:flex-end;z-index:8}   /* above a lifted screen (z 6), so no tag is ever covered */
+.tags span{font:700 20px var(--body);letter-spacing:4px;padding:10px 18px;border-radius:999px;background:#050505;color:#fff;border:2px solid #14f195}
+
+/* 01 bleed: gameplay full screen */
+.L-bleed{grid-template-columns:1fr 470px;align-items:end}
+.L-bleed h1{font-size:140px}
+.L-bleed .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.L-bleed .shade{position:absolute;inset:0;background:linear-gradient(90deg,#000e 0%,#000a 50%,#0000 80%),linear-gradient(0deg,#000 0%,#0000 55%)}
+.L-bleed .poster{position:relative;width:470px;height:836px;border-radius:var(--radius)}
+
+/* 02 / 03 split: a big screen and a small one */
+.L-split{grid-template-columns:640px 1fr}
+.L-split h1{font-size:130px}
+.L-split .v-main{width:1000px;height:563px;right:0;top:80px}
+.L-split .v-sub{width:520px;height:293px;left:-40px;bottom:60px;z-index:2}
+.L-split .badge{position:absolute;right:24px;top:100px;z-index:3}
+.L-flip .v-main{top:40px}
+.L-flip .v-sub{left:auto;right:-30px;top:auto;bottom:10px;width:420px;height:388px}
+.badge{font:700 20px var(--body);letter-spacing:3px;padding:10px 18px;border-radius:999px}
+.badge.live{display:inline-flex;align-items:center;gap:14px;line-height:1;background:var(--accent2);color:#fff}
+.badge.live .dot{width:13px;height:13px;border-radius:50%;background:currentColor;flex:none}   /* a real dot: the ● glyph sat low */
+#s-insight .v-main{width:960px;height:540px;top:170px;right:-60px}
+#s-insight .badge{right:-36px;top:130px}
+.ladder{list-style:none;margin:44px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.ladder li b{display:block;font:400 46px/1 var(--head);color:var(--muted)}
+.ladder li span{font:500 16px var(--body);letter-spacing:1px;white-space:nowrap}
+.ladder li.on{border:2px solid var(--good);color:var(--ink)}
+.ladder li.on b{color:var(--good)}
+
+/* 04 money */
+.L-money{grid-template-columns:780px 1fr}
+.L-money h1{font-size:112px}
+.L-money .v-main{width:900px;height:362px;right:0;top:30px;transform-origin:0 50%}   /* the diagram grows rightwards, not over the headline's last letter */
+.L-money .v-sub{width:400px;height:440px;left:20px;bottom:10px;z-index:2}
+.glyph{position:absolute;width:400px;right:20px;bottom:60px;z-index:3}
+.split{display:flex;gap:6px;height:118px;margin:0 0 40px;transition:gap .7s cubic-bezier(.65,0,.2,1)}
+.split span{font:600 16px/1.1 var(--body);letter-spacing:1px;white-space:nowrap}
+
+/* tip: always on, a slow pulse */
+#help{position:fixed;left:50%;bottom:14px;translate:-50%;z-index:30;padding:9px 18px;border-radius:999px;border:1px solid #9945ff99;background:#000a;font:700 13px var(--body);letter-spacing:2.5px;text-transform:uppercase;color:#fffc;pointer-events:none;white-space:nowrap;animation:tipwave 3.6s ease-in-out infinite}
+#help::before{content:"";position:absolute;inset:-8px;border-radius:inherit;pointer-events:none;z-index:-1;box-shadow:0 0 18px 2px #9945ff88,0 0 28px 4px #14f19544;animation:pulse 2.4s ease-in-out infinite}   /* the glow is rasterized once; only its opacity ticks */
+#help.flash{animation:tipwave 3.6s ease-in-out infinite,tipflash .5s ease-out 1}
+@keyframes tipflash{0%{background:#fff;color:#050505;border-color:#fff;scale:1.22;box-shadow:0 0 46px 14px #14f195cc,0 0 90px 24px #9945ffaa}100%{background:#000a;color:#fffc;border-color:#9945ff99;scale:1}}
+#help .k{display:flex;align-items:center;gap:22px}
+#help i{font-style:normal}
+#help .pb{color:var(--good);display:inline-block;font:700 40px/1 var(--body);letter-spacing:0;pointer-events:auto;cursor:pointer;padding:2px 10px;margin:-6px -8px}
+#help .pb:first-child{animation:nudge-l 1.8s ease-in-out infinite}
+#help .pb:last-child{animation:nudge-r 1.8s ease-in-out infinite}
+#help .pb:hover{color:#fff;text-shadow:0 0 12px var(--good)}
+#help.flash .pb.hit{animation:arrowflash .5s ease-out 1}
+@keyframes arrowflash{0%{color:#050505;text-shadow:0 0 14px #14f195;scale:1.9}100%{color:var(--good);text-shadow:none;scale:1}}   /* `scale`, not transform: the arrow's own nudge owns transform */
+@keyframes nudge-l{0%,100%{transform:translateX(0)}50%{transform:translateX(-7px)}}
+@keyframes nudge-r{0%,100%{transform:translateX(0)}50%{transform:translateX(7px)}}
+@keyframes tipwave{0%,100%{transform:translateY(0) rotate(-.6deg) scale(1);opacity:.75}25%{transform:translateY(-5px) rotate(0) scale(1.04)}50%{transform:translateY(0) rotate(.6deg) scale(1.08);opacity:1}75%{transform:translateY(-5px) rotate(0) scale(1.04)}}
+@keyframes pulse{50%{opacity:.4}}
+
+/* slide 1: the screens hang in the air, lean away from the mouse, lift on hover / tap. The border is a conic gradient rotated as a layer (a moving background-position repainted the photo).
+   The 90 px drop and the colored glow are static, so float can composite them. Hover scale is the `scale` property: `transform` is the lean, and a transition on it retargeted every pointer move. */
+.fx .shot{--r:0deg;--k:0;--dl:0s;background:none;cursor:pointer;box-shadow:0 0 0 4px #050505,0 0 26px 3px #9945ff77,0 40px 90px #000;
+  transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px));
+  transition:scale .35s cubic-bezier(.2,.8,.2,1);animation:float 6s ease-in-out var(--dl) infinite}
+.fx .shot::before{content:"";position:absolute;left:50%;top:50%;z-index:-1;width:180%;height:180%;translate:-50% -50%;pointer-events:none;
+  background:conic-gradient(#9945ff,#14f195,#9945ff,#14f195,#9945ff);animation:spin 7s linear var(--dl) infinite,pulse 4s ease-in-out var(--dl) infinite}
+.L-wall .w1{--r:-3deg;--k:-26;--dl:-1s}
+.L-wall .w2{--r:2.5deg;--k:34;--dl:-2.5s}
+.L-wall .w3{--r:1.5deg;--k:-40;--dl:-4s}
+.L-wall .w4{--r:-2deg;--k:50;--dl:-5s}
+@keyframes float{0%,100%{translate:0 0}50%{translate:0 -16px}}
+/* the four tags are part of the same floating set: same drift, lean and lift, their own phases. The glow pseudo's opacity pulses; the shadow itself does not change. */
+.L-wall .tags span{--r:0deg;--k:0;--dl:0s;position:relative;cursor:pointer;box-shadow:0 0 14px 1px #9945ff55;
+  transform:rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px));
+  transition:scale .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,background-color .25s,color .25s,border-color .25s;animation:float 5s ease-in-out var(--dl) infinite}
+.L-wall .tags span::before{content:"";position:absolute;inset:-6px;border-radius:inherit;pointer-events:none;box-shadow:0 0 16px 2px #14f19588;animation:pulse 4s ease-in-out var(--dl) infinite}
+.L-wall .tags span:nth-child(1){--k:-60;--r:2deg;--dl:-.5s}
+.L-wall .tags span:nth-child(2){--k:44;--r:-1.5deg;--dl:-1.8s}
+.L-wall .tags span:nth-child(3){--k:-36;--r:1.5deg;--dl:-3s}
+.L-wall .tags span:nth-child(4){--k:56;--r:-2deg;--dl:-4.2s}
+.L-wall .tags span:hover,.L-wall .tags span.hot{scale:1.08;box-shadow:0 0 26px 4px #14f19577,0 0 40px 6px #9945ff66}
+.L-wall .tags span:is(:hover,.hot)::before{animation:none;opacity:0}
+/* hover / tap on a screen selects its tag: site ↔ landing, streams ↔ replay, solana escrow ↔ whitepaper's on-chain chapter, analytics ↔ the ride receipt – amber, extra bold, 15 % bigger */
+.L-wall .tags span:is(:hover,.hot),
+.L-wall .vis:has(.w1:is(:hover,.hot)) .tags span:nth-child(1),
+.L-wall .vis:has(.w2:is(:hover,.hot)) .tags span:nth-child(2),
+.L-wall .vis:has(.w3:is(:hover,.hot)) .tags span:nth-child(4),
+.L-wall .vis:has(.w4:is(:hover,.hot)) .tags span:nth-child(3){scale:1.15;background:var(--accent);border-color:var(--accent);color:#1b1408;font-weight:800;box-shadow:0 0 30px 6px #ffcf5a77,0 0 50px 8px #9945ff55;z-index:7}
+/* hovering / tapping a tag lifts its screen: a stronger static shadow, one paint, then the layer just scales */
+.fx .shot:is(:hover,.hot,.drag),
+.L-wall .vis:has(.tags span:nth-child(1):is(:hover,.hot)) .w1,
+.L-wall .vis:has(.tags span:nth-child(2):is(:hover,.hot)) .w2,
+.L-wall .vis:has(.tags span:nth-child(4):is(:hover,.hot)) .w3,
+.L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4{scale:1.09;z-index:6;box-shadow:0 0 0 4px #050505,0 0 32px 8px #14f195aa,0 0 44px 12px #9945ff77,0 40px 90px #000}
+@media (prefers-reduced-motion:reduce){#ticker span{transition:none}#ticker .tk,.fx .shot,.fx .shot::before,.fx .badge,.L-wall .tags span,.L-wall .tags span::before,#help,#help::before,#help .pb,.nav{animation:none!important}}
+
+
+/* a screen's picture starts cropped in (zoomed) and opens out to the whole shot when its screen is selected, while the screen itself grows */
+.fx .shot img,.fx .shot video{position:relative;z-index:1;transform:scale(1.2);transition:transform .55s cubic-bezier(.2,.8,.2,1)}   /* above the spinning border, so the gradient only shows in the 6 px padding */
+.fx .shot:is(:hover,.hot) img,
+.fx .shot:is(:hover,.hot) video,
+.L-wall .vis:has(.tags span:nth-child(1):is(:hover,.hot)) .w1 img,
+.L-wall .vis:has(.tags span:nth-child(2):is(:hover,.hot)) .w2 img,
+.L-wall .vis:has(.tags span:nth-child(4):is(:hover,.hot)) .w3 img,
+.L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4 img{transform:scale(1)}
+@media (prefers-reduced-motion:reduce){.fx .shot img,.fx .shot video{transition:none}}
+
+/* dragged: lifted like a selected screen, no CSS transition on the move (the script's lerp is the lag), nothing selects or scrolls */
+.fx .shot{touch-action:none;user-select:none;-webkit-user-select:none}
+.fx .shot img,.fx .shot video{pointer-events:none;-webkit-user-drag:none}
+.fx .shot.drag{z-index:6;cursor:grabbing}
+.fx .shot.drag img,.fx .shot.drag video{transform:scale(1)}
+
+/* phones (script adds body.touch): the tip says swipe, safe areas, and the portrait "turn your phone" cover */
+#help .t{display:none}
+.touch #help .k{display:none}
+.touch #help{display:none}
+.touch #help.quiet{opacity:0!important;visibility:hidden;animation:none;transition:opacity .8s,visibility 0s .8s}
+.touch #help .t{display:inline}
+#help{bottom:max(14px,env(safe-area-inset-bottom))}
+@media (max-width:700px),(max-height:500px){#help{font-size:10px;letter-spacing:1.2px;padding:6px 12px;white-space:nowrap}}
+#turn{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:#050505f2;color:#fff;font:700 15px var(--body);letter-spacing:2px;text-transform:uppercase;text-align:center;padding:24px}
+#turn[hidden]{display:none}
+#turn p{margin:0;max-width:260px;line-height:1.5}
+#turn .phone{width:54px;height:92px;border:4px solid #14f195;border-radius:12px;box-shadow:0 0 24px #9945ff99;animation:turn 2.6s ease-in-out infinite}
+@keyframes turn{0%,20%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+#turn button{font:600 13px var(--body);letter-spacing:2px;text-transform:uppercase;color:#fff9;background:none;border:1px solid #fff4;border-radius:999px;padding:10px 18px}
+#tilt{position:fixed;z-index:36;left:50%;bottom:max(12px,env(safe-area-inset-bottom));translate:-50% 0;display:flex;align-items:center;justify-content:center;gap:8px 10px;max-width:calc(100vw - 120px);padding:7px 8px 7px 14px;border-radius:999px;border:1px solid #14f195aa;background:#000e;color:#fff;font:600 11px/1.2 var(--body);letter-spacing:.2px;white-space:nowrap}
+#tilt[hidden],body:has(#turn:not([hidden])) #tilt{display:none}
+#tilt p{margin:0}
+body:has(#tilt:not([hidden])) #help{opacity:0;visibility:hidden}
+#tilt button{font:700 11px var(--body);letter-spacing:1px;text-transform:uppercase;border-radius:999px;padding:7px 10px;-webkit-tap-highlight-color:transparent}
+#tilt-yes{color:#050505;background:var(--good);border:0}
+#tilt-no{color:#fff9;background:none;border:1px solid #fff4}
+@media (max-width:640px){#tilt{flex-wrap:wrap;white-space:normal;border-radius:16px;text-align:center}#tilt p{white-space:normal}}
+@media (prefers-reduced-motion:reduce){#turn .phone{animation:none}}
+
+/* header ticker (pinned to the very top of the window, outside the letterboxed stage; fit() scales it) – the landing's running text (LCD green, ◆ between facts) on black, over every slide; .code = a real line from the repo */
+#ticker{position:fixed;left:0;top:0;width:1920px;transform-origin:0 0;height:38px;overflow:hidden;z-index:20;contain:paint;background:#030803;border-top:2px solid #1e4a22;border-bottom:2px solid #1e4a22;color:#7cff7c;font:700 16px/36px var(--body);letter-spacing:1.5px;text-transform:uppercase;text-shadow:0 0 8px #7cff7c55}   /* a rule above AND below, so the gap from the caps to each is the same (measured at 4×) */
+#ticker .tk{position:absolute;left:0;top:0;display:inline-flex;white-space:nowrap;animation:tkrun linear infinite}   /* duration set from the measured loop (ticker.js); playbackRate eases the speed */
+@keyframes tkrun{to{translate:-50% 0}}
+#ticker span{position:relative;padding:0 38px;transition:transform .3s cubic-bezier(.2,.8,.2,1),color .3s,text-shadow .3s;cursor:default}
+#ticker span:hover{transform:scale(1.05);color:#d6ffd6;text-shadow:0 0 14px #7cff7cbb}   /* the fact under the pointer swells a little (the strip is slow while hovered) */
+#ticker span::after{content:"◆";position:absolute;right:-6px;top:calc(50% - 1.5px);translate:0 -50%;line-height:1;opacity:.5;font-size:11px}
+#ticker span.code{font-weight:500;text-transform:none;letter-spacing:0}   /* a code line: the same green as the facts */
+
+/* slides 1–2 join slide 0's floating cards: their own tilt / phase, and the LIVE badge drifts above a lifted card */
+.fx .poster{--r:2deg;--k:-30;--dl:-.8s}
+.fx .v-main{--r:-1.5deg;--k:26;--dl:-2s}
+/* the LIVE badge: colours swap on hover / click with a tween, it leans from the mouse (--bx/--by, script), sags under SOL and follows its dragged card (--fx/--fy) */
+.fx .badge{z-index:8;animation:float 5s ease-in-out -1.5s infinite;cursor:pointer;
+  transform:translate(calc(var(--bx,0px) + var(--fx,0px)),calc(var(--by,0px) + var(--fy,0px)));
+  transition:background-color .35s,color .35s,box-shadow .35s,scale .35s cubic-bezier(.2,.8,.2,1)}
+.fx .badge:is(:hover,.hot){background:#fff;color:#ff3b2f;scale:1.08;box-shadow:0 0 28px 4px #ff3b2f88}
+.fx .badge.pop{animation:float 5s ease-in-out -1.5s infinite,badgepop .5s ease-out 1}
+@keyframes badgepop{0%{scale:1}40%{scale:1.24}100%{scale:1.08}}
+
+.fx .v-sub{--r:2deg;--k:-40;--dl:-3.5s}   /* slide 3 (Play): the small receipt next to the free-run screen */
+
+
+/* money slide: the Merkle-root drawing is the landing's live `proof` canvas scene, drawn straight on the slide (no card, a transparent background); it floats and leans like the cards */
+canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
+.fx canvas.glyph{--k:34;transform:translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px));animation:float 6s ease-in-out -2s infinite}
+@media (prefers-reduced-motion:reduce){.fx canvas.glyph{animation:none}}
+
+/* money slide, the Merkle-root canvas has a covered state: it swells 1.05, the other two cards shrink the same (scale .95), and one more verification block tweens in above the tree */
+.fx canvas.glyph{cursor:pointer;transition:scale .35s cubic-bezier(.2,.8,.2,1)}
+.fx canvas.glyph:is(:hover,.hot){scale:1.05}
+.L-money .vis:has(canvas.glyph:is(:hover,.hot)) .shot{scale:.95}
+.vblock{position:absolute;right:110px;bottom:278px;z-index:4;padding:9px 16px;border-radius:9px;background:#0b0a09;border:1.5px solid #14f195;box-shadow:0 0 22px #14f19544;color:#14f195;font:700 16px/1.2 var(--body);letter-spacing:2px;text-transform:uppercase;white-space:nowrap;pointer-events:none;
+  opacity:0;translate:0 16px;scale:.75;transition:opacity .3s,translate .55s cubic-bezier(.2,1.5,.4,1),scale .55s cubic-bezier(.2,1.5,.4,1)}
+.vblock small{display:block;margin-top:3px;font:500 12px var(--body);letter-spacing:1px;text-transform:none;color:#9a9a9a}
+.L-money .vis:has(canvas.glyph:is(:hover,.hot)) .vblock{opacity:1;translate:0 0;scale:1}
+@media (prefers-reduced-motion:reduce){.vblock,.fx canvas.glyph{transition:none}}
+
+/* the 70 / 20 / 10 bar: the 10 % block keeps a width its figure fits in (the % no longer touches the edge); hover / tap plays a chained tween – others fade out in turn (.s-out), the picked block slides left and grows (.s-grow), its % gives way to a description (.s-text) */
+.split div{position:relative;flex:var(--w) 1 0;min-width:0;display:flex;flex-direction:column;justify-content:space-between;padding:14px 16px;border-radius:12px;background:var(--accent);color:#1b1408;overflow:hidden;transform-origin:var(--ox,50%) 50%;transition:opacity .3s ease-out calc(var(--r,0)*.18s),transform .4s cubic-bezier(.3,0,.2,1) calc(var(--r,0)*.18s),flex-grow .7s cubic-bezier(.65,0,.2,1),min-width .7s cubic-bezier(.65,0,.2,1),padding .7s cubic-bezier(.65,0,.2,1),box-shadow .5s;cursor:pointer}   /* coming back: nearest first, out of the border */
+.split div:nth-child(2){min-width:132px;background:var(--accent2);color:#fff}
+.split div:nth-child(3){min-width:124px;background:#fff;color:#111}
+.split .desc{position:absolute;left:16px;right:16px;top:14px;font:400 32px/1.08 var(--head);font-style:normal;text-transform:uppercase;white-space:nowrap;overflow:hidden;opacity:0;transform:translateY(10px);filter:blur(4px);pointer-events:none;transition:opacity .22s ease,transform .3s ease,filter .22s ease}   /* one line, no letter-spacing tween: nothing re-wraps while it appears */
+.split b{font:400 44px/1 var(--head);white-space:nowrap;transition:opacity .22s ease .22s,transform .3s ease .22s}   /* coming back: only after the description has gone, so the two never overlap */
+.split.s-out div:not(.pick){opacity:0;transform:translateX(var(--tx,0px)) scaleX(.1);transition:opacity .22s ease-in calc(var(--o,0)*.2s + .14s),transform .4s cubic-bezier(.55,0,.25,1) calc(var(--o,0)*.2s),flex-grow .7s cubic-bezier(.65,0,.2,1),min-width .7s cubic-bezier(.65,0,.2,1),padding .7s cubic-bezier(.65,0,.2,1),box-shadow .5s;pointer-events:none}   /* each block runs to the bar's border on its own side (--tx), squeezing into it as it fades; the farthest from the picked one goes first */
+.split.s-out .pick{box-shadow:0 0 0 3px #ffffff33}
+.split.s-grow{gap:0}
+.split.s-grow div:not(.pick){flex-grow:0;min-width:0;padding-left:0;padding-right:0}
+.split.s-grow .pick{flex-grow:100;box-shadow:0 0 36px 2px #ffcf5a44}
+.split.s-text .pick b{opacity:0;transform:translateY(-10px);transition-delay:0s}
+.split.s-text .pick .desc{opacity:1;transform:none;filter:none;transition:opacity .3s ease .24s,transform .4s cubic-bezier(.2,.9,.3,1) .24s,filter .3s ease .24s}   /* in after the % has left */
+@media (prefers-reduced-motion:reduce){.split div,.split .desc,.split b,.split{transition:none!important}}
+
+/* 05 · the chain: six on-chain systems as cards (colour = --c per card). Hover / tap: the figure and text step aside for WHY it is needed and HOW it fits (.more). */
+.L-chain{grid-template-rows:auto 1fr;gap:34px}
+.L-chain h1{margin:0;font-size:116px}
+.L-chain h1::after{display:none}
+.cards5{display:grid;grid-template-columns:repeat(6,1fr);gap:18px;min-height:0}
+.cc{position:relative;display:flex;flex-direction:column;gap:14px;padding:24px 20px 20px;border-radius:16px;background:#0e0e0e;border:2px solid #232323;overflow:hidden;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .35s}
+.cc::before{content:"";position:absolute;left:0;top:0;right:0;height:6px;background:var(--c)}
+.cc:is(:hover,.hot){transform:translateY(-8px) scale(1.03);border-color:var(--c);box-shadow:0 0 44px color-mix(in srgb,var(--c) 30%,transparent)}
+.cc .st{align-self:flex-start;margin-top:6px;font:700 12px/1 var(--body);letter-spacing:1.5px;padding:7px 10px;border-radius:999px;border:1.5px solid var(--c);color:var(--c);white-space:nowrap}
+.cc h3{margin:0;font:400 48px/.98 var(--head);text-transform:uppercase;color:var(--c);min-height:2em}
+.cc .big{font:400 42px/.98 var(--head);text-transform:uppercase;color:var(--ink);min-height:2em}
+.cc>p{margin:0;font:500 21px/1.38 var(--body);color:#d6d6d6}
+.cc small{margin-top:auto;font:500 15px/1.3 var(--body);color:var(--muted)}
+.cc .big,.cc>p,.cc small,.cc .ach{transition:opacity .25s ease}
+.cc:is(:hover,.hot) .big,.cc:is(:hover,.hot)>p,.cc:is(:hover,.hot) small,.cc:is(:hover,.hot) .ach{opacity:0}
+.cc .more{position:absolute;left:0;right:0;top:172px;bottom:0;padding:0 20px 20px;display:flex;flex-direction:column;gap:8px;opacity:0;translate:0 26px;pointer-events:none;
+  transition:opacity .25s ease,translate .5s cubic-bezier(.2,.9,.3,1)}
+.cc .more h4{margin:10px 0 0;font:700 13px/1 var(--body);letter-spacing:3px;text-transform:uppercase;color:var(--c)}
+.cc .more p{margin:0;font:500 17px/1.4 var(--body);color:#eee}
+.cc:is(:hover,.hot) .more{opacity:1;translate:0 0;transition-delay:.08s}
+/* the soulbound badges: a carousel – the middle one big, its neighbours small and dim; each step the row slides one place */
+.ach{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.ach-stage{position:relative;width:calc(100% + 40px);margin:0 -20px;height:128px}
+.ci{position:absolute;left:50%;top:4px;width:120px;height:120px;margin-left:-60px;--s:.3;--op:0;
+  transform:translateX(calc(var(--o,0)*98px)) scale(var(--s));opacity:var(--op);
+  transition:transform .65s cubic-bezier(.45,0,.15,1),opacity .65s ease,filter .65s ease;filter:grayscale(.6) brightness(.8)}
+.ci[data-o="0"]{--s:1;--op:1;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--c) 50%,transparent))}
+.ci[data-o="-1"],.ci[data-o="1"]{--s:.52;--op:.42}
+.ach-ring{z-index:3;position:absolute;left:50%;top:4px;width:120px;height:120px;margin-left:-60px;border-radius:50%;border:3px solid var(--c);opacity:0;pointer-events:none}
+.ach-ring.go{animation:achring .95s ease-out both}
+.ach-ring.go:nth-of-type(2){animation-delay:.16s}
+@keyframes achring{0%{transform:scale(.2);opacity:.95}70%{opacity:.5}100%{transform:scale(1.6);opacity:0}}
+.ci.pop{animation:achpop .55s ease-out}
+@keyframes achpop{0%{scale:1}35%{scale:1.07}100%{scale:1}}
+.ach-cap{display:grid;gap:3px;min-height:72px;align-content:start}
+.ach-cap em{font:700 12px/1 var(--body);letter-spacing:3px;font-style:normal;color:var(--c)}
+.ach-cap b{font:400 26px/1 var(--head);text-transform:uppercase;color:#fff}
+.ach-cap span{font:500 14px/1.25 var(--body);color:var(--muted)}
+.ach-cap.swap{animation:achcap .55s ease-out both}
+@keyframes achcap{0%{opacity:0;translate:26px 0}100%{opacity:1;translate:0 0}}
+@media (prefers-reduced-motion:reduce){.cc,.cc .more,.ci,.ach-cap,.ach-ring{transition:none!important;animation:none!important}}
+
+/* slide 3's DONATIONS and WEB3 ADOPTION bullets are buttons: it shakes now and then like the cards; a click drops SOL coins onto the stage (#coins, script) and pops a donation toast */
+.pts li:is(.don,.adopt){width:fit-content;cursor:pointer;transform-origin:30% 50%;transition:scale .3s cubic-bezier(.2,.8,.2,1),text-shadow .3s}
+@media (hover:hover){.pts li:is(.don,.adopt):hover{scale:1.05;text-shadow:0 0 18px #14f19566}}   /* not on a phone: iOS Safari takes a tap on an element whose :hover changes as the hover itself and swallows the click */
+.pts li:is(.don,.adopt):active{scale:.97}
+#coins{position:absolute;left:0;top:0;width:100%;height:100%;z-index:9;pointer-events:none}   /* over the slides, under the page counter and the bar */
+.sol-toast{position:absolute;z-index:11;translate:-50% -50%;display:grid;gap:6px;justify-items:center;padding:16px 26px;border-radius:16px;background:#050505e6;border:2px solid #14f195;
+  box-shadow:0 0 34px #14f19555,0 0 60px #9945ff44;pointer-events:none;animation:soltoast 2.4s cubic-bezier(.2,.8,.2,1) both}
+.sol-toast b{font:400 54px/1 var(--head);background:var(--sol);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sol-toast span{font:700 15px/1 var(--body);letter-spacing:3px;color:#fff}
+@keyframes soltoast{0%{opacity:0;transform:translateY(24px) scale(.5)}14%{opacity:1;transform:translateY(0) scale(1.12)}24%{transform:scale(1)}75%{opacity:1;transform:translateY(-34px)}100%{opacity:0;transform:translateY(-70px)}}
+@media (prefers-reduced-motion:reduce){.sol-toast,.usd,.bill{animation:none}.pts li:is(.don,.adopt){transition:none}}
+/* a coin under the pointer can be grabbed (script toggles these on the stage) */
+#stage.coin-over,#stage.coin-over *{cursor:grab!important}
+#stage.coin-drag,#stage.coin-drag *{cursor:grabbing!important;user-select:none;-webkit-user-select:none}
+
+/* 06 · the plan: a four-month Gantt – month ruler, one lane per workstream, bars that draw in left to right when the slide shows; hover / tap swaps a bar's label for what it means */
+.L-plan{grid-template-rows:auto 1fr;gap:26px}
+.L-plan h1{margin:0;font-size:104px}
+.L-plan h1::after{display:none}
+.plan{position:relative;display:grid;grid-template-columns:270px repeat(4,1fr);grid-auto-rows:minmax(0,1fr);row-gap:10px;min-height:0}
+.plan::before{content:"";position:absolute;left:270px;right:0;top:0;bottom:0;pointer-events:none;background:repeating-linear-gradient(90deg,#ffffff1c 0 2px,transparent 2px 25%)}
+.plan .pr{grid-row:1;display:flex;align-items:flex-end;justify-content:center;gap:12px;padding-bottom:8px;border-bottom:2px solid #2a2a2a}
+.plan .pr.mo b{font:400 44px/1 var(--head);color:var(--ink);letter-spacing:2px}
+.plan .pr.mo small{font:600 15px var(--body);letter-spacing:2px;color:var(--muted);padding-bottom:5px}
+.plan .pr.today{grid-column:1;justify-content:flex-start}
+.plan .pin{display:inline-flex;align-items:center;gap:12px;font:700 15px var(--body);letter-spacing:3px;color:var(--good)}
+.plan .pin i{position:relative;width:12px;height:12px;border-radius:50%;background:var(--good)}
+.plan .pin i::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--good);animation:pinpulse 2s ease-out infinite}
+@keyframes pinpulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.8);opacity:0}}
+.plan .pl{grid-column:1;display:flex;flex-direction:column;justify-content:flex-start;gap:4px;padding:5px 18px 0 0;margin:5px 0 0}   /* the label hangs from the same top line as its bar (the bar's 5 px margin + its border) */
+.plan .pl b{font:400 31px/1 var(--head);margin-top:-5px;text-transform:uppercase;color:var(--c);letter-spacing:.5px}
+.plan .pl small{font:500 16px var(--body);color:var(--muted)}
+.plan .bar{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:0 24px 0 26px;margin:5px 0;border-radius:14px;overflow:hidden;cursor:pointer;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 34%,#0b0b0b),color-mix(in srgb,var(--c) 14%,#0b0b0b));border:2px solid color-mix(in srgb,var(--c) 70%,#0b0b0b);border-left:8px solid var(--c);
+  clip-path:inset(-30px 100% -30px -30px);transition:clip-path .2s ease,scale .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}   /* leaving: every bar wipes out at once, quickly – a staggered wipe-out left the later bars drawn when the slide came back within a second, so only the first ones animated */
+.plan .bar::after{content:"◆";position:absolute;right:16px;top:50%;translate:0 -50%;font-size:22px;color:var(--c)}
+.slide.on .plan .bar{clip-path:inset(-30px -30px -30px -30px);transition:clip-path .9s cubic-bezier(.2,.8,.2,1) calc(var(--i)*.11s + .25s),scale .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}   /* opening: they draw in one after another */
+.plan .bar:is(:hover,.hot){scale:1.025;box-shadow:0 0 34px color-mix(in srgb,var(--c) 40%,transparent)}
+.plan .bar b{font:700 21px/1.15 var(--body);color:#fff;letter-spacing:.5px;text-transform:uppercase;padding-right:36px}
+.plan .bar small{font:500 16px/1.2 var(--body);color:color-mix(in srgb,var(--c) 75%,#fff)}
+.plan .bar p{position:absolute;left:26px;right:48px;top:50%;translate:0 -42%;margin:0;font:500 17px/1.3 var(--body);color:#fff;opacity:0;transition:opacity .25s ease,translate .4s cubic-bezier(.2,.9,.3,1)}
+.plan .bar.n1 p{font-size:15px;line-height:1.22}   /* a one-month bar is narrow: its three lines must fit the 7-lane height */
+.plan .bar b,.plan .bar small{transition:opacity .25s ease}
+.plan .bar:is(:hover,.hot) b,.plan .bar:is(:hover,.hot) small{opacity:0}
+.plan .bar:is(:hover,.hot) p{opacity:1;translate:0 -50%;transition-delay:.1s}
+@media (prefers-reduced-motion:reduce){.plan .bar,.plan .bar p,.plan .bar b,.plan .bar small,.plan .pin i::after{transition:none!important;animation:none!important}.plan .bar{clip-path:none}}
+/* WEB3 ADOPTION pays out: a "+$" rises and fades, a bill is thrown up and falls away spinning (--dx / --dy / --rot set per pop) */
+.usd{position:absolute;z-index:11;translate:-50% -50%;pointer-events:none;font:400 40px/1 var(--head);color:#7cff7c;text-shadow:0 0 16px #14f19599,0 2px 0 #050505;white-space:nowrap;animation:usdup 1.3s cubic-bezier(.2,.8,.2,1) both}
+.bill{position:absolute;z-index:11;translate:-50% -50%;pointer-events:none;font-size:44px;line-height:1;animation:billout 1.1s cubic-bezier(.25,.6,.4,1) both}
+@keyframes usdup{0%{opacity:0;transform:translateY(8px) scale(.6)}18%{opacity:1;transform:translateY(-6px) scale(1.15)}100%{opacity:0;transform:translate(var(--dx,0px),-90px) scale(1)}}
+@keyframes billout{0%{opacity:0;transform:scale(.3)}15%{opacity:1}60%{opacity:1;transform:translate(var(--dx),var(--dy)) rotate(calc(var(--rot) * .6)) scale(1)}100%{opacity:0;transform:translate(calc(var(--dx) * 1.25),calc(var(--dy) + 260px)) rotate(var(--rot)) scale(.8)}}
+
+/* plan slide: the storybook sneak peek floats top right, beside the headline */
+.L-plan .peek{position:absolute;right:var(--pr);top:calc(var(--pt) - 26px);width:470px;height:218px;z-index:4}
+.L-plan .peek-card{width:470px;height:218px;right:0;top:0;--r:2.5deg;--k:30;--dl:-1.2s}
+.L-plan .peek-card img{object-position:50% 50%}
+.L-plan .peekb{position:absolute;left:-44px;bottom:-14px;font-size:13px;letter-spacing:2px;padding:9px 16px;background:#9945ff;color:#fff}
+.L-plan .peekb .dot{background:#fff}
+
+/* slide 4: the tiers are buttons; a click hangs the SECRET tier under that one (.open) – it drops in on its own chain link with an overshoot and goes back up on the next click */
+.ladders{position:relative}
+.ladder li{position:relative;padding:16px 14px;border-radius:var(--radius);border:2px dashed var(--line);color:var(--muted);cursor:pointer;user-select:none;-webkit-user-select:none;transition:translate .3s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .3s}
+@media (hover:hover){.ladder li:hover{translate:0 -4px;box-shadow:0 0 22px #14f19544}}
+.ladder.secret{position:absolute;left:0;right:0;top:100%;margin:16px 0 0;pointer-events:none}
+.ladder.secret li{border:2px dashed #9945ff;background:repeating-linear-gradient(135deg,#9945ff1c 0 10px,#0000 10px 20px);color:#c9a6ff;opacity:0;transform:translateY(-34px) rotateX(85deg) scale(.8);transform-origin:50% 0;
+  transition:opacity .25s ease .35s,transform .6s cubic-bezier(.6,0,.8,-.6),translate .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s}   /* going back up = the drop-in reversed: its curve (.2,1.6,.4,1) mirrored in time – (1-x2,1-y2,1-x1,1-y1) –, the overshoot pose late instead of early, the fade at the end */
+.ladder.secret li b{color:#b98cff;font-variant-numeric:tabular-nums}
+.ladder.secret li::before{content:"";position:absolute;left:50%;top:-18px;width:6px;height:14px;margin-left:-3px;border:2px solid #9945ff;border-radius:4px;opacity:.85}   /* the chain link it hangs from */
+.ladder.secret li:hover{box-shadow:0 0 22px #9945ff66}
+.ladder.secret li.open{opacity:1;transform:none;pointer-events:auto;transition:opacity .25s ease,transform .6s cubic-bezier(.2,1.6,.4,1),translate .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s}   /* coming down, with an overshoot */
+@media (prefers-reduced-motion:reduce){.ladder li,.ladder.secret li{transition:none!important}}
+/* an open secret tier needs room under the ladder: the copy glides up while any is open, and back down only once the last one has gone back up */
+#s-play .copy{transition:translate .6s cubic-bezier(.2,.8,.2,1) .35s}
+#s-play .copy:has(.secret li.open){translate:0 -70px;transition-delay:0s}
+@media (prefers-reduced-motion:reduce){#s-play .copy{transition:none}}
+
+/* the sneak peek steps through its screenshots: stacked, one visible, a crossfade + slow settle */
+.L-plan .peek-card .pk-imgs{position:absolute;inset:0;display:block}
+.L-plan .peek-card .pk-imgs img{position:absolute;inset:0;opacity:0;transition:none!important;filter:none!important}   /* no crossfade, no blur: a hard swap under a flash, so no seam of two half-faded frames shows */
+.L-plan .peek-card .pk-imgs img.on{opacity:1}
+.L-plan .peek-card .pk-flash{position:absolute;inset:0;z-index:1;background:linear-gradient(115deg,#9945ff,#14f195);mix-blend-mode:screen;opacity:0;pointer-events:none}   /* the Solana gradient */
+.L-plan .peek-card .pk-flash.go{animation:pkflash .38s ease-out}
+@keyframes pkflash{0%{opacity:.95}100%{opacity:0}}
+.L-plan .peek-card .pk-name{position:absolute;right:14px;bottom:12px;z-index:2;font:700 14px/1 var(--body);font-style:normal;letter-spacing:2px;text-transform:uppercase;padding:7px 12px;border-radius:999px;background:#000b;color:#14f195;border:1px solid #14f19566}
+.L-plan .peek-card .pk-name.flip{animation:pkname .5s ease-out}
+@keyframes pkname{from{opacity:0;translate:0 10px}to{opacity:1;translate:0 0}}
+@media (prefers-reduced-motion:reduce){.L-plan .peek-card .pk-flash{display:none}}
+
+/* the sneak-peek badge inverts purple ↔ white, never red (the LIVE badge's red swap is only for LIVE) */
+.fx .peekb:is(:hover,.hot){background:#fff;color:#9945ff;box-shadow:0 0 28px 4px #9945ff88}
+.fx .peekb.pop{animation:float 5s ease-in-out -1.5s infinite,badgepop .5s ease-out 1}
+
+/* opening the plan slide: everything starts invisible and tweens in – months drop in one by one, the grid lines draw down, the TODAY pin and lane labels slide from the left in turn, the sneak peek pops in; the bars then draw in (see .bar). Leaving resets it quickly. */
+.L-plan .plan::before{opacity:0;clip-path:inset(0 0 100% 0);transition:opacity .2s,clip-path .2s}
+.L-plan .pr.mo,.L-plan .pr.today{opacity:0;translate:0 -22px;transition:opacity .2s,translate .2s}
+.L-plan .pl{opacity:0;translate:-34px 0;transition:opacity .2s,translate .2s}
+.L-plan .peek{opacity:0;scale:.82;translate:40px -20px;transition:opacity .2s,scale .2s,translate .2s}
+.L-plan.on .plan::before{opacity:1;clip-path:inset(0 0 0 0);transition:opacity .5s .3s,clip-path 1s cubic-bezier(.3,.7,.2,1) .3s}
+.L-plan.on .pr.mo,.L-plan.on .pr.today{opacity:1;translate:0 0;transition:opacity .45s ease calc(.15s + var(--m,0)*.12s),translate .65s cubic-bezier(.2,1.2,.3,1) calc(.15s + var(--m,0)*.12s)}
+.L-plan.on .pl{opacity:1;translate:0 0;transition:opacity .45s ease calc(.4s + var(--i)*.11s),translate .6s cubic-bezier(.2,.9,.3,1) calc(.4s + var(--i)*.11s)}
+.L-plan.on .peek{opacity:1;scale:1;translate:0 0;transition:opacity .5s ease .9s,scale .8s cubic-bezier(.2,1.3,.3,1) .9s,translate .8s cubic-bezier(.2,1.1,.3,1) .9s}
+@media (prefers-reduced-motion:reduce){.L-plan .plan::before,.L-plan .pr,.L-plan .pl,.L-plan .peek{opacity:1!important;translate:0 0!important;scale:1!important;clip-path:none!important;transition:none!important}}
+
+/* slide 3: the Donations bullet sinks under the SOL it is given (script sets `translate`): slow down, slower back up with a little give */
+#s-insight .pts li.don{transition:scale .3s cubic-bezier(.2,.8,.2,1),text-shadow .3s,translate 1.4s cubic-bezier(.45,0,.25,1)}
+
+/* a weighed card (the page-3 clip) is moved down by script through margin-top, so its float / lean / zoom transforms keep working */
+#s-insight .shot.clip{margin-top:var(--wy,0px)}
+
+/* 07 · go to market: six highway exit signs on posts over a road; hover / tap flips a sign to its back (the parent .exit takes the hover, so the turning sign never loses it) and the truck drives under it */
+.L-gtm{grid-template-rows:auto 1fr;gap:30px}
+.L-gtm .copy{display:flex;align-items:flex-end;justify-content:space-between;gap:40px;align-self:start}
+.L-gtm h1{margin:0;font-size:104px}
+.L-gtm h1::after{display:none}
+.gfine{margin:0 0 8px;text-align:right;font:700 15px/1.7 var(--body);letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)}
+.exits{position:relative;display:flex;flex-direction:column;min-height:0}
+.exits .row{flex:1;display:grid;grid-template-columns:repeat(6,1fr);gap:22px;min-height:0}
+.exit{--g:#0b6b3a;--sh:370px;position:relative;perspective:1200px;cursor:pointer;user-select:none;-webkit-user-select:none}
+.exit.sol{--g:#5b2bb0}
+.exit .sign{position:relative;z-index:1;height:var(--sh);margin-top:22px;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.3,1.3,.4,1)}
+.exit:is(:hover,.hot) .sign{transform:rotateY(180deg)}
+.exit .f,.exit .bk{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;padding:30px 20px 20px;border-radius:14px;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  background:var(--g);box-shadow:inset 0 0 0 5px var(--g),inset 0 0 0 8px #fff,0 18px 40px #000a}   /* the white inset rule of a motorway sign */
+.exit.sol .f,.exit.sol .bk{background:linear-gradient(135deg,#9945ff,#14c98a)}
+.exit .bk{transform:rotateY(180deg);background:color-mix(in srgb,var(--g) 70%,#050505);justify-content:center}
+.exit.sol .bk{background:linear-gradient(135deg,#4a1f8f,#0d6e4f)}
+/* belt and braces for engines that ignore backface-visibility (software-rendered WebKit showed every sign mirrored): the faces also swap by opacity at the half-turn (the .7s curve crosses 90° at ~90 ms; a later swap leaves the sign blank in between) */
+.exit .f,.exit .bk{transition:opacity 0s .09s}
+.exit .bk{opacity:0}
+.exit:is(:hover,.hot) .bk{opacity:1}
+.exit:is(:hover,.hot) .f{opacity:0}
+.exit .tab{position:absolute;right:18px;top:-20px;padding:6px 12px;border-radius:7px 7px 0 0;background:var(--accent);color:#050505;font:700 14px/1 var(--body);letter-spacing:2px}
+.exit .f b{font:400 48px/.95 var(--head);text-transform:uppercase;color:#fff}
+.exit .f small{font:600 17px/1.4 var(--body);color:#dff5e8}
+.exit .f em{margin-top:auto;display:flex;align-items:center;gap:12px;font:400 34px/1 var(--head);font-style:normal;color:#fff;letter-spacing:1px}
+.exit .f em i{font-style:normal;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;border:3px solid #fff;font:700 24px/1 var(--body)}
+.exit .bk p{margin:0;font:500 19px/1.45 var(--body);color:#fff}
+.exit .post{position:absolute;top:calc(var(--sh) + 22px);bottom:0;width:10px;margin-left:-5px;border-radius:3px;background:linear-gradient(90deg,#9a9a9a,#5c5c5c)}
+.exit .post:nth-of-type(1){left:28%}
+.exit .post:nth-of-type(2){left:72%}
+.hwy{position:relative;height:150px;flex:none;border-radius:10px;overflow:hidden;background:linear-gradient(#1b1b1b,#101010);border-top:4px solid #e8e8e8;border-bottom:4px solid #e8e8e8}
+.hwy .lane{position:absolute;left:0;right:0;top:calc(50% - 3px);height:6px;background:repeating-linear-gradient(90deg,var(--accent) 0 46px,transparent 46px 86px)}   /* moved by the script, at the road's speed */
+.hwy .warp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.truck{position:absolute;left:0;bottom:8px;z-index:4;width:236px;transform:translateX(var(--tx,0px));transition:transform 1.1s cubic-bezier(.45,0,.2,1),translate .45s cubic-bezier(.3,1.3,.5,1),width .45s cubic-bezier(.3,1.3,.5,1),margin .45s cubic-bezier(.3,1.3,.5,1)}
+.truck.up{z-index:2;translate:0 -40px;width:203px;margin-left:16.5px}   /* the far lane: higher and smaller (86 %), behind the near lane's obstacles – smaller by WIDTH, centred by the margin: a `scale` here also shrank its distance from the left edge, so the farther right the more it drifted left */
+.truck svg{display:block;width:100%;transform-origin:50% 100%;cursor:pointer;transition:scale .3s ease;animation:rumble .14s linear infinite alternate}   /* the engine: a constant tiny rock */
+.truck.swerve svg{animation:swerve .48s ease-in-out}
+@keyframes rumble{from{rotate:-.3deg}to{rotate:.3deg}}
+@keyframes swerve{30%{rotate:-5deg}70%{rotate:3deg}}
+.truck.back svg{scale:-1 1}
+.truck .wh{transform-box:fill-box;transform-origin:center}
+.truck .wh{animation:spin calc(.5s / var(--f,1)) linear infinite}   /* the road always moves, so the wheels always roll – with its speed (--f), faster still driving to an exit or swerving */
+.truck:is(.go,.swerve) .wh{animation-duration:calc(.22s / var(--f,1))}
+.truck{filter:drop-shadow(-16px 0 calc(var(--k,0) * 18px) rgb(20 241 149 / calc(var(--k,0) * 85%)))}   /* light speed: a green glow trails it */
+@keyframes spin{to{rotate:360deg}}
+/* opening the slide: the signs drop in one by one, the truck drives in from the left; leaving resets everything at once (a staggered reset would leave signs up on a quick return) */
+.L-gtm .exit{opacity:0;translate:0 -60px;transition:opacity .15s,translate .15s}
+.L-gtm.on .exit{opacity:1;translate:0 0;transition:opacity .4s ease calc(.25s + var(--i) * .13s),translate .75s cubic-bezier(.2,1.4,.3,1) calc(.25s + var(--i) * .13s)}
+.L-gtm .truck svg{translate:-560px 0;transition:translate .15s,scale .3s ease}
+.L-gtm.on .truck svg{translate:0 0;transition:translate 1.6s cubic-bezier(.2,.8,.2,1) .3s,scale .3s ease}
+@media (prefers-reduced-motion:reduce){.exit .sign,.L-gtm .exit,.L-gtm .truck,.L-gtm .truck svg{transition:none!important}.hwy .lane,.truck .wh{animation:none!important}}
+
+/* the page buttons: big arrows in the bottom corners (a click / tap elsewhere no longer turns the page); the bar's pill is a tip + the full screen on / off */
+.nav,#fs{display:none}
+.touch .nav,.touch #fs:not([hidden]){display:grid}
+.nav{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));z-index:31;width:76px;height:76px;border-radius:50%;border:2px solid #9945ff77;background:#0002;color:#14f195bb;font:700 44px/1 var(--body);place-items:center;padding:0 0 4px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#prev{left:12px}
+#next{right:12px}
+@media (max-width:700px),(max-height:500px){.nav{width:44px;height:44px;font-size:26px;bottom:10px}#prev{left:8px}#next{right:8px}}   /* a phone: in the bottom corners of the safe-area margin (the island sits mid-height), clear of the slide */
+#safe{position:fixed;inset:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);visibility:hidden;pointer-events:none}
+.nav.flash{animation:navflash .45s ease-out 1}   /* filled only for a moment after a tap */
+@keyframes navflash{0%{background:#14f195dd;color:#050505;border-color:#14f195;scale:.9;box-shadow:0 0 30px 6px #14f19599}100%{background:#0002;scale:1}}
+#fs{position:fixed;top:max(44px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));z-index:31;width:48px;height:48px;border-radius:50%;border:2px solid #9945ff77;background:#0002;color:#fffb;font:700 24px/1 var(--body);place-items:center;padding:0;-webkit-tap-highlight-color:transparent}
+#fs.flash{animation:navflash .45s ease-out 1}
+@media (max-width:700px),(max-height:500px){#fs{top:max(28px,env(safe-area-inset-top));width:48px;height:48px;font-size:26px}}
+#fs-hint{position:fixed;top:max(104px,calc(env(safe-area-inset-top) + 60px));right:max(14px,env(safe-area-inset-right));z-index:40;max-width:300px;padding:14px 18px;border-radius:16px;border:1px solid #14f195aa;background:#000e;color:#fff;font:600 13px/1.5 var(--body);letter-spacing:.5px;text-align:center}
+#fs-hint[hidden]{display:none}
+#fs-hint p{margin:0 0 6px}
+#fs-hint b{color:var(--good)}
+#fs-hint small{color:#fff8;font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
+
+/* the truck honks (hover / tap): a comic HONK!, three sound rings off the cab front, three exhaust puffs off the stack; a counter on the road */
+.honk{position:absolute;z-index:6;width:0;height:0;pointer-events:none}
+.honk b{position:absolute;left:0;bottom:24px;font:400 66px/1 var(--head);color:var(--accent);-webkit-text-stroke:3px #050505;paint-order:stroke fill;text-shadow:0 6px 0 #050505;white-space:nowrap;rotate:-8deg;animation:honkpop 1.15s cubic-bezier(.2,1.4,.3,1) both}
+.honk i{position:absolute;left:-26px;top:-26px;width:52px;height:52px;border-radius:50%;border:5px solid transparent;border-right-color:#fff;animation:honkring .75s ease-out both}   /* a ")" arc */
+.honk em{position:absolute;left:-58px;top:-58px;width:26px;height:26px;border-radius:50%;background:#b8b8b8;animation:puff .9s ease-out both}
+@keyframes honkpop{0%{opacity:0;scale:.3;translate:0 20px}20%{opacity:1;scale:1.15;translate:0 0}35%{scale:1}75%{opacity:1}100%{opacity:0;translate:14px -46px}}
+@keyframes honkring{0%{opacity:.95;scale:.4}100%{opacity:0;scale:2.8}}
+@keyframes puff{0%{opacity:.85;scale:.4}100%{opacity:0;scale:2.4;translate:-70px -80px}}
+.honks{position:absolute;right:18px;top:10px;font:700 14px/1 var(--body);letter-spacing:2px;color:var(--muted);opacity:0;transition:opacity .4s}
+.honks.on{opacity:1}
+.honks b{color:var(--accent);font-size:18px}
+.ob{position:absolute;left:0;top:75%;z-index:3;pointer-events:none}   /* centred on its lane: the near lane's middle is 3/4 down the road, the far lane's 1/4 (the script's translate adds -50 % of its own height) */
+.ob.far{top:25%;z-index:1;scale:.86}
+.ob.hole{width:84px;height:22px;border-radius:50%;background:radial-gradient(#000 45%,#2a1d12 75%);box-shadow:0 0 0 3px #ff7a2e88}
+.ob.cone{width:34px;height:46px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(#ff7a2e 30%,#fff 30% 45%,#ff7a2e 45% 70%,#fff 70% 82%,#ff7a2e 82%)}
+.ob.barrier{width:76px;height:30px;border-radius:4px;background:repeating-linear-gradient(135deg,#ff3b2f 0 12px,#fff 12px 24px);box-shadow:0 3px 0 #000}
+.ob.hit{animation:obhit .6s ease-out forwards}
+.ob.gone{opacity:0;transition:opacity .45s}
+@keyframes obhit{to{opacity:0;rotate:-40deg;margin-top:-70px}}
+.lanes-ctl{position:absolute;right:-96px;bottom:0;height:150px;display:flex;flex-direction:column;justify-content:center;gap:12px}
+.lanes-ctl[hidden]{display:none!important}   /* author display:flex would otherwise beat the UA [hidden] rule */
+.touch .lanes-ctl{position:fixed;z-index:32;right:12px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 86px);height:auto;gap:8px}   /* above the right page button: its 76 px plus a 10 px gap */
+.touch .ln{width:88px;height:72px;font-size:36px}   /* a bit bigger than that 76 px button */
+@media (max-width:700px),(max-height:500px){.touch .lanes-ctl{right:8px;bottom:62px}.touch .ln{width:60px;height:52px;font-size:30px}}   /* above the 44 px page arrow: 10 + 44 + 8, and a bit bigger than it */
+.ln{width:70px;height:58px;border-radius:12px;border:2px solid #2a2a2a;background:#0e0e0e;color:#9a9a9a;font:700 24px var(--body);cursor:pointer;transition:background-color .2s,color .2s,border-color .2s,scale .25s cubic-bezier(.2,1.4,.3,1)}
+.ln:hover{border-color:#fff;color:#fff}
+.lanes-ctl.warn .ln{border-color:var(--accent);color:var(--accent);animation:lnwarn .45s ease-in-out infinite alternate}
+.lanes-ctl.to-up .ln.up,.lanes-ctl.to-dn .ln.dn{background:var(--accent);color:#050505;scale:1.12}
+@keyframes lnwarn{to{box-shadow:0 0 22px 4px #ffcf5a88}}
+@media (prefers-reduced-motion:reduce){.truck svg{animation:none!important}}
+.mint{position:absolute;left:-16px;top:-16px;z-index:7;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#050505;font:400 19px/1 var(--head);box-shadow:0 0 0 3px #050505,0 0 18px #ffcf5a99;pointer-events:none}   /* a mined HONK on its way to the counter */

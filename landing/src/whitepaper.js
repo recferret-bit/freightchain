@@ -23,7 +23,7 @@ document.getElementById('play-top')?.addEventListener('click', async (e) => {
 });
 document.getElementById('storybook-link')?.addEventListener('click', () => track('storybook_link_clicked'));
 
-/* Links that leave this page: the HTML carries a same-origin fallback (works with no script), the bases make them point at the right host in production. */
+/* Links that leave this page: the HTML names the production URL (what a crawler reads – this host would only serve the wrong page or a redirect there), the bases point them at the right host – one origin locally. */
 const BASES = { site: SITE_BASE, game: GAME_BASE };
 for (const a of document.querySelectorAll('a[data-to]')) {
   const to = a.dataset.to, path = a.dataset.path ?? '/';

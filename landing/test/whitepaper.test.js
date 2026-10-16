@@ -63,14 +63,14 @@ test('head basics, icons that exist, no inline scripts or handlers, noopener on 
   for (const tag of html.match(/<a [^>]*target="_blank"[^>]*>/g) ?? []) assert.match(tag, /noopener/);
 });
 
-test('images: local WebP or badge SVG, alt, intrinsic size, async decode, and the files exist', () => {
+test('images: local WebP or SVG, alt, intrinsic size, async decode, and the files exist', () => {
   const tags = html.match(/<img [^>]*>/g) ?? [];   // dash cards are canvases; badges and screenshots are images
   for (const t of tags) {
     assert.match(t, /\balt="[^"]+"/, t);
     assert.match(t, /\bwidth="\d+"/, t);
     assert.match(t, /\bheight="\d+"/, t);
     assert.match(t, /decoding="async"/, t);
-    assert.match(t, /src="(?:\/media\/[\w./-]+\.webp|\/badges\/[\w.-]+\.svg)"/, t);
+    assert.match(t, /src="(?:\/media\/[\w./-]+\.(?:webp|svg)|\/badges\/[\w.-]+\.svg)"/, t);
   }
   for (const f of [...html.matchAll(/src="(\/(?:media|badges)\/[\w./-]+)"/g)].map(m => m[1])) assert.ok(existsSync(join(root, 'public', f)), f);
 });
@@ -88,8 +88,8 @@ test('links that leave the page go through the host bases; analytics posts go th
   assert.match(html, /id="landing-top"[^>]*>← <span class="hide-sm">LANDING<\/span><\/a>/);
 });
 
-test('host wiring: hosts.js knows the whitepaper prefix and exports its base; vite builds both pages', () => {
-  const hosts = src('client/js/hosts.js'); assert.match(hosts, /\(ride\|api\|storybook\|whitepaper\|admin\|www\)/); assert.match(hosts, /export const WHITEPAPER_BASE/);
+test('host wiring: hosts.js knows the whitepaper + pitchdeck prefixes and exports the whitepaper base; vite builds all three pages', () => {
+  const hosts = src('client/js/hosts.js'); assert.match(hosts, /\(ride\|api\|storybook\|whitepaper\|pitchdeck\|admin\|www\)/); assert.match(hosts, /export const WHITEPAPER_BASE/);
   assert.match(readFileSync(join(root, 'vite.config.js'), 'utf8'), /whitepaper: 'whitepaper\.html'/);
 });
 
@@ -117,7 +117,14 @@ test('numbers: verdict thresholds equal verdict-rules.ts', () => {
   assert.equal(num('HOLD_CV_MIN'), 0.08); assert.equal(num('HOLD_MIN_PER_KEY'), 6); assert.match(text, /under 8 %, over 6\+ holds/);
   assert.equal(num('REPEAT_TOP_N'), 3); assert.equal(num('REPEAT_SHARE_MAX'), 0.6); assert.match(text, /3 most common gaps[^.]*more than 60 %/);
   assert.equal(num('INSTANT_HOLD_MS'), 10); assert.equal(num('INSTANT_SHARE_MAX'), 0.3); assert.match(text, /More than 30 % of presses released within 10 ms/);
-  assert.equal(num('RULES_VERSION'), 4); assert.match(text, /rules v4 run in/i); assert.match(text, /Anti-cheat v3/);
+  assert.match(text, new RegExp(`rules v${num('RULES_VERSION')} are`, 'i')); assert.match(text, /built, awaiting deployment/); assert.match(text, /Anti-cheat v4/);
+  const telemetry = src('client/js/telemetry.js');
+  assert.match(telemetry, /rec\.frames\.length >= 500/); assert.match(telemetry, /rec\.trafficVersion \? 2 : CFG\.TELEMETRY_BATCH_SECONDS/);
+  assert.match(text, /2 game seconds or 500 frames/); assert.match(text, /Legacy recordings used 15-second batches/);
+  assert.match(src('server/src/infrastructure/config/env.schema.ts'), /TRAFFIC_PROOF_REQUIRED: z\.enum\(\['true', 'false'\]\)\.default\('true'\)/);
+  assert.match(text, /trafficVersion=1/); assert.match(text, /TRAFFIC_PROOF_REQUIRED/);
+  for (const code of ['traffic-proof-missing', 'traffic-proof-invalid', 'traffic-proof-mismatch']) assert.ok(html.includes(code), code);
+  assert.match(text, /A modified client can recompute hashes/); assert.match(text, /not a detection rate or an exhaustive audit/);
   // dispatch prompts: the window and the default interval live with the ride, the thresholds with the verdict
   assert.equal(num('CHALLENGE_MIN_REACTION_MS'), 80); assert.match(text, /under 80 ms after the server issued the prompt/);
   assert.equal(num('CHALLENGE_IGNORED_MIN_ISSUED'), 3); assert.equal(num('CHALLENGE_IGNORED_SHARE'), 0.5); assert.match(text, /Half or more of 3\+ prompts ignored rejects/);
@@ -125,7 +132,7 @@ test('numbers: verdict thresholds equal verdict-rules.ts', () => {
   assert.match(src('server/src/infrastructure/config/env.schema.ts'), /CHALLENGE_INTERVAL_SECONDS: z\.coerce\.number\(\)\.min\(0\)\.default\(240\)/); assert.match(text, /every 240 s of driving/);
   assert.match(text, /captcha before a paid shift/); assert.match(text, /CHALLENGE CHANNEL/); assert.match(text, /table is empty today/); assert.doesNotMatch(text, /FLASH YOUR HEADLIGHTS/);
   assert.match(src('server/src/infrastructure/config/env.schema.ts'), /SIGNIN_RETENTION_DAYS: z\.coerce\.number\(\)\.int\(\)\.min\(0\)\.default\(180\)/); assert.match(text, /the sign-in log after 180 days/);
-  assert.match(src('server/src/domain/telemetry/telemetry-rules.ts'), /RECORDING_BYTES_PER_SECOND = 4096/); assert.match(text, /bytes ≤ wall × 4 kB \+ 256 kB/);
+  assert.match(text, /Protocol-specific budgets/); assert.match(text, /larger byte and batch budget than historical recordings/);
   assert.match(text, /NINE LAYERS, FROM CHEAPEST TO STRONGEST/); assert.equal((html.match(/NINE LAYERS[\s\S]*?<\/ol>/)[0].match(/<li>/g) ?? []).length, 9); assert.match(text, /docs\/anti-cheat\//);
 });
 

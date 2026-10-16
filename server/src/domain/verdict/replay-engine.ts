@@ -4,14 +4,19 @@ import type { Ride } from '../rides/ride.entity.js';
 import { RoadPlan, type PlannedHole } from '../road/road-plan.js';
 import { AXLES, HOLE_REF_SPEED, HOLE_TYPES, OFFROAD_FAIL_SECONDS, WHEEL, holeDamage, type HoleTypeId } from '../road/road-rules.js';
 import type { RideBatch } from '../telemetry/ride-batch.entity.js';
+import { unsafeSamples } from '../telemetry/sample-safety.js';
+import { PREFIX_ROWS } from '../telemetry/world-facts.js';
 import {
+  GAME_TIME_FACTOR, RECORDING_GRACE_MS,
   SAMPLE_BRAKE_COL, SAMPLE_CLOCK_COL, SAMPLE_D_COL, SAMPLE_GAS_COL, SAMPLE_GEAR_COL,
   SAMPLE_HULL_COL, SAMPLE_INPUT_COL, SAMPLE_MIN_COLS, SAMPLE_S_COL, SAMPLE_T_COL, SAMPLE_V_COL, isPhoneInput,
 } from '../telemetry/telemetry-rules.js';
 import { checkChallenges } from './challenge-checks.js';
 import { checkHumanTiming } from './human-checks.js';
 import { checkAgreement, checkChain, checkInputsPresent, checkSamples } from './recording-checks.js';
-import type { ReplayRedFlag, ReplaySimScores } from './ride-replay.entity.js';
+import { EMPTY_REPLAY_SCORES, type ReplayRedFlag, type ReplaySimScores } from './ride-replay.entity.js';
+import { verifyTrafficProof } from './traffic-proof.js';
+import { ReplayPhysics } from './replay-physics.js';
 import { TrafficSimulator } from './traffic-sim.js';
 import { EVENT_APPLY_GRACE_MS, REPLAY_PHYSICS_SUBSTEPS, REPLAY_SIM_HZ, stepTruckPhysics } from '../shared/index.js';
 import {
@@ -19,13 +24,8 @@ import {
   OFFROAD_FACTOR, OFFROAD_SLACK_SECONDS, PASS_CLEAR_METRES, PASS_DAMAGE_SHARE, PASS_MIN_DAMAGE,
 } from './verdict-rules.js';
 
-/* Backend 10 Hz replay verification and event-correlation engine consuming @freightchain/shared (via ../shared/index.js).
-   Why 10 Hz (REPLAY_SIM_HZ = 10) instead of 60 Hz:
-   1. Client telemetry is sampled at SAMPLE_HZ = 10 (dt = 0.1 s); 60 Hz would multiply network & DB volume by 6x with zero extra input resolution.
-   2. The stiffest equation in client/js/sim/physics.js is clutch/RPM coupling, which clamps dt <= 0.05 s (client/js/main.js). Running 2 substeps of 0.05 s
-      per 0.1 s macro-tick keeps drivetrain & speed integration within < 0.01 % of 60 Hz.
-   3. Collisions against planned holes, spectator-donated obstacles, and seeded traffic vehicles use swept continuous collision detection (CCD) over [s0, s1],
-      so a truck moving up to 2.8 m per 0.1 s tick can never tunnel through a pit or vehicle between ticks. */
+/* Required frame proofs replay traffic exactly. Historical 10 Hz recordings lack frame timing and state,
+   so their reconstructed traffic discrepancies remain review evidence. */
 
 export { EVENT_APPLY_GRACE_MS, REPLAY_PHYSICS_SUBSTEPS, REPLAY_SIM_HZ, stepTruckPhysics };
 
@@ -36,10 +36,6 @@ const EFFECT_TO_HOLE: Readonly<Partial<Record<EffectId, HoleTypeId>>> = {
   trench: 'trench',
   sinkhole: 'sinkhole',
 };
-
-export interface ReplayVerificationOptions {
-  readonly enforceTraffic?: boolean;
-}
 
 export interface ReplayVerificationOutput {
   readonly batchesCount: number;
@@ -56,18 +52,6 @@ export interface ReplayVerificationOutput {
   readonly eventsCorrelated: number;
   readonly redFlags: ReplayRedFlag[];
   readonly scores: ReplaySimScores;
-}
-
-export interface FrequencyComparisonResult {
-  readonly hz10Steps: number;
-  readonly hz60Steps: number;
-  readonly speedupFactor: number;
-  readonly speedRmse: number;
-  readonly hullDiff: number;
-  readonly holesHit10Hz: number;
-  readonly holesHit60Hz: number;
-  readonly trafficContacts10Hz: number;
-  readonly trafficContacts60Hz: number;
 }
 
 const round = (v: number, d = 100): number => Math.round(v * d) / d;
@@ -91,9 +75,23 @@ export class ReplayEngine {
     ride: Ride,
     batches: readonly RideBatch[],
     events: readonly RideEvent[] = [],
-    opts: ReplayVerificationOptions = {},
   ): ReplayVerificationOutput {
     const ordered = [...batches].sort((a, b) => a.seq - b.seq);
+    const stoppedAt = ride.endedAt ?? ride.lastHbAt ?? ride.startedAt;
+    const maxGameSeconds = (stoppedAt ? ride.recordingAllowance(stoppedAt).maxGameSeconds : 0) + RECORDING_GRACE_MS / 1000 * GAME_TIME_FACTOR;
+    let prefix: readonly (readonly number[])[] = [];
+    for (const batch of ordered) {
+      // Stored batch clocks are untrusted too; retain the upload grace but bound road work by the server's ride timestamps.
+      const unsafe = unsafeSamples(batch.seq, Math.min(batch.t1, maxGameSeconds), batch.body.samples, prefix);
+      if (unsafe) return {
+        batchesCount: ordered.length, samplesCount: ordered.reduce((n, b) => n + b.body.samples.length, 0),
+        recordedSeconds: 0, simulatedSeconds: 0, recordedDistance: 0, simulatedDistance: 0, recordedHull: 0, simulatedHull: 0,
+        simulatedCrashesVehicle: 0, simulatedCrashesBuilding: 0, eventsExpected: 0, eventsCorrelated: 0,
+        redFlags: [{ code: 'bad-sample', category: 'recording', severity: 'reject', detail: unsafe, atSecond: null, atMetre: null, evidence: null }],
+        scores: { ...EMPTY_REPLAY_SCORES },
+      };
+      if (batch.body.samples.length) prefix = batch.body.samples.slice(-PREFIX_ROWS);
+    }
     const facts = ordered.map((b) => ({
       seq: b.seq, prevHash: b.prevHash, hash: b.hash, hashOk: b.hashOk, t0: b.t0, t1: b.t1, summary: b.summary,
     }));
@@ -129,9 +127,6 @@ export class ReplayEngine {
     }
 
     const rows = ordered.flatMap((b) => b.body.samples).filter((r) => Array.isArray(r) && r.length >= SAMPLE_MIN_COLS);
-    const hasReplayCols = rows.some((r) => r.length >= 15) || ordered.some((b) => (b.body.traffic?.length ?? 0) > 0);
-    const checkTraffic = opts.enforceTraffic === true || hasReplayCols;
-
     const donatedObstacles: DonatedObstacle[] = [];
     let liveEventsExpected = 0;
     let liveEventsCorrelated = 0;
@@ -187,7 +182,10 @@ export class ReplayEngine {
       }
     }
 
-    const trafficSim = new TrafficSimulator(ride.seed, ride.trip, plan);
+    const trafficSim = new TrafficSimulator(ride.seed, ride.trip, plan, ride.route ?? undefined, donatedObstacles, ride.assist);
+    const exactTraffic = ride.trafficVersion === 1;
+    if (exactTraffic) for (const flag of verifyTrafficProof(ride, ordered, trafficSim)) addFlag(flag);
+    const physics = new ReplayPhysics();
     const seenPlannedPits = new Set<string>(), seenDonatedPits = new Set<string>(), reachedPlannedHoles = new Set<string>();
     const plannedOutcomes = new Map<string, ObstacleOutcome<PlannedHole>>();
     const donatedOutcomes = new Map<string, ObstacleOutcome<DonatedObstacle>>();
@@ -196,7 +194,7 @@ export class ReplayEngine {
 
     for (let i = 1; i < rows.length; i++) {
       const p = rows[i - 1]!, q = rows[i]!, dt = q[SAMPLE_T_COL]! - p[SAMPLE_T_COL]!;
-      if (!(dt > 0 && dt <= 2)) continue;
+      if (!(dt > 0 && dt <= 2)) { physics.step(p, q, false); if (!exactTraffic) trafficSim.stepSamplePair(p, q); continue; }
       const s0 = p[SAMPLE_S_COL]!, s1 = q[SAMPLE_S_COL]!, d0 = p[SAMPLE_D_COL]!, d1 = q[SAMPLE_D_COL]!;
       const v0 = p[SAMPLE_V_COL]!, v1 = q[SAMPLE_V_COL]!, gas = Math.max(p[SAMPLE_GAS_COL]!, q[SAMPLE_GAS_COL]!);
       const brake = (p[SAMPLE_BRAKE_COL]! + q[SAMPLE_BRAKE_COL]!) / 2, gear = q[SAMPLE_GEAR_COL]!;
@@ -207,7 +205,8 @@ export class ReplayEngine {
         if (offroadRun > maxOffroadSeconds) maxOffroadSeconds = offroadRun;
       }
 
-      const { vSim, vMaxPossible } = stepTruckPhysics(v0, gas, brake, gear, offroad, dt, REPLAY_PHYSICS_SUBSTEPS);
+      const { vMaxPossible } = stepTruckPhysics(v0, gas, brake, gear, offroad, dt, REPLAY_PHYSICS_SUBSTEPS);
+      const vSim = physics.step(p, q, offroad);
       simDistance += ((v0 + vSim) / 2) * dt;
       const dv = v1 - v0;
       const gasKeyHeld = q.length > SAMPLE_INPUT_COL && ((q[SAMPLE_INPUT_COL]! & 1) !== 0);
@@ -221,7 +220,7 @@ export class ReplayEngine {
 
       const hBefore = Math.max(p[SAMPLE_HULL_COL]!, rows[i - 2]?.[SAMPLE_HULL_COL] ?? p[SAMPLE_HULL_COL]!);
       const hAfter = Math.min(q[SAMPLE_HULL_COL]!, rows[i + 1]?.[SAMPLE_HULL_COL] ?? q[SAMPLE_HULL_COL]!, rows[i + 2]?.[SAMPLE_HULL_COL] ?? q[SAMPLE_HULL_COL]!);
-      trafficSim.stepSamplePair(p, q, Math.max(0, hBefore - hAfter));
+      if (!exactTraffic) trafficSim.stepSamplePair(p, q, Math.max(0, hBefore - hAfter));
 
       if (s1 > s0 && s1 >= plan.layout.knownFrom) {
         for (const h of plan.holesNear(s0 - 15, s1 + 4)) {
@@ -283,26 +282,30 @@ export class ReplayEngine {
 
     const traffic = trafficSim.summary();
     for (const c of traffic.contacts) simHull = Math.max(0, simHull - c.expectedDamage);
-    if (checkTraffic) {
-      for (const c of traffic.contacts) {
-        if (!c.ignored) continue;
-        if (c.kind === 'crash') {
-          addFlag({
-            code: 'traffic-collision-ignored', category: 'traffic', severity: 'reject',
-            detail: `drove through a backend ${c.vehicleName} at ${c.s} m (${c.t} s, closing ${c.closingSpeed} m/s) without crashing or taking hull damage`,
-            atSecond: c.t, atMetre: c.s,
-            evidence: { vehicleId: c.vehicleId, vehicleType: c.vehicleType, closingSpeed: c.closingSpeed, overlap: c.overlapFraction, actualHullDrop: c.actualHullDrop },
-          });
-        } else {
-          addFlag({
-            code: 'traffic-damage-ignored', category: 'traffic', severity: traffic.ignoredBumps >= 2 ? 'reject' : 'flag',
-            detail: `contact with backend ${c.vehicleName} at ${c.s} m (${c.t} s) caused ${c.actualHullDrop} % hull drop vs ${c.expectedDamage} % expected`,
-            atSecond: c.t, atMetre: c.s,
-            evidence: { vehicleId: c.vehicleId, vehicleType: c.vehicleType, expectedDamage: c.expectedDamage, actualHullDrop: c.actualHullDrop },
-          });
-        }
+    for (const c of traffic.contacts) {
+      if (!c.ignored) continue;
+      if (c.kind === 'crash') {
+        addFlag({
+          code: 'traffic-collision-ignored', category: 'traffic', severity: 'flag',
+          detail: `reconstructed contact with ${c.vehicleName} at ${c.s} m (${c.t} s, closing ${c.closingSpeed} m/s); frame timing and trailer angle are not recorded, so this requires review`,
+          atSecond: c.t, atMetre: c.s,
+          evidence: { vehicleId: c.vehicleId, vehicleType: c.vehicleType, closingSpeed: c.closingSpeed, overlap: c.overlapFraction, actualHullDrop: c.actualHullDrop },
+        });
+      } else {
+        addFlag({
+          code: 'traffic-damage-ignored', category: 'traffic', severity: 'flag',
+          detail: `reconstructed contact with ${c.vehicleName} at ${c.s} m (${c.t} s) caused ${c.actualHullDrop} % hull drop vs ${c.expectedDamage} % expected`,
+          atSecond: c.t, atMetre: c.s,
+          evidence: { vehicleId: c.vehicleId, vehicleType: c.vehicleType, expectedDamage: c.expectedDamage, actualHullDrop: c.actualHullDrop },
+        });
       }
     }
+
+    if (physics.violations >= 3) addFlag({
+      code: 'physics-coasting-mismatch', category: 'physics', severity: 'flag',
+      detail: `speed stayed above the carried braking/coasting estimate on ${physics.violations} samples; missing transient controls or impacts require review`,
+      atSecond: null, atMetre: null, evidence: { samples: physics.violations, maxExcess: round(physics.maxExcess) },
+    });
 
     const maxOffroadAllowed = OFFROAD_FAIL_SECONDS * OFFROAD_FACTOR + OFFROAD_SLACK_SECONDS;
     if (maxOffroadSeconds > maxOffroadAllowed) {
@@ -345,8 +348,8 @@ export class ReplayEngine {
       donatedObstaclesPlaced: donatedObstacles.length, donatedObstaclesHit, donatedObstaclesIgnored,
       liveEventsExpected, liveEventsCorrelated, liveEventsUnapplied,
       trafficSpawned: traffic.spawned, trafficContacts: traffic.contacts.length,
-      trafficCrashesIgnored: checkTraffic ? traffic.ignoredCrashes : 0,
-      trafficBumpsIgnored: checkTraffic ? traffic.ignoredBumps : 0,
+      trafficCrashesIgnored: traffic.ignoredCrashes,
+      trafficBumpsIgnored: traffic.ignoredBumps,
       physicsSpeedViolations, maxSpeedGainRatio: round(maxSpeedGainRatio, 100),
       maxOffroadSeconds: round(maxOffroadSeconds, 100), gaslessSteps,
     };
@@ -393,25 +396,4 @@ export class ReplayEngine {
     return { expected: expectedTotal, actual, ignored: actual < expectedTotal * PASS_DAMAGE_SHARE };
   }
 
-  /** Compares 10 Hz macro-simulation (with 2 substeps + swept CCD) against 60 Hz fine-grained simulation on the same recording. */
-  static compareSimFrequencies(ride: Ride, batches: readonly RideBatch[]): FrequencyComparisonResult {
-    const rows10 = [...batches].sort((a, b) => a.seq - b.seq).flatMap((b) => b.body.samples).filter((r) => r.length >= SAMPLE_MIN_COLS);
-    const res10 = ReplayEngine.verify(ride, batches, [], { enforceTraffic: true });
-    let hz60Steps = 0, sqErr = 0;
-    for (let i = 1; i < rows10.length; i++) {
-      const p = rows10[i - 1]!, q = rows10[i]!, dt = q[SAMPLE_T_COL]! - p[SAMPLE_T_COL]!;
-      if (!(dt > 0 && dt <= 2)) continue;
-      const v10 = stepTruckPhysics(p[SAMPLE_V_COL]!, p[SAMPLE_GAS_COL]!, p[SAMPLE_BRAKE_COL]!, q[SAMPLE_GEAR_COL]!, false, dt, 2).vSim;
-      const v60 = stepTruckPhysics(p[SAMPLE_V_COL]!, p[SAMPLE_GAS_COL]!, p[SAMPLE_BRAKE_COL]!, q[SAMPLE_GEAR_COL]!, false, dt, 6).vSim;
-      sqErr += (v10 - v60) ** 2;
-      hz60Steps += 6;
-    }
-    const hz10Steps = Math.max(1, rows10.length - 1);
-    return {
-      hz10Steps, hz60Steps, speedupFactor: round(hz60Steps / hz10Steps, 10),
-      speedRmse: round(Math.sqrt(sqErr / hz10Steps), 100000), hullDiff: 0,
-      holesHit10Hz: res10.scores.plannedHolesHit, holesHit60Hz: res10.scores.plannedHolesHit,
-      trafficContacts10Hz: res10.scores.trafficContacts, trafficContacts60Hz: res10.scores.trafficContacts,
-    };
-  }
 }

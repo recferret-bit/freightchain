@@ -134,13 +134,15 @@ p.dim.note{border-color:var(--line);border-left-color:var(--line2);margin-top:14
 .diagram{margin:10px 0 16px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;overflow-x:auto}
 .diagram svg{width:100%;min-width:640px;height:auto;display:block}   /* narrower screens scroll the drawing instead of shrinking its 11 px labels to nothing */
 .diagram figcaption{padding:8px 6px 2px;font-size:12px;color:var(--dim)}
+.chart-scroll{overflow:auto}
+.chart-scroll img{width:100%;min-width:760px;height:auto}
 .bx{fill:var(--panel);stroke:#4a453b;stroke-width:1.5}.bx.hi{stroke:var(--amber);fill:#1c170d}.bx.dash{stroke-dasharray:6 5}
 .tx{fill:var(--cream);font:13px var(--mono)}.tx.b{font-weight:700;font-size:14px;fill:var(--amber)}.tx.s{font-size:11.5px;fill:var(--dim)}
 .diagram.wide svg{min-width:780px}
 .bx.term{fill:#0b0a09;stroke:var(--dim)}.bx.net{stroke:var(--lcd);fill:var(--lcd-bg)}.tx.t{font-weight:700;font-size:14px}.tx.big{font-size:18px}.tx.m{font-size:12px}.tx.a{fill:var(--amber)}.tx.g{fill:var(--lcd)}
 .sp{stroke:#0b0a09;stroke-width:2}.sp.s1~text.s{fill:var(--sand)}.sp.s1{fill:#7a5a12}.sp.s2{fill:#6b4a14}.sp.s3{fill:#6e3a14}.sp.s4{fill:#3a3226}.sp.seed{fill:#1e4a22}.sp.fee{fill:#4a453b}
 .ln.a{stroke:var(--amber)}.ln.g{stroke:var(--lcd)}.ln.i{stroke:var(--dim)}.ln.br{stroke:var(--dim);stroke-width:1.5}.ah.a{fill:var(--amber)}.ah.g{fill:var(--lcd)}.ah.i{fill:var(--dim)}
-.ln.r{stroke:#ff6b5a}.tx.r{fill:#ff6b5a}.pit{fill:#0b0a09;stroke:var(--gear);stroke-width:2}.ln{fill:none;stroke:var(--needle);stroke-width:1.8}.ln.dsh{stroke-dasharray:5 5;stroke:var(--dim)}.ah{fill:var(--needle)}
+.ln{fill:none;stroke:var(--needle);stroke-width:1.8}.ln.dsh{stroke-dasharray:5 5;stroke:var(--dim)}.ah{fill:var(--needle)}
 
 footer{padding:34px 20px 50px;text-align:center;color:var(--dim);font-size:12px;border-top:1px solid var(--line);margin-top:20px}
 
@@ -180,7 +182,7 @@ footer{padding:34px 20px 50px;text-align:center;color:var(--dim);font-size:12px;
   .wrap{display:block;padding:0}.ch{break-before:auto;padding-top:24px}
   h1{text-shadow:none}.lcd{text-shadow:none}
   .card,.tbl,.legs li,.rules li,.tips li,.diagram{break-inside:avoid}
-  .tblwrap{overflow:visible}
+  .tblwrap{overflow:visible}.chart-scroll img{min-width:0}
   a{color:inherit}
 }
 
@@ -238,7 +240,7 @@ ol.path{margin-bottom:84px}
 }
 @media (max-width:560px){
   .path,.cards3{grid-template-columns:1fr}.path{--rg:52px}
-  .path>li{grid-area:auto}
+  .path>li:nth-child(n){grid-area:auto}
   .path>li:not(:last-child)::after{content:"↓";right:auto;left:calc(50% - 14px);top:auto;bottom:calc(var(--rg) / -2 - 14px)}
 }
 
@@ -267,7 +269,7 @@ p.dim.note{margin-top:var(--blk)}
 
 /* achievements catalogue */
 .ach-catalogue{display:grid;gap:20px}
-.ach-fam{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.ach-fam{min-width:0;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
 .ach-fam-h{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--line)}
 .ach-fam-h b{font-size:13px;letter-spacing:2px;color:var(--amber)}
 .ach-fam-h span{font-size:12px;color:var(--dim)}

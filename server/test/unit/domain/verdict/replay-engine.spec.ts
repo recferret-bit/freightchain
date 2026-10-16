@@ -3,7 +3,7 @@ import { Ride } from '../../../../src/domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../src/domain/rides/ride-status.js';
 import { RoadPlan } from '../../../../src/domain/road/road-plan.js';
 import { RideBatch } from '../../../../src/domain/telemetry/ride-batch.entity.js';
-import { REPLAY_PHYSICS_SUBSTEPS, REPLAY_SIM_HZ, ReplayEngine } from '../../../../src/domain/verdict/replay-engine.js';
+import { ReplayEngine } from '../../../../src/domain/verdict/replay-engine.js';
 import { RideReplay } from '../../../../src/domain/verdict/ride-replay.entity.js';
 import { TrafficSimulator, tripTrafficFor } from '../../../../src/domain/verdict/traffic-sim.js';
 import { VerdictStatus } from '../../../../src/domain/verdict/verdict.dto.js';
@@ -43,19 +43,48 @@ function toEntities(rideId: string, dtos: ReturnType<typeof recording>): RideBat
 }
 
 describe('ReplayEngine & TrafficSimulator (10 Hz backend verification)', () => {
-  it('runs at 10 Hz (REPLAY_SIM_HZ = 10, 2 substeps) and matches 60 Hz fidelity at 1/6 the cost', () => {
-    expect(REPLAY_SIM_HZ).toBe(10);
-    expect(REPLAY_PHYSICS_SUBSTEPS).toBe(2);
+  it.each([1e12, 1e7, -1e7, NaN])('rejects unsafe stored rows (%s) even with a cached good summary, before creating the road', (s) => {
+    const ride = makeRide();
+    const batches = toEntities(ride.id, recording(ride.id, { seconds: 70, distance: 910 }));
+    const saved = batches[0]!.snapshot();
+    const samples = saved.body.samples.map((r) => [...r]);
+    samples[1]![1] = s;
+    batches[0] = RideBatch.restore({ ...saved, body: { ...saved.body, samples } });
+    expect(batches[0].summary.fault).toBeNull();
+    const plan = vi.spyOn(RoadPlan, 'forSeed').mockImplementation(() => { throw new Error('unsafe road generation'); });
+    try {
+      const result = ReplayEngine.verify(ride, batches);
+      expect(result.redFlags).toEqual([expect.objectContaining({ code: 'bad-sample', severity: 'reject' })]);
+      expect(result.simulatedSeconds).toBe(0);
+      expect(Object.values(result.scores).every(Number.isFinite)).toBe(true);
+      expect(plan).not.toHaveBeenCalled();
+    } finally { plan.mockRestore(); }
+  });
 
-    const ride = makeRide(123456, 910, 70);
-    const batches = toEntities(ride.id, recording(ride.id, { seconds: 70, distance: 910, road: ride.seed, trip: ride.trip, replay: true }));
-    const cmp = ReplayEngine.compareSimFrequencies(ride, batches);
+  it('preflights the boundary across an empty stored batch', () => {
+    const ride = makeRide(424242, 20_000, 1010);
+    const [base] = toEntities(ride.id, recording(ride.id, { seconds: 10 }));
+    const row = (t: number, s: number) => [t, s, 2.4, 0, 0, 900, 1, 100, 0, 0, 0, 0];
+    const batches = [[row(1000, 10_000)], [], [row(1000.1, 20_000)]].map((samples, seq) => RideBatch.restore({
+      ...base!.snapshot(), seq, t0: 1000, t1: 1001, body: { ...base!.body, seq, t0: 1000, t1: 1001, samples },
+    }));
+    const plan = vi.spyOn(RoadPlan, 'forSeed').mockImplementation(() => { throw new Error('unsafe road generation'); });
+    try {
+      expect(ReplayEngine.verify(ride, batches).redFlags).toEqual([expect.objectContaining({ code: 'bad-sample', detail: expect.stringContaining('road work') })]);
+      expect(plan).not.toHaveBeenCalled();
+    } finally { plan.mockRestore(); }
+  });
 
-    expect(cmp.speedupFactor).toBe(6);
-    expect(cmp.hz60Steps).toBe(cmp.hz10Steps * 6);
-    expect(cmp.speedRmse).toBeLessThan(3.0);
-    expect(cmp.holesHit10Hz).toBe(cmp.holesHit60Hz);
-    expect(cmp.trafficContacts10Hz).toBe(cmp.trafficContacts60Hz);
+  it('does not let historical batch and sample clocks buy a road beyond the server ride duration', () => {
+    const ride = makeRide();
+    const [batch] = toEntities(ride.id, recording(ride.id, { seconds: 10 }));
+    const body = { ...batch!.body, t0: 1e7 - 1, t1: 1e7, samples: [[1e7, 1e7, 2.4, 0, 0, 900, 1, 100, 0, 0, 0, 0]] };
+    const saved = RideBatch.restore({ ...batch!.snapshot(), t0: body.t0, t1: body.t1, body });
+    const plan = vi.spyOn(RoadPlan, 'forSeed').mockImplementation(() => { throw new Error('unsafe road generation'); });
+    try {
+      expect(ReplayEngine.verify(ride, [saved]).redFlags[0]).toMatchObject({ code: 'bad-sample', severity: 'reject' });
+      expect(plan).not.toHaveBeenCalled();
+    } finally { plan.mockRestore(); }
   });
 
   it('verifies an honest recording that dodges seeded traffic and takes planned hole damage', () => {
@@ -85,16 +114,26 @@ describe('ReplayEngine & TrafficSimulator (10 Hz backend verification)', () => {
     expect(replay.toDto().simHz).toBe(10);
   });
 
-  it('catches a client that deleted traffic cars on the frontend and drove straight through them (traffic-collision-ignored)', () => {
+  it('traffic reconstruction is independent of optional replay columns and display-only traffic tracks', () => {
     const ride = makeRide(424242, 910, 70);
     const batches = toEntities(
       ride.id,
       recording(ride.id, { seconds: 70, distance: 910, road: ride.seed, trip: ride.trip, replay: true, ignoreTraffic: true }),
     );
+    for (const b of batches) for (const r of b.body.samples) {
+      r[1] = r[0]! * 20; r[2] = 2.4 + Math.sin(r[0]! / 3) * 3.2;
+      r[3] = .1 * Math.sin(r[0]! / 4); r[4] = 20; r[7] = 100;
+    }
     const out = ReplayEngine.verify(ride, batches, []);
 
-    expect(out.scores.trafficCrashesIgnored).toBeGreaterThan(0);
-    expect(out.redFlags.some((f) => f.code === 'traffic-collision-ignored' && f.severity === 'reject')).toBe(true);
+    const short = batches.map((b) => RideBatch.restore({ ...b.snapshot(), body: { ...b.body, samples: b.body.samples.map((r) => r.slice(0, 12)), traffic: [] } }));
+    const legacy = ReplayEngine.verify(ride, short);
+    expect(out.scores.trafficContacts).toBeGreaterThan(0);
+    expect(out.redFlags.filter((f) => f.category === 'traffic').length).toBeGreaterThan(0);
+    expect(legacy.scores.trafficSpawned).toBe(out.scores.trafficSpawned);
+    expect(legacy.scores.trafficContacts).toBe(out.scores.trafficContacts);
+    expect(legacy.redFlags.filter((f) => f.category === 'traffic')).toEqual(out.redFlags.filter((f) => f.category === 'traffic'));
+    expect(out.redFlags.filter((f) => f.category === 'traffic').every((f) => f.severity === 'flag')).toBe(true);
   });
 
   it('catches a client that deleted planned road holes and took no hull damage (obstacle-ignored)', () => {
@@ -199,21 +238,4 @@ describe('ReplayEngine & TrafficSimulator (10 Hz backend verification)', () => {
     expect(out.redFlags.some((f) => f.code === 'obstacle-ignored')).toBe(false);
   });
 
-  it('consistently verifies honest replays and rejects traffic-ignoring replays across 50 seeds', () => {
-    for (let s = 1; s <= 50; s++) {
-      const seed = (s * 2654435761) >>> 0;
-      const ride = makeRide(seed, 910, 70, '1h');
-      const honestBatches = toEntities(ride.id, recording(ride.id, { seconds: 70, distance: 910, road: seed, trip: '1h', replay: true }));
-      const honestOut = ReplayEngine.verify(ride, honestBatches, []);
-      expect(honestOut.redFlags.filter((f) => f.severity === 'reject')).toEqual([]);
-
-      const cheatedBatches = toEntities(
-        ride.id,
-        recording(ride.id, { seconds: 70, distance: 910, road: seed, trip: '1h', replay: true, ignoreTraffic: true }),
-      );
-      const cheatedOut = ReplayEngine.verify(ride, cheatedBatches, []);
-      expect(cheatedOut.scores.trafficCrashesIgnored).toBeGreaterThan(0);
-      expect(cheatedOut.redFlags.some((f) => f.code === 'traffic-collision-ignored' && f.severity === 'reject')).toBe(true);
-    }
-  });
 });

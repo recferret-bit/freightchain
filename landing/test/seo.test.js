@@ -50,15 +50,17 @@ test('JSON-LD parses: the game + organisation on the landing, the article on the
   assert.equal(article.url, URLS.whitepaper); assert.equal(article.about['@id'], game['@id']);
 });
 
-test('noindex exactly where a page is not for search (lobby, model viewer, admin), never on the public pages', () => {
+test('noindex exactly where a page is not for search (lobby, model viewer, admin, the pitch deck), never on the public pages', () => {
   for (const p of ['lobby', 'viewer']) assert.match(pages[p], /<meta name="robots" content="noindex[^"]*">/, p);
   assert.match(read(join(client, 'admin.html')), /<meta name="robots" content="noindex/);
+  assert.match(read(join(root, 'pitchdeck.html')), /<meta name="robots" content="noindex[^"]*">/, 'pitchdeck');
+  assert.doesNotMatch(sitemap + llms, /pitchdeck/, 'the deck is not advertised to search or AI crawlers');
   for (const p of Object.keys(URLS)) assert.doesNotMatch(pages[p], /name="robots"/, p);
 });
 
 test('robots.txt: everything open but the API, AI crawlers named and allowed, the sitemap absolute', () => {
   assert.doesNotMatch(robots, /^Disallow:\s*\/\s*$/m, 'nothing blocks the whole site');
-  assert.doesNotMatch(robots, /^Disallow:.*(lobby|viewer)/m, 'a noindex page must stay fetchable, or its tag is never read');
+  assert.doesNotMatch(robots, /^Disallow:.*(lobby|viewer|pitchdeck)/m, 'a noindex page must stay fetchable, or its tag is never read');
   const groups = robots.split(/\n\s*\n/).filter(g => /^User-agent:/m.test(g));
   for (const g of groups) assert.match(g, /^Disallow: \/api\/$/m, `every group keeps /api/ out: ${g.split('\n')[0]}`);
   for (const bot of ['GPTBot', 'OAI-SearchBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended']) assert.match(robots, new RegExp(`^User-agent: ${bot}$`, 'm'), bot);
@@ -72,6 +74,11 @@ test('sitemap.xml lists exactly the canonical URLs, llms.txt points at them', ()
   assert.match(llms, /^# Freight Chain\n\n> /, 'llms.txt: title, then the one-line summary as a blockquote');
   for (const url of Object.values(URLS)) assert.ok(llms.includes(`](${url})`), `llms.txt links ${url}`);
   assert.ok(llms.includes(jsonLd(pages.landing)[0]['@graph'].find(n => n.name && n.description).description.replace(/\.$/, '')), 'the same one-line description as the JSON-LD');
+});
+
+test('the static HTML links no URL production redirects (search lists each as "page with redirect"); the scripts point them at this host when not split', () => {
+  assert.doesNotMatch(pages.landing, /href="\/(whitepaper|pitchdeck)\.html/, 'the apex 301s these to their own hosts');
+  for (const m of pages.whitepaper.matchAll(/<a [^>]*href="(\/[^"]*)"/g)) assert.fail(`whitepaper host: ${m[1]} is the wrong page there (the landing / game / lobby / viewer live on other hosts)`);
 });
 
 test('IndexNow key: 32 hex characters, nothing else in the file', () => {

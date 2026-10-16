@@ -18,6 +18,10 @@ describe('layer boundaries', () => {
     expect(files.filter((f) => f.layer === '').map((f) => f.path)).toEqual(['main.ts']);
   });
 
+  it('a quoted property named from is not an import', () => {
+    expect(importsOf("const row = ['surface', 'from', 'src'];\nimport { a } from './a.js';\nimport './side.js';\nconst d = import('./dyn.js');")).toEqual(['./a.js', './side.js', './dyn.js']);
+  });
+
   it('domain imports nothing but the domain and bs58', () => {
     for (const f of inLayer('domain')) {
       for (const dep of relativeImports(f)) expect(layerOf(dep), `${f.path} → ${dep}`).toBe('domain');

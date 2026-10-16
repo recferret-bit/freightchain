@@ -45,6 +45,7 @@ export interface RulesConfig {
   sessionTtlHours: number;
   /** false = SHADOW mode: verdicts are judged and shown, but the paid boards rank every completed shift */
   verdictEnforce: boolean;
+  trafficProofRequired?: boolean;
   /** recordings of rides that ended longer ago are deleted (flagged rides excepted); 0 = keep forever */
   telemetryRetentionDays: number;
   /** sign-in rows (wallet, time, IP, browser) older than this are deleted; 0 = keep forever */

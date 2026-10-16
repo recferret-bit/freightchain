@@ -30,7 +30,7 @@ describe('RideBatch', () => {
     expect(() => RideBatch.accept('r', body({ t0: 10, t1: 5 }), 'x', NOW)).toThrow(BadRequestError);
     const dense = body({ t0: 0, t1: 1, samples: Array.from({ length: 30 }, () => [0]) });
     expect(() => RideBatch.accept('r', dense, 'x', NOW)).toThrow(/too many samples/);
-    expect(() => RideBatch.accept('r', body({ t0: 0, t1: 1, samples: Array.from({ length: 20 }, () => [0]) }), 'x', NOW)).not.toThrow(); // 1 s × 10 × 1.5 + 5
+    expect(() => RideBatch.accept('r', body({ t0: 0, t1: 1, samples: Array.from({ length: 20 }, () => body().samples[0]!) }), 'x', NOW)).not.toThrow(); // 1 s × 10 × 1.5 + 5
     const big = body({ t0: 0, t1: 40, samples: Array.from({ length: 400 }, () => Array.from({ length: 16 }, () => 1.2345678901234567)) }); // ≈ 120 kB
     expect(() => RideBatch.accept('r', big, 'x', NOW)).toThrow(/too large/);
   });

@@ -289,7 +289,7 @@
     <h2 id="s-limits">What this does not do</h2>
   </div>
   <ul class="limits">
-    <li><b>10 Hz float replay vs fixed-point.</b><span>The server's 10 Hz <code>ReplayEngine</code> shares <code>@freightchain/shared</code> with the browser to verify road holes, <code>0.05 s</code> longitudinal physics substeps, 4-substep swept cab + trailer traffic collisions and spectator donations. Because browser frames run in IEEE-754 floats at variable <code>dt</code>, a 1.8× per-step acceleration ratio margin applies, and a careful bot playing the real game with human-like timing could still pass automatic checks. That is why flagged shifts go to a person, and why the checks keep being tightened.</span></li>
+    <li><b>10 Hz float replay vs fixed-point.</b><span>The server's 10 Hz <code>ReplayEngine</code> shares <code>@freightchain/shared</code> with the browser to verify road holes, <code>0.05 s</code> longitudinal physics substeps, shared traffic AI reconstruction and spectator donations. New rides include hashed traffic frames: missing evidence or ignored collisions reject. Historical traffic and coasting estimates require review. For the separate acceleration ceiling, a 1.8× per-step acceleration ratio margin applies, and a careful bot playing the real game with human-like timing could still pass automatic checks. That is why flagged shifts go to a person, and why the checks keep being tightened.</span></li>
     <li><b>The thresholds are first estimates.</b><span>Rules v3 (the prompt and road rules included) have not been tuned on real rides yet. Until they are, the leaderboards ignore verdicts (shadow mode). After a change, old rides are judged again at the new rules from the command line.</span></li>
     <li><b>Verdicts decide ranking only.</b><span>An entry fee goes into the weekly pool whatever the outcome of the ride. Prize payouts are not built yet.</span></li>
     <li><b>A refused batch ends the recording.</b><span>If the server refuses a malformed batch, the game stops recording for that ride and the reason is logged, so an admin can see why the verdict came out as it did.</span></li>
@@ -298,7 +298,7 @@
 
 <footer>
   <span>Freight Chain · verified play</span>
-  <span>rules v4 · shadow mode</span>
+  <span>rules v7 · shadow mode</span>
   <span>as of Oct 10, 2026</span>
   <span>see also: <a href="../replay-and-donations/index.html">Replays &amp; Donations</a> – how the same recording is watched</span>
 </footer>

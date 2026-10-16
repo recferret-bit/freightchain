@@ -4,7 +4,7 @@ import { curv } from './road.js';
 import { st, input, disp, clock, updateDisp, dn, weather } from './state.js';
 import { update, tryShift, ignition } from './sim/physics.js';
 import { updateFX, hurt } from './sim/damage.js';
-import { spawn, cars } from './sim/traffic.js';
+import { spawn, cars, setTrafficRecorder } from './sim/traffic.js';
 import { audio } from './sim/audio.js';
 import { radio } from './sim/radio.js';
 import { resize, renderWorld } from './world/render.js';
@@ -23,7 +23,7 @@ import { selectTheme, lockTheme } from './world/theme-manager.js';
 import { loadEntities } from './world/entities.js';
 import { THEMES } from './themes/index.js';
 import { initOnline, online } from './online.js';
-import { tickTelemetry, telemetry } from './telemetry.js';
+import { tickTelemetry, telemetry, beginTrafficFrame, endTrafficFrame } from './telemetry.js';
 import { prompt } from './prompt.js';
 import { initWatch, startWatch, stepWatch, watch } from './watch.js';
 import { roadPlan, followRoadPlan, updateRoadPlan } from './road-plan.js';
@@ -41,6 +41,8 @@ import { endTutorial, advanceTutorial } from './ui/tutorial.js';
 import { trip, setTrip, tripOf } from './trips.js';
 import { FREE_COUNTRIES } from './free-countries.js';
 import { isMobileDevice, showMobileBlocker } from './mobile.js';
+
+setTrafficRecorder(beginTrafficFrame, endTrafficFrame);
 import './ui/input.js';
 import './ui/tuning.js';
 

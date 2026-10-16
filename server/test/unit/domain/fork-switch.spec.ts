@@ -24,6 +24,7 @@ const SEED = 67, TRIP = 'free-2', plan = RoadPlan.forSeed(SEED, TRIP);
 const FORK_SEG = plan.layout.segAt(4170), C = FORK_SEG.s0 + FORK.commit;
 const HOLE = plan.holesNear(C - 10, C + 10).find((h) => Math.abs(h.s - C) < 3)!;
 const V = 28, STEP = V * 0.1, JUMP = 3; // at the governor, and the largest forward jump the switch makes
+const START_T = 200; // enough driving time to reach this fork before the sampled excerpt starts
 const r2 = (v: number) => Math.round(v * 100) / 100;
 type Row = number[];
 const row = (t: number, s: number, d: number): Row => [r2(t), r2(s), d, 0, V, 1900, 7, 100, 0.8, 0, 0, 0];
@@ -32,8 +33,8 @@ const row = (t: number, s: number, d: number): Row => [r2(t), r2(s), d, 0, V, 19
     new road – at d `after`, the next sample STEP + JUMP further on. Returns the rows and the index of the first sample on the new road. */
 function switchDrive(pS: number, { before = 7.6, after = 1.4, shift = 0 }: { before?: number; after?: number; shift?: number } = {}): { rows: Row[]; at: number } {
   const rows: Row[] = [];
-  for (let k = 20; k >= 0; k--) rows.push(row((20 - k) * 0.1, pS - k * STEP + shift, before));
-  for (let k = 0; k < 30; k++) rows.push(row((21 + k) * 0.1, pS + STEP + JUMP + k * STEP + shift, after));
+  for (let k = 20; k >= 0; k--) rows.push(row(START_T + (20 - k) * 0.1, pS - k * STEP + shift, before));
+  for (let k = 0; k < 30; k++) rows.push(row(START_T + (21 + k) * 0.1, pS + STEP + JUMP + k * STEP + shift, after));
   return { rows, at: 21 };
 }
 /** the drive axle (−0.4 m) crosses the pit's centre 45 % into the switch step – the game never hurt it (before the switch it was beside the pit, after it, past it) */
@@ -93,7 +94,7 @@ describe('a fork\'s road switch (the server\'s layout decides where)', () => {
 
   it('the switch step at 28 m/s with the ≈ 3 m jump is no teleport; the same jump anywhere else still is', () => {
     const at = switchDrive(P_S).rows;
-    const s = summariseBatch(0, 0, 5, at, [], plan);
+    const s = summariseBatch(0, START_T, START_T + 5, at, [], plan);
     expect(s.forkStep).toMatchObject({ ds: 5.8, dt: 0.1, over: 3 });
     expect(s.worstStep!.over).toBeLessThanOrEqual(0);
     expect(checkSamples([facts(at)]).reasons).toEqual([]);
@@ -107,7 +108,7 @@ describe('a fork\'s road switch (the server\'s layout decides where)', () => {
   it('a real teleport in the same batch is not hidden behind the excused switch step', () => {
     const { rows } = switchDrive(P_S);
     for (const r of rows.slice(40)) r[1] = r2(r[1]! + 4); // 2.8 + 4 m in 0.1 s, far from the commit point
-    const s = summariseBatch(0, 0, 5, rows, [], plan);
+    const s = summariseBatch(0, START_T, START_T + 5, rows, [], plan);
     expect(s.forkStep).toBeDefined();
     expect(codes(checkSamples([facts(rows)]))).toEqual(['teleport:reject']);
   });
@@ -121,7 +122,7 @@ describe('a fork\'s road switch (the server\'s layout decides where)', () => {
     const judged = (level: 1 | 2) => {
       const ride = Ride.createFree({ id: 'ride-f', wallet: 'w', seed: SEED, minSeconds: 3, now: T0, level });
       ride.start(T0);
-      const done = Ride.restore({ ...ride.snapshot(), trip: level === 2 ? 'free-2' : 'free-1', lastS: b.at(-1)![1]!, lastT: 5, driveSeconds: 5, lastHbAt: new Date(T0.getTime() + 5000) });
+      const done = Ride.restore({ ...ride.snapshot(), trip: level === 2 ? 'free-2' : 'free-1', lastS: b.at(-1)![1]!, lastT: START_T + 5, driveSeconds: START_T + 5, lastHbAt: new Date(T0.getTime() + (START_T + 5) * 1000) });
       const bodies: BatchBody[] = [];
       let prevHash = 'ride-f';
       for (const [seq, part] of [a, b].entries()) {
@@ -130,14 +131,14 @@ describe('a fork\'s road switch (the server\'s layout decides where)', () => {
         bodies.push({ ...body, hash: prevHash });
       }
       const stored = bodies.map((x, i) => RideBatch.accept('ride-f', x, x.hash!, T0, undefined, undefined, 0, RoadPlan.forSeed(SEED, done.trip), i ? a : []));
-      return RideVerdict.judge(done, stored, new Date(T0.getTime() + 6000)).reasons.map((r) => r.code);
+      return RideVerdict.judge(done, stored, new Date(T0.getTime() + (START_T + 6) * 1000)).reasons.map((r) => r.code);
     };
     expect(judged(2)).not.toContain('teleport'); // the first round's free-2 trip: the seed's fork is there (rides stamped before the retune keep their road)
     expect(judged(1)).toContain('teleport'); // the first round's free-1: no fork on that road – the same jump is a teleport
   });
   it('a truck that STAYS on its road over the commit point is measured like anywhere else: through the sinkhole there without a scratch = ignored (the exemption is only for the step that jumped)', () => {
     const rows: Row[] = [];
-    for (let k = 0; k < 50; k++) rows.push(row(k * 0.1, r2(C - 60 + k * STEP), 2.4)); // straight on in the pit's lane, the hull never moves
+    for (let k = 0; k < 50; k++) rows.push(row(START_T + k * 0.1, r2(C - 60 + k * STEP), 2.4)); // straight on in the pit's lane, the hull never moves
     const over = rows.findIndex((r, i) => i > 0 && rows[i - 1]![1]! < C && r[1]! >= C);
     expect(plan.layout.forkSwitch(rows[over - 1]![1]!, rows[over]![1]!)).toBe(true); // a step the layout would excuse…
     expect(Math.abs(rows[over]![2]! - rows[over - 1]![2]!)).toBeLessThan(FORK_SWITCH_JUMP); // …but d did not jump: no switch happened
@@ -163,7 +164,7 @@ describe('a fork\'s road switch (the server\'s layout decides where)', () => {
     const judge = (parts: Row[][]) => {
       const ride = Ride.createFree({ id: 'ride-l', wallet: 'w', seed: SEED, minSeconds: 3, now: T0, level: 2 });
       ride.start(T0);
-      const done = Ride.restore({ ...ride.snapshot(), trip: TRIP, lastS: parts.at(-1)!.at(-1)![1]!, lastT: 5, driveSeconds: 5, lastHbAt: new Date(T0.getTime() + 5000) });
+      const done = Ride.restore({ ...ride.snapshot(), trip: TRIP, lastS: parts.at(-1)!.at(-1)![1]!, lastT: START_T + 5, driveSeconds: START_T + 5, lastHbAt: new Date(T0.getTime() + (START_T + 5) * 1000) });
       let prevHash = 'ride-l';
       const stored = parts.map((part, seq) => {
         const body = { seq, prevHash, t0: part[0]![0]!, t1: part.at(-1)![0]!, samples: part, inputs: [] };
@@ -171,7 +172,7 @@ describe('a fork\'s road switch (the server\'s layout decides where)', () => {
         return RideBatch.accept('ride-l', { ...body, hash: prevHash }, prevHash, T0, undefined, undefined, 0, RoadPlan.forSeed(SEED, TRIP), seq ? parts[seq - 1]! : []);
       });
       spy.mockClear();
-      RideVerdict.judge(done, stored, new Date(T0.getTime() + 6000));
+      RideVerdict.judge(done, stored, new Date(T0.getTime() + (START_T + 6) * 1000));
       return spy.mock.calls.length;
     };
     const plain: Row[] = Array.from({ length: 40 }, (_, k) => row(k * 0.1, 1000 + k * STEP, 1.4));

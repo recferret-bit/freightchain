@@ -1,4 +1,5 @@
 import { CFG } from '../config.js';
+import { longitudinalForces } from '../../shared/physics.js';
 import { clamp, approach } from '../util.js';
 import { RATIOS, MAX_GEAR, REV_RATIO, K_RPM, IDLE, REDLINE, STALL_RPM, st, input, coldK, brakeEff } from '../state.js';
 import { curv, roadAt } from '../road.js';
@@ -21,7 +22,6 @@ const LUG_RPM = 900;   // below this (gear in, clutch out) the engine labours
 /* steering authority (rad per metre at full lock): STEER_GAIN at speed, rising to STEER_GAIN_LOW at walking pace so the junction turn out of the depot works */
 /* Thrust ∝ torque(rpm) · (ratio / 1st)^GEAR_EXP, scaled so 1st gear's thrust never changes with GEAR_EXP (starting off stays as tuned): a bigger exponent only weakens the taller gears.
    Engine braking keeps a fixed exponent. */
-const ENGINE_BRAKE_EXP = .4, THRUST_REF = Math.pow(RATIOS[1], ENGINE_BRAKE_EXP);
 function steerGain() { const T = CFG.TRUCK; return T.STEER_GAIN + ((T.STEER_GAIN_LOW ?? T.STEER_GAIN) - T.STEER_GAIN) * clamp(1 - st.v / (T.STEER_LOW_V || 1), 0, 1); }
 export function tryShift(to) {
   if (st.mode !== 'drive' || to < -1 || to > MAX_GEAR || to === st.gear) return;
@@ -103,27 +103,12 @@ export function update(dt) {
 
   // longitudinal
   const vel0 = st.vel;
-  let a = 0, aG = 0;   // aG = acceleration along the selected gear's direction
-  st.overrev = st.engineOn && g !== 0 && c > 0.3 && st.rpm > REDLINE + 100;
-  if (g !== 0 && c > 0.05) {
-    if (st.engineOn) {
-      const rp = st.rpm;
-      const w = rp < CFG.TORQUE_PEAK ? CFG.TORQUE_LOW_W : CFG.TORQUE_HIGH_W;
-      let tq = Math.max(CFG.TORQUE_MIN, 1 - Math.pow((rp - CFG.TORQUE_PEAK) / w, 2)); if (rp > REDLINE) tq = 0;
-      aG += T.POWER / T.MASS * tq * gas * THRUST_REF * Math.pow(ratio / RATIOS[1], T.GEAR_EXP) * c * pw;
-      aG -= (gas < 0.05 ? 0.85 : 0.15) / T.MASS * Math.pow(ratio, ENGINE_BRAKE_EXP) * c * (rp / 2000);                // engine braking
-      if (st.overrev) aG -= (rp - REDLINE) / 60;
-    } else aG -= 1.6 / T.MASS * Math.pow(ratio, ENGINE_BRAKE_EXP) * c;                                                 // dead engine drags
-  }
+  const off = st.off = !net.onRoad(st.s, st.d);
+  const { acceleration: a, drive: aG, overrev } = longitudinalForces(st, CFG, pw, brakeEff(), off);
+  st.overrev = overrev;
   // driving against a held brake: gear in, clutch out, gas on, engine pushing (aG) but the truck is pinned (parking brake or pedal)
   st.fight = st.engineOn && g !== 0 && c > .3 && gas > .05 && st.v < 1 && (st.park || st.brake > .5) && aG > .3;
-  a += (g < 0) === st.rev ? aG : -Math.abs(aG);   // a gear that opposes the current motion only slows the truck
-  if (st.v > 0.01) a -= T.DRAG / T.MASS * st.v * st.v + T.ROLL_RES;
-  a -= st.brake * T.BRAKE * brakeEff() * (st.engineOn ? 1 : 0);   // overheated brakes fade; with the engine off there is no brake pressure at all (only the parking brake works)
-  if (st.park) a -= CFG.PARK_BRAKE * brakeEff();   // hot brakes fade, the parking brake too (fighting it heats it up – climate.js)   // spring brake: always on until released, holds the truck against engine thrust too
   if (st.brake > .3 && !st.engineOn && st.v > .5 && !st._noBrakeWarned) { st._noBrakeWarned = true; toast('NO BRAKES – engine off! Pull the parking brake (B)', 3000); } if (st.engineOn || st.v < .1) st._noBrakeWarned = false;
-  const off = st.off = !net.onRoad(st.s, st.d);   // lanes, junction aprons, side roads, the depot yard (net/network.js)
-  if (off && st.v > 2) a -= CFG.OFFROAD_DRAG;
   st.v = clamp(st.v + a * dt, 0, st.rev ? CFG.REVERSE_MAX : CFG.MAX_SPEED); st.vel = st.rev ? -st.v : st.v;
   if (st.gear < 0 && st.v > .1) { if ((beepT -= dt) <= 0) { beepT = .9; audio.beep(); } } else beepT = 0;   // reverse beeper
 

@@ -17,14 +17,14 @@ button{font:inherit;cursor:pointer}
 button:focus-visible,a:focus-visible,.card3d:focus-visible,.fq button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 
 /* ── ticker ── */
-.ticker{position:sticky;top:0;z-index:40;height:26px;overflow:hidden;width:100%;contain:paint;background:var(--lcd-bg);border-bottom:1px solid #1e4a22;font-size:12px;color:var(--lcd);letter-spacing:.5px}
+.ticker{position:sticky;top:0;z-index:40;height:26px;overflow:hidden;width:100%;background:var(--lcd-bg);border-bottom:1px solid #1e4a22;font-size:12px;color:var(--lcd);letter-spacing:.5px} /* contain:paint freezes this on iOS */
 .tk{position:absolute;left:0;top:0;display:inline-flex;white-space:nowrap;padding:4px 0;animation:tk 60s linear infinite}
 .tk span,.tk a{padding:0 28px;position:relative}.tk span::after,.tk a::after{content:"◆";position:absolute;right:-5px;opacity:.5;font-size:9px;top:2px}.tk a{color:inherit;text-decoration:none}.tk a:hover{color:var(--cream);text-decoration:underline}
-@keyframes tk{to{transform:translateX(-50%)}}
-.ticker:hover .tk{animation-play-state:paused}
+@keyframes tk{to{transform:translateX(var(--shift,-50%))}} /* px from main.js; a % is the screen on iOS */
+@media (hover:hover){.ticker:hover .tk{animation-play-state:paused}} /* :hover sticks after a tap on a phone */
 
 /* ── top bar ── */
-.top{position:sticky;top:26px;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 20px;background:#0b0a09cc;backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top{position:sticky;top:26px;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 20px;background:#0b0a09f2;border-bottom:1px solid var(--line)} /* no blur: a backdrop filter over the hero video forces iOS off the hardware plane */
 .brand{color:var(--amber);font-weight:700;letter-spacing:2px;text-decoration:none;display:flex;align-items:center;gap:8px;white-space:nowrap}
 .brand .mark{font-size:20px;color:var(--gear)}.brand small{font-size:10px;letter-spacing:3px;color:var(--dim);font-weight:400}
 .nav{display:flex;gap:2px}
@@ -39,21 +39,21 @@ button:focus-visible,a:focus-visible,.card3d:focus-visible,.fq button:focus-visi
 @keyframes pulse{50%{opacity:.25}}
 
 /* ── CTA ── */
-.cta{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:2px solid var(--amber);background:var(--amber);color:#1b1408;font-weight:700;letter-spacing:1px;border-radius:6px;padding:14px 22px;box-shadow:0 0 28px #ffb02e33;transition:transform .15s,box-shadow .15s}
+.cta{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:2px solid var(--amber);background:var(--amber);color:#1b1408;font-weight:700;letter-spacing:1px;border-radius:6px;height:48px;padding:0 22px;box-shadow:0 0 28px #ffb02e33;transition:transform .15s,box-shadow .15s}
 .cta:hover{transform:translateY(-1px);box-shadow:0 0 36px #ffb02e66}
 .cta.ghost{background:#0008;color:var(--amber);box-shadow:none}
-.cta.sm{padding:7px 16px;font-size:12px;border-radius:4px;box-shadow:none}
+.cta.sm{padding:0 16px;font-size:12px;border-radius:4px;box-shadow:none}
 .cta:disabled{opacity:.45;cursor:not-allowed;transform:none}
 .link{color:var(--amber);font-size:13px}
 
 /* ── hero ── */
 .hero{position:relative;min-height:calc(100svh - 86px);display:grid;align-items:center;padding:60px 20px 90px;overflow:hidden;isolation:isolate}
 .bg{position:absolute;inset:0;z-index:-1;background:#000}
-.bg video,.bg .slides img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.bg video{opacity:0;transition:opacity 1s}.bg video.on{opacity:1}
+.bg video,.bg .slides img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover} /* opacity < 1 stalls iOS video */
 .slides.off{opacity:0;visibility:hidden;transition:opacity 1s .2s,visibility 0s 1.2s}   /* the gameplay loop took over */
 [hidden]{display:none!important}
 .slides img{opacity:0;animation:kb 24s infinite;transform-origin:50% 60%}
+.slides img:only-child{opacity:1;animation:none} /* the day still alone, until a skipped video adds the other two */
 .slides img:nth-child(2){animation-delay:8s}.slides img:nth-child(3){animation-delay:16s}
 @keyframes kb{0%{opacity:0;transform:scale(1.05)}8%{opacity:1}33%{opacity:1}41%{opacity:0;transform:scale(1.18)}100%{opacity:0}}
 .shade{position:absolute;inset:0;background:linear-gradient(180deg,#0b0a0999 0%,#0b0a0929 22%,#0b0a094d 58%,var(--bg) 100%),radial-gradient(ellipse at 28% 52%,#0b0a0966 0%,#0b0a0900 75%)}
@@ -76,7 +76,7 @@ h1{font-size:clamp(34px,6.4vw,76px);line-height:1;color:var(--amber);text-shadow
 @keyframes bob{50%{transform:translate(-50%,6px)}}
 
 /* ── road divider between chapters: asphalt band, two solid white edge lines, a white dashed centre line that drives ── */
-.road{height:38px;background:linear-gradient(180deg,var(--bg) 0,var(--asphalt) 16%,var(--asphalt) 84%,var(--bg) 100%);position:relative;overflow:hidden}
+.road{height:38px;background:linear-gradient(180deg,var(--bg) 0,var(--asphalt) 16%,var(--asphalt) 84%,var(--bg) 100%);position:relative;overflow:hidden;content-visibility:auto;contain-intrinsic-size:auto 38px} /* off screen, the dashed line stops driving */
 .road::before,.road::after{content:"";position:absolute;left:0;right:0;height:2px;background:var(--cream);opacity:.85}
 .road::before{top:9px}.road::after{bottom:9px}
 .road i{position:absolute;left:0;right:0;top:50%;margin-top:-1px;height:2px;background:repeating-linear-gradient(90deg,var(--cream) 0 44px,#0000 44px 88px);animation:drive 1.1s linear infinite;opacity:.95}
@@ -359,13 +359,25 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
   .cta{width:100%;text-align:center}
 }
 
+/* pitch-deck invite: a short row between the two roads. The frame crossfades four slide pages. */
+.deck-band{padding:40px 0}
+.deck-in{display:flex;align-items:center;gap:48px;width:min(1100px,100%);margin:0 auto;padding:0 20px;text-decoration:none;color:inherit}
+.deck-shot{position:relative;flex:none;width:min(400px,38%);aspect-ratio:16/9;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#000}
+.deck-shot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .5s}
+.deck-shot img:first-child{opacity:1}.deck-shot:has(.on) img{opacity:0}.deck-shot img.on{opacity:1} /* one slide decoded at a time; main.js advances .on */
+.deck-copy{flex:1;min-width:0}.deck-copy .eyebrow{margin:0 0 2px}.deck-copy h2{font-size:clamp(18px,2.2vw,26px);line-height:1.15;color:var(--amber)}
+.deck-meta{display:block;margin-top:2px;color:var(--dim);font-size:13px}
+.deck-in:hover .deck-shot{border-color:var(--needle)}
+.deck-in .cta{width:auto;flex:none}
+@media (max-width:880px){.deck-band{padding:28px 0}.deck-in{display:grid;grid-template-columns:1.4fr 1fr;gap:10px 32px;padding:0 14px}.deck-shot{width:100%}.deck-copy h2{font-size:16px}.deck-in .cta{grid-column:1 / -1;width:100%}}
+@media (prefers-reduced-motion:reduce){.deck-shot img{transition:none}.deck-shot img:first-child{opacity:1}}
 .promo-band{background:linear-gradient(180deg,var(--bg) 0,#17130b 100%);border-top:1px solid #ffffff12;border-bottom:1px solid #ffffff12}
 .promo-in{width:min(1100px,100%);margin:0 auto;padding:44px 20px;display:grid;grid-template-columns:1.2fr 1fr;gap:28px 48px;align-items:center}
 .promo-copy h2{margin:6px 0 16px;font-size:clamp(22px,3vw,32px);color:var(--amber)}
 .perks{list-style:none;margin:0;padding:0;display:grid;gap:10px}.perks li{display:grid;grid-template-columns:140px 1fr;gap:12px;align-items:baseline;font-size:14px}.perks b{font-size:12px;letter-spacing:1.5px;color:var(--needle)}.perks span{color:var(--dim)}
 .invite{display:grid;gap:8px;background:#0b0a0999;border:1px solid #ffcf5a40;border-radius:10px;padding:20px}
 .invite label{font-size:11px;letter-spacing:2px;color:var(--amber)}
-.invite-row{display:flex;gap:10px}.invite input{flex:1 1 auto;min-width:0;background:#0006;border:1px solid #ffffff30;border-radius:6px;color:inherit;padding:12px 14px;font:inherit;font-size:18px;text-transform:uppercase;letter-spacing:2px}
+.invite-row{display:flex;gap:10px;align-items:center}.invite input{flex:1 1 auto;min-width:0;background:#0006;border:1px solid #ffffff30;border-radius:6px;color:inherit;height:48px;padding:0 14px;font:inherit;font-size:18px;text-transform:uppercase;letter-spacing:2px}
 .invite input:focus-visible{outline:2px solid #ffcf5a;outline-offset:1px}
 .invite .hint{font-size:12px;color:var(--dim,#9d957f)}.invite .hint.bad{color:#ff8a7a}
 @media (max-width:760px){.promo-in{grid-template-columns:1fr;padding:32px 20px}.perks li{grid-template-columns:1fr;gap:2px}.invite-row{flex-direction:column}}

@@ -83,11 +83,14 @@ describe('RideVerdict.judge', () => {
       return { ...body, hash: hashBatch(body) };
     });
     it('a speed above the governor', () => expect(codes(judge(60, 800, {}, patch(1, 10, 4, 31)))).toContain('over-governor'));
-    it('a jump in distance the truck cannot make between two samples', () => expect(codes(judge(60, 800, {}, patch(1, 10, 1, 9000)))).toContain('teleport'));
-    it('a jump ACROSS a batch boundary (last sample of one, first of the next) is a teleport too', () => expect(codes(judge(60, 800, {}, patch(2, 0, 1, 9000)))).toContain('teleport'));
+    it('a jump in distance the truck cannot make between two samples', () => expect(codes(judge(60, 800, {}, patch(1, 10, 1, 900)))).toContain('teleport'));
+    it('a jump ACROSS a batch boundary (last sample of one, first of the next) is a teleport too', () => expect(codes(judge(60, 800, {}, patch(2, 0, 1, 900)))).toContain('teleport'));
     it('samples out of time order', () => expect(codes(judge(60, 800, {}, patch(1, 10, 0, 3)))).toContain('sample-out-of-order'));
     it('a short sample row', () => {
-      const v = judge(60, 800, {}, (b) => b.map((x) => (x.seq === 0 ? { ...x, samples: [[0, 0]], hash: hashBatch({ ...x, samples: [[0, 0]] }) } : x)));
+      const batches = stored(recording('ride-1', { seconds: 60, distance: 800 }));
+      const first = batches[0]!.snapshot();
+      batches[0] = RideBatch.restore({ ...first, body: { ...first.body, samples: [[0, 0]] }, summary: null }); // historical malformed payloads can still be judged
+      const v = RideVerdict.judge(completedRide(60, 800), batches, at(61));
       expect(codes(v)).toContain('bad-sample');
     });
     it('a recording that ends somewhere else than the ride', () => {

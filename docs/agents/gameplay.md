@@ -2,6 +2,8 @@
 
 Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session); an "In short" block, where there is one, is a summary. Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current"). Paths are relative to `client/` unless they start with `server/`, `landing/` or `media/`.
 
+The browser delegates its longitudinal force law to `shared/physics.js` and its full traffic AI/contact response to `shared/traffic-simulation.js`; server reconstruction uses the same kernels. Rendering, sound, engine state updates and the variable frame clock remain browser adapters.
+
 ## Controls
 
 W/↑ gas · S/↓ brake · A D/←→ steer · **Shift/Space = clutch (hold)** · E/Q gear up/down (clutch must be in; 1–7 / 0 select gear/neutral; **Q from neutral or G = reverse**, stop first) ·

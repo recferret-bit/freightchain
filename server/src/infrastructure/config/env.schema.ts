@@ -127,6 +127,7 @@ export const envSchema = z
     EDITOR_JOB_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(3_600_000).default(600_000), // a job longer than this is aborted (and one left running past it by a restart is failed)
     EDITOR_FAKE_LLM: z.enum(['0', '1']).default('0'), // TEST ONLY: offer the scripted fake provider (refused in production)
     /** verified play: 'true' = the paid boards rank verified shifts only; 'false' = SHADOW mode – every ride is still judged and the verdict shown, but ranking ignores it */
+    TRAFFIC_PROOF_REQUIRED: z.enum(['true', 'false']).default('true').transform(v => v === 'true'),
     VERDICT_ENFORCE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** days a ride's recording is kept after the ride ended (flagged rides are kept until reviewed); 0 = keep forever */
     TELEMETRY_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),

@@ -22,6 +22,7 @@ model Ride {
   completeDist   Float
   status         RideStatus
   createdAt      DateTime
+  trafficVersion Int             @default(0) // frame-proof protocol stamped by the server at start; historical rides remain 0
   timeScale      Float           @default(1) // > 1 = a DEMO ride (the shift is that many times shorter)
   priceUsd       Float           @default(0)
   lamports       BigInt          @default(0)

@@ -53,55 +53,32 @@ function posthogWindow(insights) {
   return windows.find((window) => window.label?.includes('through')) ?? windows[0] ?? null;
 }
 
-function shownTotal(complete, total, covered) {
-  if (complete && Number.isSafeInteger(total)) return total;
-  if (Number.isSafeInteger(covered) && covered > 0) return covered;
-  return null;
-}
-
-function cell(value, label, detail) {
+function cell(value, label, detail, width = '20%') {
   const shown = value == null ? '—' : value;
-  return `<td align="center" width="20%"><h2>${shown}</h2><b>${label}</b><br>${detail}</td>`;
+  return `<td align="center" width="${width}"><h2>${shown}</h2><b>${label}</b><br>${detail}</td>`;
 }
 
 function row(cells) {
   return cells.filter(Boolean).map(([k, v]) => `| ${k} | ${v} |`).join('\n');
 }
 
-export function renderTraction({ fetchedAt, social, stats, insights }) {
+export function renderTraction({ fetchedAt, stats, insights }) {
   const when = fetchedAt?.slice(0, 16).replace('T', ' ') ?? 'unknown';
-  const yt = social?.youtube ?? {};
-  const x = social?.x ?? {};
-  const ytViews = shownTotal(yt.complete, yt.views, yt.coveredViews);
-  const xViews = shownTotal(x.complete, x.views, x.coveredViews);
   const lines = [];
-  lines.push(`Public numbers for a reviewer, read ${when} UTC. Each headline was fetched three times. A partial page, a deleted post, a repost, a premiere, or a count the second source did not support is not in a headline. Links go to the page the number was read from.`);
+  lines.push(`Public numbers for a reviewer, read ${when} UTC. PostHog and the public stats endpoint were each read more than once. A count the second read did not support is not in a headline.`);
   lines.push('');
   lines.push('<table><tr>');
-  lines.push(cell(
-    comma(ytViews ?? yt.coveredViews),
-    yt.complete ? 'YouTube views' : 'YouTube views read',
-    `${yt.videos ?? '—'} videos${yt.subscribers != null ? ` · ${comma(yt.subscribers)} subscribers` : ''}<br><a href="https://www.youtube.com/@FreightChainGame">@FreightChainGame</a>`,
-  ));
-  lines.push(cell(
-    comma(x.posts),
-    'X posts',
-    `<a href="https://x.com/FreightChainSol">@FreightChainSol</a>${x.followers != null ? `<br>${comma(x.followers)} followers` : ''}`,
-  ));
-  lines.push(cell(
-    comma(xViews ?? (x.listed ? x.coveredViews : null)),
-    x.complete ? 'X views' : 'X views on public posts',
-    x.complete ? 'every post on the profile' : `${x.listed ?? 0} of ${x.posts ?? '—'} posts have a public view count`,
-  ));
   lines.push(cell(
     stats ? comma(stats.rides) : null,
     'shifts started',
     stats ? `${comma(stats.ridesCompleted)} finished · <a href="https://freightchain.fun/api/stats">api/stats</a>` : 'public stats unread',
+    '50%',
   ));
   lines.push(cell(
     stats ? `${(stats.metres / 1000).toFixed(1)} km` : null,
     'driven',
     stats ? `${comma(stats.drivers)} drivers · ${comma(stats.crashes)} crashes` : '',
+    '50%',
   ));
   lines.push('</tr>');
   const open = posthogWindow(insights);
@@ -136,47 +113,6 @@ export function renderTraction({ fetchedAt, social, stats, insights }) {
   lines.push('</tr></table>');
   lines.push('');
   lines.push('The second row is PostHog Cloud EU, project 297915. Probe events (`surface=prod-check`) are out. Ride counts are `source=server`. Demo wallets are separate from real ones. Client `ride_completed` is not counted.');
-  lines.push('');
-  if (yt.aboutNote) lines.push(`YouTube channel About says ${yt.aboutViews == null ? 'no total' : `${comma(yt.aboutViews)} views`}. ${yt.aboutNote}. The headline is the sum of the videos below.`);
-  if (x.note) lines.push(x.note);
-  if (!yt.complete && yt.error) lines.push(`YouTube total withheld: ${yt.error}.`);
-  if (x.error) lines.push(`X total withheld: ${x.error}.`);
-  lines.push('');
-  lines.push('### YouTube');
-  lines.push('');
-  lines.push('Watch-page `viewCount` for every video on the Videos and Shorts tabs. The grid count had to land within 5%.');
-  lines.push('');
-  if (yt.items?.length) {
-    lines.push('| Video | Views |');
-    lines.push('| --- | ---: |');
-    for (const item of [...yt.items].sort((a, b) => b.views - a.views)) {
-      const title = (item.title || item.id).replace(/\|/g, '/');
-      lines.push(`| [${title}](${item.url}) | ${comma(item.views)} |`);
-    }
-    lines.push(`| **Sum** | **${comma(yt.coveredViews)}** |`);
-  } else lines.push('No video passed the checks.');
-  if (yt.excluded?.length) {
-    lines.push('');
-    lines.push(`Left out: ${yt.excluded.map((row) => `${row.id} (${row.reason})`).join(', ')}.`);
-  }
-  lines.push('');
-  lines.push('### X');
-  lines.push('');
-  lines.push('Profile post count is the number both public mirrors returned. View counts are the posts tab, checked against the status endpoint.');
-  lines.push('');
-  if (x.items?.length) {
-    lines.push('| Post | Views |');
-    lines.push('| --- | ---: |');
-    for (const item of [...x.items].sort((a, b) => b.views - a.views)) {
-      const text = (item.text || item.id).replace(/\|/g, '/');
-      lines.push(`| [${text}](${item.url}) | ${comma(item.views)} |`);
-    }
-    lines.push(`| **Sum of these posts** | **${comma(x.coveredViews)}** |`);
-  } else lines.push('No public post passed the checks.');
-  if (x.excluded?.length) {
-    lines.push('');
-    lines.push(`Left out: ${x.excluded.map((row) => `${row.id} (${row.reason})`).join(', ')}.`);
-  }
   lines.push('');
   lines.push('### The product');
   lines.push('');
@@ -263,14 +199,12 @@ export function selfTest() {
   check('stats-bad-split', acceptStats({ rides: 3, ridesFree: 3, ridesPaid: 1, ridesCompleted: 0, seconds: 0, metres: 0, crashes: 0, crashesVehicle: 0, crashesBuilding: 0, donations: 0, donationLamports: 0, drivers: 0, updatedAt: 1_791_000_000_000 }) === null);
   const block = renderTraction({
     fetchedAt: '2026-10-14T09:00:00.000Z',
-    social: { youtube: { complete: false, coveredViews: 10, videos: 1, aboutViews: 4, aboutNote: 'channel About count is lower than the sum of the videos and was not used', items: [] }, x: { posts: 21, listed: 1, coveredViews: 5, complete: false, items: [], note: 'partial' } },
     stats: null,
     insights: { error: 'skipped' },
   });
-  check('no-fake-total', !block.includes('all views') && block.includes('1 of 21'));
+  check('no-socials', !/youtube|@FreightChain|### X/i.test(block) && block.includes('PostHog unread'));
   const withHog = renderTraction({
     fetchedAt: '2026-10-14T09:00:00.000Z',
-    social: { youtube: { complete: true, views: 10, coveredViews: 10, videos: 1, items: [] }, x: { posts: 1, complete: true, views: 2, coveredViews: 2, listed: 1, items: [] } },
     stats: null,
     insights: { windows: [{ label: '8 Oct 2026 through 2026-10-14 UTC', landingPeople: 131, whitepaperPeople: 12, signinsReal: 59, startsReal: 3, startsDemo: 29, completesReal: 0, completesDemo: 6 }] },
   });

@@ -128,6 +128,7 @@ export class EnvService {
   get achievementMintDelayMs(): number { return this.env.ACHIEVEMENT_MINT_DELAY_MS; }
   get achievementMintBatch(): number { return this.env.ACHIEVEMENT_MINT_BATCH; }
   get initialSeedLamports(): number { return Math.round(this.env.INITIAL_SEED_SOL * 1e9); }
+  get trafficProofRequired(): boolean { return this.env.TRAFFIC_PROOF_REQUIRED; }
   get verdictEnforce(): boolean { return this.env.VERDICT_ENFORCE; }
   get telemetryRetentionDays(): number { return this.env.TELEMETRY_RETENTION_DAYS; }
   get signInRetentionDays(): number { return this.env.SIGNIN_RETENTION_DAYS; }
