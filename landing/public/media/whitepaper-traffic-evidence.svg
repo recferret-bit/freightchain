@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="660" viewBox="0 0 1280 660" role="img" aria-labelledby="title desc">
+<title id="title">Two evidence streams, one server verdict</title>
+<desc id="desc">The server fixes the seed, route, assist and required traffic protocol. Ten-hertz truck samples and inputs pass road and physics checks. Hashed traffic frames pass the same seeded traffic AI at their recorded timing. Sample binding joins both streams before the verdict. All evidence remains client-reported.</desc>
+<defs>
+  <linearGradient id="panel" x2="0" y2="1"><stop stop-color="#1d1913"/><stop offset="1" stop-color="#100e0b"/></linearGradient>
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10" fill="#ffcf5a"/></marker>
+  <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#ffcf5a" stroke-opacity=".035"/></pattern>
+</defs>
+<style>text{font-family:ui-monospace,Menlo,Consolas,monospace;fill:#eee6d0}.small{font-size:18px;fill:#aaa18c}.label{font-size:18px;letter-spacing:2px;fill:#ffcf5a}.head{font-size:23px;font-weight:700}.body{font-size:18px}.line{fill:none;stroke:#ffcf5a;stroke-width:2;marker-end:url(#arrow)}.box{fill:url(#panel);stroke:#66573c;stroke-width:1.5}.green{fill:#8ee88e}.blue{fill:#81b9f0}</style>
+<rect width="1280" height="660" rx="16" fill="#100e0b"/><rect width="1280" height="660" rx="16" fill="url(#grid)"/>
+<text x="36" y="47" class="label">VERIFIED PLAY / RULES V7 / BUILT</text>
+<text x="36" y="90" font-size="32" font-weight="700">Two evidence streams. One server verdict.</text>
+<rect x="36" y="120" width="1208" height="76" rx="10" fill="#262014" stroke="#ffcf5a"/>
+<text x="58" y="150" class="label">SERVER DEFINES THE RIDE</text>
+<text x="58" y="178" class="body">Seed + route + assist + required protocol. The client cannot select legacy rules.</text>
+<text x="36" y="234" class="small">BROWSER RECORDING</text><text x="469" y="234" class="small">SERVER CHECKS</text><text x="952" y="234" class="small">STORED RESULT</text>
+<rect class="box" x="36" y="253" width="372" height="122" rx="10"/>
+<rect x="36" y="253" width="5" height="122" rx="2" fill="#81b9f0"/>
+<text x="58" y="288" class="head blue">10 Hz truck + inputs</text>
+<text x="58" y="321" class="body">Position, speed, hull, controls</text>
+<text x="58" y="351" class="small">Also drives spectator replays</text>
+<rect class="box" x="36" y="405" width="372" height="122" rx="10"/>
+<rect x="36" y="405" width="5" height="122" rx="2" fill="#ffcf5a"/>
+<text x="58" y="440" class="head" fill="#ffcf5a">Every traffic frame</text>
+<text x="58" y="473" class="body">Timing + pose + hull response</text>
+<text x="58" y="503" class="small">Lossless data inside batch hash</text>
+<path class="line" d="M408 314H461"/><path class="line" d="M408 466H461"/>
+<rect class="box" x="469" y="253" width="394" height="122" rx="10"/>
+<text x="491" y="288" class="head blue">Road + physics bounds</text>
+<text x="491" y="321" class="body">Sequence, coverage, motion</text>
+<text x="491" y="351" class="small">Rebuilt from server ride settings</text>
+<rect class="box" x="469" y="405" width="394" height="122" rx="10"/>
+<text x="491" y="440" class="head">Shared seeded traffic AI</text>
+<text x="491" y="473" class="body">Simulate at recorded frame dt</text>
+<text x="491" y="503" class="small">Check contacts + bind 10 Hz samples</text>
+<path class="line" d="M863 314H900V390H944"/><path class="line" d="M863 466H900V390H944"/>
+<rect x="952" y="253" width="292" height="274" rx="10" fill="#142016" stroke="#73bd73" stroke-width="1.5"/>
+<text x="976" y="293" class="label green">VERDICT + REPLAY</text>
+<text x="976" y="339" class="head green">VERIFIED</text><text x="976" y="381" class="head" fill="#ffcf5a">FLAGGED</text><text x="976" y="423" class="head" fill="#ff8b7c">REJECTED</text>
+<text x="976" y="472" class="small">Reasons kept for review</text><text x="976" y="501" class="small">Signed admin decisions</text>
+<path d="M36 562H1244" stroke="#66573c"/>
+<text x="36" y="599" class="body">Hashes bind evidence. They do not authenticate the browser or prove a human drove.</text>
+<text x="36" y="631" class="small">Full replay from raw keys alone remains a future goal.</text>
+</svg>

@@ -74,42 +74,40 @@ This is not a third-party audit. The program stays "not audited" until one is do
 
 | Finding | State |
 | --- | --- |
-| H1, H3, M10, M13 · anti-cheat: an empty recording judged verified, about 1.9× the speed governor, hidden hole passes | Fixed in code (verdict rules v4). Not in production until the next deploy |
-| H2 · another rider's recording replayed as your own | Fixed in code: a copied recording is flagged for review. Next deploy |
-| H6, M7 · rides after the play deadline still ranked; a revoked verdict still paid | Fixed in code. Sales and new rides also stop at the sale end. Next deploy |
-| H7, M2, M3, M4, M9 · session cookie scope, login CSRF, logout, admin CORS, the sign-in text, rate limits | Fixed in code. Production players are signed out once. Next deploy |
+| H1, H3, M10, M13 · anti-cheat: an empty recording judged verified, about 1.9× the speed governor, hidden hole passes | Shipped in the Oct 15 app release (rules v4); production boards remain in shadow mode |
+| H2 · another rider's recording replayed as your own | Shipped Oct 15: a copied recording is flagged for review |
+| H6, M7 · rides after the play deadline still ranked; a revoked verdict still paid | Shipped Oct 15. Sales and new rides also stop at the sale end |
+| H7, M2, M3, M4, M9 · session cookie scope, login CSRF, logout, admin CORS, the sign-in text, rate limits | Shipped Oct 15. Player sessions were invalidated with the session change |
 | H5, H4, M6, M8, L4 · program: the payout key was the whole prize gate, pledges not bound to their ride, a review window that committed nothing, sponsorships kept by a failed pool, a road seed the opener could pick | Program v4: a winners root public for the review before any prize is paid, per-ride attestations, sponsor refunds, `seal_road`. 154 LiteSVM tests plus the localnet suites. **Not on devnet yet.** Devnet still runs v3, where these findings are open |
 | M1, M11, M12, M5, most lows · the blink page relays any action, no CSP / HSTS, no subresource integrity, verdict codes on public rides | Open (fix plan WP6 to WP8) |
 
-`./pentest/bin/pentest pocs` runs every proof of concept. A fixed one that comes back fails the run. Read: [the report](pentest/reports/2026-10-13/index.md) ([HTML](pentest/reports/2026-10-13/report.html)), [the fix plan with every decision](docs/reviews/pentest-2026-10/fix-plan.md), [PoC status](pentest/pocs/status.json), and [whitepaper chapter 08](https://whitepaper.freightchain.fun/#audit). The suite itself is the `pentest-audit` skill.
+The original review supplied proof-of-concept reproductions that became regression tests. Its report and PoC status are archived at the reviewed commit. The current reusable pentest tool keeps new reports and PoCs in gitignored run directories. Read: [the report](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/reports/2026-10-13/index.md) ([HTML](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/reports/2026-10-13/report.html)), [the fix plan with every decision](docs/reviews/pentest-2026-10/fix-plan.md), [PoC status](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/pocs/status.json), and [whitepaper chapter 08](https://whitepaper.freightchain.fun/#audit). The suite itself is the `pentest-audit` skill.
 
 ## Post-Colosseum hackathon updates
 
-The submission went in on 12 Oct 2026. Below is what changed after it. **State** says where a change runs: production is release `20261013-085127-7a9d5e68` (13 Oct). "Next deploy" means it is in `main` and not on the public site yet.
+The submission went in on **12 Oct 2026**. Work continued after that snapshot. The app release checked on **16 Oct** is `20261015-152742-16870e81`; a code change in `main` is not automatically a production deployment. Program upgrades are separate from app releases.
 
-### Pentest v1, in short
+### Security review after submission
 
-On 13 Oct twelve AI auditors from four vendors attacked six surfaces in pairs, blind to each other. A quorum adjudicated their findings: 69 raw findings became 7 high and 13 medium, and 4 claims were refuted. Each fix turned its proof of concept into a regression test. The fixes for all 7 highs and 9 of the 13 mediums are in `main`; the program part waits for the devnet upgrade. It is not a third-party audit. Read the [Pentest v1 report](pentest/reports/2026-10-13/index.md) ([HTML](pentest/reports/2026-10-13/report.html)), and see [Penetration test and contracts audit](#penetration-test-and-contracts-audit) for the state of each finding.
+On 13 Oct twelve AI auditors from four vendors reviewed six surfaces in blind pairs. Quorum adjudication reduced 69 raw findings to 7 high and 13 medium; 4 claims were corrected or refuted. Fixes for all 7 highs and 9 mediums are in source, with reproductions turned into regression tests. App fixes shipped on Oct 15; the program-v4 fixes still need their separate devnet upgrade. This was our own review, not a third-party audit. See [the findings and their release state](#penetration-test-and-contracts-audit) and [the fix plan](docs/reviews/pentest-2026-10/fix-plan.md).
 
-### Changes
+### What changed
 
-| Date | Change | Product effect | State |
+| Date | Change after submission | Product effect | Release state as of 16 Oct |
 | --- | --- | --- | --- |
-| 13 Oct | Wallets: Wallet Standard discovery, a wallet picker, one-prompt sign-in with the chain id, phone-pay fixes | Any Wallet Standard wallet signs in with one prompt. Paying from a phone works | Live |
-| 13 Oct | Landing and README copy: repeated and untrue lines cut; the README names the live program | The site claims only what runs | Live |
-| 13 Oct | Pentest v1 and its fix plan: three planning iterations, every item decided by the owner | Every known hole is named, with a proof of concept and a definition of done | [Report](pentest/reports/2026-10-13/index.md) · [plan](docs/reviews/pentest-2026-10/fix-plan.md) |
-| 13 Oct | Mobile: driving is desktop-only; a phone gets a toast that points to streams and replays | A phone visitor lands on something that works | Next deploy |
-| 13 Oct | Landing hero: stills of the current cab, with the CB and the on-chain strip | The first screen shows the game as it is | Next deploy |
-| 14 Oct | Anti-cheat rules v4 (H1, H3, M10, M13), copied recordings flagged (H2) | An empty or sped-up recording, or another rider's drive, no longer passes as verified | Next deploy |
-| 14 Oct | Pools: a ride counts only if it ended by the play deadline; a revoked verdict never pays; no new sales or rides after the sale end (H6, M7) | The board a buyer sees is the board that pays. Every rider who starts has time to finish | Next deploy |
-| 14 Oct | Sessions: host-only cookie, an origin guard, the exact sign-in text, logout that clears (H7, M2, M3, M4, M9) | Another site or subdomain cannot act as a player. Players are signed out once at the deploy | Next deploy |
-| 14 Oct | Escrow program v4: a winners root public through the review before any prize is paid, with an admin veto; per-ride pledge attestations; sponsor refunds; the road sealed from a later slot (H4, H5, M6, M8, L4) | A stolen payout key cannot pay itself. A pledge pays only on the ride it backed. A failed pool returns sponsorships. Nobody picks the road | Built: 154 program tests, localnet e2e green. Not on devnet yet |
-| 14 Oct | Devnet 1h series: 3 hours to finish after the sale ends | Matches the last-call rule above | Devnet |
-| 14 Oct | Verified play: a shared physics library and a 10 Hz server replay of traffic, holes and paid obstacles; admin replay list and worker | A client that ignores traffic or a donated pothole is caught | Next deploy |
-| 14 Oct | Watch: one X post after a locked pledge | A sponsor can share who they backed | Next deploy |
-| 14 Oct | Sound: WAV and mp3 checks pinned; a late sample stays audible | No silent effect after a long ride | Next deploy |
-| 14 Oct | Traction: this README's scoreboard refreshed from live social and PostHog reads | Reviewers see current numbers | README |
-| 14–15 Oct | Pitch deck: eight slides on `pitchdeck.freightchain.fun`, a third page of the landing build whose only request is anonymous analytics (page views, slide attraction, toys: explainer funnel 11, not a saved insight); the landing footer links it. The slides are playable: donations drop SOL coins that roll and stack, Web3 adoption pulls them in and pays out fiat, the FREE / 1 H / 4 H / 8 H tiers unhang secret tiers, the 70 / 20 / 10 split opens on hover, six chain cards explain why and how, the plan is a four-month Gantt, and go-to-market is six highway exits (co-founder, advertising, tournaments we fund, streamer deals, paid community creations, HONK listing) with a truck that dodges obstacles, honks, speeds to light speed near the token exit and mines HONK on the way | One link shows the product, the money and the plan, and a viewer can poke the economy instead of reading it | Live |
+| 13 Oct | Wallet Standard discovery, wallet picker, one-prompt sign-in and phone-pay fixes | More wallets can sign in and pay with fewer steps | Shipped in the Oct 15 app release |
+| 13–14 Oct | Desktop-only driving, current cab imagery, clearer landing and README copy | Phone visitors can watch; the product pages show the actual game | Shipped in the Oct 15 app release |
+| 14 Oct | Anti-cheat v4: recording coverage, speed and hole checks; copied-recording flags | Empty, accelerated or copied traces receive a verdict; production boards still use shadow mode | Shipped in the Oct 15 app release |
+| 14 Oct | Session and admin isolation; pool sale/play deadlines and payout rechecks | Cross-site requests are constrained; late rides and revoked verdicts cannot become eligible winners | Shipped in the Oct 15 app release; contract rules still depend on the program version |
+| 14 Oct | Escrow v4: public winners root, review lock and veto, per-ride pledge attestations, sponsor refunds, later-slot road seal | Settlement commits to a published result and to the ride a sponsor backed | Built and tested; separate devnet program upgrade pending |
+| 14–15 Oct | Playable eight-slide pitch deck, shareable pledges, sound checks and refreshed traction snapshot | Reviewers can explore the product and economy; the README dates its measurements | App changes shipped Oct 15; traction remains the dated snapshot above |
+| 16 Oct | Shared road geometry, route curves, physics and full traffic AI; required hashed traffic-frame evidence (rules v7) | New rides cannot omit required evidence or downgrade themselves; removed cars and ignored traffic responses reject | Committed in `b58c9921`; next app release |
+| 16 Oct | Real headless browser regression matrix: honest drives, natural finish, slow execution, real crash and five modified-client cases | Checks the full game → API → database → saved-verdict/replay path, including re-hashed attacks | Nine controlled local scenarios passed; no claim of exhaustive attack coverage |
+| 16 Oct | Landing pitch-deck preview and phone motion controls for the deck's SOL coins | The deck is easier to discover and its coin toy responds to phone tilt | Committed; next app release |
+| 16 Oct | Reusable pentest targets, Docker/MCP isolation and native review profiles | Review tooling can inspect local or GitHub repositories; each adapter still reports its own readiness and limits | Repository tooling; no new external audit claimed |
+| 16 Oct | Whitepaper v0.2: evidence-flow and browser-outcome charts, protocol and release limits | Readers can distinguish recorded evidence, server checks and settlement trust | This documentation revision; next app release |
+
+The production replay worker was restarting at the read-only check. Its explicit `TRUST_PROXY=0` startup fix is included with the pending simulation release; a deployment must verify that the worker becomes healthy. The app's health endpoint was ready. No deployment is implied by this recap.
 
 ## Contents
 
@@ -168,12 +166,12 @@ A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter
 
 Each row is something a reviewer can open. The limit is in the same row as the claim. The pictures are diagrams, not receipts.
 
-<img src="landing/public/media/chain/proof.svg" alt="Diagram: 15-second batches hash up into one Merkle root" width="220"> <img src="landing/public/media/chain/pledge.svg" alt="Diagram: a per-km pledge pays the verified distance and returns the rest" width="220"> <img src="landing/public/media/chain/siws.svg" alt="Diagram: one wallet sign-in prompt bound to freightchain.fun and a single-use nonce" width="220"> <img src="landing/public/media/chain/sns.svg" alt="Diagram: a leaderboard row shown as a .sol name" width="220"> <img src="landing/public/media/chain/blink.svg" alt="Diagram: an X card with a ticket button and a Solana Pay code" width="220">
+<img src="landing/public/media/chain/proof.svg" alt="Diagram: accepted batch hashes form one Merkle root" width="220"> <img src="landing/public/media/chain/pledge.svg" alt="Diagram: a per-km pledge pays the verified distance and returns the rest" width="220"> <img src="landing/public/media/chain/siws.svg" alt="Diagram: one wallet sign-in prompt bound to freightchain.fun and a single-use nonce" width="220"> <img src="landing/public/media/chain/sns.svg" alt="Diagram: a leaderboard row shown as a .sol name" width="220"> <img src="landing/public/media/chain/blink.svg" alt="Diagram: an X card with a ticket button and a Solana Pay code" width="220">
 
 | What | Solana piece | What it does, and what it does not | Code |
 | --- | --- | --- | --- |
 | Road seed | `create_pool` / `open_next_pool` read the newest SlotHashes entry and store `SHA-256(pool id as little-endian u32 ‖ slot hash ‖ slot as little-endian u64)` | No caller passes the seed. Everyone in the pool drives the road derived from that commitment. The program does not draw the road itself | [`create_pool.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/create_pool.rs) · [`provable-seed.ts`](server/src/domain/road/provable-seed.ts) |
-| Recording root | RFC 6962 Merkle tree over the ride's 15 s batch hashes | The attestation names which recording it covers. The program does not recompute the drive | [`telemetry-merkle.ts`](server/src/domain/telemetry/telemetry-merkle.ts) |
+| Recording root | RFC 6962 Merkle tree over the ride's accepted batch hashes | The attestation names which recording it covers. The program does not recompute the drive | [`telemetry-merkle.ts`](server/src/domain/telemetry/telemetry-merkle.ts) |
 | Prize gate | `Attestation` PDA `[attestation, pool account, driver]`: root, verified km, verified or flagged. `pay_prize` requires VERIFIED and verified km above 0 | The admin or the payout key signs it. Either key may also sign `pay_prize`. Recording does not wait for `payout_at`. Paying does. It is the server's verdict, not a proof of the physics | [`settle.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/settle.rs) |
 | Per-km pledge | `Pledge` `[pledge, ride_id, sponsor]`. The sponsor signs `create_pledge` | A VERIFIED attestation pays `cap × min(verified km, target) / target`. FLAGGED pays 0. If paying the driver would leave that account under rent, the sponsor gets the cap back. `refund_pledge` returns the cap only when the pool is refunding, cancelled, or settled, or still active 14 days after `payout_at`, and there is no verified or flagged attestation. Neither instruction checks a review window. Both are permissionless | [`pledge.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/pledge.rs) |
 | Sign-in | `solana:signIn` (CAIP-122), Wallet Standard | One prompt where the wallet supports it. Older wallets fall back to connect plus `signMessage`. The server checks the fields it issued and burns `nonce:<nonce>` on the first try | [`wallet.js`](client/site/wallet.js) · [`sign-in.ts`](server/src/domain/auth/sign-in.ts) |
@@ -236,8 +234,9 @@ Badges: 31 soulbound compressed NFTs, 8 ladders, Metaplex Bubblegum v2, minted b
 | Piece | In this repository | On the public site |
 | --- | --- | --- |
 | Driving game, five routes, three free levels, paid tiers | Yes | Free rides are live. A paid tier shows SOON until a pool of that tier is open. 4 h and 8 h have no series |
-| Server-timed shifts, hash-chained recordings, verdicts | Yes. Rules version 4 | Live, shadow mode. The verdict is stored and shown. Paid boards still rank without it |
-| Server-rebuilt road, 10 Hz replay verification (`@freightchain/shared`), and hole / traffic / live-event checks | Yes | Live in the judge and replay worker (`verdict.RideReplay` + `verdict.RideReplayFlag`) |
+| Server-timed shifts, hash-chained recordings, verdicts | Yes. Rules v7 in source | Rules v4 shipped Oct 15, shadow mode. The verdict is stored and shown. Paid boards still rank without it |
+| Server road and hole checks, recording verdicts | Yes | Rules v4 shipped; paid boards default to shadow mode |
+| Shared road/physics/traffic simulation and required traffic-frame evidence (rules v7) | Yes | Committed; next app release. Replay-worker startup correction included |
 | Live watch, replays, CB chat, devnet tips | Yes | Paid rides can be watched, with chat. A running free ride cannot. Replays work after it ends. Tips are devnet transfers to the driver. Game effects are off on the public site |
 | Garage, promo codes | Yes | Garage is a lobby tab: wheel, paint, gearbox, dice, needles. Nothing there changes the handling. Promo codes sit on the profile |
 | Public ride receipts, X card, in-game share | Yes | Live. The driver posts from their own account |
@@ -262,7 +261,7 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 - The seed treasury is not rolled into the next pool by a job.
 - The pinned build hash is not the explorer's verified badge. That badge is not submitted. A matching hash is not an audit.
 - [`docs/escrow-open-items.md`](docs/escrow-open-items.md) still opens with a "not deployed" paragraph. Ignore that paragraph.
-- Browser frames use IEEE-754 floats and variable `dt`, while the backend `ReplayEngine` steps the shared physics (`@freightchain/shared`) at fixed `0.05 s` substeps across the 10 Hz sample trace, allowing a small speed tolerance (`3.5 m/s` over sustained mismatches) before raising `physics-speed-mismatch`.
+- Browser frames use IEEE-754 floats and variable `dt`. New traffic evidence preserves that frame timing, but remains client-reported state. The 10 Hz physics reconstruction is approximate: acceleration bounds can reject; carried-coasting discrepancies only flag. Full replay from raw inputs alone is not built.
 - Float32 road vertices jitter past about 100 km.
 - Session keys are not built. Staking is not built.
 
@@ -275,7 +274,7 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 | What the server checks | [Anti-cheat](docs/anti-cheat/index.html) · [player page](docs/verified-play/index.html) |
 | What a spectator sees | [Replays and donations](docs/replay-and-donations/index.html) |
 | Whether the money tests pass | [Localnet walkthrough](docs/localnet-e2e/index.html) |
-| What the penetration test found, and what is fixed | [Penetration test and contracts audit](#penetration-test-and-contracts-audit) · [whitepaper 08](https://whitepaper.freightchain.fun/#audit) · [report](pentest/reports/2026-10-13/index.md) |
+| What the penetration test found, and what is fixed | [Penetration test and contracts audit](#penetration-test-and-contracts-audit) · [whitepaper 08](https://whitepaper.freightchain.fun/#audit) · [report](https://github.com/recferret-bit/freightchain/blob/16870e81/pentest/reports/2026-10-13/index.md) |
 | How the server is put together | [backend-architecture.md](docs/backend-architecture.md) |
 
 ## The truck
@@ -320,35 +319,43 @@ Read: [`client/js/trips.js`](client/js/trips.js) · [`ride-tier.ts`](server/src/
 
 ## How a finish is checked
 
-Online rides upload every key and dash event, plus a 10 Hz sample of the truck, in SHA-256 hash-chained batches of 15 seconds. Every completed shift passes through **two verification tiers** before it is marked `verified`, `flagged`, or `rejected`:
+Online rides record **10 Hz truck samples and input events**, plus **lossless per-frame traffic evidence** for new protocol-version-1 rides. The server stamps the required version at start. The client seals these rides' SHA-256 hash-chained batches after **2 game seconds or 500 frames**, whichever comes first; historical recordings used 15-second batches.
 
-1. **Fast batch-summary & road checks (`RideVerdict.judge`)** — runs synchronously over the per-batch summaries, RFC 6962 Merkle chain, server road layout, natural sinkholes, off-road timer, human input-timing statistics, and dispatch challenges.
-2. **10 Hz backend replay verification (`ReplayEngine` + `@freightchain/shared`)** — re-simulates the drive tick-by-tick at 10 Hz (`0.05 s` physics substeps) using the exact ES modules shared with the browser client (`@freightchain/shared`: `prng.js`, `road.js`, `traffic.js`, `physics.js`). It runs synchronously inside `VerdictService` and asynchronously in the dedicated `worker` service (`node dist/cli/index.js replay:worker` + Redis `ReplayQueuePort`), persisting `verdict.RideReplay` and structured `verdict.RideReplayFlag` records inspectable on the admin page (`#replays` and `#ride/<id>`).
+Two verification stages check that evidence:
 
-Paid boards rank verified shifts only when `VERDICT_ENFORCE` is on. Production leaves it off, so the boards ignore the verdict. A prize, if the job pays one, still requires a verified verdict and an on-chain `Attestation` PDA (`[b"attestation", pool, driver]`).
+1. **Admission and summary checks.** Finite values, travel and work budgets are bounded before road lookups. Batch order, hash links, coverage, motion, the server's holes, input timing and challenges feed `RideVerdict.judge`. Uploads and judging share the player's row lock.
+2. **Shared simulation checks.** `ReplayEngine` uses `@freightchain/shared` for road geometry, route curves, longitudinal physics and the full seeded traffic AI. Version 1 runs traffic at the submitted frame timing, checks cab/trailer contacts and hull response, and binds the 10 Hz samples to simulated post-contact frames. Verification can run synchronously or through the replay worker; stored replay sessions and reasons are inspectable on the admin page.
 
 ```mermaid
 flowchart LR
-  batches["Hash-chained 15 s batches<br/>+ RFC 6962 Merkle root"] --> bounds["Fast judge:<br/>chain, governor, road & human timing"]
-  batches --> replay["10 Hz ReplayEngine worker<br/>(@freightchain/shared)"]
-  replay --> corr["Shared traffic AI reconstruction (review flags)<br/>+ spectator donation events"]
-  bounds --> verdict["RideVerdict + RideReplayFlag<br/>(verified / flagged / rejected)"]
-  corr --> verdict
-  verdict --> person["Signed admin review<br/>+ On-chain Attestation PDA"]
+  ride["Server sets seed, route,<br/>assist and traffic version"] --> samples["10 Hz truck samples<br/>and input events"]
+  ride --> frames["Required traffic frames<br/>inside the batch hash"]
+  samples --> bounds["Hash, coverage, road<br/>and physics checks"]
+  frames --> traffic["Shared traffic AI<br/>at recorded frame timing"]
+  traffic --> binding["Match truck samples<br/>and collision response"]
+  bounds --> verdict["Stored verdict + replay<br/>verified / flagged / rejected"]
+  binding --> verdict
+  verdict --> review["Signed admin review"]
 ```
 
-- **Server-timed clock & hash chain:** Heartbeats carry the clock. Distance may grow at most 28 m/s × 1.2 × the gap, plus 20 m. No heartbeat for 150 seconds ends the ride. The server recomputes every SHA-256 on arrival and folds batch hashes into an RFC 6962 Merkle root (`telemetry_root`). A wrong hash rejects the shift; an unhashed batch only flags.
-- **Physics bounds & agreement:** Over the governor, a step the truck cannot make, or a sample out of order: reject. The recording has to end near the reported distance, cover the driven time, and show gas if the truck moved.
-- **The server's road & sinkholes:** The holes are the server's, derived from the pool's on-chain `SlotHashes` seed commitment. A wheel deep in a planned pit at speed has to cost hull (`dmg × (v/28)²`, rear axles × 0.6). Two ignored holes reject (`obstacle-ignored`). Long off-road (> 27 s) rejects (`offroad-ignored`). Speed gained while the gas pedal is released rejects (`accel-without-gas`).
-- **10 Hz physics reconstruction (`@freightchain/shared`):** `ReplayPhysics` uses the browser's `longitudinalForces` via `integrateLongitudinal`, reading RPM, pedals, gear, clutch and switches. It carries speed through sustained braking/coasting instead of resetting upward at each row; discrepancies raise `physics-coasting-mismatch` for review. The independent maximum-acceleration ceiling retains `physics-speed-mismatch` rejection.
-- **Shared traffic AI:** `client/shared/traffic-simulation.js` contains the browser's spawning, cross traffic, signals, hole avoidance, cab/trailer contact and collision responses. Instance-local road geometry/network and route curves are shared too. The server uses the ride's route and seed, including stamped donated holes. It always checks traffic, even if optional replay columns or display tracks are absent. New rides use server-stamped `trafficVersion=1`: hashed lossless pre-contact frames, continuous clock, post-contact hull and binding to recorded samples. Missing/invalid evidence or ignored fatal/damaging contacts reject. Historical version-0 recordings retain diagnostic flags because their 10 Hz samples omit frame timing and trailer angle. `TRAFFIC_PROOF_REQUIRED=true` is the default; explicit false is only for historical fixtures/compatibility. Browser reference fixtures compare all frames across five routes and three trips; they do not claim exact reconstruction from sparse telemetry or a measured 6× speedup.
-- **Spectator donation & live event correlation:** Paid spectator effects (`live.RideEvent`: `potholes`, `trench`, `sinkhole`, `night`, `day`) are correlated against the 10 Hz sample trace. Unstamped effects past the horizon flag (`event-unapplied`), ignored donated obstacles reject (`donated-obstacle-ignored`), and tampered day/night clock shifts after a `night`/`day` donation flag (`event-clock-mismatch`).
-- **Human timing & challenge channel:** Hold lengths, repeated gaps, and instant releases flag the shift (≥ 8 presses; coarse clocks skip the two checks they break). The heartbeat can name a prompt with a 20 s window (`CHALLENGE_KINDS` is empty today).
-- **Signed admin review:** Every completed paid ride stays under review until the checks accept it or an admin signs ACCEPTED or REJECTED. Replays and red flags can be inspected or re-verified on `admin.<apex>#replays`. A late upload does not overturn a signed decision.
+| Evidence or check | What it establishes | Limit |
+| --- | --- | --- |
+| Hash chain and RFC 6962 root | Which accepted recording the verdict names; inconsistent hashes or links reject | A modified client can recompute hashes. Hashes alone do not prove honest play |
+| Required traffic frames (`trafficVersion=1`) | Missing, malformed, uncovered or sample-inconsistent proof rejects; ignored fatal or damaging contacts reject | The server checks reported poses and timing, not an authenticated browser or a full raw-input replay |
+| Historical samples (`trafficVersion=0`) | Shared traffic reconstruction supplies review flags | Sparse 10 Hz data omits exact frame timing and trailer angle; it cannot support the same traffic guarantees |
+| Road and physics | Hole damage, off-road time, motion and acceleration must fit the ride; carried-coasting discrepancies flag | Float simulation has tolerances; a bot using the real game can still pass |
+| Spectator events | Stamped donated holes and day/night shifts are checked against hull and clock | Separate from the traffic proof; a missing stamp can require review |
+| Timing and review | Uniform holds, repeated gaps and instant presses flag; admin decisions are signed | The challenge-kinds table is empty and a captcha is not built |
 
-What this does not do: browser frames still run at variable `dt` in IEEE-754 floats, so `ReplayEngine` allows a `1.8×` per-step acceleration ratio margin (with a `0.25 m/s` floor) before raising `physics-speed-mismatch`. A careful bot that plays the real game with human-like timing can still pass automatic checks unless caught by prompts or review. Thresholds are first guesses. A captcha before a paid start and before a prize claim is not built. Recordings are kept 90 days (flagged and unjudged ones are kept until reviewed).
+`TRAFFIC_PROOF_REQUIRED=true` is the default for newly started rides. Missing optional replay columns or display-only car tracks does not bypass traffic validation. Explicit false is reserved for compatibility; old rides retain their server-stored version.
 
-Codes and thresholds: [`docs/anti-cheat/index.html`](docs/anti-cheat/index.html) · [`verdict-rules.ts`](server/src/domain/verdict/verdict-rules.ts) · [`replay-engine.ts`](server/src/domain/verdict/replay-engine.ts).
+**Local end-to-end evidence, 16 Oct:** nine controlled headless Chrome scenarios passed against the real game, Nest and PostgreSQL. Three honest drives verified (normal, natural automatic finish, CPU throttling); a real fatal collision failed the ride; deleting cars, deleting cars plus optional replay data, ignoring damage, stripping proof and malformed proof were rejected. Hashes were rebuilt where the attack changed a batch. Disabling the validator made the removed-cars negative test fail. These are regression checks, not a detection rate, an independent audit or a full-length load test.
+
+Run the browser matrix with `bash .claude/skills/run-tests/e2e.sh traffic`. Shared-kernel parity also uses captured browser fixtures across five routes and three trips. See the [whitepaper source and diagrams](landing/whitepaper.html).
+
+Paid boards require verified verdicts only when `VERDICT_ENFORCE` is on; production defaults to shadow mode. Prize settlement still requires a verified verdict. Devnet program v3 gates prizes with per-driver attestations; source program v4 uses a reviewed winners root for prizes and per-ride attestations for pledges. The program enforces settlement, not driving physics.
+
+Codes and implementation: [anti-cheat explainer](docs/anti-cheat/index.html) · [verdict rules](server/src/domain/verdict/verdict-rules.ts) · [frame verifier](server/src/domain/verdict/traffic-proof.ts) · [replay engine](server/src/domain/verdict/replay-engine.ts). Recordings are kept for 90 days; flagged and never-judged completed rides are retained.
 
 Live watch uses the same batches, so a paid ride sits about 25 seconds behind. There are no WebSockets. A running free ride cannot be watched, chatted on, or tipped. A finished one can be replayed at 1×, 4×, and 16× while the recording is kept. A tip on a paid ride is a devnet SOL transfer from the spectator to the driver. The platform does not hold it. Game effects are off on the public site. A free ride has them forced off, and a paid ride only gets them when `LIVE_EFFECTS` is `all`. Production sets it to `free`. [`docs/replay-and-donations/index.html`](docs/replay-and-donations/index.html)
 

@@ -63,14 +63,16 @@ test('a control whose button is not on the dash this frame draws no border for i
   const L = L0(); lightInputs(BIT.heat, .016, L);
   assert.doesNotThrow(() => run(L));
 });
-test('a fading light is drawn dimmer than a held one (a held one flashes between two levels, a fading one is below the bright level)', () => {
+test('a fading light is drawn dimmer than a held one (a held one flashes between two levels, a fading one is below the bright level)', t => {
+  let now = 0; t.mock.method(performance, 'now', () => now);
   uiBtns.length = 0; uiBtns.push({ id: 'head', x: 100, y: 800, w: 90, h: 50 });
   const border = L => Math.max(...run(L).filter(([k]) => k === 'set globalAlpha').map(([, a]) => a[0]));
   const held = L0(); lightInputs(BIT.head, .016, held);
   const fading = L0(); lightInputs(BIT.head, .016, fading); lightInputs(0, .2, fading);
   assert.ok(fading.key[CONTROLS.indexOf('head')] > 0 && fading.key[CONTROLS.indexOf('head')] < 1);
-  const h = Math.max(...Array.from({ length: 8 }, () => border(held)));   // sampled across the blink
-  assert.ok(border(fading) < h || h === 1, `${border(fading)} vs ${h}`);
+  const h = border(held);
+  now = 150; assert.ok(border(held) < h, 'a held light has both a bright and a dim phase');
+  assert.ok(border(fading) < h, `${border(fading)} vs ${h}`);
   assert.ok(border(fading) <= .56, 'a fading light is at most its fade value');
   uiBtns.length = 0;
 });

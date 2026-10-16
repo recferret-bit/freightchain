@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="840" viewBox="0 0 1280 840" role="img" aria-labelledby="title desc">
+<title id="title">Nine controlled headless Chrome traffic scenarios</title>
+<desc id="desc">Three honest drives verify, including automatic finish and CPU throttling. A real fatal collision fails the ride. Removed cars, removed cars without optional replay columns, ignored damage, removed proof and malformed proof all produce rejected verdicts. These controlled local tests are not a security success rate.</desc>
+<defs><pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#ffcf5a" stroke-opacity=".035"/></pattern></defs>
+<style>text{font-family:ui-monospace,Menlo,Consolas,monospace;fill:#eee6d0}.mut{font-size:20px;fill:#aaa18c}.case{font-size:22px}.tag{font-size:20px;font-weight:700;letter-spacing:1px}.pass{fill:#92ef92}.fail{fill:#ffcf5a}.reject{fill:#ff9c8c}</style>
+<rect width="1280" height="840" rx="16" fill="#100e0b"/><rect width="1280" height="840" rx="16" fill="url(#grid)"/>
+<text x="36" y="47" font-size="18" letter-spacing="2" fill="#ffcf5a">LOCAL VALIDATION / NINE CONTROLLED SCENARIOS</text>
+<text x="36" y="90" font-size="32" font-weight="700">A real crash fails. A hidden crash rejects.</text>
+<text x="36" y="128" class="mut">Real game + API + database; saved replays checked for claimed finishes</text>
+<text x="54" y="184" font-size="17" fill="#aaa18c">DRIVE</text><text x="425" y="184" font-size="17" fill="#aaa18c">CONDITION / MODIFICATION</text><text x="1040" y="184" font-size="17" fill="#aaa18c">RESULT</text>
+<g fill="#152118" stroke="#29442e"><rect x="36" y="202" width="1208" height="54" rx="7"/><rect x="36" y="264" width="1208" height="54" rx="7"/><rect x="36" y="326" width="1208" height="54" rx="7"/></g>
+<g fill="#292014" stroke="#705b2d"><rect x="36" y="388" width="1208" height="54" rx="7"/></g>
+<g fill="#291815" stroke="#68382e"><rect x="36" y="450" width="1208" height="54" rx="7"/><rect x="36" y="512" width="1208" height="54" rx="7"/><rect x="36" y="574" width="1208" height="54" rx="7"/><rect x="36" y="636" width="1208" height="54" rx="7"/><rect x="36" y="698" width="1208" height="54" rx="7"/></g>
+<text x="54" y="237" class="case">Honest driving</text><text x="425" y="237" class="mut">Normal browser frames</text><text x="1040" y="237" class="tag pass">VERIFIED</text>
+<text x="54" y="299" class="case">Honest completion</text><text x="425" y="299" class="mut">Natural automatic finish at the line</text><text x="1040" y="299" class="tag pass">VERIFIED</text>
+<text x="54" y="361" class="case">Honest slow execution</text><text x="425" y="361" class="mut">3× CPU throttling</text><text x="1040" y="361" class="tag pass">VERIFIED</text>
+<text x="54" y="423" class="case">Fatal traffic collision</text><text x="425" y="423" class="mut">Game applies the real collision</text><text x="1040" y="423" class="tag fail">FAILED</text>
+<text x="54" y="485" class="case">Cars removed</text><text x="425" y="485" class="mut">Traffic deleted; completion claimed</text><text x="1040" y="485" class="tag reject">REJECTED</text>
+<text x="54" y="547" class="case">Cars + tracks removed</text><text x="425" y="547" class="mut">Optional columns stripped; hashes rebuilt</text><text x="1040" y="547" class="tag reject">REJECTED</text>
+<text x="54" y="609" class="case">Damage ignored</text><text x="425" y="609" class="mut">Hull held at 100; completion claimed</text><text x="1040" y="609" class="tag reject">REJECTED</text>
+<text x="54" y="671" class="case">Traffic proof removed</text><text x="425" y="671" class="mut">Batches re-hashed without required proof</text><text x="1040" y="671" class="tag reject">REJECTED</text>
+<text x="54" y="733" class="case">Traffic proof malformed</text><text x="425" y="733" class="mut">Invalid encoding; hashes rebuilt</text><text x="1040" y="733" class="tag reject">REJECTED</text>
+<text x="36" y="794" class="mut">Controlled local cases, not a detection rate or an exhaustive security audit.</text>
+<text x="36" y="823" font-size="18" fill="#aaa18c">FAILED is a ride outcome. REJECTED is the server verdict on a claimed finish.</text>
+</svg>
