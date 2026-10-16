@@ -102,7 +102,7 @@ describe('SyncPledgesHandler – the pledge job', () => {
     expect(await row(p.id)).toMatchObject({ status: 'settled', earnedLamports: 0n, refundedLamports: p.maxLamports });
   });
 
-  it('two rides of one driver in one pool: each pledge settles on ITS ride\'s km, never on the driver\'s best ride (pentest H4)', async () => {
+  it('two rides of one driver in one pool: each pledge settles on ITS ride\'s km, never on the driver\'s best ride (audit H4)', async () => {
     const { run, row, active, drive, payout } = await setup();
     const short = await active({ lamportsPerKm: 1_000n, targetKm: 20 });
     const long = await active({ sponsor: wallet(), lamportsPerKm: 1_000n, targetKm: 20 });
@@ -187,7 +187,7 @@ describe('SyncPledgesHandler – the pledge job', () => {
     }
   });
 
-  it('a VERIFIED ride whose verdict was revoked during the review lock is written FLAGGED before the settle – the sponsor gets it all back (pentest M7)', async () => {
+  it('a VERIFIED ride whose verdict was revoked during the review lock is written FLAGGED before the settle – the sponsor gets it all back (audit M7)', async () => {
     const { ctx, run, row, active, drive, revoke, payout } = await setup();
     const chain = chainPool(ctx.now(), { poolId: 1, status: 'active' });
     ctx.poolChain.pools.set(1, chain);

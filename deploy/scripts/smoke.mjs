@@ -144,7 +144,7 @@ if (!args.includes('--no-signin')) {
   const secure = /;\s*Secure/i.test(setCookie);
   if (https) check('the session cookie is Secure', secure);
   else console.log(`! plain http: production cookies are always Secure${secure ? '' : ' (this one is NOT – wrong for production)'} and browsers will not keep them over http – fine for a local test, never for the public site`);
-  if (https) check('the session cookie is host-only: __Host-fc_session, no Domain (pentest H7-B – a sibling subdomain neither gets nor plants it)', /^__Host-fc_session=/.test(setCookie) && !/;\s*Domain=/i.test(setCookie), setCookie.split(';')[0]?.split('=')[0] ?? 'no cookie');
+  if (https) check('the session cookie is host-only: __Host-fc_session, no Domain (audit H7-B – a sibling subdomain neither gets nor plants it)', /^__Host-fc_session=/.test(setCookie) && !/;\s*Domain=/i.test(setCookie), setCookie.split(';')[0]?.split('=')[0] ?? 'no cookie');
   const session = setCookie.split(';')[0];
   const me = await get('/api/me', { headers: { cookie: session, ...origin } }), meBody = await me.json().catch(() => ({}));
   check('the cookie authenticates /api/me', me.status === 200 && meBody.wallet === wallet && meBody.freeRides === 10, `${me.status}`);

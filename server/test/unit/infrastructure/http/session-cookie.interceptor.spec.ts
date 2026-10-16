@@ -14,7 +14,7 @@ const prod = (cookieDomain?: string) => ({ isProduction: true, cookieDomain, ses
 const dev = (cookieDomain?: string) => ({ isProduction: false, cookieDomain, sessionCookie: 'fc_session' }) as EnvService;
 
 describe('SetSessionCookieInterceptor', () => {
-  it('production: the token goes into a HOST-ONLY __Host-fc_session cookie (Secure, Path=/, no Domain – pentest H7-B), the answer is the profile only', async () => {
+  it('production: the token goes into a HOST-ONLY __Host-fc_session cookie (Secure, Path=/, no Domain – audit H7-B), the answer is the profile only', async () => {
     const { calls, ctx } = responseSpy();
     const expiresAt = new Date(Date.UTC(2036, 0, 1));
     const body = await lastValueFrom(new SetSessionCookieInterceptor(prod('freightchain.fun')).intercept(ctx, handlerOf({ profile: { wallet: 'W' }, session: { token: 'secret-token', expiresAt } }) as never));
@@ -30,7 +30,7 @@ describe('SetSessionCookieInterceptor', () => {
   });
 });
 
-describe('ClearSessionCookieInterceptor (pentest M3)', () => {
+describe('ClearSessionCookieInterceptor (audit M3)', () => {
   it('clears the cookie with exactly the attributes it was set with – a clear without Secure is ignored by the browser – and passes the body through', async () => {
     const { calls, ctx } = responseSpy();
     expect(await lastValueFrom(new ClearSessionCookieInterceptor(prod()).intercept(ctx, handlerOf({ ok: true as const })))).toEqual({ ok: true });

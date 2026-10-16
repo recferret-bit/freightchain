@@ -59,6 +59,28 @@ export function analyticsScenarios(h: () => Harness): void {
     expect(typeof res.body.enabled).toBe('boolean');
   });
 
+  it('a lobby crash is accepted when analytics is on, and dropped before send when it is off', async () => {
+    const res = await anon().post('/api/client-error').send({
+      anon_id: ANON, surface: 'lobby', release: 'abc1234', name: 'TypeError', value: 'x is undefined',
+      frames: [{ filename: 'https://freightchain.fun/js/main.js', function: 'frame', lineno: 12, colno: 4 }],
+    }).expect(200);
+    if (res.body.enabled === false) expect(res.body).toEqual({ enabled: false, accepted: 0 });
+    else expect(res.body).toEqual({ enabled: true, accepted: 1 });
+  });
+
+  it('a crash on an unknown surface is 400', async () => {
+    await anon().post('/api/client-error').send({
+      anon_id: ANON, surface: 'admin', name: 'TypeError', value: 'x', frames: [],
+    }).expect(400);
+  });
+
+  it('a hidden cross-origin error is accepted 0', async () => {
+    const res = await anon().post('/api/client-error').send({
+      anon_id: ANON, surface: 'game', name: 'Error', value: 'Script error.', frames: [],
+    }).expect(200);
+    expect(res.body).toMatchObject({ accepted: 0 });
+  });
+
   it('a missing cookie is 200, not 401 and not a DI 500', async () => {
     const res = await anon().post('/api/telemetry').send({ events: [] }).expect(200);
     expect(res.status).toBe(200);

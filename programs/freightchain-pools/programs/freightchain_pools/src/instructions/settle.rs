@@ -19,7 +19,7 @@ pub struct CommitWinners<'info> {
     pub pool: Account<'info, Pool>,
 }
 
-/// v4 (pentest H5-B): the payout key (or the admin) writes the pool's winners once its rides are over – a Merkle root over (rank, wallet, lamports),
+/// v4 (audit H5-B): the payout key (or the admin) writes the pool's winners once its rides are over – a Merkle root over (rank, wallet, lamports),
 /// public for the whole review lock before any of them can be paid (`pay_from`); a wrong root is vetoed by the cold admin in that time. `count = 0`:
 /// no winner (the pool then closes with its prize share unclaimed).
 pub fn handle_commit_winners(mut ctx: Context<CommitWinners>, pool_id: u32, root: [u8; 32], total: u64, count: u8) -> Result<()> {
@@ -98,7 +98,7 @@ pub struct PayPrize<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// v4 (pentest H5-B / M6): permissionless – pays rank `rank` exactly what the committed root says, to the wallet it names, once, and not before the
+/// v4 (audit H5-B / M6): permissionless – pays rank `rank` exactly what the committed root says, to the wallet it names, once, and not before the
 /// root's lock (`pool.pay_from`) is over.
 pub fn handle_pay_prize(mut ctx: Context<PayPrize>, pool_id: u32, rank: u8, lamports: u64, proof: Vec<[u8; 32]>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;

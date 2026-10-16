@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { EnvService } from '../../../../src/infrastructure/config/env.service.js';
 import { PostHogAnalyticsAdapter } from '../../../../src/infrastructure/analytics/posthog-analytics.adapter.js';
-import type { AnalyticsEvent } from '../../../../src/application/ports/analytics/analytics.port.js';
+import type { AnalyticsEvent, ExceptionCapture } from '../../../../src/application/ports/analytics/analytics.port.js';
 
 const KNOWN = 'd3641cb2-da2e-5f46-aacf-ef1652eabf75';
 
@@ -102,6 +102,42 @@ describe('PostHogAnalyticsAdapter', () => {
     expect(bodies).toHaveLength(0);
     await vi.advanceTimersByTimeAsync(1000);
     expect(bodies).toHaveLength(1);
+  });
+
+  it('an exception flushes as $exception and the log line has no stack', async () => {
+    const bodies: string[] = [];
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      bodies.push(String(init?.body));
+      return { ok: true, status: 200, body: null };
+    });
+    vi.useFakeTimers();
+    const adapter = boot({ POSTHOG_KEY: 'phc_test', POSTHOG_ENABLED: '1' });
+    const report: ExceptionCapture = {
+      distinctId: 'WALLET', timestamp: new Date('2036-10-08T12:00:00.000Z'), surface: 'game', release: null,
+      type: 'TypeError', value: 'x is undefined',
+      frames: [
+        { filename: 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js', function: 'render', lineno: 9, colno: 1, inApp: false },
+        { filename: 'https://freightchain.fun/js/main.js', function: 'frame', lineno: 12, colno: 4, inApp: true },
+      ],
+    };
+    adapter.captureException(report);
+    await vi.advanceTimersByTimeAsync(1000);
+    const body = JSON.parse(bodies[0]!) as { api_key: string; batch: Record<string, unknown>[] };
+    expect(body.api_key).toBe('phc_test');
+    const row = body.batch[0]!;
+    expect(row['event']).toBe('$exception');
+    expect(row).not.toHaveProperty('uuid');
+    const properties = row['properties'] as { release?: string; $exception_list: { mechanism: { handled: boolean }; stacktrace: { frames: { function: string; in_app: boolean }[] } }[] };
+    expect(properties.release).toBeUndefined();
+    expect(properties.$exception_list[0]?.mechanism.handled).toBe(false);
+    const frames = properties.$exception_list[0]?.stacktrace.frames ?? [];
+    expect(frames.at(-1)).toMatchObject({ function: 'frame', in_app: true });
+    expect(frames[0]?.in_app).toBe(false);
+    const logged = vi.mocked(Logger.prototype.log).mock.calls.map((call) => String(call[0])).join('\n');
+    expect(logged).toContain('name=$exception');
+    expect(logged).not.toContain('x is undefined');
+    expect(logged).not.toContain('phc_test');
+    expect(logged).not.toContain('main.js');
   });
 
   it('an HTTP 500 is swallowed and logged without the body', async () => {

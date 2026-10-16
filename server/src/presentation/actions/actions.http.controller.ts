@@ -17,7 +17,7 @@ import { CrossOriginPublic } from '../../infrastructure/http/guards/origin.guard
 
 /** Public Solana Actions. No session. Errors are `{ message }` (ActionErrorFilter), not problem+json.
     Every link button is a POST route here: blink clients POST to an external-link href too and open the `externalLink` it answers. */
-@CrossOriginPublic()   // any site may POST here without a session (pentest H7: the Origin guard skips it)
+@CrossOriginPublic()   // any site may POST here without a session (audit H7: the Origin guard skips it)
 @Controller()
 @UseFilters(ActionErrorFilter)
 export class ActionsHttpController {

@@ -66,7 +66,7 @@ export function verdictScenarios(h: () => Harness): void {
     expect((await d.agent.get('/api/profile').expect(200)).body.recent[0]).toMatchObject({ status: 'completed', verdict: 'verified', review: 'accepted' });
   });
 
-  it('rules v4 over HTTP (pentest 2026-10): batches wait their turn (429 + Retry-After); empty batches, and a position outrunning its speedometer, reject at /end', async () => {
+  it('rules v4 over HTTP (audit 2026-10): batches wait their turn (429 + Retry-After); empty batches, and a position outrunning its speedometer, reject at /end', async () => {
     const d = await login(VERDICT_DEMO);
     const first = await driven(d);
     const rec = recording(first.id, { seconds: 70, distance: 910, answers: answersFor(first.prompts), road: first.road });

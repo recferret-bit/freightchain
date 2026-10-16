@@ -185,7 +185,7 @@ fn shared_table_matches_close_pool_on_chain() {
     assert!(ran >= 7, "only {ran} rows ran on chain");
 }
 
-/// pentest L8: the platform cut at close is the one the buyers were shown when the pool opened, not whatever the config says at close.
+/// audit L8: the platform cut at close is the one the buyers were shown when the pool opened, not whatever the config says at close.
 #[test]
 fn platform_cut_is_the_one_the_pool_opened_with() {
     let mut e = Env::with_platform_fee(1_000);

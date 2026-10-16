@@ -15,9 +15,31 @@ export interface AnalyticsEvent {
   properties: Record<string, AnalyticsValue>;
 }
 
+/** One frame of a browser stack. `inApp` is false for a CDN script. */
+export interface ExceptionFrame {
+  filename: string;
+  function: string;
+  lineno: number;
+  colno: number;
+  inApp: boolean;
+}
+
+/** An unhandled browser crash. Nested `$exception_list` is built only in the adapter, never on a product event. */
+export interface ExceptionCapture {
+  distinctId: string;
+  timestamp: Date;
+  surface: string;
+  release: string | null;
+  type: string;
+  value: string;
+  frames: readonly ExceptionFrame[];
+}
+
 export abstract class AnalyticsPort {
   /** Enqueue. Never throws. Never returns a promise to the caller. */
   abstract capture(event: AnalyticsEvent): void;
+  /** Enqueue one `$exception`. Same flush as `capture`. Never throws into the caller. */
+  abstract captureException(report: ExceptionCapture): void;
   /** False when POSTHOG_ENABLED is unset, `0`, or `false`, the key is missing or not a `phc_` token, or the kill switch is on. The relay answers `{ enabled: false }` without queueing. */
   abstract enabled(): boolean;
 }

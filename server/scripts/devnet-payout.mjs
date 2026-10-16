@@ -1,6 +1,6 @@
 // Commits a pool's winners, pays its ranked prizes and closes it with the ADMIN KEYPAIR FILE – the CLI stand-in for the admin page's payout buttons.
 // The server ranks (GET /api/pools/:id/payout – served only to TREASURY_PUBKEY, so this signs in as the admin), this script signs and sends what it offers,
-// tells the server (POST /api/chain/settle). Without --yes it only prints the plan. Program v4 (pentest H5-B): from the PLAY deadline the ranking is first
+// tells the server (POST /api/chain/settle). Without --yes it only prints the plan. Program v4 (audit H5-B): from the PLAY deadline the ranking is first
 // COMMITTED as a winners root (public until its lock ends – `payFrom`), then each rank is paid with its proof, then the pool closes. A committed root that is not
 // the ranking any more is struck with --veto (only while no rank is paid); run it again to commit the ranking. Before the play deadline / payFrom it waits on the
 // CHAIN clock when that is at most PAYOUT_WAIT_MAX seconds away (default 900), else says when and stops. The server's own payout job (PAYOUT_SECRET, `pool:payout`)

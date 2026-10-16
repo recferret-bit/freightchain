@@ -14,13 +14,13 @@ const KB = 1024;
 test('JS: the eager bundle is small, nothing in dist/assets is large', { skip: !has }, () => {
   const js = files.filter(f => f.endsWith('.js') && !/\/pitchdeck-/.test(f));   // the pitch deck's own script is on its own line below
   for (const f of js) assert.ok(statSync(f).size <= 34 * KB, `${f} ${statSync(f).size} B > 34 kB`);
-  assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 62 * KB, 'all JS together ≤ 62 kB gzipped (incl. the lazy live-dash chunks)');   // 40 → 44 on Oct 11: the cab radio's eleven stations (client/js/sim/radio.js, ~5.7 kB gz) ride in the lazy dash chunk; the eager entry is unchanged; 50 → 55 on Oct 12: the UNDER THE HOOD canvas scenes (src/chain-scenes.js, ~4.6 kB gz), lazy as well; 55 → 59 on Oct 13: Wallet Standard discovery (client/site/wallet-standard.js, ~1.9 kB gz, eager – wallets must hear app-ready) + the wallet picker (~1.6 kB gz, lazy); 59 → 61 on Oct 13: mobile play restriction & spectator toast; 61 → 62 on Oct 15: the footer's pitch deck link (PITCHDECK_BASE in hosts.js)
+  assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 64 * KB, 'all JS together ≤ 64 kB gzipped (incl. the lazy live-dash chunks)');   // 62 → 64 on Oct 16: the unhandled-crash reporter (client/js/crash.js, ~1.3 kB gz) shares the web-vitals chunk; 61 → 62 on Oct 15: the footer's pitch deck link (PITCHDECK_BASE in hosts.js); 59 → 61 on Oct 13: mobile play restriction & spectator toast; 55 → 59 on Oct 13: Wallet Standard discovery + the wallet picker; 50 → 55 on Oct 12: UNDER THE HOOD canvas scenes; 40 → 44 on Oct 11: the cab radio's eleven stations
 });
 
 test('CSS ≤ 14 kB gzipped (landing + whitepaper), HTML ≤ 15 kB gzipped (landing) / ≤ 34 kB (the whitepaper, a long read)', { skip: !has }, () => {
   assert.ok(files.filter(f => f.endsWith('.css') && !/\/pitchdeck-/.test(f)).reduce((a, f) => a + gz(f), 0) <= 14 * KB);
   assert.ok(gz(join(dist, 'index.html')) <= 15 * KB);
-  assert.ok(gz(join(dist, 'whitepaper.html')) <= 34 * KB);   // 33 → 34 on Oct 14 (chapter 08, the penetration test & contracts audit); 26 → 27 on Oct 10 (the free levels, forks and the phone map); 27 → 28 on Oct 11 (the soulbound cNFT badges); 28 → 29 on Oct 12 (Native SIWS & SNS identity); 29 → 31 (the achievements chapter); 31 → 33 (the 31 badge cards with descriptions and art)
+  assert.ok(gz(join(dist, 'whitepaper.html')) <= 34 * KB);   // 33 → 34 on Oct 14 (chapter 08, the security check & contracts audit); 26 → 27 on Oct 10 (the free levels, forks and the phone map); 27 → 28 on Oct 11 (the soulbound cNFT badges); 28 → 29 on Oct 12 (Native SIWS & SNS identity); 29 → 31 (the achievements chapter); 31 → 33 (the 31 badge cards with descriptions and art)
 });
 
 test('media: no single image over 120 kB, all images together ≤ 600 kB; the lazy hero video ≤ 3 MB (the pitch deck\'s own /media/pitchdeck/ is budgeted below)', { skip: !has }, () => {

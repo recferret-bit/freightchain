@@ -35,7 +35,7 @@ describe('HTTP · CORS + shared cookie domain', () => {
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
   });
 
-  describe('pentest H7 / M4: a page that is not ours cannot change state, and no sibling reads the admin API', () => {
+  describe('audit H7 / M4: a page that is not ours cannot change state, and no sibling reads the admin API', () => {
     const API = 'api.freightchain.fun', STORYBOOK = 'https://storybook.freightchain.fun';
     const signedIn = async () => {
       const w = newWallet();

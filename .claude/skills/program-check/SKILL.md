@@ -63,7 +63,7 @@ which **writes a PDA on chain signed by the upgrade authority** (then `solana-ve
 Considered and **not** wired in (2026-10-08): Anchor's built-in fuzzer Crucible (`anchor fuzz`) is Anchor 2.0 only – this is Anchor 1.2.1;
 Trident (Ackee) documents Anchor ≤ 0.3x / Solana SDK 2.3 for 0.12 and 0.13 is a release candidate – revisit after an Anchor upgrade;
 `crytic/solana-lints` (dylint, nightly Rust, small project) and young static analysers (solsec) – not proven enough to gate on.
-The pentest harness (`pentest/scripts/harness.mjs`) emits regex leads for the greppable Sealevel classes, `new_with_signer`, and a direct lamport write. It is not this gate, and a clean lead file is not a clear program.
+The audit harness (`audit/scripts/harness.mjs`) emits regex leads for the greppable Sealevel classes, `new_with_signer`, and a direct lamport write. It is not this gate, and a clean lead file is not a clear program.
 
 ## Reporting
 

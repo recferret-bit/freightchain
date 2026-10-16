@@ -28,7 +28,7 @@ export interface BatchSummary {
   /** a sample that is malformed or out of order, with the verdict's code for it (null = all well-formed) */
   fault: { code: 'bad-sample' | 'sample-out-of-order'; detail: string } | null;
   inputs: InputEvent[];
-  /* Since the pentest of 2026-10 (fix-plan H1 / H3) – optional, absent in older summaries (absent = not measured: the verdict has no opinion there,
+  /* Since the audit of 2026-10 (fix-plan H1 / H3) – optional, absent in older summaries (absent = not measured: the verdict has no opinion there,
      so no SUMMARY_VERSION bump, which would drop the road facts of every older batch – their re-summary has no plan). */
   /** the longest game-time gap between two consecutive samples (s; absent = fewer than two samples) */
   gap?: number;
@@ -44,7 +44,7 @@ export interface BatchSummary {
   gasEdges?: number | null;
   /** the recording's fingerprint: [s ÷ PRINT_METRES, d] – where across the road the truck was each time it entered the next PRINT_METRES of road. Keyed by
       the ROAD, not the clock (a copy shifted in time still matches); two drivers rarely hold the same line to a few cm over a kilometre – a recording copied
-      from another rider of the same pool does (pentest H2, verdict/pool-attention.ts duplicateRecordings) */
+      from another rider of the same pool does (audit H2, verdict/pool-attention.ts duplicateRecordings) */
   print?: [number, number][];
   /** the samples against the server's road (world-facts.ts): hole passes, off-road spells, speed gained without gas. Measured when the batch was accepted;
       null = not measured (a batch stored before the server rebuilt the road, re-summarised from its payload without the ride's seed) */
@@ -78,7 +78,7 @@ export function summariseBatch(seq: number, t0: number, t1: number, samples: rea
       out.fault ??= { code: 'sample-out-of-order', detail: `sample at t=${t} s is outside batch ${seq} or out of order` };
       break;
     }
-    if (prev && t <= (prev[0] ?? 0) && Math.abs(s - (prev[1] ?? 0)) > ZERO_DT_METRES) {   // the game samples on its own clock: two rows of one instant cannot be apart (pentest S4-05)
+    if (prev && t <= (prev[0] ?? 0) && Math.abs(s - (prev[1] ?? 0)) > ZERO_DT_METRES) {   // the game samples on its own clock: two rows of one instant cannot be apart (audit S4-05)
       out.fault ??= { code: 'sample-out-of-order', detail: `the truck moved ${round(Math.abs(s - (prev[1] ?? 0)), 10)} m in no time at t=${t} s in batch ${seq}` };
       break;
     }

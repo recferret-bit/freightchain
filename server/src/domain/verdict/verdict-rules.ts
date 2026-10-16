@@ -2,7 +2,7 @@
    reported), measures how human the input timing is, and checks the answers to the dispatch prompts it issued. Only a broken / missing / inconsistent
    recording – or prompts ignored for most of the ride – REJECTS; timing statistics only FLAG (a flagged ride does not rank until someone looks at it) –
    they start loose and are meant to be tightened on real data. Since version 3 the recording is also held against the server's own rebuild of the ride's road
-   (holes, off-road, speed without gas – world-checks.ts). Version 4 (the pentest of 2026-10): the samples must really cover the time the batches declare
+   (holes, off-road, speed without gas – world-checks.ts). Version 4 (the audit of 2026-10): the samples must really cover the time the batches declare
    (recording-empty, sample-gap, coverage from the samples and at least the governor's time for the distance), the position must not outrun its own
    speedometer (speed-mismatch), the gas bit must match the gas presses (inputs-mismatch, flag) and a coarse clock no longer switches timing checks off.
    Bump RULES_VERSION on any change. */
@@ -25,7 +25,7 @@ export const COVERAGE_REJECT = 0.5;
 export const COVERAGE_FLAG = 0.9;
 /** a ride that moved further than this must have input events, and gas presses among them – and samples ('recording-empty') */
 export const MOVED_METRES = 50;
-/* Since the pentest of 2026-10 (fix-plan H1 / H3; measured since then – older batches have no opinion here) */
+/* Since the audit of 2026-10 (fix-plan H1 / H3; measured since then – older batches have no opinion here) */
 /** the longest game-time gap between two samples (the game samples every 0.1 s of its own clock): above this the recording has holes it hides by
     declaring [t0, t1] around them – 'sample-gap' rejects */
 export const SAMPLE_GAP_REJECT = 1;
@@ -53,7 +53,7 @@ export const REPEAT_SHARE_MAX = 0.6;
 export const INSTANT_HOLD_MS = 10;
 export const INSTANT_SHARE_MAX = 0.3;
 /** Coarse timers: some browsers round performance.now() (Firefox with resistFingerprinting / Tor: 16.7–100 ms) – detected when ≥ TIMER_ALIGN_SHARE of the
-    event times sit on a multiple of one of TIMER_STEPS_MS. The checks then judge on the clock's own grid instead of being skipped (pentest 2026-10, fix-plan L1:
+    event times sit on a multiple of one of TIMER_STEPS_MS. The checks then judge on the clock's own grid instead of being skipped (audit 2026-10, fix-plan L1:
     the step is read off the attacker's own event times, so a skip was an escape): 'repeated-timings' buckets the intervals by the step (a person's gaps still
     spread over seconds); 'instant-presses' counts holds under the step – and from COARSE_TIMER_MS up, where a real quick tap often reads 0 ms, only holds that
     read 0, against INSTANT_SHARE_MAX_COARSE. 10 and 20 ms are no coarse clock any browser has: not in the list. */

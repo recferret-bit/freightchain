@@ -45,7 +45,7 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
     ApplicationModule, // the scheduler dispatches on its bus
     PresentationModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: OriginGuard },   // OriginGuard: pentest H7 (login CSRF, sibling hosts)
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: OriginGuard },   // OriginGuard: audit H7 (login CSRF, sibling hosts)
     DailyFreeRideScheduler, TelemetryRetentionScheduler, StaleRideScheduler, ReplayVerificationScheduler, ProgramWatcher, PoolCrankScheduler, PoolPayoutScheduler, AchievementMintScheduler],
 })
 export class AppModule {}

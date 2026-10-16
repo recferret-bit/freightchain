@@ -4,7 +4,7 @@
 # /api/entities/ (the public bundle, rate-limited + microcached – the snippet written by remote/setup.sh) and /api/editor/ (the model editor, EDITOR_WALLETS
 # only, same-origin, rate-limited); every other /api/ path is a 404 (the app refuses them on this host too). Zones: deploy/nginx/fc-limits.conf.
 # NOTE: setup.sh installs this file only when it is ABSENT – an existing server needs the manual update in docs/agents/deploy.md.
-# No other PAGE is served here (pentest H7: a sibling subdomain is the same site as the API – the lobby, blink.html or a receipt on this name would act
+# No other PAGE is served here (audit H7: a sibling subdomain is the same site as the API – the lobby, blink.html or a receipt on this name would act
 # with the shared session cookie): every other .html, /site/ (the lobby's scripts) and /r/ (receipts) is sent to the apex.
 server {
     listen 80;

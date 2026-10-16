@@ -55,7 +55,7 @@ describe('Pool – what can be bought', () => {
   });
 });
 
-describe('Pool – the ride window (pentest H6: a ride counts only when it ENDED by the play deadline)', () => {
+describe('Pool – the ride window (audit H6: a ride counts only when it ENDED by the play deadline)', () => {
   const live = (playDeadline: Date, windowH = 3) => pool({ status: 'active', prepDeadline: new Date(playDeadline.getTime() - windowH * 3600_000), playDeadline });
   it('no new ride after the sale end: the last start is the prep deadline – the 3 h after it only let shifts on the road finish', () => {
     const p = live(PLAY), sale = PLAY.getTime() - 3 * 3600_000;

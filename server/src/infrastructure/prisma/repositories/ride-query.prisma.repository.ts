@@ -123,7 +123,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
     return rows[0] ? toEntry(rows[0]) : null;
   }
 
-  /** A pool's results count only the rides that ENDED by its play deadline (Pool.rideWindow – pentest H6: a ride started days later still ranked and was paid). */
+  /** A pool's results count only the rides that ENDED by its play deadline (Pool.rideWindow – audit H6: a ride started days later still ranked and was paid). */
   async poolRanking(poolId: number, limit: number, verifiedOnly: boolean): Promise<LeaderboardRow[]> {
     const inWindow = Prisma.sql`r."poolId" = ${poolId} AND r."endedAt" <= (SELECT p."playDeadline" FROM "economy"."Pool" p WHERE p.id = ${poolId})`;
     const page = await this.ranked(this.paidWhere(inWindow, verifiedOnly), 'distance', 0, limit, limit);

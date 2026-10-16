@@ -9,8 +9,8 @@ import { MISMATCH_METRES, SAMPLE_GAP_REJECT } from '../../../src/domain/verdict/
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
 import { hashBatch, recording } from '../../support/recording.js';
 
-/* The recording against itself (pentest 2026-10, fix-plan H1 / H3): samples must really cover the time the batches declare, the position must not run
-   ahead of the recorded speed, and the samples' gas bit must match the gas presses. Promoted from pentest/pocs/server/s4-claude.spec.ts (S4-01, S4-01b,
+/* The recording against itself (audit 2026-10, fix-plan H1 / H3): samples must really cover the time the batches declare, the position must not run
+   ahead of the recorded speed, and the samples' gas bit must match the gas presses. Promoted from audit/pocs/server/s4-claude.spec.ts (S4-01, S4-01b,
    S4-10) and verdict-forge.spec.ts ("a generator that never ran the game"). */
 
 const T0 = new Date(Date.UTC(2036, 9, 8, 12, 0, 0));

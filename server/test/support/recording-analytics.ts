@@ -1,8 +1,9 @@
-import { AnalyticsPort, type AnalyticsEvent } from '../../src/application/ports/analytics/analytics.port.js';
+import { AnalyticsPort, type AnalyticsEvent, type ExceptionCapture } from '../../src/application/ports/analytics/analytics.port.js';
 
 /** Records what a handler enqueued. `capture` can be told to throw, the way a broken adapter must not. */
 export class RecordingAnalytics extends AnalyticsPort {
   readonly events: AnalyticsEvent[] = [];
+  readonly exceptions: ExceptionCapture[] = [];
   on = true;
   throwOnCapture = false;
 
@@ -10,6 +11,12 @@ export class RecordingAnalytics extends AnalyticsPort {
     if (this.throwOnCapture) throw new Error('analytics capture failed');
     if (!this.on) return;
     this.events.push(event);
+  }
+
+  captureException(report: ExceptionCapture): void {
+    if (this.throwOnCapture) throw new Error('analytics capture failed');
+    if (!this.on) return;
+    this.exceptions.push(report);
   }
 
   enabled(): boolean { return this.on; }

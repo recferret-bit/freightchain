@@ -1,0 +1,8 @@
+# Local drops. Not part of the suite.
+# `audit pocs` writes here when --pocs is omitted.
+pocs/*
+!pocs/.gitkeep
+
+# One directory per `audit run`: auditors, harness, PoCs, and Docker build products.
+reports/*
+!reports/.gitkeep

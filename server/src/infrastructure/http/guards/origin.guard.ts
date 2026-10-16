@@ -14,7 +14,7 @@ const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const hostOf = (request: RequestWithPlayer): string => String(request.headers.host ?? '').replace(/:\d+$/, '').toLowerCase();
 
 /**
- * Pentest H7 (login CSRF, a sibling host changing state with the shared session cookie): every state-changing request a BROWSER sends carries Origin, and
+ * Audit H7 (login CSRF, a sibling host changing state with the shared session cookie): every state-changing request a BROWSER sends carries Origin, and
  * a sibling subdomain is the SAME site, so SameSite does not stop it and a form or text/plain POST is a CORS "simple" request the allowlist never sees.
  * So for POST / PUT / PATCH / DELETE: no Origin (a server, the CLI, a wallet app) passes; `Origin: null` (a sandboxed frame, a redirect chain – forceable)
  * never does; the request's own origin passes (the admin page, the apex's /api proxy, dev on localhost); otherwise only CORS_ORIGINS – and on the admin

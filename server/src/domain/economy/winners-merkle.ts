@@ -29,7 +29,7 @@ export function winnerLeaf(poolId: number, rank: number, w: WinnerLeaf, digest: 
 }
 
 /**
- * A pool's winners root (pentest H5-B, program v4 `commit_winners`): RFC 6962 node tag 0x01, an odd last node promoted (the shape of telemetry-merkle.ts and of
+ * A pool's winners root (audit H5-B, program v4 `commit_winners`): RFC 6962 node tag 0x01, an odd last node promoted (the shape of telemetry-merkle.ts and of
  * the program's `merkle_root_from`), and each rank's proof. The program checks a proof against the committed count, so no direction bits are needed.
  */
 export function winnersTree(poolId: number, list: readonly WinnerLeaf[], digest: DigestFn): WinnersTree {

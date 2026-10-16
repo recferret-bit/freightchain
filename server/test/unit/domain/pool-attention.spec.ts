@@ -92,7 +92,7 @@ describe('RideVerdict.addReasons', () => {
   });
 });
 
-describe('pool-duplicate-recording (pentest H2)', () => {
+describe('pool-duplicate-recording (audit H2)', () => {
   /** a line across the road along `n` road steps: the lane (2.4 m) and a person's wobble, from its own seed */
   const line = (seed: number, n = 200): Map<number, number> => { const r = prng(seed); let d = 2.4; const m = new Map<number, number>(); for (let k = 0; k < n; k++) { d += (r() - 0.5) * 0.12; d = Math.max(1.4, Math.min(3.4, d)); m.set(k, Math.round(d * 100) / 100); } return m; };
   const print = (rideId: string, wallet: string, firstAt: number, p: Map<number, number>): RidePrint => ({ rideId, wallet, firstAt, print: p });

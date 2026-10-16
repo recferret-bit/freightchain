@@ -11,7 +11,7 @@ import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.reposit
 import { ClockPort } from '../ports/shared/clock.port.js';
 import { HasherPort } from '../ports/shared/hasher.port.js';
 
-/** What the chain should say about one pledged ride (program v4 RideAttestation – pentest H4: a pledge settles on ITS ride, never on the driver's best one). */
+/** What the chain should say about one pledged ride (program v4 RideAttestation – audit H4: a pledge settles on ITS ride, never on the driver's best one). */
 export type RideFacts =
   | { status: 'verified'; telemetryRoot: Uint8Array; verifiedKm: number }
   /** rejected: its sponsors get everything back */
@@ -48,7 +48,7 @@ export class AttestationService {
     private readonly clock: ClockPort,
   ) {}
 
-  /** The verdict of `rideId` as an attestation of pool `poolId`, read afresh every time (pentest M7: a verdict revoked after an attestation was written). */
+  /** The verdict of `rideId` as an attestation of pool `poolId`, read afresh every time (audit M7: a verdict revoked after an attestation was written). */
   async factsOf(poolId: number, rideId: string): Promise<RideFacts> {
     const ride = await this.rides.findById(rideId);
     if (!ride || ride.poolId !== poolId) return { status: 'none' };

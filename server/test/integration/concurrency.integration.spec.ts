@@ -355,7 +355,7 @@ describe('concurrency (PostgreSQL)', () => {
       const { driver, sponsor, ride, pledge, sig } = await pledged();
       await sponsor.agent.post(`/api/pledges/${pledge.id}/confirm`).send({ signature: sig }).expect(200);
       harness.payoutChain.payoutAddress = 'Payout11111111111111111111111111111111111111';
-      // the ride the attestation rests on: completed, recorded, VERIFIED, 4.3 km (the pledge job reads the rides again before it settles – pentest M7)
+      // the ride the attestation rests on: completed, recorded, VERIFIED, 4.3 km (the pledge job reads the rides again before it settles – audit M7)
       sec(200); // 4.3 km needs a plausible drive; the recording must pass the road work bounds before testing settlement races.
       await prisma.ride.update({ where: { id: ride.id }, data: { status: 'completed', lastS: 4_300, endedAt: harness.clock.now() } });
       for (const b of recording(ride.id, { seconds: 200, distance: 4_300 })) await driver.agent.post(`/api/rides/${ride.id}/batches`).send(b).expect(200);

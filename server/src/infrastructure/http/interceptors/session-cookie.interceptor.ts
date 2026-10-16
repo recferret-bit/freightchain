@@ -8,7 +8,7 @@ import { EnvService } from '../../config/env.service.js';
 import { SESSION_COOKIE } from '../session-cookie.js';
 import type { CookieOptions } from 'express';
 
-/** One set of options for setting AND clearing the session cookie (pentest M3: a clear that differs – no Secure – is ignored by the browser). In production
+/** One set of options for setting AND clearing the session cookie (audit M3: a clear that differs – no Secure – is ignored by the browser). In production
     the cookie is host-only (`__Host-`: no Domain); outside it COOKIE_DOMAIN may still share it with the sibling hosts of a test deployment. */
 export function sessionCookieOptions(env: EnvService): CookieOptions {
   return { httpOnly: true, sameSite: 'lax', secure: env.isProduction, path: '/', ...(!env.isProduction && env.cookieDomain ? { domain: env.cookieDomain } : {}) };
@@ -23,7 +23,7 @@ export class SetSessionCookieInterceptor implements NestInterceptor<SignInResult
     const response = context.switchToHttp().getResponse<Response>();
     return next.handle().pipe(
       map(({ profile, session }) => {
-        // production: host-only on the API host (__Host-, pentest H7-B) – the landing, the lobby and the game all call the API there (hosts.js API_BASE)
+        // production: host-only on the API host (__Host-, audit H7-B) – the landing, the lobby and the game all call the API there (hosts.js API_BASE)
         response.cookie(this.env.sessionCookie, session.token, { ...sessionCookieOptions(this.env), expires: session.expiresAt });
         return profile;
       }),

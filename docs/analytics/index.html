@@ -38,6 +38,7 @@
     <li><a href="#s-client">Browser events</a></li>
     <li><a href="#s-identity">Identity</a></li>
     <li><a href="#s-relay">The relay</a></li>
+    <li><a href="#s-crashes">Crashes</a></li>
     <li><a href="#s-board">The board</a></li>
     <li><a href="#s-vitals">Page speed</a></li>
     <li><a href="#s-env">Keys</a></li>
@@ -381,7 +382,7 @@
 <section aria-labelledby="s-relay">
   <div class="head">
     <span class="eyebrow">POST /api/telemetry</span>
-    <h2 id="s-relay">The only door the browser has</h2>
+    <h2 id="s-relay">The product-event door</h2>
   </div>
   <div class="admin">
     <div class="lock"><span class="n">1</span><b>Optional session</b><span><code>OptionalSessionGuard</code> is the route guard, not an app-wide guard. No cookie is a 200. No player-row lock.</span></div>
@@ -390,6 +391,20 @@
     <div class="lock"><span class="n">4</span><b>Quiet when off</b><span><code>POSTHOG_ENABLED</code> unset, <code>0</code>, or <code>false</code>, an empty or non-<code>phc_</code> key, or <code>POSTHOG_DISABLED</code> of <code>1</code> or <code>true</code> returns <code>enabled: false</code>. The API still boots. <code>emitAnalytics</code> does not build the event.</span></div>
   </div>
   <p class="soft">Default throttle is the global 600 per minute. The adapter flushes at 20 events or 1 second. Shutdown flushes for 500 ms, then drops the queue. Logs name the host, the status, the count, and the event names. They never print the key or the body. Tests stub <code>fetch</code> to <code>https://posthog.test</code> with <code>phc_test</code>. CI does not call PostHog.</p>
+</section>
+
+<section aria-labelledby="s-crashes">
+  <div class="head">
+    <span class="eyebrow">POST /api/client-error</span>
+    <h2 id="s-crashes">Crashes</h2>
+  </div>
+  <p>The landing, the whitepaper, the pitch deck, the lobby, and the game (<code>play.html</code>, including the guest run) listen for an unhandled error or a rejected promise. <code>client/js/crash.js</code> posts a short stack to the API. The server sends one <code>$exception</code> on the same batch as the product events. The project token stays on the server. <code>posthog-js</code> stays out. <code>viewer.html</code> sends nothing.</p>
+  <div class="admin">
+    <div class="lock"><span class="n">1</span><b>Three per page</b><span>One report per error name plus the top frame. <code>console</code> is not hooked. <code>Script error.</code>, <code>ResizeObserver</code>, <code>AbortError</code>, and extension stacks are dropped.</span></div>
+    <div class="lock"><span class="n">2</span><b>Capped</b><span>Ten per IP per minute, 2,000 per UTC day. Over the cap the answer is still 200 with <code>accepted: 0</code>. That stays inside the free 100,000 exceptions a month.</span></div>
+    <div class="lock"><span class="n">3</span><b>Scrubbed</b><span>Query strings and long base58 are cut. The wallet is the session cookie, never a field in the body. The pitch deck sends with no cookie and its own anon id.</span></div>
+    <div class="lock"><span class="n">4</span><b>Not a board tile</b><span><code>$exception</code> is not on dashboard 1006663. Session replay stays off. Hidden Vite maps are not uploaded by this path.</span></div>
+  </div>
 </section>
 
 <section aria-labelledby="s-board">
@@ -477,7 +492,7 @@
     <li><b>A bad key does not take the API down</b><span>Empty, <code>phx_</code>, <code>POSTHOG_ENABLED</code> left unset, or <code>POSTHOG_DISABLED=1</code> disables capture and the process still listens.</span></li>
     <li><b>Demo and real are separate</b><span><code>is_demo</code> is on the event. The video board is the demo tile and says the clock is ×60.</span></li>
     <li><b>The database wins</b><span>Lamports on the board are checked against <code>economy.Payment</code> and <code>split.entries</code> before anyone says the number.</span></li>
-    <li><b>Secrets stay out of the event</b><span>No signature on a client event, no seed, no nonce, no token, no raw error detail. The project token is never logged.</span></li>
+    <li><b>Secrets stay out of the event</b><span>No signature on a client event, no seed, no nonce, no token. A crash sends a scrubbed message and a short stack. The project token is never logged.</span></li>
     <li><b>Heartbeats are not a stream</b><span>Progress is three bands. A short abandon can have zero <code>ride_progressed</code> events, and that is correct.</span></li>
   </ul>
 </section>
@@ -489,7 +504,7 @@
   </div>
   <ul class="limits">
     <li><b>The board has no tiles.</b><span>Dashboard 1006663 is blank. Ingested events show in Activity, not on that board, until someone adds tiles. Capture sends when the running image includes this code and <code>POSTHOG_ENABLED=1</code>.</span></li>
-    <li><b>It does not record the drive.</b><span>Session replay and ride replay belong to verified play (<code>client/js/telemetry.js</code>, the hash-chained batches). This work does not add <code>posthog-js</code>, a second project, or an nginx <code>/ingest/</code> proxy. Replay stays off <code>play.html</code>. <code>web_vital</code> is five numbers about the page load, measured in the browser and posted to the same relay. It is not a recording.</span></li>
+    <li><b>It does not record the drive.</b><span>Session replay and ride replay belong to verified play (<code>client/js/telemetry.js</code>, the hash-chained batches). This work does not add <code>posthog-js</code>, a second project, or an nginx <code>/ingest/</code> proxy. Replay stays off <code>play.html</code>. A crash report is a stack, not a recording. <code>web_vital</code> is five numbers about the page load, measured in the browser and posted to the same relay. It is not a recording.</span></li>
     <li><b>It does not know about tickets, verdicts, or the live stream.</b><span><code>payment_confirmed</code> is the memo-transfer confirm and reconcile. Escrow ticket buys, <code>verified</code> / <code>flagged</code> / <code>rejected</code>, and spectator chat are not events. A ticket ride emits <code>ride_ordered</code>.</span></li>
     <li><b>It does not pay anyone.</b><span>There is no settlement event, no payout event, and no <code>top-20</code> achievement. <code>round_closed</code> is the round rolling over.</span></li>
     <li><b>The alias direction is unresolved.</b><span>See the callout above. The acquisition funnel is not a number until one real session is inspected.</span></li>

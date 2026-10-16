@@ -130,7 +130,7 @@ describe('CrankPoolsHandler', () => {
     });
   });
 
-  describe('program v4 (pentest WP5)', () => {
+  describe('program v4 (audit WP5)', () => {
     it('a new pool\'s road is sealed once its target slot can have passed (L4) – and the mirror takes the road from the RoadSealed event', async () => {
       const { ctx, crank, run } = setup();
       const t = ctx.now().getTime();

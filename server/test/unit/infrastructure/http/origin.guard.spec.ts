@@ -4,7 +4,7 @@ import { CrossOriginPublic, OriginGuard } from '../../../../src/infrastructure/h
 import { ForbiddenError, NotFoundError } from '../../../../src/domain/shared/errors.js';
 import type { EnvService } from '../../../../src/infrastructure/config/env.service.js';
 
-/* Pentest H7: a state-changing request from a page that is not ours never reaches a handler, whatever cookie it carries (a sibling subdomain is the same site). */
+/* Audit H7: a state-changing request from a page that is not ours never reaches a handler, whatever cookie it carries (a sibling subdomain is the same site). */
 class Routes { player(): void { /* a player route */ } }
 @CrossOriginPublic() class Blinks { post(): void { /* a Solana Action */ } }
 const env = (corsOrigins: string[], adminHost: string | null = null) => ({ corsOrigins, adminHost } as unknown as EnvService);

@@ -52,7 +52,7 @@ export class EnvService {
   get clientDir(): string { return this.env.CLIENT_DIR ?? defaultClientDir(); }
   get landingDir(): string { return this.env.LANDING_DIR ?? defaultLandingDir(); }
   get cookieDomain(): string | undefined { return this.env.COOKIE_DOMAIN; }
-  /** the player session cookie's name: host-only `__Host-fc_session` in production (pentest H7-B), `fc_session` elsewhere */
+  /** the player session cookie's name: host-only `__Host-fc_session` in production (audit H7-B), `fc_session` elsewhere */
   get sessionCookie(): string { return this.isProduction ? '__Host-fc_session' : 'fc_session'; }
   /** storybook editor session: `__Host-` in production (no Domain, Path=/), `fc_editor` on Path /api/editor otherwise */
   get editorCookie(): string { return this.isProduction ? '__Host-fc_editor' : 'fc_editor'; }

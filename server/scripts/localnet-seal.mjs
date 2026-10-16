@@ -1,4 +1,4 @@
-// Program v4 (pentest L4) for the localnet scripts: a new pool's road is sealed by `seal_road` from the hash of a slot SEAL_DELAY_SLOTS (8, ~3 s) after it
+// Program v4 (audit L4) for the localnet scripts: a new pool's road is sealed by `seal_road` from the hash of a slot SEAL_DELAY_SLOTS (8, ~3 s) after it
 // opened; until then the server serves no ride on it (409 road_not_sealed). The server's crank does this on its schedule – the money / payout / chaos scenarios
 // run the crank by hand, so they seal each pool they create themselves, right after it (before pool:register, so the mirror reads a sealed account).
 //   import { sealRoad } from './localnet-seal.mjs';  await sealRoad({ conn, codec, admintool, id, keyfile })   → the seal-road JSON, or null (sealed already)

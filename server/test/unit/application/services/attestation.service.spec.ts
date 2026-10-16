@@ -131,7 +131,7 @@ describe('AttestationService', () => {
       expect(sent()).toEqual([]);
     });
 
-    it('two rides of one driver in one pool get one attestation EACH, with their own km (pentest H4: never the driver\'s best ride)', async () => {
+    it('two rides of one driver in one pool get one attestation EACH, with their own km (audit H4: never the driver\'s best ride)', async () => {
       const { service, ride, stored } = await setup();
       const short = await ride(3_500), long = await ride(42_100);
       await service.attestRide(1, short);
@@ -150,7 +150,7 @@ describe('AttestationService', () => {
       expect(sent()).toEqual([]);
     });
 
-    it('on chain but no longer what the verdict says is WRITTEN AGAIN (pentest M7): other km → VERIFIED anew, revoked → FLAGGED, accepted since → VERIFIED, UNVERIFIED → decided', async () => {
+    it('on chain but no longer what the verdict says is WRITTEN AGAIN (audit M7): other km → VERIFIED anew, revoked → FLAGGED, accepted since → VERIFIED, UNVERIFIED → decided', async () => {
       const { service, ride, onChain, stored, revoke } = await setup();
       const km = await ride(25_400);
       onChain(km, ATTESTATION_VERIFIED, 3);

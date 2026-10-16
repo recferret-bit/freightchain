@@ -161,7 +161,7 @@ describe('RideVerdict.judge', () => {
       expect(timerStepMs([1000 / 60, 2000 / 60, 50, 100, 1000 / 6, 200, 250, 300].map((t) => Math.round(t * 10) / 10))).toBeGreaterThanOrEqual(10);
     });
 
-    it('a script does not hide behind a coarse clock: metronome gaps and 0 ms holds on a 100 ms grid are still flagged (pentest L1)', () => {
+    it('a script does not hide behind a coarse clock: metronome gaps and 0 ms holds on a 100 ms grid are still flagged (audit L1)', () => {
       const events = Array.from({ length: 12 }, (_, i) => [[i * 1000, 'KeyW', 1], [i * 1000, 'KeyW', 0]] as InputEvent[]).flat();
       const { reasons, scores } = checkHumanTiming(events);
       expect(scores.timerStepMs).toBe(100);

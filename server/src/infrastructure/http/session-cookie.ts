@@ -4,7 +4,7 @@ import type { EditorTokenPort } from '../../application/ports/editor/editor-toke
 
 /** The session lives in an httpOnly cookie: page JavaScript never sees the token. Outside production (dev, tests) it is this name… */
 export const SESSION_COOKIE = 'fc_session';
-/** …and in production this one (pentest H7-B): `__Host-` = Secure, Path=/ and NO Domain, so the browser keeps it to the API host alone – a sibling
+/** …and in production this one (audit H7-B): `__Host-` = Secure, Path=/ and NO Domain, so the browser keeps it to the API host alone – a sibling
     subdomain (storybook.*, whitepaper.*) neither receives it nor can plant one in its place (cookie tossing / session fixation). EnvService.sessionCookie. */
 export const HOST_SESSION_COOKIE = '__Host-fc_session';
 /** The admin session: its own cookie – host-only (admin.<apex>), path /api/admin, SameSite=Strict, short (admin-cookie.interceptor.ts). */

@@ -4351,7 +4351,7 @@
     {
       "name": "RideAttestation",
       "docs": [
-        "v4 (pentest H4): the server's verdict on ONE ride, written by the payout key – a pledge on that ride settles on it (`verified_km`), and only from",
+        "v4 (audit H4): the server's verdict on ONE ride, written by the payout key – a pledge on that ride settles on it (`verified_km`), and only from",
         "`settle_from` (the review lock: every RideAttestationRecorded is public that long first). Final once a pledge was settled on it."
       ],
       "type": {
@@ -4774,7 +4774,7 @@
     {
       "name": "SponsorReceipt",
       "docs": [
-        "v4 (pentest M8): what `sponsor` put into a pool – `refund_sponsor` pays it back if the pool fails."
+        "v4 (audit M8): what `sponsor` put into a pool – `refund_sponsor` pays it back if the pool fails."
       ],
       "type": {
         "kind": "struct",

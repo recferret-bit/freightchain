@@ -56,7 +56,7 @@ PROGRAM_ID=8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p RPC_URL=$RPC bash .claud
 bash $D admin set-series -k $PWD/$K/admin.json --tier 1h … --enabled true
 ```
 
-## v4 (pentest fixes: winners root, ride attestations, sponsor receipts, seal_road, floors) – an in-place upgrade
+## v4 (audit fixes: winners root, ride attestations, sponsor receipts, seal_road, floors) – an in-place upgrade
 
 v4 grows `Pool` (a v3 pool no longer deserializes – settle-first, like v3) AND `Config` (+ the two floors): right after the deploy the admin runs
 `migrate_config_v4` once; until then every step that relies on a floor refuses with `ConfigNotMigrated` (pause / treasury changes still work). v3 tickets

@@ -6,7 +6,7 @@ import { apiPath } from '../api-path.js';
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**
- * The API takes JSON (pentest H7): a form post (urlencoded / multipart), text/plain or an `<a ping>` (text/ping) is what another page can send without a CORS
+ * The API takes JSON (audit H7): a form post (urlencoded / multipart), text/plain or an `<a ping>` (text/ping) is what another page can send without a CORS
  * preflight, so a body of any type but JSON on a state-changing /api request is a 415 before Nest's parsers run – an allowlist, so no simple type is
  * forgotten – except text/plain on the beacon routes (a closing tab's /end, beacon-body.middleware).
  * A request without a body (no content-type) passes: the Origin guard judges it.

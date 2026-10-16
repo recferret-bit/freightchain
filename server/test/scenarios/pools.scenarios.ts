@@ -141,7 +141,7 @@ export function poolScenarios(h: () => Harness): void {
       expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'rides_closed', detail: `rides for pool #1 closed at ${rideBy.toISOString()}` });
     });
 
-    it('program v4 (pentest L4): no ride on a pool whose road is not sealed – 409 road_not_sealed; the RoadSealed event lets it ride, on the sealed road', async () => {
+    it('program v4 (audit L4): no ride on a pool whose road is not sealed – 409 road_not_sealed; the RoadSealed event lets it ride, on the sealed road', async () => {
       await seedPool({ id: 1, status: 'active', sealSlot: 900 });
       await seedPromo('ONE', { effect: ticketEffect({ credits: 1 }) });
       const w = await login();

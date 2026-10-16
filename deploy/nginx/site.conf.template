@@ -3,7 +3,7 @@
 #   __ROOT__        landing + lobby (static pages, served by the app)
 #   ride.__ROOT__   the game (play.html + js/css)
 #   api.__ROOT__    the API only – every other path is a 404
-# The app serves client/ and /api on all three; the browser reaches the API on api.* with CORS + the session cookie, host-only on api.* (`__Host-fc_session`, pentest H7-B; COOKIE_DOMAIN / CORS_ORIGINS in the app env).
+# The app serves client/ and /api on all three; the browser reaches the API on api.* with CORS + the session cookie, host-only on api.* (`__Host-fc_session`, audit H7-B; COOKIE_DOMAIN / CORS_ORIGINS in the app env).
 # To add a domain/subdomain later: add a server block here (+ `certbot --nginx --expand -d ...`), and its origin to CORS_ORIGINS if the browser calls the API from it.
 
 server {

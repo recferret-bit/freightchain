@@ -38,7 +38,7 @@ refuse_placeholders() {
 
 # The environment the containers get (stdout): every key of deploy/.env except the local-only DEPLOY_* ones, plus the values derived from the domain.
 # DEPLOY_DOMAIN is the APEX (landing + lobby); the game is ride.<apex>, the API api.<apex>. Everything that has to agree with those names is DERIVED, never typed twice:
-# APP_DOMAIN / APP_ORIGIN (in the wallet's sign-in message = the page the rider signs in on), COOKIE_DOMAIN (the apex the admin host and the game host derive from; the PLAYER session cookie is host-only on api.* since pentest H7-B), CORS_ORIGINS (who may call the API).
+# APP_DOMAIN / APP_ORIGIN (in the wallet's sign-in message = the page the rider signs in on), COOKIE_DOMAIN (the apex the admin host and the game host derive from; the PLAYER session cookie is host-only on api.* since audit H7-B), CORS_ORIGINS (who may call the API).
 # whitepaper.<apex> and pitchdeck.<apex> are in that list for analytics only (web vitals / page views to POST /api/telemetry; the deck sends them without credentials). storybook. and admin. are not: the model viewer calls nothing, and the admin page calls the API on its own host.
 app_env() {
   grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$ENV_FILE" | grep -v '^DEPLOY_' || true

@@ -16,6 +16,7 @@ import { renderBoard } from './lobby-board.js';
 import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
 import { homeBlinkUrl } from '../js/ui/share.js';
 import { track, flushSoon } from '../js/analytics.js';
+import { watchCrashes } from '../js/crash.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
 import { FREE_COUNTRIES } from '../js/free-countries.js';
@@ -25,6 +26,7 @@ import { formatDriver, getCachedSns, reverseResolveSns, seedSns } from './sns.js
 
 /* The lobby: NEW RIDE · LIVE · REPLAYS · LEADERBOARD · ACHIEVEMENTS · GARAGE · PROFILE. Vanilla DOM, no framework.
    Everything that comes from the server (wallet addresses, route ids, statuses…) goes in with textContent – never innerHTML – because other riders' data is rendered here. */
+watchCrashes('lobby');
 reportWebVitals('lobby');   // before the session check, so a bounce back to the landing still reports the load
 const $ = id => document.getElementById(id);
 const view = $('view');

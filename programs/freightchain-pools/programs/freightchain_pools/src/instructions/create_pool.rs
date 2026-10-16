@@ -69,7 +69,7 @@ pub fn check_money_rules(price_lamports: u64, min_tickets: u32, max_tickets: u32
 }
 
 /// v4: the windows every new pool keeps (Config floors): `finish` after the sale (the last call: no sale, no new ride – the shifts on the road
-/// finish), `review` after the play deadline (pentest H5).
+/// finish), `review` after the play deadline (audit H5).
 pub fn check_windows(config: &Account<Config>, finish: i64, review: i64) -> Result<()> {
     crate::state::require_migrated(config)?;
     require!(finish >= config.min_finish_secs && review >= config.min_review_secs, PoolError::WindowTooShort);
@@ -162,7 +162,7 @@ pub fn init_pool<'info>(
         rent_min()?,
     )?;
     let pool_id = config.pool_count;
-    // v4 (pentest L4): the road is NOT taken from the newest slot hash now – the opener could pick that moment and grind the road; it is sealed
+    // v4 (audit L4): the road is NOT taken from the newest slot hash now – the opener could pick that moment and grind the road; it is sealed
     // from a slot a few slots ahead, which nobody can know yet (`seal_road`). Until then no ride is served.
     let seal_slot = Clock::get()?.slot.checked_add(SEAL_DELAY_SLOTS).ok_or(PoolError::MathOverflow)?;
     config.pool_count = pool_id.checked_add(1).ok_or(PoolError::MathOverflow)?;

@@ -67,7 +67,7 @@ describe('telemetry-merkle', () => {
     expect(root.length).toBe(32);
   });
 
-  it('an UNHASHED batch is bound by the server\'s hash of its content: two of them with different content never share a leaf (pentest M13)', () => {
+  it('an UNHASHED batch is bound by the server\'s hash of its content: two of them with different content never share a leaf (audit M13)', () => {
     const [a, b] = recording('ride-m', { seconds: 30 }).map((x) => ({ ...x, hash: null }));
     const ra = RideBatch.accept('ride-m', a!, hashBatch(a!), new Date(0)), rb = RideBatch.accept('ride-m', b!, hashBatch(b!), new Date(0));
     expect(ra.serverHash).toBe(hashBatch(a!));

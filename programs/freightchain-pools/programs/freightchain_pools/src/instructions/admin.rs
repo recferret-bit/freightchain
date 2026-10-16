@@ -128,7 +128,7 @@ pub struct AcceptAuthority<'info> {
     pub config: Account<'info, Config>,
 }
 
-/// Step 2 (the pending key signs): it becomes `authority`, pending is cleared – and so is the payout key (pentest L8: a key the OLD admin named must
+/// Step 2 (the pending key signs): it becomes `authority`, pending is cleared – and so is the payout key (audit L8: a key the OLD admin named must
 /// not keep committing winners under the new one; the new admin names its own).
 pub fn handle_accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
     let c = &mut ctx.accounts.config;

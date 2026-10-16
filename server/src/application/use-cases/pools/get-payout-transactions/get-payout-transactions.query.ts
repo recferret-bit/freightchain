@@ -26,7 +26,7 @@ export interface PayoutTxDto {
 
 export interface SignableTxDto { transaction: string; message: string; lastValidBlockHeight: number }
 
-/** What the admin signs in Phantom (program v4, pentest H5-B): the winners root is COMMITTED first (`commit`), public until `payFrom`; then one pay_prize per unpaid
+/** What the admin signs in Phantom (program v4, audit H5-B): the winners root is COMMITTED first (`commit`), public until `payFrom`; then one pay_prize per unpaid
     rank (anyone may send them; the admin pays the fee here), then close_pool once every rank is paid. A committed root that is not the ranking any more is struck
     with `veto` (only while no rank is paid) – the next call offers the commit again. */
 export interface PayoutTransactionsDto {

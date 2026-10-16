@@ -259,7 +259,7 @@ export class Ride {
     this.close(RideStatus.Cancelled, 'replaced by a paid ride', now);
   }
 
-  /** A ready TICKET ride whose pool closed for rides before it started (a shift started now would end after the play deadline – pentest H6): it can never
+  /** A ready TICKET ride whose pool closed for rides before it started (a shift started now would end after the play deadline – audit H6): it can never
       count, so it is closed. Its ticket was spent at the order and is not given back – the money stays in the pool's pot (the decision of 2026-10-14). */
   closeRidesClosed(now: Date, deadline: Date): void {
     this.mustBe(RideStatus.Created);

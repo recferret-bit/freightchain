@@ -71,7 +71,7 @@ export interface PoolProps {
   /** the SlotHashes entry behind it: the bank hash (base58 – the column is named blockhash) and its slot */
   blockhash?: string | null;
   slot?: bigint | number | null;
-  // ---- program v4 (pentest WP5), mirrored from the Pool account
+  // ---- program v4 (audit WP5), mirrored from the Pool account
   /** the slot whose hash seals the road; > 0 with no seedCommitment = not sealed yet: no ride is served (L4); null = an account without it */
   sealSlot?: number | null;
   /** the committed winners root (base64), when, and the first moment it pays (H5-B); null = none on chain */

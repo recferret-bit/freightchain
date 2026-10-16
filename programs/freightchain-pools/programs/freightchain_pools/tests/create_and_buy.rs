@@ -229,7 +229,7 @@ fn a_new_pool_has_no_road_yet_only_a_target_slot_a_few_slots_ahead() {
     let r = e.send(&[i], &c, &[&a]).unwrap();
     e.next_pool += 1;
     let pool = e.pool(id);
-    // pentest L4: the opener could pick the moment it opens – so the road is not taken from that moment's slot hash
+    // audit L4: the opener could pick the moment it opens – so the road is not taken from that moment's slot hash
     assert_eq!((pool.seed_commitment, pool.seed_slot, pool.seal_slot), ([0u8; 32], 0, 500 + SEAL_DELAY_SLOTS));
     let ev = events::<PoolCreated>(&r.logs);
     assert_eq!((ev[0].seed_commitment, ev[0].seed_slot), ([0u8; 32], 500 + SEAL_DELAY_SLOTS), "the event names the target slot");
@@ -289,7 +289,7 @@ fn the_platform_cut_is_snapshotted_when_the_pool_opens() {
     let id = e.create_pool(default_params());
     let auth = e.authority_kp();
     e.set_config(&auth, None, None, Some(2_000)).unwrap();
-    assert_eq!(e.pool(id).platform_fee_bps, 500, "pentest L8: the buyers saw 5 %; a later change does not reach this pool");
+    assert_eq!(e.pool(id).platform_fee_bps, 500, "audit L8: the buyers saw 5 %; a later change does not reach this pool");
 }
 
 /// red-team v4 S3: the target slot (and the ones after it) were skipped – nothing at or after it is in SlotHashes YET: wait, never re-arm (re-arming here would

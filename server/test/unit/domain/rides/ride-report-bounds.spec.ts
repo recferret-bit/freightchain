@@ -2,9 +2,9 @@ import { Ride } from '../../../../src/domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../src/domain/rides/ride-status.js';
 import { GAME_SLACK_METRES, GAME_SPEED_SLACK, MAX_SPEED, RIDE_SLACK_METRES, RIDE_SPEED_SLACK } from '../../../../src/domain/rides/ride-rules.js';
 
-/* What a heartbeat may claim (Ride.applyReport) – the pentest findings H3 (beats 1 s apart, each with the per-beat slack: 1.9× the governor) and S4-10
+/* What a heartbeat may claim (Ride.applyReport) – the audit findings H3 (beats 1 s apart, each with the per-beat slack: 1.9× the governor) and S4-10
    (a game clock that stands still while s moves: 0 s credited, so the recording's coverage defaulted to 1). Replaces the PoC
-   pentest/pocs/server/verdict-forge.spec.ts "does not credit along-road progress faster than the governor". */
+   audit/pocs/server/verdict-forge.spec.ts "does not credit along-road progress faster than the governor". */
 
 const T0 = new Date(Date.UTC(2036, 9, 8, 12, 0, 0));
 const at = (s: number) => new Date(T0.getTime() + s * 1000);

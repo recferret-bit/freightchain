@@ -95,7 +95,7 @@ pub struct RefundSponsor<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// v4 (pentest M8): permissionless – a failed / cancelled / expired pool (Refunding) gives each sponsor its sponsorship back, like a ticket refund;
+/// v4 (audit M8): permissionless – a failed / cancelled / expired pool (Refunding) gives each sponsor its sponsorship back, like a ticket refund;
 /// the pool closes only once every sponsor is refunded.
 pub fn handle_refund_sponsor(mut ctx: Context<RefundSponsor>, pool_id: u32) -> Result<()> {
     let a = &mut ctx.accounts;

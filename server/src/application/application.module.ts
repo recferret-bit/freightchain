@@ -16,6 +16,7 @@ import { AdminProofService } from './services/admin-proof.service.js';
 import { GameSettingsService } from './services/game-settings.service.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
 import { RecordTelemetryHandler } from './use-cases/telemetry/record-telemetry/record-telemetry.handler.js';
+import { ReportClientErrorHandler } from './use-cases/telemetry/report-client-error/report-client-error.handler.js';
 import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
 import { LogoutHandler } from './use-cases/auth/logout/logout.handler.js';
 import { RequestChallengeHandler } from './use-cases/auth/request-challenge/request-challenge.handler.js';
@@ -183,7 +184,7 @@ const handlers: Provider[] = [
   GetLiveHandler, GetProfileHandler,
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
-  RecordTelemetryHandler,
+  RecordTelemetryHandler, ReportClientErrorHandler,
   ListPoolsHandler, GetPrizePoolHandler, GetPoolStandingsHandler, HoldPoolPayoutHandler, ListPoolPayoutsHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler, AcceptAgreementsHandler, GetGarageHandler, SaveGarageHandler,
   CreateAdminPromoHandler, DisableAdminPromoHandler, ListPromoRedemptionsHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
