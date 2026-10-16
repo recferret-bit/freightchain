@@ -38,6 +38,7 @@ export const wakeCoins = () => { coinStill = 0; coinRaf ||= requestAnimationFram
    `slant` is a real tip (not "held normally"), and only then do the side walls act as floors. */
 let gX = 0, gY = 1, slant = false, wokeX = 0, wokeY = 1;
 export function setCoinGravity(x, y) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return;   // a bad sensor sample must not poison the pile's position / velocity
   gX += (x - gX) * .2; gY += (y - gY) * .2;
   slant = Math.abs(gX) > .2 || gY < .75;
   if (Math.hypot(gX - wokeX, gY - wokeY) < .04) return;
@@ -153,7 +154,8 @@ export function donate() {
   toast(`+${sol.toFixed(2)} SOL`, `${what} · ${usd(sol * SOL_USD)} · ${b58(4)}…${b58(4)}`); shakeScreen();
   if (reduced) return;
   const n = 5 + Math.floor(Math.random() * 5);
-  for (let i = n; i > 0; i--) coins.push({ v: sol / n, x: 120 + Math.random() * 1680, y: -60 - Math.random() * 520, vx: (Math.random() - .5) * 260, vy: Math.random() * 200, r: 18 + Math.random() * 12, a: Math.random() * 6.3, w: (Math.random() - .5) * 8 });
+  // A tilted / flat phone may never pull a coin down from above the stage: put its new SOL inside the walls instead.
+  for (let i = n; i > 0; i--) coins.push({ v: sol / n, x: 120 + Math.random() * (view.w - 240), y: slant ? CEIL + 60 + Math.random() * (floor() - CEIL - 120) : -60 - Math.random() * 520, vx: slant ? gX * Math.random() * 200 : (Math.random() - .5) * 260, vy: gY * Math.random() * 200, r: 18 + Math.random() * 12, a: Math.random() * 6.3, w: (Math.random() - .5) * 8 });
   coins.splice(0, Math.max(0, coins.length - COIN_MAX));
   wakeCoins();
 }
