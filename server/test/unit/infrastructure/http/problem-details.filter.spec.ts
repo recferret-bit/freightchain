@@ -1,4 +1,5 @@
 import type { ArgumentsHost } from '@nestjs/common';
+import { ThrottlerException } from '@nestjs/throttler';
 import { ProblemDetailsFilter } from '../../../../src/infrastructure/http/filters/problem-details.filter.js';
 import { ConflictError, TooManyRequestsError } from '../../../../src/domain/shared/errors.js';
 
@@ -7,6 +8,7 @@ function hostFor(headersSent = false) {
   const response = {
     headersSent,
     setHeader: (k: string, v: string) => { sent.headers[k] = v; },
+    getHeaders: () => sent.headers,
     status(code: number) { sent.status = code; return this; },
     send(body: string) { sent.body = body; },
     end() { sent.ended = true; },
@@ -42,6 +44,12 @@ describe('ProblemDetailsFilter', () => {
     expect(sent.status).toBe(500);
     expect(sent.body).not.toContain('hunter2');
     expect(errors[0]).toMatch(/internal_error requestId=req-12345678 method=POST path=\/api\/rides[\s\S]*hunter2/);
+  });
+
+  it('named throttle buckets also send the standard Retry-After header', () => {
+    const { sent, host } = hostFor(); sent.headers['Retry-After-editor-rps'] = '1';
+    new ProblemDetailsFilter().catch(new ThrottlerException(), host);
+    expect(sent.headers['Retry-After']).toBe('1');
   });
 
   it('if the response already started, it only ends it', () => {

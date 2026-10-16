@@ -16,9 +16,9 @@ description: >
 
 # 3D assets
 
-The viewer (`client/viewer.html`) builds its catalogue by calling the game's builders (`client/js/viewer.js`). Edit that builder. Do not add a mesh that only the viewer draws, and do not register a catalogue row by hand.
+Every model is an ENTITY: a data-only module `export default { … }` in `client/shared/entity/seed/<kind>/<id>.js` (no functions; numbers can be expression strings like `'h * 0.45'`), built by one interpreter (`client/shared/entity/plan.js` → `client/js/world/entity-build.js`). The viewer (`client/viewer.html`, catalogue in `client/js/catalogue.js`) builds the same entities the game does. Edit the entity. Do not add a mesh that only the viewer draws, and do not register a catalogue row by hand.
 
-Frames, materials, mirrors and pools stay in `docs/agents/world.md` ("Landmarks", "Themes (routes)") and `docs/agents/client.md` ("Rendering gotchas", "Object pools"). Before a mount, a yaw, a wheel axis, or a collider that must match a mesh, read the `threejs-frame-conventions` skill. Pin the sign with a number `shot.mjs` prints.
+The format (parts, loops, materials, `use` / `ref`, roles) is in `docs/agents/world.md` ("Entities"). What an entity may NOT change is gameplay, in `client/shared/entity/roster.js`: collision kind and size, landmark footprints and order, which vehicles have a siren; vehicle sizes are `VEHICLES` in `client/shared/traffic.js`. Frames, materials, mirrors and pools stay in `docs/agents/world.md` and `docs/agents/client.md` ("Rendering gotchas", "Object pools"). Pin a sign or an axis with a number `shot.mjs` prints.
 
 ## Kind
 
@@ -36,15 +36,15 @@ Before generating a mesh, an image, or a `.glb` of one of these, run:
 node .claude/skills/3d-assets/validate.mjs "the user's sentence"
 ```
 
-Exit 1: stop. Quote `errors`. Do not edit a builder and do not call `image_gen` or `three_d.py`. Use `expect` from an exit-0 run as the spec. Exit 0 with `"skipped": true` is a rock, cactus, bush, or other prop: use the prop row below, not a kind file. A review of an existing catalogue id skips the validator unless the change states a count or a part (wheels, axles, trunk, canopy, roof, walls, storeys).
+Exit 1: stop. Quote `errors`. Do not edit an entity. Use `expect` from an exit-0 run as the spec. Exit 0 with `"skipped": true` is a rock, cactus, bush, or other prop: use the prop row below, not a kind file. A review of an existing catalogue id skips the validator unless the change states a count or a part (wheels, axles, trunk, canopy, roof, walls, storeys).
 
 ## Which job
 
 | ask | done when |
 |---|---|
 | review / fix a visual report | every note is a catalogue id with a before/after shot, or a moving behaviour checked outside the viewer |
-| add a 3D object | the builder below owns it, the list prints its id, and the three shots show it |
-| change an existing object | that same builder, shots of the ids you touched, no other mesh retuned |
+| add a 3D object | a new entity file (+ a roster row and a call site if the game places it), the list prints its id, and the three shots show it |
+| change an existing object | that entity, shots of the ids you touched, no other mesh retuned |
 
 Match a note to an id from the list. The wording may not be the viewer's label. The picture decides. When the note is about a body or its wheels, shoot every listed paint of that vehicle.
 
@@ -52,15 +52,17 @@ Match a note to an id from the list. The wording may not be the viewer's label. 
 
 | object | file |
 |---|---|
-| traffic vehicle | `client/js/world/vehicles.js` — `STYLES` is the mesh, `VEHICLES` is size / mass / speed / presets. Id shape `veh-<type>-<pick>` |
-| prop | `client/js/themes/_shared/props-basic.js`, or that route's `props.js`. A new collision kind is a `KINDS` row in `client/js/world/props.js` (docs/agents/world.md "Themes") |
-| furniture | `client/js/themes/_shared/furniture.js`, switched on by the theme's `furniture` options |
-| landmark | `client/js/themes/_shared/landmarks/` (docs/agents/world.md "Landmarks", including `c.sign`) |
-| finish gantry | `client/js/world/gantry.js`, banner from the theme's `finishText` |
+| traffic vehicle | `seed/vehicle/<type>.js` + the shared parts `seed/part/veh-*.js` (wheels, lights, siren, bodies). Size / mass / speed / presets are `VEHICLES` (`client/shared/traffic.js`), never the entity. Id shape `<type>`, `sedan#<paint>` |
+| prop | `seed/prop/<id>.js`; which prop a route places with which params and materials is that route's `client/js/themes/<route>/props.js`. A new collision kind is a `KINDS` row in `client/js/world/props.js` + a roster row. Id shape `<route>/<id>` |
+| furniture | `seed/furniture/{post,lamp,pole,guard}.js`; spacing and sides stay in `client/js/themes/_shared/furniture.js` |
+| landmark | `seed/landmark/<id>.js` (+ the parts `cruiser`, `lm-pump`, `lm-cones`); footprint and order are `ROSTER.landmark`; signs and facades are painters in `client/js/themes/_shared/landmarks/index.js` |
+| finish gantry | `seed/gantry/gantry.js`, banner painter in `client/js/world/gantry.js` |
+
+(`seed/` = `client/shared/entity/seed/`; after adding or removing a file run `node client/tools/entity-seed-index.mjs`.) Check an edited entity with `node --test client/test/entity.test.mjs` – it validates every seed (shape, expressions, the roster contract, finite numbers at every param's min and max).
 | road hole | `client/js/world/holes.js`. Not in the catalogue |
 | depot, junctions, road surface, player trailer | `client/js/world/depot.js`, `junctions.js`, `roadmesh.js`, `trailer.js`. Not in the catalogue. The cab is 2D (`client/js/cockpit/`) |
 
-`mk(geo, mat, sx, sy, sz, x, y, z)` in `world/props.js` scales, then positions. Elsewhere set position with `.position.set`.
+A `geo` part is `mk(geo, mat, sx, sy, sz, x, y, z)` (scale, then position); `anchor: 'base'` puts its bottom on `at.y` (landmarks). A `sign` part's `at.y` is the bottom of the board, a `disk`'s is its centre.
 
 If the list has no id, the viewer never builds that object. Screenshot it from `client/` with `node tools/e2e-chrome.mjs`. Do not clone it into the viewer to get a shot.
 
@@ -78,7 +80,7 @@ From the repo root (the script finds the repo from its own path):
 
 ```sh
 node .claude/skills/3d-assets/shot.mjs
-node .claude/skills/3d-assets/shot.mjs veh-sedan-0 route66-cactus1
+node .claude/skills/3d-assets/shot.mjs sedan route66/cactus
 ```
 
 No arguments prints the catalogue and exits. Each id argument is measured and saved as `right`, `front`, and `threeq` PNGs. `PORT` is the Chrome debug port (default `9336`; `9333` and `9334` are the other e2e scripts). `SHOTS` is the directory.

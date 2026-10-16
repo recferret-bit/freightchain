@@ -64,7 +64,7 @@ ending and a donation, `stats:reconcile` clean → broken row found → fixed.
 - **Donations – final.** Mock tips and paid donations both count as donations; only paid ones add lamports. Production has no mock donations (`LIVE_FREE_DONATIONS=off`), so there the numbers are paid-only.
 - **History – built** (`DailyStats`, above). Per-route / per-tier splits beyond free / paid are not kept: they can be recomputed from `ride.Ride` when a chart needs them.
 - **Distance leaderboard from the totals – not built, on purpose.** The existing boards rank verified paid / free shifts by their own rules; a second board from raw totals would rank unverified distance next to them and confuse the rules. `PlayerStats.metres` is there if the product decides otherwise.
-- **Redis is single-instance and statistics-only – a documented constraint.** Sessions, rate limits and the live board's presence are per process (one app container, `docs/backend-architecture.md`); scaling to a second app instance means moving those to Redis first, a separate piece of work.
+- **Redis holds the statistics cache and, when `REDIS_URL` is set, the HTTP rate-limit counters** (shared by every app instance). Sessions and the live board's presence stay per process. Scaling to a second app instance still means moving those two to Redis first.
 - **Rollback – procedure, not a bug.** A rollback keeps the new tables (forward-only); the old image ignores them and rides it ends are not counted. After any rollback (and after the first deploy of this release) run `npm run deploy:stats` – and `-- --fix` if it shows drift – which rebuilds riders, game and history from the rides.
 
 ## Status (2026-10-09)

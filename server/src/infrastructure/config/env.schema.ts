@@ -1,8 +1,24 @@
 import { z } from 'zod';
 import { isWalletAddress } from '../../domain/players/wallet-address.js';
+import { isIpRule } from './ip-rules.js';
 
 /** `KEY=` in a .env file arrives as an empty string – treat it as "not set". */
 const optional = <T extends z.ZodTypeAny>(schema: T) => z.preprocess((v) => (v === '' ? undefined : v), schema.optional());
+
+const MCP_HOSTS = new Set(['mcp', '127.0.0.1', 'localhost']);
+const MCP_BLOCKED = new Set(['169.254.169.254', 'metadata.google.internal', '0.0.0.0']);
+/** production EDITOR_MCP_URL: the internal MCP only, no userinfo, so the bearer and job token cannot be pointed at another host */
+function mcpUrlIssue(raw: string): string | null {
+  try {
+    const u = new URL(raw);
+    if ((u.protocol !== 'http:' && u.protocol !== 'https:') || u.username || u.password || MCP_BLOCKED.has(u.hostname) || !MCP_HOSTS.has(u.hostname)) {
+      return 'EDITOR_MCP_URL in production must be http(s)://mcp, 127.0.0.1 or localhost, with no credentials';
+    }
+  } catch {
+    return 'EDITOR_MCP_URL is not a URL';
+  }
+  return null;
+}
 
 export const envSchema = z
   .object({
@@ -22,6 +38,13 @@ export const envSchema = z
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(600),
     THROTTLE_AUTH_LIMIT: z.coerce.number().int().positive().default(30),
     THROTTLE_PROMO_LIMIT: z.coerce.number().int().positive().default(30),
+    THROTTLE_ENTITIES_LIMIT: z.coerce.number().int().positive().default(120), // GET /api/entities/* per IP per minute (the game loads the bundle once per page)
+    THROTTLE_EDITOR_LIMIT: z.coerce.number().int().positive().default(240), // /api/editor/* per editor wallet (else per IP) per minute
+    THROTTLE_AUTH_RPS: z.coerce.number().int().positive().default(5), // /api/auth/* and /api/editor/auth/* per IP per second
+    THROTTLE_ENTITIES_RPS: z.coerce.number().int().positive().default(5), // /api/entities/* per IP per second (nginx fc_entities is the same)
+    THROTTLE_EDITOR_RPS: z.coerce.number().int().positive().default(10), // /api/editor/* per IP per second (nginx fc_editor is the same)
+    THROTTLE_MCP_LIMIT: z.coerce.number().int().positive().default(600), // /api/editor/mcp/* per verified job per minute
+    THROTTLE_MCP_RPS: z.coerce.number().int().positive().default(20), // /api/editor/mcp/* per verified job per second
     FREE_RIDE_SECONDS: z.coerce.number().positive().default(180),
     HB_MIN_INTERVAL_MS: z.coerce.number().int().min(0).default(1000),
     HB_TIMEOUT_MS: z.coerce.number().int().min(5000).default(150_000), // no heartbeat for this long = the tab is gone: off the live feed, its next heartbeat would fail it, the stale-ride sweeper ends it (failed · heartbeat lost)
@@ -82,6 +105,29 @@ export const envSchema = z
     ADMIN_JWT_SECRET: optional(z.string().min(32, 'ADMIN_JWT_SECRET must be at least 32 characters')),
     /** how long an admin sign-in lasts (minutes); there is no silent renewal – the wallet signs again */
     ADMIN_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(120),
+    /** wallets that may use the 3D model editor on storybook.<apex> (/api/editor/*), comma-separated; empty = no editor (every editor route is a 404) */
+    EDITOR_WALLETS: z.string().default(''),
+    /** the editor session's own signing key; unset = derived from JWT_SECRET (never the player's or the admin's bytes) */
+    EDITOR_JWT_SECRET: optional(z.string().min(32, 'EDITOR_JWT_SECRET must be at least 32 characters')),
+    /** how long an editor sign-in lasts (minutes); the wallet signs again after it */
+    EDITOR_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(240),
+    /** optional: only these client IPs / CIDRs reach the editor (comma-separated, IPv4 or IPv6); empty = any IP */
+    EDITOR_IP_ALLOWLIST: z.string().default(''),
+    /** the AI model editor (docs/agents/editor.md): SECRETS, read by the infrastructure only – a provider is offered when its key is set */
+    ANTHROPIC_API_KEY: optional(z.string().min(8)),
+    OPENAI_API_KEY: optional(z.string().min(8)),
+    GEMINI_API_KEY: optional(z.string().min(8)),
+    ZAI_API_KEY: optional(z.string().min(8)),
+    ZAI_BASE_URL: z.string().url().default('https://api.z.ai/api/paas/v4'), // z.ai's OpenAI-compatible endpoint (pay as you go); the GLM Coding Plan: https://api.z.ai/api/coding/paas/v4
+    EDITOR_DEFAULT_PROVIDER: optional(z.enum(['anthropic', 'openai', 'gemini', 'zai', 'fake'])), // unset / not enabled = the first enabled one
+    EDITOR_MODEL_ANTHROPIC: optional(z.string().min(1).max(100)), // default claude-opus-5-5
+    EDITOR_MODEL_OPENAI: optional(z.string().min(1).max(100)), // default gpt-6
+    EDITOR_MODEL_GEMINI: optional(z.string().min(1).max(100)), // default gemini-3.1-pro-preview
+    EDITOR_MODEL_ZAI: optional(z.string().min(1).max(100)), // default glm-5.2
+    EDITOR_MCP_URL: z.string().url().default('http://127.0.0.1:3100'), // the entity MCP (mcp/; prod compose: http://mcp:3100)
+    EDITOR_MCP_TOKEN: optional(z.string().min(24, 'EDITOR_MCP_TOKEN must be at least 24 characters')), // shared with the mcp service; unset = no AI editor
+    EDITOR_JOB_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(3_600_000).default(600_000), // a job longer than this is aborted (and one left running past it by a restart is failed)
+    EDITOR_FAKE_LLM: z.enum(['0', '1']).default('0'), // TEST ONLY: offer the scripted fake provider (refused in production)
     /** verified play: 'true' = the paid boards rank verified shifts only; 'false' = SHADOW mode – every ride is still judged and the verdict shown, but ranking ignores it */
     TRAFFIC_PROOF_REQUIRED: z.enum(['true', 'false']).default('true').transform(v => v === 'true'),
     VERDICT_ENFORCE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
@@ -101,6 +147,10 @@ export const envSchema = z
   .superRefine((env, ctx) => {
     const badAdmin = env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isWalletAddress(w));
     if (badAdmin.length) ctx.addIssue({ code: 'custom', path: ['ADMIN_WALLETS'], message: `ADMIN_WALLETS must be base58 Solana addresses (bad: ${badAdmin.join(', ')})` });
+    const badEditor = env.EDITOR_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isWalletAddress(w));
+    if (badEditor.length) ctx.addIssue({ code: 'custom', path: ['EDITOR_WALLETS'], message: `EDITOR_WALLETS must be base58 Solana addresses (bad: ${badEditor.join(', ')})` });
+    const badIps = env.EDITOR_IP_ALLOWLIST.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isIpRule(w));
+    if (badIps.length) ctx.addIssue({ code: 'custom', path: ['EDITOR_IP_ALLOWLIST'], message: `EDITOR_IP_ALLOWLIST must be IPs or CIDRs (bad: ${badIps.join(', ')})` });
     if (env.TREASURY_PUBKEY !== undefined && !isWalletAddress(env.TREASURY_PUBKEY)) {
       ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be a base58 Solana address' });
     }
@@ -111,10 +161,18 @@ export const envSchema = z
     if (env.PRIORITY_FEE_MIN_MICROLAMPORTS > env.PRIORITY_FEE_MAX_MICROLAMPORTS) ctx.addIssue({ code: 'custom', path: ['PRIORITY_FEE_MIN_MICROLAMPORTS'], message: 'PRIORITY_FEE_MIN_MICROLAMPORTS must not exceed PRIORITY_FEE_MAX_MICROLAMPORTS' });
     if (env.PAYMENT_MODE === 'program' && !env.TICKET_PROGRAM_ID) ctx.addIssue({ code: 'custom', path: ['TICKET_PROGRAM_ID'], message: 'TICKET_PROGRAM_ID must be set when PAYMENT_MODE=program' });
     if (env.NODE_ENV === 'production') {
+      if (env.EDITOR_FAKE_LLM === '1') ctx.addIssue({ code: 'custom', path: ['EDITOR_FAKE_LLM'], message: 'EDITOR_FAKE_LLM is a test switch – never in production' });
+      // without it the admin / storybook host walls switch off (they answer on any host, like localhost) – never with wallets that may sign in there
+      if (!env.COOKIE_DOMAIN && (env.EDITOR_WALLETS.trim() || env.ADMIN_WALLETS.trim())) ctx.addIssue({ code: 'custom', path: ['COOKIE_DOMAIN'], message: 'COOKIE_DOMAIN must be set in production when ADMIN_WALLETS or EDITOR_WALLETS is (the admin and storybook host checks need it)' });
       if (!env.JWT_SECRET) ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'JWT_SECRET must be set in production' });
       if (!env.TREASURY_PUBKEY) ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be set in production' });
       // behind a reverse proxy req.ip is the proxy's: rate limits per IP would put every rider in one bucket. Make the deploy say how many hops to trust (0 = none).
       if (env.TRUST_PROXY === undefined) ctx.addIssue({ code: 'custom', path: ['TRUST_PROXY'], message: 'TRUST_PROXY must be set in production (number of reverse-proxy hops; 0 if none)' });
+      if (env.EDITOR_MCP_TOKEN) {
+        if (!env.REDIS_URL) ctx.addIssue({ code: 'custom', path: ['REDIS_URL'], message: 'REDIS_URL is required for the production AI editor rate limits' });
+        const mcp = mcpUrlIssue(env.EDITOR_MCP_URL);
+        if (mcp) ctx.addIssue({ code: 'custom', path: ['EDITOR_MCP_URL'], message: mcp });
+      }
     }
   });
 

@@ -1,4 +1,4 @@
-# Production stack: PostgreSQL + the app. Started by deploy/scripts/remote/release.sh – not by hand.
+# Production stack: API, replay worker, AI worker, MCP, PostgreSQL and Redis. Started by deploy/scripts/remote/release.sh – not by hand.
 #   docker compose --env-file /srv/freightchain/.env -f releases/<release>/deploy/docker-compose.prod.yml …
 # Every value comes from the server's /srv/freightchain/.env (uploaded by `npm run deploy`, chmod 600); RELEASE is the image tag of the release.
 name: freightchain-prod
@@ -37,10 +37,12 @@ services:
       - /data
     security_opt:
       - no-new-privileges:true
-    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD" --save "" --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru']
+    # A hash in the ACL keeps arbitrary token characters out of its rule syntax. fc-mcp has no access to app keys.
+    command: ["sh", "-c", 'mcp_hash=$$(printf %s "$$EDITOR_MCP_TOKEN" | sha256sum | cut -d " " -f1); exec redis-server --requirepass "$$REDIS_PASSWORD" --user fc-mcp on "#$$mcp_hash" "~fc:mcp-rl:*" +eval +incr +pexpire +pttl +ping +quit "+client|setinfo" --save "" --appendonly no --maxmemory 64mb --maxmemory-policy noeviction']
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is empty - add REDIS_PASSWORD=<hex> to deploy/.env}
       REDISCLI_AUTH: ${REDIS_PASSWORD}   # lets the healthcheck's redis-cli authenticate without a password on its command line
+      EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}   # only its SHA-256 is used to configure the restricted fc-mcp Redis user
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
@@ -66,7 +68,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started   # the app answers from PostgreSQL when the cache is down, so it never waits for it
-    networks: [default, cache]
+    networks: [default, cache, editor]   # editor: the mcp service calls back /api/editor/mcp/* (no nginx in between)
     environment:
       NODE_ENV: production
       PORT: "3000"
@@ -82,6 +84,13 @@ services:
       THROTTLE_LIMIT: ${THROTTLE_LIMIT:-600}
       THROTTLE_AUTH_LIMIT: ${THROTTLE_AUTH_LIMIT:-30}
       THROTTLE_PROMO_LIMIT: ${THROTTLE_PROMO_LIMIT:-30}
+      THROTTLE_ENTITIES_LIMIT: ${THROTTLE_ENTITIES_LIMIT:-120}
+      THROTTLE_EDITOR_LIMIT: ${THROTTLE_EDITOR_LIMIT:-240}
+      THROTTLE_AUTH_RPS: ${THROTTLE_AUTH_RPS:-5}
+      THROTTLE_ENTITIES_RPS: ${THROTTLE_ENTITIES_RPS:-5}
+      THROTTLE_EDITOR_RPS: ${THROTTLE_EDITOR_RPS:-10}
+      THROTTLE_MCP_LIMIT: ${THROTTLE_MCP_LIMIT:-600}
+      THROTTLE_MCP_RPS: ${THROTTLE_MCP_RPS:-20}
       FREE_RIDE_SECONDS: ${FREE_RIDE_SECONDS:-180}
       TREASURY_PUBKEY: ${TREASURY_PUBKEY}
       SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
@@ -135,6 +144,25 @@ services:
       ADMIN_WALLETS: ${ADMIN_WALLETS:-}
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-}   # empty = derived from JWT_SECRET
       ADMIN_SESSION_TTL_MINUTES: ${ADMIN_SESSION_TTL_MINUTES:-120}
+      EDITOR_WALLETS: ${EDITOR_WALLETS:-}
+      EDITOR_JWT_SECRET: ${EDITOR_JWT_SECRET:-}   # empty = derived from JWT_SECRET
+      EDITOR_SESSION_TTL_MINUTES: ${EDITOR_SESSION_TTL_MINUTES:-240}
+      EDITOR_IP_ALLOWLIST: ${EDITOR_IP_ALLOWLIST:-}
+      # the AI model editor (docs/agents/editor.md): a provider is offered when its key is set – SECRETS, never logged
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
+      ZAI_BASE_URL: ${ZAI_BASE_URL:-https://api.z.ai/api/paas/v4}
+      EDITOR_DEFAULT_PROVIDER: ${EDITOR_DEFAULT_PROVIDER:-}
+      EDITOR_MODEL_ANTHROPIC: ${EDITOR_MODEL_ANTHROPIC:-}
+      EDITOR_MODEL_OPENAI: ${EDITOR_MODEL_OPENAI:-}
+      EDITOR_MODEL_GEMINI: ${EDITOR_MODEL_GEMINI:-}
+      EDITOR_MODEL_ZAI: ${EDITOR_MODEL_ZAI:-}
+      EDITOR_MCP_URL: http://mcp:3100   # the mcp service below, on the internal `editor` network
+      EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}   # shared with the mcp service; empty = no AI editor
+      EDITOR_JOB_TIMEOUT_MS: ${EDITOR_JOB_TIMEOUT_MS:-600000}
+      EDITOR_FAKE_LLM: "0"   # test switch – the server refuses 1 in production
       # PostHog (docs/analytics/index.html). Production deploy/.env sets POSTHOG_ENABLED=1.
       # Empty or 0 stays off; POSTHOG_DISABLED=1 still wins. Local compose and server/.env pin 0.
       # main's schema strips these keys, so a deploy of main does not send. Listing them keeps a later merge from dropping the token.
@@ -193,9 +221,101 @@ services:
       POSTHOG_ENABLED: "0"
       POSTHOG_DISABLED: "1"
 
+  # AI generation has its own process and memory budget. PostgreSQL owns the shared five-slot queue.
+  editor-worker:
+    image: freightchain-server:${RELEASE:-latest}
+    command: ["node", "dist/app/editor-worker.js"]
+    restart: unless-stopped
+    stop_grace_period: 20s
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "3" }
+    depends_on:
+      app:
+        condition: service_healthy
+      mcp:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [default, cache, editor]
+    healthcheck:
+      test: ["CMD", "node", "-e", "const h=JSON.parse(require('fs').readFileSync('/tmp/fc-editor-worker-health-1.json','utf8'));const age=Date.now()-h.checkedAt;process.exit(Number.isFinite(age)&&age>=0&&age<15000?0:1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is empty - add REDIS_PASSWORD=<hex> to deploy/.env}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}   # job capabilities must verify in the API process
+      TREASURY_PUBKEY: ${TREASURY_PUBKEY}
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      APP_DOMAIN: ${APP_DOMAIN}
+      APP_ORIGIN: ${APP_ORIGIN}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      POSTHOG_ENABLED: "0"
+      POSTHOG_DISABLED: "1"
+      # the AI model editor (docs/agents/editor.md): a provider is offered when its key is set – SECRETS, never logged
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
+      ZAI_BASE_URL: ${ZAI_BASE_URL:-https://api.z.ai/api/paas/v4}
+      EDITOR_DEFAULT_PROVIDER: ${EDITOR_DEFAULT_PROVIDER:-}
+      EDITOR_MODEL_ANTHROPIC: ${EDITOR_MODEL_ANTHROPIC:-}
+      EDITOR_MODEL_OPENAI: ${EDITOR_MODEL_OPENAI:-}
+      EDITOR_MODEL_GEMINI: ${EDITOR_MODEL_GEMINI:-}
+      EDITOR_MODEL_ZAI: ${EDITOR_MODEL_ZAI:-}
+      EDITOR_MCP_URL: http://mcp:3100   # the mcp service below, on the internal `editor` network
+      EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}   # shared with the mcp service; empty = no AI editor
+      EDITOR_JOB_TIMEOUT_MS: ${EDITOR_JOB_TIMEOUT_MS:-600000}
+      EDITOR_FAKE_LLM: "0"   # test switch – the server refuses 1 in production
+
+  # The entity MCP (mcp/, docs/agents/editor.md): the 3d-assets skill as tools for the AI model editor. Internal network only, no published port,
+  # no AI or wallet key – only the shared EDITOR_MCP_TOKEN. Started by release.sh only when EDITOR_MCP_TOKEN is set (without it the process refuses to run).
+  mcp:
+    image: freightchain-mcp:${RELEASE:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.mcp
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "3" }
+    networks: [editor, cache]   # cache access is restricted to rate-limit counters by the fc-mcp Redis ACL
+    # nothing to write, nothing to escalate to: a read-only root, no capabilities, bounded memory and processes
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    pids_limit: 128
+    environment:
+      EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}
+      FC_APP_URL: http://app:3000
+      EDITOR_MCP_PORT: "3100"
+      REDIS_URL: redis://fc-mcp@redis:6379
+
 networks:
   cache:
     internal: true   # no route to the internet, in or out
+  editor:
+    internal: true   # the app ⇄ the entity MCP only; the MCP has no other network
 
 volumes:
   pgdata:

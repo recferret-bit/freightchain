@@ -46,6 +46,16 @@ import { MemorySettingsRepository } from './in-memory/memory-settings.js';
 import { DailySeedRepositoryPort } from '../../src/application/ports/rides/daily-seed.repository.port.js';
 import { MemoryDailySeedRepository } from './in-memory/memory-daily-seeds.js';
 import { SettingsRepositoryPort } from '../../src/application/ports/settings/settings.repository.port.js';
+import { EntityRepositoryPort } from '../../src/application/ports/entities/entity.repository.port.js';
+import { MemoryEntityRepository } from './in-memory/memory-entities.js';
+import { MemoryEditorJobRepository } from './in-memory/memory-editor-jobs.js';
+import { EditorJobRepositoryPort } from '../../src/application/ports/editor/editor-job.repository.port.js';
+import { McpClientPort } from '../../src/application/ports/editor/mcp-client.port.js';
+import { EditorWorkerModule } from '../../src/app/editor-worker.module.js';
+import { EditorJobSweepScheduler } from '../../src/infrastructure/scheduling/editor-job-sweep.scheduler.js';
+import { EditorJobRunnerService } from '../../src/application/services/editor-job-runner.service.js';
+import { TestMcpClient } from './test-mcp.js';
+import { EntityCatalogService } from '../../src/application/services/entity-catalog.service.js';
 import {
   MemoryAchievementRepository, MemoryAchievementMintRepository, MemoryChallengeRepository, MemoryHealthProbe, MemoryPaymentRepository, MemoryPlayerRepository,
   MemoryRideBatchRepository, MemoryRideQuery, MemoryRideVerdictRepository, MemoryRideReplayRepository, MemorySignInRepository, MemoryAdminActionRepository, MemoryAdminQuery, MemoryRideRepository, MemoryRoundRepository, MemoryTransaction,
@@ -86,6 +96,10 @@ export const testDatabaseUrl = (): string => process.env['TEST_DATABASE_URL'] ??
 
 export interface Harness {
   app: INestApplication;
+  /** the in-process entity MCP (calls back into /api/editor/mcp/* with the job's token); `configured` = EDITOR_MCP_TOKEN set */
+  mcp: TestMcpClient;
+  /** wait until an AI editor job this app started is over */
+  jobSettled(jobId: string): Promise<void>;
   clock: FakeClock;
   /** the NEXT ride's seed: a paid ride's route and every ride's start hour (ride-rules.ts worldFor). A free ride's country is its level's, not this. `h.seedFor('siberia')` before ordering. */
   seedFor(route: string, hourIndex?: number): void;
@@ -103,7 +117,7 @@ export interface Harness {
 }
 
 /** Everything the app reads from the environment that a test may change – cleared before each harness so files can't leak into each other. */
-const TUNABLES = ['TRAFFIC_PROOF_REQUIRED', 'THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'THROTTLE_PROMO_LIMIT', 'HB_TIMEOUT_MS', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS', 'SIGNIN_RETENTION_DAYS', 'CHALLENGE_INTERVAL_SECONDS',
+const TUNABLES = ['TRAFFIC_PROOF_REQUIRED', 'THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'THROTTLE_PROMO_LIMIT', 'THROTTLE_ENTITIES_LIMIT', 'THROTTLE_EDITOR_LIMIT', 'THROTTLE_AUTH_RPS', 'THROTTLE_ENTITIES_RPS', 'THROTTLE_EDITOR_RPS', 'THROTTLE_MCP_LIMIT', 'THROTTLE_MCP_RPS', 'REDIS_URL', 'EDITOR_WALLETS', 'EDITOR_IP_ALLOWLIST', 'EDITOR_JWT_SECRET', 'EDITOR_SESSION_TTL_MINUTES', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GEMINI_API_KEY', 'ZAI_API_KEY', 'ZAI_BASE_URL', 'EDITOR_DEFAULT_PROVIDER', 'EDITOR_MODEL_ANTHROPIC', 'EDITOR_MODEL_OPENAI', 'EDITOR_MODEL_GEMINI', 'EDITOR_MODEL_ZAI', 'EDITOR_MCP_URL', 'EDITOR_MCP_TOKEN', 'EDITOR_JOB_TIMEOUT_MS', 'EDITOR_FAKE_LLM', 'HB_TIMEOUT_MS', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS', 'SIGNIN_RETENTION_DAYS', 'CHALLENGE_INTERVAL_SECONDS',
   'CHALLENGE_FREE_RIDES', 'LIVE_CHAT', 'LIVE_DONATIONS', 'LIVE_FREE_DONATIONS', 'LIVE_EFFECTS', 'PAYMENT_MODE', 'TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'ORDER_TTL_MINUTES', 'WATCH_INTERVAL_MS', 'WEBHOOK_SECRET', 'CRANK_SECRET', 'CRANK_INTERVAL_MS', 'FEE_PAYER_SECRET', 'SOLANA_COMMITMENT',
   'POSTHOG_KEY', 'POSTHOG_HOST', 'POSTHOG_ENABLED', 'POSTHOG_DISABLED', 'POSTHOG_PROJECT_ID'];
 
@@ -114,7 +128,7 @@ const TUNABLES = ['TRAFFIC_PROOF_REQUIRED', 'THROTTLE_LIMIT', 'THROTTLE_AUTH_LIM
 export async function createHarness(persistence: Persistence, env: Record<string, string> = {}): Promise<Harness> {
   for (const key of TUNABLES) delete process.env[key];
   Object.assign(process.env, {
-    NODE_ENV: 'test', JWT_SECRET: 'test-secret-'.padEnd(48, 'x'), SOL_USD: '100', TREASURY_PUBKEY: TREASURY, THROTTLE_LIMIT: '1000000', THROTTLE_AUTH_LIMIT: '1000000', THROTTLE_PROMO_LIMIT: '1000000',
+    NODE_ENV: 'test', JWT_SECRET: 'test-secret-'.padEnd(48, 'x'), SOL_USD: '100', TREASURY_PUBKEY: TREASURY, THROTTLE_LIMIT: '1000000', THROTTLE_AUTH_LIMIT: '1000000', THROTTLE_PROMO_LIMIT: '1000000', THROTTLE_ENTITIES_LIMIT: '1000000', THROTTLE_EDITOR_LIMIT: '1000000', THROTTLE_AUTH_RPS: '1000000', THROTTLE_ENTITIES_RPS: '1000000', THROTTLE_EDITOR_RPS: '1000000', THROTTLE_MCP_LIMIT: '1000000', THROTTLE_MCP_RPS: '1000000',
     ACHIEVEMENT_MINT_SECRET: '', ACHIEVEMENT_TREE: '', ACHIEVEMENT_COLLECTION: '', HONK_PROGRAM_ID: '', HONK_EMITTER_SECRET: '', // never the developer's .env: scenarios must not mint (or show a tree) and stay on the HONK ledger
     TRAFFIC_PROOF_REQUIRED: 'false', // historical API fixtures; strict protocol has its own HTTP and Chrome coverage
     WATCH_INTERVAL_MS: '0', // the program watcher off: scenarios settle through the webhook / their own calls
@@ -129,9 +143,11 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const memory = new MemoryDb();
   const nameService = new StubNameServiceAdapter();
   const replayQueue = new MemoryReplayQueueAdapter();
+  let server: (() => Server) | null = null;
+  const mcp = new TestMcpClient(() => server!(), () => !!process.env['EDITOR_MCP_TOKEN']);
 
   // the stale-ride sweep and replay-verification scheduler run on REAL timers – they would race the fake clock; scenarios run commands themselves
-  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ReplayVerificationScheduler).useValue({}).overrideProvider(ReplayQueuePort).useValue(replayQueue).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(PoolPayoutChainPort).useValue(payoutChain).overrideProvider(NameServicePort).useValue(nameService);
+  let builder = Test.createTestingModule({ imports: [AppModule, EditorWorkerModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ReplayVerificationScheduler).useValue({}).overrideProvider(ReplayQueuePort).useValue(replayQueue).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(PoolPayoutChainPort).useValue(payoutChain).overrideProvider(NameServicePort).useValue(nameService).overrideProvider(EditorJobSweepScheduler).useValue({}).overrideProvider(McpClientPort).useValue(mcp);
   if (persistence === 'memory') {
     builder = builder
       .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined })
@@ -168,7 +184,9 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RideMuteRepositoryPort).useValue(new MemoryRideMuteRepository(memory))
       .overrideProvider(DonationOrderRepositoryPort).useValue(new MemoryDonationOrderRepository(memory))
       .overrideProvider(StatsRepositoryPort).useValue(new MemoryStatsRepository(memory))
-      .overrideProvider(SettingsRepositoryPort).useValue(new MemorySettingsRepository(memory));
+      .overrideProvider(SettingsRepositoryPort).useValue(new MemorySettingsRepository(memory))
+      .overrideProvider(EntityRepositoryPort).useValue(new MemoryEntityRepository(memory))
+      .overrideProvider(EditorJobRepositoryPort).useValue(new MemoryEditorJobRepository(memory));
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication();
@@ -178,8 +196,9 @@ export async function createHarness(persistence: Persistence, env: Record<string
   await app.listen(0, '127.0.0.1');
   const prisma = persistence === 'postgres' ? app.get(PrismaService, { strict: false }) : null;
 
+  server = () => app.getHttpServer() as Server;
   return {
-    app, clock, chain, poolChain, payoutChain, nameService, persistence,
+    app, clock, mcp, jobSettled: async (id) => { const runner = app.get(EditorJobRunnerService, { strict: false }); await runner.sweep(); await runner.settled(id); }, chain, poolChain, payoutChain, nameService, persistence,
     seedFor: (route, hourIndex = 0) => { let s = 1000; while (worldFor(s).route !== route || worldFor(s).startHour !== START_HOURS[hourIndex]) s++; entropy.next = s; },
     server: () => app.getHttpServer() as Server,
     reset: async () => {
@@ -189,7 +208,9 @@ export async function createHarness(persistence: Persistence, env: Record<string
       memory.reset();
       replayQueue.clear();
       nameService.reset();
+      mcp.calls.length = 0; mcp.specCalls = 0;
       if (prisma) await truncateAllTables(prisma);
+      app.get(EntityCatalogService, { strict: false }).invalidate();   // the bundle in memory describes the database that was just wiped
       const cache = app.get(CachePort);   // the cached statistics describe the database that was just wiped
       if (cache instanceof MemoryCacheAdapter) cache.clear();
     },

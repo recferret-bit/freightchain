@@ -1,0 +1,80 @@
+// 3D models (client/shared/entity/): the code ships every model as a seed; this schema keeps the editor's history on top of it.
+// Entity = one model id with its HEAD (what the editor works on) and its PUBLISHED revision (what every player draws; null = the seed).
+model Entity {
+  id                  String   @id // e.g. sedan, cactus, gas-kiosk
+  kind                String // prop · furniture · landmark · vehicle · gantry · part – fixed once the entity exists
+  label               String?
+  headRevisionId      String?
+  publishedRevisionId String?
+  version             Int      @default(0) // bumped on every pointer move
+  createdBy           String // the wallet that made the first revision ('seed' when it is the code's model)
+  createdAt           DateTime
+  updatedAt           DateTime
+  publishedAt         DateTime?
+
+  revisions EntityRevision[]
+
+  @@index([publishedAt])
+  @@schema("asset")
+}
+
+// Append-only: a restore is a NEW revision copying an old one.
+model EntityRevision {
+  id           String   @id @db.Uuid
+  entityId     String
+  seq          Int // 1, 2, … per entity
+  parentId     String?  @db.Uuid
+  source       String // the file text as printSource prints it (canonical)
+  config       Json
+  hash         String // sha256 hex of source
+  authorWallet String // 'seed' for the code's model
+  jobId        String?  @db.Uuid // the AI editor job that wrote it, if any
+  message      String
+  createdAt    DateTime
+
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
+
+  @@unique([entityId, seq])
+  @@index([jobId])
+  @@schema("asset")
+}
+
+// One request to the AI editor (the bridge + MCP, docs/agents/editor.md): the prompt, the model, what it produced and what it cost.
+model EditorJob {
+  id               String    @id @db.Uuid
+  wallet           String
+  prompt           String
+  provider         String
+  model            String
+  entityId         String?
+  baseRevisionId   String?   @db.Uuid
+  resultRevisionId String?   @db.Uuid
+  status           String // queued · running · done · failed · cancelled
+  error            String?
+  tokensIn         Int       @default(0)
+  tokensOut        Int       @default(0)
+  createdAt        DateTime
+  startedAt        DateTime?
+  finishedAt       DateTime?
+
+  events EditorJobEvent[]
+
+  @@index([wallet, createdAt])
+  @@index([entityId, createdAt])
+  @@index([status])
+  @@schema("asset")
+}
+
+// What a job did, step by step – the editor's chat polls it (?after=seq).
+model EditorJobEvent {
+  jobId   String   @db.Uuid
+  seq     Int
+  type    String // status · text · tool_call · tool_result · draft · usage · error · done
+  payload Json
+  at      DateTime
+
+  job EditorJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, seq])
+  @@schema("asset")
+}

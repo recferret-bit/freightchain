@@ -139,7 +139,7 @@ The production replay worker was restarting at the read-only check. Its explicit
 | Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is a guest run |
 | Ride receipt | `freightchain.fun/r/:id` | Live or finished ride, explorer link, X card. Open one from [REPLAYS](https://freightchain.fun/lobby.html#replays) |
 | Pitch deck | [pitchdeck.freightchain.fun](https://pitchdeck.freightchain.fun) | Eight playable slides. ← → in the floating tip (or the keys), F full screen; on a phone big corner buttons, one full screen button, full screen on the first tap, and an ask for motion sensors (allowed, the spawned SOL falls with the tilt). Live |
-| Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes, no API |
+| Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes; the 3D model editor for listed wallets (`EDITOR_WALLETS`) |
 | API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON under `/api/`. Anything else on that host 404s |
 | Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |
 | Program | [Explorer, devnet](https://explorer.solana.com/address/8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p?cluster=devnet) | Upgradeable. Initialized. Not audited |
@@ -402,11 +402,15 @@ flowchart LR
   paper["whitepaper.freightchain.fun"] --> api
   deck["pitchdeck.freightchain.fun<br/>analytics only"] --> api
   admin["admin.freightchain.fun<br/>page and /api/admin"] --> api
-  story["storybook.freightchain.fun<br/>meshes only"]
+  story["storybook.freightchain.fun<br/>meshes + model editor"]
   api --> pg[(PostgreSQL)]
   api --> redis[(Redis, stats & replay queue)]
   worker["worker container<br/>replay:worker"] --> pg
   worker --> redis
+  ai["editor-worker container<br/>five-slot AI queue"] --> pg
+  ai --> mcp["entity MCP"]
+  mcp --> api
+  ai --> providers["AI providers"]
   api --> chain["Solana devnet"]
 ```
 
@@ -429,14 +433,15 @@ The intro clip is real gameplay, 14.8 seconds, with the in-game synth: [`media/o
 - [`.claude/`](.claude) — project skills. The index is [Skills](#skills).
 - [`client/`](client) — the game, the lobby, admin, the receipt page, the model viewer, and [`client/shared/`](client/shared) (pure ES modules shared with the server). Vanilla ES modules and three.js r160. No bundler, no React.
 - [`shared/`](shared) — workspace package (`@freightchain/shared`) re-exporting [`client/shared/`](client/shared) (`prng.js`, `road.js`, `traffic.js`, `physics.js`) for both browser client and backend `ReplayEngine`.
-- [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `postgres`, `redis`). `npm run deploy` ships `git archive HEAD`.
+- [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `editor-worker`, `postgres`, `redis`, `mcp`). `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icons, banners, badge art.
 - [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at.
 - [`landing/`](landing) — the `/` page, the whitepaper and the pitch deck. Vite.
+- [`mcp/`](mcp) — the entity MCP server: the `3d-assets` skill as tools for the AI model editor (Streamable HTTP for the server's bridge, stdio for Claude Code). Production HTTP counters are shared in Redis with a restricted MCP user; AI jobs use a shared PostgreSQL queue with atomic admission and claims; the bridge owns its tool policy, AI writes remain checked drafts, and publishing requires a wallet signature.
 - [`media/`](media) — promo clips and the chiptune synth.
 - [`pentest/`](pentest) — one-shot Docker sandbox + MCP stdio bridge (`docker-agent-orchestrator.mjs`, `docker-mcp-bridge.mjs`) orchestrating local agentic CLIs (`claude`, `codex`, `grok`, `agy`) inside an airgapped container, plus sealed source snapshots, private-outbox workers and selected-file `review-with-cli` coordination; `check-agents` checks Docker + all 4 MCP-bridged CLIs, and `check-model-cli --all` inventories selected-file relay profiles. Separate brokers live under `pentest/native/{codex-review,grok-review}`. `grok-docker setup/login` builds the Linux Grok broker and obtains a separate Docker-volume login; `--provider grok-docker` runs inference inside Docker behind provider-only HTTPS egress. Detail: [`pentest/README.md`](pentest/README.md).
 - [`programs/`](programs/freightchain-pools) — the Anchor program. Anchor 1.2.
-- [`server/`](server) — NestJS 12, Prisma, PostgreSQL, and `replay:worker`.
+- [`server/`](server) — NestJS 12, Prisma, PostgreSQL, the replay worker, and the dedicated AI worker (`npm run editor:worker`).
 
 Also at the root: `package.json`, `docker-compose.yml` (PostgreSQL on `127.0.0.1:15433`, Redis and `worker` optional under profiles), [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md).
 
@@ -473,8 +478,8 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `test-census` | Count the tests by pyramid layer, grade test coverage per feature, user flow, controller and route (static attribution, line + branch coverage, the routes each browser suite hits), name gaps, and rewrite the Tests block below and docs/test-coverage.md | `npm run test:census` · `npm run test:census -- features` · `npm run test:census -- coverage` · `npm run test:census -- run` · `npm run test:census -- readme` |
 | `level-check` | Each free level (EASY / MEDIUM / HARD) is what it promises and passable by a human: the road each level's shift covers (junctions, forks, lanes, bends, sinkhole traps), then a human-paced driver on the real truck with ASSIST off on many seeds × all routes – finish rate, hull, vehicles hit, against the level's limits | `node .claude/skills/level-check/check.mjs` |
 | `trip-design` | The road per ride tier – the free run and the 1 h / 4 h / 8 h shifts: bends, traffic, roadside, whether it ends by itself at the line, its length and finish distance – measured with the real game modules and looked at in Chrome | `node .claude/skills/trip-design/measure.mjs` · `node .claude/skills/trip-design/shots.mjs` |
-| `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome, server traffic validation against removed cars / ignored damage / missing proof, API-level verdict and upload checks, signed admin decisions, the profile, retention + bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` (traffic only: `bash .claude/skills/run-tests/e2e.sh traffic`) |
-| `3d-assets` | Review and fix a mesh in the model viewer (`client/viewer.html`), or add, update, or generate a car, tree, or building. `validate.mjs` rejects an impossible spec before any mesh or generated model | `node .claude/skills/3d-assets/validate.mjs --self-test` · `node .claude/skills/3d-assets/validate.mjs "<spec>"` · `node .claude/skills/3d-assets/shot.mjs` · `node .claude/skills/3d-assets/shot.mjs <id>` |
+| `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome (dispatch prompts answered / ignored), server traffic validation against removed cars / ignored damage / missing proof, API-level bots with hand-built recordings (every verdict code), the upload protocol, the admin's signed decisions, the profile in Chrome, retention + the CLI's bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` (traffic only: `bash .claude/skills/run-tests/e2e.sh traffic`) |
+| `3d-assets` | Review and fix a model in the model viewer (`client/viewer.html`) – every 3D model is a data-only entity (`client/shared/entity/seed/`) – or add, update, or generate a car, tree, or building. The same procedure is the AI editor's MCP (`mcp/`). `validate.mjs` rejects an impossible spec before any mesh or generated model | `node .claude/skills/3d-assets/validate.mjs --self-test` · `node .claude/skills/3d-assets/validate.mjs "<spec>"` · `node .claude/skills/3d-assets/shot.mjs` · `node .claude/skills/3d-assets/shot.mjs <id>` |
 | `pentest-audit` | Multi-agent security audit inside a one-shot Docker sandbox via MCP stdio bridge (`claude`, `codex`, `grok`, `agy`), plus selected-file static review (`review-with-cli`) and provider diagnostics | `./pentest/bin/pentest check-agents` · `./pentest/bin/pentest run --repo <path>` · `./pentest/bin/pentest check-model-cli --all` · `./pentest/bin/pentest review-with-cli --repo <path> --file <file> --provider claude --model <model> --out <empty-dir>` · `node --test pentest/scripts/*.test.mjs` |
 | `grill-fix` | Grills the business value of the feature and waits for your answers (a vague answer is challenged once), then three sequential reviews of the change, each by a different model, against the idea and those answers. Fixes bugs, gaps, misconfiguration, and security holes between passes, then checks the tests and the code quality. Does not deploy | `/grill-fix` |
 | `coin-grill` | Three-pass Solana token and tokenomics audit of a spec file: name, ticker, decimals, `u64` supply bound, authorities, utility, allocations, vesting, minting and burning, hype, marketing, main project fit, and 36-month supply and demand, writing a styled HTML report with issues, scores, and proposals | `node .claude/skills/coin-grill/grill.mjs <path> [--out <report.html>]` · `node .claude/skills/coin-grill/grill.mjs --self-test` |
@@ -491,7 +496,10 @@ A new, renamed, or removed skill updates this table in the same change. The rule
 npm run db:up && npm run db:migrate && npm run server:dev   # API and pages on :3000
 npm run landing:dev                                         # Vite on :5173, proxies /api to :3000
 npm run client:serve                                        # the game alone
-npm run check                                               # client, landing, server unit tests, media
+npm run check                                               # client, landing, server unit tests, mcp, media
+npm run editor:mcp                                          # the entity MCP for the AI model editor on :3100 (EDITOR_MCP_TOKEN from server/.env)
+npm run server:build && npm run editor:worker                # separate AI worker; same server/.env, explicit shared JWT_SECRET
+npm run mcp:check                                           # the MCP's own tests
 npm run server:integration                                  # PostgreSQL, its own freightchain_test database
 npm run program:test                                        # LiteSVM, no network
 npm run program:verify                                      # reproducible build against the pinned hash
@@ -499,6 +507,137 @@ npm run test:localnet                                       # the program on a l
 ```
 
 `npm run check` needs `npm run install:landing` and `npm run install:media` once. The program tools need the Solana toolchain on `PATH` ([`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md)). Deploy: [`deploy/README.md`](deploy/README.md). Env keys: [`docs/configuration.md`](docs/configuration.md). There is no CI.
+
+## 3D entity editor and AI generation
+
+The [model viewer](https://storybook.freightchain.fun) is also the editor for wallets listed in `EDITOR_WALLETS`. Vehicles, props, furniture, landmarks, gantries and reusable parts share a data-only entity format. An entity describes geometry, materials, parameters and animation roles; it cannot contain executable JavaScript. The literal parser, expression interpreter, validator and analytic measurements are shared by the browser, API and MCP. Collision rules, vehicle sizes, landmark footprints, placement order and other gameplay contracts remain in code and are validated separately from appearance.
+
+Seed models live in [`client/shared/entity/seed/`](client/shared/entity/seed). PostgreSQL's `asset` schema adds append-only revisions above those seeds. **HEAD** is the latest editor revision; **PUBLISHED** is the revision players receive. The public `/api/entities/bundle` combines seeds with published revisions and has a content hash, ETag and cache headers. Saving or generating a draft changes HEAD only. Publishing requires an editor's wallet signature over the selected entity and revision and records an audit entry. Restore copies an older revision into a new draft; it does not erase history. An entity edit changes its appearance; placing a new model in the world can also require a reviewed roster or route change.
+
+### How requests run
+
+```mermaid
+flowchart LR
+  editor["Viewer: CHAT / SOURCE / HISTORY"] --> api["NestJS API: authenticate, validate, admit"]
+  api --> queue[("PostgreSQL: jobs, events, revisions")]
+  queue --> worker["Dedicated editor-worker: claim up to five jobs"]
+  worker --> provider["External AI provider"]
+  worker --> mcp["Entity MCP: seven bounded tools"]
+  mcp --> callback["API: verify job scope, validate, save draft"]
+  callback --> queue
+  editor --> publish["Wallet-signed publish"]
+  publish --> bundle["Public entity bundle used by the game"]
+```
+
+The API checks access, provider/model availability, the selected HEAD, daily allowance and the `3d-assets` request specification before committing a queued job. Impossible requests such as a two-wheel car are refused before a model is called. The API does not execute generations. A separate `editor:worker` process polls PostgreSQL every second, claims work atomically and drives the provider through a bounded agent loop. Text, tool calls, tool results, usage and status are stored as ordered job events for the chat. The general `replay:worker` processes driving verification and has no AI execution role.
+
+The MCP is a separate Node service using the Model Context Protocol SDK: Streamable HTTP for the application and stdio for local coding tools. Its tools are `list_entities`, `get_entity`, `get_format`, `validate_spec`, `check_entity`, `diff_entity` and `save_draft`. HTTP tool calls carry a short-lived job capability back to the API; the API verifies the current job, editor allowlist, write scope, deadline and base revision. A job targeting an existing model can edit that model and create up to four new helper parts. A job without a selected entity can create up to four new entities and revise its own creations. Concurrent human edits cause `stale_base` instead of being overwritten.
+
+The bridge owns the system workflow and tool contracts in [`editor-tool-policy.ts`](server/src/domain/editor/editor-tool-policy.ts). Remote tool descriptions, prompts, entity notes and model text cannot grant extra permissions. Every AI save requires a successful check of the exact source and entity id; the check is consumed by the save. The MCP and API validate again independently. Prompt injection can still influence a model's in-scope draft, so inspect the preview and diff before signing publication. The model has no publication tool, shell tool or arbitrary URL tool.
+
+### Run locally
+
+Use the server's normal development prerequisites and database configuration from [`server/.env.example`](server/.env.example). Install the server and MCP dependencies if needed:
+
+```sh
+npm run install:server
+npm --prefix mcp ci
+```
+
+Configure `server/.env`; keep it out of Git. API and worker must use the same database, provider/model configuration, timeout, MCP token and explicit JWT signing secret.
+
+| Key | What to set |
+| --- | --- |
+| `EDITOR_WALLETS` | Comma-separated editor wallet public keys; editor access is independent of `ADMIN_WALLETS` |
+| `JWT_SECRET` | A generated secret of at least 32 characters shared by API and worker; the API's random development fallback cannot work across processes |
+| `EDITOR_MCP_TOKEN` | A generated secret of at least 24 characters shared by API, worker and MCP; empty disables AI editing |
+| `EDITOR_MCP_URL` | `http://127.0.0.1:3100` locally |
+| Provider key | One or more of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZAI_API_KEY`; a configured key makes that provider available |
+| Provider selection | Optional `EDITOR_DEFAULT_PROVIDER` and `EDITOR_MODEL_ANTHROPIC`, `EDITOR_MODEL_OPENAI`, `EDITOR_MODEL_GEMINI`, `EDITOR_MODEL_ZAI`; see [configuration](docs/configuration.md) for defaults and z.ai endpoint selection |
+| `EDITOR_FAKE_LLM` | `1` for a scripted local provider with no paid model calls; production refuses this setting |
+| `REDIS_URL` | Optional locally; required for production AI editing and shared rate limits |
+
+Start the database and apply migrations, then leave the API running:
+
+```sh
+npm run db:up
+npm run db:migrate
+npm run server:dev
+```
+
+Start these in two additional terminals from the repository root:
+
+```sh
+npm run editor:mcp
+```
+
+```sh
+npm run server:build && npm run editor:worker
+```
+
+All three processes read `server/.env`. The MCP command defaults its API callback origin to `http://127.0.0.1:3000`; set `FC_APP_URL` when using another API address. The worker runs compiled code: rebuild and restart it after server changes. For shared local rate limits, start `docker compose up -d --wait redis` and set `REDIS_URL=redis://:freight_dev_redis@127.0.0.1:16380` with the default local Compose credentials; the next process start picks it up.
+
+Open `http://localhost:3000/viewer.html`, click **EDIT**, and connect an allowlisted wallet. Select a model, then use:
+
+1. **SOURCE** to edit and save a validated draft by hand, or **CHAT** to choose an offered provider/model and describe a change. Chat shows `queued`, `running`, tool activity and the terminal result; cancel revokes the job's capability. Cancellation of a provider request already submitted is best effort.
+2. The viewer to inspect the draft's shape, dimensions, materials and animation roles. **HISTORY** previews revisions and shows their differences and AI request provenance.
+3. **PUBLISH** in HISTORY to sign the exact entity/revision and make it available through the public bundle. Publication reaches other API processes on their next bundle recheck; HTTP caches can delay visibility. **RESTORE** creates another draft for review and publication.
+
+Manual editing works without an AI provider. For an AI smoke test, use the scripted provider; it exercises the real MCP and draft path but does not demonstrate live-provider asset quality or throughput. To put published database revisions back into the shipped seed files, run `npm run entities:export` against the intended database, then review and commit the generated changes.
+
+For Claude Code editing the seed files directly, run `claude mcp add fc-entities -- node mcp/src/stdio.js` from the checkout. This stdio mode needs no API or database: `save_draft` changes a seed file on disk, which you review and commit. It does not publish a database revision.
+
+### Concurrency, queue and cost limits
+
+The fallback is **five running jobs globally plus queued overflow**, not five per API or worker process. PostgreSQL serializes admission and claims in short transactions; provider calls never hold those locks. Queued rows survive API/worker restarts. Each wallet and each selected entity may have only one open job, queued or running. Five simultaneous jobs therefore require five editor wallets targeting distinct models or creating new ones.
+
+| Runtime setting | Default | Effect |
+| --- | ---: | --- |
+| `editor_jobs_parallel` | 5 | Global running claims; 0 pauses new claims |
+| `editor_jobs_per_day` | 40 | Jobs admitted per editor wallet per UTC day |
+| `editor_max_steps` | 24 | Agent turns per job |
+| `editor_max_output_tokens` | 32000 | Cumulative output token budget |
+| `editor_max_input_ktokens` | 500 | Cumulative input budget, in thousands of tokens, including repeated history |
+
+These are signed admin **GameSetting** values, not environment variables. A stored value overrides the fallback: on an existing installation, open admin → Settings → **AI editor: parallel jobs** → `5` → **SIGN & SAVE**. Lowering concurrency leaves current claims running and blocks new starts until the count falls below the new value.
+
+`EDITOR_JOB_TIMEOUT_MS` defaults to `600000`: a queued job expires ten minutes after admission; a running job has a separate fixed deadline ten minutes after its claim. Interrupted running jobs are failed on shutdown or expiry and are never automatically replayed, because provider work might already have incurred charges or saved drafts. Review the existing draft before submitting a replacement. There is no separate global queue-length cap; admission is constrained by allowlisting, one open job per wallet and daily limits.
+
+PostgreSQL was chosen over Bull/BullMQ because job admission, ownership, deadlines, events and revisions already live there. Keeping claims with that durable state avoids synchronizing a second queue with database transactions. Redis remains the shared rate-limit and cache service; the unrelated replay queue also uses Redis. More editor-worker replicas share the same five-slot budget and do not increase it automatically.
+
+Five slots are a scheduling guarantee, not a measured provider throughput. If jobs average two minutes, the idealized rate is 150 jobs/hour and a second wave of five waits about two minutes, before throttling and errors. Measure queue wait, duration, provider 429s, MCP validation latency, worker memory/event-loop lag and game API p95 before raising concurrency. Validation still consumes API/MCP CPU on the shared host. Add a bounded queue and separate wait timeout if demand grows; use bounded validation workers if validation becomes the bottleneck.
+
+### Rate limits and production operation
+
+Production Compose has six services with AI editing enabled: NestJS `app`, driving-verification `worker`, `editor-worker`, `mcp`, PostgreSQL 17 and Redis 7. Host nginx serves the split sites and proxies the API. The API retains provider keys for provider discovery; only the AI worker opens model sessions. The MCP receives no provider or wallet-signing key.
+
+| Boundary | Default protection |
+| --- | --- |
+| Editor API | 240 requests/minute per editor wallet, otherwise IP; 10 requests/second per IP |
+| MCP → API callbacks | 600 requests/minute and 20 requests/second per verified job; unverified capabilities share a bucket |
+| Internal MCP HTTP | 40 requests/second per socket source IP, shared in Redis across MCP replicas |
+
+API defaults are controlled by `THROTTLE_EDITOR_LIMIT`, `THROTTLE_EDITOR_RPS`, `THROTTLE_MCP_LIMIT` and `THROTTLE_MCP_RPS`. One generation makes several MCP requests; request limits are not generation counts. Protected API buckets and MCP fail closed when Redis is unavailable. MCP uses the counter-only `fc-mcp` Redis ACL identity restricted to `fc:mcp-rl:*`; Redis uses `noeviction` so memory pressure cannot discard rate-limit counters. Editor sessions are separate from admin sessions, enforce the storybook host and same-origin changes, and can also be restricted with `EDITOR_IP_ALLOWLIST`.
+
+The AI worker has no HTTP listener or published port, a 1 GB memory limit, 128-process limit, read-only root, temporary `/tmp`, dropped capabilities and no crank, payout or badge-mint secret. Its atomic `/tmp/fc-editor-worker-health-<pid>.json` marker records successful database polls; the container requires PID 1's marker to be less than 15 seconds old. Readiness checks do not spend provider tokens or verify provider account availability. Shutdown stops claims, aborts provider work and drains terminal writes for up to eight seconds before storage disconnects. Database failures revoke readiness and abort local provider calls.
+
+The MCP publishes no port in production and runs with a read-only root, 512 MB memory limit and restricted networks. It checks its bearer token, refuses browser origins and unknown Hosts, bounds bodies and request time, refuses JSON-RPC batches and redirects, and keeps raw credential-bearing exceptions out of logs. nginx blocks public access to `/api/editor/mcp/*`; the API still verifies every callback independently.
+
+The release scripts start MCP and the AI worker when `EDITOR_MCP_TOKEN` is configured, require their health checks, and stop the outgoing AI worker before changing API versions. Automatic and manual rollback select matching optional services, including older versions without a dedicated worker. Deployment and secret setup are described in [`deploy/README.md`](deploy/README.md); committing these changes does not deploy them.
+
+For a job stuck in `queued`, check the worker process, database access, fresh health marker and stored parallel setting. For missing providers or capability failures, compare the configured key names, provider/model selection, shared `JWT_SECRET`, MCP token and callback URL across the relevant processes without printing secrets. For `429`, honor `Retry-After` and check both configured budgets and Redis health. For `stale_base`, reload and review the current HEAD before asking again. A `failed` job can still have saved a draft; inspect HISTORY before resubmitting.
+
+### Validation and references
+
+The completed review passed `npm run check` (**2,080 server tests across 348 files**, plus client, landing, MCP and media checks), **522 PostgreSQL integration tests across 46 files**, the real Chrome editor suite with separate API/worker processes and real MCP, and an isolated production-container restart/database-outage smoke test. Scripted providers avoid paid calls. Tests cover five active plus five queued jobs, shared admission/claim races, cancellation, expired capabilities, exact-source checks, signed publication and release/rollback. Live-provider throughput remains unmeasured.
+
+```sh
+npm run check
+TEST_DATABASE_URL=postgresql://freight:freight_dev_password@localhost:15433/freightchain_entity_editor_review_test npm run server:integration
+bash .claude/skills/run-tests/e2e.sh editor
+```
+
+Integration tests must use a dedicated test database. See the [security review and residual limitations](docs/reviews/entity-editor-security.md), [editor architecture](docs/agents/editor.md), [HTTP contract](docs/editor-api.md), [entity format](docs/agents/world.md#entities-every-3d-model-is-data) and [configuration reference](docs/configuration.md).
 
 ## Tests
 

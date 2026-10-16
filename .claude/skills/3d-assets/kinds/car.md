@@ -12,11 +12,11 @@ From the repo root:
 node .claude/skills/3d-assets/validate.mjs "the user's sentence"
 ```
 
-Exit 1: stop. Quote `errors`. Do not edit `vehicles.js`, and do not call `image_gen` or `three_d.py`. A passing run prints `expect`. Build that wheel count and that axle count. Read `wheels()`: one left and one right tyre at each axle z.
+Exit 1: stop. Quote `errors`. Do not edit the entity. A passing run prints `expect`. Build that wheel count and that axle count. Read `seed/part/veh-wheels.js`: one left and one right tyre at each axle z (`zs`); every tyre part is tagged `tyre` (the validator counts them).
 
 ## Edit
 
-`client/js/world/vehicles.js`. `STYLES` is the mesh. `VEHICLES` is size, mass, speed, presets. Catalogue id `veh-<type>-<pick>`.
+`client/shared/entity/seed/vehicle/<type>.js` is the mesh (shared parts in `seed/part/veh-*.js`). `VEHICLES` (`client/shared/traffic.js`) is size, mass, speed, presets – the body must stay inside that box. Catalogue id `<type>`, `sedan#<paint>`.
 
 Frame: origin at the footprint centre on the ground, forward −z, right +x. Read the `wheels()` comment for how far the tyre sits outside the hull, and match it.
 

@@ -2,9 +2,14 @@ import * as THREE from 'three';
 import { mesh } from './pool.js';
 
 /* Shared prop geometry, the few route-independent materials, and the destructible-prop table (KINDS).
-   Route-specific prop shapes and materials live in js/themes/ (themes/_shared/props-basic.js + <route>/props.js). */
+   The prop SHAPES are entities (client/shared/entity/seed/prop/, built by world/entity-build.js); each route picks them and supplies the materials in themes/<route>/props.js. */
 
-export const GEO = { cyl: new THREE.CylinderGeometry(1, 1, 1, 7), box: new THREE.BoxGeometry(1, 1, 1), rock: new THREE.DodecahedronGeometry(1, 0), cone: new THREE.ConeGeometry(1, 1, 6) };
+export const GEO = { cyl: new THREE.CylinderGeometry(1, 1, 1, 7), box: new THREE.BoxGeometry(1, 1, 1), rock: new THREE.DodecahedronGeometry(1, 0), cone: new THREE.ConeGeometry(1, 1, 6),
+  wheel20: new THREE.CylinderGeometry(1, 1, 1, 20),   // vehicle wheels: round where GEO.cyl is a 7-gon; axis = y, laid on x by rot.z = π/2
+  wheel48: new THREE.CylinderGeometry(1, 1, 1, 48),   // a cruiser wheel and a round sign board, round even up close
+  pyr: new THREE.ConeGeometry(.7071, 1, 4).rotateY(Math.PI / 4),   // square pyramid, base 1×1, height 1 (hipped roof)
+  barrel: new THREE.CylinderGeometry(1, 1, 1, 16, 1, false, Math.PI / 2, Math.PI) };   // the -z half of a cylinder; rot.x = π/2 stands it up as an arch
+/* the entity geometries (client/shared/entity/plan.js GEOS) are exactly these keys; all shared, never disposed */
 /* boxHalf = half-extent of this geometry in its own space, one value per vertex. The form shade (world/nightlight.js) turns that into a 2 cm edge. Not set on cylinders. */
 export function markBox(geo) {
   const p = geo?.attributes?.position;

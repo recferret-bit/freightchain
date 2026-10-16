@@ -17,7 +17,9 @@ export interface ProblemDetails {
   instance?: string;
   code: string;
   requestId: string;
-  errors?: ProblemFieldError[];
+  /** field errors of a malformed request, or the reasons an entity was refused (422 entity_invalid / spec_invalid: plain strings) */
+  errors?: ProblemFieldError[] | readonly string[];
+  warnings?: readonly string[];
   checks?: Record<string, unknown>;
 }
 
@@ -30,6 +32,8 @@ export const PROBLEM_TITLES: Record<string, string> = {
   forbidden: 'Forbidden',
   not_found: 'Not found',
   conflict: 'Conflict',
+  entity_invalid: 'Entity refused',
+  stale_base: 'Stale base revision',
   version_conflict: 'Version conflict',
   rate_limited: 'Rate limited',
   service_unavailable: 'Service unavailable',

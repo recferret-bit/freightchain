@@ -22,6 +22,7 @@ export class EnvService {
   get isProduction(): boolean { return this.nodeEnv === 'production'; }
   get databaseUrl(): string { return this.env.DATABASE_URL; }
   /** Production REQUIRES JWT_SECRET (validated). Otherwise a RANDOM secret per boot – never a constant: a deploy that forgot NODE_ENV=production must not sign sessions with a publicly known key. */
+  get hasStableJwtSecret(): boolean { return !!this.env.JWT_SECRET; }
   get jwtSecret(): string {
     if (this.env.JWT_SECRET) return this.env.JWT_SECRET;
     if (!this.devSecret) {
@@ -34,6 +35,17 @@ export class EnvService {
   /** the admin session's key: ADMIN_JWT_SECRET, else derived from the player secret (never the same bytes – a player token is not an admin token even before the audience check) */
   get adminJwtSecret(): string { return this.env.ADMIN_JWT_SECRET ?? createHash('sha256').update(`${this.jwtSecret}:admin-session`).digest('hex'); }
   get adminSessionTtlMinutes(): number { return this.env.ADMIN_SESSION_TTL_MINUTES; }
+  /** the entity editor's session key: EDITOR_JWT_SECRET, else derived from the player secret (neither the player's nor the admin's bytes) */
+  get editorJwtSecret(): string { return this.env.EDITOR_JWT_SECRET ?? createHash('sha256').update(`${this.jwtSecret}:editor-session`).digest('hex'); }
+  get editorSessionTtlMinutes(): number { return this.env.EDITOR_SESSION_TTL_MINUTES; }
+  /** who may use the 3D model editor (empty = nobody: every editor route is a 404) */
+  get editorWallets(): ReadonlySet<string> {
+    return new Set(this.env.EDITOR_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));
+  }
+  /** EDITOR_IP_ALLOWLIST as written ('' = any IP); infrastructure/config/ip-rules.ts matches it */
+  get editorIpAllowlist(): string { return this.env.EDITOR_IP_ALLOWLIST; }
+  /** split deployment: the only host the editor API answers on (storybook.<COOKIE_DOMAIN>, nginx proxies /api/editor/ there); null = single origin, any host */
+  get editorHost(): string | null { return this.env.COOKIE_DOMAIN ? `storybook.${this.env.COOKIE_DOMAIN.replace(/^\./, '')}`.toLowerCase() : null; }
   get appDomain(): string { return this.env.APP_DOMAIN; }
   get appOrigin(): string { return this.env.APP_ORIGIN; }
   /** the site folder (default: ../client, resolved from this module so it works from src/ and from dist/) */
@@ -42,12 +54,37 @@ export class EnvService {
   get cookieDomain(): string | undefined { return this.env.COOKIE_DOMAIN; }
   /** the player session cookie's name: host-only `__Host-fc_session` in production (pentest H7-B), `fc_session` elsewhere */
   get sessionCookie(): string { return this.isProduction ? '__Host-fc_session' : 'fc_session'; }
+  /** storybook editor session: `__Host-` in production (no Domain, Path=/), `fc_editor` on Path /api/editor otherwise */
+  get editorCookie(): string { return this.isProduction ? '__Host-fc_editor' : 'fc_editor'; }
+  get editorCookiePath(): string { return this.isProduction ? '/' : '/api/editor'; }
   /** exact browser origins (scheme + host) that may call the API with the session cookie; empty = CORS off (single origin) */
   get corsOrigins(): string[] { return this.env.CORS_ORIGINS.split(',').map((o) => o.trim().replace(/\/$/, '')).filter((o) => o.length > 0); }
   get trustProxy(): number { return this.env.TRUST_PROXY ?? 0; }
   get throttleLimit(): number { return this.env.THROTTLE_LIMIT; }
   get throttleAuthLimit(): number { return this.env.THROTTLE_AUTH_LIMIT; }
   get throttlePromoLimit(): number { return this.env.THROTTLE_PROMO_LIMIT; }
+  /** the AI model editor – SECRETS: only the LLM adapters read the keys; nothing logs or returns them */
+  get llmKeys(): { anthropic?: string; openai?: string; gemini?: string; zai?: string } {
+    return { anthropic: this.env.ANTHROPIC_API_KEY, openai: this.env.OPENAI_API_KEY, gemini: this.env.GEMINI_API_KEY, zai: this.env.ZAI_API_KEY };
+  }
+  get zaiBaseUrl(): string { return this.env.ZAI_BASE_URL; }
+  get editorDefaultProvider(): string | null { return this.env.EDITOR_DEFAULT_PROVIDER ?? null; }
+  get editorModels(): { anthropic?: string; openai?: string; gemini?: string; zai?: string } {
+    return { anthropic: this.env.EDITOR_MODEL_ANTHROPIC, openai: this.env.EDITOR_MODEL_OPENAI, gemini: this.env.EDITOR_MODEL_GEMINI, zai: this.env.EDITOR_MODEL_ZAI };
+  }
+  get editorMcpUrl(): string { return this.env.EDITOR_MCP_URL.replace(/\/$/, ''); }
+  /** SECRET shared with the mcp service; undefined = the AI editor is off */
+  get editorMcpToken(): string | undefined { return this.env.EDITOR_MCP_TOKEN; }
+  get editorJobTimeoutMs(): number { return this.env.EDITOR_JOB_TIMEOUT_MS; }
+  /** test only: the scripted fake provider (the schema refuses it in production) */
+  get editorFakeLlm(): boolean { return this.env.EDITOR_FAKE_LLM === '1' && !this.isProduction; }
+  get throttleEntitiesLimit(): number { return this.env.THROTTLE_ENTITIES_LIMIT; }
+  get throttleEditorLimit(): number { return this.env.THROTTLE_EDITOR_LIMIT; }
+  get throttleAuthRps(): number { return this.env.THROTTLE_AUTH_RPS; }
+  get throttleEntitiesRps(): number { return this.env.THROTTLE_ENTITIES_RPS; }
+  get throttleEditorRps(): number { return this.env.THROTTLE_EDITOR_RPS; }
+  get throttleMcpLimit(): number { return this.env.THROTTLE_MCP_LIMIT; }
+  get throttleMcpRps(): number { return this.env.THROTTLE_MCP_RPS; }
   get freeRideSeconds(): number { return this.env.FREE_RIDE_SECONDS; }
   get hbMinIntervalMs(): number { return this.env.HB_MIN_INTERVAL_MS; }
   get hbTimeoutMs(): number { return this.env.HB_TIMEOUT_MS; }

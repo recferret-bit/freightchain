@@ -4,8 +4,8 @@
 //   env: CHROME=/path/to/chrome  SHOTS=/dir/for/screenshots (default: <tmp>/fc-shots)
 // Exits 1 if anything threw. Needs Node >= 22 (global WebSocket/fetch). Look at the screenshots – the script can't judge visuals.
 import fs from 'node:fs';
-import { launch, sleep } from './cdp.mjs';
-const PORT=+process.env.PORT||9333, URL=process.argv[2]||'http://localhost:8765/play.html';
+import { launch, sleep, withEntities } from './cdp.mjs';
+const PORT=+process.env.PORT||9333, URL=await withEntities(process.argv[2]||'http://localhost:8765/play.html');
 const { send, ev, shot, filt, problems, SHOTS, finish } = await launch({ port: PORT, shotsDir: 'fc-shots', args: ['--autoplay-policy=no-user-gesture-required'], evalProblems: true });
 const key=async(code,type)=>{ const map={KeyW:87,KeyS:83,KeyA:65,KeyD:68,KeyE:69,KeyQ:81,KeyI:73,KeyB:66,KeyR:82,KeyX:88,KeyV:86,KeyN:78,KeyL:76,KeyG:71,KeyC:67,KeyH:72,ShiftLeft:16}; await send('Input.dispatchKeyEvent',{type:type==='up'?'keyUp':'keyDown',code,key:code.replace('Key','').toLowerCase(),windowsVirtualKeyCode:map[code]}); };
 await send('Page.navigate',{url:URL}); await sleep(3500);

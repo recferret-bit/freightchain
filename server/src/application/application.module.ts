@@ -136,6 +136,7 @@ import { BurnHonkTimeHandler } from './use-cases/honk/burn-honk-time.handler.js'
 import { BurnHonkWeatherHandler } from './use-cases/honk/burn-honk-weather.handler.js';
 
 const services: Provider[] = [
+  EntityCatalogService, EntityWriteService,
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
   PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService,
 ];
@@ -146,8 +147,31 @@ import { GetStatsHandler } from './use-cases/stats/get-stats/get-stats.handler.j
 import { GetRideReplaysHandler } from './use-cases/verdict/get-ride-replays/get-ride-replays.handler.js';
 import { ProcessReplayQueueHandler } from './use-cases/verdict/process-replay-queue/process-replay-queue.handler.js';
 import { ListAdminReplaysHandler } from './use-cases/admin/list-admin-replays/list-admin-replays.handler.js';
+import { EntityCatalogService } from './services/entity-catalog.service.js';
+import { EntityWriteService } from './services/entity-write.service.js';
+import { GetEntityBundleHandler } from './use-cases/entities/get-entity-bundle/get-entity-bundle.handler.js';
+import { ListEntitiesHandler } from './use-cases/entities/list-entities/list-entities.handler.js';
+import { GetEntityHandler } from './use-cases/entities/get-entity/get-entity.handler.js';
+import { ListRevisionsHandler } from './use-cases/entities/list-revisions/list-revisions.handler.js';
+import { GetRevisionHandler } from './use-cases/entities/get-revision/get-revision.handler.js';
+import { SaveDraftHandler } from './use-cases/entities/save-draft/save-draft.handler.js';
+import { RestoreRevisionHandler } from './use-cases/entities/restore-revision/restore-revision.handler.js';
+import { RequestPublishChallengeHandler } from './use-cases/entities/request-publish-challenge/request-publish-challenge.handler.js';
+import { PublishRevisionHandler } from './use-cases/entities/publish-revision/publish-revision.handler.js';
+import { RequestEditorChallengeHandler } from './use-cases/editor/request-editor-challenge/request-editor-challenge.handler.js';
+import { VerifyEditorSignInHandler } from './use-cases/editor/verify-editor-signin/verify-editor-signin.handler.js';
+import { CreateEditorJobHandler } from './use-cases/editor/create-editor-job/create-editor-job.handler.js';
+import { CancelEditorJobHandler } from './use-cases/editor/cancel-editor-job/cancel-editor-job.handler.js';
+import { ListEditorJobsHandler } from './use-cases/editor/list-editor-jobs/list-editor-jobs.handler.js';
+import { GetEditorJobHandler } from './use-cases/editor/get-editor-job/get-editor-job.handler.js';
+import { GetEditorJobEventsHandler } from './use-cases/editor/get-editor-job-events/get-editor-job-events.handler.js';
+import { McpConfigsHandler } from './use-cases/editor/mcp-configs/mcp-configs.handler.js';
+import { McpSaveDraftHandler } from './use-cases/editor/mcp-save-draft/mcp-save-draft.handler.js';
+import { GetEditorMeHandler } from './use-cases/editor/get-editor-me/get-editor-me.handler.js';
 
 const handlers: Provider[] = [
+  CreateEditorJobHandler, CancelEditorJobHandler, ListEditorJobsHandler, GetEditorJobHandler, GetEditorJobEventsHandler, McpConfigsHandler, McpSaveDraftHandler,
+  GetEntityBundleHandler, ListEntitiesHandler, GetEntityHandler, ListRevisionsHandler, GetRevisionHandler, SaveDraftHandler, RestoreRevisionHandler, RequestPublishChallengeHandler, PublishRevisionHandler, RequestEditorChallengeHandler, VerifyEditorSignInHandler, GetEditorMeHandler,
   GetStatsHandler, GetDailyStatsHandler, ReconcileStatsHandler,
   RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, GetPublicRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,

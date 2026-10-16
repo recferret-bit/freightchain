@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic ...]   (default: all eighteen)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor ...]   (default: all nineteen)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats blinks traffic)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats blinks traffic editor)
 DB="freightchain_e2e_$$"
 PG_CONTAINER="${E2E_POSTGRES_CONTAINER:-freightchain-postgres}"
 PG_PORT="${E2E_POSTGRES_PORT:-15433}"
@@ -18,14 +18,18 @@ ADMIN_KP="$(mktemp -t fc-admin-XXXXXX).json"
 BUILD=".e2e-build-$$"; TSCONFIG=".e2e-tsconfig-$$.json"; LANDING_OUT="$(mktemp -d "${TMPDIR:-/tmp}/fc-landing-XXXXXX")"
 CLIENT_OUT="$(mktemp -d "${TMPDIR:-/tmp}/fc-client-XXXXXX")"
 cp -R "$ROOT/client/." "$CLIENT_OUT/"
-PID=""
+PID=""; EDITOR_WORKER_PID=""; MCP_PID=""
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,()=>{console.log(s.address().port);s.close()})'; }
 psql_admin() { docker exec "$PG_CONTAINER" psql -U freight -d postgres -v ON_ERROR_STOP=1 -tAc "$1"; }
 SUITE=""
 # E2E_LOG_DIR (set by `npm run test:census -- run e2e…`): the server's request lines per suite, so the census can tell which routes each suite hit
 keep_log() { if [ -n "${E2E_LOG_DIR:-}" ] && [ -n "$SUITE" ] && [ -f "/tmp/fc-e2e-$DB.log" ]; then grep -F '"event":"request"' "/tmp/fc-e2e-$DB.log" >> "$E2E_LOG_DIR/$SUITE.log" || true; fi; }
 stop() { if [ -n "$PID" ]; then kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; keep_log; fi; PID=""; }   # wait returns 143 for a killed server – not a failure
-cleanup() { stop; psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null 2>&1 || true; rm -rf "$ADMIN_KP" "$SERVER/$BUILD" "$SERVER/$TSCONFIG" "$LANDING_OUT" "$CLIENT_OUT"; }
+stop_editor() {
+  for child in "$EDITOR_WORKER_PID" "$MCP_PID"; do if [ -n "$child" ]; then kill "$child" 2>/dev/null || true; wait "$child" 2>/dev/null || true; fi; done
+  EDITOR_WORKER_PID=""; MCP_PID=""
+}
+cleanup() { stop_editor; stop; psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null 2>&1 || true; rm -rf "$ADMIN_KP" "$SERVER/$BUILD" "$SERVER/$TSCONFIG" "$LANDING_OUT" "$CLIENT_OUT"; }
 trap cleanup EXIT
 
 if ! nc -z localhost "$PG_PORT"; then
@@ -56,7 +60,7 @@ for suite in "${SUITES[@]}"; do
     lobby)   start 3;  (cd "$SERVER" && BASE="http://localhost:$PORT" SEED=1 DATABASE_URL="$URL" node scripts/e2e-lobby.mjs) || fails=$((fails + 1)) ;;   # SEED=1: the dev pool seeds it expects (throwaway database)
     admin)
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
-      start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-admin.mjs) || fails=$((fails + 1)) ;;
+      EXTRA_ENV="EDITOR_WALLETS=$wallet" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-admin.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;   # the admin wallet is an editor too (the owner's setup)
     promo)   # the whole promo loop: admin page (signs) → lobby + landing players → admin sees the uses; expiry, start, used up, disabled, abuse. Own limit: a hundred players behind one IP
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
       EXTRA_ENV="THROTTLE_PROMO_LIMIT=100000" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" SEED=1 DATABASE_URL="$URL" CHROME_PORT="$(free_port)" node scripts/e2e-promo.mjs) || fails=$((fails + 1)) ;;
@@ -94,7 +98,18 @@ for suite in "${SUITES[@]}"; do
       (cd "$SERVER" && env $BLINK_ENV DATABASE_URL="$URL" TREASURY_PUBKEY="$TREASURY" node "$BUILD/cli/index.js" pool:seed --id 1 --tier 1h --status active --min 2 >/dev/null 2>&1) || true   # already seeded by an earlier run of this suite: fine
       FIXED_PORT="$(free_port)"; EXTRA_ENV="$BLINK_ENV APP_ORIGIN=http://localhost:$FIXED_PORT APP_DOMAIN=localhost:$FIXED_PORT" start 3   # the cards' icon + links are absolute on APP_ORIGIN
       (cd "$SERVER" && BASE="http://localhost:$PORT" node scripts/e2e-blinks.mjs) || fails=$((fails + 1)); EXTRA_ENV=""; FIXED_PORT="" ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic)"; fails=$((fails + 1)) ;;
+    editor)  # the model editor (storybook viewer): the REAL entity MCP (mcp/src/http.js) + the server's scripted model (EDITOR_FAKE_LLM=1) – no AI key needed
+      wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
+      FIXED_PORT="$(free_port)"; MCP_PORT="$(free_port)"; MCP_TOKEN="e2e-mcp-$$-$(node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))')"
+      (cd "$ROOT/mcp" && EDITOR_MCP_PORT="$MCP_PORT" EDITOR_MCP_TOKEN="$MCP_TOKEN" FC_APP_URL="http://localhost:$FIXED_PORT" exec node src/http.js > "/tmp/fc-e2e-mcp-$DB.log" 2>&1) & MCP_PID=$!
+      EDITOR_TEST_JWT="e2e-editor-jwt-$$-shared-between-processes"
+      EXTRA_ENV="JWT_SECRET=$EDITOR_TEST_JWT EDITOR_WALLETS=$wallet EDITOR_FAKE_LLM=1 EDITOR_MCP_URL=http://127.0.0.1:$MCP_PORT EDITOR_MCP_TOKEN=$MCP_TOKEN" start 3 "$wallet"   # the editor is the ADMIN wallet too (the owner's setup)
+      (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" node scripts/e2e-editor-worker.mjs queue "$BUILD/editor-worker-job.txt")
+      (cd "$SERVER" && exec env DATABASE_URL="$URL" JWT_SECRET="$EDITOR_TEST_JWT" EDITOR_WALLETS="$wallet" EDITOR_FAKE_LLM=1 EDITOR_MCP_URL="http://127.0.0.1:$MCP_PORT" EDITOR_MCP_TOKEN="$MCP_TOKEN" node "$BUILD/app/editor-worker.js" > "/tmp/fc-e2e-editor-worker-$DB.log" 2>&1) & EDITOR_WORKER_PID=$!
+      (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" node scripts/e2e-editor-worker.mjs wait "$BUILD/editor-worker-job.txt" "$EDITOR_WORKER_PID")
+      (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-editor.mjs) || { fails=$((fails + 1)); tail -20 "/tmp/fc-e2e-mcp-$DB.log"; }
+      stop_editor; stop; FIXED_PORT=""; EXTRA_ENV="" ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

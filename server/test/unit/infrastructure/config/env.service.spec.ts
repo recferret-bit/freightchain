@@ -26,6 +26,8 @@ describe('EnvService', () => {
     expect(a.jwtSecret).toHaveLength(64);
     expect(a.jwtSecret).toBe(a.jwtSecret);
     expect(a.jwtSecret).not.toBe(b.jwtSecret);
+    expect(a.hasStableJwtSecret).toBe(false);
+    expect(withEnv({ ...base, JWT_SECRET: 'z'.repeat(40) }).hasStableJwtSecret).toBe(true);
     expect(withEnv({ ...base, JWT_SECRET: 'z'.repeat(40) }).jwtSecret).toBe('z'.repeat(40));
   });
 

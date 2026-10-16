@@ -29,8 +29,11 @@ server {
     listen 80;
     listen [::]:80;
     server_name api.__ROOT__;
+    include /etc/nginx/snippets/freightchain-entities.conf;   # location /api/entities/ (the 3D model bundle: rate-limited + microcached) – written by remote/setup.sh, which also adds this line to an already installed site
 
     client_max_body_size 1m;
+
+    location ^~ /api/editor/ { return 404; }
 
     location /api/ {
         proxy_pass http://127.0.0.1:__PORT__;

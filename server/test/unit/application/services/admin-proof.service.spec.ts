@@ -32,4 +32,14 @@ describe('AdminProofService', () => {
     await ctx.challenges.upsert({ wallet: admin.wallet, message: 'rider sign-in', expiresAt: new Date(ctx.clock.ms + 60_000), isExpired: () => false } as never);
     await expect(ctx.proofs.prove(admin.wallet, intent, admin.signText('rider sign-in'))).rejects.toThrow(/no signed request/);
   });
+
+  it('the editor surface keeps its own pending text and names its own host: an editor text never proves an admin change, nor the other way round', async () => {
+    const ctx = unitContext(), w = testAdmin(ctx), pub = { action: 'entity_publish' as const, entityId: 'cactus', revisionId: 'r-9', seq: 3 };
+    const editorText = await ctx.proofs.issue(w.wallet, pub, 'editor');
+    expect(editorText).toMatch(/Freight Chain model editor action/);
+    await expect(ctx.proofs.prove(w.wallet, pub, w.signText(editorText))).rejects.toThrow(/no signed request/);   // the admin key holds nothing
+    const adminText = await ctx.proofs.issue(w.wallet, intent);
+    expect(await ctx.proofs.prove(w.wallet, pub, w.signText(editorText), 'editor')).toEqual({ message: editorText, signature: w.signText(editorText) });   // both pending at once
+    expect(await ctx.proofs.prove(w.wallet, intent, w.signText(adminText))).toMatchObject({ message: adminText });
+  });
 });

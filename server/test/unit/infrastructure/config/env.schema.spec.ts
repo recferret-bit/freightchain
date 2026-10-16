@@ -91,4 +91,34 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
     // the gas sponsor is gone: a FEE_PAYER_SECRET left in an old env file is ignored, it neither refuses the boot nor is it read
     expect(() => validateEnv({ ...base, FEE_PAYER_SECRET: 'short' })).not.toThrow();
   });
+
+  it('EDITOR_WALLETS are base58 addresses and EDITOR_IP_ALLOWLIST IPs / CIDRs; both default to empty', () => {
+    const base = { DATABASE_URL: 'postgresql://x/y' };
+    expect(validateEnv(base)).toMatchObject({ EDITOR_WALLETS: '', EDITOR_IP_ALLOWLIST: '', EDITOR_SESSION_TTL_MINUTES: 240, THROTTLE_ENTITIES_LIMIT: 120, THROTTLE_EDITOR_LIMIT: 240, THROTTLE_ENTITIES_RPS: 5, THROTTLE_EDITOR_RPS: 10, THROTTLE_AUTH_RPS: 5, THROTTLE_MCP_LIMIT: 600, THROTTLE_MCP_RPS: 20 });
+    expect(() => validateEnv({ ...base, EDITOR_WALLETS: 'not-a-wallet' })).toThrow(/EDITOR_WALLETS/);
+    expect(() => validateEnv({ ...base, EDITOR_IP_ALLOWLIST: '10.0.0.0/8, nonsense' })).toThrow(/EDITOR_IP_ALLOWLIST.*nonsense/);
+    expect(validateEnv({ ...base, EDITOR_IP_ALLOWLIST: '10.0.0.0/8, ::1' }).EDITOR_IP_ALLOWLIST).toBe('10.0.0.0/8, ::1');
+  });
+
+  it('the AI editor: keys are optional, the MCP token ≥ 24 chars, a known default provider, the job timeout bounded, the fake never in production', () => {
+    const base = { DATABASE_URL: 'postgresql://x/y' };
+    expect(validateEnv(base)).toMatchObject({ EDITOR_MCP_URL: 'http://127.0.0.1:3100', EDITOR_JOB_TIMEOUT_MS: 600_000, ZAI_BASE_URL: 'https://api.z.ai/api/paas/v4', EDITOR_FAKE_LLM: '0' });
+    expect(validateEnv({ ...base, ANTHROPIC_API_KEY: '' }).ANTHROPIC_API_KEY).toBeUndefined();
+    expect(() => validateEnv({ ...base, EDITOR_MCP_TOKEN: 'short' })).toThrow(/EDITOR_MCP_TOKEN/);
+    expect(() => validateEnv({ ...base, EDITOR_DEFAULT_PROVIDER: 'mistral' })).toThrow(/EDITOR_DEFAULT_PROVIDER/);
+    expect(() => validateEnv({ ...base, EDITOR_JOB_TIMEOUT_MS: '500' })).toThrow(/EDITOR_JOB_TIMEOUT_MS/);
+    expect(validateEnv({ ...base, EDITOR_FAKE_LLM: '1' }).EDITOR_FAKE_LLM).toBe('1');
+  });
+
+  it('production with editor or admin wallets needs COOKIE_DOMAIN (the host walls); without wallets it may be unset', () => {
+    const w = Keypair.generate().publicKey.toBase58();
+    expect(() => validateEnv({ ...prod, EDITOR_WALLETS: w })).toThrow(/COOKIE_DOMAIN/);
+    expect(() => validateEnv({ ...prod, ADMIN_WALLETS: w })).toThrow(/COOKIE_DOMAIN/);
+    expect(validateEnv({ ...prod, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun' }).EDITOR_WALLETS).toBe(w);
+    const token = 'x'.repeat(24);
+    expect(() => validateEnv({ ...prod, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun', EDITOR_MCP_TOKEN: token, EDITOR_MCP_URL: 'http://169.254.169.254' })).toThrow(/EDITOR_MCP_URL/);
+    expect(() => validateEnv({ ...prod, EDITOR_MCP_TOKEN: token })).toThrow(/REDIS_URL/);
+    expect(validateEnv({ ...prod, REDIS_URL: 'redis://redis:6379', EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun', EDITOR_MCP_TOKEN: token, EDITOR_MCP_URL: 'http://mcp:3100' }).EDITOR_MCP_URL).toBe('http://mcp:3100');
+    expect(validateEnv(prod).NODE_ENV).toBe('production');
+  });
 });

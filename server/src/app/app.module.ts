@@ -18,6 +18,9 @@ import { TelemetryRetentionScheduler } from '../infrastructure/scheduling/teleme
 import { StaleRideScheduler } from '../infrastructure/scheduling/stale-ride.scheduler.js';
 import { ReplayVerificationScheduler } from '../infrastructure/scheduling/replay-verification.scheduler.js';
 import { ApplicationModule } from '../application/application.module.js';
+import { EditorTokenPort } from '../application/ports/editor/editor-token.port.js';
+import { JobTokenPort } from '../application/ports/editor/job-token.port.js';
+import { RateLimitStorage } from '../infrastructure/http/redis-throttler.storage.js';
 import { TokenSignerPort } from '../application/ports/auth/token-signer.port.js';
 import { PresentationModule } from '../presentation/presentation.module.js';
 import { OriginGuard } from '../infrastructure/http/guards/origin.guard.js';
@@ -34,7 +37,7 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
 @Module({
   imports: [
     EnvModule,
-    ThrottlerModule.forRootAsync({ imports: [InfrastructureModule], inject: [EnvService, TokenSignerPort], useFactory: throttlerOptions }),
+    ThrottlerModule.forRootAsync({ imports: [InfrastructureModule], inject: [EnvService, TokenSignerPort, EditorTokenPort, JobTokenPort, RateLimitStorage], useFactory: throttlerOptions }),
     ServeStaticModule.forRootAsync({
       inject: [EnvService],
       useFactory: siteRoots,

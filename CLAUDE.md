@@ -7,6 +7,8 @@
 - After visual / gameplay changes run `node tools/e2e-chrome.mjs` (in `client/`) and read the screenshots with the Read tool. Say plainly what was and wasn't verified – it can't judge "feel" (shake, smoke…), so tell the user what to eyeball.
 - HONK on a local validator: `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token half). Full coin suite: `bash .claude/skills/honk-suite/run.sh`.
 
+- Entity editor security: `docs/agents/editor.md`; production rate limits require Redis and a restricted MCP counter user; PostgreSQL owns the shared AI job queue; generation runs only in the dedicated process (`npm run editor:worker`).
+
 ## Workflow
 
 1. Change the relevant module; new tunables go in `js/config.js`; a key change updates the maps (AGENTS.md "Maps stay current").

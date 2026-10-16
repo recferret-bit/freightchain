@@ -1,3 +1,5 @@
+import { UnprocessableEntityError } from '../../../../src/domain/shared/errors.js';
+import type { ProblemFieldError } from '../../../../src/domain/shared/problem-details.js';
 import { BadRequestException, HttpException, NotFoundException } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
 import { z } from 'zod';
@@ -25,7 +27,7 @@ describe('toProblem (RFC 9457)', () => {
     const result = z.object({ wallet: z.string(), n: z.number().int() }).safeParse({ n: 1.5 });
     const problem = toProblem((result as { error: unknown }).error, ctx);
     expect(problem).toMatchObject({ status: 400, code: 'validation_error' });
-    expect(problem.errors?.map((e) => e.path).sort()).toEqual(['n', 'wallet']);
+    expect((problem.errors as ProblemFieldError[] | undefined)?.map((e) => e.path).sort()).toEqual(['n', 'wallet']);
     expect(problem.detail).toMatch(/^(wallet|n): .+; (wallet|n): .+$/); // several issues: "path: message; …"
   });
 
@@ -47,5 +49,10 @@ describe('toProblem (RFC 9457)', () => {
     expect(p).toMatchObject({ status: 500, code: 'internal_error' });
     expect(JSON.stringify(p)).not.toContain('hunter2');
     expect(toProblem(new HttpException('boom', 503), ctx)).toMatchObject({ status: 500, code: 'internal_error' });
+  });
+
+  it('an entity refused (422) carries every reason and the warnings', () => {
+    const problem = toProblem(new UnprocessableEntityError('no', 'entity_invalid', ['parts[0]: bad'], ['floats']), ctx);
+    expect(problem).toMatchObject({ status: 422, code: 'entity_invalid', title: 'Entity refused', errors: ['parts[0]: bad'], warnings: ['floats'] });
   });
 });

@@ -31,4 +31,29 @@ describe('throttlerOptions', () => {
     expect(await track('fc_session=forged')).toBe('ip:10.0.0.7');
     expect(await track()).toBe('ip:10.0.0.7');
   });
+
+  it("'entities' (per IP) and 'editor' (per editor session, else per IP) cover only their paths; 'default' skips both; the editor sign-in also counts in 'auth'", async () => {
+    const editorTokens = { verify: async (t: string) => (t === 'ed' ? 'ED' : null) } as never;
+    const all = throttlerOptions({ throttleLimit: 600, throttleAuthLimit: 30, throttleEntitiesLimit: 120, throttleEditorLimit: 240 } as EnvService, new Tokens(), editorTokens) as unknown as Throttler[];
+    const def = all.find((t) => t.name === 'default')!, au = all.find((t) => t.name === 'auth')!, ent = all.find((t) => t.name === 'entities')!, ed = all.find((t) => t.name === 'editor')!;
+    const entRps = all.find((t) => t.name === 'entities-rps')!, edRps = all.find((t) => t.name === 'editor-rps')!;
+    expect([ent?.limit, ed?.limit, entRps.ttl, entRps.limit, edRps.limit]).toEqual([120, 240, 1000, 5, 10]);
+    expect([def?.skipIf(at('/api/entities/bundle')), def?.skipIf(at('/api/editor/me')), ent?.skipIf(at('/api/entities/bundle')), ent?.skipIf(at('/api/rides'))]).toEqual([true, true, false, true]);
+    expect([ed?.skipIf(at('/api/editor/entities')), ed?.skipIf(at('/api/rides')), au?.skipIf(at('/api/editor/auth/nonce')), au?.skipIf(at('/api/editor/me'))]).toEqual([false, true, false, true]);
+    expect(edRps.skipIf(at('/api/editor/me'))).toBe(false);
+    expect(await ed?.getTracker?.({ headers: { cookie: 'fc_editor=ed' }, ip: '10.0.0.7' }, at('/api/editor/me'))).toBe('editor:ED');
+    expect(await ed?.getTracker?.({ headers: { cookie: 'fc_editor=x' }, ip: '10.0.0.7' }, at('/api/editor/me'))).toBe('ip:10.0.0.7');
+    expect(edRps.getTracker?.({ headers: { cookie: 'fc_editor=ed' }, ip: '10.0.0.7' }, at('/api/editor/me'))).toBe('ip:10.0.0.7');
+  });
+
+  it("'mcp' covers only the MCP's callbacks, per verified JOB; an unverified token does not pick its own bucket", async () => {
+    const jobs = { verify: async (t: string) => (t === 'good' ? { jobId: 'JOB-1', wallet: 'W', entityId: null } : null) };
+    const all = throttlerOptions({ throttleLimit: 600, throttleAuthLimit: 30, throttleEntitiesLimit: 120, throttleEditorLimit: 240 } as EnvService, new Tokens(), undefined, jobs as never) as unknown as Throttler[];
+    const def = all.find((t) => t.name === 'default')!, ed = all.find((t) => t.name === 'editor')!, mcp = all.find((t) => t.name === 'mcp')!;
+    expect([def.skipIf(at('/api/editor/mcp/configs')), ed.skipIf(at('/api/editor/mcp/configs')), mcp.skipIf(at('/api/editor/mcp/configs')), mcp.skipIf(at('/api/editor/me'))]).toEqual([true, true, false, true]);
+    expect(await mcp.getTracker?.({ headers: { 'x-fc-job': 'good' }, ip: '10.0.0.7' }, at('/api/editor/mcp/configs'))).toBe('job:JOB-1');
+    expect(await mcp.getTracker?.({ headers: { 'x-fc-job': 'junk' }, ip: '10.0.0.7' }, at('/api/editor/mcp/configs'))).toBe('job:unverified');
+    expect(await mcp.getTracker?.({ headers: { 'x-fc-job': 'other-junk' }, ip: '10.0.0.7' }, at('/api/editor/mcp/configs'))).toBe('job:unverified');
+    expect(await mcp.getTracker?.({ headers: { 'x-fc-job': 'good', 'x-forwarded-for': '1.2.3.4' }, ip: '1.2.3.4' }, at('/api/editor/mcp/configs'))).toBe('ip:1.2.3.4');
+  });
 });

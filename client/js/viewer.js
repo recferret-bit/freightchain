@@ -1,14 +1,12 @@
 import * as THREE from 'three';
 import { renderer } from './world/scene.js';
-import { VEHICLES, buildVehicle } from './world/vehicles.js';
-import { KINDS } from './world/props.js';
-import { buildGantry } from './world/gantry.js';
-import { THEMES } from './themes/index.js';
-import { TYPES } from './themes/_shared/landmarks/index.js';
+import { buildCatalogue } from './catalogue.js';
+import { loadEntities, putEntity, reloadEntities } from './world/entities.js';
 import { setFormShade } from './world/nightlight.js';   // installs the form-shade patch; this page has no day/night loop, so the sun stays the default and F8 is instant
 
 /* Model viewer (viewer.html): a separate scene with every 3D object of the game except the player's own freighter/trailer –
-   traffic vehicles, and per route the scenery props, roadside furniture and finish gantry – built by the SAME code the game uses.
+   traffic vehicles, and per route the scenery props, roadside furniture, landmarks and finish gantry – each an entity (client/shared/entity/),
+   built by the SAME code the game uses.
    Orbit / zoom / pan are hand-rolled (no extra imports). Selection lives in location.hash so a view can be linked. */
 
 const $ = id => document.getElementById(id);
@@ -17,36 +15,10 @@ const camera = new THREE.PerspectiveCamera(45, 1, .05, 600);
 const grid = new THREE.GridHelper(60, 60, 0x6a7078, 0x3a3f45); grid.position.y = -.002; scene.add(grid);
 const stage = new THREE.Group(); scene.add(stage);
 
-/* ---------- catalogue: { group, label, make() → Object3D, info() → [[k, v]…] } ---------- */
-const items = [];
-const add = (group, id, label, make, info) => items.push({ group, id, label, make, info });
+/* ---------- catalogue: { group, id, entity, label, make() → Object3D, info() → [[k, v]…] } (js/catalogue.js) ---------- */
+await loadEntities();
+let items = buildCatalogue();
 const f = (n, d = 2) => +n.toFixed(d);
-
-for (const [type, d] of Object.entries(VEHICLES)) {
-  const picks = type === 'sedan' ? [0, 1, 2, 3, 4, 5, 6] : [0];   // sedans come in 7 paint colours
-  for (const p of picks) add('Vehicles', `veh-${type}-${p}`, picks.length > 1 ? `${d.name} · colour ${p + 1}` : d.name, () => buildVehicle(d, p),
-    () => [['type', type], ['length × width × height', `${d.len} × ${d.w} × ${d.h} m`], ['mass (hull dmg ×)', d.mass], ['cruise speed', `${d.v[0]}–${d.v[1]} m/s`], ['AI presets', Object.keys(d.presets).join(', ')]]);
-}
-const FURN = { post: 'delineator post', pole: 'utility pole', guard: 'guardrail segment' };
-const collider = o => { const u = o.userData, k = KINDS[u.kind]?.(u.size); return k ? [['kind', u.kind], ['size param', f(u.size)], ['collision r', k.rf ? `${k.rf} × ${k.rl} m` : `${f(k.r)} m`], ['hp (speed² budget)', f(k.hp, 0)], ['hull dmg @28 m/s', `${f(k.dmg, 1)} %`], ['slowdown on break', `${f(k.slow * 100, 0)} %`]] : []; };
-const sig = o => { const m = []; o.traverse(c => c.isMesh && m.push(c.material.uuid)); return `${o.userData.kind}|${m.length}|${m.join()}`; };
-for (const t of THEMES) {
-  const G = `Route · ${t.name}`, pr = t.createProps(), seen = new Map();
-  // the picker maps (r, r2) → prop; sweep both to find every distinct variant (kind × part count × materials)
-  for (let i = 0; i < 100; i++) for (const r2 of [.1, .5, .9]) { const o = pr.pick((i + .5) / 100, r2), s = sig(o); if (!seen.has(s)) seen.set(s, { r: (i + .5) / 100, r2, name: o.name || o.userData.kind }); }
-  const count = {}; for (const v of seen.values()) count[v.name] = (count[v.name] || 0) + 1;
-  const idx = {};
-  for (const v of seen.values()) {
-    const n = count[v.name] > 1 ? ` ${(idx[v.name] = (idx[v.name] || 0) + 1)}` : '';
-    add(G, `${t.id}-${v.name.replace(/\W+/g, '_')}${n.trim()}`, v.name + n, () => t.createProps().pick(v.r, v.r2), function () { return collider(this.obj); });   // fresh createProps: same materials are shared per call
-  }
-  const caught = new Map();
-  t.createFurniture().build({ ci: 0, s0: 0, place: o => { if (!caught.has(o.userData.kind)) caught.set(o.userData.kind, o); }, reg() {}, destroyed: new Set() });
-  for (const [k, o] of caught) add(G, `${t.id}-${k}`, FURN[k] || k, () => o, function () { return collider(this.obj); });
-  if (t.createLandmarks) for (const [type, impls] of Object.entries(TYPES)) impls.forEach((v, i) => add(`Landmarks · ${t.name}`, `${t.id}-lm-${v.id}`, `${type} · ${v.id.replace(/^[a-z]+-/, '')}`, () => t.createLandmarks().preview(type, i),
-    () => [['type', type], ['implementation', v.id], ['footprint', `${v.hl * 2} × ${v.hd * 2} m`], ['collider', 'building: hp 3000, 40 % hull @28 m/s']]));
-  add(G, `${t.id}-gantry`, 'finish gantry', () => buildGantry(t.finishText), () => [['kind', 'gantry'], ['banner text', t.finishText], ['span', '14.4 m between posts, 7 m high'], ['hp / hull dmg', '500 / 35 % per post']]);
-}
 
 /* ---------- selection ---------- */
 let cur = null, obj = null, bounds = new THREE.Box3();
@@ -68,6 +40,7 @@ function measureBounds(root) {
   for (const { p, c } of pulled) p.add(c);
   return box.isEmpty() ? new THREE.Box3().setFromObject(root) : box;
 }
+const selectHooks = [];
 function select(item, keepCam) {
   clearStage(); cur = item; item.obj = obj = item.make(); stage.add(obj);
   bounds = measureBounds(obj);   // measured before the helper lines are added
@@ -76,9 +49,12 @@ function select(item, keepCam) {
     const l = new THREE.LineSegments(g, edgeMat); c.add(l); edgeLines.push(l); });
   boxHelper = new THREE.Box3Helper(bounds, 0xffcf5a); stage.add(boxHelper);
   const sz = bounds.getSize(new THREE.Vector3());
-  $('info').innerHTML = `<b>${item.label}</b><div style="color:#7d8187">${item.group}</div><table>` +
-    [['size (x × y × z)', `${f(sz.x)} × ${f(sz.y)} × ${f(sz.z)} m`], ...item.info()].map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('') + '</table>';
-  const det = document.querySelector(`details[data-g="${item.group}"]`); if (det) det.open = true;
+  const info = $('info'), b = document.createElement('b'), g = document.createElement('div'), t = document.createElement('table'); info.textContent = '';
+  b.textContent = item.label; g.textContent = item.group; g.style.color = '#7d8187';
+  for (const [k, v] of [['size (x × y × z)', `${f(sz.x)} × ${f(sz.y)} × ${f(sz.z)} m`], ...item.info()]) { const r = t.insertRow(); r.insertCell().textContent = k; r.insertCell().textContent = String(v); }
+  info.append(b, g, t);
+  for (const cb of selectHooks) cb(item);
+  const det = [...document.querySelectorAll('details')].find(d => d.dataset.g === item.group); if (det) det.open = true;
   document.querySelectorAll('.item').forEach(e => e.classList.toggle('on', e.dataset.id === item.id));
   const on = document.querySelector('.item.on'); on?.scrollIntoView({ block: 'nearest' });
   try { history.replaceState(null, '', '#' + encodeURIComponent(item.id)); } catch { /* sandboxed frame */ }
@@ -94,13 +70,17 @@ function applyOpts() {
 }
 $('opts').addEventListener('change', e => { opts[e.target.dataset.k] = e.target.checked; if (e.target.dataset.k === 'form') setFormShade(opts.form); applyOpts(); });
 
-/* sidebar */
-{
-  let html = '', g = null;
-  for (const it of items) { if (it.group !== g) { html += (g ? '</details>' : '') + `<details ${it.group === 'Vehicles' ? 'open' : ''} data-g="${it.group}"><summary>${it.group}</summary>`; g = it.group; } html += `<div class="item" data-id="${it.id}">${it.label}</div>`; }
-  $('list').innerHTML = html + '</details>';
-  $('list').addEventListener('click', e => { const it = items.find(i => i.id === e.target.dataset?.id); if (it) select(it); });
+/* sidebar (labels and ids come from entities, which an editor can write: built with textContent, never markup) */
+function renderList() {
+  const list = $('list'), open = new Set([...list.querySelectorAll('details[open]')].map(d => d.dataset.g)); list.textContent = '';
+  let det = null;
+  for (const it of items) {
+    if (det?.dataset.g !== it.group) { det = document.createElement('details'); det.dataset.g = it.group; det.open = open.size ? open.has(it.group) : it.group === 'Vehicles'; const s = document.createElement('summary'); s.textContent = it.group; det.append(s); list.append(det); }
+    const d = document.createElement('div'); d.className = 'item'; d.dataset.id = it.id; d.textContent = it.label; det.append(d);
+  }
 }
+renderList();
+$('list').addEventListener('click', e => { const it = items.find(i => i.id === e.target.dataset?.id); if (it) select(it); });
 const step = d => select(items[(items.indexOf(cur) + d + items.length) % items.length]);
 
 /* ---------- orbit camera ---------- */
@@ -138,6 +118,7 @@ cv.addEventListener('pointermove', e => {
 cv.addEventListener('wheel', e => { e.preventDefault(); zoom(Math.exp(e.deltaY * (e.deltaMode ? .05 : .0012))); }, { passive: false });
 const keys = new Set();
 addEventListener('keydown', e => {
+  if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key.toLowerCase();
   if ('wasd'.includes(k)) { keys.add(k); return; }
   const flip = { e: 'edges', g: 'grid', x: 'box', v: 'wire' }[k];
@@ -169,4 +150,18 @@ renderer.setAnimationLoop(now => {
 
 const want = decodeURIComponent(location.hash.slice(1));
 select(items.find(i => i.id === want) ?? items[0]);
-window.__viewer = { items, select: id => { const it = items.find(i => i.id === id); if (!it) throw new Error('unknown viewer item: ' + id); select(it); }, cam, opts, get obj() { return obj; } };
+/* the editor (js/editor/) drives the viewer through these: preview a config in place, reload the catalogue after a new entity or a publish */
+window.__viewer = {
+  get items() { return items; }, cam, opts, get obj() { return obj; }, get current() { return cur; },
+  select: id => { const it = items.find(i => i.id === id); if (!it) throw new Error('unknown viewer item: ' + id); select(it); },
+  onSelect: cb => selectHooks.push(cb),
+  /* show `config` for its entity now (the registry keeps it until the next preview / reload); selects an item of that entity if the current one is another */
+  preview(config) {
+    putEntity(config);
+    if (!items.some(i => i.entity === config.id)) { items = buildCatalogue(); renderList(); }
+    select(cur?.entity === config.id ? cur : items.find(i => i.entity === config.id), true);
+  },
+  /* back to the published models (after a publish, or to drop a preview) */
+  async reload() { await reloadEntities(); const id = cur?.id; items = buildCatalogue(); renderList(); select(items.find(i => i.id === id) ?? items[0], true); },
+};
+if (new URLSearchParams(location.search).get('editor') !== 'off') import('./editor/index.js').then(m => m.mountEditor(window.__viewer)).catch(e => console.error('[editor]', e));

@@ -73,6 +73,15 @@ describe('HTTP · CORS + shared cookie domain', () => {
       expect(res.headers['access-control-allow-origin']).toBeUndefined();
       expect(res.headers['access-control-allow-credentials']).toBeUndefined();
     });
+
+    it('M4 for the model editor: on storybook no CORS headers for an allowlisted sibling, and a sibling POST to /api/editor/* is 403 bad_origin', async () => {
+      const read = await request(h.server()).get('/api/editor/me').set('Host', 'storybook.freightchain.fun').set('Origin', APEX);
+      expect(read.headers['access-control-allow-origin']).toBeUndefined();
+      const pre = await request(h.server()).options('/api/editor/jobs').set('Host', 'storybook.freightchain.fun').set('Origin', APEX).set('Access-Control-Request-Method', 'POST').set('Access-Control-Request-Headers', 'x-fc-editor,content-type');
+      expect(pre.headers['access-control-allow-origin']).toBeUndefined();
+      const post = await request(h.server()).post('/api/editor/auth/nonce').set('Host', 'storybook.freightchain.fun').set('Origin', APEX).set('x-fc-editor', '1').send({ wallet: newWallet().address });
+      expect([post.status, post.body.code]).toEqual([403, 'bad_origin']);
+    });
   });
 
   it('the session cookie is issued for the parent domain', async () => {

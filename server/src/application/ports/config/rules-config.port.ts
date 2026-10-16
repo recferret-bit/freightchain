@@ -61,6 +61,13 @@ export interface RulesConfig {
   /** where the admin page lives – named in the admin sign-in message so the wallet can match it to the page (admin.<apex>; the app's own domain on a single origin) */
   adminDomain: string;
   adminOrigin: string;
+  /** wallets that may sign in to the 3D model editor (EDITOR_WALLETS; empty = nobody) */
+  editorWallets: ReadonlySet<string>;
+  /** where the editor lives – named in its sign-in and publish messages (storybook.<apex>; the app's own domain on a single origin) */
+  editorDomain: string;
+  editorOrigin: string;
+  /** an AI editor job running longer is aborted (EDITOR_JOB_TIMEOUT_MS) */
+  editorJobTimeoutMs: number;
 }
 
 /** Game and economy tunables (environment-backed in production). */
