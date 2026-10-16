@@ -14,6 +14,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--ink);
 #deck{position:absolute;inset:0}
 .slide{position:absolute;inset:0;padding:var(--pt) var(--pr) var(--pb) var(--pl);display:grid;gap:calc(64px + var(--ex) * .6);opacity:0;visibility:hidden;transition:opacity .5s,visibility 0s .5s}
 .slide.on{opacity:1;visibility:visible;transition:opacity .5s}
+.slide:not(.on) :is(.shot,.tags span,.badge,canvas.glyph,.truck svg,.truck .wh){animation-play-state:paused}   /* a hidden slide only fades; its floats, wheels and rumble do not keep ticking */
+.slide:not(.on) :is(.shot,.tags span)::before,.slide:not(.on) .pin i::after{animation-play-state:paused}
 .slide>*{min-width:0}
 figure{margin:0}
 .shot{position:absolute;overflow:hidden;padding:6px;border-radius:var(--radius);background:var(--sol);box-shadow:0 0 0 4px #050505,0 0 0 8px transparent,0 40px 90px #000;outline:4px solid transparent}
@@ -89,8 +91,9 @@ h1 em{font-style:normal;color:var(--accent)}
 .split span{font:600 16px/1.1 var(--body);letter-spacing:1px;white-space:nowrap}
 
 /* tip: always on, a slow pulse */
-#help{position:fixed;left:50%;bottom:14px;translate:-50%;z-index:30;padding:9px 18px;border-radius:999px;border:1px solid #9945ff99;background:#000a;font:700 13px var(--body);letter-spacing:2.5px;text-transform:uppercase;color:#fffc;pointer-events:none;white-space:nowrap;animation:tip 2.4s ease-in-out infinite,tipwave 3.6s ease-in-out infinite}
-#help.flash{animation:tip 2.4s ease-in-out infinite,tipwave 3.6s ease-in-out infinite,tipflash .5s ease-out 1}
+#help{position:fixed;left:50%;bottom:14px;translate:-50%;z-index:30;padding:9px 18px;border-radius:999px;border:1px solid #9945ff99;background:#000a;font:700 13px var(--body);letter-spacing:2.5px;text-transform:uppercase;color:#fffc;pointer-events:none;white-space:nowrap;animation:tipwave 3.6s ease-in-out infinite}
+#help::before{content:"";position:absolute;inset:-8px;border-radius:inherit;pointer-events:none;z-index:-1;box-shadow:0 0 18px 2px #9945ff88,0 0 28px 4px #14f19544;animation:pulse 2.4s ease-in-out infinite}   /* the glow is rasterized once; only its opacity ticks */
+#help.flash{animation:tipwave 3.6s ease-in-out infinite,tipflash .5s ease-out 1}
 @keyframes tipflash{0%{background:#fff;color:#050505;border-color:#fff;scale:1.22;box-shadow:0 0 46px 14px #14f195cc,0 0 90px 24px #9945ffaa}100%{background:#000a;color:#fffc;border-color:#9945ff99;scale:1}}
 #help .k{display:flex;align-items:center;gap:22px}
 #help i{font-style:normal}
@@ -102,47 +105,49 @@ h1 em{font-style:normal;color:var(--accent)}
 @keyframes arrowflash{0%{color:#050505;text-shadow:0 0 14px #14f195;scale:1.9}100%{color:var(--good);text-shadow:none;scale:1}}   /* `scale`, not transform: the arrow's own nudge owns transform */
 @keyframes nudge-l{0%,100%{transform:translateX(0)}50%{transform:translateX(-7px)}}
 @keyframes nudge-r{0%,100%{transform:translateX(0)}50%{transform:translateX(7px)}}
-@keyframes tipwave{0%,100%{transform:translateY(0) rotate(-.6deg) scale(1)}25%{transform:translateY(-5px) rotate(0) scale(1.04)}50%{transform:translateY(0) rotate(.6deg) scale(1.08)}75%{transform:translateY(-5px) rotate(0) scale(1.04)}}
-@keyframes tip{0%,100%{box-shadow:0 0 0 0 #9945ff00;opacity:.72}50%{box-shadow:0 0 18px 2px #9945ff88,0 0 28px 4px #14f19533;opacity:1}}
+@keyframes tipwave{0%,100%{transform:translateY(0) rotate(-.6deg) scale(1);opacity:.75}25%{transform:translateY(-5px) rotate(0) scale(1.04)}50%{transform:translateY(0) rotate(.6deg) scale(1.08);opacity:1}75%{transform:translateY(-5px) rotate(0) scale(1.04)}}
+@keyframes pulse{50%{opacity:.4}}
 
-/* slide 1: the screens hang in the air, lean away from the mouse, lift on hover / tap; the border is a flowing Solana glow */
-.fx .shot{--r:0deg;--k:0;--s:1;--dl:0s;transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s));
-  transition:transform .35s cubic-bezier(.2,.8,.2,1),filter .35s,scale .35s cubic-bezier(.2,.8,.2,1);cursor:pointer;animation:float 6s ease-in-out var(--dl) infinite,glow 4s ease-in-out var(--dl) infinite,flow 7s linear infinite;
-  background:linear-gradient(110deg,#9945ff,#14f195,#9945ff,#14f195) 0 0/300% 100%}
+/* slide 1: the screens hang in the air, lean away from the mouse, lift on hover / tap. The border is a conic gradient rotated as a layer (a moving background-position repainted the photo).
+   The 90 px drop and the colored glow are static, so float can composite them. Hover scale is the `scale` property: `transform` is the lean, and a transition on it retargeted every pointer move. */
+.fx .shot{--r:0deg;--k:0;--dl:0s;background:none;cursor:pointer;box-shadow:0 0 0 4px #050505,0 0 26px 3px #9945ff77,0 40px 90px #000;
+  transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px));
+  transition:scale .35s cubic-bezier(.2,.8,.2,1);animation:float 6s ease-in-out var(--dl) infinite}
+.fx .shot::before{content:"";position:absolute;left:50%;top:50%;z-index:-1;width:180%;height:180%;translate:-50% -50%;pointer-events:none;
+  background:conic-gradient(#9945ff,#14f195,#9945ff,#14f195,#9945ff);animation:spin 7s linear var(--dl) infinite,pulse 4s ease-in-out var(--dl) infinite}
 .L-wall .w1{--r:-3deg;--k:-26;--dl:-1s}
 .L-wall .w2{--r:2.5deg;--k:34;--dl:-2.5s}
 .L-wall .w3{--r:1.5deg;--k:-40;--dl:-4s}
 .L-wall .w4{--r:-2deg;--k:50;--dl:-5s}
 @keyframes float{0%,100%{translate:0 0}50%{translate:0 -16px}}
-@keyframes flow{to{background-position:300% 0}}
-@keyframes glow{0%,100%{box-shadow:0 0 0 4px #050505,0 0 22px 2px #9945ffaa,0 40px 90px #000}50%{box-shadow:0 0 0 4px #050505,0 0 34px 6px #14f19577,0 40px 90px #000}}
-.fx .shot.hot{box-shadow:0 0 0 4px #050505,0 0 48px 10px #9945ffcc,0 0 70px 12px #14f19555}
-/* the four tags are part of the same floating set: same drift, lean and lift, their own phases */
-.L-wall .tags span{--r:0deg;--k:0;--s:1;--dl:0s;cursor:pointer;transform:rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px)) scale(var(--s));
-  transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,background-color .25s,color .25s,border-color .25s;animation:float 5s ease-in-out var(--dl) infinite,tagglow 4s ease-in-out var(--dl) infinite}
+/* the four tags are part of the same floating set: same drift, lean and lift, their own phases. The glow pseudo's opacity pulses; the shadow itself does not change. */
+.L-wall .tags span{--r:0deg;--k:0;--dl:0s;position:relative;cursor:pointer;box-shadow:0 0 14px 1px #9945ff55;
+  transform:rotate(var(--r)) translate(calc(var(--px,0)*var(--k)*1px),calc(var(--py,0)*var(--k)*1px));
+  transition:scale .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,background-color .25s,color .25s,border-color .25s;animation:float 5s ease-in-out var(--dl) infinite}
+.L-wall .tags span::before{content:"";position:absolute;inset:-6px;border-radius:inherit;pointer-events:none;box-shadow:0 0 16px 2px #14f19588;animation:pulse 4s ease-in-out var(--dl) infinite}
 .L-wall .tags span:nth-child(1){--k:-60;--r:2deg;--dl:-.5s}
 .L-wall .tags span:nth-child(2){--k:44;--r:-1.5deg;--dl:-1.8s}
 .L-wall .tags span:nth-child(3){--k:-36;--r:1.5deg;--dl:-3s}
 .L-wall .tags span:nth-child(4){--k:56;--r:-2deg;--dl:-4.2s}
-.L-wall .tags span:hover,.L-wall .tags span.hot{--s:1.08;box-shadow:0 0 26px 4px #14f19577,0 0 40px 6px #9945ff66}
+.L-wall .tags span:hover,.L-wall .tags span.hot{scale:1.08;box-shadow:0 0 26px 4px #14f19577,0 0 40px 6px #9945ff66}
+.L-wall .tags span:is(:hover,.hot)::before{animation:none;opacity:0}
 /* hover / tap on a screen selects its tag: site ↔ landing, streams ↔ replay, solana escrow ↔ whitepaper's on-chain chapter, analytics ↔ the ride receipt – amber, extra bold, 15 % bigger */
 .L-wall .tags span:is(:hover,.hot),
 .L-wall .vis:has(.w1:is(:hover,.hot)) .tags span:nth-child(1),
 .L-wall .vis:has(.w2:is(:hover,.hot)) .tags span:nth-child(2),
 .L-wall .vis:has(.w3:is(:hover,.hot)) .tags span:nth-child(4),
-.L-wall .vis:has(.w4:is(:hover,.hot)) .tags span:nth-child(3){--s:1.15;background:var(--accent);border-color:var(--accent);color:#1b1408;font-weight:800;box-shadow:0 0 30px 6px #ffcf5a77,0 0 50px 8px #9945ff55;z-index:7}
-/* ...and the other way round: hovering / tapping a tag lifts its screen the same way (a drop-shadow, since the glow animation owns box-shadow) */
-.fx .shot:is(:hover,.hot),
+.L-wall .vis:has(.w4:is(:hover,.hot)) .tags span:nth-child(3){scale:1.15;background:var(--accent);border-color:var(--accent);color:#1b1408;font-weight:800;box-shadow:0 0 30px 6px #ffcf5a77,0 0 50px 8px #9945ff55;z-index:7}
+/* hovering / tapping a tag lifts its screen: a stronger static shadow, one paint, then the layer just scales */
+.fx .shot:is(:hover,.hot,.drag),
 .L-wall .vis:has(.tags span:nth-child(1):is(:hover,.hot)) .w1,
 .L-wall .vis:has(.tags span:nth-child(2):is(:hover,.hot)) .w2,
 .L-wall .vis:has(.tags span:nth-child(4):is(:hover,.hot)) .w3,
-.L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4{--s:1.09;z-index:6;filter:drop-shadow(0 0 20px #14f195aa) drop-shadow(0 0 34px #9945ff88)}
-@keyframes tagglow{0%,100%{box-shadow:0 0 10px 0 #14f19522}50%{box-shadow:0 0 20px 2px #9945ff66}}
-@media (prefers-reduced-motion:reduce){#ticker span{transition:none}.fx .shot,.fx .badge,.L-wall .tags span,#help,#help .pb,.nav{animation:none!important}}
+.L-wall .vis:has(.tags span:nth-child(3):is(:hover,.hot)) .w4{scale:1.09;z-index:6;box-shadow:0 0 0 4px #050505,0 0 32px 8px #14f195aa,0 0 44px 12px #9945ff77,0 40px 90px #000}
+@media (prefers-reduced-motion:reduce){#ticker span{transition:none}#ticker .tk,.fx .shot,.fx .shot::before,.fx .badge,.L-wall .tags span,.L-wall .tags span::before,#help,#help::before,#help .pb,.nav{animation:none!important}}
 
 
 /* a screen's picture starts cropped in (zoomed) and opens out to the whole shot when its screen is selected, while the screen itself grows */
-.fx .shot img,.fx .shot video{transform:scale(1.2);transition:transform .55s cubic-bezier(.2,.8,.2,1)}
+.fx .shot img,.fx .shot video{position:relative;z-index:1;transform:scale(1.2);transition:transform .55s cubic-bezier(.2,.8,.2,1)}   /* above the spinning border, so the gradient only shows in the 6 px padding */
 .fx .shot:is(:hover,.hot) img,
 .fx .shot:is(:hover,.hot) video,
 .L-wall .vis:has(.tags span:nth-child(1):is(:hover,.hot)) .w1 img,
@@ -154,7 +159,7 @@ h1 em{font-style:normal;color:var(--accent)}
 /* dragged: lifted like a selected screen, no CSS transition on the move (the script's lerp is the lag), nothing selects or scrolls */
 .fx .shot{touch-action:none;user-select:none;-webkit-user-select:none}
 .fx .shot img,.fx .shot video{pointer-events:none;-webkit-user-drag:none}
-.fx .shot.drag{--s:1.09;z-index:6;cursor:grabbing;transition:filter .35s;filter:drop-shadow(0 0 20px #14f195aa) drop-shadow(0 0 34px #9945ff88)}
+.fx .shot.drag{z-index:6;cursor:grabbing}
 .fx .shot.drag img,.fx .shot.drag video{transform:scale(1)}
 
 /* phones (script adds body.touch): the tip says swipe, safe areas, and the portrait "turn your phone" cover */
@@ -183,7 +188,8 @@ body:has(#tilt:not([hidden])) #help{opacity:0;visibility:hidden}
 
 /* header ticker (pinned to the very top of the window, outside the letterboxed stage; fit() scales it) – the landing's running text (LCD green, ◆ between facts) on black, over every slide; .code = a real line from the repo */
 #ticker{position:fixed;left:0;top:0;width:1920px;transform-origin:0 0;height:38px;overflow:hidden;z-index:20;contain:paint;background:#030803;border-top:2px solid #1e4a22;border-bottom:2px solid #1e4a22;color:#7cff7c;font:700 16px/36px var(--body);letter-spacing:1.5px;text-transform:uppercase;text-shadow:0 0 8px #7cff7c55}   /* a rule above AND below, so the gap from the caps to each is the same (measured at 4×) */
-#ticker .tk{position:absolute;left:0;top:0;display:inline-flex;white-space:nowrap;will-change:transform}   /* moved by script (tkTick) */
+#ticker .tk{position:absolute;left:0;top:0;display:inline-flex;white-space:nowrap;animation:tkrun linear infinite}   /* duration set from the measured loop (ticker.js); playbackRate eases the speed */
+@keyframes tkrun{to{translate:-50% 0}}
 #ticker span{position:relative;padding:0 38px;transition:transform .3s cubic-bezier(.2,.8,.2,1),color .3s,text-shadow .3s;cursor:default}
 #ticker span:hover{transform:scale(1.05);color:#d6ffd6;text-shadow:0 0 14px #7cff7cbb}   /* the fact under the pointer swells a little (the strip is slow while hovered) */
 #ticker span::after{content:"◆";position:absolute;right:-6px;top:calc(50% - 1.5px);translate:0 -50%;line-height:1;opacity:.5;font-size:11px}

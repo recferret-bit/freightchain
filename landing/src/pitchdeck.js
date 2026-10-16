@@ -3,7 +3,7 @@
    This file is the engine: it renders the slides, turns pages (bottom-bar arrows, keys, a swipe – never a plain click), loads each slide's media only when it is near,
    scales the 1920×1080 stage, and wires the parts in pitchdeck/*.js. Keys: → / space next · ← back · F fullscreen · Home / End. */
 import { SLIDES } from './pitchdeck/data.js';
-import { reduced, view, stage, deck, replay, toStage, pop } from './pitchdeck/core.js';
+import { reduced, view, stage, deck, replay, toStage, pop, wakeFrames } from './pitchdeck/core.js';
 import { initTicker, holdTicker, ticker } from './pitchdeck/ticker.js';
 import { initCoins, donate, adopt, setOnGrab, setCoinGravity } from './pitchdeck/coins.js';
 import { fallOnScreen } from './pitchdeck/tilt.js';
@@ -74,6 +74,7 @@ function show(i, via = 'hash') {   // via: how the visitor got here (analytics)
   setPager(i, view.cur);
   slideShown(i, view.cur < 0 ? 'load' : via);
   view.cur = i;
+  wakeFrames();   // the Merkle scene and the highway only run while their slide shows
   history.replaceState(null, '', '#' + (i + 1));
   document.getElementById('bar').style.width = `${100 * (i + 1) / slides.length}%`;
 }

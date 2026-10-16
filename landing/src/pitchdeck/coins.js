@@ -3,7 +3,7 @@
    The LIVE banner runs from the mouse, and it and the clip card are springs that sag under the SOL lying on them.
    Gravity is straight down until a phone allows motion sensors: then gX/gY (fractions of G, from tilt.js) follow the phone. */
 import { DONATE, SOL_USD } from './data.js';
-import { reduced, view, stage, deck, toStage, slideOf, everyFrame, pop, toast, shakeScreen } from './core.js';
+import { reduced, view, stage, deck, toStage, slideOf, everyFrame, wakeFrames, pop, toast, shakeScreen } from './core.js';
 
 const usd = v => `$${v.toFixed(2)}`;
 const COIN_MAX = matchMedia('(pointer: coarse)').matches ? 60 : 120, G = 2600, CEIL = 40, E_FLOOR = .45, E_COIN = .3;   // a phone keeps half the pile; G in stage px/s²; the floor (floor()) sits on the progress bar, the ceiling under the ticker
@@ -24,15 +24,28 @@ const sprite = (() => {   // one 128 px sprite: the Solana mark on a dark face i
   disc(S / 2 - 1, hi);
   return c;
 })();
-let coinK = 1, coinRaf = 0, coinStill = 0, coinT = 0;
+let coinK = 1, coinRaf = 0, coinWait = 0, coinStill = 0, coinT = 0, hot = true, boxAt = -1e9;
 export let onGrab = () => {};   // pitchdeck.js sets it (analytics)
 export const setOnGrab = f => { onGrab = f; };
 let held = null, hx = 0, hy = 0, eatClick = false, touchCoin = false;
 let boxes = [], boxEls = [], boxSlide = -1, boxTouch = false;
 const weighed = [];   // the page-3 card and banner: spring bodies that sag under the SOL lying on them
 
-/** wake the pile (it sleeps once settled) */
-export const wakeCoins = () => { coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick); };
+const clearWait = () => { if (coinWait) { clearTimeout(coinWait); coinWait = 0; } };
+const coinsAwake = () => !!(coinRaf || coinWait);
+/* the full-stage canvas stays out of the document until the first coin: an empty one is a transparent layer over every slide */
+function ensureCanvas() {
+  if (coinCv.isConnected) return;
+  const pager = document.getElementById('pager');
+  if (!pager || pager.id !== 'pager' || typeof stage.insertBefore !== 'function') return;
+  coinCv.id = 'coins'; coinCv.setAttribute('aria-hidden', 'true'); stage.insertBefore(coinCv, pager); coinFit();
+}
+/** wake the pile (it sleeps once settled, and a quiet pile resting on cards only samples at 10 Hz) */
+export const wakeCoins = () => {
+  if (!coins.length && !sucking.length) return;
+  ensureCanvas(); coinStill = 0; hot = true; clearWait();
+  coinRaf ||= requestAnimationFrame(coinTick); wakeFrames();
+};
 
 /* gravity in fractions of G. (0, 1) is straight down the screen. A phone that allowed sensors streams a smoothed tilt in;
    `slant` is a real tip (not "held normally"), and only then do the side walls act as floors. */
@@ -75,8 +88,11 @@ function collide(p, q) {   // two discs, mass ∝ area (a held one is immovable)
 }
 /* the showing slide's cards as boxes in stage px, read once a frame (they float, lean, lift and get dragged): centre, half size and tilt from the element's own transform, its corner radius.
    The element list is looked up once per slide; all reads happen together, before the physics writes anything. */
-function readBoxes() {
-  if (boxSlide !== view.cur) { boxSlide = view.cur; boxEls = [...(deck.children[view.cur]?.querySelectorAll(CARD_SEL) ?? [])]; }
+function readBoxes(t, live) {
+  if (boxSlide !== view.cur) { boxSlide = view.cur; boxEls = [...(deck.children[view.cur]?.querySelectorAll(CARD_SEL) ?? [])]; boxAt = -1e9; }
+  if (!boxEls.length) { boxes = []; return; }
+  if (!live && t - boxAt < 100) return;   // a quiet pile: the cards only float 16 px over 6 s, so 10 Hz is enough
+  boxAt = t;
   const s = stage.getBoundingClientRect(), k0 = view.scale;
   boxes = boxEls.map(el => {
     const r = el.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
@@ -117,7 +133,7 @@ function bounds(c, h) {
 }
 function coinTick(t) {
   const dt = Math.min(1 / 30, (t - coinT) / 1000 || 1 / 60), h = dt / 4; coinT = t;
-  readBoxes(); boxTouch = false; for (const p of weighed) p.load = 0;
+  readBoxes(t, hot); boxTouch = false; for (const p of weighed) p.load = 0;
   if (suckOn) suckStep(t);
   for (let s = 0; s < 4; s++) {   // 4 substeps a frame, 4 collision passes each: enough for a stable pile of ~120
     for (const c of coins) { if (c === held) { c.vx = Math.max(-4000, Math.min(4000, (hx - c.x) * 20)); c.vy = Math.max(-4000, Math.min(4000, (hy - c.y) * 20)); } else { c.vx += G * gX * h; c.vy += G * gY * h; } c.x += c.vx * h; c.y += c.vy * h; c.a += c.w * h; c.touch = false; }
@@ -126,9 +142,13 @@ function coinTick(t) {
     for (const c of coins) { for (const b of boxes) hitBox(c, b); bounds(c, h); }
   }
   let vmax = 0; for (const c of coins) vmax = Math.max(vmax, Math.abs(c.vx), Math.abs(c.vy), Math.abs(c.w * c.r));
-  coinStill = vmax < 20 && !held && !boxTouch && !suckOn ? coinStill + 1 : 0;   // coins on a card never sleep: the card floats under them
+  const quiet = vmax < 20 && !held && !suckOn;
+  hot = !quiet;
+  coinStill = quiet && !boxTouch ? coinStill + 1 : 0;   // resting on a card does not spin the 60 Hz solver: the card's float is sampled below
   drawCoins();
-  coinRaf = coinStill > 60 ? 0 : requestAnimationFrame(coinTick);   // a settled pile sleeps until the next donation
+  if (coinStill > 60) { coinRaf = 0; return; }   // a settled pile sleeps until the next donation, grab or drag
+  if (quiet && boxTouch) { coinRaf = 0; coinWait = setTimeout(() => { coinWait = 0; coinRaf = requestAnimationFrame(coinTick); }, 100); return; }
+  coinRaf = requestAnimationFrame(coinTick);
 }
 const coinAt = (x, y) => { for (let i = coins.length - 1; i >= 0; i--) { const c = coins[i]; if ((c.x - x) ** 2 + (c.y - y) ** 2 < c.r * c.r) return c; } return null; };
 
@@ -233,13 +253,11 @@ function weighBodies(nowT) {
 }
 
 export function initCoins() {
-  coinCv.id = 'coins'; coinCv.setAttribute('aria-hidden', 'true'); stage.insertBefore(coinCv, document.getElementById('pager'));
-  addEventListener('resize', coinFit); coinFit();
   donLi = deck.querySelector('.pts li.don'); adoptLi = deck.querySelector('.pts li.adopt'); sink = adoptLi?.querySelector('.sink');
   badge = deck.querySelector('.fx .badge'); badgeSlide = slideOf(badge);
   const clip = deck.querySelector('#s-insight .shot.clip');
   for (const [el, k, f] of [[badge, 8, 1500], [clip, 18, 2300]]) if (el) { el._p = { el, y: 0, vy: 0, load: 0, sm: 0, k, f, ground: null }; weighed.push(el._p); }
-  addEventListener('resize', () => weighed.forEach(p => { p.ground = null; }));
+  addEventListener('resize', () => { if (coinCv.isConnected) coinFit(); weighed.forEach(p => { p.ground = null; }); });
 
   /* every coin can be grabbed: a press on one (the topmost) holds it – it chases the pointer, shoves the others aside and is thrown with its last velocity on release.
      A grab is never a page turn, a swipe or a card drag: the press, its click and its touches stop at the window (capture). */
@@ -254,13 +272,13 @@ export function initCoins() {
   }, true);
   addEventListener('pointermove', e => {
     fleeFrom(e);
+    if (bd.tx || bd.ty || Math.abs(bd.x) > .05 || Math.abs(bd.y) > .05) wakeFrames();
     if (!coins.length) return;
     const [x, y] = toStage(e.clientX, e.clientY);
     if (held) { hx = x; hy = y; wakeCoins(); return; }
-    stage.classList.toggle('coin-over', !!coinAt(x, y));
-    if (e.target.closest?.(CARD_SEL)) wakeCoins();   // a hovered or dragged card may shove the pile; a pointer elsewhere leaves a sleeping pile asleep
+    stage.classList.toggle('coin-over', !!coinAt(x, y));   // a drag wakes the pile from the card trail; a plain hover leaves a sleeping pile asleep
   });
-  document.documentElement.addEventListener('pointerleave', () => { bd.tx = bd.ty = 0; });
+  document.documentElement.addEventListener('pointerleave', () => { bd.tx = bd.ty = 0; wakeFrames(); });
   new window.MutationObserver(ms => {   // another slide, other cards, a card lifted / dropped: wake the pile – not for every class flip elsewhere (the road's obstacles, the plan's bars)
     if (coins.length && ms.some(m => m.target.classList.contains('slide') || m.target.matches(CARD_SEL))) wakeCoins();
   }).observe(deck, { subtree: true, attributeFilter: ['class'] });
@@ -274,12 +292,15 @@ export function initCoins() {
   if (badge) everyFrame(t => {
     if (view.cur !== badgeSlide) bd.tx = bd.ty = 0;
     const idle = !bd.tx && !bd.ty && Math.abs(bd.x) < .05 && Math.abs(bd.y) < .05;
+    const sprung = weighed.some(p => p.load || p.sm || p.y || p.vy);
+    const follow = view.cur === badgeSlide && coinsAwake();   // coins on this slide load the springs; once the pile sleeps the banner can too
+    if (idle && !sprung && !follow) return false;
     if (idle) bd.x = bd.y = 0; else { bd.x += (bd.tx - bd.x) * .14; bd.y += (bd.ty - bd.y) * .14; }
     weighBodies(t);
-    const y = badge._p?.y ?? 0, now = idle && !y;
-    if (now && still) return;   // nothing moved since the last write: no style write either
-    still = now;
-    badge.style.setProperty('--bx', `${bd.x.toFixed(1)}px`); badge.style.setProperty('--by', `${(bd.y + y).toFixed(1)}px`);
+    const y = badge._p?.y ?? 0, now = idle && !y && !sprung;
+    if (!(now && still)) { still = now; badge.style.setProperty('--bx', `${bd.x.toFixed(1)}px`); badge.style.setProperty('--by', `${(bd.y + y).toFixed(1)}px`); }
+    else still = now;
+    return !now || follow;
   });
 }
 /** the card drag lets the LIVE banner tag along a little */

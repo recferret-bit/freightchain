@@ -1,8 +1,8 @@
 /* The interactive bits of the slides: floating cards (lean, drag), the "touch me" shakes, the badge carousel, the storybook sneak peek, the 70 / 20 / 10 bar,
    the live canvas scene and the secret tiers. Each init* finds its elements once. */
 import { ACH, achTier, BADGES, STORY } from './data.js';
-import { reduced, view, deck, replay, slideOf, everyFrame } from './core.js';
-import { bannerFollow } from './coins.js';
+import { reduced, view, deck, replay, slideOf, everyFrame, wakeFrames } from './core.js';
+import { bannerFollow, wakeCoins } from './coins.js';
 
 /** an <img> on a slide that may not be hydrated yet: src now, or data-src for hydrate() */
 const lazySrc = (img, url) => { if (img.closest('.slide')?.dataset.ready) img.src = url; else img.dataset.src = url; };
@@ -13,9 +13,25 @@ export const setTilt = (v, px, py) => { v.style.setProperty('--px', px); v.style
 export function initTilt(ids) {
   ids.forEach(id => document.getElementById(`s-${id}`)?.classList.add('fx'));
   fxVis = [...deck.querySelectorAll('.fx .vis')];
-  fxVis.forEach(v => {
-    v.parentElement.addEventListener('pointermove', e => setTilt(v, (e.clientX / innerWidth - .5).toFixed(3), (e.clientY / innerHeight - .5).toFixed(3)));
-    v.parentElement.addEventListener('pointerleave', () => setTilt(v, 0, 0));
+  /* the lean used to be a CSS transition on `transform`, which retargeted on every pointer move. The lag lives here instead, and stops when it arrives. */
+  const aim = fxVis.map(v => ({ v, x: 0, y: 0, tx: 0, ty: 0, px: '', py: '' }));
+  let raf = 0, last = 0;
+  const step = t => {
+    const dt = Math.min(.05, (t - last) / 1000 || .016); last = t;
+    const k = 1 - Math.exp(-dt * 7);   // ~0.35 s to settle, the old transition's length
+    let busy = false;
+    for (const a of aim) {
+      a.x += (a.tx - a.x) * k; a.y += (a.ty - a.y) * k;
+      if (Math.abs(a.tx - a.x) < .004 && Math.abs(a.ty - a.y) < .004) { a.x = a.tx; a.y = a.ty; } else busy = true;
+      const px = a.x.toFixed(3), py = a.y.toFixed(3);
+      if (px !== a.px || py !== a.py) { a.px = px; a.py = py; setTilt(a.v, px, py); }
+    }
+    raf = busy ? requestAnimationFrame(step) : 0;
+  };
+  const kick = () => { if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); } };
+  aim.forEach(a => {
+    a.v.parentElement.addEventListener('pointermove', e => { a.tx = e.clientX / innerWidth - .5; a.ty = e.clientY / innerHeight - .5; kick(); });
+    a.v.parentElement.addEventListener('pointerleave', () => { a.tx = a.ty = 0; kick(); });
   });
 }
 
@@ -30,6 +46,7 @@ export function initDrag() {
       c.style.setProperty('--dx', `${d.x.toFixed(1)}px`); c.style.setProperty('--dy', `${d.y.toFixed(1)}px`); bannerFollow(c, d.x, d.y);
       if (!d.down && Math.abs(d.x) < .3 && Math.abs(d.y) < .3) { c.classList.remove('drag'); c.style.removeProperty('--dx'); c.style.removeProperty('--dy'); bannerFollow(c, null); drags.delete(c); } else busy = true;
     });
+    if (busy) wakeCoins();   // a card actually moving can shove the pile; a plain hover must not wake it
     raf = busy ? requestAnimationFrame(trail) : 0;
   };
   deck.querySelectorAll('.fx .shot').forEach(c => {
@@ -168,15 +185,20 @@ export function initScenes() {
   (window.requestIdleCallback ?? (f => setTimeout(f, 800)))(() => import('../chain-scenes.js').then(m => {
     lib = m;
     scenes.forEach(sc => { if (sc.ctx?.roundRect) sc.draw = m.SCENES[sc.name]?.(); });   // no roundRect (an old browser): an empty frame
+    wakeFrames();
   }).catch(() => {}));
   everyFrame(ms => {
-    if (!lib) return;
+    if (!lib) return false;
+    let again = false;
     for (const sc of scenes) {
-      if (!sc.draw || sc.slide !== view.cur) continue;
+      if (!sc.draw || sc.slide !== view.cur || (reduced && sc.still)) continue;
       const w = Math.round(sc.cv.clientWidth * 2);   // 2× the layout width, so the stage's scaling stays sharp
+      if (!w) { again = true; continue; }   // the slide just turned on and has no layout yet
       if (w && sc.cv.width !== w) { sc.cv.width = w; sc.cv.height = Math.round(w * 124 / 240); }
       lib.drawScene(sc.ctx, sc.draw, reduced ? 3.2 : ms / 1000, sc.cv.width / 240);
+      if (reduced) sc.still = true; else again = true;   // reduced motion draws the settled frame once
     }
+    return again;
   });
 }
 

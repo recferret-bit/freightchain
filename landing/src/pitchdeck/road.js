@@ -1,6 +1,7 @@
 /* slide 8 – go to market: the truck drives to the exit under the pointer (or a tapped one), honks, mines HONK as it drives, and dodges rare obstacles in two lanes;
    the closer to the last exit (HONK listing), the faster the road – light-speed streaks, tunnel lamps and the light at the end of the tunnel on the .warp canvas.
-   Every frame READS first (two rects) and WRITES after; exit positions are cached, an obstacle's box is worked out from its own position, never read back. */
+   The truck's position is the script's own `--tx` and lane. Rects are read only while a drive or a swerve transition is catching up to that.
+   Exit positions are cached, an obstacle's box is worked out from its own position, never read back. The streak gradient is one sprite, reused. */
 import { reduced, view, stage, slideOf, everyFrame, replay, shakeScreen } from './core.js';
 import { blowCoins } from './coins.js';
 
@@ -12,8 +13,10 @@ export function initRoad(exitsEl) {
   const hwy = truck.parentElement, lanes = hwy.querySelector('.lane'), warp = hwy.querySelector('.warp'), wctx = warp.getContext('2d'), ctl = exitsEl.querySelector('.lanes-ctl');
   const counter = hwy.querySelector('.honks'), cnum = counter.querySelector('b'), obs = [];
   let tx = 0, exitX = [], honks = 0, lastHonk = 0, actx = null, lane = 0, gap = V * 6, lastT = 0, wasOn = false, mineT = 0, laneX = 0, lampX = 0, fShown = 0, kShown = -1;
+  let hwW = 0, hwH = 0;
   const measure = () => { exitX = exits.map(ex => ex.offsetLeft + ex.offsetWidth / 2 - TW / 2); };   // the truck's x under each exit (stage px, in the road's frame)
-  addEventListener('resize', measure);
+  const sizeRoad = () => { hwW = hwy.clientWidth; hwH = hwy.clientHeight; };
+  addEventListener('resize', () => { hwW = 0; measure(); });
 
   const driveTo = i => {
     const x = exitX[i] ?? 0;
@@ -66,57 +69,76 @@ export function initRoad(exitsEl) {
   ctl.addEventListener('click', e => { const b = e.target.closest('.ln'); if (b) swerve(b.classList.contains('up') ? 1 : 0); });
   addEventListener('keydown', e => { if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && view.cur === slide) { e.preventDefault(); swerve(e.key === 'ArrowUp' ? 1 : 0); } });
   const streaks = Array.from({ length: 46 }, () => ({ x: Math.random() * 1.2, y: Math.random(), l: .4 + Math.random(), s: .7 + Math.random() * .8 }));
+  const streak = document.createElement('canvas'); streak.width = 64; streak.height = 2;   // one purple→clear streak, drawn stretched; k is globalAlpha
+  const sg = streak.getContext('2d'), sgG = sg.createLinearGradient(0, 0, 64, 0);
+  sgG.addColorStop(0, 'rgba(153,69,255,.95)'); sgG.addColorStop(1, 'rgba(20,241,149,0)'); sg.fillStyle = sgG; sg.fillRect(0, 0, 64, 2);
+  let glow = null, glowKey = '';
   const drawWarp = (k, f, dt, W, H) => {
-    if (warp.width !== W || warp.height !== H) { warp.width = W; warp.height = H; }
+    if (warp.width !== W || warp.height !== H) { warp.width = W; warp.height = H; glow = null; glowKey = ''; }
     wctx.clearRect(0, 0, W, H);
     if (k <= 0) return;
-    const glow = wctx.createRadialGradient(W, H / 2, 0, W, H / 2, W * .55); glow.addColorStop(0, `rgba(20,241,149,${.4 * k})`); glow.addColorStop(1, 'rgba(20,241,149,0)');
-    wctx.fillStyle = glow; wctx.fillRect(0, 0, W, H);   // the light at the end of the tunnel
+    const key = `${k}:${W}:${H}`;
+    if (key !== glowKey) {   // k is already quantized; the end-of-tunnel glow is rebuilt only when that or the size changes
+      glowKey = key; glow = wctx.createRadialGradient(W, H / 2, 0, W, H / 2, W * .55);
+      glow.addColorStop(0, `rgba(20,241,149,${.4 * k})`); glow.addColorStop(1, 'rgba(20,241,149,0)');
+    }
+    wctx.fillStyle = glow; wctx.fillRect(0, 0, W, H);
     lampX = (lampX + V * f * 1.6 * dt) % 140; wctx.fillStyle = `rgba(255,207,90,${.85 * k})`;
     for (let x = W - lampX; x > -80; x -= 140) { wctx.fillRect(x, 2, 24 + 46 * k, 3); wctx.fillRect(x, H - 5, 24 + 46 * k, 3); }   // tunnel lamps along both edges
+    wctx.globalAlpha = k;
     for (const p of streaks) {   // light-speed streaks, longer the faster
       p.x -= p.s * f * dt * .32; if (p.x < -.3) { p.x = 1.05; p.y = Math.random(); }
-      const len = 30 + 280 * k * p.l, x = p.x * W, y = 6 + p.y * (H - 12), g = wctx.createLinearGradient(x, 0, x + len, 0);
-      g.addColorStop(0, `rgba(153,69,255,${.95 * k})`); g.addColorStop(1, 'rgba(20,241,149,0)'); wctx.fillStyle = g; wctx.fillRect(x, y, len, 2);
+      wctx.drawImage(streak, p.x * W, 6 + p.y * (H - 12), 30 + 280 * k * p.l, 2);
     }
+    wctx.globalAlpha = 1;
   };
   everyFrame(t => {
     const dt = Math.min(.1, (t - lastT) / 1000) || 0, on = view.cur === slide; lastT = t;
     if (ctl.hidden === on) ctl.hidden = !on;   /* a phone parks this control on the body, so the slide no longer shows and hides it */
     if (on && !wasOn) {   // every visit starts like the first: the truck under EXIT 1 in the near lane, no flipped sign, the honk counter back at zero (the entrance then plays again)
-      measure(); lane = 0; truck.classList.remove('up', 'go', 'back', 'swerve'); park();
+      measure(); sizeRoad(); lane = 0; truck.classList.remove('up', 'go', 'back', 'swerve'); park();
       exits.forEach(e => e.classList.remove('hot')); honks = 0; mineT = 0; counter.classList.remove('on'); cnum.textContent = '0'; exitsEl.querySelectorAll('.mint').forEach(m => m.remove());
     }
     if (!on && wasOn || reduced && on) { obs.splice(0).forEach(o => o.el.remove()); ctl.classList.remove('warn', 'to-up', 'to-dn'); gap = V * 6; }   // a visit opens with 6 s of clear road
     wasOn = on;
-    if (!on || reduced) return;
-    // READ – two rects, nothing else
-    const tr = sv.getBoundingClientRect(), hw = hwy.getBoundingClientRect(), sc = view.scale;
-    const truckX = (tr.left + tr.width / 2 - hw.left) / sc - TW / 2, p = Math.max(0, Math.min(1, (truckX - exitX[0]) / (exitX[5] - exitX[0])));   // how far along to the last exit
+    if (!on || reduced) return false;
+    if (!hwW) sizeRoad();
+    /* READ only while CSS is catching up (the 1.1 s drive, the 0.48 s swerve). Settled, `--tx` and the lane ARE the drawn box. */
+    const sc = view.scale; let truckX, vl, tl, tf;
+    if (truck.classList.contains('go') || truck.classList.contains('swerve')) {
+      const tr = sv.getBoundingClientRect(), hw = hwy.getBoundingClientRect();
+      truckX = (tr.left + tr.width / 2 - hw.left) / sc - TW / 2;
+      vl = +((hw.bottom - tr.bottom) / sc > 32); tl = (tr.left + tr.width * .05 - hw.left) / sc; tf = (tr.right - tr.width * .07 - hw.left) / sc;
+    } else {
+      truckX = tx; vl = lane;
+      const width = lane ? 203 : TW, left = tx + (lane ? 16.5 : 0);   // .truck.up: narrower, centred by the margin
+      tl = left + width * .05; tf = left + width * .93;
+    }
+    const p = Math.max(0, Math.min(1, (truckX - exitX[0]) / ((exitX[5] - exitX[0]) || 1)));   // how far along to the last exit
     const f = 1 + (SPEED_MAX - 1) * p * p, k = Math.max(0, (p - .3) / .7), atEnd = p > .88 || (p > .5 && Math.abs(tx - exitX[5]) < 2);   // at, or well on the way to, the last exit
-    const vl = +((hw.bottom - tr.bottom) / sc > 32), tl = tr.left + tr.width * .05, tf = tr.right - tr.width * .07;   // the lane it is visibly in (near: 12 px off the road's bottom edge); its drawn body, less the bumpers' air
     // WRITE
     laneX = (laneX + V * f * dt) % 86; lanes.style.backgroundPosition = `${-laneX}px 0`;   // the markings: 86 px a dash
     if (Math.abs(f - fShown) > .25) { fShown = f; truck.style.setProperty('--f', f.toFixed(2)); }   // wheel speed + glow, in steps (a running animation's duration jumps when changed)
     const kk = Math.round(k * 50) / 50; if (kk !== kShown) { kShown = kk; truck.style.setProperty('--k', kk); }
-    drawWarp(k, f, dt, hwy.clientWidth, hwy.clientHeight);
+    drawWarp(k, f, dt, hwW, hwH);
     const near = Math.round(p * 5), every = near === 5 ? .5 : MINE_EVERY - near;   // the exit the truck is under: 5, 4, 3, 2, 1, 0.5 s
     if ((mineT += dt) >= every) { mineT = 0; mine(); }   // reset, not carried over: a shorter interval never fires a burst
     if (!atEnd && (gap -= V * f * dt) <= 0) {   // rare: one every 6–15 s of road – never at the last exit
       const el = document.createElement('i'), l = +(Math.random() < .5); el.className = `ob ${OB[Math.floor(Math.random() * 3)]}${l ? ' far' : ''}`; hwy.append(el);
-      const w = el.offsetWidth; obs.push({ el, l, x: hwy.clientWidth + 60, hit: false, off: l ? w * .07 : 0, vw: l ? w * .86 : w }); gap = V * (6 + Math.random() * 9);   // its drawn width: the far lane is scaled .86 about its centre
+      const w = el.offsetWidth; obs.push({ el, l, x: hwW + 60, hit: false, off: l ? w * .07 : 0, vw: l ? w * .86 : w }); gap = V * (6 + Math.random() * 9);   // its drawn width: the far lane is scaled .86 about its centre
     }
     let warn = false, free = true;
     for (let i = obs.length - 1; i >= 0; i--) {
       const o = obs[i]; o.x -= V * f * dt; o.el.style.translate = `${o.x.toFixed(1)}px -50%`;
       if (atEnd && !o.hit) { o.hit = true; o.el.classList.add('gone'); }   // the last exit: the road clears
-      const left = hw.left + (o.x + o.off) * sc, ol = left + o.vw * .12 * sc, orr = left + o.vw * .88 * sc;
-      if (!o.hit && o.l !== lane && orr > tl - 90 * sc && ol < tf + 260 * sc) free = false;   // the other lane is not a way out right now
-      if (!o.hit && o.l === lane && ol > tf) warn ||= ol - tf < 640 * sc * f ** .5;   // about 3.5 s ahead at 1×, a bit further at speed
+      const ol = o.x + o.off + o.vw * .12, orr = o.x + o.off + o.vw * .88;   // stage px, in the road's frame, same axes as tl / tf
+      if (!o.hit && o.l !== lane && orr > tl - 90 && ol < tf + 260) free = false;   // the other lane is not a way out right now
+      if (!o.hit && o.l === lane && ol > tf) warn ||= ol - tf < 640 * f ** .5;   // about 3.5 s ahead at 1×, a bit further at speed
       if (!o.hit && o.l === vl && ol <= tf && orr >= tl) { o.hit = true; o.el.classList.add('hit'); sv.animate({ transform: ['none', 'translate(-6px,-10px) rotate(-4deg)', 'translate(4px,0) rotate(2deg)', 'none'] }, { duration: 420, easing: 'ease-out' }); shakeScreen(); }
       if (o.x < -140) { o.el.remove(); obs.splice(i, 1); }
     }
     ctl.classList.toggle('warn', warn); ctl.classList.toggle('to-up', warn && free && !lane); ctl.classList.toggle('to-dn', warn && free && !!lane);   // the way out is filled only when it is clear
+    return true;
   });
   truck.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') honk(false); });
   truck.addEventListener('click', e => { e.stopPropagation(); honk(true); });   // a tap is a honk, never a page turn

@@ -11,12 +11,19 @@ export const toStage = (x, y, s = stage.getBoundingClientRect()) => [(x - s.left
 /** the index of the slide an element is on (read once, then compare with view.cur – no DOM walk per frame) */
 export const slideOf = el => +(el?.closest('.slide')?.dataset.i ?? -1);
 
-/* ONE requestAnimationFrame loop for everything that runs every frame (the ticker, the canvas scenes, the LIVE banner, the road); each system returns early when its slide is not showing.
-   On-demand loops (the coin pile, a dragged card) keep their own rAF and stop when they settle. A hidden tab gets no frames at all. */
+/* ONE requestAnimationFrame loop (the canvas scenes, the LIVE banner, the road). A system returns true to stay scheduled;
+   the loop sleeps when every system returns false. On-demand loops (coins, a dragged card, the card lean, the ticker's ease) keep their own rAF and stop when they settle.
+   A hidden tab gets no frames at all. */
 const loops = [];
-export const everyFrame = f => loops.push(f);
-const frame = t => { requestAnimationFrame(frame); for (const f of loops) try { f(t); } catch (e) { console.error(e); } };   // one system failing never stops the others
-requestAnimationFrame(frame);
+let scheduled = false;
+function frame(t) {
+  scheduled = false;
+  let again = false;
+  for (const f of loops) try { if (f(t)) again = true; } catch (e) { console.error(e); }   // one system failing never stops the others
+  if (again) wakeFrames();
+}
+export function wakeFrames() { if (!scheduled) { scheduled = true; requestAnimationFrame(frame); } }
+export const everyFrame = f => { loops.push(f); wakeFrames(); };
 
 /** a one-shot stage element (author-made text only) that removes itself when its animation ends */
 export const pop = (cls, html, x, y, ms = 2400) => {
