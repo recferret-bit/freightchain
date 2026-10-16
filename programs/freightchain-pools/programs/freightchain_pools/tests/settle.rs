@@ -162,8 +162,41 @@ fn commit_winners_refused_when_its_lock_ends_too_close_to_the_grace() {
 
 // ---- pay_prize ------------------------------------------------------------------------------------------
 
+/// Product split 6500/2000/1000/500: commit and pay may use prize + referral, and one lamport over that is refused. Close sweeps the unpaid part of that sum.
+#[test]
+fn referral_share_raises_the_payout_cap_and_the_unclaimed_sweep() {
+    let params = freightchain_pools::CreatePoolParams {
+        price_lamports: 100_000_000,
+        prize_bps: 6500,
+        seed_bps: 2000,
+        fee_bps: 1000,
+        referral_bps: 500,
+        ..default_params().with_open()
+    };
+    let mut e = Env::new();
+    let (id, _) = active_pool_with(&mut e, 1, 4, params.clone());
+    let prize = 260_000_000u64;
+    let cap = prize + 20_000_000;
+    assert_eq!((e.pool(id).prize_share().unwrap(), e.pool(id).referral_share().unwrap(), e.pool(id).payout_cap().unwrap()), (prize, 20_000_000, cap));
+    let a = e.authority_kp();
+    let w = wallets(&mut e, 1);
+    e.warp(PLAY);
+    assert_err!(e.commit_winners(id, &a, &[(w[0], cap + 1)]), PoolError::PrizeExceedsShare);
+    e.commit_and_pay(id, &a, &[(w[0], prize)]);
+    let ev = &events::<PoolClosed>(&e.close_pool(id, &a).unwrap().logs)[0];
+    assert_eq!((ev.unclaimed, ev.prize_paid), (20_000_000, prize));
+
+    let params2 = later(&e, params);
+    let (id2, _) = active_pool_with(&mut e, 1, 4, params2);
+    let w2 = wallets(&mut e, 1);
+    e.warp(e.pool(id2).play_deadline);
+    e.commit_and_pay(id2, &a, &[(w2[0], cap)]);
+    let ev2 = &events::<PoolClosed>(&e.close_pool(id2, &a).unwrap().logs)[0];
+    assert_eq!((ev2.unclaimed, ev2.prize_paid), (0, cap));
+}
+
 /// The old v3 cap test: the committed total and the prize share both bound what is paid – even when the root's leaves add up to more than the
-/// total it was committed with.
+/// total it was committed with. Referral 0, so the cap is still the prize share.
 #[test]
 fn pay_prize_bounded_by_the_committed_total_and_the_prize_share() {
     let mut e = Env::new();

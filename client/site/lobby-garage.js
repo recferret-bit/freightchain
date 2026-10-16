@@ -9,7 +9,7 @@ import { SLOT_NAME, itemName, swatch } from './lobby-promo.js';
 /** Has the player picked something other than what is saved? */
 export const dirty = (garage, pick) => SLOTS.some(slot => pick[slot] !== garage.equipped[slot]);
 
-/** "12 of 25 parts collected" + a bar + one line per slot. */
+/** "12 of 28 parts collected" + a bar + one line per slot. The numbers come from the garage payload. */
 export function garageProgress(g) {
   const { collected, total, percent } = g.progress;
   return el('div', { class: 'card gprog', id: 'garage-progress' },

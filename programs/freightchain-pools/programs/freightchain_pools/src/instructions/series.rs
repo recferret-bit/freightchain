@@ -28,6 +28,8 @@ pub struct SeriesParams {
     pub fee_bps: u16,
     /// the first sale slot starts here; 0 = keep the series' current `next_open_at` (refused for a new series)
     pub start_at: i64,
+    /// 0 = no referral leg (the old prize/seed/fee split)
+    pub referral_bps: u16,
 }
 
 #[derive(Accounts)]
@@ -58,7 +60,7 @@ pub struct SetSeries<'info> {
 /// Admin: write (or rewrite) the schedule of a tier. Pools already opened keep their own rules; the next one takes these.
 pub fn handle_set_series(ctx: Context<SetSeries>, p: SeriesParams) -> Result<()> {
     let a = &ctx.accounts;
-    check_money_rules(p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet, [p.prize_bps, p.seed_bps, p.fee_bps])?;
+    check_money_rules(p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet, [p.prize_bps, p.seed_bps, p.fee_bps, p.referral_bps])?;
     require!((MIN_SALE_SECS..=MAX_SALE_SECS).contains(&p.sale_secs), PoolError::InvalidParams);
     require!(p.play_secs >= 0 && p.verify_secs >= 0, PoolError::InvalidParams);
     // the floors are checked here, not at every open: raising one later does not stop a running series
@@ -94,6 +96,7 @@ pub fn handle_set_series(ctx: Context<SetSeries>, p: SeriesParams) -> Result<()>
     s.prize_bps = p.prize_bps;
     s.seed_bps = p.seed_bps;
     s.fee_bps = p.fee_bps;
+    s.referral_bps = p.referral_bps;
     s.fee_treasury = fee_treasury;
     s.seed_treasury = seed_treasury;
     if p.start_at > 0 {
@@ -115,6 +118,7 @@ pub fn handle_set_series(ctx: Context<SetSeries>, p: SeriesParams) -> Result<()>
         fee_treasury,
         seed_treasury,
         next_open_at: s.next_open_at,
+        referral_bps: s.referral_bps,
     });
     Ok(())
 }
@@ -169,7 +173,7 @@ pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()>
     let play = sale_end.checked_add(s.play_secs).ok_or(PoolError::MathOverflow)?;
     let payout = play.checked_add(s.verify_secs).ok_or(PoolError::MathOverflow)?;
     // the rent minimum can change between set_series and now: the money rules are checked again
-    check_money_rules(s.price_lamports, s.min_tickets, s.max_tickets, s.max_per_wallet, [s.prize_bps, s.seed_bps, s.fee_bps])?;
+    check_money_rules(s.price_lamports, s.min_tickets, s.max_tickets, s.max_per_wallet, [s.prize_bps, s.seed_bps, s.fee_bps, s.referral_bps])?;
     check_treasuries([&a.fee_treasury.to_account_info(), &a.seed_treasury.to_account_info(), &a.platform_treasury.to_account_info()])?;
 
     let rules = PoolRules {
@@ -184,6 +188,7 @@ pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()>
         prize_bps: s.prize_bps,
         seed_bps: s.seed_bps,
         fee_bps: s.fee_bps,
+        referral_bps: s.referral_bps,
         fee_treasury: s.fee_treasury,
         seed_treasury: s.seed_treasury,
     };

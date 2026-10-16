@@ -6,8 +6,10 @@ export interface PaymentTxInput {
   lamports: number;
   /** the ride id, or `fc-donation:<id>` */
   memo: string;
-  /** read-only account on the memo instruction, so the payment can be found without the payer's history */
+  /** read-only account on the FIRST transfer, so the payment can be found without the payer's history */
   reference?: string | null;
+  /** further transfers in the same transaction (a donation's referrer share). The reference stays on the first transfer. */
+  also?: readonly { to: string; lamports: number }[];
 }
 
 /** The only door to the Solana network. */

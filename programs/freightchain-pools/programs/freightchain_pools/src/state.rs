@@ -52,6 +52,8 @@ pub struct Series {
     pub pools_opened: u32,
     pub last_pool_id: Option<u32>,
     pub bump: u8,
+    /// Floored share of the pot for referral leaves. Appended after `bump` (0 reproduces the old three-way split).
+    pub referral_bps: u16,
 }
 
 #[account]
@@ -108,6 +110,8 @@ pub struct Pool {
     pub open_pledges: u32,
     /// v4: `Config.min_review_secs` when the pool opened – its review lock (a later change of the floor does not reach a running pool)
     pub min_review_secs: i64,
+    /// Floored share of the pot added to the prize cap (`commit_winners` / `pay_prize`). Appended after `min_review_secs` so `POOL_STATUS_OFFSET` stays frozen.
+    pub referral_bps: u16,
 }
 
 #[account]
@@ -187,15 +191,17 @@ pub fn bps_of(amount: u64, bps: u16) -> Result<u64> {
     u64::try_from(v).map_err(|_| PoolError::MathOverflow.into())
 }
 
-/// (prize, seed, fee): prize and seed are floored shares of `total`, the fee takes the remainder.
-pub fn split(total: u64, prize_bps: u16, seed_bps: u16) -> Result<(u64, u64, u64)> {
+/// (prize, seed, referral, fee): the three named shares are floored; the fee takes the remainder. `referral_bps` 0 is the old split.
+pub fn split(total: u64, prize_bps: u16, seed_bps: u16, referral_bps: u16) -> Result<(u64, u64, u64, u64)> {
     let prize = bps_of(total, prize_bps)?;
     let seed = bps_of(total, seed_bps)?;
+    let referral = bps_of(total, referral_bps)?;
     let fee = total
         .checked_sub(prize)
         .and_then(|v| v.checked_sub(seed))
+        .and_then(|v| v.checked_sub(referral))
         .ok_or(PoolError::MathOverflow)?;
-    Ok((prize, seed, fee))
+    Ok((prize, seed, referral, fee))
 }
 
 /// The byte offset of `Pool.status` – the same in v3 and v4 (every field before it is fixed-size; the layout only grew at the end).
@@ -253,7 +259,16 @@ impl Pool {
     }
 
     pub fn prize_share(&self) -> Result<u64> {
-        Ok(split(self.pot()?, self.prize_bps, self.seed_bps)?.0)
+        bps_of(self.pot()?, self.prize_bps)
+    }
+
+    pub fn referral_share(&self) -> Result<u64> {
+        bps_of(self.pot()?, self.referral_bps)
+    }
+
+    /// `commit_winners` / `pay_prize` cap. Referral 0 is the old prize-only cap.
+    pub fn payout_cap(&self) -> Result<u64> {
+        self.prize_share()?.checked_add(self.referral_share()?).ok_or(PoolError::MathOverflow.into())
     }
 
     /// After this anyone may close (prizes paid) or expire (none paid) an Active pool.
@@ -308,15 +323,22 @@ mod tests {
 
     #[test]
     fn split_is_exact() {
+        // referral_bps sits after status; a v3 raw read still lands on the same byte
+        assert_eq!(POOL_STATUS_OFFSET, 157);
+        assert_eq!(Series::INIT_SPACE, 134);
+        assert_eq!(Pool::INIT_SPACE, 361);
         let mut x: u64 = 0x9E3779B97F4A7C15;
         for _ in 0..1000 {
             x ^= x << 13;
             x ^= x >> 7;
             x ^= x << 17;
             let total = x % 10_000_000_000_000;
-            let (p, s, f) = split(total, 6000, 2500).unwrap();
-            assert_eq!(p + s + f, total);
+            let (p, s, r, f) = split(total, 6000, 2500, 0).unwrap();
+            assert_eq!(p + s + r + f, total);
+            assert_eq!(r, 0);
             assert!(f <= total / 10_000 * 1500 + 2 * 10_000);
+            let (p, s, r, f) = split(total, 6500, 2000, 500).unwrap();
+            assert_eq!(p + s + r + f, total);
         }
     }
 

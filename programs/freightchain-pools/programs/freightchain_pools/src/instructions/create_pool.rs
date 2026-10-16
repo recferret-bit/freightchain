@@ -28,6 +28,8 @@ pub struct CreatePoolParams {
     pub prize_bps: u16,
     pub seed_bps: u16,
     pub fee_bps: u16,
+    /// 0 = no referral leg (the old prize/seed/fee split)
+    pub referral_bps: u16,
 }
 
 #[derive(Accounts)]
@@ -58,7 +60,7 @@ pub struct CreatePool<'info> {
 }
 
 /// The money rules every pool keeps, whoever creates it (`create_pool`, `set_series`).
-pub fn check_money_rules(price_lamports: u64, min_tickets: u32, max_tickets: u32, max_per_wallet: u16, bps: [u16; 3]) -> Result<()> {
+pub fn check_money_rules(price_lamports: u64, min_tickets: u32, max_tickets: u32, max_per_wallet: u16, bps: [u16; 4]) -> Result<()> {
     require!(price_lamports > 0 && min_tickets >= 1, PoolError::InvalidParams);
     // refunds must be able to land in an empty wallet: a price below the minimum would brick them
     require!(price_lamports >= rent_min()?, PoolError::PriceBelowRentMin);
@@ -89,7 +91,7 @@ pub fn handle_create_pool(ctx: Context<CreatePool>, p: CreatePoolParams) -> Resu
     let a = &ctx.accounts;
     require!(!a.config.paused, PoolError::Paused);
     let now = Clock::get()?.unix_timestamp;
-    check_money_rules(p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet, [p.prize_bps, p.seed_bps, p.fee_bps])?;
+    check_money_rules(p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet, [p.prize_bps, p.seed_bps, p.fee_bps, p.referral_bps])?;
     require!(
         p.prep_deadline > now && p.play_deadline >= p.prep_deadline && p.payout_at >= p.play_deadline,
         PoolError::InvalidParams
@@ -111,6 +113,7 @@ pub fn handle_create_pool(ctx: Context<CreatePool>, p: CreatePoolParams) -> Resu
         prize_bps: p.prize_bps,
         seed_bps: p.seed_bps,
         fee_bps: p.fee_bps,
+        referral_bps: p.referral_bps,
         fee_treasury: a.fee_treasury.key(),
         seed_treasury: a.seed_treasury.key(),
     };
@@ -133,6 +136,7 @@ pub struct PoolRules {
     pub prize_bps: u16,
     pub seed_bps: u16,
     pub fee_bps: u16,
+    pub referral_bps: u16,
     pub fee_treasury: Pubkey,
     pub seed_treasury: Pubkey,
 }
@@ -180,6 +184,7 @@ pub fn init_pool<'info>(
     pool.prize_bps = r.prize_bps;
     pool.seed_bps = r.seed_bps;
     pool.fee_bps = r.fee_bps;
+    pool.referral_bps = r.referral_bps;
     pool.fee_treasury = r.fee_treasury;
     pool.seed_treasury = r.seed_treasury;
     pool.status = STATUS_OPEN;
@@ -229,6 +234,7 @@ pub fn init_pool<'info>(
         seed_commitment: [0; 32],
         seed_slot: seal_slot,
         seed_slot_hash: [0; 32],
+        referral_bps: r.referral_bps,
     });
     Ok(pool_id)
 }

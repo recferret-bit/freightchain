@@ -3123,7 +3123,7 @@
     {
       "code": 6003,
       "name": "BpsSum",
-      "msg": "Prize, seed and fee shares must sum to 10000 bps"
+      "msg": "Prize, seed, referral and fee shares must sum to 10000 bps"
     },
     {
       "code": 6004,
@@ -3188,7 +3188,7 @@
     {
       "code": 6016,
       "name": "PrizeExceedsShare",
-      "msg": "Prize payments would exceed the pool's prize share"
+      "msg": "Prize payments would exceed the pool's prize and referral shares"
     },
     {
       "code": 6017,
@@ -3629,6 +3629,13 @@
           {
             "name": "fee_bps",
             "type": "u16"
+          },
+          {
+            "name": "referral_bps",
+            "docs": [
+              "0 = no referral leg (the old prize/seed/fee split)"
+            ],
+            "type": "u16"
           }
         ]
       }
@@ -4059,6 +4066,13 @@
               "v4: `Config.min_review_secs` when the pool opened – its review lock (a later change of the floor does not reach a running pool)"
             ],
             "type": "i64"
+          },
+          {
+            "name": "referral_bps",
+            "docs": [
+              "Floored share of the pot added to the prize cap (`commit_winners` / `pay_prize`). Appended after `min_review_secs` so `POOL_STATUS_OFFSET` stays frozen."
+            ],
+            "type": "u16"
           }
         ]
       }
@@ -4118,7 +4132,7 @@
           {
             "name": "seed",
             "docs": [
-              "everything that went to seed_treasury (seed share + unclaimed prize [+ donations / sponsorship of a failed pool])"
+              "everything that went to seed_treasury (seed share + unclaimed prize and referral [+ stray lamports of a failed pool])"
             ],
             "type": "u64"
           },
@@ -4252,6 +4266,10 @@
                 32
               ]
             }
+          },
+          {
+            "name": "referral_bps",
+            "type": "u16"
           }
         ]
       }
@@ -4624,6 +4642,13 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "referral_bps",
+            "docs": [
+              "Floored share of the pot for referral leaves. Appended after `bump` (0 reproduces the old three-way split)."
+            ],
+            "type": "u16"
           }
         ]
       }
@@ -4699,6 +4724,13 @@
               "the first sale slot starts here; 0 = keep the series' current `next_open_at` (refused for a new series)"
             ],
             "type": "i64"
+          },
+          {
+            "name": "referral_bps",
+            "docs": [
+              "0 = no referral leg (the old prize/seed/fee split)"
+            ],
+            "type": "u16"
           }
         ]
       }
@@ -4767,6 +4799,10 @@
           {
             "name": "next_open_at",
             "type": "i64"
+          },
+          {
+            "name": "referral_bps",
+            "type": "u16"
           }
         ]
       }

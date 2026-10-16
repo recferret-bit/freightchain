@@ -26,10 +26,10 @@ function idlArgs(name: string, a: Record<string, unknown>): Record<string, unkno
     case 'set_config': return { paused: null, platform_treasury: null, platform_fee_bps: null, min_review_secs: BigInt(Number(a['minReviewSecs'])), min_finish_secs: BigInt(Number(a['minFinishSecs'])) };
     case 'migrate_config_v4': return {};
     case 'create_pool': return { params: { tier: a['tier'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'], max_per_wallet: a['maxPerWallet'],
-      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])), prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'] } };
+      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])), prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'], referral_bps: a['referralBps'] ?? 0 } };
     case 'set_series': return { params: { tier: a['tier'], enabled: a['enabled'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'],
       max_per_wallet: a['maxPerWallet'], sale_secs: BigInt(Number(a['saleSecs'])), play_secs: BigInt(Number(a['playSecs'])), verify_secs: BigInt(Number(a['verifySecs'])),
-      prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'], start_at: BigInt(Number(a['startAt'])) } };
+      prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'], start_at: BigInt(Number(a['startAt'])), referral_bps: a['referralBps'] ?? 0 } };
     case 'open_next_pool': return { tier: a['tier'] }; // the seed commitment is the program's own (SlotHashes), not an argument
     case 'create_pledge': return { ride_id: b64(String(a['rideId'])), driver: a['driver'], max_lamports: BigInt(String(a['maxLamports'])), lamports_per_km: BigInt(String(a['lamportsPerKm'])), target_km: a['targetKm'] };
     case 'settle_pledge': case 'refund_pledge': return { ride_id: b64(String(a['rideId'])) };

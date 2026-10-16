@@ -4,6 +4,7 @@ import { ConfirmDonationCommand } from '../../../../../src/application/use-cases
 import { DonationOrder } from '../../../../../src/domain/live/donation-order.entity.js';
 import { RideEvent } from '../../../../../src/domain/live/ride-event.entity.js';
 import { EFFECTS, type EffectId } from '../../../../../src/domain/live/live-rules.js';
+import type { ChainTransaction } from '../../../../../src/domain/economy/chain-transaction.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../../../../../src/domain/shared/errors.js';
 import { unitContext, unitRules } from '../../../../support/unit-context.js';
 
@@ -14,7 +15,7 @@ describe('ConfirmDonationHandler', () => {
     const handler = new ConfirmDonationHandler(ctx.donationOrders, ctx.rideEvents, ctx.rides, ctx.chain, ctx.rules, ctx.clock, ctx.stats);
     const ride = await ctx.paidRide(driver, true);
     const order = async (effect: EffectId = 'sinkhole') => { const o = DonationOrder.create({ id: ctx.entropy.uuid(), rideId: ride.id, wallet: fan, recipient: driver, effect, note: 'gg', now: ctx.now() }); await ctx.donationOrders.insert(o); return o; };
-    const pay = (o: DonationOrder, over: { lamports?: number; destination?: string; memo?: string } = {}) => ctx.chain.addPayment({ payer: fan, destination: over.destination ?? driver, lamports: over.lamports ?? o.lamports, memo: over.memo ?? o.memo });
+    const pay = (o: DonationOrder, over: { lamports?: number; destination?: string; memo?: string; extraTransfers?: ChainTransaction['transfers'] } = {}) => ctx.chain.addPayment({ payer: fan, destination: over.destination ?? driver, lamports: over.lamports ?? o.lamports, memo: over.memo ?? o.memo, extraTransfers: over.extraTransfers });
     const confirm = (o: DonationOrder, sig: string, wallet = fan) => handler.execute(new ConfirmDonationCommand(wallet, ride.id, o.id, sig));
     return { ctx, ride, order, pay, confirm };
   };
@@ -69,6 +70,65 @@ describe('ConfirmDonationHandler', () => {
     expect(await ctx.stats.player(driver)).toMatchObject({ donations: 1, donationLamports: o.lamports });
     expect(await ctx.stats.player(fan)).toMatchObject({ donations: 0 });
     expect(await ctx.stats.global()).toMatchObject({ donations: 1, donationLamports: o.lamports });
+  });
+
+  it('a reserved share is counted on the referrer and the driver is credited the rest; a release during the chain read follows the transfer that landed', async () => {
+    const { ctx, order, pay, confirm } = await setup();
+    const referrer = Keypair.generate().publicKey.toBase58();
+    const share = 1_000_000;
+    const reserved = await order();
+    const stored = await ctx.donationOrders.findById(reserved.id);
+    if (!stored) throw new Error('order missing');
+    stored.assignShare(referrer, share);
+    await ctx.donationOrders.insert(stored); // same id overwrites the snapshot
+    const split = (o: DonationOrder) => pay(o, { lamports: o.lamports - share, extraTransfers: [{ source: fan, destination: referrer, lamports: share }] });
+    const sig = split(stored);
+    await confirm(stored, sig);
+    expect((await ctx.donationOrders.findById(stored.id))?.shareState).toBe('paid');
+    expect(await ctx.stats.player(driver)).toMatchObject({ donations: 1, donationLamports: stored.lamports - share });
+
+    const released = await order();
+    const again = await ctx.donationOrders.findById(released.id);
+    if (!again) throw new Error('order missing');
+    again.assignShare(referrer, share);
+    await ctx.donationOrders.insert(again);
+    const late = await order();
+    const third = await ctx.donationOrders.findById(late.id);
+    if (!third) throw new Error('order missing');
+    third.assignShare(referrer, share);
+    await ctx.donationOrders.insert(third);
+    let releasing = again.id;
+    const original = ctx.chain.getTransaction.bind(ctx.chain);
+    ctx.chain.getTransaction = async (signature: string) => { await ctx.donationOrders.releaseShare(releasing); return original(signature); };
+    await confirm(again, pay(again));
+    expect((await ctx.donationOrders.findById(again.id))?.shareState).toBe('released');
+    expect(await ctx.stats.player(driver)).toMatchObject({ donations: 2, donationLamports: stored.lamports - share + again.lamports });
+    releasing = third.id;
+    await expect(confirm(third, split(third))).rejects.toThrow(/no transfer/);
+    expect((await ctx.donationOrders.findById(third.id))?.shareState).toBe('released');
+    expect((await ctx.donationOrders.findById(third.id))?.status).toBe('pending');
+    expect(await ctx.stats.player(driver)).toMatchObject({ donations: 2, donationLamports: stored.lamports - share + again.lamports });
+  });
+
+  it('a confirm that dies after the claim still counts the referrer share on the retry', async () => {
+    const { ctx, order, pay, confirm } = await setup();
+    const referrer = Keypair.generate().publicKey.toBase58();
+    const share = 1_000_000;
+    const created = await order();
+    const stored = await ctx.donationOrders.findById(created.id);
+    if (!stored) throw new Error('order missing');
+    stored.assignShare(referrer, share);
+    await ctx.donationOrders.insert(stored);
+    let calls = 0;
+    const original = ctx.donationOrders.markSharePaid.bind(ctx.donationOrders);
+    ctx.donationOrders.markSharePaid = async (id: string) => { if (++calls === 1) throw new Error('died'); return original(id); };
+    const sig = pay(stored, { lamports: stored.lamports - share, extraTransfers: [{ source: fan, destination: referrer, lamports: share }] });
+    await expect(confirm(stored, sig)).rejects.toThrow(/died/);
+    expect((await ctx.donationOrders.findById(stored.id))?.status).toBe('paid');
+    expect((await ctx.donationOrders.findById(stored.id))?.shareState).toBe('reserved');
+    await confirm(stored, sig);
+    expect((await ctx.donationOrders.findById(stored.id))?.shareState).toBe('paid');
+    expect(await ctx.stats.player(driver)).toMatchObject({ donations: 1, donationLamports: stored.lamports - share });
   });
 
   it('statistics: money that moved is counted even when it arrives as a tip (the ride ended)', async () => {

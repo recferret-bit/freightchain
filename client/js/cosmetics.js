@@ -7,7 +7,7 @@
    landing's dash cards rely on it). */
 export const COSMETICS = {
   wheel: ['classic', 'crimson', 'ocean', 'moss', 'gold', 'ivory'],
-  truck_color: ['red', 'blue', 'green', 'black', 'yellow', 'white'],
+  truck_color: ['red', 'blue', 'green', 'black', 'yellow', 'white', 'convoy', 'signal', 'amber'],
   gearbox: ['stick', 'chrome', 'wood', 'racing', 'gold', 'carbon'],
   dice: ['white', 'red', 'blue', 'gold', 'pink', 'black'],
   needle: ['orange', 'red', 'lime', 'cyan', 'white', 'gold'],
@@ -36,6 +36,9 @@ export const LOOKS = {
     black: { top: '#2b2c31', bottom: '#0d0e10', fender: '#08090a', line: 'rgba(255,215,120,.45)', frame: '#2c2a30', dashEdge: '#d4af37' },
     yellow: { top: '#e0b324', bottom: '#8f6d0c', fender: '#6f550a', line: 'rgba(255,245,200,.4)', frame: '#7a6420', dashEdge: '#a88a2c' },
     white: { top: '#e6eef5', bottom: '#9db0c2', fender: '#7d90a3', line: 'rgba(255,255,255,.6)', frame: '#8fa0b0', dashEdge: '#b4c3d0' },
+    convoy: { top: '#ff8a1e', bottom: '#8a3a08', fender: '#6e2e06', line: 'rgba(255,220,160,.45)', frame: '#5a3a22', dashEdge: '#e07020' },
+    signal: { top: '#f2f20a', bottom: '#6e6e04', fender: '#555504', line: 'rgba(255,255,180,.5)', frame: '#4a4a18', dashEdge: '#d6d620' },
+    amber: { top: '#ffb000', bottom: '#8a5a00', fender: '#6e4800', line: 'rgba(255,220,140,.45)', frame: '#5a4010', dashEdge: '#ffb000' },
   },
   gearbox: {
     stick: { knob: '#17150f', rim: '#555', boot: '#0c0b0a', lever: null, text: '#e8e2cf' },

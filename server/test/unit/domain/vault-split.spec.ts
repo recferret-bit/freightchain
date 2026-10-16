@@ -1,18 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  VAULT_RENT_MIN_LAMPORTS, VaultMathOverflowError, bpsOf, closeSplit, closeSplitBig, escrowOf, potOf, potOfBig, prizeBound, splitLamports, splitLamportsBig, bpsOfBig,
+  VAULT_RENT_MIN_LAMPORTS, VaultMathOverflowError, bpsOf, closeSplit, closeSplitBig, escrowOf, potOf, potOfBig, prizeBound, payoutBound, splitLamports, splitLamportsBig, bpsOfBig,
 } from '../../../src/domain/economy/vault-split.js';
 import { SERVER_DIR } from '../../architecture/source-files.js';
 
 /* ONE table for both implementations: the program's tests/vault_split_table.rs reads the same JSON (and runs the reachable rows through close_pool on LiteSVM). */
 interface Row {
-  name: string; price: string; sold: number; sponsored: string; prizeBps: number; seedBps: number; feeBps: number; platformFeeBps: number; prizesPaid: string; stray: string; cancelled: boolean;
+  name: string; price: string; sold: number; sponsored: string; prizeBps: number; seedBps: number; feeBps: number; referralBps?: number; platformFeeBps: number; prizesPaid: string; stray: string; cancelled: boolean;
   error?: string; pot?: string; prize?: string; seed?: string; fee?: string; platform?: string;
   close?: { vault: string; seed: string; fee: string; platformFee: string; unclaimed: string; rentReturned: string } | null;
 }
 const table = JSON.parse(readFileSync(join(SERVER_DIR, 'test/fixtures/chain/vault-split-cases.json'), 'utf8')) as { rentMin: string; cases: Row[] };
-const money = (r: Row) => ({ priceLamports: BigInt(r.price), ticketsSold: r.sold, sponsored: BigInt(r.sponsored), prizeBps: r.prizeBps, seedBps: r.seedBps });
+const money = (r: Row) => ({ priceLamports: BigInt(r.price), ticketsSold: r.sold, sponsored: BigInt(r.sponsored), prizeBps: r.prizeBps, seedBps: r.seedBps, referralBps: r.referralBps ?? 0 });
 
 describe('vault split – the shared table', () => {
   it('has the cases the program also pins (incl. above 2^53 and the overflows)', () => {
@@ -31,8 +31,9 @@ describe('vault split – the shared table', () => {
       const pot = potOfBig(money(r));
       expect(pot).toBe(BigInt(r.pot!));
       const s = splitLamportsBig(pot, r);
-      expect(s).toEqual({ prize: BigInt(r.prize!), seed: BigInt(r.seed!), fee: BigInt(r.fee!) });
-      expect(s.prize + s.seed + s.fee).toBe(pot);
+      const referral = BigInt((r as { referral?: string }).referral ?? 0);
+      expect(s).toEqual({ prize: BigInt(r.prize!), seed: BigInt(r.seed!), referral, fee: BigInt(r.fee!) });
+      expect(s.prize + s.seed + s.referral + s.fee).toBe(pot);
       expect(bpsOfBig(s.fee, r.platformFeeBps)).toBe(BigInt(r.platform!));
       if (!r.close) return;
       const c = closeSplitBig({ ...money(r), platformFeeBps: r.platformFeeBps, prizesPaid: BigInt(r.prizesPaid), vaultLamports: BigInt(r.close.vault), cancelled: r.cancelled });
@@ -47,7 +48,7 @@ describe('vault split – number API', () => {
 
   it('pot, split, prize bound and close legs as exact numbers', () => {
     expect(potOf(pool)).toBe(512_345_679);
-    expect(splitLamports(512_345_679, pool)).toEqual({ prize: 358_641_975, seed: 102_469_135, fee: 51_234_569 });
+    expect(splitLamports(512_345_679, pool)).toEqual({ prize: 358_641_975, seed: 102_469_135, referral: 0, fee: 51_234_569 });
     expect(prizeBound(pool)).toBe(358_641_975);
     expect(bpsOf(51_234_569, 250)).toBe(1_280_864);
     expect(closeSplit({ ...pool, platformFeeBps: 0, prizesPaid: 100_000_000, vaultLamports: 413_236_559, cancelled: false }))
@@ -73,6 +74,13 @@ describe('vault split – number API', () => {
   it('a refunded pool closes everything but the rent minimum into the seed treasury', () => {
     expect(closeSplit({ ...pool, platformFeeBps: 500, prizesPaid: 0, vaultLamports: 890_880 + 77, cancelled: true }))
       .toEqual({ seed: 77, fee: 0, platformFee: 0, unclaimed: 0, rentReturned: 890_880 });
+  });
+
+  it('the product split is 65% prize, 5% referral, 20% seed, 10% fee, and dust lands in the fee', () => {
+    const bps = { prizeBps: 6500, seedBps: 2000, referralBps: 500 };
+    expect(splitLamports(10_000, bps)).toEqual({ prize: 6500, seed: 2000, referral: 500, fee: 1000 });
+    expect(splitLamports(10_001, bps)).toEqual({ prize: 6500, seed: 2000, referral: 500, fee: 1001 });
+    expect(payoutBound({ priceLamports: 10_000, ticketsSold: 1, sponsored: 0, ...bps })).toBe(7000);
   });
 
   it('escrow = vault minus its rent minimum, never negative', () => {

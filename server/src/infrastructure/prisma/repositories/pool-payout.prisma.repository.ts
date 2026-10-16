@@ -7,7 +7,7 @@ import { clientFor } from '../prisma-client.js';
 import { PrismaService } from '../prisma.service.js';
 
 const toRecord = (r: PoolPayoutRow): PoolPayoutRecord => ({
-  poolId: r.poolId, rank: r.rank, wallet: r.wallet, lamports: Number(r.lamports), status: r.status as PoolPayoutStatus, signature: r.signature,
+  poolId: r.poolId, rank: r.rank, wallet: r.wallet, kind: r.kind === 'referrer' ? 'referrer' : 'rider', lamports: Number(r.lamports), status: r.status as PoolPayoutStatus, signature: r.signature,
   lastValidBlockHeight: r.lastValidBlockHeight, attempts: r.attempts, error: r.error, createdAt: r.createdAt, updatedAt: r.updatedAt,
 });
 
@@ -24,8 +24,8 @@ export class PoolPayoutPrismaRepository extends PoolPayoutRepositoryPort {
   async plan(rows: PlannedPayout[], now: Date, tx?: TransactionHandle): Promise<void> {
     if (!rows.length) return;
     await clientFor(this.prisma, tx).poolPayout.createMany({
-      data: rows.map((r) => ({ poolId: r.poolId, rank: r.rank, wallet: r.wallet, lamports: BigInt(r.lamports), status: r.status, createdAt: now, updatedAt: now })),
-      skipDuplicates: true, // ON CONFLICT DO NOTHING – either unique key ((pool, rank) or (pool, wallet))
+      data: rows.map((r) => ({ poolId: r.poolId, rank: r.rank, wallet: r.wallet, kind: r.kind ?? 'rider', lamports: BigInt(r.lamports), status: r.status, createdAt: now, updatedAt: now })),
+      skipDuplicates: true, // ON CONFLICT DO NOTHING – (pool, rank) or (pool, wallet, kind)
     });
   }
 

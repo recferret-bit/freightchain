@@ -106,4 +106,28 @@ export class MemoryDonationOrderRepository extends DonationOrderRepositoryPort {
     const p = this.db.donationOrders.get(id);
     if (p && !p.paymentReference) p.paymentReference = reference;
   }
+
+  async sumShare(referrer: string, recipient: string): Promise<number> {
+    return [...this.db.donationOrders.values()].filter((o) => o.referrer === referrer && o.recipient === recipient && (o.shareState === 'reserved' || o.shareState === 'paid')).reduce((sum, o) => sum + (o.shareLamports ?? 0), 0);
+  }
+
+  async releaseShare(id: string): Promise<boolean> {
+    const p = this.db.donationOrders.get(id);
+    if (!p || p.status !== 'pending' || p.shareState !== 'reserved') return false;
+    p.shareState = 'released';
+    return true;
+  }
+
+  async releaseStale(referrer: string, recipient: string, before: Date): Promise<void> {
+    for (const p of this.db.donationOrders.values()) {
+      if (p.referrer === referrer && p.recipient === recipient && p.status === 'pending' && p.shareState === 'reserved' && p.createdAt.getTime() < before.getTime()) p.shareState = 'released';
+    }
+  }
+
+  async markSharePaid(id: string): Promise<boolean> {
+    const p = this.db.donationOrders.get(id);
+    if (!p || p.shareState !== 'reserved') return false;
+    p.shareState = 'paid';
+    return true;
+  }
 }

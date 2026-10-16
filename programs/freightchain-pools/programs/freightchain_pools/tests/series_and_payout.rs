@@ -80,7 +80,7 @@ fn open_next_pool_opens_the_current_slot_from_the_series() {
     let p = e.pool(id);
     assert_eq!((p.status, p.tier, p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet), (0, 1, PRICE, 3, 0, 4));
     assert_eq!((p.prep_deadline, p.play_deadline, p.payout_at), (START + DAY, START + DAY + 2 * HOUR, START + 3 * DAY + 2 * HOUR));
-    assert_eq!((p.prize_bps, p.seed_bps, p.fee_bps), (7000, 2000, 1000));
+    assert_eq!((p.prize_bps, p.seed_bps, p.fee_bps, p.referral_bps), (7000, 2000, 1000, 0));
     // the caller is the creator record (gets the vault rent minimum back at close) and paid both rents
     assert_eq!(p.authority, anyone.pubkey());
     assert_eq!(e.vault(id), e.rent_min());

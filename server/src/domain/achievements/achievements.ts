@@ -10,9 +10,10 @@ export interface Facts {
   siberiaShifts: number; // completed shifts on the Trans-Siberian route
   freeUnassisted: number; // FREE rides judged complete that were driven without ASSIST (the tutorial does not matter – it changes nothing in the truck)
   completedFreeLevels: number[]; // the free LEVELS (1 EASY · 2 MEDIUM · 3 HARD – ride-trip.ts FREE_LEVELS, from Ride.trip) with a ride judged complete
+  qualifiedReferrals: number; // friends whose verified finish counted for the convoy ladder (Referral.badgeCounted)
 }
 
-export type AchievementFamily = 'road' | 'shift' | 'night' | 'distance' | 'clean' | 'siberia' | 'solo' | 'licence' | 'podium';
+export type AchievementFamily = 'road' | 'shift' | 'night' | 'distance' | 'clean' | 'siberia' | 'solo' | 'licence' | 'convoy' | 'podium';
 
 export interface Achievement {
   id: string;
@@ -30,7 +31,7 @@ export interface Achievement {
 
 export const TIER_NAMES = ['Bronze', 'Silver', 'Gold', 'Platinum'] as const;
 export const FAMILY_NAMES: Record<AchievementFamily, string> = {
-  road: 'Road', shift: 'Shifts', night: 'Night', distance: 'Distance', clean: 'Clean', siberia: 'Siberia', solo: 'Solo', licence: 'Licence', podium: 'Podium',
+  road: 'Road', shift: 'Shifts', night: 'Night', distance: 'Distance', clean: 'Clean', siberia: 'Siberia', solo: 'Solo', licence: 'Licence', convoy: 'Convoy', podium: 'Podium',
 };
 
 const km = (f: Facts) => f.totalMetres / 1000;
@@ -75,6 +76,11 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'free-easy', family: 'licence', tier: 1, name: 'Learner’s Permit', desc: 'Clear the EASY free run.', icon: '①', measure: level(1), target: 1 },
   { id: 'free-crossroads', family: 'licence', tier: 2, name: 'Crossroads', desc: 'Clear the MEDIUM free run.', icon: '②', measure: level(2), target: 1 },
   { id: 'free-hard', family: 'licence', tier: 3, name: 'Long Haul', desc: 'Clear the HARD free run – fifteen minutes, no assist.', icon: '③', measure: level(3), target: 1 },
+
+  { id: 'convoy', family: 'convoy', tier: 1, name: 'Convoy', desc: 'A friend finishes a verified paid shift, or the HARD free run with assist off.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 1 },
+  { id: 'convoy-2', family: 'convoy', tier: 2, name: 'Road Crew', desc: 'Five friends finish a verified ride that counts.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 5 },
+  { id: 'convoy-3', family: 'convoy', tier: 3, name: 'Fleet', desc: 'Twenty friends finish a verified ride that counts.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 20 },
+  { id: 'convoy-4', family: 'convoy', tier: 4, name: 'Haulmaster', desc: 'A hundred friends finish a verified ride that counts.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 100 },
 
   // awarded at round / pool close – settlement is not built for badges yet; never minted, never counted
   { id: 'top-20', family: 'podium', tier: 1, name: 'Top 20', desc: 'Be in the top 20 when the weekly round closes.', icon: '★', measure: null, target: 1 },

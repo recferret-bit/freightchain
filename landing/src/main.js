@@ -7,6 +7,8 @@ import { sol, km, left, short, hue, hours, driven, ago, plural, TIER, TIER_LONG,
 import { heldTickets, escrowExplainer, explorerUrl, shortAddr, progressText, phaseLine, poolPhase } from '../../client/site/pools.js';   // the lobby's pool wording, so both pages say the same thing
 import { isMobileDevice } from '../../client/js/mobile.js';
 import { bindAnchors } from './anchor.js';
+import { store } from '../../client/js/util.js';
+import { bindStoredRef, captureRef, searchWithoutRef } from '../../client/site/referral.js';
 
 bindAnchors();   // before the chapter observer, so a #faq load is already on the heading it highlights
 
@@ -372,6 +374,8 @@ document.querySelector('a[href="/blink.html"]')?.addEventListener('click', () =>
 const btn = $('connect'), msg = $('msg'), playTop = $('play-top'), chip = $('chip-wallet'), chipRides = $('chip-rides');
 /* The invite block: a code typed here (or arriving as /?promo=CODE – a shareable invite link) rides along to the lobby profile (#promo, the old tab), where it only pre-fills the field. */
 const inviteIn = $('invite-code'), inviteMsg = $('invite-msg');
+captureRef(store, location.search);   // ?ref=CODE is stored only. Bind runs after a session exists, never before sign-in.
+{ const next = searchWithoutRef(location.search); if (next != null) history.replaceState(null, '', `${location.pathname}${next}${location.hash}`); }
 let invite = (new URLSearchParams(location.search).get('promo') ?? '').trim().slice(0, 64);
 const linkCode = invite;   // what the invite link carried (analytics: was the submit the link's own code?)
 const codeOf = v => v.replace(/\s+/g, '').toUpperCase().slice(0, 32);   // the same normalising as the server; the code is a marketing string, never a secret of the visitor
@@ -423,7 +427,7 @@ playTop.onclick = async () => {
 };
 track('landing_viewed', { surface: 'landing' });   // once per load, not on the 10 s refresh, and not after /api/pool
 if (linkCode) track('promo_invite_viewed', { code: CODE_SHAPE.test(codeOf(linkCode)) ? codeOf(linkCode) : null });   // an invite link was opened
-api('me', undefined, { report: false }).then(me => { track('session_restored', { surface: 'landing', wallet: me.wallet, ...(me.demo ? { is_demo: true } : {}) }); paintSession(me); }, () => {});   // signed in already: no forced redirect – the pool is the point of this page. Anonymous 401 stays a quiet GET.
+api('me', undefined, { report: false }).then(me => { track('session_restored', { surface: 'landing', wallet: me.wallet, ...(me.demo ? { is_demo: true } : {}) }); paintSession(me); bindStoredRef(api, store); }, () => {});   // signed in already: no forced redirect – the pool is the point of this page. Anonymous 401 stays a quiet GET. A stored ref binds only on this success.
 
 /* ───── dash cards: the tilt follows the pointer ───── */
 for (const card of document.querySelectorAll('.card3d')) {

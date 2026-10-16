@@ -52,10 +52,14 @@ model DonationOrder {
   status    String // pending | paid
   signature String?   @unique
   eventId   Int? // the RideEvent it became
-  paymentReference String? @unique // Solana Pay reference on the transfer's memo
+  paymentReference String? @unique // Solana Pay reference on the driver's transfer
+  referrer  String? // the driver's referrer, when this order reserved a share of the tip
+  shareLamports BigInt @default(0)
+  shareState String? // reserved | paid | released – null when the whole tip goes to the driver
   createdAt DateTime
   paidAt    DateTime?
 
   @@index([rideId])
+  @@index([referrer, recipient, shareState])
   @@schema("live")
 }

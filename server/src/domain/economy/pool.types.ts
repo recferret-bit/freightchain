@@ -45,6 +45,8 @@ export interface PoolProps {
   prizeBps: number;
   seedBps: number;
   feeBps: number;
+  /** omitted = 0. The Pool table does not store it yet; a chain read keeps it on the in-memory mirror only. */
+  referralBps?: number;
   feeTreasury: string;
   seedTreasury: string;
   status: PoolStatus;

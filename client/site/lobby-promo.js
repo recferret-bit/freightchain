@@ -8,6 +8,7 @@ export const SLOT_NAME = { wheel: 'STEERING WHEEL', truck_color: 'TRUCK PAINT', 
 const ITEM_NAME = {
   classic: 'Classic', crimson: 'Crimson', ocean: 'Ocean', moss: 'Moss', gold: 'Gold', ivory: 'Ivory',
   red: 'Red', blue: 'Blue', green: 'Green', black: 'Black', yellow: 'Yellow', white: 'White',
+  convoy: 'Convoy', signal: 'Signal', amber: 'Amber',
   stick: 'Stock', chrome: 'Chrome', wood: 'Wood', racing: 'Racing', carbon: 'Carbon',
   pink: 'Pink', orange: 'Orange', lime: 'Lime', cyan: 'Cyan',
 };

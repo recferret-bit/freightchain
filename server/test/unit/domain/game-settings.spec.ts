@@ -1,10 +1,7 @@
-import { assertSettingValue, resolveSettings, SETTING_DEFAULTS } from '../../../src/domain/settings/game-settings.js';
+import { assertSettingValue, resolveSettings } from '../../../src/domain/settings/game-settings.js';
 import { BadRequestError } from '../../../src/domain/shared/errors.js';
 
-const defaults = {
-  freeOnSignup: SETTING_DEFAULTS.free_on_signup,
-  freeRidesDailyMax: SETTING_DEFAULTS.free_rides_daily_max,
-};
+const defaults = resolveSettings([]);
 
 describe('game settings', () => {
   it('an empty table is the code default: 10 at signup, daily cap 5', () => {
@@ -17,6 +14,14 @@ describe('game settings', () => {
       { key: 'not_a_setting', value: 1 },
       { key: 'free_rides_daily_max', value: -1 },
     ])).toEqual({ ...defaults, freeOnSignup: 7 });
+  });
+
+  it('a referral knob keeps its own bounds: the referrer part stays the bigger part, and a lamport cap fits a signed int', () => {
+    expect(() => assertSettingValue('referral_referrer_part_bps', 8000)).not.toThrow();
+    expect(() => assertSettingValue('referral_referrer_part_bps', 5000)).toThrow(BadRequestError);
+    expect(() => assertSettingValue('referral_ride_cap_lamports', 2_000_000_000)).not.toThrow();
+    expect(() => assertSettingValue('referral_ride_cap_lamports', 2_000_000_001)).toThrow(BadRequestError);
+    expect(resolveSettings([{ key: 'referral_max', value: 0 }]).referralMax).toBe(30);
   });
 
   it('zero is allowed; anything else the domain refuses is bad_setting', () => {

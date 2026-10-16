@@ -19,7 +19,11 @@ export class GetDonationPaymentHandler implements IQueryHandler<GetDonationPayme
     if (!order || order.wallet !== wallet) throw new NotFoundError('donation not found');
     if (order.status !== 'pending') throw new ConflictError('this donation is already paid', 'already_paid');
     const reference = await this.referenceOf(orderId, order.paymentReference);
-    const tx = await this.chain.buildPaymentTransaction({ payer: wallet, treasury: order.recipient, lamports: order.lamports, memo: order.memo, reference });
+    const split = order.shareLamports > 0 && order.shareState === 'reserved' && order.referrer;
+    const tx = await this.chain.buildPaymentTransaction({
+      payer: wallet, treasury: order.recipient, lamports: split ? order.lamports - order.shareLamports : order.lamports, memo: order.memo, reference,
+      ...(split ? { also: [{ to: order.referrer as string, lamports: order.shareLamports }] } : {}),
+    });
     return { transaction: tx.transaction, reference };
   }
 

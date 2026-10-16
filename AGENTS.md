@@ -22,6 +22,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | live board, live streams, replays, donations | `live.md` |
 | admin page, observing production | `admin-ops.md` |
 | free levels, tutorial + assist, free rides, trips | `free-rides.md` |
+| referrals: invites, the 5% pot leg, donation share | `referral.md` |
 | garage, promo codes | `garage-promo.md` |
 | money, escrowed pools, the program toolchain | `escrow.md` |
 | achievement tiers, the soulbound badge cNFTs, mint job + art | `achievements.md` |

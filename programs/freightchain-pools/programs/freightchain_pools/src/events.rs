@@ -24,6 +24,7 @@ pub struct PoolCreated {
     pub seed_commitment: [u8; 32],
     pub seed_slot: u64,
     pub seed_slot_hash: [u8; 32],
+    pub referral_bps: u16,
 }
 
 #[event]
@@ -43,6 +44,7 @@ pub struct SeriesSet {
     pub fee_treasury: Pubkey,
     pub seed_treasury: Pubkey,
     pub next_open_at: i64,
+    pub referral_bps: u16,
 }
 
 #[event]
@@ -131,7 +133,7 @@ pub struct PoolClosed {
     pub pool_id: u32,
     /// prizes paid out over the pool's life
     pub prize_paid: u64,
-    /// everything that went to seed_treasury (seed share + unclaimed prize [+ donations / sponsorship of a failed pool])
+    /// everything that went to seed_treasury (seed share + unclaimed prize and referral [+ stray lamports of a failed pool])
     pub seed: u64,
     /// fee share that went to fee_treasury (after the platform cut)
     pub fee: u64,

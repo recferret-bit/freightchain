@@ -8,7 +8,7 @@ pub enum PoolError {
     Unauthorized,
     #[msg("Invalid pool parameters")]
     InvalidParams,
-    #[msg("Prize, seed and fee shares must sum to 10000 bps")]
+    #[msg("Prize, seed, referral and fee shares must sum to 10000 bps")]
     BpsSum,
     #[msg("Ticket price is below the rent-exempt minimum")]
     PriceBelowRentMin,
@@ -34,7 +34,7 @@ pub enum PoolError {
     PoolNotActive,
     #[msg("Pool is not settled")]
     NotSettled,
-    #[msg("Prize payments would exceed the pool's prize share")]
+    #[msg("Prize payments would exceed the pool's prize and referral shares")]
     PrizeExceedsShare,
     #[msg("Transfer would leave an account below the rent-exempt minimum")]
     BelowRentMin,

@@ -11,7 +11,7 @@ export type CosmeticSlot = (typeof COSMETIC_SLOTS)[number];
 
 export const COSMETIC_ITEMS: Readonly<Record<CosmeticSlot, readonly string[]>> = {
   wheel: ['classic', 'crimson', 'ocean', 'moss', 'gold', 'ivory'],
-  truck_color: ['red', 'blue', 'green', 'black', 'yellow', 'white'],
+  truck_color: ['red', 'blue', 'green', 'black', 'yellow', 'white', 'convoy', 'signal', 'amber'],
   gearbox: ['stick', 'chrome', 'wood', 'racing', 'gold', 'carbon'],
   dice: ['white', 'red', 'blue', 'gold', 'pink', 'black'],
   needle: ['orange', 'red', 'lime', 'cyan', 'white', 'gold'],

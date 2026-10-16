@@ -93,7 +93,7 @@ describe('AuthChallenge', () => {
 });
 
 describe('achievement rules', () => {
-  const none: Facts = { started: 0, paidShifts: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [] };
+  const none: Facts = { started: 0, paidShifts: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [], qualifiedReferrals: 0 };
   const earn = (f: Partial<Facts>) => earnedIds({ ...none, ...f });
   it('nothing earned before riding', () => expect(earn({})).toEqual([]));
   it('first mile = a started ride; shift complete needs a completed one', () => {

@@ -35,7 +35,7 @@ export interface PrizePoolDto {
   sponsoredLamports: number;
   /** what the split is computed on: every ticket sold + sponsorship */
   potLamports: number;
-  split: { prizeBps: number; seedBps: number; feeBps: number };
+  split: { prizeBps: number; seedBps: number; feeBps: number; referralBps: number };
   treasuries: { fee: string; seed: string };
   roundId: number | null;
 }
@@ -47,7 +47,7 @@ export const toPrizePoolDto = (pool: Pool): PrizePoolDto => {
     maxPerWallet: s.maxPerWallet, sold: s.ticketsSold, buyers: s.buyers, toGo: pool.ticketsToGo, progressPct: pool.progress.pct,
     prepDeadline: s.prepDeadline.getTime(), playDeadline: s.playDeadline.getTime(), payoutAt: s.payoutAt.getTime(),
     payout: { state: s.payoutState, note: s.payoutNote, held: s.hold !== null }, vaultLamports: s.vaultLamports, sponsoredLamports: s.sponsored, potLamports: pool.pot,
-    split: { prizeBps: s.prizeBps, seedBps: s.seedBps, feeBps: s.feeBps }, treasuries: { fee: s.feeTreasury, seed: s.seedTreasury }, roundId: s.roundId,
+    split: { prizeBps: s.prizeBps, seedBps: s.seedBps, feeBps: s.feeBps, referralBps: s.referralBps ?? 0 }, treasuries: { fee: s.feeTreasury, seed: s.seedTreasury }, roundId: s.roundId,
   };
 };
 

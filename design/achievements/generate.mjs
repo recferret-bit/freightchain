@@ -38,6 +38,7 @@ const FAMILY = {
   siberia: { a: ['#e6f6ff', BLUE], glow: BLUE, flavour: 'Ice on the road, frost on the glass, a thousand empty kilometres of white.' },
   solo: { a: ['#ff9a8a', '#e23a2e'], glow: '#ff5a4a', flavour: 'No assist, no net. Just a driver, a wheel and the truth about their reflexes.' },
   licence: { a: [AMBER, GEAR], glow: AMBER, flavour: 'Every free run is a licence of its own. This one is stamped and framed.' },
+  convoy: { a: ['#ff8a1e', '#e07020'], glow: '#ff8a1e', flavour: 'You brought them, and they crossed the line. The convoy carries your name.' },
 };
 
 /** the metal of each tier: rim stops, glow and the sheen strength */
@@ -70,6 +71,10 @@ const fit = (len, width, max) => Math.min(max, Math.floor(width / (Math.max(len,
 
 /* ---------- glyphs: drawn in a -100..100 box; c = { p primary fill, s light, d dark, k glow circles } ---------- */
 const GLYPHS = {
+  convoy(c) { // three cabs in echelon
+    const cab = (x, y) => `<g transform="translate(${x} ${y})"><rect x="-34" y="-18" width="68" height="36" rx="7" fill="${c.p}"/><rect x="-26" y="-10" width="22" height="14" rx="2" fill="${c.d}"/><circle cx="20" cy="0" r="5" fill="${c.s}"/></g>`;
+    return `<g>${cab(-36, 40)}${cab(0, 0)}${cab(36, -40)}</g>`;
+  },
   road(c) { // a truck seen head-on
     return `<g>
       ${c.k ? `<circle cx="-54" cy="30" r="30" fill="${c.s}" opacity=".22"/><circle cx="54" cy="30" r="30" fill="${c.s}" opacity=".22"/>` : ''}

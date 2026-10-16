@@ -18,6 +18,7 @@ import { RideBatchRepositoryPort } from '../ports/telemetry/ride-batch.repositor
 import { ReplayQueuePort } from '../ports/verdict/replay-queue.port.js';
 import { RideReplayRepositoryPort } from '../ports/verdict/ride-replay.repository.port.js';
 import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.repository.port.js';
+import { ReferralService } from './referral.service.js';
 
 /**
  * Judges a completed ride from its stored recording (RideVerdict.judge + 10 Hz ReplayEngine) and saves both the verdict and the RideReplay record.
@@ -58,11 +59,13 @@ export class VerdictService {
     @Optional() private readonly rideEvents?: RideEventRepositoryPort,
     @Optional() private readonly replayQueue?: ReplayQueuePort,
     @Optional() private readonly entropy?: EntropyPort,
+    @Optional() private readonly referral?: ReferralService,
   ) {}
 
   /** null = nothing to judge (only completed shifts can rank, so only they are judged). A verdict an admin decided is returned as is. */
   async judge(rideId: string): Promise<RideVerdict | null> {
     const result = await this.transactions.run((tx) => this.judgeLocked(rideId, false, tx));
+    await this.afterVerified(rideId, result?.verdict.status);
     return result?.verdict ?? null;
   }
 
@@ -143,16 +146,19 @@ export class VerdictService {
       return v;
     });
     this.logger.log({ event: 'admin', msg: `ride ${rideId} re-judged by ${admin}: ${verdict.status}`, action: 'verdict.rejudge', rideId, admin, requestId });
+    await this.afterVerified(rideId, verdict.status);
     return verdict;
   }
 
   /** The bulk re-judge (CLI `verdict:rejudge`, after a rules change): the current rules, an admin's decision kept, a ride whose recording the retention
       sweep already deleted SKIPPED (null) rather than rejected for 'no-recording'. Returns the status before and after, or null when nothing was judged. */
   async rejudgeQuietly(rideId: string): Promise<{ before: string | null; after: string } | null> {
-    return this.transactions.run(async (tx) => {
-      const result = await this.judgeLocked(rideId, false, tx, true).catch((error: unknown) => { if (error instanceof ConflictError) return null; throw error; });
-      return result ? { before: result.before, after: result.verdict.status } : null;
+    const result = await this.transactions.run(async (tx) => {
+      const judged = await this.judgeLocked(rideId, false, tx, true).catch((error: unknown) => { if (error instanceof ConflictError) return null; throw error; });
+      return judged ? { before: judged.before, after: judged.verdict.status } : null;
     });
+    if (result) await this.afterVerified(rideId, result.after);
+    return result;
   }
 
   /** Judge inside the caller's transaction, under the player lock; batches are read only once the lock is held. `force` replaces an admin decision;
@@ -210,7 +216,7 @@ export class VerdictService {
       judging and the admin's decision, so a racing late batch / override cannot interleave. A completed shift not judged yet is judged first. An admin's
       decision is never touched; a ride whose verdict already carries every mark is not saved again (idempotent). */
   async addAttention(wallet: string, marks: readonly { rideId: string; reasons: readonly VerdictReason[] }[]): Promise<AttentionOutcome[]> {
-    return this.transactions.run(async (tx) => {
+    const out = await this.transactions.run(async (tx) => {
       await this.players.findByWalletForUpdate(wallet, tx);
       const out: AttentionOutcome[] = [];
       for (const { rideId, reasons } of marks) {
@@ -226,6 +232,8 @@ export class VerdictService {
       }
       return out;
     });
+    for (const row of out) if (row.after === VerdictStatus.Verified && row.before !== VerdictStatus.Verified) await this.afterVerified(row.rideId, row.after);
+    return out;
   }
 
   /** An admin's decision from the review queue, under the same player lock as judging (so a racing re-judge cannot overwrite it), audited in the same transaction. */
@@ -245,7 +253,14 @@ export class VerdictService {
       return current;
     });
     this.logger.log({ event: 'admin', msg: `verdict of ride ${rideId} set to ${decision} by ${admin}`, action: 'verdict.override', rideId, admin, decision, requestId });
+    if (decision === VerdictStatus.Verified) await this.afterVerified(rideId, verdict.status);
     return verdict;
+  }
+
+  /** After the verdict transaction commits. A referral failure is logged and retried on the next judge: qualifying locks the referrer, which cannot share the rider's lock. */
+  private async afterVerified(rideId: string, status: string | null | undefined): Promise<void> {
+    if (status !== VerdictStatus.Verified || !this.referral) return;
+    await this.referral.onVerified(rideId).catch((error: unknown) => this.logger.warn(`referral qualify deferred: ${error instanceof Error ? error.message : String(error)}`));
   }
 }
 

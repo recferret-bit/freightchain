@@ -26,7 +26,7 @@ describe('prisma migrations', () => {
   it('creates every PostgreSQL schema and every model of the Prisma schema', () => {
     for (const schema of ['player', 'ride', 'economy', 'achievement', 'telemetry', 'verdict', 'admin', 'live', 'stats']) expect(sql).toContain(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
     const models = schemaModels();
-    expect(models.map((m) => m.model).sort()).toEqual(['AchievementMint', 'AchievementUnlock', 'AdminAction', 'AuthChallenge', 'ChainCursor', 'ChainEvent', 'CosmeticEquip', 'CosmeticUnlock', 'DailySeed', 'DailyStats', 'DonationOrder', 'GameSetting', 'GlobalStats', 'Payment', 'Player', 'PlayerStats', 'Pledge', 'Pool', 'PoolPayout', 'PromoCode', 'PromoRedemption', 'Ride', 'RideBatch', 'RideEvent', 'RideMute', 'RideReplay', 'RideReplayFlag', 'RideTicket', 'RideVerdict', 'Round', 'SignIn', 'TicketGrant', 'TicketOrder']);
+    expect(models.map((m) => m.model).sort()).toEqual(['AchievementMint', 'AchievementUnlock', 'AdminAction', 'AuthChallenge', 'ChainCursor', 'ChainEvent', 'CosmeticEquip', 'CosmeticUnlock', 'DailySeed', 'DailyStats', 'DonationOrder', 'GameSetting', 'GlobalStats', 'Payment', 'Player', 'PlayerStats', 'Pledge', 'Pool', 'PoolPayout', 'PromoCode', 'PromoRedemption', 'Referral', 'ReferralCode', 'Ride', 'RideBatch', 'RideEvent', 'RideMute', 'RideReplay', 'RideReplayFlag', 'RideTicket', 'RideVerdict', 'Round', 'SignIn', 'TicketGrant', 'TicketOrder']);
     for (const { schema, model } of models) expect(sql, `${schema}.${model}`).toContain(`CREATE TABLE "${schema}"."${model}"`);
   });
 
@@ -40,12 +40,14 @@ describe('prisma migrations', () => {
     expect(sql).toMatch(/CONSTRAINT "RideVerdict_pkey" PRIMARY KEY \("rideId"\)/); // one verdict per ride
     expect(sql).toMatch(/CONSTRAINT "RideReplay_pkey" PRIMARY KEY \("id"\)/); // replay verification runs
     expect(sql).toMatch(/CONSTRAINT "DailySeed_pkey" PRIMARY KEY \("tier","day"\)/); // one road per tier per day, however many first orders race
+    expect(sql).toMatch(/CREATE UNIQUE INDEX "PoolPayout_poolId_wallet_kind_key" ON "economy"\."PoolPayout"\("poolId", "wallet", "kind"\)/); // a finisher can also be a referrer
   });
 
   it('is forward-only: nothing is dropped, renamed or truncated – except the reviewed removal of the retired gas sponsor, offline rate ledger and the unused staking-yield columns', () => {
     const RETIRED = /^DROP TABLE "(economy"\."SponsoredTx|player"\."OfflineRideUse)";$/gm; // gasless purchases and offline ride restriction ledger were removed
     const UNUSED_COLUMNS = /^ALTER TABLE "economy"\."Pool" DROP COLUMN "(stakedLamports|yieldEarned)";$/gm; // always 0: nothing stakes the vault (Oct 12)
-    expect(sql.replace(RETIRED, '').replace(UNUSED_COLUMNS, '')).not.toMatch(/\bDROP\s+(TABLE|COLUMN|SCHEMA|TYPE|INDEX)\b/i);
+    const PAYOUT_KEY = /^DROP INDEX IF EXISTS "economy"\."PoolPayout_poolId_wallet_key";$/gm; // replaced by (poolId, wallet, kind) so one wallet can be paid twice
+    expect(sql.replace(RETIRED, '').replace(UNUSED_COLUMNS, '').replace(PAYOUT_KEY, '')).not.toMatch(/\bDROP\s+(TABLE|COLUMN|SCHEMA|TYPE|INDEX)\b/i);
     expect(sql).not.toMatch(/\bRENAME\b|\bTRUNCATE\b/i);
   });
 });

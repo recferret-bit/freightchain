@@ -238,6 +238,7 @@ export class MemoryRideQuery extends RideQueryPort {
         siberiaShifts: fair.filter((r) => r.route === 'siberia').length,
         freeUnassisted: fair.filter((r) => r.tier === 'free' && !r.assist).length,
         completedFreeLevels: completedLevels(fair),
+        qualifiedReferrals: [...this.db.referrals.values()].filter((r) => r.referrer === wallet && r.badgeCounted).length,
       },
     };
   }

@@ -39,7 +39,7 @@ export class Pool {
     return Pool.register({
       id: state.poolId, address: state.address, tier, label: existing?.p.label ?? `${tier.toUpperCase()} · pool ${state.poolId}`, priceLamports: state.priceLamports,
       minTickets: state.minTickets, maxTickets: state.maxTickets, maxPerWallet: state.maxPerWallet, prepDeadline: state.prepDeadline, playDeadline: state.playDeadline, payoutAt: state.payoutAt,
-      prizeBps: state.prizeBps, seedBps: state.seedBps, feeBps: state.feeBps, feeTreasury: state.feeTreasury, seedTreasury: state.seedTreasury, status: state.status,
+      prizeBps: state.prizeBps, seedBps: state.seedBps, feeBps: state.feeBps, ...(state.referralBps !== undefined ? { referralBps: state.referralBps } : {}), feeTreasury: state.feeTreasury, seedTreasury: state.seedTreasury, status: state.status,
       ticketsSold: state.ticketsSold, buyers: state.buyers, vaultLamports: state.escrowLamports, sponsored: state.sponsored, roundId: existing?.p.roundId ?? null,
       rideSeed: resolvedRideSeed, createdAt: state.createdAt, syncedAt: now,
       payoutState: existing?.p.payoutState ?? 'pending', payoutNote: existing?.p.payoutNote ?? null, hold: existing?.p.hold ?? null,
@@ -57,7 +57,7 @@ export class Pool {
   static register(props: PoolProps): Pool {
     const bad = (why: string) => { throw new BadRequestError(`pool ${props.id}: ${why}`, 'bad_pool'); };
     if (!Number.isInteger(props.id) || props.id < 0 || props.id > 0xffff_ffff) bad('the id is a u32');
-    if (props.prizeBps + props.seedBps + props.feeBps !== 10_000) bad('the split must add up to 10 000 bps');
+    if (props.prizeBps + props.seedBps + props.feeBps + (props.referralBps ?? 0) !== 10_000) bad('the split must add up to 10 000 bps');
     if (!Number.isInteger(props.minTickets) || props.minTickets < 1) bad('the minimum is at least 1 ticket');
     if (!Number.isInteger(props.maxPerWallet) || props.maxPerWallet < 1) bad('at least 1 ticket per wallet');
     if (props.maxTickets !== 0 && props.maxTickets < props.minTickets) bad('the maximum is below the minimum');

@@ -18,7 +18,7 @@ describe('ListPoolsHandler', () => {
       id: 1, address: aPool({ id: 1 }).address, tier: '1h', label: '1 HOUR · test', status: 'active', priceLamports: 50_000_000, minTickets: 10, maxTickets: 0, maxPerWallet: 5,
       sold: 12, buyers: 0, toGo: 0, progressPct: 100, prepDeadline: aPool().prepDeadline.getTime(), playDeadline: Date.UTC(2036, 9, 30), payoutAt: Date.UTC(2036, 9, 30),
       payout: { state: 'pending', note: null, held: false },
-      vaultLamports: 600_000_000, sponsoredLamports: 0, potLamports: 600_000_000, split: { prizeBps: 7000, seedBps: 2000, feeBps: 1000 },
+      vaultLamports: 600_000_000, sponsoredLamports: 0, potLamports: 600_000_000, split: { prizeBps: 7000, seedBps: 2000, feeBps: 1000, referralBps: 0 },
       treasuries: { fee: 'FeeTreasury11111111111111111111111111111111', seed: 'SeedTreasury1111111111111111111111111111111' }, roundId: 3,
     });
   });

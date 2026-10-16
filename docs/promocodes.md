@@ -27,7 +27,7 @@ Server: `server/src/domain/economy/cosmetics.ts`. Client mirror: `client/js/cosm
 | slot | what it colours (`cockpit/rig.js` reads `look(slot)` every frame) | items (first = default: everybody has it, no code gives it) |
 |---|---|---|
 | `wheel` | the steering wheel: rim, sheen ring, spokes, hub, the FC mark | `classic` `crimson` `ocean` `moss` `gold` `ivory` |
-| `truck_color` | the hood and fenders you look over, the centre highlight, and the trim: the windscreen frame and the dashboard's top edge | `red` `blue` `green` `black` `yellow` `white` |
+| `truck_color` | the hood and fenders you look over, the centre highlight, and the trim: the windscreen frame and the dashboard's top edge | `red` `blue` `green` `black` `yellow` `white` `convoy` `signal` `amber` |
 | `gearbox` | the floor shifter: knob, its outline, the boot, the lever, the gear letter | `stick` `chrome` `wood` `racing` `gold` `carbon` |
 | `dice` | the dice hanging from the mirror: body and pips | `white` `red` `blue` `gold` `pink` `black` |
 | `needle` | the needles of the two big gauges | `orange` `red` `lime` `cyan` `white` `gold` |

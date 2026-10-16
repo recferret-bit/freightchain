@@ -12,7 +12,7 @@ describe('PoolPrismaRepository (PostgreSQL)', () => {
   beforeEach(() => wipe(prisma));
 
   it('upsert inserts then overwrites; findById maps every field back (lamports above 2^31 included)', async () => {
-    const big = poolProps({ id: 7, priceLamports: 3_000_000_000, vaultLamports: 9_000_000_000, sponsored: 2_500_000_000, ticketsSold: 3, buyers: 2 }, T0);
+    const big = poolProps({ id: 7, priceLamports: 3_000_000_000, vaultLamports: 9_000_000_000, sponsored: 2_500_000_000, ticketsSold: 3, buyers: 2, referralBps: 0 }, T0);
     await repo.upsert(aPool(big, T0));
     expect((await repo.findById(7))?.snapshot()).toEqual(big);
     await repo.upsert(aPool({ ...big, status: 'active', ticketsSold: 4, syncedAt: at(60) }, T0));

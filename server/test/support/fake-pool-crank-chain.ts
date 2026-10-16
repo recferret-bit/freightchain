@@ -87,7 +87,7 @@ export class FakePoolCrankChain extends PoolCrankChainPort {
       poolId, address: `pool-${poolId}`, status: 'open', ticketsSold: 0, buyers: 0, sponsored: 0, prizesPaid: 0, refunded: 0, vaultLamports: 890_880, escrowLamports: 0,
       vault: `vault-${poolId}`, authority: this.crankAddress ?? 'crank', tier, priceLamports: sr.priceLamports, minTickets: sr.minTickets, maxTickets: sr.maxTickets,
       maxPerWallet: sr.maxPerWallet, prepDeadline: new Date(saleEnd), playDeadline: new Date(saleEnd + sr.playSecs * 1000),
-      payoutAt: new Date(saleEnd + (sr.playSecs + sr.verifySecs) * 1000), prizeBps: sr.prizeBps, seedBps: sr.seedBps, feeBps: sr.feeBps,
+      payoutAt: new Date(saleEnd + (sr.playSecs + sr.verifySecs) * 1000), prizeBps: sr.prizeBps, seedBps: sr.seedBps, feeBps: sr.feeBps, ...(sr.referralBps !== undefined ? { referralBps: sr.referralBps } : {}),
       feeTreasury: sr.feeTreasury, seedTreasury: sr.seedTreasury, createdAt: this.now,
     };
     this.chain.pools.set(poolId, pool);

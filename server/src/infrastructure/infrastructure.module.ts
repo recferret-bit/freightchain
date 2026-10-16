@@ -97,7 +97,9 @@ import { RideEventPrismaRepository } from './prisma/repositories/ride-event.pris
 import { RideMuteRepositoryPort } from '../application/ports/live/ride-mute.repository.port.js';
 import { RideMutePrismaRepository } from './prisma/repositories/ride-mute.prisma.repository.js';
 import { DonationOrderRepositoryPort } from '../application/ports/live/donation-order.repository.port.js';
+import { ReferralRepositoryPort } from '../application/ports/referral/referral.repository.port.js';
 import { DonationOrderPrismaRepository } from './prisma/repositories/donation-order.prisma.repository.js';
+import { ReferralPrismaRepository } from './prisma/repositories/referral.prisma.repository.js';
 import { CachePort } from '../application/ports/shared/cache.port.js';
 import { StatsRepositoryPort } from '../application/ports/stats/stats.repository.port.js';
 import { StatsPrismaRepository } from './prisma/repositories/stats.prisma.repository.js';
@@ -164,6 +166,7 @@ const ports: Provider[] = [
   { provide: SitePresencePort, useClass: MemorySitePresenceAdapter },
   { provide: RideMuteRepositoryPort, useClass: RideMutePrismaRepository },
   { provide: DonationOrderRepositoryPort, useClass: DonationOrderPrismaRepository },
+  { provide: ReferralRepositoryPort, useClass: ReferralPrismaRepository },
   { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },
   { provide: StatsRepositoryPort, useClass: StatsPrismaRepository },
   { provide: CachePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): CachePort => (env.redisUrl ? new RedisCacheAdapter(env.redisUrl, clock) : new MemoryCacheAdapter(clock)) },

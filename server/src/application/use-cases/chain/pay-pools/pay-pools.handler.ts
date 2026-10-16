@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
 import { CommandBus, CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { SETTLE_GRACE_MS } from '../../../../domain/economy/pool-crank.js';
 import type { Pool } from '../../../../domain/economy/pool.entity.js';
@@ -20,6 +20,7 @@ import { HasherPort } from '../../../ports/shared/hasher.port.js';
 import { PoolAttentionService } from '../../../services/pool-attention.service.js';
 import { PoolRegistryService } from '../../../services/pool-registry.service.js';
 import { AttestationService } from '../../../services/attestation.service.js';
+import { ReferralPayoutService } from '../../../services/referral-payout.service.js';
 import { SettleChainSignatureCommand } from '../settle-chain-signature/settle-chain-signature.command.js';
 import { PayPoolsCommand, type PaidPrizeDto, type PayoutPassDto, type PoolPayoutResultDto } from './pay-pools.command.js';
 
@@ -65,6 +66,7 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     private readonly attestation: AttestationService,
     private readonly pledges: PledgeRepositoryPort,
     private readonly hasher: HasherPort,
+    @Optional() private readonly referralPayout?: ReferralPayoutService,
   ) {}
 
   async execute({ poolId }: PayPoolsCommand): Promise<PayoutPassDto> {
@@ -216,7 +218,7 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
       paid – stop, with what moved, for the admin. null = the plan still is the ranking. */
   private async planDrift(pool: Pool, rows: readonly PoolPayoutRecord[]): Promise<string | null> {
     const now = (await this.rides.poolRanking(pool.id, TOP20_SIZE, true)).map((r) => r.wallet);
-    const planned = [...rows].sort((a, b) => a.rank - b.rank).map((r) => r.wallet);
+    const planned = [...rows].filter((r) => (r.kind ?? 'rider') === 'rider').sort((a, b) => a.rank - b.rank).map((r) => r.wallet);
     if (now.length === planned.length && now.every((w, i) => w === planned[i])) return null;
     const first = planned.findIndex((w, i) => now[i] !== w);
     const at = first >= 0 ? first : planned.length;
@@ -228,9 +230,12 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     const ranking = await this.rides.poolRanking(pool.id, TOP20_SIZE, true);
     if (!ranking.length) return [];
     const s = pool.snapshot();
-    const prize = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps });
-    // a 0-lamport rank could never be paid (the program refuses it) and would keep the pool from closing: the shares are floored, so they are the last ranks
-    const plan = poolPayouts(prize, ranking.map((r) => r.wallet)).filter((p) => p.lamports > 0).map((p) => ({ poolId: pool.id, rank: p.rank, wallet: p.wallet, lamports: p.lamports, status: 'planned' as const }));
+    const prize = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps, referralBps: s.referralBps ?? 0 });
+    // a 0-lamport rank could never be paid (the program refuses it) and would keep the pool from closing: the shares are floored, so they are the last ranks.
+    // with the referral service the same root also carries one leaf per referrer (kind), which planDrift ignores
+    const plan = this.referralPayout
+      ? await this.referralPayout.leaves(pool)
+      : poolPayouts(prize, ranking.map((r) => r.wallet)).filter((p) => p.lamports > 0).map((p) => ({ poolId: pool.id, rank: p.rank, wallet: p.wallet, lamports: p.lamports, status: 'planned' as const }));
     await this.payouts.plan(plan, this.clock.now());
     return this.payouts.listByPool(pool.id);
   }

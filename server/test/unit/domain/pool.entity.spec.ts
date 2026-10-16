@@ -234,6 +234,9 @@ describe('Pool – the state machine replays the program events', () => {
 describe('Pool.register – the create_pool rules, checked again when a pool enters the mirror', () => {
   it('accepts a valid pool and refuses broken rules', () => {
     expect(Pool.register(props()).id).toBe(7);
+    expect(Pool.register(props()).snapshot()).not.toHaveProperty('referralBps');
+    expect(Pool.register(props({ prizeBps: 6500, referralBps: 500 })).snapshot().referralBps).toBe(500);
+    expect(() => Pool.register(props({ prizeBps: 6500 }))).toThrow(BadRequestError);
     for (const over of [{ id: -1 }, { id: 2 ** 32 }, { prizeBps: 6000 }, { minTickets: 0 }, { maxPerWallet: 0 }, { maxTickets: 1, minTickets: 2 }, { priceLamports: 0 }, { prepDeadline: new Date(PLAY.getTime() + 1) }, { rideSeed: -1 }, { rideSeed: 2 ** 31 }, { rideSeed: 1.5 }]) {
       expect(() => Pool.register(props(over)), JSON.stringify(over)).toThrow(BadRequestError);
     }

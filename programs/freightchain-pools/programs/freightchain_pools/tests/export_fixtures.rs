@@ -48,11 +48,11 @@ fn decoded_events(logs: &[String]) -> Vec<Value> {
             try_ev!(d, PoolCreated, |e: PoolCreated| json!({"kind": "PoolCreated", "poolId": e.pool_id, "pool": e.pool.to_string(), "vault": e.vault.to_string(),
                 "authority": e.authority.to_string(), "tier": e.tier, "priceLamports": s(e.price_lamports), "minTickets": e.min_tickets, "maxTickets": e.max_tickets,
                 "maxPerWallet": e.max_per_wallet, "prepDeadline": e.prep_deadline, "playDeadline": e.play_deadline, "payoutAt": e.payout_at, "prizeBps": e.prize_bps, "seedBps": e.seed_bps,
-                "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(), "seedTreasury": e.seed_treasury.to_string(), "fromSeries": e.from_series, "seedCommitment": b64(&e.seed_commitment), "seedSlot": s(e.seed_slot), "seedSlotHash": b64(&e.seed_slot_hash)}));
+                "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(), "seedTreasury": e.seed_treasury.to_string(), "fromSeries": e.from_series, "seedCommitment": b64(&e.seed_commitment), "seedSlot": s(e.seed_slot), "seedSlotHash": b64(&e.seed_slot_hash), "referralBps": e.referral_bps}));
             try_ev!(d, SeriesSet, |e: SeriesSet| json!({"kind": "SeriesSet", "tier": e.tier, "enabled": e.enabled, "priceLamports": s(e.price_lamports),
                 "minTickets": e.min_tickets, "maxTickets": e.max_tickets, "maxPerWallet": e.max_per_wallet, "saleSecs": e.sale_secs, "playSecs": e.play_secs,
                 "verifySecs": e.verify_secs, "prizeBps": e.prize_bps, "seedBps": e.seed_bps, "feeBps": e.fee_bps, "feeTreasury": e.fee_treasury.to_string(),
-                "seedTreasury": e.seed_treasury.to_string(), "nextOpenAt": e.next_open_at}));
+                "seedTreasury": e.seed_treasury.to_string(), "nextOpenAt": e.next_open_at, "referralBps": e.referral_bps}));
             try_ev!(d, PayoutAuthoritySet, |e: PayoutAuthoritySet| json!({"kind": "PayoutAuthoritySet", "authority": e.authority.to_string(),
                 "payoutAuthority": e.payout_authority.map(|k| k.to_string())}));
             try_ev!(d, TicketBought, |e: TicketBought| json!({"kind": "TicketBought", "poolId": e.pool_id, "buyer": e.buyer.to_string(), "qty": e.qty,
@@ -140,7 +140,7 @@ impl Rec {
                 "seedCommitment": b64(&p.seed_commitment), "seedSlot": s(p.seed_slot), "seedSlotHash": b64(&p.seed_slot_hash),
                 "sealSlot": s(p.seal_slot), "platformFeeBps": p.platform_fee_bps, "winnersRoot": b64(&p.winners_root), "winnersTotal": s(p.winners_total),
                 "winnersCount": p.winners_count, "committedAt": p.committed_at, "payFrom": p.pay_from, "paidMask": s(p.paid_mask),
-                "sponsorRefunded": s(p.sponsor_refunded), "openPledges": p.open_pledges, "minReviewSecs": p.min_review_secs})
+                "sponsorRefunded": s(p.sponsor_refunded), "openPledges": p.open_pledges, "minReviewSecs": p.min_review_secs, "referralBps": p.referral_bps})
         } else if a.data.len() >= 8 && a.data[..8] == *Ticket::DISCRIMINATOR {
             let t = Ticket::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Ticket", "buyer": t.buyer.to_string(), "rentPayer": t.rent_payer.to_string(), "poolId": t.pool_id, "qty": t.qty, "lamports": s(t.lamports), "bump": t.bump})
@@ -166,7 +166,7 @@ impl Rec {
             json!({"type": "Series", "tier": x.tier, "enabled": x.enabled, "priceLamports": s(x.price_lamports), "minTickets": x.min_tickets, "maxTickets": x.max_tickets,
                 "maxPerWallet": x.max_per_wallet, "saleSecs": x.sale_secs, "playSecs": x.play_secs, "verifySecs": x.verify_secs, "prizeBps": x.prize_bps,
                 "seedBps": x.seed_bps, "feeBps": x.fee_bps, "feeTreasury": x.fee_treasury.to_string(), "seedTreasury": x.seed_treasury.to_string(),
-                "nextOpenAt": x.next_open_at, "poolsOpened": x.pools_opened, "lastPoolId": x.last_pool_id, "bump": x.bump})
+                "nextOpenAt": x.next_open_at, "poolsOpened": x.pools_opened, "lastPoolId": x.last_pool_id, "bump": x.bump, "referralBps": x.referral_bps})
         } else {
             let c = Config::try_deserialize(&mut &a.data[..]).unwrap();
             json!({"type": "Config", "authority": c.authority.to_string(), "platformTreasury": c.platform_treasury.to_string(), "platformFeeBps": c.platform_fee_bps,
@@ -223,7 +223,7 @@ fn seal(e: &mut Env, rec: &mut Rec, id: u32, payer: &Keypair) {
 fn create(e: &mut Env, rec: &mut Rec, p: CreatePoolParams) -> u32 {
     let id = e.next_pool;
     let args = json!({"tier": p.tier, "priceLamports": s(p.price_lamports), "minTickets": p.min_tickets, "maxTickets": p.max_tickets, "maxPerWallet": p.max_per_wallet,
-        "prepDeadline": p.prep_deadline, "playDeadline": p.play_deadline, "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps});
+        "prepDeadline": p.prep_deadline, "playDeadline": p.play_deadline, "payoutAt": p.payout_at, "prizeBps": p.prize_bps, "seedBps": p.seed_bps, "feeBps": p.fee_bps, "referralBps": p.referral_bps});
     let i = e.create_pool_ix(p, e.fee_t.pubkey(), e.seed_t.pubkey());
     let (a, c) = (e.authority_kp(), clone_kp(&e.cranker));
     rec.send(e, &format!("create_pool {id}"), vec![(i, "create_pool", args)], &c, &[&a], true).unwrap();
@@ -358,7 +358,7 @@ fn export_pool_program_fixtures() {
     let sp = daily_series(start);
     let sargs = json!({"tier": sp.tier, "enabled": sp.enabled, "priceLamports": s(sp.price_lamports), "minTickets": sp.min_tickets, "maxTickets": sp.max_tickets,
         "maxPerWallet": sp.max_per_wallet, "saleSecs": sp.sale_secs, "playSecs": sp.play_secs, "verifySecs": sp.verify_secs, "prizeBps": sp.prize_bps,
-        "seedBps": sp.seed_bps, "feeBps": sp.fee_bps, "startAt": sp.start_at});
+        "seedBps": sp.seed_bps, "feeBps": sp.fee_bps, "startAt": sp.start_at, "referralBps": sp.referral_bps});
     let i = ix(
         instruction::SetSeries { params: sp.clone() },
         accounts::SetSeries {

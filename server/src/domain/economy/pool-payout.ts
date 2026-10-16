@@ -11,6 +11,8 @@ export interface PoolPayoutRecord {
   poolId: number;
   rank: number;
   wallet: string;
+  /** rider = a finisher. referrer = the invite share. Absent on a row written before the referral leg, which is a rider. */
+  kind?: 'rider' | 'referrer';
   lamports: number;
   status: PoolPayoutStatus;
   signature: string | null;
@@ -28,4 +30,6 @@ export interface PlannedPayout {
   wallet: string;
   lamports: number;
   status: 'planned' | 'paid';
+  /** absent = rider, so a plan from before the referral leg still writes */
+  kind?: 'rider' | 'referrer';
 }

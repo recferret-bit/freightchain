@@ -13,6 +13,8 @@ import { PoolAttentionService } from './services/pool-attention.service.js';
 import { AttestationService } from './services/attestation.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
 import { GameSettingsService } from './services/game-settings.service.js';
+import { ReferralService } from './services/referral.service.js';
+import { ReferralPayoutService } from './services/referral-payout.service.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
 import { RecordTelemetryHandler } from './use-cases/telemetry/record-telemetry/record-telemetry.handler.js';
 import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
@@ -130,10 +132,12 @@ import { ConfirmPledgeHandler } from './use-cases/pledges/confirm-pledge/confirm
 import { SyncPledgesHandler } from './use-cases/pledges/sync-pledges/sync-pledges.handler.js';
 import { GetRidePledgesHandler } from './use-cases/pledges/get-ride-pledges/get-ride-pledges.handler.js';
 import { GetPledgeHandler } from './use-cases/pledges/get-pledge/get-pledge.handler.js';
+import { BindReferralHandler, GetReferralsHandler, SetReferralGiftHandler } from './use-cases/referrals/referrals.handler.js';
 
 const services: Provider[] = [
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
   PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService, AttestationService,
+  ReferralService, ReferralPayoutService,
 ];
 
 import { ReconcileStatsHandler } from './use-cases/stats/reconcile-stats/reconcile-stats.handler.js';
@@ -169,6 +173,7 @@ const handlers: Provider[] = [
   GetSnsReverseHandler, ResolveSnsHandler,
   GetActionsJsonHandler, GetHelloActionHandler, SayHelloActionHandler, GetShiftActionHandler, PrepareShiftActionHandler, OpenSiteActionHandler, GetRideActionHandler, OpenRideActionHandler,
   CreatePledgeHandler, ConfirmPledgeHandler, SyncPledgesHandler, GetRidePledgesHandler, GetPledgeHandler,
+  GetReferralsHandler, BindReferralHandler, SetReferralGiftHandler,
 ];
 
 @Module({
