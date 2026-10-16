@@ -135,6 +135,7 @@ addEventListener('click', e => {
 /* phones: a swipe turns the page, the tip says "swipe", a portrait screen is asked to turn sideways, and the first tap goes full screen */
 const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
 document.body.classList.toggle('touch', touch);
+if (touch) { const lanes = deck.querySelector('.lanes-ctl'); lanes.hidden = true; document.body.append(lanes); }   /* off the scaled stage, so ▲ ▼ keep a screen-pixel size above the right page button */
 /* a tap on anything that answers it shows a soft Solana-gradient ring instead of the browser's blue highlight (-webkit-tap-highlight-color is off in the CSS) */
 const TAPS = `${CARDS}, .pts li.don, .pts li.adopt, .ladder li, .split > div, .exits .exit, [data-go], button`;
 if (touch && !reduced) addEventListener('pointerdown', e => { if (e.target.closest?.('#tilt, #turn')) return; if (e.target.closest?.(TAPS)) { const [x, y] = toStage(e.clientX, e.clientY); pop('tap', '', x, y); } }, { passive: true });

@@ -82,6 +82,7 @@ export function initRoad(exitsEl) {
   };
   everyFrame(t => {
     const dt = Math.min(.1, (t - lastT) / 1000) || 0, on = view.cur === slide; lastT = t;
+    if (ctl.hidden === on) ctl.hidden = !on;   /* a phone parks this control on the body, so the slide no longer shows and hides it */
     if (on && !wasOn) {   // every visit starts like the first: the truck under EXIT 1 in the near lane, no flipped sign, the honk counter back at zero (the entrance then plays again)
       measure(); lane = 0; truck.classList.remove('up', 'go', 'back', 'swerve'); park();
       exits.forEach(e => e.classList.remove('hot')); honks = 0; mineT = 0; counter.classList.remove('on'); cnum.textContent = '0'; exitsEl.querySelectorAll('.mint').forEach(m => m.remove());

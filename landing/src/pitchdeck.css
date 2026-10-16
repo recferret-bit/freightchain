@@ -477,7 +477,10 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .ob.gone{opacity:0;transition:opacity .45s}
 @keyframes obhit{to{opacity:0;rotate:-40deg;margin-top:-70px}}
 .lanes-ctl{position:absolute;right:-96px;bottom:0;height:150px;display:flex;flex-direction:column;justify-content:center;gap:12px}
-.touch .lanes-ctl{right:14px;z-index:5}   /* a phone: the ▲ ▼ ride on the road's right end – outside it they sat under the corner page button */
+.lanes-ctl[hidden]{display:none!important}   /* author display:flex would otherwise beat the UA [hidden] rule */
+.touch .lanes-ctl{position:fixed;z-index:32;right:12px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 86px);height:auto;gap:8px}   /* above the right page button: its 76 px plus a 10 px gap */
+.touch .ln{width:88px;height:72px;font-size:36px}   /* a bit bigger than that 76 px button */
+@media (max-width:700px),(max-height:500px){.touch .lanes-ctl{right:8px;bottom:62px}.touch .ln{width:60px;height:52px;font-size:30px}}   /* above the 44 px page arrow: 10 + 44 + 8, and a bit bigger than it */
 .ln{width:70px;height:58px;border-radius:12px;border:2px solid #2a2a2a;background:#0e0e0e;color:#9a9a9a;font:700 24px var(--body);cursor:pointer;transition:background-color .2s,color .2s,border-color .2s,scale .25s cubic-bezier(.2,1.4,.3,1)}
 .ln:hover{border-color:#fff;color:#fff}
 .lanes-ctl.warn .ln{border-color:var(--accent);color:var(--accent);animation:lnwarn .45s ease-in-out infinite alternate}
