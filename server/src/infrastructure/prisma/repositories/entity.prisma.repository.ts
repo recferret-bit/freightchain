@@ -95,8 +95,9 @@ export class EntityPrismaRepository extends EntityRepositoryPort {
   }
 
   async publishedStamp(): Promise<string> {
-    const agg = await this.prisma.entity.aggregate({ where: { publishedRevisionId: { not: null } }, _count: { _all: true }, _max: { publishedAt: true } });
-    return `${agg._count._all}:${agg._max.publishedAt?.toISOString() ?? '-'}`;
+    // Every pointer move increments version. Timestamps can collide or move backwards across app clocks.
+    const agg = await this.prisma.entity.aggregate({ where: { publishedRevisionId: { not: null } }, _count: { _all: true }, _sum: { version: true } });
+    return `${agg._count._all}:${agg._sum.version ?? 0}`;
   }
 
   private async pointed(column: 'headRevisionId' | 'publishedRevisionId', tx?: TransactionHandle): Promise<RevisionRecord[]> {

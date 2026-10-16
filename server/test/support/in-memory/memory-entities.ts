@@ -38,8 +38,7 @@ export class MemoryEntityRepository extends EntityRepositoryPort {
   async lockPublish(): Promise<void> { /* pg_advisory_xact_lock – the Postgres suite covers two publishes */ }
   async publishedStamp(): Promise<string> {
     const pub = [...this.db.entities.values()].filter((e) => e.publishedRevisionId);
-    const max = pub.reduce<Date | null>((m, e) => (e.publishedAt && (!m || e.publishedAt > m) ? e.publishedAt : m), null);
-    return `${pub.length}:${max?.toISOString() ?? '-'}:${pub.map((e) => e.publishedRevisionId).join(',')}`;
+    return `${pub.length}:${pub.reduce((sum, e) => sum + e.version, 0)}`;
   }
   private pointed(f: (e: EntityRecord) => string | null): RevisionRecord[] {
     const ids = new Set([...this.db.entities.values()].map(f).filter((v): v is string => !!v));

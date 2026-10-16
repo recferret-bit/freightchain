@@ -1,3 +1,4 @@
+import { ClockPort } from '../../../application/ports/shared/clock.port.js';
 import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import { EditorJobRepositoryPort } from '../../../application/ports/editor/editor-job.repository.port.js';
 import { JobTokenPort, type JobClaims } from '../../../application/ports/editor/job-token.port.js';
@@ -19,6 +20,7 @@ export class McpJobGuard implements CanActivate {
     private readonly tokens: JobTokenPort,
     private readonly jobs: EditorJobRepositoryPort,
     private readonly env: EnvService,
+    private readonly clock: ClockPort,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -28,7 +30,7 @@ export class McpJobGuard implements CanActivate {
     const claims = typeof raw === 'string' && raw ? await this.tokens.verify(raw) : null;
     if (!claims || !this.env.editorWallets.has(claims.wallet)) throw new NotFoundError('not found');
     const job = await this.jobs.find(claims.jobId);
-    if (!job || job.status !== 'running' || job.wallet !== claims.wallet || (job.entityId ?? null) !== (claims.entityId ?? null)) throw new NotFoundError('not found');
+    if (!job || job.status !== 'running' || !job.startedAt || this.clock.now().getTime() >= job.startedAt.getTime() + this.env.editorJobTimeoutMs || job.wallet !== claims.wallet || (job.entityId ?? null) !== (claims.entityId ?? null)) throw new NotFoundError('not found');
     request.job = claims;
     request.player = { wallet: claims.wallet };
     return true;

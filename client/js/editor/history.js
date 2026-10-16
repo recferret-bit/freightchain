@@ -45,7 +45,9 @@ export function mountHistory(st) {
   function showDiff(rev) {
     diff.textContent = ''; diff.hidden = false;
     const head = st.head?.source ?? '';
-    for (const d of diffLines(head, rev.source ?? '')) if (d.op !== ' ') diff.append(el('div', { class: d.op === '+' ? 'ed-add' : 'ed-del', text: `${d.op} ${d.line}` }));
+    const changed = diffLines(head, rev.source ?? '').filter(d => d.op !== ' ');
+    for (const d of changed.slice(0, 500)) diff.append(el('div', { class: d.op === '+' ? 'ed-add' : 'ed-del', text: `${d.op} ${d.line}` }));
+    if (changed.length > 500) diff.append(el('div', { class: 'ed-dim', text: `${changed.length - 500} more changed lines` }));
     if (!diff.children.length) diff.append(el('div', { class: 'ed-dim', text: 'identical to the head' }));
   }
   st.on(() => load());

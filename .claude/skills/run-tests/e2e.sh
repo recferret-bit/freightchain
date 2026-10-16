@@ -14,14 +14,18 @@ ADMIN_KP="$(mktemp -t fc-admin-XXXXXX).json"
 # empties dist/ mid-run – "Cannot find module dist/main.js"). Same depth as dist/, so the server's ../../../../client still finds the repo; a dot
 # directory, so the server's own tsc (no include list) never type-checks it.
 BUILD=".e2e-build-$$"; TSCONFIG=".e2e-tsconfig-$$.json"; LANDING_OUT="$(mktemp -d "${TMPDIR:-/tmp}/fc-landing-XXXXXX")"
-PID=""
+PID=""; EDITOR_WORKER_PID=""; MCP_PID=""
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,()=>{console.log(s.address().port);s.close()})'; }
 psql_admin() { docker exec freightchain-postgres psql -U freight -d postgres -v ON_ERROR_STOP=1 -tAc "$1"; }
 SUITE=""
 # E2E_LOG_DIR (set by `npm run test:census -- run e2e…`): the server's request lines per suite, so the census can tell which routes each suite hit
 keep_log() { if [ -n "${E2E_LOG_DIR:-}" ] && [ -n "$SUITE" ] && [ -f "/tmp/fc-e2e-$DB.log" ]; then grep -F '"event":"request"' "/tmp/fc-e2e-$DB.log" >> "$E2E_LOG_DIR/$SUITE.log" || true; fi; }
 stop() { if [ -n "$PID" ]; then kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; keep_log; fi; PID=""; }   # wait returns 143 for a killed server – not a failure
-cleanup() { stop; psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null 2>&1 || true; rm -rf "$ADMIN_KP" "$SERVER/$BUILD" "$SERVER/$TSCONFIG" "$LANDING_OUT"; }
+stop_editor() {
+  for child in "$EDITOR_WORKER_PID" "$MCP_PID"; do if [ -n "$child" ]; then kill "$child" 2>/dev/null || true; wait "$child" 2>/dev/null || true; fi; done
+  EDITOR_WORKER_PID=""; MCP_PID=""
+}
+cleanup() { stop_editor; stop; psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null 2>&1 || true; rm -rf "$ADMIN_KP" "$SERVER/$BUILD" "$SERVER/$TSCONFIG" "$LANDING_OUT"; }
 trap cleanup EXIT
 
 nc -z localhost 15433 || (cd "$ROOT" && npm run --silent db:up)
@@ -90,9 +94,13 @@ for suite in "${SUITES[@]}"; do
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
       FIXED_PORT="$(free_port)"; MCP_PORT="$(free_port)"; MCP_TOKEN="e2e-mcp-$$-$(node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))')"
       (cd "$ROOT/mcp" && EDITOR_MCP_PORT="$MCP_PORT" EDITOR_MCP_TOKEN="$MCP_TOKEN" FC_APP_URL="http://localhost:$FIXED_PORT" exec node src/http.js > "/tmp/fc-e2e-mcp-$DB.log" 2>&1) & MCP_PID=$!
-      EXTRA_ENV="EDITOR_WALLETS=$wallet EDITOR_FAKE_LLM=1 EDITOR_MCP_URL=http://127.0.0.1:$MCP_PORT EDITOR_MCP_TOKEN=$MCP_TOKEN" start 3 "$wallet"   # the editor is the ADMIN wallet too (the owner's setup)
+      EDITOR_TEST_JWT="e2e-editor-jwt-$$-shared-between-processes"
+      EXTRA_ENV="JWT_SECRET=$EDITOR_TEST_JWT EDITOR_WALLETS=$wallet EDITOR_FAKE_LLM=1 EDITOR_MCP_URL=http://127.0.0.1:$MCP_PORT EDITOR_MCP_TOKEN=$MCP_TOKEN" start 3 "$wallet"   # the editor is the ADMIN wallet too (the owner's setup)
+      (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" node scripts/e2e-editor-worker.mjs queue "$BUILD/editor-worker-job.txt")
+      (cd "$SERVER" && exec env DATABASE_URL="$URL" JWT_SECRET="$EDITOR_TEST_JWT" EDITOR_WALLETS="$wallet" EDITOR_FAKE_LLM=1 EDITOR_MCP_URL="http://127.0.0.1:$MCP_PORT" EDITOR_MCP_TOKEN="$MCP_TOKEN" node "$BUILD/app/editor-worker.js" > "/tmp/fc-e2e-editor-worker-$DB.log" 2>&1) & EDITOR_WORKER_PID=$!
+      (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" node scripts/e2e-editor-worker.mjs wait "$BUILD/editor-worker-job.txt" "$EDITOR_WORKER_PID")
       (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-editor.mjs) || { fails=$((fails + 1)); tail -20 "/tmp/fc-e2e-mcp-$DB.log"; }
-      stop; kill "$MCP_PID" 2>/dev/null || true; wait "$MCP_PID" 2>/dev/null || true; FIXED_PORT=""; EXTRA_ENV="" ;;
+      stop_editor; stop; FIXED_PORT=""; EXTRA_ENV="" ;;
     *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | editor)"; fails=$((fails + 1)) ;;
   esac
   stop

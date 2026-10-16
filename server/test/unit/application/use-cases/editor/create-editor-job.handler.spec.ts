@@ -6,7 +6,7 @@ import { fatCactus } from '../../../../support/entity-fixtures.js';
 
 const setup = (llm = new ScriptedLlm([turn()]), mcp = new ScriptedMcp()) => {
   const c = jobContext(undefined, llm, mcp);
-  return { ...c, h: new CreateEditorJobHandler(c.jobs, c.runner, llm, mcp, c.catalog, c.settings, c.entropy, c.clock) };
+  return { ...c, h: new CreateEditorJobHandler(c.jobs, llm, mcp, c.catalog, c.settings, c.entropy, c.clock) };
 };
 const cmd = (over: Partial<{ wallet: string; prompt: string; entityId: string | null; base: string | null | undefined; provider: string; model: string }> = {}) =>
   new CreateEditorJobCommand(over.wallet ?? 'W', over.prompt ?? 'taller', over.entityId === undefined ? 'cactus' : over.entityId, over.base, over.provider, over.model);
@@ -16,6 +16,8 @@ describe('CreateEditorJobHandler (the bridge\'s gate)', () => {
     const { h, jobs, runner } = setup();
     const { jobId } = await h.execute(cmd());
     expect(await jobs.find(jobId)).toMatchObject({ wallet: 'W', provider: 'fake', model: 'scripted', entityId: 'cactus', status: expect.stringMatching(/queued|running|done/) });
+    expect((await jobs.find(jobId))!.status).toBe('queued');
+    await runner.sweep();
     await runner.settled(jobId);
     expect((await jobs.find(jobId))!.status).toBe('done');
     expect((await jobs.events(jobId, 0, 5))[0]).toMatchObject({ type: 'status', payload: { status: 'queued' } });
@@ -47,7 +49,7 @@ describe('CreateEditorJobHandler (the bridge\'s gate)', () => {
     const results = await Promise.allSettled([h.execute(cmd()), h.execute(cmd({ entityId: 'rock' }))]);
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     expect(results.find((r) => r.status === 'rejected')).toMatchObject({ reason: { errorCode: 'job_running' } });
-    const [job] = await jobs.list({ limit: 10 }); await runner.settled(job!.id);
+    const [job] = await jobs.list({ limit: 10 }); await runner.sweep(); await runner.settled(job!.id);
     await expect(h.execute(cmd({ entityId: 'rock' }))).resolves.toHaveProperty('jobId');   // the claim is released once the job row exists / ended
   });
 });

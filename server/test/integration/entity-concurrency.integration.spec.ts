@@ -44,11 +44,22 @@ describe('entity drafts under concurrency (PostgreSQL)', () => {
   });
 
   it('parallel MCP save_draft calls on the same running job serialize under the job row lock without stale_base conflicts', async () => {
-    const job = aJob({ status: 'running', entityId: 'cactus', wallet: ED.address });
+    const job = aJob({ status: 'running', startedAt: h.clock.now(), entityId: 'cactus', wallet: ED.address });
     await jobs.insert(job);
     const results = await Promise.all(Array.from({ length: 4 }, (_, i) => bus.execute(new McpSaveDraftCommand(job.id, 'cactus', fatCactus(0.35 + i / 100), `step ${i}`))));
     expect(results.map((r: { seq: number }) => r.seq).sort()).toEqual([2, 3, 4, 5]);
     expect((await entities.revisions('cactus')).map((r) => r.seq)).toEqual([5, 4, 3, 2, 1]);
+  });
+
+  it('a human save racing an AI save from the same base never silently overwrites the human edit', async () => {
+    const job = aJob({ status: 'running', startedAt: h.clock.now(), entityId: 'cactus', wallet: ED.address }); await jobs.insert(job);
+    const results = await Promise.allSettled([
+      bus.execute(new McpSaveDraftCommand(job.id, 'cactus', fatCactus(.4), 'AI')),
+      write.saveDraft({ entityId: 'cactus', source: fatCactus(.6), message: 'human', baseRevisionId: null, author: ED.address }),
+    ]);
+    expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
+    expect(results.find(r => r.status === 'rejected')).toMatchObject({ reason: { errorCode: 'stale_base' } });
+    expect((await entities.revisions('cactus')).map(r => r.seq)).toEqual([2, 1]);
   });
 
   it('two publishes that each fit the old catalogue cannot both commit when together they do not build', async () => {
@@ -68,7 +79,7 @@ describe('entity drafts under concurrency (PostgreSQL)', () => {
     };
     const firstSig = await challenge(a, ED, 'job-crate', first.id);
     await a.post('/api/editor/entities/job-crate/publish').set(X, '1').send({ revisionId: first.id, signature: firstSig }).expect(200);
-    const birch = seedEntity('birch'); (birch.parts as unknown[]).push({ use: 'job-crate' });
+    const birch = seedEntity('birch'); (birch.parts as unknown[]).push({ use: 'job-crate', slots: { m: 'trunk' } });
     const birchRev = (await a.post('/api/editor/entities/birch/drafts').set(X, '1').send({ source: printSource(birch), message: 'uses the crate', baseRevisionId: null }).expect(200)).body;
     const crate2 = (await a.post('/api/editor/entities/job-crate/drafts').set(X, '1').send({ source: crate('trunk'), message: 'trunk', baseRevisionId: first.id }).expect(200)).body;
     const [birchSig, crateSig] = await Promise.all([challenge(a, ED, 'birch', birchRev.id), challenge(b, ED2, 'job-crate', crate2.id)]);

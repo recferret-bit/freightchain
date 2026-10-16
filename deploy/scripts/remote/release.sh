@@ -13,6 +13,14 @@ wait_healthy() {
     curl -fsS -m 5 "http://127.0.0.1:$APP_PORT/api/health/ready" >/dev/null 2>&1 && return 0; sleep 2
   done; return 1
 }
+wait_service() {
+  local tag="$1" service="$2" i id; id="$(cc "$tag" ps -q "$service")"
+  [ -n "$id" ] || return 1
+  for i in $(seq 1 30); do
+    [ "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$id" 2>/dev/null)" = healthy ] && return 0
+    sleep 2
+  done; return 1
+}
 
 [ -f "$STATE/setup-done" ] || { echo "run the first-time setup first: npm run deploy:setup" >&2; exit 1; }
 [ -f "$ROOT/releases/$RELEASE/deploy/docker-compose.prod.yml" ] || { echo "release $RELEASE was not uploaded" >&2; exit 1; }
@@ -22,7 +30,7 @@ say "release $RELEASE (currently serving: ${PREVIOUS:-nothing})"
 say "building the image (the running version keeps serving)"
 cc "$RELEASE" build --quiet app >/dev/null   # errors still print; the build log is noise
 # the entity MCP for the AI model editor – only when it is switched on (EDITOR_MCP_TOKEN in .env, 24+ chars)
-MCP=""; if grep -Eq '^EDITOR_MCP_TOKEN=.{24,}' "$ENVF"; then MCP=mcp; say "building the entity MCP image"; cc "$RELEASE" build --quiet mcp >/dev/null; fi
+MCP=""; EDITOR=""; if grep -Eq '^EDITOR_MCP_TOKEN=.{24,}' "$ENVF"; then MCP=mcp; EDITOR=editor-worker; say "building the entity MCP image"; cc "$RELEASE" build --quiet mcp >/dev/null; fi
 
 say "database"
 if cc "$RELEASE" ps --status running --services 2>/dev/null | grep -qx postgres; then
@@ -39,15 +47,22 @@ cc "$RELEASE" up -d --wait postgres redis
 say "migrating (new image, one-off)"
 cc "$RELEASE" run --rm --no-deps app node dist/cli/index.js migrate || { echo "migration FAILED – the previous version is still serving, nothing swapped" >&2; exit 1; }
 
-say "swapping the app and worker containers${MCP:+ (and the entity MCP)}"
-cc "$RELEASE" up -d --no-build app worker $MCP
-if ! wait_healthy; then
+say "swapping the app and worker containers${MCP:+ (and the entity MCP + AI worker)}"
+# Drain the old AI process before replacing the API or rolling back to an in-process runner.
+cc "$RELEASE" stop editor-worker
+if [ -z "$MCP" ]; then cc "$RELEASE" stop mcp; fi
+if ! cc "$RELEASE" up -d --no-build app worker $MCP $EDITOR || ! wait_healthy || { [ -n "$MCP" ] && { ! wait_service "$RELEASE" mcp || ! wait_service "$RELEASE" editor-worker; }; }; then
   echo "release $RELEASE is NOT healthy – last logs:" >&2
-  cc "$RELEASE" logs --tail 40 app >&2 || true
+  cc "$RELEASE" logs --tail 40 app editor-worker >&2 || true
   if [ -n "$PREVIOUS" ] && [ -f "$ROOT/releases/$PREVIOUS/deploy/docker-compose.prod.yml" ]; then
     echo "rolling back to $PREVIOUS" >&2
-    cc "$PREVIOUS" up -d --no-build app worker $MCP
-    if wait_healthy; then
+    cc "$RELEASE" stop editor-worker
+    PREVIOUS_MCP=""; PREVIOUS_EDITOR=""
+    if [ -n "$MCP" ] && cc "$PREVIOUS" config --services | grep -qx mcp; then PREVIOUS_MCP=mcp; fi
+    if [ -n "$MCP" ] && cc "$PREVIOUS" config --services | grep -qx editor-worker; then PREVIOUS_EDITOR=editor-worker; fi
+    if [ -n "$MCP" ] && [ -z "$PREVIOUS_MCP" ]; then cc "$RELEASE" stop mcp; fi
+    cc "$PREVIOUS" up -d --no-build app worker $PREVIOUS_MCP $PREVIOUS_EDITOR
+    if wait_healthy && { [ -z "$PREVIOUS_MCP" ] || wait_service "$PREVIOUS" mcp; } && { [ -z "$PREVIOUS_EDITOR" ] || wait_service "$PREVIOUS" editor-worker; }; then
       echo "rolled back: $PREVIOUS is serving again (the database stays migrated – migrations are forward-only)" >&2
       rm -rf "$ROOT/releases/$RELEASE"; docker rmi "freightchain-server:$RELEASE" "freightchain-mcp:$RELEASE" >/dev/null 2>&1 || true   # a failed release must not take a slot
     else

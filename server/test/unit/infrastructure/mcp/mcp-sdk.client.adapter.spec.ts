@@ -52,6 +52,17 @@ describe('McpSdkClientAdapter', () => {
     expect((await adapter().spec('taller')).verdict).toBe('not_a_spec');
   });
 
+  it('redirects cannot forward bridge credentials, and initialization respects cancellation', async () => {
+    const redirect = createServer((_req, res) => { res.writeHead(307, { location: url + '/spec' }); res.end(); });
+    await new Promise<void>(resolve => redirect.listen(0, '127.0.0.1', resolve));
+    const bridge = new McpSdkClientAdapter({ editorMcpToken: TOKEN, editorMcpUrl: `http://127.0.0.1:${(redirect.address() as AddressInfo).port}` } as EnvService);
+    const before = seen.length;
+    try { await expect(bridge.spec('x')).rejects.toBeInstanceOf(ServiceUnavailableError); await expect(bridge.connect('job-secret')).rejects.toBeInstanceOf(ServiceUnavailableError); expect(seen.length).toBe(before); }
+    finally { await new Promise<void>(resolve => redirect.close(() => resolve())); }
+    const abort = new AbortController(); abort.abort();
+    await expect(adapter().connect('job-secret', abort.signal)).rejects.toBeDefined();
+  });
+
   it('off without EDITOR_MCP_TOKEN; a wrong token or an unreachable MCP is a 503', async () => {
     expect(adapter(null).configured).toBe(false);
     await expect(adapter(null).spec('x')).rejects.toBeInstanceOf(ServiceUnavailableError);

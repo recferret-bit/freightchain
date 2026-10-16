@@ -40,7 +40,7 @@ const touch = (a, b, eps) => a[0] <= b[3] + eps && b[0] <= a[3] + eps && a[1] <=
 /* Summary for a part list: bounds, counts, and the parts that touch nothing and do not stand on the ground (floating). */
 export function measure(parts, { eps = .03 } = {}) {
   const bs = boxes(parts), bounds = union(bs);
-  const tags = {}; for (const { part } of bs) if (part.tag) tags[part.tag] = (tags[part.tag] ?? 0) + 1;
+  const tags = Object.create(null); for (const { part } of bs) if (part.tag) tags[part.tag] = (tags[part.tag] ?? 0) + 1;
   const floating = [];
   for (const a of bs) {
     if (a.box[1] <= eps) continue;   // on the ground

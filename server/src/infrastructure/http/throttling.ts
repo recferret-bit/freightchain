@@ -1,6 +1,7 @@
 import type { ExecutionContext } from '@nestjs/common';
 import type { ThrottlerModuleOptions, ThrottlerStorage } from '@nestjs/throttler';
 import type { Request } from 'express';
+import { createHash } from 'node:crypto';
 import { TokenSignerPort } from '../../application/ports/auth/token-signer.port.js';
 import type { EditorTokenPort } from '../../application/ports/editor/editor-token.port.js';
 import type { JobTokenPort } from '../../application/ports/editor/job-token.port.js';
@@ -66,5 +67,7 @@ export function throttlerOptions(env: EnvService, tokens: TokenSignerPort, edito
     { name: 'mcp-rps', ttl: THROTTLE_RPS_WINDOW_MS, limit: env.throttleMcpRps ?? 20, getTracker: byJob, skipIf: (context: ExecutionContext) => !isMcpRoute(context) },
     { name: 'promo', ttl: THROTTLE_WINDOW_MS, limit: env.throttlePromoLimit, getTracker: byIp, skipIf: (context: ExecutionContext) => !isPromoRedeem(context) },
   ];
+  // Nest's default key includes the controller method: rotating endpoints would multiply each surface's budget.
+  for (const t of throttlers) if (!['default', 'promo'].includes(t.name)) Object.assign(t, { generateKey: (_context: ExecutionContext, tracker: string, name: string) => createHash('sha256').update(`${name}:${tracker}`).digest('hex') });
   return storage ? { throttlers, storage } : throttlers;
 }

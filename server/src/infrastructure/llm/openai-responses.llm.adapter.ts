@@ -26,6 +26,7 @@ export function openAiErrorText(e: unknown): string | null {
 
 export class OpenAiResponsesSession implements LlmSession {
   private readonly input: unknown[] = [];
+  private tokensOut = 0;
 
   constructor(private readonly client: OpenAiResponsesClientLike, private readonly o: LlmOpenOptions) {}
 
@@ -41,7 +42,7 @@ export class OpenAiResponsesSession implements LlmSession {
 
   params(): Record<string, unknown> {
     return {
-      model: this.o.model, instructions: this.o.system, input: this.input, max_output_tokens: this.o.maxOutputTokens, store: false, include: ['reasoning.encrypted_content'],
+      model: this.o.model, instructions: this.o.system, input: this.input, max_output_tokens: Math.max(1, this.o.maxOutputTokens - this.tokensOut), store: false, include: ['reasoning.encrypted_content'],
       tools: this.o.tools.map((t) => ({ type: 'function', name: t.name, description: t.description, parameters: t.inputSchema, strict: false })),
     };
   }
@@ -51,6 +52,7 @@ export class OpenAiResponsesSession implements LlmSession {
       const r = (await this.client.responses.create(this.params(), { signal: this.o.signal })) as Response;
       for (const item of r.output) this.input.push(item);
       const usage = { in: r.usage?.input_tokens ?? 0, out: r.usage?.output_tokens ?? 0 };
+      this.tokensOut += usage.out;
       const parts = r.output.filter((i) => i.type === 'message').flatMap((i) => i.content ?? []);
       const text = parts.filter((c) => c.type === 'output_text').map((c) => c.text ?? '').join('');
       const refusal = parts.find((c) => c.type === 'refusal');

@@ -32,7 +32,8 @@
     "cli:migrate": "node dist/cli/index.js migrate",
     "db:reset": "node dist/cli/index.js db:reset",
     "entities:export": "node dist/cli/index.js entities:export",
-    "treasury:init": "node scripts/treasury-init.mjs"
+    "treasury:init": "node scripts/treasury-init.mjs",
+    "editor:worker": "node dist/app/editor-worker.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.134.0",
@@ -83,5 +84,20 @@
   },
   "prisma": {
     "schema": "./prisma"
+  },
+  "overrides": {
+    "undici": "6.28.1",
+    "ethjs-unit": {
+      "bn.js": "4.12.5"
+    },
+    "number-to-bn": {
+      "bn.js": "4.12.5"
+    },
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.0"
+    },
+    "@solana/web3.js": {
+      "jayson": "5.0.0"
+    }
   }
 }

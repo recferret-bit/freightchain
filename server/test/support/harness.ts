@@ -51,6 +51,7 @@ import { MemoryEntityRepository } from './in-memory/memory-entities.js';
 import { MemoryEditorJobRepository } from './in-memory/memory-editor-jobs.js';
 import { EditorJobRepositoryPort } from '../../src/application/ports/editor/editor-job.repository.port.js';
 import { McpClientPort } from '../../src/application/ports/editor/mcp-client.port.js';
+import { EditorWorkerModule } from '../../src/app/editor-worker.module.js';
 import { EditorJobSweepScheduler } from '../../src/infrastructure/scheduling/editor-job-sweep.scheduler.js';
 import { EditorJobRunnerService } from '../../src/application/services/editor-job-runner.service.js';
 import { TestMcpClient } from './test-mcp.js';
@@ -143,7 +144,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const mcp = new TestMcpClient(() => server!(), () => !!process.env['EDITOR_MCP_TOKEN']);
 
   // the stale-ride sweep and replay-verification scheduler run on REAL timers – they would race the fake clock; scenarios run commands themselves
-  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ReplayVerificationScheduler).useValue({}).overrideProvider(ReplayQueuePort).useValue(replayQueue).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(PoolPayoutChainPort).useValue(payoutChain).overrideProvider(NameServicePort).useValue(nameService).overrideProvider(EditorJobSweepScheduler).useValue({}).overrideProvider(McpClientPort).useValue(mcp);
+  let builder = Test.createTestingModule({ imports: [AppModule, EditorWorkerModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ReplayVerificationScheduler).useValue({}).overrideProvider(ReplayQueuePort).useValue(replayQueue).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(PoolPayoutChainPort).useValue(payoutChain).overrideProvider(NameServicePort).useValue(nameService).overrideProvider(EditorJobSweepScheduler).useValue({}).overrideProvider(McpClientPort).useValue(mcp);
   if (persistence === 'memory') {
     builder = builder
       .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined })
@@ -191,7 +192,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
 
   server = () => app.getHttpServer() as Server;
   return {
-    app, clock, mcp, jobSettled: (id) => app.get(EditorJobRunnerService, { strict: false }).settled(id), chain, poolChain, payoutChain, nameService, persistence,
+    app, clock, mcp, jobSettled: async (id) => { const runner = app.get(EditorJobRunnerService, { strict: false }); await runner.sweep(); await runner.settled(id); }, chain, poolChain, payoutChain, nameService, persistence,
     seedFor: (route, hourIndex = 0) => { let s = 1000; while (worldFor(s).route !== route || worldFor(s).startHour !== START_HOURS[hourIndex]) s++; entropy.next = s; },
     server: () => app.getHttpServer() as Server,
     reset: async () => {

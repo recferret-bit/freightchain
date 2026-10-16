@@ -1,4 +1,5 @@
 import { Catch, Logger, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
+import { ThrottlerException } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { TooManyRequestsError } from '../../../domain/shared/errors.js';
 import { getRequestId } from '../types/http-request.js';
@@ -26,6 +27,10 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     }
     response.setHeader('Content-Type', 'application/problem+json; charset=utf-8');
     if (exception instanceof TooManyRequestsError && exception.retryAfterSeconds !== undefined) response.setHeader('Retry-After', String(Math.max(1, Math.ceil(exception.retryAfterSeconds))));
+    if (exception instanceof ThrottlerException) {
+      const waits = Object.entries(response.getHeaders()).filter(([name]) => /^retry-after(?:-|$)/i.test(name)).map(([, value]) => Number(value)).filter(Number.isFinite);
+      if (waits.length) response.setHeader('Retry-After', String(Math.max(1, ...waits)));
+    }
     const path = request.path || request.originalUrl || '';
     // Solana Pay wallets display `message`. Every other route stays the problem object alone.
     const body = apiPath(path).startsWith('/api/solana-pay') ? { ...problem, message: problem.detail ?? problem.title } : problem;

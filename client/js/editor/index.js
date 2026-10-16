@@ -14,12 +14,15 @@ const onStorybook = location.hostname.startsWith('storybook.');
 
 export function mountEditor(viewer) {
   const st = { me: null, viewer, entityId: null, head: null, listeners: new Set() };
+  let headGeneration = 0;
   const emit = () => { for (const f of st.listeners) f(st); };
   st.on = f => st.listeners.add(f);
   /* the selected entity's head (DB head or the seed) – every tab bases its writes on head.row.headRevisionId */
   st.loadHead = async () => {
     if (!st.me || !st.entityId) return;
-    try { st.head = await get(`entities/${encodeURIComponent(st.entityId)}`); } catch (e) { st.head = null; if (e.status !== 404) status(e.message, true); }
+    const generation = ++headGeneration, id = st.entityId, wallet = st.me.wallet;
+    try { const head = await get(`entities/${encodeURIComponent(id)}`); if (generation !== headGeneration || id !== st.entityId || wallet !== st.me?.wallet) return; st.head = head; }
+    catch (e) { if (generation !== headGeneration || id !== st.entityId || wallet !== st.me?.wallet) return; st.head = null; if (e.status !== 404) status(e.message, true); }
     emit();
   };
   st.preview = config => { try { viewer.preview(config); } catch (e) { status(`preview failed: ${e.message}`, true); } };
@@ -56,9 +59,9 @@ export function mountEditor(viewer) {
   function paintAuth() {
     signin.hidden = !!st.me; tabs.hidden = body.hidden = entity.hidden = !st.me;
     who.textContent = st.me ? short(st.me.wallet) : '';
-    if (st.me) { who.append(' ', el('button', { class: 'ed-link', onclick: () => post('auth/logout').finally(() => { st.me = null; paintAuth(); }) }, 'sign out')); showTab(tab); }
+    if (st.me) { who.append(' ', el('button', { class: 'ed-link', onclick: () => post('auth/logout').then(() => { st.me = null; st.head = null; headGeneration++; paintAuth(); emit(); }).catch(e => status(e.message, true)) }, 'sign out')); showTab(tab); }
   }
-  async function refreshMe() { try { st.me = await get('me'); } catch { st.me = null; } paintAuth(); if (st.me) await st.loadHead(); }
+  async function refreshMe() { try { st.me = await get('me'); } catch { st.me = null; st.head = null; headGeneration++; emit(); } paintAuth(); if (st.me) await st.loadHead(); }
   async function signIn() {
     const wallet = await connect(); status('sign the message in your wallet…');
     const { message } = await post('auth/nonce', { wallet });

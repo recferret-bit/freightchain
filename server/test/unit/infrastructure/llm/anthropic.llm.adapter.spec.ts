@@ -31,6 +31,7 @@ describe('AnthropicLlmSession', () => {
     expect([t1.stop, t1.toolCalls]).toEqual(['tool', [{ id: 't1', name: 'a', input: { x: 1 } }, { id: 't2', name: 'b', input: {} }]]);
     await s.sendToolResults([{ id: 't1', content: 'r1', isError: false }, { id: 't2', content: 'bad', isError: true }]);
     const messages = calls[1]!.params['messages'] as { role: string; content: unknown }[];
+    expect(calls[1]!.params['max_tokens']).toBe(31995);
     expect(messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user']);
     expect((messages[1]!.content as unknown[])[0]).toEqual(thinking);
     expect(messages[2]!.content).toEqual([{ type: 'tool_result', tool_use_id: 't1', content: 'r1', is_error: false }, { type: 'tool_result', tool_use_id: 't2', content: 'bad', is_error: true }]);

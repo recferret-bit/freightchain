@@ -71,7 +71,7 @@ Container logs rotate at 5 × 50 MB per service (`logging:` in `docker-compose.p
 1. build the image `freightchain-server:<release>` from the uploaded commit (server + `client/` + the landing's Vite build; the landing's tests gate the image – `LANDING_DIR` is set by the Dockerfile)
 2. `pg_dump | gzip` → `backups/db-<release>.sql.gz` (skipped on the very first deploy)
 3. one-off `migrate` with the new image (migrations are forward-only)
-4. swap the app container, poll `/api/health/ready` (≤ 60 s)
+4. stop the outgoing AI worker; swap app/replay worker and (when configured) MCP + editor-worker; check API readiness and MCP/AI-worker health
 5. **on failure: automatic rollback** to the previous release (its image is still there); the failed release is deleted
 6. on success: update `current` / `previous`, prune old releases, images and backups
 
@@ -84,7 +84,7 @@ Container logs rotate at 5 × 50 MB per service (`logging:` in `docker-compose.p
   state/                  current, previous, setup-done, releases.log (700)
   current -> releases/<tag>
 ```
-Docker project `freightchain-prod`: `postgres` (no published port, named volume `pgdata`) and `app` (published on `127.0.0.1:<APP_PORT>` only – Docker-published ports bypass ufw, so never bind them publicly).
+Docker project `freightchain-prod`: `postgres` (no published port, named volume `pgdata`), `redis`, the replay `worker`, optional `mcp` + `editor-worker`, and `app` (published on `127.0.0.1:<APP_PORT>` only – Docker-published ports bypass ufw, so never bind them publicly).
 
 ## What the first deploy changes on the server
 - creates `/srv/freightchain/…`
@@ -109,9 +109,11 @@ The tab icon, the Phantom connect-popup logo and the home-screen icon are plain 
 
 ## Redis (the statistics cache)
 
-`docker-compose.prod.yml` runs a `redis` service (redis:7-alpine, 64 MB, LRU, no persistence): **password** `REDIS_PASSWORD` (hex, in `deploy/.env` – `deploy:init` generates it; on an existing `.env` add it with `echo "REDIS_PASSWORD=$(openssl rand -hex 24)" >> deploy/.env`; `validate-env` and compose refuse a deploy without it), **no published port**, only on the `cache` network (`internal: true`: no internet route, shared with the app alone – PostgreSQL cannot see it), unprivileged user, read-only filesystem. The app's `REDIS_URL` is built from the password by the compose file. `release.sh` starts it with PostgreSQL; the smoke test checks `GET /api/stats`. It caches the public statistics for 15 s – losing it costs nothing (a cache miss reads PostgreSQL). Repair drifted statistics: the `stats-reconcile` skill; on the box `docker compose … exec app node dist/cli/index.js stats:reconcile [--fix]`.
+`docker-compose.prod.yml` runs a `redis` service (redis:7-alpine, 64 MB, noeviction, no persistence): **password** `REDIS_PASSWORD` (hex, in `deploy/.env` – `deploy:init` generates it; on an existing `.env` add it with `echo "REDIS_PASSWORD=$(openssl rand -hex 24)" >> deploy/.env`; `validate-env` and compose refuse a deploy without it), **no published port**, only on the `cache` network (`internal: true`: no internet route, shared with API/replay/AI workers and the MCP's restricted counter user – PostgreSQL cannot see it), unprivileged user, read-only filesystem. The app's `REDIS_URL` is built from the password by the compose file. `release.sh` starts it with PostgreSQL; the smoke test checks `GET /api/stats`. It caches the public statistics for 15 s – a cache miss reads PostgreSQL; protected auth/editor/MCP limits fail closed during Redis outages. Repair drifted statistics: the `stats-reconcile` skill; on the box `docker compose … exec app node dist/cli/index.js stats:reconcile [--fix]`.
 
 ## Caveats
 - Nothing is deployed from the working tree – only the commit. `--allow-dirty` just silences the guard.
 - One server, brief downtime while the app container is swapped (no blue/green).
 - Not a security boundary: the mock-era client checks are unchanged; see `docs/agents/verified-play.md`.
+
+The dedicated AI worker runs `node dist/app/editor-worker.js` from the server image, with no HTTP listener or published port, a read-only filesystem and a 1 GB memory cap. PostgreSQL owns its five-slot global queue. Its health check requires a fresh successful queue poll; it is started only when the entity MCP is configured. API, worker and MCP share provider/model configuration and the MCP token; API and worker share JWT_SECRET for job capabilities. No money-moving keys are passed to the AI worker. Queue markers are removed on failure/shutdown. Manual and automatic rollback stop the outgoing AI worker and use optional services available in the target release.

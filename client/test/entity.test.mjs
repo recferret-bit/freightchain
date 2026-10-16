@@ -107,3 +107,26 @@ test('a plan is the same part list on every run (no hidden state, no randomness)
     assert.deepEqual(toParts(prog, args), toParts(prog, args), e.id);
   }
 });
+
+test('malformed and hostile model data is refused without throwing or entering unbounded painters', () => {
+  const box = { id: 'review-box', kind: 'part', v: 1, parts: [{ geo: 'box', mat: { color: 1 }, s: [1, 1, 1] }] };
+  for (const parts of [null, {}, 1, 'parts', [null], [{ for: 'x', in: [1], let: 1, do: [] }]]) {
+    assert.doesNotThrow(() => validateEntity({ ...box, parts }));
+    // A primitive let object has no declarations, so other malformed forms are asserted separately below.
+    if (!Array.isArray(parts) || parts[0] === null) assert.equal(validateEntity({ ...box, parts }).ok, false);
+  }
+  assert.throws(() => parseSource('export default { x: 1e999 };'), SourceError);
+  const facade = { ...box, kind: 'landmark', parts: [{ ...box.parts[0], mat: { facade: [1e10, 1e10] } }] };
+  assert.equal(validateEntity(facade).ok, false);
+  for (const mat of [[[{ color: 1 }]], [{ if: true, then: [{ color: 1 }], else: { color: 1 } }]]) assert.equal(validateEntity({ ...box, parts: [{ ...box.parts[0], mat }] }).ok, false);
+  assert.equal(validateEntity({ ...facade, parts: [{ ...box.parts[0], mat: { facade: [2, '1 / 0'] } }] }).ok, false);
+  const child = { ...box, id: 'review-child', parts: [{ sign: { w: 1, h: 1, style: 'red', text: 'x' } }] };
+  assert.equal(validateEntity({ ...box, kind: 'prop', parts: [{ use: child.id }] }, { lookup: () => child }).ok, false);
+  const missing = { ...box, id: 'review-missing', parts: [{ ...box.parts[0], mat: 'missing' }] };
+  assert.equal(validateEntity({ ...box, kind: 'prop', parts: [{ use: missing.id }] }, { lookup: () => missing }).ok, false);
+  assert.equal(validateEntity({ ...box, parts: [{ glow: { color: 1, size: 1e12, gain: 1 } }] }).ok, false);
+  const tagged = validateEntity({ ...box, parts: [{ ...box.parts[0], tag: '__proto__' }] });
+  assert.equal(tagged.measures.tags.__proto__, 1);
+  const params = Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`p${i}`, { default: 1, enum: Array(32).fill(1) }]));
+  assert.match(validateEntity({ ...box, params }).errors.join(' '), /more than 96 corners/);
+});

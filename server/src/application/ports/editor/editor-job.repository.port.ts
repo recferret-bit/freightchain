@@ -3,6 +3,14 @@ import type { TransactionHandle } from '../shared/transaction.port.js';
 
 /** `asset.EditorJob` + `asset.EditorJobEvent`: jobs and their append-only events (seq 1, 2, … per job). */
 export abstract class EditorJobRepositoryPort {
+  /** Atomic shared admission: cap and open-wallet/entity checks plus queued event in one transaction. */
+  abstract admit(job: EditorJobRecord, since: Date, dailyCap: number): Promise<'accepted' | 'job_cap' | 'job_running'>;
+  /** Atomically reserve one queued job within the GLOBAL parallel cap; running jobs are never retried. */
+  abstract claim(parallel: number, now: Date, timeoutMs: number): Promise<EditorJobRecord | null>;
+  /** Terminal status and events commit together; false if already terminal. */
+  abstract conclude(id: string, status: 'done' | 'failed' | 'cancelled', error: string | null, at: Date): Promise<boolean>;
+  /** Fail expired queued/running jobs, regardless of which process admitted or claimed them. */
+  abstract expire(now: Date, timeoutMs: number): Promise<number>;
   abstract insert(job: EditorJobRecord): Promise<void>;
   abstract find(id: string, tx?: TransactionHandle): Promise<EditorJobRecord | null>;
   /** newest first */

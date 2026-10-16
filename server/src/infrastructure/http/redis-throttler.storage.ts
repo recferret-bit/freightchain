@@ -50,6 +50,8 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
         this.note(e);
       }
     }
+    // A process-local fallback would multiply authenticated budgets across replicas during an outage.
+    if (/^(auth|editor|mcp)(-|$)/.test(throttlerName)) return record(limit + 1, Math.min(ttl, 5000), limit);
     return this.localIncrement(`${throttlerName}:${key}`, ttl, limit);
   }
 
@@ -60,18 +62,23 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
   private localIncrement(key: string, ttl: number, limit: number): { totalHits: number; timeToExpire: number; isBlocked: boolean; timeToBlockExpire: number } {
     const now = this.clock.now().getTime();
     let row = this.local.get(key);
-    if (!row || row.exp <= now) row = { n: 0, exp: now + ttl };
+    if (!row || row.exp <= now) {
+      if (!row && this.local.size >= 20_000) {
+        for (const [k, v] of this.local) if (v.exp <= now) this.local.delete(k);
+        if (this.local.size >= 20_000) return record(limit + 1, ttl, limit);
+      }
+      row = { n: 0, exp: now + ttl };
+    }
     row.n += 1;
     this.local.set(key, row);
-    if (this.local.size > 20_000) this.local.clear();
     return record(row.n, row.exp - now, limit);
   }
 
-  private note(e: unknown): void {
+  private note(_e: unknown): void {
     this.downUntil = this.clock.now().getTime() + 5000;
     if (this.warned) return;
     this.warned = true;
-    this.log.warn(`redis rate limit unavailable, counting in this process: ${e instanceof Error ? e.message : String(e)}`);
+    this.log.warn('redis rate limit unavailable: protected routes reject requests; public routes use local counters');
   }
 }
 

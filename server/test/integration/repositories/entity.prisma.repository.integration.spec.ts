@@ -54,6 +54,12 @@ describe('EntityPrismaRepository (PostgreSQL)', () => {
     await tx.run((t) => repo.setPointers('rock', { publishedRevisionId: rev('rock', 1, 2).id }, new Date('2026-10-29T12:00:00.000Z'), t));
     expect((await repo.published()).map((r) => r.entityId)).toEqual(['rock']);
     expect(await repo.publishedStamp()).not.toBe(s0);
+    const s1 = await repo.publishedStamp();
+    await tx.run(async t => {
+      await repo.appendRevision(rev('rock', 2, 3), t);
+      await repo.setPointers('rock', { publishedRevisionId: rev('rock', 2, 3).id }, new Date('2026-10-29T12:00:00.000Z'), t);
+    });
+    expect(await repo.publishedStamp()).not.toBe(s1);   // same entity count and exact same publication time
     expect((await repo.list()).map((e) => e.id)).toEqual(['cactus', 'rock']);
   });
 });

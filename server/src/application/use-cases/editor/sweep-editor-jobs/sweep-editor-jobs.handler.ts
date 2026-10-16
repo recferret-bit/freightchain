@@ -6,7 +6,7 @@ import { SweepEditorJobsCommand, type SweepEditorJobsResultDto } from './sweep-e
 export class SweepEditorJobsHandler implements ICommandHandler<SweepEditorJobsCommand, SweepEditorJobsResultDto> {
   constructor(private readonly runner: EditorJobRunnerService) {}
 
-  async execute({ all }: SweepEditorJobsCommand): Promise<SweepEditorJobsResultDto> {
-    return { failed: await this.runner.sweep(all) };
+  async execute(_command: SweepEditorJobsCommand): Promise<SweepEditorJobsResultDto> {
+    return { failed: await this.runner.sweep() };
   }
 }

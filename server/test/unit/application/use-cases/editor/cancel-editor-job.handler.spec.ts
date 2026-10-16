@@ -5,7 +5,7 @@ import { aJob, jobContext } from '../../../../support/editor-job-fixtures.js';
 
 describe('CancelEditorJobHandler', () => {
   it('only the asking editor; an open job nobody here runs is cancelled in the table; a finished one stays as it is', async () => {
-    const { jobs, runner, clock } = jobContext(), h = new CancelEditorJobHandler(jobs, runner, clock);
+    const { jobs, clock } = jobContext(), h = new CancelEditorJobHandler(jobs, clock);
     const orphan = aJob({ status: 'running' }), done = aJob({ status: 'done' });
     await jobs.insert(orphan); await jobs.insert(done);
     await expect(h.execute(new CancelEditorJobCommand('X', orphan.id))).rejects.toBeInstanceOf(NotFoundError);

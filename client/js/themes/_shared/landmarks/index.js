@@ -31,7 +31,7 @@ export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weigh
     const [bg, fg] = SIGN[style];
     return trackMat(new THREE.MeshBasicMaterial({ map: canvasTex(256, 128, (g, w, h) => {
       g.fillStyle = bg; g.fillRect(0, 0, w, h); g.strokeStyle = fg; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16);
-      let px = 70; do g.font = `bold ${px -= 4}px sans-serif`; while (g.measureText(text).width > w - 44);
+      let px = 70; do g.font = `bold ${px -= 4}px sans-serif`; while (px > 14 && g.measureText(text).width > w - 44);
       g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2 + 4);
     }, false) }));
   });
@@ -70,8 +70,9 @@ export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weigh
     const flags = ids.map(flagPair);
     // the painters behind the entity's material descriptors (a sign is a chunky box with the word on every vertical face – plan.js;
     // a disk's groups are side, +y cap, −y cap)
-    const ctx = { slot: n => (n === 'wall' ? wall : m[n] ?? null), facade: (cols, rows) => facadeMat(L.wi, cols, rows), sign: (style, text) => signMat(style, text ?? L.name), edge: signEdge,
-      disk: (style, text, back) => diskFace(style, text, back), flag: (i, side) => (flags.length ? flags[i][side] : m.red) };
+    // Expressions can take interior parameter values the validator cannot enumerate; painter work stays bounded at runtime too.
+    const ctx = { slot: n => (n === 'wall' ? wall : m[n] ?? null), facade: (cols, rows) => facadeMat(L.wi, Math.max(1, Math.min(32, Math.floor(cols) || 1)), Math.max(1, Math.min(32, Math.floor(rows) || 1))), sign: (style, text) => signMat(style, text ?? L.name), edge: signEdge,
+      disk: (style, text, back) => diskFace(style, text, back), flag: (i, side) => flags[i]?.[side] ?? m.red };
     buildInto(g, L.v.id, { flags: flags.length }, ctx);
     const wa = L.near - 6.1 + L.hd + .6;   // apron: tarmac from UNDER the shoulder (the ribbon draws over it, so no seam of bare ground) to the middle of the footprint
     g.add(mk(GEO.box, m.apron, wa, .04, L.hl * 2 + 2, -wa / 2, .02, 0));

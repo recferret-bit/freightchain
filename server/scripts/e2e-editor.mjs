@@ -63,6 +63,14 @@ const width = () => probe(E, `+(__viewer.obj?.children[0]?.scale.x ?? 0).toFixed
 const wide0 = await width();
 await tab('SOURCE');
 check('SOURCE shows the head of the selected entity (bush)', await until(() => probe(E, `document.querySelector('#editor .ed-src').value.includes("id: 'bush'")`)));
+// Delay an older selection's response: it must never become the new selection's editing base.
+await E.ev(`(() => { window.__realFetch = window.fetch; let release; const gate = new Promise(r => release = r); window.__releaseHead = release; window.fetch = async (...args) => { const response = await window.__realFetch(...args); if (String(args[0]).endsWith('/api/editor/entities/rock')) await gate; if (String(args[0]).endsWith('/api/editor/entities/bush') && response.ok) window.__bushFetched = true; return response; }; __viewer.select('route66/rock'); })()`);
+await sleep(100);
+await E.ev(`__viewer.select('route66/bush')`);
+await until(() => probe(E, `window.__bushFetched && document.querySelector('#editor .ed-src').value.includes("id: 'bush'")`));
+await E.ev(`window.__releaseHead(); window.fetch = window.__realFetch`);
+await sleep(300);
+check('a delayed head response cannot replace the selected entity or its editing base', await probe(E, `document.querySelector('#editor .ed-entity b').textContent === 'bush' && document.querySelector('#editor .ed-src').value.includes("id: 'bush'")`));
 await E.ev(`(() => { const t = document.querySelector('#editor .ed-src'); t.value = t.value.replace("s: ['s', 's * 0.9', 's']", "s: ['s * 1.6', 's * 0.9', 's * 1.6']"); })()`);
 await click('CHECK');
 check('CHECK runs the validator in the page', await until(() => probe(E, `(document.querySelector('#editor .ed-out')?.textContent || '').startsWith('valid')`)));
@@ -92,6 +100,11 @@ await E.shot('04-published');
 // CHAT: a job with the server's fake model through the real MCP; the draft it saves is previewed
 await tab('CHAT');
 await until(() => probe(E, `[...document.querySelectorAll('#editor .ed-sel option')].some(o => o.value === 'fake')`));
+const selectedBeforeKeys = await E.ev('__viewer.current.id');
+await E.ev(`document.querySelector('#editor select').focus()`);
+await E.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
+await E.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
+check('typing in chat selectors does not change the viewer selection', await E.ev('__viewer.current.id') === selectedBeforeKeys);
 await E.ev(`(() => { const s = [...document.querySelectorAll('#editor .ed-sel')].find(x => [...x.options].some(o => o.value === 'fake')); s.value = 'fake'; s.dispatchEvent(new Event('change')); document.querySelector('#editor .ed-prompt').value = 'make the bush look drier'; })()`);
 await click('SEND');
 const done = await until(() => probe(E, `(() => { const t = document.querySelector('#editor .ed-log')?.textContent || ''; return /done – the result is a DRAFT/.test(t) ? t : /failed|cancelled/.test(t) && 'FAILED ' + t; })()`), 60000);

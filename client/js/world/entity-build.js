@@ -28,7 +28,7 @@ class Sink {
   beam(color, gain, w, l, z0, back) { this.parent.add(beam(color, gain, w, l, z0, back)); }
   banner(w, h, x, y, z) { this.parent.add(this.ctx.banner(w, h, x, y, z)); }
   push(g) {
-    const r = g.ref, node = r && (r.kind === 'prop' || r.kind === 'furniture') ? propRoot(r.id, r.params, r.debris.map(d => resolve(this.ctx, d)), r.label) : new THREE.Group();
+    const r = g.ref, node = r && (r.kind === 'prop' || r.kind === 'furniture') ? propRoot(r.id, r.params, (r.debris ?? []).map(d => resolve(this.ctx, d)), r.label) : new THREE.Group();
     if (g.at) node.position.set(g.at[0], g.at[1], g.at[2]);
     if (g.rot) node.rotation.set(g.rot[0], g.rot[1], g.rot[2]);
     if (g.order) node.rotation.order = g.order;

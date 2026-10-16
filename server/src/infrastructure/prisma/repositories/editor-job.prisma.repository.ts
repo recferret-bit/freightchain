@@ -15,6 +15,72 @@ export class EditorJobPrismaRepository extends EditorJobRepositoryPort {
     super();
   }
 
+  async admit(job: EditorJobRecord, since: Date, dailyCap: number): Promise<'accepted' | 'job_cap' | 'job_running'> {
+    return this.prisma.$transaction(async (db) => {
+      await this.queueLock(db);
+      if (await db.editorJob.count({ where: { wallet: job.wallet, createdAt: { gte: since } } }) >= dailyCap) return 'job_cap';
+      const busy = await db.editorJob.count({ where: { status: { in: ['queued', 'running'] }, OR: [{ wallet: job.wallet }, ...(job.entityId ? [{ entityId: job.entityId }] : [])] } });
+      if (busy) return 'job_running';
+      await db.editorJob.create({ data: job });
+      await db.editorJobEvent.create({ data: { jobId: job.id, seq: 1, type: 'status', payload: { status: 'queued', provider: job.provider, model: job.model }, at: job.createdAt } });
+      return 'accepted';
+    });
+  }
+
+  async claim(parallel: number, now: Date, timeoutMs: number): Promise<EditorJobRecord | null> {
+    if (parallel <= 0) return null;
+    return this.prisma.$transaction(async (db) => {
+      await this.queueLock(db);
+      if (await db.editorJob.count({ where: { status: 'running' } }) >= parallel) return null;
+      const row = await db.editorJob.findFirst({ where: { status: 'queued', createdAt: { gt: new Date(now.getTime() - timeoutMs) } }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
+      if (!row) return null;
+      const moved = await db.editorJob.updateMany({ where: { id: row.id, status: 'queued' }, data: { status: 'running', startedAt: now } });
+      if (!moved.count) return null; // cancellation won the row lock
+      await this.eventIn(db, row.id, 'status', { status: 'running', provider: row.provider, model: row.model }, now);
+      return toJob({ ...row, status: 'running', startedAt: now });
+    });
+  }
+
+  async conclude(id: string, status: 'done' | 'failed' | 'cancelled', error: string | null, at: Date): Promise<boolean> {
+    return this.prisma.$transaction((db) => this.concludeIn(db, id, status, error, at));
+  }
+
+  async expire(now: Date, timeoutMs: number): Promise<number> {
+    return this.prisma.$transaction(async (db) => {
+      await this.queueLock(db);
+      const before = new Date(now.getTime() - timeoutMs);
+      const rows = await db.editorJob.findMany({ where: { OR: [
+        { status: 'queued', createdAt: { lte: before } },
+        { status: 'running', OR: [{ startedAt: { lte: before } }, { startedAt: null }] },
+      ] }, take: 100 });
+      let failed = 0;
+      for (const row of rows) {
+        const why = row.status === 'queued' ? 'the job waited longer than the timeout (the AI editor is paused or busy)' : 'the server restarted or the job timed out';
+        if (await this.concludeIn(db, row.id, 'failed', why, now)) failed++;
+      }
+      return failed;
+    });
+  }
+
+  /** Short DB-only critical sections serialize admission and the global execution budget across replicas. */
+  private async queueLock(db: Prisma.TransactionClient): Promise<void> {
+    await db.$executeRaw`SELECT pg_advisory_xact_lock(834351, 1)`;
+  }
+
+  private async concludeIn(db: Prisma.TransactionClient, id: string, status: 'done' | 'failed' | 'cancelled', error: string | null, at: Date): Promise<boolean> {
+    const moved = await db.editorJob.updateMany({ where: { id, status: { in: ['queued', 'running'] } }, data: { status, error, finishedAt: at } });
+    if (!moved.count) return false;
+    await this.eventIn(db, id, 'status', { status }, at);
+    await this.eventIn(db, id, status === 'done' ? 'done' : 'error', status === 'done' ? { status } : { status, message: error ?? status }, at);
+    return true;
+  }
+
+  /** Caller holds the job row lock. */
+  private async eventIn(db: Prisma.TransactionClient, jobId: string, type: JobEventType, payload: Record<string, unknown>, at: Date): Promise<void> {
+    const max = await db.editorJobEvent.aggregate({ where: { jobId }, _max: { seq: true } });
+    await db.editorJobEvent.create({ data: { jobId, seq: (max._max.seq ?? 0) + 1, type, payload: payload as Prisma.InputJsonValue, at } });
+  }
+
   async insert(j: EditorJobRecord): Promise<void> {
     await this.prisma.editorJob.create({ data: j });
   }

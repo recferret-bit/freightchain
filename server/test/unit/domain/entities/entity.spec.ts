@@ -25,6 +25,13 @@ describe('checkEntitySource (an entity file, read without running it)', () => {
   it('a malformed id is a 400 before anything is parsed', () => {
     expect(() => checkEntitySource('x', 'Bad Id', none)).toThrow(BadRequestError);
   });
+
+  it('rejects a compact source whose canonical form exceeds the source limit', () => {
+    const config = { id: 'large-part', kind: 'part', v: 1, parts: Array.from({ length: 1000 }, () => ({ geo: 'box', when: false, s: [1, 1, 1], mat: { color: 1 } })) };
+    const source = `export default ${JSON.stringify(config)};`;
+    expect(source.length).toBeLessThan(64 * 1024);
+    expect(() => checkEntitySource(source, config.id, none)).toThrow(/canonical entity file is too large/);
+  });
 });
 
 describe('assertSameKind', () => {
@@ -36,7 +43,7 @@ describe('assertSameKind', () => {
 
 describe('assertPublishable (the published set stays buildable)', () => {
   const crate = (tag = 'crate') => ({ id: 'job-crate', kind: 'part', v: 1, slots: { m: {} }, parts: [{ geo: 'box', tag, mat: 'm', s: [0.2, 0.2, 0.2], at: [0, 0.1, 0] }] }) as never;
-  const user = () => { const c = seedEntity('birch'); (c.parts as unknown[]).push({ use: 'job-crate' }); return c; };
+  const user = () => { const c = seedEntity('birch'); (c.parts as unknown[]).push({ use: 'job-crate', slots: { m: 'trunk' } }); return c; };
   it('refersTo finds use / ref anywhere in the parts', () => {
     expect(refersTo(user().parts, 'job-crate')).toBe(true);
     expect(refersTo(seedEntity('birch').parts, 'job-crate')).toBe(false);

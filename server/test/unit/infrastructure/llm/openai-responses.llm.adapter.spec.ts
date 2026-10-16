@@ -18,6 +18,7 @@ describe('OpenAiResponsesSession', () => {
     expect(calls[0]).toMatchObject({ model: 'gpt-6', instructions: 'SYS', store: false, include: ['reasoning.encrypted_content'], max_output_tokens: 1000, tools: [{ type: 'function', name: 'a', parameters: { type: 'object' } }] });
     expect(await s.sendToolResults([{ id: 'c1', content: 'oops', isError: true }])).toMatchObject({ text: 'done', stop: 'end' });
     expect(calls[1]!['input']).toEqual([{ role: 'user', content: 'go' }, reasoning, call, { type: 'function_call_output', call_id: 'c1', output: 'ERROR: oops' }]);
+    expect(calls[1]!['max_output_tokens']).toBe(997);
   });
 
   it('a refusal, the output limit, and SDK errors by class', async () => {

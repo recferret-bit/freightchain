@@ -1,7 +1,5 @@
-/** Fail AI editor jobs nobody runs any more (`all` = on boot: every open job is an orphan of the last process). */
-export class SweepEditorJobsCommand {
-  constructor(public readonly all = false) {}
-}
+/** Expire elapsed claims, propagate cancellation and discover durable queued jobs. */
+export class SweepEditorJobsCommand {}
 
 export interface SweepEditorJobsResultDto {
   failed: number;

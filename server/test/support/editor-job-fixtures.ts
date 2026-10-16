@@ -1,3 +1,4 @@
+import { FAKE_CLOCK_START } from './fake-clock.js';
 import { EDITOR_TOOLS, type EditorJobRecord } from '../../src/domain/editor/editor-job.js';
 import type { ProviderId, ProviderInfo } from '../../src/domain/editor/llm-providers.js';
 import { LlmProviderPort, type LlmOpenOptions, type LlmSession, type LlmToolResult, type LlmTurn } from '../../src/application/ports/editor/llm-provider.port.js';
@@ -63,5 +64,5 @@ export function jobContext(rules: RulesConfig = unitRules(), llm = new ScriptedL
 let n = 0;
 export const aJob = (over: Partial<EditorJobRecord> = {}): EditorJobRecord => ({
   id: `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`, wallet: 'W', prompt: 'taller', provider: 'fake', model: 'scripted', entityId: 'cactus', baseRevisionId: null,
-  resultRevisionId: null, status: 'queued', error: null, tokensIn: 0, tokensOut: 0, createdAt: new Date('2026-10-29T10:00:00.000Z'), startedAt: null, finishedAt: null, ...over,
+  resultRevisionId: null, status: 'queued', error: null, tokensIn: 0, tokensOut: 0, createdAt: new Date(FAKE_CLOCK_START), startedAt: null, finishedAt: null, ...over,
 });

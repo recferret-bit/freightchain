@@ -20,7 +20,6 @@ import { ReplayVerificationScheduler } from '../infrastructure/scheduling/replay
 import { ApplicationModule } from '../application/application.module.js';
 import { EditorTokenPort } from '../application/ports/editor/editor-token.port.js';
 import { JobTokenPort } from '../application/ports/editor/job-token.port.js';
-import { EditorJobSweepScheduler } from '../infrastructure/scheduling/editor-job-sweep.scheduler.js';
 import { RateLimitStorage } from '../infrastructure/http/redis-throttler.storage.js';
 import { TokenSignerPort } from '../application/ports/auth/token-signer.port.js';
 import { PresentationModule } from '../presentation/presentation.module.js';
@@ -47,6 +46,6 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
     PresentationModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: OriginGuard },   // OriginGuard: pentest H7 (login CSRF, sibling hosts)
-    DailyFreeRideScheduler, TelemetryRetentionScheduler, StaleRideScheduler, EditorJobSweepScheduler, ReplayVerificationScheduler, ProgramWatcher, PoolCrankScheduler, PoolPayoutScheduler, AchievementMintScheduler],
+    DailyFreeRideScheduler, TelemetryRetentionScheduler, StaleRideScheduler, ReplayVerificationScheduler, ProgramWatcher, PoolCrankScheduler, PoolPayoutScheduler, AchievementMintScheduler],
 })
 export class AppModule {}

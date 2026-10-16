@@ -8,6 +8,41 @@ import type { MemoryDb } from './memory-db.js';
 export class MemoryEditorJobRepository extends EditorJobRepositoryPort {
   constructor(private readonly db: MemoryDb) { super(); }
 
+  async admit(job: EditorJobRecord, since: Date, dailyCap: number): Promise<'accepted' | 'job_cap' | 'job_running'> {
+    const rows = [...this.db.editorJobs.values()];
+    if (rows.filter(j => j.wallet === job.wallet && j.createdAt >= since).length >= dailyCap) return 'job_cap';
+    if (rows.some(j => ['queued', 'running'].includes(j.status) && (j.wallet === job.wallet || (job.entityId && j.entityId === job.entityId)))) return 'job_running';
+    this.db.editorJobs.set(job.id, { ...job }); this.db.editorJobPrompts.set(job.id, job.prompt);
+    await this.appendEvent(job.id, 'status', { status: 'queued', provider: job.provider, model: job.model }, job.createdAt);
+    return 'accepted';
+  }
+  async claim(parallel: number, now: Date, timeoutMs: number): Promise<EditorJobRecord | null> {
+    const rows = [...this.db.editorJobs.values()];
+    if (rows.filter(j => j.status === 'running').length >= parallel) return null;
+    const row = rows.filter(j => j.status === 'queued' && j.createdAt.getTime() > now.getTime() - timeoutMs).sort((a,b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id))[0];
+    if (!row) return null;
+    row.status = 'running'; row.startedAt = now;
+    await this.appendEvent(row.id, 'status', { status: 'running', provider: row.provider, model: row.model }, now);
+    return { ...row };
+  }
+  async conclude(id: string, status: 'done' | 'failed' | 'cancelled', error: string | null, at: Date): Promise<boolean> {
+    const row = this.db.editorJobs.get(id);
+    if (!row || !['queued', 'running'].includes(row.status)) return false;
+    Object.assign(row, { status, error, finishedAt: at });
+    await this.appendEvent(id, 'status', { status }, at);
+    await this.appendEvent(id, status === 'done' ? 'done' : 'error', status === 'done' ? { status } : { status, message: error ?? status }, at);
+    return true;
+  }
+  async expire(now: Date, timeoutMs: number): Promise<number> {
+    let failed = 0;
+    for (const row of this.db.editorJobs.values()) {
+      if (!['queued', 'running'].includes(row.status)) continue;
+      if (row.status === 'running' && !row.startedAt || now.getTime() - (row.startedAt ?? row.createdAt).getTime() >= timeoutMs) {
+        if (await this.conclude(row.id, 'failed', row.status === 'queued' ? 'the job waited longer than the timeout (the AI editor is paused or busy)' : 'the server restarted or the job timed out', now)) failed++;
+      }
+    }
+    return failed;
+  }
   async insert(j: EditorJobRecord): Promise<void> { this.db.editorJobs.set(j.id, { ...j }); this.db.editorJobPrompts.set(j.id, j.prompt); }
   async find(id: string): Promise<EditorJobRecord | null> { const j = this.db.editorJobs.get(id); return j ? { ...j } : null; }
   async list({ wallet, entityId, limit }: { wallet?: string; entityId?: string; limit: number }): Promise<EditorJobRecord[]> {

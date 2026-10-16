@@ -29,14 +29,14 @@ export const MAX_CORNERS = 96;
 export function validateEntity(entity, { lookup = () => null } = {}) {
   const errors = [], warnings = [], err = (p, m) => errors.push(`${p}: ${m}`), warn = (p, m) => warnings.push(`${p}: ${m}`);
   if (!entity || typeof entity !== 'object' || Array.isArray(entity)) return { ok: false, errors: ['the file must export an object'], warnings, measures: null };
-  shape(entity, err);
+  try { shape(entity, err); } catch { err('shape', 'malformed entity data'); }
   if (errors.length) return { ok: false, errors, warnings, measures: null };
   let prog;
   try { prog = compileEntity(entity, { lookup: id => (id === entity.id ? entity : lookup(id)), cache: new Map() }); } catch (e) { errors.push(e.message); return { ok: false, errors, warnings, measures: null }; }
   const ros = rosterOf(entity.id);
   if (ros && ros.kind !== entity.kind) err('kind', `'${entity.id}' is a ${ros.kind} in the game (roster.js) – its kind cannot change`);
   const runs = cornerArgs(entity), slotsGiven = slotSet(entity);
-  if (runs.length > MAX_CORNERS) err('params', `more than ${MAX_CORNERS} corners to check – fewer ranged params or a shorter enum`);
+  if (runs.length > MAX_CORNERS) return { ok: false, errors: [`params: more than ${MAX_CORNERS} corners to check – fewer ranged params or a shorter enum`], warnings, measures: null };
   let measures = null;
   for (const args of runs) {
     let parts;
@@ -44,7 +44,10 @@ export function validateEntity(entity, { lookup = () => null } = {}) {
     const m = measure(parts);
     if (!m.finite) err(`params ${JSON.stringify(args)}`, 'a size, position or angle is not a finite number (NaN / Infinity)');
     if (m.meshes && overExtent(m)) err(`params ${JSON.stringify(args)}`, `a part is bigger than ${MAX_EXTENT_M} m or sits more than ${MAX_EXTENT_M} m from the origin`);
-    for (const p of parts) if (p.t === 'mesh' && p.s.some(v => v <= 0)) { err(`params ${JSON.stringify(args)}`, `a ${p.tag ?? p.geo} part has a size ≤ 0 (${p.s.join(' × ')})`); break; }
+    for (const p of parts) {
+      if (p.t === 'mesh' && p.s.some(v => v <= 0)) { err(`params ${JSON.stringify(args)}`, `a ${p.tag ?? p.geo} part has a size ≤ 0 (${p.s.join(' × ')})`); break; }
+      renderLimits(p, entity, err);
+    }
     if (!measures) measures = m;
     coupling(entity, ros, parts, m, args, err, warn);
   }
@@ -90,7 +93,26 @@ function shape(e, err) {
   for (const [k, v] of Object.entries(e.vars ?? {})) { if (!IDENT.test(k)) err(`vars.${k}`, 'bad name'); expr(v, `vars.${k}`, err); }
   const slotNames = e.kind === 'landmark' ? LANDMARK_SLOTS : Object.keys(e.slots ?? {});
   for (const d of [e.debris ?? []].flat()) if (!slotNames.includes(d)) err('debris', `'${d}' is not a slot`);
-  (e.parts ?? []).forEach((p, i) => part(p, `parts[${i}]`, err, e, 0));
+  if (Array.isArray(e.parts)) e.parts.forEach((p, i) => part(p, `parts[${i}]`, err, e, 0));
+}
+
+/* Bound the work of the actual painters, including descriptors supplied by referenced parts. Geometry bounds alone miss these. */
+function renderLimits(p, entity, err) {
+  const kind = entity.kind;
+  const material = m => {
+    if (Array.isArray(m)) { m.forEach(material); return; }
+    if (!m) return;
+    if (m.slot != null && kind !== 'part' && !(kind === 'landmark' ? LANDMARK_SLOTS.includes(m.slot) : Object.hasOwn(entity.slots ?? {}, m.slot))) err('material.slot', `no material for slot '${m.slot}'`);
+    if ('color' in m && (!Number.isInteger(m.color) || m.color < 0 || m.color > 0xffffff)) err('material.color', 'an integer colour from 0 to 0xffffff');
+    if (m.facade && !m.facade.every(v => Number.isInteger(v) && v >= 1 && v <= 32)) err('material.facade', '1–32 columns and rows');
+    if (m.flag != null && (!Number.isInteger(m.flag) || m.flag < 0 || m.flag > 31)) err('material.flag', 'an integer flag index from 0 to 31');
+    if (kind !== 'landmark' && kind !== 'part' && ['facade', 'flag', 'sign', 'edge', 'disk'].some(k => k in m)) err('material', `landmark painters are unavailable to a ${kind}`);
+  };
+  material(p.mat);
+  if (p.t === 'banner' && kind !== 'gantry') err('banner', 'a banner needs the gantry painter');
+  for (const k of p.t === 'glow' ? ['size', 'gain'] : p.t === 'beam' ? ['w', 'l', 'gain'] : p.t === 'banner' ? ['w', 'h'] : []) {
+    if (!Number.isFinite(p[k]) || p[k] <= 0 || p[k] > MAX_EXTENT_M) err(`${p.t}.${k}`, `must be positive and at most ${MAX_EXTENT_M}`);
+  }
 }
 function expr(v, at, err) {
   if (typeof v === 'number' || typeof v === 'boolean') return;
@@ -98,15 +120,15 @@ function expr(v, at, err) {
   try { parseExpr(v); } catch (x) { err(at, x.message); }
 }
 const vec = (v, at, err) => (Array.isArray(v) && v.length === 3 ? v.forEach((x, i) => expr(x, `${at}[${i}]`, err)) : err(at, 'needs [x, y, z]'));
-function mat(m, at, err, e) {
-  if (Array.isArray(m)) { if (m.length < 1 || m.length > 6) err(at, '1–6 materials'); return m.forEach((x, i) => mat(x, `${at}[${i}]`, err, e)); }
+function mat(m, at, err, e, inFaces = false) {
+  if (Array.isArray(m)) { if (inFaces) return err(at, 'material face lists cannot be nested'); if (m.length < 1 || m.length > 6) err(at, '1–6 materials'); return m.forEach((x, i) => mat(x, `${at}[${i}]`, err, e, true)); }
   if (typeof m === 'string') { const ok = e.kind === 'landmark' ? LANDMARK_SLOTS.includes(m) : Object.hasOwn(e.slots ?? {}, m) || (e.kind === 'part' && /^[a-z][a-zA-Z0-9]{0,23}$/.test(m) && !(m in Object.prototype)); if (!ok) err(at, `'${m}' is not a slot of this entity`); return; }
   if (!m || typeof m !== 'object') return err(at, 'a slot name or a material object');
   if ('color' in m) { expr(m.color, `${at}.color`, err); return; }
   if ('global' in m) { if (!GLOBAL_MATS.includes(m.global)) err(`${at}.global`, `one of ${GLOBAL_MATS.join(', ')}`); return; }
   if ('facade' in m) { if (e.kind !== 'landmark') err(at, 'facades are for landmarks'); if (!Array.isArray(m.facade) || m.facade.length !== 2) err(`${at}.facade`, 'needs [columns, rows]'); else m.facade.forEach((x, i) => expr(x, `${at}.facade[${i}]`, err)); return; }
   if ('flag' in m) { if (e.kind !== 'landmark') err(at, 'flags are for landmarks'); expr(m.flag, `${at}.flag`, err); return; }
-  if ('if' in m) { expr(m.if, `${at}.if`, err); mat(m.then, `${at}.then`, err, e); mat(m.else, `${at}.else`, err, e); return; }
+  if ('if' in m) { expr(m.if, `${at}.if`, err); mat(m.then, `${at}.then`, err, e, inFaces); mat(m.else, `${at}.else`, err, e, inFaces); return; }
   err(at, 'unknown material (slot name, { color }, { global }, { facade }, { flag } or { if, then, else })');
 }
 function part(p, at, err, e, depth) {

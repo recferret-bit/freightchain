@@ -61,7 +61,7 @@ describe('HTTP contract audit', () => {
   it('every controller is registered, and every handler is wired (a missing registration would only fail at runtime)', () => {
     const presentationModule = files.find((f) => f.path === 'presentation/presentation.module.ts')?.text ?? '';
     for (const c of controllers) expect(presentationModule, c.path).toContain(/export class (\w+)/.exec(c.text)?.[1] ?? '?');
-    const applicationModule = files.find((f) => f.path === 'application/application.module.ts')?.text ?? '';
+    const applicationModule = files.filter(f => ['application/application.module.ts', 'app/editor-worker.module.ts'].includes(f.path)).map(f => f.text).join('\n');
     for (const h of files.filter((f) => f.path.endsWith('.handler.ts'))) expect(applicationModule, h.path).toContain(/export class (\w+)/.exec(h.text)?.[1] ?? '?');
   });
 

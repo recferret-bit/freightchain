@@ -36,10 +36,24 @@ describe('RedisThrottlerStorage', () => {
     redis.fail = true;
     const again = new RedisThrottlerStorage(redis, clock);
     const before = redis.calls;
-    expect((await again.increment('k', 1000, 1, 1000, 'editor-rps')).isBlocked).toBe(false);
-    expect((await again.increment('k', 1000, 1, 1000, 'editor-rps')).isBlocked).toBe(true);
+    expect((await again.increment('k', 1000, 1, 1000, 'entities-rps')).isBlocked).toBe(false);
+    expect((await again.increment('k', 1000, 1, 1000, 'entities-rps')).isBlocked).toBe(true);
     expect(redis.calls).toBe(before + 1);   // second call skipped Redis during the 5s breaker window
     clock.ms += 1001;
-    expect((await again.increment('k', 1000, 1, 1000, 'editor-rps')).isBlocked).toBe(false);   // local window rolled over
+    expect((await again.increment('k', 1000, 1, 1000, 'entities-rps')).isBlocked).toBe(false);   // local window rolled over
+  });
+
+  it('protected surfaces fail closed on Redis failure, even with fresh identities', async () => {
+    const clock = new FakeClock(), redis = new FakeRedis(clock); redis.fail = true;
+    const store = new RedisThrottlerStorage(redis, clock);
+    for (const name of ['editor', 'editor-rps', 'auth', 'auth-rps', 'mcp', 'mcp-rps']) expect(await store.increment(name, 1000, 5, 1000, name)).toMatchObject({ isBlocked: true, timeToBlockExpire: 1 });
+  });
+
+  it('public fallback cardinality pressure cannot clear an existing rate limit', async () => {
+    const clock = new FakeClock(), redis = new FakeRedis(clock); redis.fail = true;
+    const store = new RedisThrottlerStorage(redis, clock);
+    expect((await store.increment('hot', 1000, 1, 1000, 'entities-rps')).isBlocked).toBe(false);
+    for (let i = 0; i < 20001; i++) await store.increment(`other-${i}`, 1000, 1, 1000, 'entities-rps');
+    expect((await store.increment('hot', 1000, 1, 1000, 'entities-rps')).isBlocked).toBe(true);
   });
 });

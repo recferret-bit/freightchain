@@ -1,23 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { OPEN_STATUSES, clip, type EditorJobRecord, type JobStatus } from '../../domain/editor/editor-job.js';
+import { Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
+import { clip, type EditorJobRecord } from '../../domain/editor/editor-job.js';
 import { RulesConfigPort } from '../ports/config/rules-config.port.js';
 import { EditorJobRepositoryPort } from '../ports/editor/editor-job.repository.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
 import { EditorAgentService } from './editor-agent.service.js';
 import { GameSettingsService } from './game-settings.service.js';
 
-/**
- * The AI editor's in-process queue (the APP process – the worker never enqueues): at most `editor_jobs_parallel` jobs run at once, each with its own
- * AbortController (cancel, and EDITOR_JOB_TIMEOUT_MS). A job moves queued → running → done | failed | cancelled, each move a `status` event and the
- * last a `done` or `error` event. `sweep` fails jobs this process does not run (left by a restart) once they are past the timeout – or all of them on boot.
- */
+/** PostgreSQL owns admission, queue, claims and terminal events. Local state only controls this process's provider calls.
+ * A claim is never replayed: its startedAt + timeout is a fixed deadline, after which any replica fails it. */
 @Injectable()
-export class EditorJobRunnerService {
+export class EditorJobRunnerService implements OnApplicationShutdown {
   private readonly log = new Logger('EditorJobs');
-  private readonly queue: EditorJobRecord[] = [];
   private readonly running = new Map<string, AbortController>();
-  /** resolves when a job is over – registered at enqueue (tests and shutdown wait on it) */
   private readonly done = new Map<string, { promise: Promise<void>; resolve: () => void }>();
+  private pumpTask: Promise<void> | null = null;
+  private stopped = false;
 
   constructor(
     private readonly agent: EditorAgentService,
@@ -27,90 +24,114 @@ export class EditorJobRunnerService {
     private readonly clock: ClockPort,
   ) {}
 
-  /** ids this process is running or holding */
-  active(): ReadonlySet<string> { return new Set([...this.running.keys(), ...this.queue.map((j) => j.id)]); }
+  active(): ReadonlySet<string> { return new Set(this.running.keys()); }
 
+  /** Wakeup only. The committed row is the queue, so losing this call loses no work. */
   enqueue(job: EditorJobRecord): void {
+    this.watch(job.id);
+    void this.pump().catch(() => undefined);
+  }
+
+  async cancel(jobId: string): Promise<boolean> {
+    const moved = await this.jobs.conclude(jobId, 'cancelled', null, this.clock.now());
+    this.running.get(jobId)?.abort('cancel');
+    if (!this.running.has(jobId)) this.settle(jobId);
+    return moved;
+  }
+
+  settled(jobId: string): Promise<void> { return this.done.get(jobId)?.promise ?? Promise.resolve(); }
+
+  private watch(jobId: string): void {
+    if (this.done.has(jobId)) return;
     let resolve!: () => void;
     const promise = new Promise<void>((r) => { resolve = r; });
-    this.done.set(job.id, { promise, resolve });
-    this.queue.push(job);
-    void this.pump();
+    this.done.set(jobId, { promise, resolve });
   }
-
-  /** a queued job is dropped, a running one aborted; true when this process held it */
-  async cancel(jobId: string): Promise<boolean> {
-    const i = this.queue.findIndex((j) => j.id === jobId);
-    if (i >= 0) { this.queue.splice(i, 1); await this.conclude(jobId, 'cancelled', null); this.settle(jobId); return true; }
-    const c = this.running.get(jobId);
-    if (c) { c.abort('cancel'); return true; }
-    return false;
-  }
-
-  /** wait for a job this process started (tests) */
-  settled(jobId: string): Promise<void> { return this.done.get(jobId)?.promise ?? Promise.resolve(); }
 
   private settle(jobId: string): void { this.done.get(jobId)?.resolve(); this.done.delete(jobId); }
 
-  private async pump(): Promise<void> {
-    let parallel = 0;
-    try { parallel = (await this.settings.current()).editorJobsParallel; } catch (e) { this.log.warn(`could not read editor_jobs_parallel: ${e instanceof Error ? e.message : String(e)}`); return; }
-    while (this.running.size < parallel && this.queue.length) {
-      const job = this.queue.shift()!;
-      const c = new AbortController();
-      this.running.set(job.id, c);
-      void this.start(job, c).finally(() => { this.running.delete(job.id); this.settle(job.id); void this.pump(); });
+  private pump(): Promise<void> {
+    if (this.stopped) return Promise.resolve();
+    if (this.pumpTask) return this.pumpTask;
+    this.pumpTask = this.claimJobs().finally(() => { this.pumpTask = null; });
+    return this.pumpTask;
+  }
+
+  private async claimJobs(): Promise<void> {
+    try {
+      const parallel = (await this.settings.current()).editorJobsParallel;
+      while (!this.stopped && this.running.size < parallel) {
+        const job = await this.jobs.claim(parallel, this.clock.now(), this.rules.get().editorJobTimeoutMs);
+        if (!job) break;
+        const c = new AbortController();
+        if (this.stopped) c.abort('shutdown');
+        this.watch(job.id);
+        this.running.set(job.id, c);
+        void this.start(job, c).catch(() => {
+          // DB outages leave the durable claim for expiry, never for replay.
+          this.log.error({ event: 'editor-job', msg: 'could not finalize editor job', jobId: job.id });
+        }).finally(() => { this.running.delete(job.id); this.settle(job.id); void this.pump().catch(() => undefined); });
+      }
+    } catch {
+      this.log.warn('could not claim editor work; the next poll will retry');
+      throw new Error('could not claim editor work');
     }
   }
 
   private async start(job: EditorJobRecord, c: AbortController): Promise<void> {
-    const timer = setTimeout(() => c.abort('timeout'), this.rules.get().editorJobTimeoutMs);
+    const remaining = job.startedAt!.getTime() + this.rules.get().editorJobTimeoutMs - this.clock.now().getTime();
+    const timer = setTimeout(() => c.abort('timeout'), Math.max(0, remaining));
     timer.unref?.();
     try {
-      if (!(await this.jobs.update(job.id, { status: 'running', startedAt: this.clock.now() }, ['queued']))) return;   // cancelled meanwhile
-      await this.jobs.appendEvent(job.id, 'status', { status: 'running', provider: job.provider, model: job.model }, this.clock.now());
+      if (remaining <= 0) c.abort('timeout');
+      c.signal.throwIfAborted();
       const out = await this.agent.run(job, c.signal);
-      if (out.status === 'done') await this.conclude(job.id, 'done', null);
-      else await this.conclude(job.id, 'failed', out.error);
-    } catch (e) {
-      if (c.signal.aborted) await this.conclude(job.id, c.signal.reason === 'cancel' ? 'cancelled' : 'failed', c.signal.reason === 'cancel' ? null : 'the job timed out (EDITOR_JOB_TIMEOUT_MS)');
-      else {
-        const message = e instanceof Error ? e.message : String(e);
-        this.log.error({ event: 'editor-job', msg: `job ${job.id} failed: ${message}`, jobId: job.id });
-        await this.conclude(job.id, 'failed', clip(message, 300));
+      c.signal.throwIfAborted();
+      if (this.clock.now().getTime() >= job.startedAt!.getTime() + this.rules.get().editorJobTimeoutMs) throw new Error('expired');
+      await this.jobs.conclude(job.id, out.status, out.status === 'done' ? null : clip(out.error, 300), this.clock.now());
+    } catch {
+      const cancel = c.signal.reason === 'cancel';
+      const timed = c.signal.reason === 'timeout';
+      if (!c.signal.aborted) this.log.error({ event: 'editor-job', msg: 'editor job failed unexpectedly', jobId: job.id });
+      await this.jobs.conclude(job.id, cancel ? 'cancelled' : 'failed', cancel ? null : timed ? 'the job timed out (EDITOR_JOB_TIMEOUT_MS)' : 'the editor job failed unexpectedly – try again', this.clock.now());
+    } finally { clearTimeout(timer); }
+  }
+
+  /** Also used at boot: another process's fresh claims must survive our startup. */
+  async sweep(): Promise<number> {
+    try {
+      const failed = await this.jobs.expire(this.clock.now(), this.rules.get().editorJobTimeoutMs);
+      for (const id of this.done.keys()) {
+        const job = await this.jobs.find(id);
+        if (!job || !['queued', 'running'].includes(job.status)) {
+          this.running.get(id)?.abort(job?.status === 'cancelled' ? 'cancel' : 'closed');
+          if (!this.running.has(id)) this.settle(id);
+        }
       }
-    } finally {
-      clearTimeout(timer);
+      await this.pump();
+      return failed;
+    } catch (e) {
+      // No DB means no proof of a live capability. Abort local provider calls until storage returns.
+      for (const c of this.running.values()) c.abort('storage');
+      throw e;
     }
   }
 
-  private async conclude(jobId: string, status: JobStatus, why: string | null): Promise<void> {
-    const error = why === null ? null : clip(why, 300);   // a refusal's detail is the model's own text
-    if (!(await this.jobs.update(jobId, { status, error, finishedAt: this.clock.now() }, OPEN_STATUSES))) return;
-    const at = this.clock.now();
-    await this.jobs.appendEvent(jobId, 'status', { status }, at);
-    await this.jobs.appendEvent(jobId, status === 'done' ? 'done' : 'error', status === 'done' ? { status } : { status, message: error ?? status }, at);
-  }
-
-  /** fail open jobs nobody runs: past the timeout, or every one of them (`all`, on boot – a restart killed them); jobs queued HERE past the timeout
-   *  (the editor paused with editor_jobs_parallel 0) are dropped too; then the queue is pumped again (a raised editor_jobs_parallel takes effect) */
-  async sweep(all: boolean): Promise<number> {
-    const now = this.clock.now().getTime(), timeout = this.rules.get().editorJobTimeoutMs;
-    let failed = 0;
-    for (const j of this.queue.filter((q) => now - q.createdAt.getTime() >= timeout)) {
-      this.queue.splice(this.queue.indexOf(j), 1);
-      await this.conclude(j.id, 'failed', 'the job waited longer than the timeout (the AI editor is paused or busy)');
-      this.settle(j.id);
-      failed++;
-    }
-    void this.pump();
-    const mine = this.active();
-    for (const j of await this.jobs.open()) {
-      if (mine.has(j.id)) continue;
-      if (!all && now - (j.startedAt ?? j.createdAt).getTime() < timeout) continue;
-      await this.conclude(j.id, 'failed', 'the server restarted or the job timed out');
-      failed++;
-    }
-    return failed;
+  async onApplicationShutdown(): Promise<void> {
+    this.stopped = true;
+    for (const c of this.running.values()) c.abort('shutdown');
+    // The worker entrypoint calls this before closing Prisma, so terminal events can still commit.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        (async () => {
+          await this.pumpTask?.catch(() => undefined);
+          for (const c of this.running.values()) c.abort('shutdown');
+          for (const id of this.done.keys()) if (!this.running.has(id)) this.settle(id);
+          await Promise.allSettled([...this.done.values()].map(d => d.promise));
+        })(),
+        new Promise<void>(resolve => { timer = setTimeout(resolve, 8_000); timer.unref?.(); }),
+      ]);
+    } finally { if (timer) clearTimeout(timer); }
   }
 }

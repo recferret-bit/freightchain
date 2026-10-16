@@ -45,6 +45,7 @@
     "media:game-sfx": "node media/audio/cli.mjs game",
     "media:check": "npm --prefix media run lint && npm --prefix media test",
     "install:media": "npm --prefix media install",
-    "build": "npm run landing:build && npm run server:build"
+    "build": "npm run landing:build && npm run server:build",
+    "editor:worker": "npm --prefix server run editor:worker"
   }
 }

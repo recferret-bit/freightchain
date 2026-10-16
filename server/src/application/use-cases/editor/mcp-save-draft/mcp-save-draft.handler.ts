@@ -1,8 +1,9 @@
+import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { MAX_NEW_ENTITIES_PER_JOB, mayWrite } from '../../../../domain/editor/editor-job.js';
 import type { RevisionDto } from '../../../../domain/entities/entity.dto.js';
 import { parseSource } from '../../../../domain/shared/entity.js';
-import { ForbiddenError, NotFoundError } from '../../../../domain/shared/errors.js';
+import { ConflictError, ForbiddenError, NotFoundError } from '../../../../domain/shared/errors.js';
 import { EditorJobRepositoryPort } from '../../../ports/editor/editor-job.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { TransactionPort } from '../../../ports/shared/transaction.port.js';
@@ -23,6 +24,7 @@ export class McpSaveDraftHandler implements ICommandHandler<McpSaveDraftCommand,
     private readonly catalog: EntityCatalogService,
     private readonly clock: ClockPort,
     private readonly transactions: TransactionPort,
+    private readonly rules: RulesConfigPort,
   ) {}
 
   async execute({ jobId, entityId, source, message }: McpSaveDraftCommand): Promise<RevisionDto> {
@@ -32,8 +34,9 @@ export class McpSaveDraftHandler implements ICommandHandler<McpSaveDraftCommand,
       await this.jobs.lock(jobId, tx);
       const job = await this.jobs.find(jobId, tx);
       if (!job) throw new NotFoundError('no such job', 'job_not_found');
-      if (job.status !== 'running') throw new ForbiddenError('this job is no longer running', 'job_closed');
+      if (job.status !== 'running' || !job.startedAt || this.clock.now().getTime() >= job.startedAt.getTime() + this.rules.get().editorJobTimeoutMs) throw new ForbiddenError('this job is no longer running', 'job_closed');
       const head = (await this.catalog.heads()).get(entityId);
+      if (entityId === job.entityId && head?.revision?.jobId !== job.id && (head?.revision?.id ?? null) !== job.baseRevisionId) throw new ConflictError('the model changed while the AI was working – reload it and ask again', 'stale_base');
       const created = (await this.jobs.createdIds(job.id, tx)).filter((id) => id !== job.entityId);
       if (!mayWrite(job, entityId, { exists: !!head, kind, headJobId: head?.revision?.jobId ?? null }, created)) {
         throw new ForbiddenError(job.entityId ? `this request may change '${job.entityId}' (or add up to ${MAX_NEW_ENTITIES_PER_JOB} new parts), not '${entityId}'` : `this request may only create new entities (up to ${MAX_NEW_ENTITIES_PER_JOB}), not change '${entityId}'`, 'job_scope');

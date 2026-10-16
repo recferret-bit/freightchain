@@ -21,7 +21,7 @@ export type SpecVerdict = { verdict: 'ok' | 'not_a_spec'; kind?: string | null; 
 export abstract class McpClientPort {
   /** is the MCP configured (EDITOR_MCP_TOKEN)? without it there is no AI editor */
   abstract readonly configured: boolean;
-  abstract connect(jobToken: string): Promise<McpSession>;
+  abstract connect(jobToken: string, signal?: AbortSignal): Promise<McpSession>;
   /** the skill's spec gate on the user's sentence (POST /spec) – before any AI tokens */
   abstract spec(phrase: string): Promise<SpecVerdict>;
 }

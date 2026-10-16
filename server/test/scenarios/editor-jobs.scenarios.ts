@@ -1,3 +1,7 @@
+import { EditorJobRunnerService } from '../../src/application/services/editor-job-runner.service.js';
+import { EditorAgentService } from '../../src/application/services/editor-agent.service.js';
+import { GameSettingsService } from '../../src/application/services/game-settings.service.js';
+import { RulesConfigPort } from '../../src/application/ports/config/rules-config.port.js';
 import request from 'supertest';
 import type { Agent } from 'supertest';
 import { printSource } from '../../src/domain/shared/entity.js';
@@ -37,6 +41,8 @@ export function editorJobScenarios(h: () => Harness): void {
   it('a job, end to end: read → check → save a draft through the MCP callbacks → the draft event, the result, the history with its prompt', async () => {
     const a = await signIn();
     const { body } = await ask(a, { prompt: 'make it a little taller', entityId: 'cactus', baseRevisionId: null }).expect(202);
+    expect((await a.get(`/api/editor/jobs/${body.jobId}`).expect(200)).body.status).toBe('queued');
+    expect(h().mcp.calls).toEqual([]);
     await h().jobSettled(body.jobId);
     const ev = await events(a, body.jobId);
     expect(ev.status).toBe('done');
@@ -84,12 +90,57 @@ export function editorJobScenarios(h: () => Harness): void {
     await a.post('/api/editor/jobs').send({ prompt: 'x', entityId: 'birch' }).expect(403);   // no X-FC-Editor
   });
 
+  it('a replacement app runner discovers a committed queue item and its fresh claim survives another app boot', async () => {
+    await setting('editor_jobs_parallel', 0);
+    const a = await signIn();
+    const { jobId } = (await ask(a, { prompt: 'durable edit', entityId: 'cactus' }).expect(202)).body;
+    const app = h().app, jobs = app.get(EditorJobRepositoryPort, { strict: false });
+    const replacement = new EditorJobRunnerService(app.get(EditorAgentService, { strict: false }), jobs, app.get(GameSettingsService, { strict: false }), app.get(RulesConfigPort, { strict: false }), h().clock);
+    try {
+      await setting('editor_jobs_parallel', 1);
+      await replacement.sweep(); // no enqueue in this process
+      expect(await app.get(EditorJobRunnerService, { strict: false }).sweep()).toBe(0);
+      await replacement.settled(jobId);
+      expect((await a.get(`/api/editor/jobs/${jobId}`).expect(200)).body.status).toBe('done');
+      expect(h().mcp.calls.filter(c => c.tool === 'save_draft')).toHaveLength(1);
+      await app.get(EditorJobRunnerService, { strict: false }).sweep();
+      await h().jobSettled(jobId);
+    } finally { replacement.onApplicationShutdown(); }
+  });
+
+  it('an expired running capability is refused before the shared sweeper runs', async () => {
+    await setting('editor_jobs_parallel', 0);
+    const a = await signIn();
+    const { jobId } = (await ask(a, { prompt: 'taller', entityId: 'cactus' }).expect(202)).body;
+    const jobs = h().app.get(EditorJobRepositoryPort, { strict: false });
+    await jobs.update(jobId, { status: 'running', startedAt: h().clock.now() });
+    const token = await h().app.get(JobTokenPort, { strict: false }).sign({ jobId, wallet: JOB_EDITOR.address, entityId: 'cactus' });
+    h().clock.advance(600);
+    await request(h().server()).post('/api/editor/mcp/entities/cactus/drafts').set('x-fc-job', token).send({ source: printSource(seedEntity('cactus')), message: 'late' }).expect(404);
+    expect((await jobs.find(jobId))!.resultRevisionId).toBeNull();
+    await a.post(`/api/editor/jobs/${jobId}/cancel`).set(X, '1').expect(200);
+  });
+
   it('the daily cap per editor (editor_jobs_per_day) is a 429 job_cap', async () => {
     await setting('editor_jobs_parallel', 0); await setting('editor_jobs_per_day', 1);
     const a = await signIn();
     const first = (await ask(a, { prompt: 'taller', entityId: 'cactus' }).expect(202)).body;
     await a.post(`/api/editor/jobs/${first.jobId}/cancel`).set(X, '1').expect(200);
     expect((await ask(a, { prompt: 'wider', entityId: 'rock' }).expect(429)).body.code).toBe('job_cap');
+  });
+
+  it('MCP cannot overwrite a hand edit saved while a queued job was waiting', async () => {
+    await setting('editor_jobs_parallel', 0);
+    const a = await signIn();
+    const { jobId } = (await ask(a, { prompt: 'taller', entityId: 'cactus', baseRevisionId: null }).expect(202)).body;
+    const jobs = h().app.get(EditorJobRepositoryPort, { strict: false });
+    const hand = printSource({ ...seedEntity('cactus'), note: 'newer human edit' });
+    const saved = (await a.post('/api/editor/entities/cactus/drafts').set(X, '1').send({ source: hand, message: 'human', baseRevisionId: null }).expect(200)).body;
+    await jobs.update(jobId, { status: 'running', startedAt: h().clock.now() });
+    const token = await h().app.get(JobTokenPort, { strict: false }).sign({ jobId, wallet: JOB_EDITOR.address, entityId: 'cactus' });
+    const reply = await request(h().server()).post('/api/editor/mcp/entities/cactus/drafts').set('x-fc-job', token).send({ source: printSource(seedEntity('cactus')), message: 'stale AI' }).expect(409);
+    expect(reply.body.code).toBe('stale_base');
+    expect((await a.get('/api/editor/entities/cactus').expect(200)).body.row.headRevisionId).toBe(saved.id);
   });
 
   it('the MCP callbacks: only a running job\'s token, never through nginx; a job writes its own model or a new part – nothing else', async () => {
@@ -100,7 +151,7 @@ export function editorJobScenarios(h: () => Harness): void {
     const token = await tokens.sign({ jobId, wallet: JOB_EDITOR.address, entityId: 'cactus' });
     const mcp = () => request(h().server());
     await mcp().get('/api/editor/mcp/entities').set('x-fc-job', token).expect(404);   // the job is only queued
-    await jobs.update(jobId, { status: 'running' });
+    await jobs.update(jobId, { status: 'running', startedAt: h().clock.now() });
     await mcp().get('/api/editor/mcp/entities').set('x-fc-job', token).expect(200);
     await mcp().get('/api/editor/mcp/entities').set('x-fc-job', 'junk').expect(404);
     await mcp().get('/api/editor/mcp/entities').expect(404);

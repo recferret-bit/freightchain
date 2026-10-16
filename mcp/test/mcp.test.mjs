@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, readFileSync, existsSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, existsSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -31,6 +31,10 @@ test('tools: list, read, check, save a valid edit, refuse an invalid one and gam
   const list = JSON.parse((await client.callTool({ name: 'list_entities', arguments: { kind: 'vehicle' } })).content[0].text);
   assert.equal(list.length, 7);
   const bush = await call('get_entity', { id: 'bush' });
+  const identical = await call('diff_entity', { id: 'bush', source: bush.source });
+  assert.deepEqual([identical.removed, identical.added], [[], []]);
+  const diff = await call('diff_entity', { id: 'bush', source: bush.source + '// added\n' });
+  assert.deepEqual(diff.added, ['// added']);
   assert.equal(bush.gameplayLock.lock.kind, 'bush');
   const wider = bush.source.replace("s: ['s', 's * 0.9', 's']", "s: ['s * 1.2', 's * 0.9', 's * 1.2']");
   const ok = await call('check_entity', { source: wider });
@@ -55,5 +59,12 @@ test('tools: list, read, check, save a valid edit, refuse an invalid one and gam
   assert.equal(proto.ok, false); assert.match(proto.errors.join(' '), /unknown entity 'constructor'/);
   const many = await call('check_entity', { source: `export default { id: 'many-x', kind: 'part', v: 1, ${Array.from({ length: 60 }, (_, i) => `k${i}: 1`).join(', ')}, parts: [] };` });
   assert.equal(many.errors.length, 41); assert.match(many.errors.at(-1), /more$/);   // capped for the model's context
+  await client.close();
+});
+
+test('the file backend refuses linked seeds instead of following them outside its root', async () => {
+  const { client, dir } = await connect();
+  symlinkSync(join(SEED, 'prop', 'bush.js'), join(dir, 'part', 'linked-bush.js'));
+  await assert.rejects(new FileBackend(dir).get('linked-bush'), /not links/);
   await client.close();
 });

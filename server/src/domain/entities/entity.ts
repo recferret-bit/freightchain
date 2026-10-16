@@ -1,4 +1,4 @@
-import { ID, parseSource, printSource, SourceError, validateEntity, type EntityConfig } from '../shared/entity.js';
+import { ID, MAX_SOURCE, parseSource, printSource, SourceError, validateEntity, type EntityConfig } from '../shared/entity.js';
 import { BadRequestError, UnprocessableEntityError } from '../shared/errors.js';
 
 /* A 3D model of the game is an ENTITY: a data-only JS module (`export default { … }`, client/shared/entity/). The code ships every model as a seed
@@ -60,7 +60,9 @@ export function checkEntitySource(source: string, id: string, lookup: (id: strin
   if (config.id !== id) throw new UnprocessableEntityError(`the file is entity '${String(config.id)}', not '${id}'`, 'entity_invalid', [`id: must be '${id}'`]);
   const result = validateEntity(config, { lookup });
   if (!result.ok) throw new UnprocessableEntityError(`entity '${id}' does not validate`, 'entity_invalid', result.errors, result.warnings);
-  return { config, source: printSource(config), warnings: result.warnings };
+  const canonical = printSource(config);
+  if (canonical.length > MAX_SOURCE) throw new UnprocessableEntityError('the canonical entity file is too large', 'entity_invalid', [`source: the formatted file must fit within ${MAX_SOURCE / 1024} KB`]);
+  return { config, source: canonical, warnings: result.warnings };
 }
 
 /** an entity's kind is fixed once it exists (the roster pins the game's ones; a viewer-only one keeps its own) */

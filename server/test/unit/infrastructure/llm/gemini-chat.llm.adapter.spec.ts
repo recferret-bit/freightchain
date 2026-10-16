@@ -16,6 +16,7 @@ describe('ChatCompletionsSession', () => {
     expect(calls[0]).toMatchObject({ model: 'gemini-3.1-pro-preview', max_tokens: 900, tools: [{ type: 'function', function: { name: 'a' } }] });
     expect(await s.sendToolResults([{ id: 'c1', content: 'r', isError: false }])).toMatchObject({ text: 'ok', stop: 'end' });
     expect(calls[1]!['messages']).toEqual([{ role: 'system', content: 'SYS' }, { role: 'user', content: 'go' }, assistant, { role: 'tool', tool_call_id: 'c1', content: 'r' }]);
+    expect(calls[1]!['max_tokens']).toBe(898);
   });
 
   it('z.ai (GLM): the assistant message keeps its reasoning_content on the way back', async () => {

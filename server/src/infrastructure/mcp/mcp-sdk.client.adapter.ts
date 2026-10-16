@@ -32,11 +32,11 @@ export class McpSdkClientAdapter extends McpClientPort {
 
   get configured(): boolean { return !!this.env.editorMcpToken; }
 
-  async connect(jobToken: string): Promise<McpSession> {
+  async connect(jobToken: string, signal?: AbortSignal): Promise<McpSession> {
     const token = this.requireToken();
     const client = new Client({ name: 'freightchain-editor-bridge', version: '1.0.0' });
-    const transport = new StreamableHTTPClientTransport(new URL(`${mcpBaseUrl(this.env.editorMcpUrl, this.env.isProduction).origin}/mcp`), { requestInit: { headers: { authorization: `Bearer ${token}`, 'x-fc-job': jobToken } } });
-    try { await client.connect(transport); } catch { throw new ServiceUnavailableError('the entity MCP is not reachable'); }
+    const transport = new StreamableHTTPClientTransport(new URL(`${mcpBaseUrl(this.env.editorMcpUrl, this.env.isProduction).origin}/mcp`), { requestInit: { redirect: 'error', headers: { authorization: `Bearer ${token}`, 'x-fc-job': jobToken } } });
+    try { await client.connect(transport, { signal, timeout: 10_000 }); } catch { await client.close().catch(() => undefined); signal?.throwIfAborted(); throw new ServiceUnavailableError('the entity MCP is not reachable'); }
     return {
       listTools: async (signal): Promise<LlmTool[]> => (await client.listTools(undefined, { signal })).tools.map((t) => ({ name: t.name, description: t.description ?? '', inputSchema: t.inputSchema as Record<string, unknown> })).sort((a, b) => (a.name < b.name ? -1 : 1)),
       callTool: async (name, args, signal): Promise<McpToolResult> => toolText((await client.callTool({ name, arguments: args }, undefined, { signal })) as ToolResult),
@@ -52,7 +52,7 @@ export class McpSdkClientAdapter extends McpClientPort {
     const token = this.requireToken();
     let r: Response;
     try {
-      r = await fetch(`${mcpBaseUrl(this.env.editorMcpUrl, this.env.isProduction).origin}/spec`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ phrase }), signal: AbortSignal.timeout(10_000) });
+      r = await fetch(`${mcpBaseUrl(this.env.editorMcpUrl, this.env.isProduction).origin}/spec`, { method: 'POST', redirect: 'error', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ phrase }), signal: AbortSignal.timeout(10_000) });
     } catch { throw new ServiceUnavailableError('the entity MCP is not reachable'); }
     if (!r.ok) throw new ServiceUnavailableError(`the entity MCP answered ${r.status}`);
     return (await r.json()) as SpecVerdict;

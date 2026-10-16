@@ -35,6 +35,7 @@ export function anthropicErrorText(e: unknown): string | null {
 
 export class AnthropicLlmSession implements LlmSession {
   private readonly messages: { role: 'user' | 'assistant'; content: unknown }[] = [];
+  private tokensOut = 0;
 
   constructor(private readonly client: AnthropicClientLike, private readonly o: LlmOpenOptions) {}
 
@@ -52,7 +53,7 @@ export class AnthropicLlmSession implements LlmSession {
   params(): Record<string, unknown> {
     const last = this.o.tools.length - 1;
     const params: Record<string, unknown> = {
-      model: this.o.model, max_tokens: this.o.maxOutputTokens,
+      model: this.o.model, max_tokens: Math.max(1, this.o.maxOutputTokens - this.tokensOut),
       system: [{ type: 'text', text: this.o.system, cache_control: { type: 'ephemeral' } }],
       tools: this.o.tools.map((t, i) => ({ name: t.name, description: t.description, input_schema: t.inputSchema, ...(i === last ? { cache_control: { type: 'ephemeral' } } : {}) })),
       tool_choice: { type: 'auto' },   // a forced tool choice is a 400 with adaptive thinking
@@ -76,9 +77,14 @@ export class AnthropicLlmSession implements LlmSession {
         const m = await this.call();
         usage.in += m.usage.input_tokens + (m.usage.cache_read_input_tokens ?? 0) + (m.usage.cache_creation_input_tokens ?? 0);
         usage.out += m.usage.output_tokens;
+        this.tokensOut += m.usage.output_tokens;
         this.messages.push({ role: 'assistant', content: m.content });   // unchanged, thinking blocks included
         text += m.content.filter((b) => b.type === 'text').map((b) => b.text ?? '').join('');
-        if (m.stop_reason === 'pause_turn' && pause < MAX_PAUSES) continue;   // a long server-side turn: send it back as it is and let it go on
+        if (m.stop_reason === 'pause_turn') {
+          if (this.tokensOut >= this.o.maxOutputTokens) return { text, toolCalls: [], stop: 'max_tokens', usage };
+          if (pause >= MAX_PAUSES) return { text, toolCalls: [], stop: 'error', usage, detail: 'the model reached its continuation limit' };
+          continue;
+        }
         if (m.stop_reason === 'refusal') return { text, toolCalls: [], stop: 'refusal', usage, detail: `the model declined${m.stop_details?.category ? ` (${m.stop_details.category})` : ''}` };
         if (m.stop_reason === 'max_tokens') return { text, toolCalls: [], stop: 'max_tokens', usage };
         const toolCalls = m.content.filter((b) => b.type === 'tool_use').map((b) => ({ id: b.id ?? '', name: b.name ?? '', input: (b.input ?? {}) as Record<string, unknown> }));

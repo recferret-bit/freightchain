@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync, existsSync, lstatSync, realpathSync, constants } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
@@ -16,7 +16,7 @@ export class HttpBackend {
   constructor(appUrl, jobToken) { this.url = appUrl.replace(/\/$/, ''); this.token = jobToken; }
   async call(path, { method = 'GET', body } = {}) {
     if (!this.token) throw new Error('no job token: this MCP only works inside an editor job');
-    const r = await fetch(`${this.url}/api/editor/mcp/${path}`, { method, headers: { 'x-fc-job': this.token, accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000) });
+    const r = await fetch(`${this.url}/api/editor/mcp/${path}`, { method, redirect: 'error', headers: { 'x-fc-job': this.token, accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000) });
     const text = await r.text(); let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = { detail: text }; }
     if (!r.ok) { const e = new Error(data?.detail ?? `HTTP ${r.status}`); e.errors = data?.errors ?? []; e.warnings = data?.warnings ?? []; e.status = r.status; throw e; }
     return data;
@@ -31,7 +31,19 @@ export class FileBackend {
   /** save_draft overwrites the seed file in place (the HTTP backend appends a revision) */
   overwrites = true;
   constructor(seedDir = SEED) { this.dir = seedDir; }
-  files() { const out = []; for (const k of Object.values(KINDS_DIR)) for (const f of readdirSync(join(this.dir, k))) if (f.endsWith('.js')) out.push({ kind: k, id: f.slice(0, -3), path: join(this.dir, k, f) }); return out; }
+  files() {
+    const out = [], root = realpathSync(this.dir) + sep;
+    for (const k of Object.values(KINDS_DIR)) {
+      const dir = join(this.dir, k);
+      if (lstatSync(dir).isSymbolicLink() || !realpathSync(dir).startsWith(root)) throw new Error('seed directories must stay inside the seed root');
+      for (const f of readdirSync(dir)) if (f.endsWith('.js')) {
+        const path = join(dir, f), stat = lstatSync(path);
+        if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) throw new Error('seed files must be ordinary files, not links');
+        out.push({ kind: k, id: f.slice(0, -3), path });
+      }
+    }
+    return out;
+  }
   async list() { return this.files().map(f => { const c = core.parseSource(readFileSync(f.path, 'utf8')); return { id: f.id, kind: c.kind, label: c.label ?? null, source: 'seed', headRevisionId: null, publishedRevisionId: null, headSeq: null, publishedSeq: null, updatedAt: null }; }); }
   async get(id) {
     const f = this.files().find(x => x.id === id); if (!f) { const e = new Error(`no entity '${id}'`); e.status = 404; throw e; }
@@ -51,7 +63,9 @@ export class FileBackend {
     const path = resolve(this.dir, kindDir, `${id}.js`), root = resolve(this.dir) + sep;
     if (!path.startsWith(root)) throw new Error('bad path');
     const fresh = !existsSync(path);
-    writeFileSync(path, core.printSource(config));
+    const canonical = core.printSource(config);
+    if (canonical.length > core.MAX_SOURCE) throw new Error('the formatted entity source is over 64 KB');
+    writeFileSync(path, canonical, { flag: constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW });
     if (fresh && this.dir === SEED) execFileSync(process.execPath, [join(REPO, 'client', 'tools', 'entity-seed-index.mjs')], { stdio: 'ignore' });   // the repo's own seed list
     return { id: `file:${id}`, entityId: id, seq: null, message, path };
   }

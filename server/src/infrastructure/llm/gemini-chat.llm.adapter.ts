@@ -13,6 +13,7 @@ export interface ChatClientLike {
 
 export class ChatCompletionsSession implements LlmSession {
   private readonly messages: unknown[];
+  private tokensOut = 0;
 
   constructor(private readonly client: ChatClientLike, private readonly o: LlmOpenOptions) {
     this.messages = [{ role: 'system', content: o.system }];
@@ -30,7 +31,7 @@ export class ChatCompletionsSession implements LlmSession {
 
   params(): Record<string, unknown> {
     return {
-      model: this.o.model, messages: this.messages, max_tokens: this.o.maxOutputTokens,
+      model: this.o.model, messages: this.messages, max_tokens: Math.max(1, this.o.maxOutputTokens - this.tokensOut),
       tools: this.o.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.inputSchema } })),
     };
   }
@@ -39,6 +40,7 @@ export class ChatCompletionsSession implements LlmSession {
     try {
       const r = (await this.client.chat.completions.create(this.params(), { signal: this.o.signal })) as ChatResponse;
       const choice = r.choices[0], usage = { in: r.usage?.prompt_tokens ?? 0, out: r.usage?.completion_tokens ?? 0 };
+      this.tokensOut += usage.out;
       if (!choice) return { text: '', toolCalls: [], stop: 'error', usage, detail: 'the provider answered no choice' };
       this.messages.push(choice.message);   // unchanged (thought signatures)
       const text = choice.message.content ?? '';

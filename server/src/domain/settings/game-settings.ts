@@ -9,9 +9,9 @@ export const SETTING_DEFAULTS: Record<SettingKey, number> = {
   free_rides_daily_max: 5,
   editor_jobs_per_day: 40,   // AI model-editor jobs per editor wallet per UTC day
   editor_max_steps: 24,   // model turns per job (each may call tools)
-  editor_max_output_tokens: 32_000,   // per model turn
+  editor_max_output_tokens: 32_000,   // cumulative output tokens per job
   editor_max_input_ktokens: 500,   // input tokens per job, in thousands (every turn re-sends the history: the cost cap)
-  editor_jobs_parallel: 2,   // jobs running at once in the app (0 = the AI editor paused)
+  editor_jobs_parallel: 5,   // jobs running at once across all app replicas (0 = the AI editor paused)
 };
 
 export const SETTING_MIN = 0;

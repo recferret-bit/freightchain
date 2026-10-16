@@ -118,6 +118,7 @@ cv.addEventListener('pointermove', e => {
 cv.addEventListener('wheel', e => { e.preventDefault(); zoom(Math.exp(e.deltaY * (e.deltaMode ? .05 : .0012))); }, { passive: false });
 const keys = new Set();
 addEventListener('keydown', e => {
+  if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key.toLowerCase();
   if ('wasd'.includes(k)) { keys.add(k); return; }
   const flip = { e: 'edges', g: 'grid', x: 'box', v: 'wire' }[k];

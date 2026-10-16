@@ -166,6 +166,7 @@ export const envSchema = z
       // behind a reverse proxy req.ip is the proxy's: rate limits per IP would put every rider in one bucket. Make the deploy say how many hops to trust (0 = none).
       if (env.TRUST_PROXY === undefined) ctx.addIssue({ code: 'custom', path: ['TRUST_PROXY'], message: 'TRUST_PROXY must be set in production (number of reverse-proxy hops; 0 if none)' });
       if (env.EDITOR_MCP_TOKEN) {
+        if (!env.REDIS_URL) ctx.addIssue({ code: 'custom', path: ['REDIS_URL'], message: 'REDIS_URL is required for the production AI editor rate limits' });
         const mcp = mcpUrlIssue(env.EDITOR_MCP_URL);
         if (mcp) ctx.addIssue({ code: 'custom', path: ['EDITOR_MCP_URL'], message: mcp });
       }

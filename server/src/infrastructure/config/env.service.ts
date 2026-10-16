@@ -22,6 +22,7 @@ export class EnvService {
   get isProduction(): boolean { return this.nodeEnv === 'production'; }
   get databaseUrl(): string { return this.env.DATABASE_URL; }
   /** Production REQUIRES JWT_SECRET (validated). Otherwise a RANDOM secret per boot – never a constant: a deploy that forgot NODE_ENV=production must not sign sessions with a publicly known key. */
+  get hasStableJwtSecret(): boolean { return !!this.env.JWT_SECRET; }
   get jwtSecret(): string {
     if (this.env.JWT_SECRET) return this.env.JWT_SECRET;
     if (!this.devSecret) {

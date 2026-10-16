@@ -109,7 +109,8 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
     expect(validateEnv({ ...prod, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun' }).EDITOR_WALLETS).toBe(w);
     const token = 'x'.repeat(24);
     expect(() => validateEnv({ ...prod, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun', EDITOR_MCP_TOKEN: token, EDITOR_MCP_URL: 'http://169.254.169.254' })).toThrow(/EDITOR_MCP_URL/);
-    expect(validateEnv({ ...prod, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun', EDITOR_MCP_TOKEN: token, EDITOR_MCP_URL: 'http://mcp:3100' }).EDITOR_MCP_URL).toBe('http://mcp:3100');
+    expect(() => validateEnv({ ...prod, EDITOR_MCP_TOKEN: token })).toThrow(/REDIS_URL/);
+    expect(validateEnv({ ...prod, REDIS_URL: 'redis://redis:6379', EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun', EDITOR_MCP_TOKEN: token, EDITOR_MCP_URL: 'http://mcp:3100' }).EDITOR_MCP_URL).toBe('http://mcp:3100');
     expect(validateEnv(prod).NODE_ENV).toBe('production');
   });
 });

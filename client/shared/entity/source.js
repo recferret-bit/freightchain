@@ -36,7 +36,7 @@ export function parseSource(text) {
   function number() {
     const m = /^([-+]?)(0[xX][0-9a-fA-F]+|(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?)/.exec(text.slice(i));
     if (!m) fail('bad number');
-    i += m[0].length; const v = Number(m[2]); return m[1] === '-' ? -v : v;
+    i += m[0].length; const v = Number(m[2]); if (!Number.isFinite(v)) fail('a number must be finite'); return m[1] === '-' ? -v : v;
   }
   function string() {
     const q = text[i++]; let s = '';

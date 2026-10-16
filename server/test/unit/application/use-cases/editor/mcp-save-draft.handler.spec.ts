@@ -7,8 +7,8 @@ import { fatCactus, seedEntity } from '../../../../support/entity-fixtures.js';
 
 describe('McpSaveDraftHandler', () => {
   const setup = async (entityId: string | null = 'cactus') => {
-    const c = jobContext(), job = aJob({ status: 'running', entityId, wallet: 'ED' }); await c.jobs.insert(job);
-    return { ...c, job, h: new McpSaveDraftHandler(c.jobs, c.write, c.catalog, c.clock, c.transactions) };
+    const c = jobContext(), job = aJob({ status: 'running', startedAt: c.clock.now(), entityId, wallet: 'ED' }); await c.jobs.insert(job);
+    return { ...c, job, h: new McpSaveDraftHandler(c.jobs, c.write, c.catalog, c.clock, c.transactions, c.rules) };
   };
 
   it('a draft of the job\'s model on the head as it is now: authored by the job\'s wallet, with its id; a draft event and the job\'s result', async () => {
@@ -41,6 +41,14 @@ describe('McpSaveDraftHandler', () => {
     await expect(h.execute(new McpSaveDraftCommand(job.id, 'cactus', fatCactus(), 'late'))).rejects.toMatchObject({ errorCode: 'job_closed' });
   });
 
+  it('never overwrites a hand edit made after the job was admitted', async () => {
+    const c = await setup();
+    await c.write.saveDraft({ entityId: 'cactus', source: fatCactus(.6), message: 'hand edit', author: 'ED', baseRevisionId: null });
+    await expect(c.h.execute(new McpSaveDraftCommand(c.job.id, 'cactus', fatCactus(), 'AI'))).rejects.toMatchObject({ errorCode: 'stale_base' });
+    expect((await c.catalog.heads()).get('cactus')!.revision!.message).toBe('hand edit');
+    expect(await c.jobs.events(c.job.id, 0, 10)).toEqual([]);
+  });
+
   it('the new-entity cap counts drafts past the first page of events', async () => {
     const { h, job, jobs, clock } = await setup(null);
     for (let i = 0; i < 500; i++) await jobs.appendEvent(job.id, 'status', { i }, clock.now());
@@ -48,4 +56,10 @@ describe('McpSaveDraftHandler', () => {
     for (const id of ['a-part', 'b-part', 'c-part', 'd-part']) await h.execute(new McpSaveDraftCommand(job.id, id, part(id), 'm'));
     await expect(h.execute(new McpSaveDraftCommand(job.id, 'e-part', part('e-part'), 'm'))).rejects.toMatchObject({ errorCode: 'job_scope' });
   });
+  it('an expired claim cannot save even before a sweeper updates its status', async () => {
+    const c = await setup(); c.clock.advance(601);
+    await expect(c.h.execute(new McpSaveDraftCommand(c.job.id, 'cactus', fatCactus(), 'late'))).rejects.toMatchObject({ errorCode: 'job_closed' });
+    expect((await c.jobs.find(c.job.id))!.resultRevisionId).toBeNull();
+  });
+
 });

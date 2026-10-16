@@ -88,3 +88,5 @@ Each theme has `weather: { ambient °C (day), snow 0..1 }` (route66 26/0, stuart
 - Daylight: the headlight cone/halo and lamp pools scale with `dn.k`, so by day headlights show only as the HEAD button (the old green LIGHTS lamp is now the BAT lamp) (real low beams don't light a sunlit road); the cab lamp shows as the glowing dome lens (the overhead console is just that lamp: 16u lens in a 19.2u housing, centred) + `CFG.CAB_DAY` of its warm wash (`cabGlow()`).
 - Cockpit: `nightGrade()` in `cockpit/index.js` darkens only opaque cockpit pixels (`source-atop`; glass/mirror holes stay clear), brighter around the gauges; cab light (C) warms it. New single-sided materials still need the mirror flip list.
 
+
+Entity review safeguards: validation rejects malformed shapes and non-finite literals, checks resolved material slots and painter availability through referenced parts, caps facade grids at 32 × 32 and bounds glow/beam/banner sizes. The client diff falls back to a linear comparison above two million LCS cells. See `docs/reviews/entity-editor-security.md` for the three-pass security review.

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:net';
+import { request as httpRequest } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -22,6 +23,14 @@ test('the bearer gates everything but /health; a wrong or missing token is 401',
   assert.equal((await post('/nope', {})).status, 404);
 });
 
+test('browser origins, forged hosts, non-JSON and malformed spec inputs are refused', async () => {
+  for (const origin of ['https://evil.example', 'null', 'http://localhost']) assert.equal((await post('/spec', { phrase: 'x' }, { origin })).status, 403);
+  const status = await new Promise((resolve, reject) => { const req = httpRequest(BASE + '/spec', { method: 'POST', headers: { host: 'attacker.example', authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' } }, res => { res.resume(); resolve(res.statusCode); }); req.on('error', reject); req.end('{"phrase":"x"}'); });
+  assert.equal(status, 403);
+  assert.equal((await post('/spec', { phrase: 'x' }, { 'content-type': 'text/plain' })).status, 415);
+  for (const phrase of [{ toString: 'x' }, [], 1, 'x'.repeat(4001)]) assert.equal((await post('/spec', { phrase })).status, 400);
+});
+
 test('POST only, one message per request, bodies up to 512 KB of JSON', async () => {
   const get = await fetch(`${BASE}/mcp`, { headers: { authorization: `Bearer ${TOKEN}` } });
   assert.deepEqual([get.status, get.headers.get('allow')], [405, 'POST']);
@@ -32,7 +41,7 @@ test('POST only, one message per request, bodies up to 512 KB of JSON', async ()
   const prim = await post('/mcp', '123');
   assert.deepEqual([prim.status, (await prim.json()).error.code], [400, -32600]);
   assert.equal((await post('/mcp', '{not json')).status, 400);
-  assert.equal((await post('/mcp', JSON.stringify({ pad: 'x'.repeat(600 * 1024) })).catch(() => ({ status: 413 }))).status, 413);
+  assert.equal((await post('/mcp', JSON.stringify({ pad: 'x'.repeat(600 * 1024) }))).status, 413);
 });
 
 test('the spec gate over HTTP; a real MCP client lists the 7 tools and calls one (no job token: the app-backed tools say so)', async () => {
