@@ -1,5 +1,9 @@
 import { StartRideHandler } from '../../../../../src/application/use-cases/rides/start-ride/start-ride.handler.js';
 import { StartRideCommand } from '../../../../../src/application/use-cases/rides/start-ride/start-ride.command.js';
+import { RankedEntryService } from '../../../../../src/application/services/ranked-entry.service.js';
+import { PrizeGeoPort } from '../../../../../src/application/ports/prize/prize-geo.port.js';
+import { HeaderGeoAdapter } from '../../../../../src/infrastructure/prize/header-geo.adapter.js';
+import { DEFAULT_GEO } from '../../../../../src/domain/prize/prize-rules.js';
 import { Ride } from '../../../../../src/domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
 import { ConflictError, NotFoundError } from '../../../../../src/domain/shared/errors.js';
@@ -7,11 +11,18 @@ import { unitContext } from '../../../../support/unit-context.js';
 import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 import { aPool } from '../../../../support/pools.js';
 
+class DefaultLists extends PrizeGeoPort { rules() { return DEFAULT_GEO; } }
+
 const setup = () => {
   const ctx = unitContext();
   const analytics = new RecordingAnalytics();
-  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics, ctx.stats, ctx.pools);
-  return { ctx, analytics, start: (id: string, wallet = 'w', trip: string | null = null) => handler.execute(new StartRideCommand(wallet, id, trip)) };
+  const rankedEntry = new RankedEntryService(ctx.rides, new HeaderGeoAdapter(), new DefaultLists());
+  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics, ctx.stats, ctx.pools, rankedEntry);
+  return {
+    ctx, analytics,
+    start: (id: string, wallet = 'w', trip: string | null = null) => handler.execute(new StartRideCommand(wallet, id, trip)),
+    startRanked: (id: string, wallet: string, headers: Record<string, string>) => handler.execute(new StartRideCommand(wallet, id, null, true, headers)),
+  };
 };
 
 describe('StartRideHandler', () => {
@@ -148,5 +159,21 @@ describe('StartRideHandler', () => {
     expect(await start(old.id, 'v', 'classic')).toMatchObject({ status: 'running' });
     const plain = await ctx.freeRide('x');
     expect(await start(plain.id, 'x')).toMatchObject({ status: 'running' });   // an older game says nothing: started as before
+  });
+
+  it('a ranked start stores the flag and the country; a refusal leaves the ride created so it can start unranked', async () => {
+    const { ctx, start, startRanked } = setup();
+    const ride = await ctx.freeRide('w');
+    const player = await ctx.storedPlayer('w');
+    player.setAgreements({ age18: true, loss: false }, ctx.now());
+    await ctx.players.save(player);
+    await expect(startRanked(ride.id, 'w', {})).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
+    expect((await ctx.reload(ride.id)).status).toBe(RideStatus.Created);
+    expect(await startRanked(ride.id, 'w', { 'cf-ipcountry': 'CA' })).toMatchObject({ status: 'running', ranked: true });
+    expect((await ctx.reload(ride.id)).snapshot()).toMatchObject({ ranked: true, prizeCountry: 'CA', prizeRegion: null });
+    const blocked = await ctx.freeRide('w');
+    const running = await ctx.reload(ride.id); running.finish('failed', null, ctx.now()); await ctx.rides.save(running);
+    await expect(startRanked(blocked.id, 'w', { 'cf-ipcountry': 'US', 'cf-region-code': 'DE' })).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
+    expect(await start(blocked.id)).toMatchObject({ status: 'running', ranked: false });
   });
 });

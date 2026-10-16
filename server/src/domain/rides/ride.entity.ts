@@ -69,6 +69,14 @@ export interface RideProps {
   seedCommitment?: string | null;
   blockhash?: string | null;
   slot?: bigint | number | null;
+  /** Declared before start. Spectator road effects are refused. Counts toward the weekly skill board. */
+  ranked?: boolean;
+  /** Metres before the first hull drop below 100 or a rising crash counter. Null = still clean. */
+  cleanMetres?: number | null;
+  /** ISO country stamped from the edge headers when the ride was declared ranked. */
+  prizeCountry?: string | null;
+  /** USPS state when `prizeCountry` is US. */
+  prizeRegion?: string | null;
 }
 
 /** What issuing a prompt needs from the caller: an id and a random draw (the entity stays pure). */
@@ -97,7 +105,7 @@ export class Ride {
     return {
       trafficVersion: 0, timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, startHour: null, loadout: null, trip: null, tutorial: false, assist: false, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
       startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, challenges: [], nextChallengeAt: null, version: 1, paymentReference: null,
-      seedCommitment: null, blockhash: null, slot: null,
+      seedCommitment: null, blockhash: null, slot: null, ranked: false, cleanMetres: null, prizeCountry: null, prizeRegion: null,
     };
   }
 
@@ -130,7 +138,10 @@ export class Ride {
   }
 
   static restore(props: RideProps): Ride {
-    return new Ride({ ...props, trafficVersion: props.trafficVersion ?? 0, paymentReference: props.paymentReference ?? null });
+    return new Ride({
+      ...props, trafficVersion: props.trafficVersion ?? 0, paymentReference: props.paymentReference ?? null,
+      ranked: props.ranked === true, cleanMetres: props.cleanMetres ?? null, prizeCountry: props.prizeCountry ?? null, prizeRegion: props.prizeRegion ?? null,
+    });
   }
 
   get paymentReference(): string | null { return this.p.paymentReference ?? null; }
@@ -179,6 +190,10 @@ export class Ride {
   get blockhash(): string | null { return this.p.blockhash ?? null; }
   get slot(): bigint | number | null { return this.p.slot ?? null; }
   get challenges(): readonly RideChallenge[] { return this.p.challenges; }
+  get ranked(): boolean { return this.p.ranked === true; }
+  get cleanMetres(): number | null { return this.p.cleanMetres ?? null; }
+  get prizeCountry(): string | null { return this.p.prizeCountry ?? null; }
+  get prizeRegion(): string | null { return this.p.prizeRegion ?? null; }
 
   isInStatus(...statuses: RideStatus[]): boolean {
     return statuses.includes(this.p.status);
@@ -227,14 +242,16 @@ export class Ride {
     return true;
   }
 
-  /** `loadout`: what the wallet wears right now – the ride keeps it, so a replay shows the cockpit it was really driven in. */
-  start(now: Date, loadout: Loadout | null = null, trafficVersion = 0): void {
+  /** `loadout`: what the wallet wears right now – the ride keeps it, so a replay shows the cockpit it was really driven in.
+      `ranked`: the driver declared this start for the weekly board. The country stamp is the edge geo at this moment. */
+  start(now: Date, loadout: Loadout | null = null, trafficVersion = 0, ranked: { country: string; region: string | null } | null = null): void {
     this.mustBe(RideStatus.Created);
     this.p.status = RideStatus.Running;
     this.p.loadout = loadout;
     this.p.trafficVersion = trafficVersion;
     this.p.startedAt = now;
     this.p.lastHbAt = now;
+    if (ranked) { this.p.ranked = true; this.p.prizeCountry = ranked.country; this.p.prizeRegion = ranked.region; }
   }
 
   /** The verified payment arrived (also after the quote expired): the order becomes a ready ride in the given round. */
@@ -292,6 +309,8 @@ export class Ride {
     const gameDt = hasT ? (report.t ?? 0) - this.p.lastT : report.paused ? 0 : dt;   // a reload never resumes a ride, so t only runs backwards in a forged report
     if (report.t !== null && s - this.p.lastS > MAX_SPEED * GAME_SPEED_SLACK * gameDt + GAME_SLACK_METRES) return implausible(`${Math.round(s - this.p.lastS)} m in ${gameDt.toFixed(1)} s of driving`);   // no t at all (an old client): only the wall-clock bounds above; the verdict's coverage floor does the rest
     const credit = hasT ? Math.min(gameDt, dt * DRIVE_CREDIT_SLACK + DRIVE_CREDIT_SLACK_SECONDS) : gameDt;
+    // The dirty segment is not credited: the mark is the previous heartbeat, which is the last distance known to be clean.
+    if (this.p.ranked && this.p.cleanMetres === null && mistake(this.p, report, hull)) this.p.cleanMetres = this.p.lastS;
     this.p.lastS = s;
     this.p.lastT = hasT ? (report.t ?? this.p.lastT) : this.p.lastT;
     this.p.hull = hull;
@@ -354,6 +373,12 @@ export class Ride {
   private mustBe(...allowed: RideStatus[]): void {
     if (!allowed.includes(this.p.status)) throw new ConflictError(`ride is ${this.p.status}`);
   }
+}
+
+/** Hull under 100, or either crash counter moving up. A null hull or a missing counter is not a mistake. */
+function mistake(p: RideProps, report: RideReport, hull: number | null): boolean {
+  if (hull !== null && hull < 100) return true;
+  return (report.crashesVehicle ?? -1) > p.crashesVehicle || (report.crashesBuilding ?? -1) > p.crashesBuilding;
 }
 
 /** a running counter only ever goes up, whole numbers, capped by the ride's driven time (crashCap); a missing / garbled value leaves it alone */

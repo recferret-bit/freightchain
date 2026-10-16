@@ -1,4 +1,5 @@
 import { Keypair } from '@solana/web3.js';
+import { Ride } from '../../../../../src/domain/rides/ride.entity.js';
 import { ConfirmDonationHandler } from '../../../../../src/application/use-cases/live/confirm-donation/confirm-donation.handler.js';
 import { ConfirmDonationCommand } from '../../../../../src/application/use-cases/live/confirm-donation/confirm-donation.command.js';
 import { DonationOrder } from '../../../../../src/domain/live/donation-order.entity.js';
@@ -69,6 +70,15 @@ describe('ConfirmDonationHandler', () => {
     expect(await ctx.stats.player(driver)).toMatchObject({ donations: 1, donationLamports: o.lamports });
     expect(await ctx.stats.player(fan)).toMatchObject({ donations: 0 });
     expect(await ctx.stats.global()).toMatchObject({ donations: 1, donationLamports: o.lamports });
+  });
+
+  it('a ranked ride delivers a paid road effect as a tip and does not change the road', async () => {
+    const { ctx, ride, order, pay, confirm } = await setup();
+    await ctx.rides.save(Ride.restore({ ...ride.snapshot(), ranked: true }));
+    const o = await order('night');
+    const done = (await confirm(o, pay(o))) as { event: { effect: string; text: string } };
+    expect(done.event.effect).toBe('tip');
+    expect(done.event.text).toMatch(/night is off on a ranked ride, delivered as a tip/);
   });
 
   it('statistics: money that moved is counted even when it arrives as a tip (the ride ended)', async () => {

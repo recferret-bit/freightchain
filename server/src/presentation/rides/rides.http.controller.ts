@@ -15,6 +15,8 @@ import { GetRideReplaysQuery } from '../../application/use-cases/verdict/get-rid
 import type { RideReplaysDto } from '../../domain/verdict/ride-replay.entity.js';
 import type { BatchBody } from '../../domain/telemetry/ride-batch.entity.js';
 import type { BatchReceiptDto } from '../../domain/telemetry/telemetry.dto.js';
+import type { GeoHeaders } from '../../application/ports/prize/geo-locator.port.js';
+import { ClientGeo } from '../../infrastructure/http/decorators/client-geo.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
@@ -72,10 +74,11 @@ export class RidesHttpController {
     return this.commandBus.execute<ReconcilePaymentCommand, ReconcilePaymentResultDto>(new ReconcilePaymentCommand(player.wallet, params.id));
   }
 
-  /** body `{ trip? }`: the trip the game built its road from – another one (the ride was re-chosen in the lobby meanwhile) = 409 `ride_rechosen` */
+  /** body `{ trip?, ranked? }`: the trip the game built its road from – another one (the ride was re-chosen in the lobby meanwhile) = 409 `ride_rechosen`.
+      `ranked` asks for the weekly board. Geo and the weekly caps are checked from the edge headers. */
   @Post(':id/start') @HttpCode(200)
-  start(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(startRideBodySchema) body: StartRideBody): Promise<RideDto> {
-    return this.commandBus.execute<StartRideCommand, RideDto>(new StartRideCommand(player.wallet, params.id, body.trip ?? null));
+  start(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(startRideBodySchema) body: StartRideBody, @ClientGeo() headers: GeoHeaders = {}): Promise<RideDto> {
+    return this.commandBus.execute<StartRideCommand, RideDto>(new StartRideCommand(player.wallet, params.id, body.trip ?? null, body.ranked === true, headers));
   }
 
   @Post(':id/heartbeat') @HttpCode(200)

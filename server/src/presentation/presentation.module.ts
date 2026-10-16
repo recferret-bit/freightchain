@@ -26,8 +26,9 @@ import { SolanaPayHttpController } from './solana-pay/solana-pay.http.controller
 import { ActionsHttpController } from './actions/actions.http.controller.js';
 import { PledgesHttpController } from './economy/pledges.http.controller.js';
 import { HonkHttpController } from './honk/honk.http.controller.js';
+import { PrizeHttpController } from './prize/prize.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, HonkHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, HonkHttpController, PrizeHttpController],
 })
 export class PresentationModule {}

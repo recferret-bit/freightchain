@@ -99,4 +99,24 @@ describe('RidePrismaRepository (PostgreSQL)', () => {
     const newer = orderAt('w', at(9)); await repo.insert(newer);
     expect((await repo.findPendingPaid('w', at(-1)))?.id).toBe(paid.id);
   });
+
+  it('counts ranked starts in a window and lists ended ranked rides of that tier', async () => {
+    const ranked = freeRideAt('w');
+    ranked.start(at(1), null, 0, { country: 'CA', region: null });
+    ranked.applyReport({ s: 40, t: 2, hull: 80, paused: false, night: false }, at(3), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
+    ranked.finish('shift', null, at(4));
+    await repo.insert(ranked);
+    const running = freeRideAt('w', at(10));
+    running.start(at(10), null, 0, { country: 'US', region: 'CA' });
+    await repo.insert(running);
+    const plain = freeRideAt('w', at(20));
+    plain.start(at(20));
+    await repo.insert(plain);
+    expect(await repo.countRankedStarts('w', T0, at(100))).toEqual({ free: 2, paid: 0 });
+    expect(await repo.countRankedStarts('w', at(50), at(100))).toEqual({ free: 0, paid: 0 });
+    const ended = await repo.listRankedEnded('free', T0, at(100));
+    expect(ended.map((r) => r.id)).toEqual([ranked.id]);
+    expect(ended[0]?.cleanMetres).toBe(0);
+    expect(ended[0]?.prizeCountry).toBe('CA');
+  });
 });

@@ -128,6 +128,9 @@ services:
       LIVE_DONATIONS: ${LIVE_DONATIONS:-on}              # donations on (on | off)
       LIVE_FREE_DONATIONS: ${LIVE_FREE_DONATIONS:-off}   # no free mock donations in production: they must be a real SOL transfer to the driver
       LIVE_EFFECTS: ${LIVE_EFFECTS:-free}                # ride-changing effects only on free test rides – never on paid ones (all | free | off)
+      PRIZE_SANCTIONED_COUNTRIES: ${PRIZE_SANCTIONED_COUNTRIES:-}
+      PRIZE_BLOCKED_COUNTRIES: ${PRIZE_BLOCKED_COUNTRIES:-}
+      PRIZE_BLOCKED_US_STATES: ${PRIZE_BLOCKED_US_STATES:-}
       ORDER_TTL_MINUTES: ${ORDER_TTL_MINUTES:-60}
       ONCHAIN_SESSION_TTL_HOURS: ${ONCHAIN_SESSION_TTL_HOURS:-24}
       HB_MIN_INTERVAL_MS: ${HB_MIN_INTERVAL_MS:-1000}

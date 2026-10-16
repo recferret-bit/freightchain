@@ -22,6 +22,10 @@ import { PlayerRepositoryPort } from '../application/ports/players/player.reposi
 import { SettingsRepositoryPort } from '../application/ports/settings/settings.repository.port.js';
 import { RideQueryPort } from '../application/ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../application/ports/rides/ride.repository.port.js';
+import { GeoLocatorPort } from '../application/ports/prize/geo-locator.port.js';
+import { PrizeGeoPort } from '../application/ports/prize/prize-geo.port.js';
+import { HeaderGeoAdapter } from './prize/header-geo.adapter.js';
+import { EnvPrizeGeoAdapter } from './prize/env-prize-geo.adapter.js';
 import { AnalyticsPort } from '../application/ports/analytics/analytics.port.js';
 import { ClockPort } from '../application/ports/shared/clock.port.js';
 import { EntropyPort } from '../application/ports/shared/entropy.port.js';
@@ -177,6 +181,8 @@ const ports: Provider[] = [
   { provide: StatsRepositoryPort, useClass: StatsPrismaRepository },
   { provide: CachePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): CachePort => (env.redisUrl ? new RedisCacheAdapter(env.redisUrl, clock) : new MemoryCacheAdapter(clock)) },
   { provide: NameServicePort, useClass: SnsNameServiceAdapter },
+  { provide: GeoLocatorPort, useClass: HeaderGeoAdapter },
+  { provide: PrizeGeoPort, useClass: EnvPrizeGeoAdapter },
 ];
 
 const portTokens = ports.map((p) => (p as { provide: unknown }).provide as typeof ClockPort);

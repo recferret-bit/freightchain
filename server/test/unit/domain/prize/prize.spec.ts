@@ -1,7 +1,7 @@
-import { announcePool, bestByWallet, cleanBps, nextBaseCents, seasonQualifiers, settleBoard, splitBoardCents, weekBonus } from '../../../../src/domain/prize/prize-pool.js';
+import { announcePool, bestByWallet, cleanBps, nextBaseCents, rankedAttemptScore, seasonQualifiers, settleBoard, splitBoardCents, weekBonus } from '../../../../src/domain/prize/prize-pool.js';
 import {
   BASE_STEPS_CENTS, BLOCKED_US_STATES, BONUS_CAP_CENTS, FREE_RANKED_STARTS, MIN_PAYOUT_CENTS, PAID_RANKED_STARTS,
-  PLACE_BPS, PRIZE_BLOCKED_COUNTRIES, SANCTIONED_COUNTRIES, TOKEN_IS_PRIZE, classifyStarts, prizeAccess, prizeWeek, rankedRoadEffects,
+  PLACE_BPS, PRIZE_BLOCKED_COUNTRIES, SANCTIONED_COUNTRIES, TOKEN_IS_PRIZE, classifyStarts, prizeAccess, prizeWeek, rankedRoadEffects, rankedSpectatorBlocked,
 } from '../../../../src/domain/prize/prize-rules.js';
 
 const score = (wallet: string, metres: number, corrections = 0, submittedAt = 0, payout = true) => ({
@@ -36,6 +36,13 @@ describe('prize week and eligibility', () => {
   it('ranked runs take no road-affecting spectator events, and TEN4 is not the prize', () => {
     expect(rankedRoadEffects(true)).toEqual({ obstacles: false, weather: false, dayNight: false });
     expect(rankedRoadEffects(false).obstacles).toBe(true);
+    expect(rankedSpectatorBlocked(true, { kind: 'message' })).toBe(false);
+    expect(rankedSpectatorBlocked(true, { kind: 'honk-time' })).toBe(true);
+    expect(rankedSpectatorBlocked(true, { kind: 'honk-weather' })).toBe(true);
+    expect(rankedSpectatorBlocked(true, { kind: 'donation', game: true, obstacle: true, effect: 'sinkhole' })).toBe(true);
+    expect(rankedSpectatorBlocked(true, { kind: 'donation', game: true, obstacle: false, effect: 'night' })).toBe(true);
+    expect(rankedSpectatorBlocked(true, { kind: 'donation', game: false, obstacle: false, effect: 'tip' })).toBe(false);
+    expect(rankedSpectatorBlocked(false, { kind: 'honk-time' })).toBe(false);
     expect(TOKEN_IS_PRIZE).toBe(false);
   });
 });
@@ -75,6 +82,8 @@ describe('board score', () => {
     expect(cleanBps(10_000, 10_000)).toBe(10_000);
     expect(cleanBps(11_000, 10_000)).toBe(10_000);
     expect(cleanBps(0, 10_000)).toBe(0);
+    expect(rankedAttemptScore({ wallet: 'a', cleanMetres: null, distance: 2500, completeMetres: 10_000, submittedAt: 5, payout: false })).toMatchObject({ bps: 2500, corrections: 0, payout: false });
+    expect(rankedAttemptScore({ wallet: 'a', cleanMetres: 100, distance: 2500, completeMetres: 10_000, submittedAt: 5, payout: false }).bps).toBe(100);
     const rows = [score('a', 4000, 0, 5), score('a', 9000, 0, 9), score('b', 10_000, 4, 3), score('b', 10_000, 1, 8), score('c', 10_000, 1, 2)];
     expect(bestByWallet(rows).map((r) => r.wallet)).toEqual(['c', 'b', 'a']);
     expect(bestByWallet(rows).find((r) => r.wallet === 'b')?.submittedAt).toBe(8);
@@ -90,7 +99,7 @@ describe('pool announcement', () => {
     expect(announced.byTier['1h']).toEqual({ base: 7_500, bonus: 2_250, total: 9_750 });
     expect(announced.byTier['4h']).toEqual({ base: 9_000, bonus: 2_700, total: 11_700 });
     expect(announced.byTier['8h'].base + announced.byTier['4h'].base + announced.byTier['1h'].base).toBe(30_000);
-    expect(splitBoardCents(100).base).toBeUndefined();
+    expect('base' in splitBoardCents(100)).toBe(false);
     expect(splitBoardCents(100)['1h'] + splitBoardCents(100)['4h'] + splitBoardCents(100)['8h']).toBe(100);
   });
 

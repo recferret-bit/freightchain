@@ -103,6 +103,21 @@ export function rankedRoadEffects(ranked: boolean): { obstacles: boolean; weathe
   return ranked ? { obstacles: false, weather: false, dayNight: false } : { obstacles: true, weather: true, dayNight: true };
 }
 
+/** True when this spectator action would change the road. Chat is never blocked. A tip (`game: false`) is not blocked. */
+export function rankedSpectatorBlocked(
+  ranked: boolean,
+  input: { kind: 'message' } | { kind: 'honk-time' } | { kind: 'honk-weather' } | { kind: 'donation'; game: boolean; obstacle: boolean; effect: string },
+): boolean {
+  if (!ranked || input.kind === 'message') return false;
+  const allow = rankedRoadEffects(true);
+  if (input.kind === 'honk-time') return !allow.dayNight;
+  if (input.kind === 'honk-weather') return !allow.weather;
+  if (!input.game) return false;
+  if (input.obstacle) return !allow.obstacles;
+  if (input.effect === 'night' || input.effect === 'day') return !allow.dayNight;
+  return true;
+}
+
 export function prizeWeek(at: Date): { id: string; start: Date; end: Date } {
   const day = (at.getUTCDay() + 6) % 7;
   const mondayOpen = Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate() - day, PRIZE_WEEK_OPEN_HOUR_UTC);

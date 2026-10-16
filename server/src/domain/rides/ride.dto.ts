@@ -50,6 +50,10 @@ export interface RideDto {
   seedCommitment?: string | null;
   blockhash?: string | null;
   slot?: number | null;
+  /** Declared ranked at start. Spectator road effects are refused on this ride. */
+  ranked: boolean;
+  /** Metres before the first mistake. Null means the distance so far is still clean. */
+  cleanMetres: number | null;
 }
 
 /** `now`: when given, the open prompt is included (the heartbeat); without it the DTO never carries one. `honkPaid`: the 8h mint has been credited. */
@@ -84,6 +88,8 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   seedCommitment: r.seedCommitment,
   blockhash: r.blockhash,
   slot: r.slot !== null && r.slot !== undefined ? Number(r.slot) : null,
+  ranked: r.ranked,
+  cleanMetres: r.cleanMetres,
 });
 
 /** The wallet's READY free ride (ordered, not started – its credit is already spent): ordering a free ride again hands it back, re-chosen at the level and

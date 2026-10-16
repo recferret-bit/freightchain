@@ -102,6 +102,16 @@ Enforced by the server (a refused post is `403 live_feature_off`) and sent to th
 | `LIVE_FREE_DONATIONS` | code `on`, **prod compose `off`** | `on` = MOCK donations (nothing charged) · `off` = each donation is a real SOL transfer from the spectator to the driver, verified on chain before it counts |
 | `LIVE_EFFECTS` | code `all`, **prod compose `free`** | Donations that change the ride (night / day / holes): `all` rides · `free` = only free test rides, never paid ones · `off` = tips only |
 
+### Weekly skill contest geo
+
+Ranked starts read the country from edge headers (`CF-IPCountry` and `CF-Region-Code`, else `X-FC-Country` and `X-FC-Region`). There is no paid geo vendor. The edge must set these and drop a client-supplied copy. An empty list keeps the code default in `server/src/domain/prize/prize-rules.ts`. A non-empty comma list replaces that one default.
+
+| Key | Default | Notes |
+|---|---|---|
+| `PRIZE_SANCTIONED_COUNTRIES` | empty → CU, IR, KP, SY | Draft. Not an OFAC list |
+| `PRIZE_BLOCKED_COUNTRIES` | empty → GB and the EU-27 | Germany is country `DE` |
+| `PRIZE_BLOCKED_US_STATES` | empty → SC, AZ, LA, AR, DE, MT, TN | `DE` here is Delaware, and only when the country is US |
+
 ### Solana & payments
 
 | Key | Default | Notes |

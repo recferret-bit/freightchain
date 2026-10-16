@@ -97,6 +97,10 @@ export const envSchema = z
     LIVE_DONATIONS: z.enum(['on', 'off']).default('on'), // any donation at all
     LIVE_FREE_DONATIONS: z.enum(['on', 'off']).default('on'), // on = MOCK donations (nothing charged) · off = a real SOL transfer to the driver, verified on chain
     LIVE_EFFECTS: z.enum(['all', 'free', 'off']).default('all'), // donations that change the ride (night / day / holes): every ride · free test rides only · none (tips only)
+    /** comma-separated ISO codes that replace the prize-rules defaults. Empty = those defaults (sanctioned draft, UK+EU, blocked US states). */
+    PRIZE_SANCTIONED_COUNTRIES: z.string().default(''),
+    PRIZE_BLOCKED_COUNTRIES: z.string().default(''),
+    PRIZE_BLOCKED_US_STATES: z.string().default(''),
   })
   .superRefine((env, ctx) => {
     const badAdmin = env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isWalletAddress(w));
@@ -109,6 +113,12 @@ export const envSchema = z
       if (value !== undefined && !isWalletAddress(value)) ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be a base58 Solana address` });
     }
     if (env.PRIORITY_FEE_MIN_MICROLAMPORTS > env.PRIORITY_FEE_MAX_MICROLAMPORTS) ctx.addIssue({ code: 'custom', path: ['PRIORITY_FEE_MIN_MICROLAMPORTS'], message: 'PRIORITY_FEE_MIN_MICROLAMPORTS must not exceed PRIORITY_FEE_MAX_MICROLAMPORTS' });
+    for (const key of ['PRIZE_SANCTIONED_COUNTRIES', 'PRIZE_BLOCKED_COUNTRIES', 'PRIZE_BLOCKED_US_STATES'] as const) {
+      const raw = env[key].trim();
+      if (!raw) continue;
+      const bad = raw.split(',').map((s) => s.trim()).filter((s) => !/^[A-Za-z]{2}$/.test(s));
+      if (bad.length) ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be comma-separated 2-letter codes` });
+    }
     if (env.PAYMENT_MODE === 'program' && !env.TICKET_PROGRAM_ID) ctx.addIssue({ code: 'custom', path: ['TICKET_PROGRAM_ID'], message: 'TICKET_PROGRAM_ID must be set when PAYMENT_MODE=program' });
     if (env.NODE_ENV === 'production') {
       if (!env.JWT_SECRET) ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'JWT_SECRET must be set in production' });

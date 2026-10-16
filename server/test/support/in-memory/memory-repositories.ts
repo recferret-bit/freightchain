@@ -171,6 +171,24 @@ export class MemoryRideRepository extends RideRepositoryPort {
   async hasCompletedInPool(poolId: number, wallet: string): Promise<boolean> {
     return [...this.db.rides.values()].some((r) => r.props.wallet === wallet && r.props.poolId === poolId && r.props.status === RideStatus.Completed && inWindow(this.db, r.props));
   }
+
+  async countRankedStarts(wallet: string, from: Date, to: Date): Promise<{ free: number; paid: number }> {
+    const rows = [...this.db.rides.values()].filter((r) => r.props.wallet === wallet && r.props.ranked === true && inRange(r.props.startedAt, from, to));
+    return { free: rows.filter((r) => r.props.tier === 'free').length, paid: rows.filter((r) => r.props.tier !== 'free').length };
+  }
+
+  async listRankedEnded(tier: string, from: Date, to: Date): Promise<Ride[]> {
+    const ended = new Set<RideStatus>([RideStatus.Completed, RideStatus.Abandoned, RideStatus.Failed]);
+    return [...this.db.rides.values()]
+      .filter((r) => r.props.tier === tier && r.props.ranked === true && ended.has(r.props.status) && inRange(r.props.startedAt, from, to))
+      .sort((a, b) => (a.props.startedAt?.getTime() ?? 0) - (b.props.startedAt?.getTime() ?? 0) || a.seq - b.seq)
+      .map((r) => Ride.restore(r.props));
+  }
+}
+
+function inRange(at: Date | null, from: Date, to: Date): boolean {
+  const ms = at?.getTime() ?? -1;
+  return ms >= from.getTime() && ms < to.getTime();
 }
 
 @Injectable()

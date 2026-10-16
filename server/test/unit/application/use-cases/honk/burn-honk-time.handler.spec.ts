@@ -1,3 +1,4 @@
+import { Ride } from '../../../../../src/domain/rides/ride.entity.js';
 import type { HonkChainTx } from '../../../../../src/domain/honk/chain-tx.js';
 import { RideEvent } from '../../../../../src/domain/live/ride-event.entity.js';
 import { HONK_TIME_BURN } from '../../../../../src/domain/honk/tokenomics.js';
@@ -77,6 +78,15 @@ describe('BurnHonkTimeHandler', () => {
     expect(await handler.execute(new BurnHonkTimeCommand('fan', ride.id, 'night'))).toMatchObject({ balance: '20', pays: '10', phase: 'night' });
     expect(off.db.rideEvents.filter((e) => e.kind === 'honk')).toHaveLength(1);
     expect(off.db.rideEvents.some((e) => e.kind === 'donation')).toBe(false);
+  });
+
+  it('a ranked ride refuses the burn before any TEN4 is spent', async () => {
+    const { ctx, ride, burn } = await setup();
+    await ctx.rides.save(Ride.restore({ ...ride.snapshot(), ranked: true }));
+    await expect(burn('night')).rejects.toMatchObject({ errorCode: 'ranked_effects_off' });
+    expect(await ctx.honkRepo.balance('fan')).toBe(30n * U);
+    expect(ctx.db.honkBurns.size).toBe(0);
+    expect(ctx.db.rideEvents).toHaveLength(0);
   });
 
   it('a program id requires a confirmed burn of exactly 10 HONK, and a bad one does not debit', async () => {

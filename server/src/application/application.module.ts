@@ -10,6 +10,7 @@ import { StatsService } from './services/stats.service.js';
 import { RoundService } from './services/round.service.js';
 import { VerdictService } from './services/verdict.service.js';
 import { HonkMintService } from './services/honk-mint.service.js';
+import { RankedEntryService } from './services/ranked-entry.service.js';
 import { PoolAttentionService } from './services/pool-attention.service.js';
 import { AttestationService } from './services/attestation.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
@@ -135,10 +136,11 @@ import { BurnHonkHandler, GetHonkCatalogHandler, GetHonkHandler, MintHonkVisualH
 import { ReleaseHonkHandler } from './use-cases/honk/release-honk.handler.js';
 import { BurnHonkTimeHandler } from './use-cases/honk/burn-honk-time.handler.js';
 import { BurnHonkWeatherHandler } from './use-cases/honk/burn-honk-weather.handler.js';
+import { GetPrizeBoardHandler } from './use-cases/prize/get-prize-board/get-prize-board.handler.js';
 
 const services: Provider[] = [
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
-  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService,
+  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService, RankedEntryService,
 ];
 
 import { ReconcileStatsHandler } from './use-cases/stats/reconcile-stats/reconcile-stats.handler.js';
@@ -175,6 +177,7 @@ const handlers: Provider[] = [
   GetActionsJsonHandler, GetHelloActionHandler, SayHelloActionHandler, GetShiftActionHandler, PrepareShiftActionHandler, OpenSiteActionHandler, GetRideActionHandler, OpenRideActionHandler,
   CreatePledgeHandler, ConfirmPledgeHandler, SyncPledgesHandler, GetRidePledgesHandler, GetPledgeHandler,
   BurnHonkHandler, BurnHonkTimeHandler, BurnHonkWeatherHandler, MintHonkVisualHandler, GetHonkHandler, GetHonkCatalogHandler, ReleaseHonkHandler,
+  GetPrizeBoardHandler,
 ];
 
 @Module({

@@ -16,4 +16,8 @@ export abstract class RideRepositoryPort {
   abstract findBestVerifiedByPoolAndWallet(poolId: number, wallet: string, tx?: TransactionHandle): Promise<Ride | null>;
   /** The driver finished (completed) at least one ride of the pool, whatever its verdict. */
   abstract hasCompletedInPool(poolId: number, wallet: string, tx?: TransactionHandle): Promise<boolean>;
+  /** Ranked starts in `[from, to)`, split free vs paid. The current start is not saved yet, so it is not in the count. */
+  abstract countRankedStarts(wallet: string, from: Date, to: Date, tx?: TransactionHandle): Promise<{ free: number; paid: number }>;
+  /** Ended ranked rides of one tier whose start fell in `[from, to)`. */
+  abstract listRankedEnded(tier: string, from: Date, to: Date, tx?: TransactionHandle): Promise<Ride[]>;
 }

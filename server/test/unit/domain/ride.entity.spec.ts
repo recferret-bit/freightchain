@@ -314,3 +314,22 @@ describe('Ride – crash counters (statistics only)', () => {
   });
 });
 
+describe('Ride – ranked clean distance', () => {
+  const ranked = () => { const r = freeRide(); r.start(T0, null, 0, { country: 'CA', region: null }); return r; };
+
+  it('freezes at the previous heartbeat when hull drops or a crash counter rises, and an unranked ride does not', () => {
+    const r = ranked();
+    expect(r.applyReport(report({ s: 40, t: 2, hull: 100 }), at(2), rules)).toBe(true);
+    expect(r.cleanMetres).toBeNull();
+    expect(r.applyReport(report({ s: 80, t: 4, hull: 90 }), at(4), rules)).toBe(true);
+    expect(r.cleanMetres).toBe(40);
+    expect(r.distance).toBe(80);
+    expect(r.applyReport(report({ s: 100, t: 6, hull: 40, crashesVehicle: 1 }), at(6), rules)).toBe(true);
+    expect(r.cleanMetres).toBe(40);
+    const plain = running();
+    plain.applyReport(report({ s: 20, t: 2, hull: 10, crashesVehicle: 3 }), at(2), rules);
+    expect(plain.cleanMetres).toBeNull();
+    expect(plain.ranked).toBe(false);
+  });
+});
+

@@ -79,6 +79,25 @@ export function cleanBps(cleanMetres: number, completeMetres: number): number {
   return Math.min(10_000, Math.floor((cleanMetres * 10_000) / completeMetres));
 }
 
+/** One ended ranked ride, ready for `bestByWallet`. A null clean distance means the whole reported distance was clean. Corrections are not measured yet. */
+export function rankedAttemptScore(row: {
+  wallet: string;
+  cleanMetres: number | null;
+  distance: number;
+  completeMetres: number;
+  submittedAt: number;
+  corrections?: number;
+  payout: boolean;
+}): BoardScore {
+  return {
+    wallet: row.wallet,
+    bps: cleanBps(row.cleanMetres ?? row.distance, row.completeMetres),
+    corrections: row.corrections ?? 0,
+    submittedAt: row.submittedAt,
+    payout: row.payout,
+  };
+}
+
 /** One wallet's best counted attempt. A higher clean share wins. At a clean finish, fewer corrections win, then the earlier submit. */
 export function bestByWallet(rows: readonly BoardScore[]): BoardScore[] {
   const best = new Map<string, BoardScore>();

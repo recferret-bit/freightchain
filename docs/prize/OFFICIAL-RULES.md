@@ -30,7 +30,7 @@ A week runs from Monday 19:00 UTC to the next Monday 19:00 UTC.
 
 There are three boards. Sprint is the 1 hour route and receives 25% of that week's contest pool. Haul is the 4 hour route and receives 30%. Long Haul is the 8 hour route and receives 45%.
 
-Every ranked start on a board in a week uses that week's route. Spectator weather, day and night changes, and donated obstacles do not change a ranked run. They may still appear on a run that was not ranked.
+Every ranked start on a board in a week is meant to use that week's route. That shared route is not built yet. Spectator weather, day and night changes, and donated obstacles are refused on a ranked run, so they do not change it. A chat honk can still be posted. They may still appear on a run that was not ranked.
 
 ## 4. How a start counts
 
@@ -79,4 +79,4 @@ A season is eight weeks. On each board, the eight drivers with the best record o
 
 ## 8. What is not live
 
-No week is open. No USDC prize is being paid. Identity checks, sanctions screening, and the bank transfer are not connected. The route, the ranked button, and the switch that ignores spectator events on a ranked run are specified here and not yet enforced in the game. Until they are, this document is a draft for review, not the rules of a contest a driver can enter.
+No week is open as a paid contest. No USDC prize is being paid. The ranked checkbox, the weekly caps, the header country check, and the refusal of spectator road effects are enforced. Identity checks, a sanctions vendor, the shared weekly route, and the bank transfer are not connected. Until a lawyer signs these rules, this document is a draft for review, not the rules of a contest a driver can enter.
