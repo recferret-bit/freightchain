@@ -1,12 +1,9 @@
-/* The cosmetics catalog: what a promo code can unlock and a player can wear in the cab. VISUALS ONLY – no item changes handling, shifting or any rule of the game, and for
-   now only COLOURS differ (the shapes are fixed in client/js/cockpit/rig.js). Five slots, each its own kind of promo code: the steering `wheel` (rim, sheen ring, spokes, hub),
-   the `truck_color` (the hood and fenders you look over, and the trim of the windscreen frame and dashboard edge) and the `gearbox` (the floor shifter: knob, boot, lever), the `dice` hanging from the mirror and the `needle`s of the big gauges.
-   Later an NFT will replace / extend these items – the slot model stays, so more slots or items from a collection can be added without touching the plumbing.
-   Mirrored by client/js/cosmetics.js (a leaf module: the landing's dash cards run the cockpit without three.js) – keep the ids and defaults equal;
-   test/unit/domain/economy/cosmetics.spec.ts reads that file and fails on drift. To add an item: append it here AND in the client module and give it a palette in LOOKS there.
+/* The cosmetics catalog: what a player can wear in the cab. New parts are minted by burning HONK (docs/honk/SPEC.md); a promo code no longer grants one. VISUALS ONLY – no item changes handling, shifting or any rule of the game.
+   Slots: the steering `wheel`, the `truck_color`, the `gearbox`, the hanging `dice`, the gauge `needle`s, the hood `ornament`, the `dash`, the `indicator`s and the `phone`.
+   A HONK burn mints a soulbound entitlement for one of these items. The slot model stays, so more slots or items can be added without touching the plumbing.
+   Mirrored by client/js/cosmetics.js for the slots that file draws (a leaf module: the landing's dash cards run the cockpit without three.js) – keep those ids and defaults equal.
    The first item of a slot is its default: everybody owns it, no code gives it. */
-// the Garage added `dice` (the dice hanging from the mirror) and `needle` (the colour of the gauge needles)
-export const COSMETIC_SLOTS = ['wheel', 'truck_color', 'gearbox', 'dice', 'needle'] as const;
+export const COSMETIC_SLOTS = ['wheel', 'truck_color', 'gearbox', 'dice', 'needle', 'ornament', 'dash', 'indicator', 'phone'] as const;
 export type CosmeticSlot = (typeof COSMETIC_SLOTS)[number];
 
 export const COSMETIC_ITEMS: Readonly<Record<CosmeticSlot, readonly string[]>> = {
@@ -15,6 +12,10 @@ export const COSMETIC_ITEMS: Readonly<Record<CosmeticSlot, readonly string[]>> =
   gearbox: ['stick', 'chrome', 'wood', 'racing', 'gold', 'carbon'],
   dice: ['white', 'red', 'blue', 'gold', 'pink', 'black'],
   needle: ['orange', 'red', 'lime', 'cyan', 'white', 'gold'],
+  ornament: ['spear', 'ball', 'star', 'gold', 'bird', 'flag'],
+  dash: ['stock', 'wood', 'carbon', 'gold', 'red', 'ivory'],
+  indicator: ['amber', 'red', 'green', 'gold', 'ice', 'white'],
+  phone: ['black', 'silver', 'gold', 'red', 'blue', 'clear'],
 };
 
 export const isCosmeticSlot = (v: unknown): v is CosmeticSlot => typeof v === 'string' && (COSMETIC_SLOTS as readonly string[]).includes(v);

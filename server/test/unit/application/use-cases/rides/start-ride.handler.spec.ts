@@ -44,13 +44,13 @@ describe('StartRideHandler', () => {
   it('the ride keeps what the wallet wears at the start (all classic when it wears nothing) – and the answer says it, for the game', async () => {
     const { ctx, start } = setup();
     const plain = await ctx.freeRide('w');
-    const classic = { wheel: 'classic', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange' };
+    const classic = { wheel: 'classic', truck_color: 'red', gearbox: 'stick', dice: 'white', needle: 'orange', ornament: 'spear', dash: 'stock', indicator: 'amber', phone: 'black' };
     expect(await start(plain.id)).toMatchObject({ loadout: classic });
     expect((await ctx.reload(plain.id)).loadout).toEqual(classic);
     for (const [slot, item] of [['wheel', 'gold'], ['truck_color', 'blue']] as const) { await ctx.cosmetics.unlock({ wallet: 'v', slot, item, code: 'X', at: ctx.now() }); await ctx.cosmetics.equip('v', slot, item); }
     const styled = await ctx.freeRide('v');
     expect(await start(styled.id, 'v')).toMatchObject({ loadout: { wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange' } });
-    expect((await ctx.reload(styled.id)).loadout).toEqual({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange' });
+    expect((await ctx.reload(styled.id)).loadout).toEqual({ ...classic, wheel: 'gold', truck_color: 'blue' });
   });
 
   it('ride_started tells PostHog what the ride is driven with – one property per slot – and keeps it on the person (all classic for a wallet that wears nothing)', async () => {

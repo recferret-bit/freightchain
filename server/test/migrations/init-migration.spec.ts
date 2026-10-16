@@ -26,7 +26,7 @@ describe('prisma migrations', () => {
   it('creates every PostgreSQL schema and every model of the Prisma schema', () => {
     for (const schema of ['player', 'ride', 'economy', 'achievement', 'telemetry', 'verdict', 'admin', 'live', 'stats']) expect(sql).toContain(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
     const models = schemaModels();
-    expect(models.map((m) => m.model).sort()).toEqual(['AchievementMint', 'AchievementUnlock', 'AdminAction', 'AuthChallenge', 'ChainCursor', 'ChainEvent', 'CosmeticEquip', 'CosmeticUnlock', 'DailySeed', 'DailyStats', 'DonationOrder', 'GameSetting', 'GlobalStats', 'Payment', 'Player', 'PlayerStats', 'Pledge', 'Pool', 'PoolPayout', 'PromoCode', 'PromoRedemption', 'Ride', 'RideBatch', 'RideEvent', 'RideMute', 'RideReplay', 'RideReplayFlag', 'RideTicket', 'RideVerdict', 'Round', 'SignIn', 'TicketGrant', 'TicketOrder']);
+    expect(models.map((m) => m.model).sort()).toEqual(['AchievementMint', 'AchievementUnlock', 'AdminAction', 'AuthChallenge', 'ChainCursor', 'ChainEvent', 'CosmeticEquip', 'CosmeticUnlock', 'DailySeed', 'DailyStats', 'DonationOrder', 'GameSetting', 'GlobalStats', 'HonkAccount', 'HonkBurn', 'HonkMint', 'HonkPart', 'HonkSupply', 'HonkVisual', 'Payment', 'Player', 'PlayerStats', 'Pledge', 'Pool', 'PoolPayout', 'PromoCode', 'PromoRedemption', 'Ride', 'RideBatch', 'RideEvent', 'RideMute', 'RideReplay', 'RideReplayFlag', 'RideTicket', 'RideVerdict', 'Round', 'SignIn', 'TicketGrant', 'TicketOrder']);
     for (const { schema, model } of models) expect(sql, `${schema}.${model}`).toContain(`CREATE TABLE "${schema}"."${model}"`);
   });
 

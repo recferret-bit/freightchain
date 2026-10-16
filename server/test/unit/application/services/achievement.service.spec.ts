@@ -8,7 +8,7 @@ import { VerdictStatus } from '../../../../src/domain/verdict/verdict.dto.js';
 import { RULES_VERSION } from '../../../../src/domain/verdict/verdict-rules.js';
 import { ACHIEVEMENTS, badgeRejected } from '../../../../src/domain/achievements/achievements.js';
 
-const facts = (over: Partial<Facts>): Facts => ({ started: 0, paidShifts: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [], ...over });
+const facts = (over: Partial<Facts>): Facts => ({ started: 0, paidShifts: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [], honkMints: 0, honkFinishes: 0, ...over });
 
 describe('AchievementService', () => {
   it('persists only the NEW unlocks, in one insert, and never removes one', async () => {

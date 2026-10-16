@@ -51,8 +51,9 @@ export function gauge(cx, cy, r, val, max, step, redFrom, label, u) {
 export function stallLamp() { const b = Math.floor(performance.now() / 130) % 2 === 0; return st.stall > .05 ? b : st.engineOn ? st.lug > .15 && b : true; }
 export function lamp(x, y, text, on, col, u, w = 13) {
   on = (on && powered()) || bulbCheck();   // dead with the key OFF; bulb check at key-on
+  const bezel = look('indicator').bezel;   // amber is #2a2622, the off housing the cab already drew – the lit colour and the blink stay
   litRect(x - .2 * u, y - .2 * u, (w + .4) * u, 4.6 * u); hint(text, x, y, w * u, 4.2 * u);
-  ctx.fillStyle = on ? col : '#2a2622'; ctx.fillRect(x, y, w * u, 4.2 * u);
+  ctx.fillStyle = on ? col : bezel; ctx.fillRect(x, y, w * u, 4.2 * u);
   ctx.fillStyle = on ? '#fff' : '#5c564b'; ctx.font = `${2.4 * u}px ui-monospace,Menlo,monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x + w / 2 * u, y + 2.2 * u);
 }
 /* STRAIN lamp: dim amber while charging, red and blinking as the engine nears failure */

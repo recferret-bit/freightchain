@@ -103,12 +103,14 @@ export class TooManyRequestsError extends DomainError {
 
 export class ServiceUnavailableError extends DomainError {
   readonly statusCode = 503;
-  readonly errorCode = 'service_unavailable';
+  readonly errorCode: string;
+  readonly checks?: Record<string, unknown>;
 
-  constructor(
-    message = 'Service unavailable',
-    public readonly checks?: Record<string, unknown>,
-  ) {
+  /** A string second argument is a machine code (`honk_chain`); an object is the readiness `checks` map. */
+  constructor(message = 'Service unavailable', checksOrCode?: Record<string, unknown> | string) {
+    const checks = typeof checksOrCode === 'string' ? undefined : checksOrCode;
     super(message, checks ? { checks } : undefined);
+    this.checks = checks;
+    this.errorCode = typeof checksOrCode === 'string' ? checksOrCode : 'service_unavailable';
   }
 }

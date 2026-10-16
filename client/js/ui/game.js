@@ -43,6 +43,7 @@ export function resetRide(seed = online.ride?.seed) {   // seed: the server's fo
 }
 
 online.extra = () => ({ route: env.theme.id, night: dn.night });   // what the server's public live feed shows next to the ride
+online.onRide = r => { if (r && 'honk' in r) { paintHonkInto('honk-line', 'honk-line-more', r.honk); syncHonk(); } };   // heartbeat / start: the server's honk field, never a client formula
 prompt.onShow = () => audio.play('warn'); prompt.onAnswer = () => audio.play('ui');   // a dispatch prompt (prompt.js) is heard as well as seen
 /* the recording's two replay columns (telemetry.js): the hour of the day + the cab's switches, so a spectator sees the lights, wipers, heater and cooling the driver had */
 telemetry.trafficOf = () => trafficSnapshot();   // the cars around the truck, recorded beside each batch for spectators' replays
@@ -150,6 +151,7 @@ export async function startRide() {   // only an online ride awaits the server
     if (!offlineRide.dev) setGuide({ tutorial: guestOpt.tutorial, assist: guestOpt.assist });   // the guest's two checkboxes (a tool's devRun picks its own)
   }
   resetRide(); st.mode = 'drive'; audio.play('start'); overlay.classList.add('hide'); startGuide(); syncBail();
+  if (online.ride && 'honk' in online.ride) paintHonkInto('honk-line', 'honk-line-more', online.ride.honk);
   if (!guide.tutorial && !guide.assist) toast(CFG.START_ENGINE_OFF ? 'Press I (engine) · B (release brake) · SHIFT+E (1st gear) · W (gas)' : 'Release parking brake (B) · SHIFT+E (1st gear) · W (gas)', 5000);
   armRoadHint();
 }
@@ -190,9 +192,10 @@ export function endRide(ok, reason, outcome = ok ? 'shift' : 'failed', silent = 
      <div class="row"><span>Time driven</span><b>${fmt(st.t)}</b></div>
      <div class="row"><span>Distance</span><b>${(st.s / 1000).toFixed(2)} km</b></div>
      ${st.reds ? `<div class="row"><span>Red lights run</span><b class="bad">${st.reds}</b></div>` : ''}
-     ${online.ride ? '<div class="row"><span>Server verdict</span><b id="verdict">…</b></div>' : ''}
+     ${online.ride ? '<div class="row"><span>Server verdict</span><b id="verdict">…</b></div><div class="row" id="honk-end" hidden><span id="honk-end-k"></span><b id="honk-end-v"></b></div><div class="row" id="honk-end-more" hidden><span id="honk-end-more-k"></span><b id="honk-end-more-v"></b></div>' : ''}
      ${ok ? '' : `<div class="row"><span>Reason</span><span class="bad">${reason}</span></div>`}`);
   else syncBail();
+  if (!silent && online.ride && 'honk' in online.ride) paintHonkInto('honk-end', 'honk-end-more', online.ride.honk);   // last heartbeat, until /end replaces it
   if (!silent) { if (outcome === 'failed') failFx(); else if (ok) winFx(); }   // not for an abandoned shift – only a real failure (crash, red light, wreck…); a complete shift is the same beat in green
   verdict?.then(v => { if (showVerdict(v)) watchReview(); });
   return verdict;
@@ -208,12 +211,56 @@ const verdictText = v => {
   const why = v.verdict.reasons.map(r => r.detail).join('; ');
   return `${outcome} · ${v.verdict.status.toUpperCase()}${why ? ` – ${why}` : ''}`;
 };
+/** What `ride.honk` says. null = show nothing (free rides, state none, a server that does not send the field). Amounts stay the server's decimal strings. */
+function honkLines(h) {
+  if (!h || h.state === 'none') return null;
+  const bands = Array.isArray(h.bands) ? h.bands.map(b => `${b.pct}${b.reached ? ' ✓' : ''}`).join(' · ') : '';
+  if (h.state === 'preview') return { k: 'HONK if this ride verifies', v: `${h.quote} HONK`, k2: bands ? 'Bands' : '', v2: bands };
+  if (h.state === 'minted') return { k: 'Minted', v: `${h.pays} HONK` };
+  if (h.state === 'withheld') return { k: 'Verification did not pass', v: '0', k2: 'A pass would have paid', v2: `${h.quote} HONK` };
+  return null;
+}
+const paintHonkInto = (lineId, moreId, h) => {
+  const row = document.getElementById(lineId);
+  if (!row?.isConnected) return;   // the headless stub invents elements that were never mounted
+  const more = document.getElementById(moreId), lines = honkLines(h);
+  if (!lines) { row.hidden = true; if (more?.isConnected) more.hidden = true; return; }
+  const k = document.getElementById(`${lineId}-k`), v = document.getElementById(`${lineId}-v`);
+  if (!k || !v) return;
+  k.textContent = lines.k; v.textContent = lines.v; row.hidden = false;
+  if (!more?.isConnected) return;
+  const on = !!(lines.k2 || lines.v2);
+  more.hidden = !on;
+  if (!on) return;
+  const k2 = document.getElementById(`${moreId}-k`), v2 = document.getElementById(`${moreId}-v`);
+  if (k2) k2.textContent = lines.k2 || ''; if (v2) v2.textContent = lines.v2 || '';
+};
+function syncHonk() {
+  const hud = document.getElementById('honk-hud'), line = document.getElementById('honk-line');
+  if (!hud?.isConnected) return;
+  hud.hidden = !!st.watch || st.mode !== 'drive' || !line || line.hidden !== false;
+}
+function mountHonk() {
+  if (typeof document === 'undefined' || !document.body?.append || document.getElementById('honk-hud')?.isConnected) return;
+  const line = id => {
+    const d = document.createElement('div'); d.id = id; d.hidden = true;
+    const s = document.createElement('span'); s.id = `${id}-k`;
+    const b = document.createElement('b'); b.id = `${id}-v`;
+    d.append(s, b); return d;
+  };
+  const box = document.createElement('div');
+  box.id = 'honk-hud'; box.hidden = true; box.setAttribute?.('aria-label', 'HONK');
+  box.append(line('honk-line'), line('honk-line-more'));
+  document.body.append(box);
+}
+mountHonk();
 /** paint the answer into the end panel; true while a paid ride is still under review (worth asking again) */
 const showVerdict = v => {
   const el = document.getElementById('verdict');
   if (!el || !v) return false;
   el.textContent = verdictText(v);
   if (v.review) el.className = REVIEW_CLASS[v.review] ?? '';
+  if ('honk' in v) { if (online.ride) online.ride.honk = v.honk; paintHonkInto('honk-end', 'honk-end-more', v.honk); }   // /end, and each review poll – the row was an empty id until now
   return v.review === 'under_review';
 };
 /* the verdict is judged at /end and again when the final batch lands after it – so while a paid ride is UNDER REVIEW the panel asks again every
@@ -288,8 +335,8 @@ async function goLeave(kind) {
   } finally { leaving = false; }
 }
 export function syncBail() {
-  if (!bail) return;
-  bail.hidden = !!st.watch || st.mode !== 'drive' || !overlay.classList.contains?.('hide');
+  if (bail) bail.hidden = !!st.watch || st.mode !== 'drive' || !overlay.classList.contains?.('hide');
+  syncHonk();
 }
 function mountCorner() {
   if (typeof document === 'undefined' || !document.body?.append) return null;

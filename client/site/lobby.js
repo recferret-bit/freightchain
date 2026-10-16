@@ -7,7 +7,7 @@ import { careerTiles } from './lobby-career.js';
 import { achievementsSection } from './lobby-achievements.js';
 import { agreementsCard, blockPaid } from './lobby-agreements.js';
 import { redemptionList } from './lobby-promo.js';
-import { dirty, garageActions, garageProgress, garageSlots } from './lobby-garage.js';
+import { dirty, garageActions, garageDetail, garageProgress, garageSlots, partAt, previewLoadout } from './lobby-garage.js';
 import { garageCab } from './garage-cab.js';
 import { el } from './dom.js';
 import { livePath, leaveOnClose } from './presence.js';
@@ -463,7 +463,7 @@ function promoSection() {
   paintPromoLists();
   return [el('h2', {}, 'PROMO CODES'),
     el('form', { class: 'promo-form', id: 'promo', autocomplete: 'off', onsubmit: redeem }, input, el('button', { id: 'promo-go', type: 'submit' }, 'REDEEM'), el('p', { class: 'msg dim', id: 'promo-msg', role: 'status' })),
-    el('p', { class: 'dim' }, 'Parts you unlock are waiting in your ', el('a', { href: '#garage' }, 'garage →')),
+    el('p', { class: 'dim' }, 'Tickets and free rides. Cab parts are minted by burning HONK in the ', el('a', { href: '#garage' }, 'garage →')),
     el('div', { id: 'mycodes' }, el('p', { class: 'dim' }, 'Loading…'))];
 }
 async function paintPromoLists() {
@@ -474,29 +474,83 @@ async function paintPromoLists() {
 }
 
 /* ───────── GARAGE ─────────
-   Every part of the catalog, what this wallet owns (and from which code), the collection progress, a preview with the parts picked, and APPLY: the selection goes to the
-   database (POST /api/garage/loadout) and the next ride starts with it. S.garage = the server's answer, S.pick = what is selected now (not applied until APPLY). */
+   Every part can be observed (S.observe): the cab previews it and the detail card shows the garage payload's name, description and burn price.
+   S.pick is owned parts only, applied by APPLY (POST /api/garage/loadout). A locked part is minted here by burning HONK (POST /api/honk/visuals → { nft, balance }).
+   S.garage = the server's answer. S.honkCatalog = GET /api/honk/catalog (null = that request failed), a price backup only. S.honkBalance = GET /api/honk body.balance, or null when unknown. */
+const catalogRows = body => Array.isArray(body) ? body : Array.isArray(body?.items) ? body.items : Array.isArray(body?.catalog) ? body.catalog : Array.isArray(body?.visuals) ? body.visuals : [];
+const asHonk = v => (typeof v === 'number' && Number.isFinite(v) ? String(v) : typeof v === 'string' && v.trim() ? v.trim() : null);
+let honkTicket = 0;   // a burn's balance must beat an older GET /api/honk that answers late
+function refreshHonk(my) {
+  const ticket = ++honkTicket;
+  api('honk', undefined, { report: false }).then(body => {
+    if (my !== seq || ticket !== honkTicket) return;
+    S.honkProgram = body?.chain?.programId ?? null;
+    showHonk(asHonk(body?.balance));
+  }).catch(() => { if (my !== seq || ticket !== honkTicket) return; showHonk(null); });
+}
+function showHonk(amount) {
+  S.honkBalance = amount;   // null omits the line – a failed balance request must not block or blank the rest of the garage
+  const panel = $('garage-detail'); if (!panel || S.tab !== 'garage') return;
+  const line = panel.querySelector('.bal');
+  if (amount == null) { line?.remove(); return; }
+  const text = `You hold ${amount} HONK.`;
+  if (line) { line.textContent = text; return; }
+  panel.prepend(el('p', { class: 'dim bal', id: 'garage-honk' }, text));
+}
 async function renderGarage() {
   view.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
   const my = seq;
+  refreshHonk(my);   // in parallel: the garage paints even when this fails
   if (!S.garage) {
     try { const g = await api('garage', undefined, { report: false }); if (my !== seq) return; S.garage = g; S.pick = { ...g.equipped }; } catch (e) { if (my === seq) view.replaceChildren(el('p', { class: 'bad' }, e.message)); return; }
+  }
+  if (S.honkCatalog === undefined) {
+    try { const body = await api('honk/catalog', undefined, { report: false }); if (my !== seq) return; S.honkCatalog = catalogRows(body); }
+    catch { if (my !== seq) return; S.honkCatalog = null; }
   }
   if (my === seq) paintGarage();
 }
 const cab = () => S.cab ??= garageCab({ onPickSlot: slot => { const c = document.querySelector(`#garage-slots [data-slot=${slot}]`); c?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); c?.classList.add('ping'); setTimeout(() => c?.classList.remove('ping'), 1200); } });
 function paintGarage(note) {
   const g = S.garage; if (!g || S.tab !== 'garage') return;
-  view.replaceChildren(el('h2', {}, 'YOUR GARAGE'), garageProgress(g), cab().el, garageSlots(g, S.pick, pickPart, slot => cab().hoverSlot(slot)),
-    garageActions({ garage: g, pick: S.pick, busy: !!S.saving, onSave: saveGarage, onReset: () => { S.pick = { ...g.equipped }; paintGarage(); } }));
-  cab().set(S.pick);   // the engine wears what is picked, before it is applied
+  view.replaceChildren(el('h2', {}, 'YOUR GARAGE'), garageProgress(g), cab().el,
+    garageDetail({ garage: g, observe: S.observe, catalog: S.honkCatalog, balance: S.honkBalance, busy: !!S.burning, onBurn: burnVisual }),
+    garageSlots(g, S.pick, pickPart, slot => cab().hoverSlot(slot), { catalog: S.honkCatalog, observe: S.observe }),
+    garageActions({ garage: g, pick: S.pick, busy: !!S.saving || !!S.burning, onSave: saveGarage, onReset: () => {
+      const cur = S.garage; S.pick = { ...cur.equipped };
+      const seen = partAt(cur, S.observe); if (!seen || seen.part.owned) S.observe = null;   // a locked preview may stay; an owned one must not keep the cab off the restored pick
+      paintGarage();
+    } }));
+  cab().set(previewLoadout(g, S.pick, S.observe));
   if (note) { const m = $('garage-msg'); m.textContent = note.text; m.className = `msg ${note.bad ? 'bad' : 'good'}`; }
 }
 function pickPart(slot, part) {
   track('garage_part_clicked', { slot, item: part.id, owned: part.owned });
-  if (!part.owned) { paintGarage({ text: `${part.id} is locked – a promo code unlocks it. Redeem one in your PROFILE.`, bad: true }); return; }
-  S.pick = { ...S.pick, [slot]: part.id };
+  S.observe = { slot, id: part.id };
+  if (part.owned) S.pick = { ...S.pick, [slot]: part.id };   // a locked id never enters the pick, so APPLY cannot send it
   paintGarage();
+}
+async function burnVisual(slot, part) {
+  if (S.burning || S.saving || part.owned || part.isDefault) return;
+  S.burning = true; paintGarage();
+  let note;
+  try {
+    let signature;
+    if (S.honkProgram && S.me?.wallet) {
+      const { signHonkPart } = await import('./honk-sign.js');
+      signature = await signHonkPart({ programId: S.honkProgram, owner: S.me.wallet, slot, item: part.id });
+    }
+    const minted = await api('honk/visuals', { slot, item: part.id, ...(signature ? { signature } : {}) });
+    const got = asHonk(minted?.balance);
+    if (got != null) { honkTicket++; S.honkBalance = got; }   // beat a GET that is still in flight; a failed burn leaves that GET free to land
+    else refreshHonk(seq);
+    S.garage = await api('garage', undefined, { report: false });
+    const seen = partAt(S.garage, { slot, id: part.id });
+    if (seen?.part.owned) S.pick = { ...S.pick, [slot]: part.id };
+    S.observe = { slot, id: part.id };
+    note = { text: 'Minted by burning HONK.' };
+  } catch (e) { note = { text: e.message, bad: true }; }
+  S.burning = false; paintGarage(note);
 }
 async function saveGarage() {
   if (S.saving || !S.garage || !dirty(S.garage, S.pick)) return;

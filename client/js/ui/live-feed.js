@@ -3,6 +3,7 @@ import { st } from '../state.js';
 import { online } from '../online.js';
 import { toast } from './toast.js';
 import { setNight } from '../world/daynight.js';
+import { assignWeather } from '../world/assign-weather.js';
 import { placeHole, obstacleSpot } from '../world/holes.js';
 import { roadObjects, AHEAD, CH } from '../world/chunks.js';
 import { net, laneLat } from '../net/network.js';
@@ -32,8 +33,12 @@ async function poll() {
   for (const e of j.events) {
     if (feed.seen.has(e.id)) continue;
     feed.seen.add(e.id);
-    if (feed.muted.has(e.wallet) && e.kind === 'message') continue;
-    if (e.kind === 'message') cb(short(e.wallet), e.text, '', e.wallet);
+    if (feed.muted.has(e.wallet) && e.kind === 'message') continue;   // a muted wallet's chat is dropped; a honk burn still moves the clock (it already landed)
+    if (e.kind === 'honk' && (e.effect === 'night' || e.effect === 'day' || e.effect === 'snow' || e.effect === 'clear')) {
+      const fx = EFFECT_INFO[e.effect];
+      cb(short(e.wallet), fx ? `${fx.icon} ${fx.says}${e.text ? ` · ${e.text}` : ''}` : (e.text ?? ''), '', e.wallet);
+      if (!e.applied) feed.pending.push({ e, stamp: null });   // apply() calls setNight or assignWeather; not a donation, so no SOL line and no donation total
+    } else if (e.kind === 'message') cb(short(e.wallet), e.text, '', e.wallet);
     else {
       const fx = EFFECT_INFO[e.effect] ?? { label: e.effect, icon: '💰', says: 'donated' };
       cb(short(e.wallet), `${fx.icon} ${fx.says} · ${solText(e.lamports)}${feed.features?.payment === 'chain' ? '' : ' (mock)'}${e.text ? ` – “${e.text}”` : ''}`, 'gift', e.wallet);
@@ -69,6 +74,11 @@ function apply(e) {
   if (e.effect === 'night' || e.effect === 'day') {
     setNight(e.effect === 'night', false, true);   // a paid effect (the server's event): fades, bypasses the clock lock
     toast(`${fx.icon} ${who} ${fx.says}`, 3500);
+    return { t: st.t, s: st.s, lat: null };
+  }
+  if (e.effect === 'snow' || e.effect === 'clear') {
+    assignWeather(e.effect);   // not a hole: the stamp has no place across the road
+    toast(`${who} · ${e.text ?? e.effect}`, 3500);
     return { t: st.t, s: st.s, lat: null };
   }
   if (!fx?.hole) return null;

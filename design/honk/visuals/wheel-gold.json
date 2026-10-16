@@ -1,0 +1,22 @@
+{
+  "name": "Wheel · gold",
+  "description": "A Freight Chain cab visual. Soulbound to the wallet that burned 260 HONK for it. An entitlement in the game, not an SPL mint and not a broadcast cNFT.",
+  "attributes": [
+    {
+      "trait_type": "Slot",
+      "value": "wheel"
+    },
+    {
+      "trait_type": "Item",
+      "value": "gold"
+    },
+    {
+      "trait_type": "Price HONK",
+      "value": "260"
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    }
+  ]
+}

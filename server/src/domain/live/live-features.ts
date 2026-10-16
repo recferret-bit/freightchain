@@ -25,9 +25,10 @@ export function liveFeatures(flags: LiveFlags, ride: { isFree: boolean }): LiveF
   return { chat: flags.chat === 'all', donations, payment: flags.freeDonations ? 'mock' : 'chain', effects: donations && flags.effects === 'all' };
 }
 
-/** null = allowed; otherwise why not (the 403's text) */
-export function refusalFor(features: LiveFeaturesDto, input: { kind: 'message' } | { kind: 'donation'; effect: EffectId }): string | null {
+/** null = allowed; otherwise why not (the 403's text). `honk-time` and `honk-weather` are HONK burns, not donations: the ride checks already ran, and the donation effect switch does not gate them. */
+export function refusalFor(features: LiveFeaturesDto, input: { kind: 'message' } | { kind: 'donation'; effect: EffectId } | { kind: 'honk-time' } | { kind: 'honk-weather' }): string | null {
   if (input.kind === 'message') return features.chat ? null : 'chat is off on this ride';
+  if (input.kind === 'honk-time' || input.kind === 'honk-weather') return null;
   if (!features.donations) return 'donations are off';
   if (EFFECTS[input.effect].game && !features.effects) return 'effects are off on this ride – a tip still works';
   return null;

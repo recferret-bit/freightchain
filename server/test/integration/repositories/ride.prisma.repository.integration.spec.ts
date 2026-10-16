@@ -59,9 +59,9 @@ describe('RidePrismaRepository (PostgreSQL)', () => {
     await repo.insert(ride);
     expect((await repo.findById(ride.id))?.loadout).toBeNull();
     const started = (await repo.findById(ride.id))!;
-    started.start(at(1), { wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange' });
+    started.start(at(1), { wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange', ornament: 'spear', dash: 'stock', indicator: 'amber', phone: 'black' });
     await repo.save(started);
-    expect((await repo.findById(ride.id))?.loadout).toEqual({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange' });
+    expect((await repo.findById(ride.id))?.loadout).toEqual({ wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'white', needle: 'orange', ornament: 'spear', dash: 'stock', indicator: 'amber', phone: 'black' });
     expect((await repo.findById(ride.id))?.snapshot()).toEqual(started.snapshot().version === 1 ? { ...started.snapshot(), version: 2 } : started.snapshot());
   });
 

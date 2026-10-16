@@ -1,0 +1,759 @@
+{
+  "date": "2026-10-15T21:19:49.769342+00:00",
+  "branch": "honk",
+  "head": "fc54120077cad647e353964e35f5c5303df83a6a",
+  "scope": "Current working tree including uncommitted files; no application code changed.",
+  "findings": [
+    {
+      "id": "H01",
+      "severity": "CRITICAL",
+      "title": "Any signer can take the entire LP position after day 365",
+      "detail": "ReleaseLp accepts an arbitrary recipient signer and transfers the entire locker balance to that signer\u2019s ATA. Pool stores no beneficiary. After unlock, an unrelated wallet can call release_lp then withdraw_lp for the whole LP supply, taking both reserves. The time lock delays the theft; it does not authorize the recipient.",
+      "fix": "Store and enforce the intended LP beneficiary at initialization, or irrevocably burn the LP if permanent liquidity is the intended policy. Define the legitimate owner\u2019s withdrawal rights explicitly.",
+      "check": "A distinct attacker signer must fail at unlock and after it; the authorized recipient can redeem only its own share.",
+      "refs": [
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/instructions/release_lp.rs",
+          "pub struct ReleaseLp"
+        ],
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/instructions/withdraw.rs",
+          "pub fn handle_withdraw_lp"
+        ],
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/state.rs",
+          "pub struct Pool"
+        ]
+      ],
+      "proof": "Source trace",
+      "sources": [
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/instructions/release_lp.rs",
+          "line": 10
+        },
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/instructions/withdraw.rs",
+          "line": 38
+        },
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/state.rs",
+          "line": 15
+        }
+      ]
+    },
+    {
+      "id": "H02",
+      "severity": "HIGH",
+      "title": "First initializer selects the canonical emission authority",
+      "detail": "initialize uses fixed global PDAs, accepts any payer with 10 SOL, and sets config.emitter to that payer. If deployment and intended initialization are separated, a competing initializer can claim the canonical configuration. That key can mint the remaining 98 million HONK within the cap. This is a pre-initialization launch race, not a way for outsiders to replace an already initialized emitter.",
+      "fix": "Authorize the intended initializer in the program or a deployment-bound configuration, and verify configuration ownership before opening access.",
+      "check": "An unauthorized initializer fails without moving funds; the intended initializer succeeds once.",
+      "refs": [
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/instructions/initialize.rs",
+          "pub struct Initialize"
+        ],
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/instructions/initialize.rs",
+          "config.emitter ="
+        ]
+      ],
+      "proof": "Source trace",
+      "sources": [
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/instructions/initialize.rs",
+          "line": 16
+        },
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/instructions/initialize.rs",
+          "line": 102
+        }
+      ]
+    },
+    {
+      "id": "H03",
+      "severity": "HIGH",
+      "title": "Committed ledger reward can permanently miss its chain mint",
+      "detail": "VerdictService commits the ledger credit before calling the chain emitter. If the process stops or RPC fails, a retry finds the existing mint row and returns null; mintRide then skips emission. No durable pending-delivery state is recorded. The adapter also treats an error string containing \u201calready in use\u201d or \u201c0x0\u201d as success without reading the receipt. An outage can leave game credit without spendable SPL tokens.",
+      "fix": "Write a durable emission outbox atomically with the ledger reward. Retry independently; confirm receipt owner, rider and amount. Replace error-string success detection with on-chain reconciliation and track pending/confirmed/failed delivery.",
+      "check": "Crash after DB commit, RPC timeout before/after submission, duplicate receipt, and restart all converge to exactly one matching chain mint.",
+      "refs": [
+        [
+          "server/src/application/services/verdict.service.ts",
+          "async judge("
+        ],
+        [
+          "server/src/application/services/honk-mint.service.ts",
+          "if (prior) return null"
+        ],
+        [
+          "server/src/infrastructure/solana/honk-emission.adapter.ts",
+          "already in use"
+        ]
+      ],
+      "proof": "Reproduced against actual TypeScript service code with mocked DB/RPC boundaries",
+      "sources": [
+        {
+          "path": "server/src/application/services/verdict.service.ts",
+          "line": 49
+        },
+        {
+          "path": "server/src/application/services/honk-mint.service.ts",
+          "line": 18
+        },
+        {
+          "path": "server/src/infrastructure/solana/honk-emission.adapter.ts",
+          "line": 34
+        }
+      ]
+    },
+    {
+      "id": "H04",
+      "severity": "HIGH",
+      "title": "One chain burn receipt buys multiple effects",
+      "detail": "requireHonkBurn checks signer and amount but never consumes a signature or binds it to a ride/action. HonkBurn has no signature or instruction-index uniqueness. A viewer can reuse the same 10-HONK receipt for later day/night effects, or another ride, while spending only ledger balances on the later requests. The probe accepted one receipt twice: 20 HONK removed from the ledger, only 10 represented on chain. This is bounded by available ledger credit, not an unlimited free faucet.",
+      "fix": "Persist a unique receipt key (network, program, signature, instruction index) and bind it to an order/action. Consume it atomically with the entitlement; retries of the same order return the original result.",
+      "check": "Replay a receipt across rides, phases and concurrent requests; exactly one logical order can consume it.",
+      "refs": [
+        [
+          "server/src/application/use-cases/honk/honk-chain.ts",
+          "export async function requireHonkBurn"
+        ],
+        [
+          "server/prisma/economy/economy.prisma",
+          "model HonkBurn"
+        ],
+        [
+          "server/src/application/use-cases/honk/burn-honk-time.handler.ts",
+          "await requireHonkBurn"
+        ]
+      ],
+      "proof": "Reproduced against actual time-effect handler with mocked receipt/event stores",
+      "sources": [
+        {
+          "path": "server/src/application/use-cases/honk/honk-chain.ts",
+          "line": 6
+        },
+        {
+          "path": "server/prisma/economy/economy.prisma",
+          "line": 285
+        },
+        {
+          "path": "server/src/application/use-cases/honk/burn-honk-time.handler.ts",
+          "line": 43
+        }
+      ]
+    },
+    {
+      "id": "H05",
+      "severity": "HIGH",
+      "title": "A refused effect cannot refund an already executed SPL burn",
+      "detail": "The client signs and sends the burn before the API validates or inserts the effect. Rate limits, stale rides, insufficient ledger credit, a delayed confirmation, or a busy event window can reject the API call after the wallet burn. reverseBurn only restores PostgreSQL credit. A crash after debit but before event insertion also leaves a debit without delivery because they are separate operations. The spec\u2019s \u201cburn does not land\u201d claim is only true for a successful ledger compensation, not chain supply.",
+      "fix": "Use durable action orders and retryable receipt confirmation/delivery. Validate eligibility before requesting a signature, but do not treat preflight as a concurrency guarantee. For refundable actions use an escrow/transfer-and-settle design; never label restoration of ledger credit as reversal of an SPL burn.",
+      "check": "Competing effects, ride termination during signing, RPC indexing lag and process termination preserve a recoverable order and a truthful result.",
+      "refs": [
+        [
+          "client/js/ui/watch-panel.js",
+          "const signature = await honkSignature(10n"
+        ],
+        [
+          "server/src/application/use-cases/honk/burn-honk-time.handler.ts",
+          "const stored ="
+        ],
+        [
+          "server/src/infrastructure/prisma/repositories/honk.prisma.repository.ts",
+          "async reverseBurn"
+        ]
+      ],
+      "proof": "Source trace",
+      "sources": [
+        {
+          "path": "client/js/ui/watch-panel.js",
+          "line": 271
+        },
+        {
+          "path": "server/src/application/use-cases/honk/burn-honk-time.handler.ts",
+          "line": 52
+        },
+        {
+          "path": "server/src/infrastructure/prisma/repositories/honk.prisma.repository.ts",
+          "line": 67
+        }
+      ]
+    },
+    {
+      "id": "H06",
+      "severity": "HIGH",
+      "title": "Market tokens and the game balance are separate spendability systems",
+      "detail": "Swaps and transfers alter SPL balances; GET /api/honk and all game debits use HonkAccount. There is no observed transfer/swap reconciliation into that account. A new spectator can buy HONK, burn it on chain, then receive honk_balance from the game. Conversely, a rider who transfers tokens away retains ledger credit. The intended spectator demand loop therefore does not work as an ordinary fungible-token economy.",
+      "fix": "Choose and document the authoritative chain-mode balance. Grant utility from a unique confirmed on-chain action receipt without requiring a second unrelated earned balance, or implement a fully specified deposit/withdrawal ledger. Keep ledger-only mode explicitly separate.",
+      "check": "A new wallet buys tokens, obtains an effect and a part; transfers between two wallets preserve both spendability and total accounting.",
+      "refs": [
+        [
+          "server/src/application/use-cases/honk/honk.handlers.ts",
+          "const account = await this.honk.account"
+        ],
+        [
+          "server/src/infrastructure/prisma/repositories/honk.prisma.repository.ts",
+          "async debit"
+        ],
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/instructions/swap.rs",
+          "pub fn handle_swap_sol_for_honk"
+        ]
+      ],
+      "proof": "Source trace",
+      "sources": [
+        {
+          "path": "server/src/application/use-cases/honk/honk.handlers.ts",
+          "line": 138
+        },
+        {
+          "path": "server/src/infrastructure/prisma/repositories/honk.prisma.repository.ts",
+          "line": 50
+        },
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/instructions/swap.rs",
+          "line": 37
+        }
+      ]
+    },
+    {
+      "id": "H07",
+      "severity": "HIGH",
+      "title": "Checkpoint and admin-acceptance promises do not match the reward trigger",
+      "detail": "judgeLocked returns null unless the ride is Completed, so a failed ride that passed 20% or 50% never reaches the checkpoint mint. The current test explicitly expects failed rides to remain unjudged. override can change a flagged/rejected ride to verified but never calls HonkMintService; later automatic judging preserves that override and returns minted:null. Domain quote tests do not cover these missing lifecycle paths.",
+      "fix": "Resolve the intended policy for failed checkpoint rides and encode it in verification and issuance. Route every newly eligible verified decision, including admin acceptance, through one idempotent reward transition.",
+      "check": "Verified partial crash, first accepted admin override, repeated override, rejection and full finish each have explicit end-to-end expected rewards.",
+      "refs": [
+        [
+          "server/src/application/services/verdict.service.ts",
+          "if (!ride || !ride.isInStatus"
+        ],
+        [
+          "server/src/application/services/verdict.service.ts",
+          "async override("
+        ],
+        [
+          "server/test/unit/application/services/verdict.service.spec.ts",
+          "only completed shifts"
+        ]
+      ],
+      "proof": "Source trace",
+      "sources": [
+        {
+          "path": "server/src/application/services/verdict.service.ts",
+          "line": 90
+        },
+        {
+          "path": "server/src/application/services/verdict.service.ts",
+          "line": 132
+        },
+        {
+          "path": "server/test/unit/application/services/verdict.service.spec.ts",
+          "line": 36
+        }
+      ]
+    },
+    {
+      "id": "H08",
+      "severity": "MEDIUM",
+      "title": "The ride DTO can claim tokens were minted when none were credited",
+      "detail": "RideDto calls honkQuote with verdict status alone. honkQuote reports pays=quote for every verified qualifying ride. It does not read the stored mint amount. When the cap is exhausted, credit returns null but the DTO still says minted / pays 100 for a 1h finish; a final clipped reward can likewise be overstated.",
+      "fix": "Populate paid amounts and delivery state from the committed mint/outbox record. Keep hypothetical quote separate from credited and chain-confirmed amounts.",
+      "check": "A 1-HONK cap remainder and a fully exhausted cap show exactly 1 and 0 paid, respectively.",
+      "refs": [
+        [
+          "server/src/domain/rides/ride.dto.ts",
+          "honk: honkQuote"
+        ],
+        [
+          "server/src/domain/honk/tokenomics.ts",
+          "if (verdict === 'verified')"
+        ]
+      ],
+      "proof": "Reproduced using actual quote and credit functions",
+      "sources": [
+        {
+          "path": "server/src/domain/rides/ride.dto.ts",
+          "line": 79
+        },
+        {
+          "path": "server/src/domain/honk/tokenomics.ts",
+          "line": 82
+        }
+      ]
+    },
+    {
+      "id": "H09",
+      "severity": "HIGH",
+      "title": "The cap is enforced; verified-ride provenance remains trusted",
+      "detail": "mint_ride accepts an emitter-supplied ride id, recipient and arbitrary positive amount, checking only signer, duplicate id and the global cap. It does not verify a paid ride, checkpoint, verdict, or delay. Config has no emitter rotation. RideMint records amount and bump, not recipient/verdict evidence. An emitter compromise can allocate all remaining issuance. Shortened demo rides also receive tier-based rewards because the mint input omits demo/payment provenance. No 10 Hz ReplayEngine exists on this branch; its verdict checks summaries and world facts. Upgrade authority was not inspected on a deployed HONK instance.",
+      "fix": "State the trust boundary accurately. Bind issuance receipts to rider and finalized eligible verdict, exclude demo/test entitlement, introduce durable review-before-delivery, and specify secured emitter rotation and program-upgrade governance. The cap alone is not proof of human driving.",
+      "check": "Unauthorized emitter, fabricated ride, demo completion, changed recipient, duplicate delivery and delayed rejection receive explicit tests; inspect upgrade authority before any deployment claim.",
+      "refs": [
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/instructions/mint_ride.rs",
+          "pub fn handle_mint_ride"
+        ],
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/state.rs",
+          "pub struct RideMint"
+        ],
+        [
+          "server/src/application/use-cases/rides/create-ride/create-ride.handler.ts",
+          "const timeScale ="
+        ],
+        [
+          "server/src/domain/verdict/ride-verdict.entity.ts",
+          "static judge("
+        ]
+      ],
+      "proof": "Source trace",
+      "sources": [
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/instructions/mint_ride.rs",
+          "line": 43
+        },
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/state.rs",
+          "line": 39
+        },
+        {
+          "path": "server/src/application/use-cases/rides/create-ride/create-ride.handler.ts",
+          "line": 153
+        },
+        {
+          "path": "server/src/domain/verdict/ride-verdict.entity.ts",
+          "line": 43
+        }
+      ]
+    },
+    {
+      "id": "H10",
+      "severity": "CRITICAL",
+      "title": "Paid weather and time effects reach competitive physics",
+      "detail": "assignWeather(snow) changes snow and ambient temperature to at most \u22128\u00b0C. updateClimate uses both for engine cooling, which feeds coldK, reduced power and cold-engine hull damage. Night also changes ambientC. These paid-ride HONK effects bypass LIVE_EFFECTS. A second wallet can assist a driver or impair competitors. This violates the skill\u2019s no-paid-physics invariant even though cosmetics and the 1-HONK chat line remain harmless. A 10-second controlled probe produced hull 98.7786 in clear weather versus 98.4420 after snow, with identical controls and initial truck state.",
+      "fix": "Isolate purchased presentation effects from authoritative thermal/physics inputs on competitive rides, or restrict gameplay-changing effects to a separately disclosed noncompetitive mode. Merely adding a per-wallet cooldown does not address colluding wallets.",
+      "check": "Compare full physics traces with and without paid presentation effects; competitive temperature, power, hull and finish outcome must remain identical.",
+      "refs": [
+        [
+          "client/js/world/assign-weather.js",
+          "if (kind === 'snow')"
+        ],
+        [
+          "client/js/sim/climate.js",
+          "const air ="
+        ],
+        [
+          "client/js/sim/physics.js",
+          "CFG.COLD_POWER"
+        ],
+        [
+          "server/src/application/use-cases/honk/burn-honk-weather.handler.ts",
+          "await this.access.requirePostable"
+        ]
+      ],
+      "proof": "Reproduced with actual assignWeather, state, config and climate code; UI/audio stubbed",
+      "sources": [
+        {
+          "path": "client/js/world/assign-weather.js",
+          "line": 6
+        },
+        {
+          "path": "client/js/sim/climate.js",
+          "line": 32
+        },
+        {
+          "path": "client/js/sim/physics.js",
+          "line": 74
+        },
+        {
+          "path": "server/src/application/use-cases/honk/burn-honk-weather.handler.ts",
+          "line": 42
+        }
+      ]
+    },
+    {
+      "id": "H11",
+      "severity": "MEDIUM",
+      "title": "Token identity exists in copy, not a metadata creation flow",
+      "detail": "HONK has four ASCII bytes and a valid ticker length; its fungible mint uses legacy SPL. The inspected program creates mints and frozen supply-1 part tokens but no Metaplex metadata accounts or immutable URI linkage. Local JSON files do not attach themselves to a mint. Part freeze authority is intentional soulbinding and must not be confused with the fungible coin\u2019s absent freeze authority.",
+      "fix": "Create and verify fungible and part metadata, publish content-addressed assets with durable availability, and explicitly set metadata mutability/update policy. Publish a canonical mint address and network only when deployed.",
+      "check": "Read back metadata accounts and URI content/hash; verify fungible freeze=None and distinguish the part token policy.",
+      "refs": [
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/instructions/initialize.rs",
+          "pub honk_mint"
+        ],
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/instructions/buy_part.rs",
+          "mint::freeze_authority"
+        ],
+        [
+          "design/honk/visuals/dice-gold.json",
+          ""
+        ]
+      ],
+      "proof": "Source trace",
+      "sources": [
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/instructions/initialize.rs",
+          "line": 30
+        },
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/instructions/buy_part.rs",
+          "line": 32
+        },
+        {
+          "path": "design/honk/visuals/dice-gold.json",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "id": "H12",
+      "severity": "HIGH",
+      "title": "Ten SOL of launch liquidity is shallow against 98 million future tokens",
+      "detail": "At 2M HONK / 10 SOL, initial spot is 0.000005 SOL/HONK; this is reserve arithmetic, not a realizable valuation. Selling 2M newly emitted HONK into otherwise unchanged reserves returns 5 SOL and reduces spot by 75%. Selling the full 98M returns 9.8 SOL and leaves 0.2 SOL, a 99.96% spot decline. Zero swap fees add no fee-funded reserve buffer. LP locking does not remove price impact, sandwich risk or eventual authorized withdrawal risk.",
+      "fix": "Publish executable-depth/slippage scenarios and liquidity ownership. Require nonzero min-out in supported clients and avoid presenting face-price ticket ratios as token prices. Any new liquidity allocation or fee changes require a separate decision because the spec numbers are locked.",
+      "check": "Integer swap quote tests, adverse ordering tests and disclosed reserve/impact stress cases must accompany launch economics.",
+      "refs": [
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/constants.rs",
+          "OPENING_LAMPORTS"
+        ],
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/math.rs",
+          "pub fn sol_out"
+        ],
+        [
+          "programs/freightchain-pools/programs/freightchain_honk/src/instructions/swap.rs",
+          "require!(out >= min_sol_out"
+        ]
+      ],
+      "proof": "Source trace",
+      "sources": [
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/constants.rs",
+          "line": 23
+        },
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/math.rs",
+          "line": 47
+        },
+        {
+          "path": "programs/freightchain-pools/programs/freightchain_honk/src/instructions/swap.rs",
+          "line": 115
+        }
+      ]
+    },
+    {
+      "id": "H13",
+      "severity": "MEDIUM",
+      "title": "Finite cosmetic demand does not establish long-term emission absorption",
+      "detail": "One full garage consumes 4,485 HONK once per wallet. Absorbing 98M ride emissions solely through garages requires at least 21,851 full-garage equivalents. Repeat demand relies on chat/time/weather, whose delivered usage has not been measured. In the explicit model below, sinks absorb only 15.4% of monthly issuance. A finite cap eventually stops emission; it does not guarantee value or require S/F\u22651 during every growth phase.",
+      "fix": "Measure confirmed on-chain burns, newly retained collectors, repeat spectator spend and cohort saturation. Publish cap-runway scenarios and post-cap reward UX. Preserve 100% burn and non-reminting unless the owner explicitly chooses a different economic design.",
+      "check": "Reconcile burn totals to finalized receipts and compare observed cohort demand with the scenario assumptions monthly.",
+      "refs": [
+        [
+          "docs/honk/SPEC.md",
+          "full garage = 4,485"
+        ],
+        [
+          "server/src/domain/honk/tokenomics.ts",
+          "export function clipToCap"
+        ]
+      ],
+      "proof": "Source trace",
+      "sources": [
+        {
+          "path": "docs/honk/SPEC.md",
+          "line": 116
+        },
+        {
+          "path": "server/src/domain/honk/tokenomics.ts",
+          "line": 69
+        }
+      ]
+    },
+    {
+      "id": "H14",
+      "severity": "MEDIUM",
+      "title": "The configured program id is not the emission destination",
+      "detail": "HonkEmissionAdapter uses HONK_PROGRAM_ID only as an enable gate; imported mintRide uses a hardcoded PROGRAM_ID and hardcoded PDAs. The burn verifier and client use the configured id. A different deployment id can therefore split emissions and burn verification across programs. The local documented id happens to match today.",
+      "fix": "Pass the configured public key through the emission builder and derive every PDA from it. Fail startup for inconsistent chain-mode settings.",
+      "check": "Run with a second test program id and assert every built instruction/PDA targets that id.",
+      "refs": [
+        [
+          "server/src/infrastructure/solana/honk-emission.adapter.ts",
+          "await mod.mintRide"
+        ],
+        [
+          "server/scripts/honk-program.mjs",
+          "export const PROGRAM_ID"
+        ]
+      ],
+      "proof": "Source trace",
+      "sources": [
+        {
+          "path": "server/src/infrastructure/solana/honk-emission.adapter.ts",
+          "line": 31
+        },
+        {
+          "path": "server/scripts/honk-program.mjs",
+          "line": 7
+        }
+      ]
+    }
+  ],
+  "scores": {
+    "weights": [
+      10,
+      12,
+      12,
+      12,
+      8,
+      10,
+      12,
+      8,
+      8,
+      8
+    ],
+    "dimensions": [
+      "Identity & on-chain technicals",
+      "Project fit & fairness",
+      "Utility & value accrual",
+      "Allocation & issuance policy",
+      "Launch mechanics & liquidity",
+      "Demand & repeat use",
+      "Mint/burn integrity",
+      "Narrative & shareability",
+      "Marketing & measurement",
+      "36-month resilience"
+    ],
+    "passes": [
+      [
+        7,
+        8,
+        7,
+        7,
+        5,
+        5,
+        5,
+        7,
+        5,
+        4
+      ],
+      [
+        5,
+        3,
+        4,
+        6,
+        3,
+        4,
+        3,
+        7,
+        4,
+        3
+      ],
+      [
+        5,
+        3,
+        4,
+        6,
+        3,
+        3,
+        3,
+        7,
+        4,
+        2
+      ]
+    ],
+    "overall": [
+      61,
+      42,
+      40
+    ]
+  },
+  "scenarioAssumptions": {
+    "monthlyFinishes": [
+      100,
+      1000,
+      10000
+    ],
+    "mix": {
+      "1h": 0.7,
+      "4h": 0.2,
+      "8h": 0.1
+    },
+    "tokensPerFinish": 370,
+    "burnTokensPerFinish": 57,
+    "bonds": 0
+  },
+  "schedule": [
+    {
+      "month": 0,
+      "finishes": 1000,
+      "gross": 2000000,
+      "burned": 0,
+      "bonded": 0,
+      "liquid": 2000000,
+      "uncheckedPct": 2.0,
+      "sf": null
+    },
+    {
+      "month": 3,
+      "finishes": 1000,
+      "gross": 3110000,
+      "burned": 171000,
+      "bonded": 0,
+      "liquid": 2939000,
+      "uncheckedPct": 3.11,
+      "sf": 0.15405405405405406
+    },
+    {
+      "month": 6,
+      "finishes": 1000,
+      "gross": 4220000,
+      "burned": 342000,
+      "bonded": 0,
+      "liquid": 3878000,
+      "uncheckedPct": 4.22,
+      "sf": 0.15405405405405406
+    },
+    {
+      "month": 12,
+      "finishes": 1000,
+      "gross": 6440000,
+      "burned": 684000,
+      "bonded": 0,
+      "liquid": 5756000,
+      "uncheckedPct": 6.4399999999999995,
+      "sf": 0.15405405405405406
+    },
+    {
+      "month": 24,
+      "finishes": 1000,
+      "gross": 10880000,
+      "burned": 1368000,
+      "bonded": 0,
+      "liquid": 9512000,
+      "uncheckedPct": 10.879999999999999,
+      "sf": 0.15405405405405406
+    },
+    {
+      "month": 36,
+      "finishes": 1000,
+      "gross": 15320000,
+      "burned": 2052000,
+      "bonded": 0,
+      "liquid": 13268000,
+      "uncheckedPct": 15.32,
+      "sf": 0.15405405405405406
+    }
+  ],
+  "scenarios": [
+    {
+      "month": 36,
+      "finishes": 100,
+      "gross": 3332000,
+      "burned": 205200,
+      "bonded": 0,
+      "liquid": 3126800,
+      "uncheckedPct": 3.3320000000000003,
+      "sf": 0.15405405405405406
+    },
+    {
+      "month": 36,
+      "finishes": 1000,
+      "gross": 15320000,
+      "burned": 2052000,
+      "bonded": 0,
+      "liquid": 13268000,
+      "uncheckedPct": 15.32,
+      "sf": 0.15405405405405406
+    },
+    {
+      "month": 36,
+      "finishes": 10000,
+      "gross": 100000000,
+      "burned": 20520000,
+      "bonded": 0,
+      "liquid": 79480000,
+      "uncheckedPct": 100.0,
+      "sf": null
+    }
+  ],
+  "probes": {
+    "scope": "Actual TypeScript service and domain code, mocked persistence/RPC/event boundaries; no validator, database, or public network transactions.",
+    "results": [
+      {
+        "id": "H03",
+        "result": "REPRODUCED",
+        "evidence": "Ledger credited 100 HONK, first RPC send failed, second judge made no second emission call.",
+        "chainCalls": 1
+      },
+      {
+        "id": "H04",
+        "result": "REPRODUCED",
+        "evidence": "One confirmed 10-HONK burn receipt accepted for two effects; ledger debited 20 HONK, chain receipt covers only 10.",
+        "eventCount": 2
+      },
+      {
+        "id": "H08",
+        "result": "REPRODUCED",
+        "evidence": "At exhausted emission cap, credit returns null while honkQuote still reports minted / pays 100."
+      },
+      {
+        "id": "H10",
+        "result": "REPRODUCED",
+        "evidence": "Actual assignWeather + climate update for 10 seconds with identical initial truck state and controls; snow lowers engine temperature and hull. Only toast/audio are stubbed.",
+        "clear": {
+          "temp": 91.71485583864083,
+          "hull": 98.77855226581663,
+          "coldK": 0
+        },
+        "snow": {
+          "temp": 87.21381801487256,
+          "hull": 98.44197883336336,
+          "coldK": 0
+        }
+      }
+    ]
+  },
+  "sha256": {
+    ".claude/skills/coin-grill/SKILL.md": "b103badbd8e5d7adf5b5fc1cf5086f3c9949a28bd042669aea4bb2eafb7731df",
+    ".claude/skills/coin-grill/grill.mjs": "a7adb5ccf5d5e9d6657530bef3cea8e8202139b227e5f18c27ecd1a2b4f9a97c",
+    "client/js/sim/climate.js": "84d494421c01f53db1df0ea957f8ee1a0843423bfd1c0a22701ab16112422c1b",
+    "client/js/sim/physics.js": "bbf82716922962c6ab52666dc5000bb35d302eec1f19fd02c62b524197bdb7d4",
+    "client/js/ui/watch-panel.js": "1bd45248b583890826a48e66d0e61ac0f01553d917cf329a60669bd150ea957d",
+    "client/js/world/assign-weather.js": "02384e1ac657c972bad5cf4ebbf52df66730740b6118b7073f99fd8e012dab58",
+    "design/honk/visuals/dice-gold.json": "6eba58023239a6ae67e4a0f5249f1d397c1778422288b782cb9c06de12540170",
+    "docs/honk/SPEC.md": "9f4450710bf7ff62998363e8e846025a4f799d931bbcb891c5ae50b9841ebd6d",
+    "programs/freightchain-pools/programs/freightchain_honk/src/constants.rs": "2d0825b9e10307b4974296e73847bebe8291b5bd0e1e499e241b3799aa198e5b",
+    "programs/freightchain-pools/programs/freightchain_honk/src/instructions/buy_part.rs": "fd7a1de4f3a5e5a7aaaf3d423f30192376b4ad075426b170d9f10e825ddf715f",
+    "programs/freightchain-pools/programs/freightchain_honk/src/instructions/initialize.rs": "bd18368676c83b03082c23dd64be6033de5186d04a98bcc271c9710e743252a5",
+    "programs/freightchain-pools/programs/freightchain_honk/src/instructions/mint_ride.rs": "a897562a225bc03ca9b6460d160dd77f3eb699bc642b561e498cf19082c47ce1",
+    "programs/freightchain-pools/programs/freightchain_honk/src/instructions/release_lp.rs": "b473514760de33743e885de5597b3e75d102b0ce9e8c22fbc4d9269aa56c9cc8",
+    "programs/freightchain-pools/programs/freightchain_honk/src/instructions/swap.rs": "179628e94a282da37ffdb606b54515d9266723a410b29d82939cc117a96ee5c8",
+    "programs/freightchain-pools/programs/freightchain_honk/src/instructions/withdraw.rs": "2a57454b514dc7ac52f515c9e6dde3e87bc3d1afeca94648058e967d2a0de5bd",
+    "programs/freightchain-pools/programs/freightchain_honk/src/math.rs": "cdc0d3092e1d9fc9fe89ab43b62fb16d40662e59cbb70e15615264ccc54a881b",
+    "programs/freightchain-pools/programs/freightchain_honk/src/state.rs": "360720cbead9cf1dd6b98a4c72aa052da5be0b098ea4ea7a85e91bd4567d14cc",
+    "server/prisma/economy/economy.prisma": "30b4a076921ceb8ddf5ec2d8bc9a717f8e641fd258fb60a07839894988f6808f",
+    "server/scripts/honk-program.mjs": "4d7a00c3a8a308ad0a3ba91221a7bb0795a7e3f3effc19a76b4c3dee4ddb5dfe",
+    "server/src/application/services/honk-mint.service.ts": "c5ee120e2aa57a4a8515c02c13b50cfe3e7eec0be4c5a4e86313fccb2b82c0c6",
+    "server/src/application/services/verdict.service.ts": "02b0581de3f86ce386efc6e677ac62a3454d4ed400317f092af1f96e9f1d5da8",
+    "server/src/application/use-cases/honk/burn-honk-time.handler.ts": "772108d37f21f4d0948f5a6883c29d49e725de17f8766d21acaa3c3e1853f6ca",
+    "server/src/application/use-cases/honk/burn-honk-weather.handler.ts": "f3b22087457f99294e59a2eedbb824a2a1750ef4badc2fa6d97c4f427af52c3a",
+    "server/src/application/use-cases/honk/honk-chain.ts": "e214bd51ef358fe2341ae76ade5e978e92846fdf16250e1a95fcd5909337b123",
+    "server/src/application/use-cases/honk/honk.handlers.ts": "9113ca2f5ed226d02e9654d2cb2b83cdefc87a94461cdf9600074686ea26386a",
+    "server/src/application/use-cases/rides/create-ride/create-ride.handler.ts": "5ce5de6e64cc6e12117caa785be4d6f9ffa10e859d31bd93dc661a87a2379f33",
+    "server/src/domain/honk/tokenomics.ts": "88c7efd4d98d67e40f7e104f6621eec34188268ec97de4eea7e4da9caf73e408",
+    "server/src/domain/rides/ride.dto.ts": "3d7e9aa41abfa25171ed66d2a8d2accf926b0e099149e37d55b2bde03fb46938",
+    "server/src/domain/verdict/ride-verdict.entity.ts": "ee39cfac14b622abd4fb6f0e7bf3f56a0fce45bbe83612595df704fa58e99696",
+    "server/src/infrastructure/prisma/repositories/honk.prisma.repository.ts": "913f248cf072fa6505d45e86b18b9763fd9e79fe5e80f5d33256055b9e8c4707",
+    "server/src/infrastructure/solana/honk-emission.adapter.ts": "a55fabc10e61726dce913528439da24b514c54d8e505fec6d4dd11bbe116ac50",
+    "server/test/unit/application/services/verdict.service.spec.ts": "fc8a696d17ced9aad20659093907d2b209b7693002a93df889b86375c3c0010c"
+  }
+}

@@ -1,0 +1,109 @@
+import { HonkRepositoryPort, type HonkAccountRow, type HonkBurnRow, type HonkMintRow, type HonkVisualRow } from '../../../src/application/ports/honk/honk.repository.port.js';
+import { HONK_PARTS, type HonkPartSeed } from '../../../src/domain/honk/parts-catalog.js';
+import type { MemoryDb } from './memory-db.js';
+
+/** In-memory HONK ledger. The maps live on MemoryDb so a ride summary can count mints. */
+export class MemoryHonkRepository extends HonkRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+
+  async findMint(rideId: string): Promise<HonkMintRow | null> {
+    return this.db.honkMints.get(rideId) ?? null;
+  }
+
+  async lockEmission(): Promise<bigint> {
+    return this.db.honkEmission;
+  }
+
+  async addEmission(amount: bigint): Promise<void> {
+    this.db.honkEmission += amount;
+  }
+
+  async insertMint(row: HonkMintRow): Promise<boolean> {
+    if (this.db.honkMints.has(row.rideId)) return false;
+    this.db.honkMints.set(row.rideId, row);
+    return true;
+  }
+
+  async balance(wallet: string): Promise<bigint> {
+    return this.db.honkAccounts.get(wallet)?.balance ?? 0n;
+  }
+
+  async account(wallet: string): Promise<HonkAccountRow> {
+    return this.db.honkAccounts.get(wallet) ?? { wallet, balance: 0n, minted: 0n, burned: 0n };
+  }
+
+  async debit(wallet: string, amount: bigint, at: Date): Promise<boolean> {
+    const row = this.accountSync(wallet, at);
+    if (row.balance < amount) return false;
+    row.balance -= amount;
+    row.burned += amount;
+    return true;
+  }
+
+  async credit(wallet: string, amount: bigint, at: Date): Promise<void> {
+    const row = this.accountSync(wallet, at);
+    row.balance += amount;
+    row.minted += amount;
+  }
+
+  async insertBurn(row: HonkBurnRow): Promise<void> {
+    this.db.honkBurns.set(row.id, row);
+  }
+
+  async reverseBurn(id: string): Promise<void> {
+    const row = this.db.honkBurns.get(id);
+    if (!row) return;
+    const account = this.db.honkAccounts.get(row.wallet);
+    if (account) { account.balance += row.amount; account.burned -= row.amount; }
+    this.db.honkBurns.delete(id);
+  }
+
+  async lastStreamBurn(wallet: string, rideId: string): Promise<Date | null> {
+    let last: Date | null = null;
+    for (const row of this.db.honkBurns.values()) {
+      if (row.wallet === wallet && row.kind === 'stream' && row.ref === rideId && (!last || row.createdAt > last)) last = row.createdAt;
+    }
+    return last;
+  }
+
+  async counts(wallet: string): Promise<{ mints: number; finishes: number }> {
+    const rows = [...this.db.honkMints.values()].filter((r) => r.wallet === wallet && r.amount > 0n);
+    return { mints: rows.length, finishes: rows.filter((r) => r.band100).length };
+  }
+
+  async visuals(wallet: string): Promise<HonkVisualRow[]> {
+    return [...this.db.honkVisuals.values()].filter((r) => r.wallet === wallet);
+  }
+
+  async insertVisual(row: HonkVisualRow): Promise<boolean> {
+    const key = `${row.wallet}|${row.slot}|${row.item}`;
+    if ([...this.db.honkVisuals.values()].some((r) => r.wallet === row.wallet && r.slot === row.slot && r.item === row.item)) return false;
+    this.db.honkVisuals.set(key, row);
+    return true;
+  }
+
+  async listParts(): Promise<HonkPartSeed[]> {
+    return HONK_PARTS.slice();
+  }
+
+  async findPart(slot: string, item: string): Promise<HonkPartSeed | null> {
+    return HONK_PARTS.find((p) => p.slot === slot && p.item === item) ?? null;
+  }
+
+  async setVisualChain(id: string, mint: string, signature: string | null): Promise<void> {
+    const row = [...this.db.honkVisuals.values()].find((r) => r.id === id);
+    if (row) { row.chainMint = mint; row.chainSignature = signature; }
+  }
+
+  async deleteVisual(id: string): Promise<void> {
+    for (const [key, row] of this.db.honkVisuals) if (row.id === id) this.db.honkVisuals.delete(key);
+  }
+
+  private accountSync(wallet: string, at: Date): HonkAccountRow & { updatedAt: Date } {
+    const existing = this.db.honkAccounts.get(wallet);
+    if (existing) { existing.updatedAt = at; return existing; }
+    const created = { wallet, balance: 0n, minted: 0n, burned: 0n, updatedAt: at };
+    this.db.honkAccounts.set(wallet, created);
+    return created;
+  }
+}

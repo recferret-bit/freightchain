@@ -119,15 +119,10 @@ const R = [
     const r = { id: `stub-${rides.size + 1}`, tier, seed: 1, status: 'created', minSeconds: lv ? lv.seconds : 300, completeDist: lv ? lv.completeDist : 4200, trip: lv ? lv.trip : tier, level: lv?.level ?? null, route: lv?.route ?? 'route66', startHour: 12, tutorial: !!b.tutorial, assist: !!b.assist, timeScale: 1, priceUsd: 0, lamports: 0, quoteExpiresAt: null, roundId: 1, poolId: null, driveSeconds: 0, distance: 0, reason: null };
     rides.set(r.id, r); return { status: 201, body: r };
   }],
-  ['POST', /^promo\/redeem$/, (m, b) => {   // STUB = 2 tickets · RIDES = +3 free rides (above the cap) · GOLD / BLUE / RACING = a wheel / paint / shifter (a second try: 409 already_owned)
+  ['POST', /^promo\/redeem$/, (m, b) => {   // STUB = 2 tickets · RIDES = +3 free rides (above the cap). A colour code is refused – cab parts are HONK burns.
     const code = String(b.code).replace(/\s+/g, '').toUpperCase();
     if (code === 'RIDES') { freeRides += 3; redeemed.unshift({ code, label: '3 free rides', description: 'Three extra rides', kind: 'free_rides', at: NOW() }); return { body: { kind: 'free_rides', code, label: '3 free rides', added: 3, freeRides } }; }
-    if (code === 'GOLD' || code === 'BLUE' || code === 'RACING') {
-      const [slot, item] = { GOLD: ['wheel', 'gold'], BLUE: ['truck_color', 'blue'], RACING: ['gearbox', 'racing'] }[code];
-      if (owned[slot].includes(item)) return problem(409, 'already_owned', 'you already own this item');
-      owned[slot].push(item); worn[slot] = item; earned[`${slot}:${item}`] = { code, at: NOW() }; redeemed.unshift({ code, label: `${slot.replace('_', ' ')}: ${item}`, description: null, kind: 'cosmetic', at: NOW() });
-      return { body: { kind: 'cosmetic', code, label: `${slot.replace('_', ' ')}: ${item}`, slot, item } };
-    }
+    if (code === 'GOLD' || code === 'BLUE' || code === 'RACING') return problem(409, 'visuals_are_honk', 'cab visuals are minted by burning HONK');
     if (code !== 'STUB') return problem(404, 'not_found', 'no such promo code');
     const t = tickets.get(1), add = Math.min(2, 5 - t.balance); t.balance += add; grants.push({ poolId: 1, delta: add, source: 'promo', ref: 'STUB', at: NOW() });
     redeemed.unshift({ code: 'STUB', label: '2 × 1h ride tickets', description: null, kind: 'tickets', at: NOW() });
@@ -138,7 +133,7 @@ const R = [
   ['GET', /^wardrobe$/, () => ({ body: wardrobeDto() })],
   ['POST', /^wardrobe\/equip$/, (m, b) => {
     if (!owned[b.slot]) return problem(400, 'bad_request', 'no such slot');
-    if (!owned[b.slot].includes(b.item)) return problem(409, 'not_owned', 'you do not own this item – redeem a promo code for it');
+    if (!owned[b.slot].includes(b.item)) return problem(409, 'not_owned', 'you do not own this item – burn HONK in the garage to mint it');
     worn[b.slot] = b.item; return { body: wardrobeDto() };
   }],
   ['GET', /^garage$/, () => ({ body: garageDto() })],
@@ -146,7 +141,7 @@ const R = [
     const picks = Object.entries(b.loadout ?? {});
     if (!picks.length || picks.some(([slot]) => !CATALOG[slot])) return problem(400, 'bad_cosmetic', 'pick at least one known part');
     if (picks.some(([slot, item]) => !CATALOG[slot].includes(item))) return problem(400, 'bad_cosmetic', 'no such part');
-    if (picks.some(([slot, item]) => !owned[slot].includes(item))) return problem(409, 'not_owned', 'you do not own that part – redeem a promo code for it');
+    if (picks.some(([slot, item]) => !owned[slot].includes(item))) return problem(409, 'not_owned', 'you do not own that part – burn HONK in the garage to mint it');
     for (const [slot, item] of picks) worn[slot] = item;
     return { body: garageDto() };
   }],
@@ -204,4 +199,4 @@ http.createServer(async (req, res) => {
   let out = problem(404, 'not_found', `Cannot ${req.method} /api/${p}`);
   for (const [m, re, h] of R) { const hit = m === req.method && p.match(re); if (hit) { out = h(hit, body, query); break; } }
   res.writeHead(out.status ?? 200, { 'content-type': out.status >= 400 ? 'application/problem+json' : 'application/json' }); res.end(JSON.stringify(out.body));
-}).listen(PORT, () => console.log(`stub API + site on http://localhost:${PORT}/lobby.html (wallet ${WALLET.toBase58()}, sales ${SALES}) – promo codes STUB (2 tickets) · RIDES (+3 free rides) · GOLD / BLUE / RACING (a wheel / truck paint / shifter)`));
+}).listen(PORT, () => console.log(`stub API + site on http://localhost:${PORT}/lobby.html (wallet ${WALLET.toBase58()}, sales ${SALES}) – promo codes STUB (2 tickets) · RIDES (+3 free rides). Cab parts are minted by burning HONK, not by a code.`));

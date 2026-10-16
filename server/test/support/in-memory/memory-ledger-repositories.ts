@@ -208,6 +208,12 @@ export class MemoryCosmeticRepository extends CosmeticRepositoryPort {
     for (const [key, item] of this.db.cosmeticEquipped) { const [w, slot] = key.split('|') as [string, CosmeticSlot]; if (w === wallet) out[slot] = item; }
     return out;
   }
+
+  async remove(wallet: string, slot: CosmeticSlot, item: string): Promise<void> {
+    this.db.cosmeticUnlocks.delete(`${wallet}|${slot}|${item}`);
+    const key = `${wallet}|${slot}`;
+    if (this.db.cosmeticEquipped.get(key) === item) this.db.cosmeticEquipped.delete(key);
+  }
 }
 
 @Injectable()

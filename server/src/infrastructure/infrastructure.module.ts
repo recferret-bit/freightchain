@@ -87,6 +87,12 @@ import { PoolPrismaRepository } from './prisma/repositories/pool.prisma.reposito
 import { TicketOrderRepositoryPort } from '../application/ports/economy/ticket-order.repository.port.js';
 import { TicketOrderPrismaRepository } from './prisma/repositories/ticket-order.prisma.repository.js';
 import { CosmeticRepositoryPort } from '../application/ports/players/cosmetic.repository.port.js';
+import { HonkRepositoryPort } from '../application/ports/honk/honk.repository.port.js';
+import { HonkChainPort } from '../application/ports/honk/honk-chain.port.js';
+import { HonkEmissionPort } from '../application/ports/honk/honk-emission.port.js';
+import { HonkPrismaRepository } from './prisma/repositories/honk.prisma.repository.js';
+import { HonkChainAdapter } from './solana/honk-chain.adapter.js';
+import { HonkEmissionAdapter } from './solana/honk-emission.adapter.js';
 import { CosmeticPrismaRepository } from './prisma/repositories/cosmetic.prisma.repository.js';
 import { PromoPrismaRepository } from './prisma/repositories/promo.prisma.repository.js';
 import { RideTicketPrismaRepository } from './prisma/repositories/ride-ticket.prisma.repository.js';
@@ -151,6 +157,9 @@ const ports: Provider[] = [
   { provide: RideTicketRepositoryPort, useClass: RideTicketPrismaRepository },
   { provide: PromoRepositoryPort, useClass: PromoPrismaRepository },
   { provide: CosmeticRepositoryPort, useClass: CosmeticPrismaRepository },
+  { provide: HonkRepositoryPort, useClass: HonkPrismaRepository },
+  { provide: HonkChainPort, useClass: HonkChainAdapter },
+  { provide: HonkEmissionPort, useClass: HonkEmissionAdapter },
   { provide: TicketOrderRepositoryPort, useClass: TicketOrderPrismaRepository },
   { provide: PoolChainPort, useClass: ProgramChainAdapter },
   { provide: PoolCrankChainPort, useClass: ProgramCrankAdapter },

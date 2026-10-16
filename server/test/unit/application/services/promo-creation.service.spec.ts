@@ -4,12 +4,12 @@ import { aPool } from '../../../support/pools.js';
 import { promoInput, ticketEffect } from '../../../support/promos.js';
 
 describe('PromoCreationService', () => {
-  it('stores a code of every kind', async () => {
+  it('stores a ticket code and a free-ride code; a cab visual is refused', async () => {
     const ctx = unitContext();
     await ctx.promoCreation.create(promoInput({ code: 'TIX', effect: ticketEffect() }));
     await ctx.promoCreation.create(promoInput({ code: 'RIDES', effect: { kind: 'free_rides', count: 3 } }));
-    await ctx.promoCreation.create(promoInput({ code: 'WHEEL', effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } }));
-    expect((await ctx.promos.list()).map((p) => p.effect.kind).sort()).toEqual(['cosmetic', 'free_rides', 'tickets']);
+    await expect(ctx.promoCreation.create(promoInput({ code: 'WHEEL', effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } }))).rejects.toMatchObject({ errorCode: 'visuals_are_honk' });
+    expect((await ctx.promos.list()).map((p) => p.effect.kind).sort()).toEqual(['free_rides', 'tickets']);
   });
 
   it('a duplicate is 409; the entity rules still apply', async () => {

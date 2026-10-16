@@ -1,3 +1,4 @@
+import { Ride } from '../../../../src/domain/rides/ride.entity.js';
 import { RideBatch } from '../../../../src/domain/telemetry/ride-batch.entity.js';
 import { VerdictStatus } from '../../../../src/domain/verdict/verdict.dto.js';
 import { hashBatch, recording } from '../../../support/recording.js';
@@ -21,6 +22,7 @@ describe('VerdictService', () => {
     const v = await ctx.verdicts.judge(ride.id);
     expect(v?.status).toBe(VerdictStatus.Verified);
     expect((await ctx.verdictRepo.findByRide(ride.id))?.snapshot()).toEqual(v?.snapshot());
+    expect(ctx.db.honkMints.size).toBe(0); // a free ride mints no HONK
   });
 
   it('judging again re-reads the whole recording (a late batch turns "no recording" into a verdict on it)', async () => {
@@ -78,5 +80,29 @@ describe('VerdictService', () => {
     expect(await ctx.verdicts.rejudgeQuietly(ride.id)).toEqual({ before: VerdictStatus.Flagged, after: VerdictStatus.Flagged });
     await ctx.verdicts.override(ride.id, VerdictStatus.Verified, 'admin', null, null);
     expect((await ctx.verdicts.rejudge(ride.id, 'admin', null)).reasons).toEqual([mark]);   // clearing a mark is a decision (the override), not a re-run
+  });
+
+  it('a verified paid finish mints the checkpoint once; a reject mints nothing', async () => {
+    const ctx = unitContext();
+    await ctx.player('w');
+    let ride = Ride.createPaidOrder({ id: 'paid-honk', wallet: 'w', tier: '1h', seed: 7, minSeconds: 60, timeScale: 60, priceUsd: 5, lamports: 1, solUsd: 100, now: ctx.now(), quoteTtlMs: 60_000 });
+    await ctx.rides.insert(ride);
+    ride.markPaid(1, ctx.now());
+    ride.start(ctx.now());
+    ride = await ctx.rides.save(ride);
+    ctx.clock.advance(60);
+    ride = await ctx.reload(ride.id);
+    ride.applyReport({ s: 840, t: 60, hull: 100, paused: false, night: false }, ctx.now(), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
+    ride.finish('shift', null, ctx.now());
+    await ctx.rides.save(ride);
+    expect((await ctx.verdicts.judge(ride.id))?.status).toBe(VerdictStatus.Rejected); // no recording
+    expect(await ctx.honkRepo.findMint(ride.id)).toBeNull();
+    for (const b of recording(ride.id, { seconds: 60, distance: 840, road: ride.seed, trip: ride.trip })) await ctx.batches.insert(RideBatch.accept(ride.id, b, hashBatch(b), ctx.now()));
+    expect((await ctx.verdicts.judge(ride.id))?.status).toBe(VerdictStatus.Verified);
+    expect(await ctx.honkRepo.balance('w')).toBe(100_000_000n);
+    expect((await ctx.honkRepo.findMint(ride.id))?.band100).toBe(true);
+    await ctx.verdicts.judge(ride.id);
+    expect(await ctx.honkRepo.balance('w')).toBe(100_000_000n);
+    expect(ctx.db.honkMints.size).toBe(1);
   });
 });

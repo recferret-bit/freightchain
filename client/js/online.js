@@ -53,7 +53,13 @@ export async function beginOnline() {
   setLoadout(started.loadout);   // what the server stamped on the ride (what spectators and replays draw) – normally what the menu already wore
   startTelemetry(online.ride.id, started.trafficVersion ?? 0);   // inputs + 10 Hz samples, uploaded in hash-chained batches (the server's verdict reads them)
   resetPrompts();
-  timer = setInterval(() => api(`rides/${online.ride.id}/heartbeat`, progress()).then(r => showPrompt(r.challenge), () => { /* a lost beat is the server's call (timeout) */ }), 10_000);   // the response may carry a challenge (prompt.js): the handler shows whatever the DTO names
+  if ('honk' in started) online.ride.honk = started.honk;   // the cab line is the server's quote (ui/game.js) – not recomputed here
+  online.onRide?.(started);
+  timer = setInterval(() => api(`rides/${online.ride.id}/heartbeat`, progress()).then(r => {
+    showPrompt(r.challenge);   // the response may carry a challenge (prompt.js): the handler shows whatever the DTO names
+    if (online.ride && r && 'honk' in r) online.ride.honk = r.honk;
+    online.onRide?.(r);
+  }, () => { /* a lost beat is the server's call (timeout) */ }), 10_000);
 }
 
 /* The game tab closes (or reloads, or navigates away) mid-ride: the ride can never resume – a running ride is not re-opened – so END it now, as if the

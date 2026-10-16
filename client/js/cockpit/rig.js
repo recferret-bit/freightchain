@@ -6,7 +6,7 @@ import { ambientC } from '../sim/climate.js';
 import { CFG } from '../config.js';
 import { clamp, fmt, gearName, MONO } from '../util.js';
 import { SHAKE_MOVING, engineVib } from '../sim/shake.js';
-import { look, pose } from '../cosmetics.js';
+import { look, loadout, pose } from '../cosmetics.js';
 import { hint } from '../guide.js';
 import { phone } from '../phone.js';
 import { online } from '../online.js';
@@ -19,10 +19,17 @@ function drawPhoneMount(x, y, w, h, u) {
   uiBtns.push({ id: 'map', x: x - u, y: y - 3 * u, w: w + 2 * u, h: h + 4 * u });   // the phone + its caption above it
   ctx.fillStyle = '#121110'; ctx.fillRect(x + w / 2 - 1.2 * u, y + h - .5 * u, 2.4 * u, 3.5 * u);   // the mount's stem into the dash
   ctx.fillStyle = '#1b1a18'; ctx.beginPath(); ctx.roundRect(x - .9 * u, y + h * .3, 1.4 * u, h * .4, .5 * u); ctx.roundRect(x + w - .5 * u, y + h * .3, 1.4 * u, h * .4, .5 * u); ctx.fill();   // the clamp's arms
-  /* the same phone as the one in your hand (ui/map.js + css #phone): a dark metal frame, a rounded screen, the camera island with its lens */
-  const fr = ctx.createLinearGradient(x, y, x + w, y + h); fr.addColorStop(0, '#2b2d31'); fr.addColorStop(.6, '#0d0e10');
-  ctx.fillStyle = fr; ctx.beginPath(); ctx.roundRect(x, y, w, h, w * .15); ctx.fill();
-  ctx.strokeStyle = phone.open ? '#4285f4' : '#45484e'; ctx.lineWidth = .3 * u; ctx.stroke();
+  /* the same phone as the one in your hand (ui/map.js + css #phone): a dark metal frame, a rounded screen, the camera island with its lens.
+     black keeps that gradient and stroke; any other phone only recolors the frame. The screen, camera and click target stay. */
+  if (loadout.phone === 'black') {
+    const fr = ctx.createLinearGradient(x, y, x + w, y + h); fr.addColorStop(0, '#2b2d31'); fr.addColorStop(.6, '#0d0e10');
+    ctx.fillStyle = fr; ctx.beginPath(); ctx.roundRect(x, y, w, h, w * .15); ctx.fill();
+    ctx.strokeStyle = phone.open ? '#4285f4' : '#45484e'; ctx.lineWidth = .3 * u; ctx.stroke();
+  } else {
+    const ph = look('phone');
+    ctx.fillStyle = ph.frame; ctx.beginPath(); ctx.roundRect(x, y, w, h, w * .15); ctx.fill();
+    ctx.strokeStyle = phone.open ? '#4285f4' : ph.edge; ctx.lineWidth = .3 * u; ctx.stroke();
+  }
   const ins = w * .05, sx = x + ins, sy = y + ins, sw = w - 2 * ins, sh = h - 2 * ins;
   ctx.save(); ctx.beginPath(); ctx.roundRect(sx, sy, sw, sh, w * .11); ctx.clip();
   if (phone.open) { ctx.fillStyle = '#05070a'; ctx.fillRect(sx, sy, sw, sh); }   // it is in your hand: the mount is empty-ish (the screen dark)
@@ -38,6 +45,36 @@ function drawPhoneMount(x, y, w, h, u) {
   ctx.fillStyle = '#1f4fb0'; ctx.beginPath(); ctx.arc(lx, ly, ih * .3, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(lx - ih * .08, ly - ih * .09, ih * .07, 0, 7); ctx.fill();
   if (dn.k > .3 && !phone.open && phone.power > 0) { ctx.fillStyle = `rgba(120,170,255,${.06 * dn.k})`; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, w * 1.1, 0, 7); ctx.fill(); }   // the screen's glow in the dark cab
 }
+
+/* Hood mascot. spear is not drawn here – the triangle in drawCockpitRig stays the original statements so the default cab does not change. */
+const ornamentEdge = u => Math.max(.6, .22 * u);
+function ornamentPath(cx, hy, u, id) {
+  ctx.beginPath();
+  const y = hy - 1.05 * u;
+  if (id === 'ball') { ctx.arc(cx, y, 1.25 * u, 0, 7); return; }
+  if (id === 'star') {
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + i * Math.PI * 2 / 5, b = a + Math.PI / 5;
+      const ox = cx + Math.cos(a) * 1.7 * u, oy = y + Math.sin(a) * 1.7 * u, ix = cx + Math.cos(b) * .7 * u, iy = y + Math.sin(b) * .7 * u;
+      if (i) ctx.lineTo(ox, oy); else ctx.moveTo(ox, oy);
+      ctx.lineTo(ix, iy);
+    }
+    ctx.closePath(); return;
+  }
+  if (id === 'gold') { ctx.moveTo(cx, hy - 2.6 * u); ctx.lineTo(cx + 1.05 * u, y); ctx.lineTo(cx, hy + .45 * u); ctx.lineTo(cx - 1.05 * u, y); ctx.closePath(); return; }
+  if (id === 'bird') {
+    ctx.moveTo(cx, hy - 2.45 * u);
+    ctx.quadraticCurveTo(cx + 2.4 * u, hy - 2.05 * u, cx + 2.05 * u, hy - .3 * u);
+    ctx.quadraticCurveTo(cx + 1.15 * u, hy - 1.2 * u, cx, hy - .8 * u);
+    ctx.quadraticCurveTo(cx - 1.15 * u, hy - 1.2 * u, cx - 2.05 * u, hy - .3 * u);
+    ctx.quadraticCurveTo(cx - 2.4 * u, hy - 2.05 * u, cx, hy - 2.45 * u);
+    ctx.closePath(); return;
+  }
+  ctx.rect(cx - .16 * u, hy - 2.55 * u, .32 * u, 3.05 * u);
+  ctx.moveTo(cx + .16 * u, hy - 2.5 * u); ctx.lineTo(cx + 2.15 * u, hy - 1.75 * u); ctx.lineTo(cx + .16 * u, hy - 1.05 * u); ctx.closePath();
+}
+function strokeOrnament(u, color) { ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = ornamentEdge(u); ctx.lineJoin = 'round'; ctx.stroke(); ctx.restore(); }
+function drawOrnament(cx, hy, u, id) { const o = look('ornament'); ornamentPath(cx, hy, u, id); ctx.fillStyle = o.fill; ctx.fill(); strokeOrnament(u, o.edge); }
 
 export function drawCockpitRig() {
   const { W, H, DPR } = view;
@@ -72,12 +109,14 @@ export function drawCockpitRig() {
   ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(cx - 9 * u, hy); ctx.lineTo(cx - 23 * u, hb); ctx.lineTo(cx + 23 * u, hb); ctx.lineTo(cx + 9 * u, hy); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = paint.line; ctx.lineWidth = .5 * u; ctx.beginPath(); ctx.moveTo(cx, hy); ctx.lineTo(cx, hb); ctx.stroke();
   ctx.strokeStyle = chromeGrad(cx - 23 * u, cx + 23 * u); ctx.lineWidth = .7 * u; ctx.beginPath(); ctx.moveTo(cx - 9 * u, hy); ctx.lineTo(cx - 23 * u, hb); ctx.moveTo(cx + 9 * u, hy); ctx.lineTo(cx + 23 * u, hb); ctx.stroke();
-  ctx.fillStyle = '#e8ecef'; ctx.beginPath(); ctx.moveTo(cx, hy - 2.5 * u); ctx.lineTo(cx + 1.2 * u, hy + .5 * u); ctx.lineTo(cx - 1.2 * u, hy + .5 * u); ctx.fill();  // ornament
+  if (loadout.ornament === 'spear') { ctx.fillStyle = '#e8ecef'; ctx.beginPath(); ctx.moveTo(cx, hy - 2.5 * u); ctx.lineTo(cx + 1.2 * u, hy + .5 * u); ctx.lineTo(cx - 1.2 * u, hy + .5 * u); ctx.fill(); }  // ornament
+  else drawOrnament(cx, hy, u, loadout.ornament);
   { const hd = CFG.HOOD_DARK * dn.k * (dn.cab ? 0 : 1 - dn.hood);   // night: the bonnet nearly vanishes unless the cab light / an outside lamp lights it. Drawn HERE (hood + fenders only, before the dash is painted over it), not as a later overlay: that one darkened a wedge of the cowl/dash around the bonnet
     if (hd > .01) { ctx.fillStyle = `rgba(3,5,12,${hd})`;   // exactly the fender + hood polygons above (one path, so where they overlap it is darkened once) – anything bigger would dim the glass above the hood
       ctx.beginPath(); ctx.moveTo(cx - 12 * u, hy + 2 * u); ctx.lineTo(cx - 36 * u, hb); ctx.lineTo(cx + 36 * u, hb); ctx.lineTo(cx + 12 * u, hy + 2 * u); ctx.closePath();
       ctx.moveTo(cx - 9 * u, hy); ctx.lineTo(cx - 23 * u, hb); ctx.lineTo(cx + 23 * u, hb); ctx.lineTo(cx + 9 * u, hy); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(cx, hy - 2.5 * u); ctx.lineTo(cx + 1.2 * u, hy + .5 * u); ctx.lineTo(cx - 1.2 * u, hy + .5 * u); ctx.fill(); } }
+      if (loadout.ornament === 'spear') { ctx.beginPath(); ctx.moveTo(cx, hy - 2.5 * u); ctx.lineTo(cx + 1.2 * u, hy + .5 * u); ctx.lineTo(cx - 1.2 * u, hy + .5 * u); ctx.fill(); }
+      else { ornamentPath(cx, hy, u, loadout.ornament); ctx.fill(); } } }
   // chrome exhaust stacks
   for (const sx of [W * .115, W * .885]) {
     ctx.fillStyle = chromeGrad(sx - 1.4 * u, sx + 1.4 * u); ctx.fillRect(sx - 1.4 * u, 20 * u, 2.8 * u, 42 * u);
@@ -100,8 +139,10 @@ export function drawCockpitRig() {
     ctx.translate(0, 9 * u); ctx.fillStyle = dc.body; ctx.beginPath(); ctx.roundRect(-3.2 * u, 0, 3 * u, 3 * u, .5 * u); ctx.roundRect(.2 * u, 1 * u, 3 * u, 3 * u, .5 * u); ctx.fill();
     ctx.fillStyle = dc.pip; for (const [dx, dy] of [[-2.7, .5], [-.7, 2.5], [.7, 1.5], [2.7, 3.5]]) { ctx.beginPath(); ctx.arc(dx * u, dy * u, .35 * u, 0, 7); ctx.fill(); } ctx.restore(); }
 
-  // dashboard top
-  const dg = ctx.createLinearGradient(0, 58 * u, 0, H); dg.addColorStop(0, '#4b473f'); dg.addColorStop(.1, '#27241f'); dg.addColorStop(.3, '#14120f'); dg.addColorStop(1, '#0a0908');
+  // dashboard top – stock keeps the original stops; any other fascia is a top-to-bottom wash from look('dash')
+  const dg = ctx.createLinearGradient(0, 58 * u, 0, H);
+  if (loadout.dash === 'stock') { dg.addColorStop(0, '#4b473f'); dg.addColorStop(.1, '#27241f'); dg.addColorStop(.3, '#14120f'); dg.addColorStop(1, '#0a0908'); }
+  else { const fascia = look('dash'); dg.addColorStop(0, fascia.top); dg.addColorStop(1, fascia.bottom); }
   ctx.fillStyle = dg; ctx.beginPath(); ctx.moveTo(-20, 66 * u); ctx.lineTo(W * .08, edgeY); ctx.quadraticCurveTo(cx, ctrlY, W * .92, edgeY); ctx.lineTo(W + 20, 66 * u); ctx.lineTo(W + 20, H + 20); ctx.lineTo(-20, H + 20); ctx.fill();
   ctx.strokeStyle = paint.dashEdge; ctx.lineWidth = .5 * u; ctx.beginPath(); ctx.moveTo(W * .08, edgeY); ctx.quadraticCurveTo(cx, ctrlY, W * .92, edgeY); ctx.stroke();
   const pw = powered();

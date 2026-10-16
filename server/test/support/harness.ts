@@ -58,6 +58,8 @@ import { TicketOrderRepositoryPort } from '../../src/application/ports/economy/t
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
 import { PoolPayoutRepositoryPort } from '../../src/application/ports/economy/pool-payout.repository.port.js';
 import { CosmeticRepositoryPort } from '../../src/application/ports/players/cosmetic.repository.port.js';
+import { HonkRepositoryPort } from '../../src/application/ports/honk/honk.repository.port.js';
+import { MemoryHonkRepository } from './in-memory/memory-honk.repository.js';
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
 import { MemoryChainCursorRepository, MemoryChainEventRepository } from './in-memory/memory-repositories.js';
@@ -113,7 +115,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
   for (const key of TUNABLES) delete process.env[key];
   Object.assign(process.env, {
     NODE_ENV: 'test', JWT_SECRET: 'test-secret-'.padEnd(48, 'x'), SOL_USD: '100', TREASURY_PUBKEY: TREASURY, THROTTLE_LIMIT: '1000000', THROTTLE_AUTH_LIMIT: '1000000', THROTTLE_PROMO_LIMIT: '1000000',
-    ACHIEVEMENT_MINT_SECRET: '', ACHIEVEMENT_TREE: '', ACHIEVEMENT_COLLECTION: '', // never the developer's .env: scenarios must not mint (or show a tree)
+    ACHIEVEMENT_MINT_SECRET: '', ACHIEVEMENT_TREE: '', ACHIEVEMENT_COLLECTION: '', HONK_PROGRAM_ID: '', HONK_EMITTER_SECRET: '', // never the developer's .env: scenarios must not mint (or show a tree) and stay on the HONK ledger
     TRAFFIC_PROOF_REQUIRED: 'false', // historical API fixtures; strict protocol has its own HTTP and Chrome coverage
     WATCH_INTERVAL_MS: '0', // the program watcher off: scenarios settle through the webhook / their own calls
     DATABASE_URL: persistence === 'postgres' ? testDatabaseUrl() : 'postgresql://unused:unused@127.0.0.1:1/unused_test',   // NEVER the shell's DATABASE_URL
@@ -149,6 +151,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RideTicketRepositoryPort).useValue(new MemoryRideTicketRepository(memory))
       .overrideProvider(PromoRepositoryPort).useValue(new MemoryPromoRepository(memory))
       .overrideProvider(CosmeticRepositoryPort).useValue(new MemoryCosmeticRepository(memory))
+      .overrideProvider(HonkRepositoryPort).useValue(new MemoryHonkRepository(memory))
       .overrideProvider(TicketOrderRepositoryPort).useValue(new MemoryTicketOrderRepository(memory))
       .overrideProvider(RideBatchRepositoryPort).useValue(new MemoryRideBatchRepository(memory))
       .overrideProvider(RideVerdictRepositoryPort).useValue(new MemoryRideVerdictRepository(memory))

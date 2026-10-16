@@ -13,6 +13,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .panel h1{margin:0 0 4px;font-size:26px;letter-spacing:2px;color:#ffcf5a}
 .panel h2{margin:0 0 14px;font-size:13px;font-weight:normal;color:#b9ad8d}
 .panel .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:6px 0;font-size:15px}
+.panel .row[hidden]{display:none}
 .panel .row span.bad{flex:1;min-width:0;text-align:right}
 .panel h2.walkoff{margin-top:26px}
 .btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
@@ -58,6 +59,12 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #chain a{color:#14f195;text-decoration:none;pointer-events:auto}#chain a:hover{text-decoration:underline}
 .seal a{margin-left:6px;color:#14f195;font-weight:normal}
 body:has(#chain:not([hidden])) #toast{top:calc(14% + 40px)}
+/* paid rides: the server's HONK quote while driving (ui/game.js). The end panel has its own rows. */
+#honk-hud{position:absolute;left:max(12px,8vw);bottom:34%;z-index:4;max-width:min(420px,calc(100vw - 24px));box-sizing:border-box;padding:5px 10px;border:1px solid #ffcf5a88;border-radius:6px;background:#0b0a09e6;color:#efe6cf;font-size:12px;line-height:1.45;pointer-events:none;text-shadow:0 1px 2px #000}
+#honk-hud[hidden]{display:none}
+#honk-hud div{display:flex;justify-content:space-between;gap:12px}
+#honk-hud div[hidden]{display:none}
+#honk-hud b{color:#ffcf5a;letter-spacing:.04em}
 @media (max-width:920px){#chain{left:12px;right:12px;top:96px;max-width:none}}
 #watch{position:absolute;top:0;right:0;bottom:0;width:340px;z-index:6;display:flex;flex-direction:column;gap:8px;padding:14px;box-sizing:border-box;
        background:#120f0ce6;border-left:2px solid #ffcf5a88;font-size:13px;overflow-y:auto;overscroll-behavior:contain}

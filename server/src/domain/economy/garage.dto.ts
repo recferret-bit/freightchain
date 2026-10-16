@@ -9,6 +9,10 @@ export interface GaragePartDto {
   worn: boolean;
   unlockedAt: number | null;
   code: string | null;
+  name: string;
+  description: string;
+  /** Decimal HONK. Null for a slot default, and when the catalog copy has no row for this part. */
+  price: string | null;
 }
 
 export interface GarageSlotDto {
@@ -28,13 +32,14 @@ export interface GarageDto {
 
 export interface UnlockInfo { slot: CosmeticSlot; item: string; code: string; at: Date }
 
-export function toGarageDto(unlocked: readonly UnlockInfo[], worn: Partial<Record<CosmeticSlot, string>>): GarageDto {
+export function toGarageDto(unlocked: readonly UnlockInfo[], worn: Partial<Record<CosmeticSlot, string>>, copy?: ReadonlyMap<string, { name: string; description: string; price: string | null }>): GarageDto {
   const { equipped } = toWardrobeDto(unlocked, worn);
   const slots = COSMETIC_SLOTS.map((slot): GarageSlotDto => {
     const parts = COSMETIC_ITEMS[slot].map((id): GaragePartDto => {
       const u = unlocked.find((x) => x.slot === slot && x.item === id);
       const isDefault = id === defaultCosmetic(slot);
-      return { id, isDefault, owned: isDefault || !!u, worn: equipped[slot] === id, unlockedAt: u?.at.getTime() ?? null, code: u?.code ?? null };
+      const meta = copy?.get(`${slot}:${id}`);
+      return { id, isDefault, owned: isDefault || !!u, worn: equipped[slot] === id, unlockedAt: u?.at.getTime() ?? null, code: u?.code ?? null, name: meta?.name ?? id, description: meta?.description ?? '', price: meta?.price ?? null };
     });
     return { slot, parts, collected: parts.filter((p) => !p.isDefault && p.owned).length, total: unlockableCount(slot) };
   });

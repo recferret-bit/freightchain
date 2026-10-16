@@ -20,4 +20,6 @@ export abstract class CosmeticRepositoryPort {
   abstract equip(wallet: string, slot: CosmeticSlot, item: string, tx?: TransactionHandle): Promise<void>;
   /** The worn items; a slot nothing was equipped in is missing. */
   abstract listEquipped(wallet: string, tx?: TransactionHandle): Promise<Partial<Record<CosmeticSlot, string>>>;
+  /** Drops the unlock. Unequips the slot only when this item is the one worn. */
+  abstract remove(wallet: string, slot: CosmeticSlot, item: string, tx?: TransactionHandle): Promise<void>;
 }

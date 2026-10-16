@@ -7,17 +7,17 @@ import type { LiveFeaturesDto } from './live-features.js';
 
 export interface RideEventDto {
   id: number;
-  kind: 'message' | 'donation';
+  kind: 'message' | 'donation' | 'honk';
   wallet: string;
   text: string | null;
-  effect: EffectId | null;
+  effect: EffectId | 'snow' | 'clear' | null;
   /** MOCK amount */
   lamports: number;
   at: number;
   /** game effects: where / when the driver's game applied it (null = not yet – the driver is paused, offline or the ride ended first);
       placed false = an obstacle the driver's game found no room for (not on the road) */
   applied: { t: number; s: number; lat: number | null; placed: boolean } | null;
-  /** a PAID donation: the transfer's signature (an explorer link); null = mock, or a chat line */
+  /** a PAID donation: the transfer's signature (an explorer link); null = mock, a chat line, or a honk time change */
   signature: string | null;
 }
 
@@ -30,11 +30,12 @@ export const toRideEventDto = (e: RideEvent): RideEventDto => {
   };
 };
 
-/** The feed as everyone sees it once the driver muted someone: their chat lines are gone, their donation notes blanked – their donations (and an applied
-    obstacle's stamp, which every replay needs) stay. ONE function for the watch page and the driver's inbox, so both always agree. */
+/** The feed as everyone sees it once the driver muted someone: their chat lines are gone, their donation notes blanked. A HONK day, night, or weather line stays
+    (the burn already landed; the text is the server's, not a chat note). Applied stamps stay – every replay needs where an obstacle went.
+    ONE function for the watch page and the driver's inbox, so both always agree. */
 export function withoutMuted(events: RideEventDto[], muted: Set<string>): RideEventDto[] {
   if (!muted.size) return events;
-  return events.filter((e) => !(e.kind === 'message' && muted.has(e.wallet))).map((e) => (muted.has(e.wallet) && e.text ? { ...e, text: null } : e));
+  return events.filter((e) => !(e.kind === 'message' && muted.has(e.wallet))).map((e) => (muted.has(e.wallet) && e.kind === 'donation' && e.text ? { ...e, text: null } : e));
 }
 
 export interface LiveTotalsByRide {

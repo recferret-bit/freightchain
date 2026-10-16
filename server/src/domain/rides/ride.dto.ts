@@ -1,4 +1,5 @@
 import type { Loadout } from '../economy/cosmetics.js';
+import { honkQuote, type HonkQuoteDto } from '../honk/tokenomics.js';
 import { reviewOf, type RideReview } from '../verdict/ride-review.js';
 import type { VerdictDto } from '../verdict/verdict.dto.js';
 import { toChallengeDto, type ChallengeDto } from './ride-challenge.js';
@@ -39,6 +40,8 @@ export interface RideDto {
   assist: boolean;
   /** the server's check of the recording (verified play); null = not judged – only completed shifts are */
   verdict: VerdictDto | null;
+  /** HONK a paid ride would mint at this distance. Free rides are `none`. */
+  honk: HonkQuoteDto;
   /** a PAID ride's review (domain/verdict/ride-review.ts): 'under_review' until the machine checks verify it or an admin decides – 'accepted' /
       'rejected'; null for free rides and for rides that did not complete. Derived from `verdict` (a completed paid ride shown without one = under_review). */
   review: RideReview | null;
@@ -75,6 +78,7 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   tutorial: r.tutorial,
   assist: r.assist,
   verdict,
+  honk: honkQuote(r.tier, r.distance, r.completeDist, verdict?.status ?? null),
   review: reviewOf(r.tier, verdict ? { status: verdict.status, overridden: verdict.override !== null } : null, r.status),
   challenge: now ? (() => { const c = r.openChallenge(now); return c ? toChallengeDto(c) : null; })() : null,
   seedCommitment: r.seedCommitment,

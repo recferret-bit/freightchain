@@ -4,12 +4,14 @@ import { LOOKS } from '../js/cosmetics.js';
 /* The PROMO CODES section of the lobby's PROFILE (docs/promocodes.md): what this wallet redeemed – the parts themselves live in the GARAGE tab (lobby-garage.js, which reuses the names + swatches below).
    Pure builders: lobby.js owns the state and the API calls and hands in callbacks. Server text (codes, descriptions) goes in with textContent only. */
 
-export const SLOT_NAME = { wheel: 'STEERING WHEEL', truck_color: 'TRUCK PAINT', gearbox: 'SHIFTER', dice: 'HANGING DICE', needle: 'GAUGE NEEDLES' };
+export const SLOT_NAME = { wheel: 'STEERING WHEEL', truck_color: 'TRUCK PAINT', gearbox: 'SHIFTER', dice: 'HANGING DICE', needle: 'GAUGE NEEDLES', ornament: 'HOOD ORNAMENT', dash: 'DASHBOARD', indicator: 'INDICATORS', phone: 'PHONE' };
 const ITEM_NAME = {
   classic: 'Classic', crimson: 'Crimson', ocean: 'Ocean', moss: 'Moss', gold: 'Gold', ivory: 'Ivory',
   red: 'Red', blue: 'Blue', green: 'Green', black: 'Black', yellow: 'Yellow', white: 'White',
   stick: 'Stock', chrome: 'Chrome', wood: 'Wood', racing: 'Racing', carbon: 'Carbon',
   pink: 'Pink', orange: 'Orange', lime: 'Lime', cyan: 'Cyan',
+  spear: 'Spear', ball: 'Ball', star: 'Star', bird: 'Bird', flag: 'Flag',
+  stock: 'Stock', amber: 'Amber', ice: 'Ice', silver: 'Silver', clear: 'Clear',
 };
 export const itemName = item => ITEM_NAME[item] ?? item;
 const KIND_ICON = { tickets: '🎟', free_rides: '⛟', cosmetic: '✦' };
@@ -30,5 +32,9 @@ export function swatch(slot, item) {
   if (slot === 'wheel') return el('span', { class: 'sw wheel', style: `border-color:${l.rim};box-shadow:inset 0 0 0 3px ${l.sheen};background:radial-gradient(circle,${l.hub} 0 28%,${l.spoke} 29% 100%)` });
   if (slot === 'dice') return el('span', { class: 'sw dice', style: `background:${l.body};color:${l.pip}` }, '⠿');
   if (slot === 'needle') return el('span', { class: 'sw needle', style: `--n:${l.color}` });
+  if (slot === 'ornament') return el('span', { class: 'sw', style: `background:${l.fill};box-shadow:inset 0 0 0 2px ${l.edge}` });
+  if (slot === 'dash') return el('span', { class: 'sw hood', style: `background:linear-gradient(${l.top},${l.bottom});border-color:${l.bottom}` });
+  if (slot === 'indicator') return el('span', { class: 'sw', style: `background:${l.bezel};border-radius:4px` });
+  if (slot === 'phone') return el('span', { class: 'sw', style: `background:${l.frame};box-shadow:inset 0 0 0 2px ${l.edge};border-radius:7px` });
   return el('span', { class: 'sw knob', style: `background:${l.knob};border-color:${l.rim}` });
 }

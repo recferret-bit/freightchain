@@ -1,11 +1,12 @@
-// The WHOLE promo loop in real headless Chrome against a RUNNING server (PostgreSQL, the built landing): the admin makes every kind of code on the admin page (the wallet signs each one),
-// different players redeem them from the lobby and from the landing, see what changed (free rides, tickets, the garage), the admin sees who used what – and the ways a code stops
+// The WHOLE promo loop in real headless Chrome against a RUNNING server (PostgreSQL, the built landing): the admin makes a free-ride code and a ticket code on the admin page (the wallet signs each one),
+// different players redeem them from the lobby and from the landing, see what changed (free rides, tickets), then burn HONK for cab parts. The admin sees who used what – and the ways a code stops
 // working (expired, not started, used up, disabled, already redeemed) and is abused (spelling variants, double clicks, parallel wallets racing for the last use, hostile text).
 //   Server: FREE_RIDE_SECONDS=3 ADMIN_WALLETS=<admin address> THROTTLE_PROMO_LIMIT=100000 … node dist/main.js – easiest: `bash .claude/skills/run-tests/e2e.sh promo` (admin keypair + a live 1h pool seeded).
 //   ADMIN_KEYPAIR=<path to a JSON array secret key> BASE=http://localhost:<port> [SEED=1 DATABASE_URL=… to seed the 1h pool] CHROME_PORT=<first of three DevTools ports> node scripts/e2e-promo.mjs
 // No wallet extension: keypairs sign (a fake Phantom in the admin page and the landing page, session cookies handed to the lobby). Screenshots in $SHOTS – LOOK at them.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { PrismaClient } from '@prisma/client';
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
 
@@ -13,6 +14,18 @@ const BASE = process.env.BASE || 'http://localhost:3111', CDP = +(process.env.CH
 const fails = []; const check = (n, ok, x = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x ? ' – ' + x : ''}`); if (!ok) fails.push(n); };
 const call = async (method, p, b, c, extra = {}) => { const r = await fetch(`${BASE}/api/${p}`, { method, headers: { 'content-type': 'application/json', ...(c && { cookie: c }), ...extra }, body: b === undefined ? undefined : JSON.stringify(b) }); return { r, j: await r.json().catch(() => ({})) }; };
 const post = (p, b, c, extra) => call('POST', p, b, c, extra), get = (p, c) => call('GET', p, undefined, c);
+/** Test-only ledger credit. The product has no credit route. `honk` is whole HONK. */
+async function creditHonk(wallet, honk) {
+  const prisma = new PrismaClient();
+  const amount = BigInt(honk) * 1_000_000n, updatedAt = new Date();
+  try {
+    await prisma.honkAccount.upsert({
+      where: { wallet },
+      create: { wallet, balance: amount, minted: 0n, burned: 0n, updatedAt },
+      update: { balance: { increment: amount }, updatedAt },
+    });
+  } finally { await prisma.$disconnect(); }
+}
 const sign = (kp, text) => bs58.encode(nacl.sign.detached(new TextEncoder().encode(text), kp.secretKey));
 async function signIn(kp = nacl.sign.keyPair()) {
   const address = bs58.encode(kp.publicKey), { j } = await post('auth/nonce', { wallet: address });
@@ -90,10 +103,10 @@ const EVIL = '<img src=x onerror="window.__xss=1">';
 await create(C('RIDE1'), { 'pf-kind': 'free_rides', 'pf-rides': '1', 'pf-desc': EVIL }, '1 free ride');
 await create(C('RIDE3'), { 'pf-kind': 'free_rides', 'pf-rides': '3', 'pf-max': '2', 'pf-desc': 'Three rides, two players' }, '3 free rides');
 await create(C('TICKETS'), { 'pf-kind': 'tickets', 'pf-tier': '1h', 'pf-credits': '2', 'pf-desc': 'Two 1-hour tickets' }, '2 × 1h ride tickets');
-const PARTS = { wheel: ['gold', 'wheel: gold'], truck_color: ['blue', 'truck color: blue'], gearbox: ['chrome', 'gearbox: chrome'], dice: ['pink', 'dice: pink'], needle: ['cyan', 'needle: cyan'] };
-for (const [slot, [item, gives]] of Object.entries(PARTS)) await create(C(slot.toUpperCase().replace('_', '')), { 'pf-kind': 'cosmetic', 'pf-slot': slot, 'pf-item': item }, gives);
+const PARTS = [['wheel', 'gold'], ['truck_color', 'blue'], ['gearbox', 'chrome'], ['dice', 'pink'], ['needle', 'cyan']];
+check('admin: the effect menu has no cab-colour kind', (await A.ev('[...document.getElementById("pf-kind").options].map(o => o.value).join(",")')) === 'free_rides,tickets');
 const table = await A.ev('document.getElementById("promo-table").textContent');
-check('admin: the ACTIVE list shows all eight codes, what each gives, 0 uses', [C('RIDE1'), C('RIDE3'), C('TICKETS'), C('WHEEL'), C('TRUCKCOLOR'), C('GEARBOX'), C('DICE'), C('NEEDLE')].every(c => table.includes(c)) && (table.match(/ACTIVE/g) || []).length >= 8 && /3 free rides/.test(table) && /2 × 1h ride tickets/.test(table), table.slice(0, 200));
+check('admin: the ACTIVE list shows the three codes, what each gives, 0 uses', [C('RIDE1'), C('RIDE3'), C('TICKETS')].every(c => table.includes(c)) && (table.match(/ACTIVE/g) || []).length >= 3 && /3 free rides/.test(table) && /2 × 1h ride tickets/.test(table), table.slice(0, 200));
 check('admin: the description with HTML in it is shown as TEXT, nothing was injected', (await A.ev('!!document.querySelector("#promo-table img")')) === false && (await A.ev('window.__xss')) === undefined && table.includes('<img src=x'));
 await A.shot('admin-promos-created');
 
@@ -117,8 +130,10 @@ for (const again of [C('ride3'), ` ${C('RIDE3')}\t`, C('Ride3')]) { r = await re
 check('lobby: spelling it differently does not give a second one', !r.good && /13\/5 free rides/.test(await txt(B, '#chip-free')) && (await get('me', u1.cookie)).j.freeRides === 13, r.text);
 r = await redeemUI(C('TICKETS'));
 check('lobby: the TICKETS code puts 2 tickets into the live 1h pool', r.good && /\+2 tickets/.test(r.text) && (await get('me', u1.cookie)).j.tickets?.[0]?.balance === 2, r.text);
-for (const [slot] of Object.entries(PARTS)) { r = await redeemUI(C(slot.toUpperCase().replace('_', ''))); if (!r.good) break; }
-check('lobby: the five cockpit-part codes each unlock and wear their part', r.good && /Unlocked needle: cyan/.test(r.text), r.text);
+await creditHonk(u1.address, 520); // gold 260 + four parts at 65
+let minted = 0;
+for (const [slot, item] of PARTS) { const m = await post('honk/visuals', { slot, item }, u1.cookie); if (m.r.status === 200) minted++; }
+check('lobby: burning HONK mints the five cab parts', minted === 5 && (await get('honk', u1.cookie)).j.balance === '0', String(minted));
 r = await redeemUI(C('RIDE1'));
 check('lobby: the 1-free-ride code works too (14/5 free rides)', r.good && await until(async () => /14\/5 free rides/.test(await txt(B, '#chip-free'))), r.text);
 r = await redeemUI('NO-SUCH-' + T);
@@ -126,7 +141,7 @@ check('lobby: an unknown code says so, nothing changes', !r.good && /Unknown pro
 r = await redeemUI('');
 check('lobby: an empty field is explained', !r.good && /Type a promo code first/.test(r.text), r.text);
 await B.ev('location.hash = "#promo"');
-check('lobby PROMO tab: every code this player redeemed is listed with what it gave – the HTML description as plain text', await until(async () => { const t = await txt(B, '#my-codes'); return [C('RIDE1'), C('RIDE3'), C('TICKETS'), C('WHEEL'), C('NEEDLE')].every(c => t.includes(c)) && /3 free rides/.test(t) && /wheel: gold/.test(t); }) && (await B.ev('!!document.querySelector("#my-codes img")')) === false && (await txt(B, '#my-codes')).includes('<img src=x'), (await txt(B, '#my-codes')).slice(0, 160));
+check('lobby PROMO tab: every code this player redeemed is listed with what it gave – the HTML description as plain text', await until(async () => { const t = await txt(B, '#my-codes'); return [C('RIDE1'), C('RIDE3'), C('TICKETS')].every(c => t.includes(c)) && /3 free rides/.test(t) && !/wheel: gold/.test(t); }) && (await B.ev('!!document.querySelector("#my-codes img")')) === false && (await txt(B, '#my-codes')).includes('<img src=x'), (await txt(B, '#my-codes')).slice(0, 160));
 await B.ev('location.hash = "#garage"');
 check('lobby GARAGE: five parts collected (5 / 25), each one worn and saved, the cab canvas draws them', await until(async () => /^COLLECTION5 \/ 25/.test(await txt(B, '#garage-progress'))) && (await B.ev(`['wheel:gold','truck_color:blue','gearbox:chrome','dice:pink','needle:cyan'].every(s => { const [a, b] = s.split(':'); const e = document.querySelector('#garage-slots [data-slot=' + a + '] [data-item=' + b + ']'); return e && e.classList.contains('on') && e.classList.contains('saved'); })`)) === true && (await B.ev('!!document.querySelector("#garage-preview canvas")')) === true, await txt(B, '#garage-progress'));
 await B.shot('promo-garage-player1');
@@ -148,18 +163,20 @@ check('abuse: one wallet firing 8 redeems of a one-per-wallet code at once gets 
 // ═══ 3 · the landing: the invite block carries a code through the sign-in to the lobby ═══════════════════════════════════
 const u4kp = nacl.sign.keyPair();
 await L.send('Page.addScriptToEvaluateOnNewDocument', { source: fakeWallet(u4kp) });
-await L.send('Page.navigate', { url: `${BASE}/?promo=${C('dice')}` });
-check('landing: /?promo=CODE pre-fills the invite block and says the code is ready', await until(async () => (await L.ev('document.getElementById("invite-code")?.value')) === C('dice') && /is ready/.test(await txt(L, '#invite-msg'))), await txt(L, '#invite-msg'));
+await L.send('Page.navigate', { url: `${BASE}/?promo=${C('TICKETS')}` });
+check('landing: /?promo=CODE pre-fills the invite block and says the code is ready', await until(async () => (await L.ev('document.getElementById("invite-code")?.value')) === C('TICKETS') && /is ready/.test(await txt(L, '#invite-msg'))), await txt(L, '#invite-msg'));
 await L.shot('promo-landing-invite');
 await L.ev('document.getElementById("invite").requestSubmit()');
 check('landing (signed out): CLAIM keeps the code and takes the player to CONNECT', /saved/.test(await txt(L, '#invite-msg')) && (await L.ev('document.activeElement?.id')) === 'connect', await txt(L, '#invite-msg'));
 await L.ev('document.getElementById("connect").click()');
-check('landing → lobby: after the wallet signs, the PROFILE opens with the code typed in – and not redeemed yet', await until(async () => (await L.ev('location.pathname')) === '/lobby.html' && (await L.ev('document.getElementById("promo-code")?.value || ""')).toLowerCase() === C('dice').toLowerCase(), 20000) && (await get('promo/mine', await signInCookie(L))).j.redemptions?.length === 0);
+check('landing → lobby: after the wallet signs, the PROFILE opens with the code typed in – and not redeemed yet', await until(async () => (await L.ev('location.pathname')) === '/lobby.html' && (await L.ev('document.getElementById("promo-code")?.value || ""')).toLowerCase() === C('TICKETS').toLowerCase(), 20000) && (await get('promo/mine', await signInCookie(L))).j.redemptions?.length === 0);
 async function signInCookie(h) { const c = (await h.send('Network.getCookies', { urls: [BASE] })).cookies.find(k => k.name === 'fc_session'); return c ? `fc_session=${c.value}` : ''; }
 await L.ev('document.getElementById("promo-go").click()');
-check('lobby (arrived from the landing): REDEEM works – the dice part is unlocked and worn', await until(async () => /Unlocked dice: pink/.test(await txt(L, '#promo-msg'))), await txt(L, '#promo-msg'));
+check('lobby (arrived from the landing): REDEEM works – the ticket code', await until(async () => /\+2 tickets/.test(await txt(L, '#promo-msg'))), await txt(L, '#promo-msg'));
 await L.shot('promo-lobby-from-landing');
-check('…and the server agrees (wardrobe: pink dice)', (await get('wardrobe', await signInCookie(L))).j.equipped.dice === 'pink');
+const landed = await signInCookie(L);
+await creditHonk(bs58.encode(u4kp.publicKey), 65);
+check('…and burning 65 HONK wears the pink dice', (await post('honk/visuals', { slot: 'dice', item: 'pink' }, landed)).r.status === 200 && (await get('wardrobe', landed)).j.equipped.dice === 'pink');
 await L.send('Page.navigate', { url: `${BASE}/` });
 await until(async () => !(await L.ev('document.getElementById("chip-wallet")?.hidden ?? true')));
 await L.ev(`document.getElementById('invite-code').value = ${JSON.stringify(C('RIDE1'))}; document.getElementById('invite').requestSubmit()`);
@@ -203,7 +220,7 @@ await A.shot('admin-promos-used');
 await A.ev('[...document.querySelectorAll("#view a")].find(a => /all redemptions/.test(a.textContent))?.click()');
 await until(async () => (await A.ev('document.getElementById("promo-used")?.textContent || ""')).includes(u3.short) === false && (await A.ev('document.querySelectorAll("#promo-used tbody tr").length')) > 8);
 await A.ev(`[...document.querySelectorAll("#promo-used a")].find(a => a.title === ${JSON.stringify(u1.address)})?.click()`);
-check('admin: filtering by player 1\'s wallet lists the eight codes it redeemed, nothing of other wallets', await until(async () => { const t = await A.ev('document.getElementById("promo-used")?.textContent || ""'); return [C('RIDE1'), C('RIDE3'), C('TICKETS'), C('WHEEL'), C('NEEDLE')].every(c => t.includes(c)) && !t.includes(u2.short) && (await A.ev('document.querySelectorAll("#promo-used tbody tr").length')) === 8; }));
+check('admin: filtering by player 1\'s wallet lists the three codes it redeemed, nothing of other wallets', await until(async () => { const t = await A.ev('document.getElementById("promo-used")?.textContent || ""'); return [C('RIDE1'), C('RIDE3'), C('TICKETS')].every(c => t.includes(c)) && !t.includes(u2.short) && (await A.ev('document.querySelectorAll("#promo-used tbody tr").length')) === 3; }));
 await A.ev('[...document.querySelectorAll("#view a")].find(a => /all redemptions/.test(a.textContent)).click()');
 await state('active');
 await A.ev(`[...document.querySelectorAll("#promo-table tr")].find(r => r.dataset.code === ${JSON.stringify(C('RIDE1'))}).querySelector("button.reject").click()`);
@@ -212,7 +229,7 @@ const u8 = await signIn();
 check('lobby: a player who tries the disabled code is told it is no longer valid, and gets nothing', await lobbyAs(u8) && !(r = await redeemUI(C('RIDE1'))).good && /no longer valid/.test(r.text) && /10\/5 free rides/.test(await txt(B, '#chip-free')), r?.text);
 check('lobby: what the disabled code already gave player 1 stays (14 free rides + the lists)', (await get('me', u1.cookie)).j.freeRides === 14 && (await get('promo/mine', u1.cookie)).j.redemptions.some(x => x.code === C('RIDE1')));
 await A.ev('location.hash = "#audit"');
-check('admin audit: every create and the disable are logged with their signatures', await until(async () => { const t = await A.ev('document.querySelector("tbody")?.textContent || ""'); return (t.match(/promo\.create/g) || []).length >= 11 && /promo\.disable/.test(t) && /"signature"/.test(t); }));
+check('admin audit: every create and the disable are logged with their signatures', await until(async () => { const t = await A.ev('document.querySelector("tbody")?.textContent || ""'); return (t.match(/promo\.create/g) || []).length >= 6 && /promo\.disable/.test(t) && /"signature"/.test(t); }));
 await size(A, 390, 844, true); await A.ev('location.hash = "#promos"'); await sleep(500); await A.shot('admin-promos-phone');
 await size(B, 390, 844, true); await login(B, u1, `${BASE}/lobby.html#garage`); await sleep(2500); await B.shot('promo-garage-phone');
 

@@ -7,7 +7,6 @@ import type { Player } from '../../../../domain/players/player.entity.js';
 import { ConflictError, NotFoundError } from '../../../../domain/shared/errors.js';
 import { PoolRepositoryPort } from '../../../ports/economy/pool.repository.port.js';
 import { PromoRepositoryPort } from '../../../ports/economy/promo.repository.port.js';
-import { CosmeticRepositoryPort } from '../../../ports/players/cosmetic.repository.port.js';
 import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { RideTicketRepositoryPort } from '../../../ports/players/ride-ticket.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
@@ -24,8 +23,8 @@ import { RedeemPromoCommand, type PromoRedeemedDto } from './redeem-promo.comman
 
 /**
  * Redeem a promo code – one transaction under the wallet's player lock, whatever the effect: free tickets into a pool (an off-chain grant – it never counts towards
- * the pool's on-chain minimum), extra free rides, or a cosmetic unlocked + equipped. Everything that can refuse is checked BEFORE a redemption is taken, so a wallet
- * already at the pool's cap / already owning the cosmetic does not burn one; the redemption itself is one atomic UPDATE (two wallets never both get the last one,
+ * the pool's on-chain minimum) or extra free rides. A cosmetic code is refused (`visuals_are_honk`) — cab colours are minted by burning HONK. Everything that can refuse is checked BEFORE a redemption is taken, so a wallet
+ * already at the pool's cap does not burn one; the redemption itself is one atomic UPDATE (two wallets never both get the last one,
  * nothing before `startsAt`) and the (code, wallet, n) key enforces the per-wallet limit.
  */
 @CommandHandler(RedeemPromoCommand)
@@ -35,7 +34,6 @@ export class RedeemPromoHandler implements ICommandHandler<RedeemPromoCommand, P
     private readonly promos: PromoRepositoryPort,
     private readonly pools: PoolRepositoryPort,
     private readonly tickets: RideTicketRepositoryPort,
-    private readonly cosmetics: CosmeticRepositoryPort,
     private readonly poolTickets: PoolTicketsService,
     private readonly sessions: PlayerSessionService,
     private readonly transactions: TransactionPort,
@@ -78,14 +76,7 @@ export class RedeemPromoHandler implements ICommandHandler<RedeemPromoCommand, P
         return { kind: 'free_rides', code, label, added: e.count, freeRides: player.freeRides };
       };
     }
-    if (e.kind === 'cosmetic') {
-      if (await this.cosmetics.has(wallet, e.slot, e.item, tx)) throw new ConflictError('you already own this item', 'already_owned');
-      return async (_player, code, label) => {
-        await this.cosmetics.unlock({ wallet, slot: e.slot, item: e.item, code, at: now }, tx);
-        await this.cosmetics.equip(wallet, e.slot, e.item, tx);
-        return { kind: 'cosmetic', code, label, slot: e.slot, item: e.item };
-      };
-    }
+    if (e.kind === 'cosmetic') throw new ConflictError('cab visuals are minted by burning HONK', 'visuals_are_honk');
     const pool = await this.targetPool(e, now, tx);
     const held = (await this.tickets.find(wallet, pool.id, tx))?.balance ?? 0;
     if (held >= pool.maxPerWallet) throw new ConflictError(`you already hold the maximum of ${pool.maxPerWallet} tickets in this pool`, 'ticket_cap');

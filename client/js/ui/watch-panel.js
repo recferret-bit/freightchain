@@ -18,7 +18,7 @@ import { paintPledges, pledgeForm } from './watch-pledges.js';
    the chat box, the donation buttons and – on a ticket ride – pledges per km (watch-pledges.js). Server text only through el() / textContent. Spectator actions go to /api/watch/:id/* (server/src/presentation/live). */
 const TIER = { free: 'TEST RIDE', '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8 HOURS' };
 const STATUS = { running: 'ON THE ROAD', completed: 'COMPLETED', abandoned: 'ABANDONED', failed: 'FAILED' };
-const P = { me: null, root: null, busy: false, endShown: false };
+const P = { me: null, root: null, busy: false, endShown: false, honkUntil: 0, timeUntil: 0 };
 const $ = id => document.getElementById(id);
 const hms = t => (t >= 3600 ? `${Math.floor(t / 3600)}:${fmt(t % 3600)}` : fmt(t));
 const km = m => (m / 1000).toFixed(1);
@@ -156,12 +156,14 @@ function paintRoad(end) {
 /* ───── feed ───── */
 function feedLine(e) {
   const box = $('w-feed'); if (!box) return;
-  const fx = EFFECT_INFO[e.effect], mine = P.me && e.wallet === P.me.wallet;
-  const body = e.kind === 'message' ? [e.text] : [`${fx?.icon ?? '💰'} ${fx?.says ?? 'donated'} · ${solText(e.lamports)} `,
-    e.signature ? el('a', { href: explorerTx(e.signature), target: '_blank', rel: 'noopener', title: 'the transfer to the driver on the Solana explorer (devnet)' }, 'paid ↗') : el('small', {}, '(mock)'), e.text ? ` – “${e.text}”` : ''];
+  const fx = EFFECT_INFO[e.effect], mine = P.me && e.wallet === P.me.wallet, honk = e.kind === 'honk';
+  const body = e.kind === 'message' ? [e.text]
+    : honk ? [`${fx?.icon ?? ''} ${e.text ?? ''}`.trim()]
+    : [`${fx?.icon ?? '💰'} ${fx?.says ?? 'donated'} · ${solText(e.lamports)} `,
+      e.signature ? el('a', { href: explorerTx(e.signature), target: '_blank', rel: 'noopener', title: 'the transfer to the driver on the Solana explorer (devnet)' }, 'paid ↗') : el('small', {}, '(mock)'), e.text ? ` – “${e.text}”` : ''];
   const row = el('div', { class: `w-line${e.kind === 'donation' ? ' gift' : ''}${mine ? ' me' : ''}`, 'data-id': e.id },
     el('b', { title: e.wallet }, `${formatDriver(e.wallet, e.sns)}${e.wallet === watch.ride?.wallet ? ' (driver)' : ''}: `), ...body,
-    e.kind === 'donation' && e.effect !== 'tip' ? el('span', { class: 'w-ap dim' }, appliedText(e)) : '');
+    (honk || (e.kind === 'donation' && e.effect !== 'tip')) ? el('span', { class: 'w-ap dim' }, appliedText(e)) : '');
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
   box.append(row); while (box.children.length > 200) box.firstChild.remove();
   if (atBottom) box.scrollTop = box.scrollHeight;
@@ -184,8 +186,9 @@ function paintMe() {
   if (box.dataset.ready === key) return;   // built once per signed-in wallet and feature set (keeps what is being typed)
   box.dataset.ready = key;
   const parts = [];
-  if (f.chat) parts.push(el('div', { class: 'w-say' }, el('input', { id: 'w-text', maxlength: 140, placeholder: 'say something to the driver…', autocomplete: 'off', onkeydown: e => { if (e.key === 'Enter') send(); } }), el('button', { onclick: send }, 'SEND')));
-  else parts.push(el('p', { class: 'dim w-small' }, 'Chat is off on this ride.'));
+  if (f.chat) parts.push(el('div', { class: 'w-say' }, el('input', { id: 'w-text', maxlength: 140, placeholder: 'say something to the driver…', autocomplete: 'off', onkeydown: e => { if (e.key === 'Enter') send(); } }), el('button', { type: 'button', onclick: send }, 'SEND'), honkBtn()));
+  else parts.push(el('p', { class: 'dim w-small' }, 'Chat is off on this ride.'), el('div', { class: 'w-say' }, honkBtn()));
+  parts.push(...timeControls());
   if (f.donations) {
     const fx = Object.entries(EFFECT_INFO).filter(([id]) => f.effects || id === 'tip'), chain = f.payment === 'chain';
     parts.push(el('div', { class: 'w-k' }, chain ? 'DONATE · devnet SOL, sent from your wallet to the driver' : 'DONATE · mock SOL – nothing is charged', f.effects ? ' · one effect per 20 s on a ride' : ' · effects are off on this ride – tips only'),
@@ -206,6 +209,90 @@ async function send() {
   const t = $('w-text'); if (!t || !t.value.trim()) return;
   try { const e = await api(`watch/${encodeURIComponent(watch.id)}/messages`, { text: t.value }); t.value = ''; say(''); addOwn(e); }
   catch (e) { say(e.message, 'bad'); if (e.status === 401) refreshMe(); }
+}
+/* Burns 1 HONK into the ride's chat (the server writes a normal message whose text is HONK). No effect on the truck.
+   The button stays down for the server's 10 s gap; a refusal (balance, rate, sign-in) is the API's own sentence. */
+const HONK_GAP_MS = 10_000, TIME_GAP_MS = 20_000;
+function honkBtn() {
+  const left = P.honkUntil - Date.now();
+  const b = el('button', { id: 'w-honk', type: 'button', disabled: left > 0, title: 'Burn 1 HONK. It shows up in the chat. Nothing happens to the truck.', onclick: sendHonk }, 'HONK');
+  if (left > 0) setTimeout(releaseHonk, left);
+  return b;
+}
+async function honkSignature(amount) {
+  const me = await api('honk', undefined, { report: false }).catch(() => null);
+  const programId = me?.chain?.programId;
+  if (!programId || !P.me?.wallet) return null;
+  const { signHonkBurn } = await import('../../site/honk-sign.js');
+  return signHonkBurn({ programId, owner: P.me.wallet, amount });
+}
+function releaseHonk() {
+  const b = $('w-honk'); if (b && Date.now() >= P.honkUntil) b.disabled = false;
+}
+async function sendHonk() {
+  const b = $('w-honk');
+  if (!b || b.disabled || Date.now() < P.honkUntil) return;
+  b.disabled = true;
+  try {
+    const signature = await honkSignature(1n * 1_000_000n);
+    await api(`watch/${encodeURIComponent(watch.id)}/honk`, signature ? { signature } : {}, { method: 'POST' });
+    P.honkUntil = Date.now() + HONK_GAP_MS;
+    say('Burn landed.', 'good');
+    setTimeout(releaseHonk, HONK_GAP_MS);
+  } catch (e) {
+    if (Date.now() >= P.honkUntil) b.disabled = false;
+    say(e.message, 'bad');
+    if (e.status === 401) refreshMe();
+  }
+}
+/* 10 HONK moves the driver's clock (day or night); 25 HONK sets snow or clear. All four share the 20s effect window. The donation effect switch does not hide these. */
+const FX_IDS = ['w-honk-day', 'w-honk-night', 'w-honk-snow', 'w-honk-clear'];
+function timeControls() {
+  const left = P.timeUntil - Date.now(), held = left > 0;
+  const title = on => `Burning 10 HONK turns the ride to ${on}. The driver's clock moves; spectators see it in the replay.`;
+  const btn = (phase, label) => el('button', { id: `w-honk-${phase}`, type: 'button', class: 'alt', disabled: held, title: title(phase), onclick: () => sendTime(phase) }, label, el('small', {}, '10 HONK'));
+  const wxTitle = on => `Burning 25 HONK ${on === 'snow' ? 'makes it snow' : 'clears the snow'}. Not a donation.`;
+  const wx = (weather, label) => el('button', { id: `w-honk-${weather}`, type: 'button', class: 'alt', disabled: held, title: wxTitle(weather), onclick: () => sendWeather(weather) }, label, el('small', {}, '25 HONK'));
+  if (held) setTimeout(releaseTime, left);
+  return [el('div', { class: 'w-fx' }, btn('day', 'DAY'), btn('night', 'NIGHT')), el('div', { class: 'w-fx' }, wx('snow', 'SNOW'), wx('clear', 'CLEAR'))];
+}
+function releaseTime() {
+  if (Date.now() < P.timeUntil) return;
+  for (const id of FX_IDS) { const b = $(id); if (b) b.disabled = false; }
+}
+function holdFx() {
+  const buttons = FX_IDS.map((id) => $(id));
+  if (buttons.some((b) => !b || b.disabled) || Date.now() < P.timeUntil) return false;
+  for (const b of buttons) b.disabled = true;
+  return true;
+}
+async function sendTime(phase) {
+  if (!holdFx()) return;
+  try {
+    const signature = await honkSignature(10n * 1_000_000n);
+    await api(`watch/${encodeURIComponent(watch.id)}/honk/time`, { phase, ...(signature ? { signature } : {}) });
+    P.timeUntil = Date.now() + TIME_GAP_MS;
+    say(phase === 'night' ? 'Night burn landed.' : 'Day burn landed.', 'good');
+    setTimeout(releaseTime, TIME_GAP_MS);
+  } catch (e) {
+    if (Date.now() >= P.timeUntil) releaseTime();
+    say(e.message, 'bad');   // 409 honk_balance and 429 are the server's own sentence
+    if (e.status === 401) refreshMe();
+  }
+}
+async function sendWeather(weather) {
+  if (!holdFx()) return;
+  try {
+    const signature = await honkSignature(25n * 1_000_000n);
+    await api(`watch/${encodeURIComponent(watch.id)}/honk/weather`, { weather, ...(signature ? { signature } : {}) });
+    P.timeUntil = Date.now() + TIME_GAP_MS;
+    say(weather === 'snow' ? 'Snow burn landed.' : 'Clear burn landed.', 'good');
+    setTimeout(releaseTime, TIME_GAP_MS);
+  } catch (e) {
+    if (Date.now() >= P.timeUntil) releaseTime();
+    say(e.message, 'bad');   // 409 honk_balance and 429 are the server's own sentence
+    if (e.status === 401) refreshMe();
+  }
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function showDonationQr(url) {

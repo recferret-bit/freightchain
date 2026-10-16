@@ -18,6 +18,8 @@ import { RideBatchRepositoryPort } from '../ports/telemetry/ride-batch.repositor
 import { ReplayQueuePort } from '../ports/verdict/replay-queue.port.js';
 import { RideReplayRepositoryPort } from '../ports/verdict/ride-replay.repository.port.js';
 import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.repository.port.js';
+import { HonkMintService } from './honk-mint.service.js';
+import { HonkEmissionPort } from '../ports/honk/honk-emission.port.js';
 
 /**
  * Judges a completed ride from its stored recording (RideVerdict.judge + 10 Hz ReplayEngine) and saves both the verdict and the RideReplay record.
@@ -54,6 +56,8 @@ export class VerdictService {
     private readonly audit: AdminActionRepositoryPort,
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
+    private readonly honk: HonkMintService,
+    private readonly emission: HonkEmissionPort,
     @Optional() private readonly replays?: RideReplayRepositoryPort,
     @Optional() private readonly rideEvents?: RideEventRepositoryPort,
     @Optional() private readonly replayQueue?: ReplayQueuePort,
@@ -63,6 +67,7 @@ export class VerdictService {
   /** null = nothing to judge (only completed shifts can rank, so only they are judged). A verdict an admin decided is returned as is. */
   async judge(rideId: string): Promise<RideVerdict | null> {
     const result = await this.transactions.run((tx) => this.judgeLocked(rideId, false, tx));
+    await this.mintRide(result);
     return result?.verdict ?? null;
   }
 
@@ -135,34 +140,42 @@ export class VerdictService {
   /** An admin's "judge again": the checks at the current rules, replacing any earlier decision – judged and audited in ONE transaction under the player
       lock. 404 for a ride that is not a completed shift; 409 when the retention sweep already deleted the recording (the verdict then stays as it is). */
   async rejudge(rideId: string, admin: string, requestId: string | null, proof: AdminProof | null = null): Promise<RideVerdict> {
-    const verdict = await this.transactions.run(async (tx) => {
-      const result = await this.judgeLocked(rideId, true, tx);
-      if (!result) throw new NotFoundError('only a completed shift can be judged');
-      const { verdict: v, before } = result;
+    const result = await this.transactions.run(async (tx) => {
+      const judged = await this.judgeLocked(rideId, true, tx);
+      if (!judged) throw new NotFoundError('only a completed shift can be judged');
+      const { verdict: v, before } = judged;
       await this.audit.insert({ wallet: admin, action: 'verdict.rejudge', target: rideId, detail: { from: before, to: v.status, reasons: v.reasons.map((r) => r.code), ...(proof ? { signed: proof } : {}) }, requestId, at: this.clock.now() }, tx);
-      return v;
+      return judged;
     });
-    this.logger.log({ event: 'admin', msg: `ride ${rideId} re-judged by ${admin}: ${verdict.status}`, action: 'verdict.rejudge', rideId, admin, requestId });
-    return verdict;
+    this.logger.log({ event: 'admin', msg: `ride ${rideId} re-judged by ${admin}: ${result.verdict.status}`, action: 'verdict.rejudge', rideId, admin, requestId });
+    await this.mintRide(result);
+    return result.verdict;
   }
 
   /** The bulk re-judge (CLI `verdict:rejudge`, after a rules change): the current rules, an admin's decision kept, a ride whose recording the retention
       sweep already deleted SKIPPED (null) rather than rejected for 'no-recording'. Returns the status before and after, or null when nothing was judged. */
   async rejudgeQuietly(rideId: string): Promise<{ before: string | null; after: string } | null> {
-    return this.transactions.run(async (tx) => {
-      const result = await this.judgeLocked(rideId, false, tx, true).catch((error: unknown) => { if (error instanceof ConflictError) return null; throw error; });
-      return result ? { before: result.before, after: result.verdict.status } : null;
+    const result = await this.transactions.run(async (tx) => {
+      const judged = await this.judgeLocked(rideId, false, tx, true).catch((error: unknown) => { if (error instanceof ConflictError) return null; throw error; });
+      return judged;
     });
+    await this.mintRide(result);
+    return result ? { before: result.before, after: result.verdict.status } : null;
   }
 
   /** Judge inside the caller's transaction, under the player lock; batches are read only once the lock is held. `force` replaces an admin decision;
       `guardSwept` refuses (409) when the recording was deleted by the retention sweep – a late batch (neither) may still judge an empty recording. */
-  private async judgeLocked(rideId: string, force: boolean, tx: TransactionHandle, guardSwept = force): Promise<{ verdict: RideVerdict; before: string | null } | null> {
+  private async mintRide(result: { minted: bigint | null; wallet: string; verdict: RideVerdict } | null): Promise<void> {
+    if (!result?.minted) return;
+    await this.emission.mint(result.verdict.rideId, result.wallet, result.minted);
+  }
+
+  private async judgeLocked(rideId: string, force: boolean, tx: TransactionHandle, guardSwept = force): Promise<{ verdict: RideVerdict; before: string | null; minted: bigint | null; wallet: string } | null> {
     const ride = await this.rides.findById(rideId, tx);
     if (!ride || !ride.isInStatus(RideStatus.Completed)) return null;
     await this.players.findByWalletForUpdate(ride.wallet, tx);
     const existing = await this.verdicts.findByRide(rideId, tx);
-    if (existing?.isOverridden && !force && !this.replays) return { verdict: existing, before: existing.status }; // an admin decided – a late batch never replaces that
+    if (existing?.isOverridden && !force && !this.replays) return { verdict: existing, before: existing.status, minted: null, wallet: ride.wallet }; // an admin decided – a late batch never replaces that
     const batches = await this.batches.listFactsByRide(rideId, tx);
     if (guardSwept && existing && batches.length === 0 && existing.snapshot().scores.recording.batches > 0) {
       throw new ConflictError('the recording of this ride was deleted by the retention sweep – its verdict stays as it is', 'recording_deleted');
@@ -176,7 +189,7 @@ export class VerdictService {
         this.replays.findLatestByRide(rideId, tx),
       ]);
       if (existing?.isOverridden && !force && (!latestReplay || latestReplay.status !== VerdictStatus.Pending)) {
-        return { verdict: existing, before: existing.status };
+        return { verdict: existing, before: existing.status, minted: null, wallet: ride.wallet };
       }
       const simOut = ReplayEngine.verify(ride, fullBatches, events);
       const replay = latestReplay && latestReplay.status === VerdictStatus.Pending
@@ -194,7 +207,7 @@ export class VerdictService {
       replay.markStarted(now);
       replay.complete({ ...simOut, now });
       await this.replays.save(replay, tx);
-      if (existing?.isOverridden && !force) return { verdict: existing, before: existing.status };
+      if (existing?.isOverridden && !force) return { verdict: existing, before: existing.status, minted: null, wallet: ride.wallet };
       replayReasons = replay.toVerdictReasons();
     }
     const verdict = RideVerdict.judge(ride, batches, now, replayReasons);
@@ -202,8 +215,10 @@ export class VerdictService {
     // cannot recompute them, so they are carried over (also when an admin re-judges: clearing a mark is an admin DECISION – the override –, not a re-run)
     verdict.addReasons(existing?.reasons.filter((r) => isPoolMark(r.code)) ?? []);
     await this.verdicts.save(verdict, tx);
+    // HONK is credited in this same transaction. A flagged or rejected ride mints nothing, and a second pass of a verified ride does not mint again.
+    const minted = verdict.status === 'verified' ? await this.honk.credit({ rideId, wallet: ride.wallet, tier: ride.tier, distance: ride.distance, completeDist: ride.completeDist }, tx) : null;
     this.logger.log({ event: 'verdict', msg: `ride ${rideId}: ${verdict.status}`, rideId, wallet: ride.wallet, status: verdict.status, reasons: verdict.reasons.map((r) => r.code) });
-    return { verdict, before: existing?.status ?? null };
+    return { verdict, before: existing?.status ?? null, minted, wallet: ride.wallet };
   }
 
   /** The pool-level attention marks for ONE rider's rides (PoolAttentionService), in one transaction under that rider's player lock – the same lock as

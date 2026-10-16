@@ -1,5 +1,4 @@
 import { parseArgs } from 'node:util';
-import { isCosmeticSlot } from '../domain/economy/cosmetics.js';
 import type { PromoCreateInput, PromoEffect } from '../domain/economy/promo.types.js';
 import { isPaidTierId, rideTier, type PaidTierId } from '../domain/rides/ride-tier.js';
 
@@ -23,17 +22,20 @@ const dateArg = (name: string, raw: string): Date | string => {
   return Number.isNaN(d.getTime()) ? `--${name} must be a date (YYYY-MM-DD, UTC midnight) or an ISO timestamp` : d;
 };
 
+const COSMETIC_FLAG = '--cosmetic is not a promo effect: cab parts are minted by burning HONK';
+
 /**
  * `promo:create CODE <effect> [--desc TEXT] [--start DATE] [--expires DATE] [--max N] [--per-wallet N] [--note TEXT]` with ONE effect:
- * `--tier 1h|4h|8h --credits N [--pool ID]` (tickets) · `--free-rides N` · `--cosmetic wheel|truck_color|gearbox|dice|needle:ITEM`
+ * `--tier 1h|4h|8h --credits N [--pool ID]` (tickets) · `--free-rides N`. `--cosmetic` is refused – cab parts are minted by burning HONK.
  */
 export function parsePromoCreate(args: readonly string[]): PromoCreateInput | string {
+  if (args.some((a) => a === '--cosmetic' || a.startsWith('--cosmetic='))) return COSMETIC_FLAG;   // not an option: it must not build a cosmetic effect
   let parsed;
   try {
     parsed = parseArgs({
       args: [...args], allowPositionals: true,
       options: {
-        tier: { type: 'string' }, credits: { type: 'string' }, pool: { type: 'string' }, 'free-rides': { type: 'string' }, cosmetic: { type: 'string' },
+        tier: { type: 'string' }, credits: { type: 'string' }, pool: { type: 'string' }, 'free-rides': { type: 'string' },
         desc: { type: 'string' }, start: { type: 'string' }, expires: { type: 'string' }, max: { type: 'string' }, 'per-wallet': { type: 'string' }, note: { type: 'string' },
       },
     });
@@ -42,17 +44,13 @@ export function parsePromoCreate(args: readonly string[]): PromoCreateInput | st
   }
   const { values: v, positionals } = parsed;
   if (positionals.length !== 1) return 'give exactly one code';
-  const kinds = [v.tier !== undefined || v.credits !== undefined || v.pool !== undefined, v['free-rides'] !== undefined, v.cosmetic !== undefined].filter(Boolean).length;
-  if (kinds !== 1) return 'give exactly one effect: --tier + --credits (tickets), --free-rides N, or --cosmetic slot:item';
+  const kinds = [v.tier !== undefined || v.credits !== undefined || v.pool !== undefined, v['free-rides'] !== undefined].filter(Boolean).length;
+  if (kinds !== 1) return 'give exactly one effect: --tier + --credits (tickets), or --free-rides N';
   let effect: PromoEffect;
   if (v['free-rides'] !== undefined) {
     const count = int('free-rides', v['free-rides'], 1);
     if (typeof count === 'string') return count;
     effect = { kind: 'free_rides', count };
-  } else if (v.cosmetic !== undefined) {
-    const [slot, item] = v.cosmetic.split(':');
-    if (!isCosmeticSlot(slot) || !item) return '--cosmetic must be wheel|truck_color|gearbox|dice|needle followed by :ITEM, e.g. wheel:gold';
-    effect = { kind: 'cosmetic', slot, item };
   } else {
     if (!isPaidTierId(v.tier)) return '--tier must be 1h, 4h or 8h';
     const credits = int('credits', v.credits, 1);

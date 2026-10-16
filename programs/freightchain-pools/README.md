@@ -1,5 +1,7 @@
 # freightchain-pools (Anchor 1.2.1 program `freightchain_pools`)
 
+This workspace also contains `freightchain_honk` (local only, not the devnet prize program), tested with `cargo test -p freightchain_honk`.
+
 Escrowed prize pools on Solana: an assurance contract for skill prizes. Program id (devnet): `8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p`, the value in `declare_id!`, `Anchor.toml`, and the IDL `address`. Its keypair is `deploy/secrets/devnet/program-id.json` of the main checkout (gitignored; copied to `target/deploy/freightchain_pools-keypair.json` for `anchor keys sync`). A new id means `anchor keys sync`, a rebuild, and a new pin (`docs/program-deploy.md`). The v1 id `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx` is still on devnet. Its pools are finished, and the site does not sell into it.
 
 **This source is v4** (the pentest fixes, WP5 – section "v4" below): built and tested, **not deployed** – devnet still runs v3 until the settle-first upgrade (`docs/program-deploy.md` "v4").

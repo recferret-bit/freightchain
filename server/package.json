@@ -45,6 +45,7 @@
     "@nestjs/serve-static": "^12.0.0",
     "@nestjs/throttler": "^6.7.1",
     "@prisma/client": "^6.19.3",
+    "@solana/spl-token": "0.4.15",
     "@solana/web3.js": "^1.99.0",
     "bs58": "^6.0.0",
     "compression": "^1.8.2",

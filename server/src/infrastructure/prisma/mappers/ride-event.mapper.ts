@@ -6,7 +6,7 @@ import { isEffectId } from '../../../domain/live/live-rules.js';
 export class RideEventMapper {
   static toDomain(row: RideEventRow): RideEvent {
     return RideEvent.restore({
-      id: row.id, rideId: row.rideId, wallet: row.wallet, kind: row.kind as RideEventKind, text: row.text, effect: isEffectId(row.effect) ? row.effect : null,
+      id: row.id, rideId: row.rideId, wallet: row.wallet, kind: row.kind as RideEventKind, text: row.text, effect: isEffectId(row.effect) ? row.effect : row.effect === 'snow' || row.effect === 'clear' ? row.effect : null,
       lamports: Number(row.lamports), slotKey: row.slotKey, slot: row.slot, createdAt: row.createdAt,
       applied: row.appliedAt && row.appliedT !== null && row.appliedS !== null ? { at: row.appliedAt, t: row.appliedT, s: row.appliedS, lat: row.appliedLat } : null,
       signature: row.signature,

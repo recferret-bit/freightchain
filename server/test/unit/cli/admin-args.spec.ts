@@ -12,11 +12,12 @@ describe('admin CLI arguments', () => {
     expect((parsePromoCreate(['X1Y', '--tier', '4h', '--credits', '1', '--expires', '2026-10-31T18:00:00Z']) as { expiresAt: Date }).expiresAt).toEqual(new Date(Date.UTC(2026, 9, 31, 18)));
   });
 
-  it('promo:create – free rides and cosmetics', () => {
+  it('promo:create – free rides; --cosmetic never builds an effect', () => {
     expect(parsePromoCreate(['THREE', '--free-rides', '3'])).toMatchObject({ code: 'THREE', effect: { kind: 'free_rides', count: 3 } });
-    expect(parsePromoCreate(['GOLD', '--cosmetic', 'wheel:gold'])).toMatchObject({ effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } });
-    expect(parsePromoCreate(['BLUE', '--cosmetic', 'truck_color:blue'])).toMatchObject({ effect: { kind: 'cosmetic', slot: 'truck_color', item: 'blue' } });
-    expect(parsePromoCreate(['RACE', '--cosmetic', 'gearbox:racing'])).toMatchObject({ effect: { kind: 'cosmetic', slot: 'gearbox', item: 'racing' } });
+    for (const args of [
+      ['GOLD', '--cosmetic', 'wheel:gold'], ['BLUE', '--cosmetic', 'truck_color:blue'], ['RACE', '--cosmetic', 'gearbox:racing'],
+      ['A1', '--cosmetic', 'seat:x'], ['A1', '--cosmetic', 'wheel'], ['A1', '--cosmetic=wheel:gold'], ['A1', '--free-rides', '2', '--cosmetic', 'wheel:gold'],
+    ]) expect(parsePromoCreate(args), args.join(' ')).toBe('--cosmetic is not a promo effect: cab parts are minted by burning HONK');
   });
 
   it('promo:create – readable errors', () => {
@@ -28,10 +29,7 @@ describe('admin CLI arguments', () => {
     expect(parsePromoCreate(['A1', '--tier', '1h', '--credits', '1', '--start', 'soon'])).toMatch(/--start must be a date/);
     expect(parsePromoCreate(['A1', '--bogus'])).toMatch(/Unknown option/);
     expect(parsePromoCreate(['A1'])).toMatch(/exactly one effect/);
-    expect(parsePromoCreate(['A1', '--free-rides', '2', '--cosmetic', 'wheel:gold'])).toMatch(/exactly one effect/);
     expect(parsePromoCreate(['A1', '--free-rides', '0'])).toBe('--free-rides must be a whole number ≥ 1');
-    expect(parsePromoCreate(['A1', '--cosmetic', 'seat:x'])).toMatch(/--cosmetic must be/);
-    expect(parsePromoCreate(['A1', '--cosmetic', 'wheel'])).toMatch(/--cosmetic must be/);
   });
 
   it('tickets:grant', () => {
