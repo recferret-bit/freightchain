@@ -122,7 +122,7 @@ const R = [
   ['POST', /^promo\/redeem$/, (m, b) => {   // STUB = 2 tickets · RIDES = +3 free rides (above the cap). A colour code is refused – cab parts are HONK burns.
     const code = String(b.code).replace(/\s+/g, '').toUpperCase();
     if (code === 'RIDES') { freeRides += 3; redeemed.unshift({ code, label: '3 free rides', description: 'Three extra rides', kind: 'free_rides', at: NOW() }); return { body: { kind: 'free_rides', code, label: '3 free rides', added: 3, freeRides } }; }
-    if (code === 'GOLD' || code === 'BLUE' || code === 'RACING') return problem(409, 'visuals_are_honk', 'cab visuals are minted by burning HONK');
+    if (code === 'GOLD' || code === 'BLUE' || code === 'RACING') return problem(409, 'visuals_are_honk', 'cab visuals are minted by burning TEN4');
     if (code !== 'STUB') return problem(404, 'not_found', 'no such promo code');
     const t = tickets.get(1), add = Math.min(2, 5 - t.balance); t.balance += add; grants.push({ poolId: 1, delta: add, source: 'promo', ref: 'STUB', at: NOW() });
     redeemed.unshift({ code: 'STUB', label: '2 × 1h ride tickets', description: null, kind: 'tickets', at: NOW() });
@@ -199,4 +199,4 @@ http.createServer(async (req, res) => {
   let out = problem(404, 'not_found', `Cannot ${req.method} /api/${p}`);
   for (const [m, re, h] of R) { const hit = m === req.method && p.match(re); if (hit) { out = h(hit, body, query); break; } }
   res.writeHead(out.status ?? 200, { 'content-type': out.status >= 400 ? 'application/problem+json' : 'application/json' }); res.end(JSON.stringify(out.body));
-}).listen(PORT, () => console.log(`stub API + site on http://localhost:${PORT}/lobby.html (wallet ${WALLET.toBase58()}, sales ${SALES}) – promo codes STUB (2 tickets) · RIDES (+3 free rides). Cab parts are minted by burning HONK, not by a code.`));
+}).listen(PORT, () => console.log(`stub API + site on http://localhost:${PORT}/lobby.html (wallet ${WALLET.toBase58()}, sales ${SALES}) – promo codes STUB (2 tickets) · RIDES (+3 free rides). Cab parts are minted by burning TEN4, not by a code.`));

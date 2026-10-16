@@ -132,6 +132,7 @@ import { SyncPledgesHandler } from './use-cases/pledges/sync-pledges/sync-pledge
 import { GetRidePledgesHandler } from './use-cases/pledges/get-ride-pledges/get-ride-pledges.handler.js';
 import { GetPledgeHandler } from './use-cases/pledges/get-pledge/get-pledge.handler.js';
 import { BurnHonkHandler, GetHonkCatalogHandler, GetHonkHandler, MintHonkVisualHandler } from './use-cases/honk/honk.handlers.js';
+import { ReleaseHonkHandler } from './use-cases/honk/release-honk.handler.js';
 import { BurnHonkTimeHandler } from './use-cases/honk/burn-honk-time.handler.js';
 import { BurnHonkWeatherHandler } from './use-cases/honk/burn-honk-weather.handler.js';
 
@@ -173,7 +174,7 @@ const handlers: Provider[] = [
   GetSnsReverseHandler, ResolveSnsHandler,
   GetActionsJsonHandler, GetHelloActionHandler, SayHelloActionHandler, GetShiftActionHandler, PrepareShiftActionHandler, OpenSiteActionHandler, GetRideActionHandler, OpenRideActionHandler,
   CreatePledgeHandler, ConfirmPledgeHandler, SyncPledgesHandler, GetRidePledgesHandler, GetPledgeHandler,
-  BurnHonkHandler, BurnHonkTimeHandler, BurnHonkWeatherHandler, MintHonkVisualHandler, GetHonkHandler, GetHonkCatalogHandler,
+  BurnHonkHandler, BurnHonkTimeHandler, BurnHonkWeatherHandler, MintHonkVisualHandler, GetHonkHandler, GetHonkCatalogHandler, ReleaseHonkHandler,
 ];
 
 @Module({

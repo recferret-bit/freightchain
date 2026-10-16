@@ -261,7 +261,7 @@ model Pledge {
   @@schema("economy")
 }
 
-// HONK ledger (docs/honk/SPEC.md). Base units, 6 decimals. The emission counter is the ride mint, not the 2% genesis.
+// TEN4 ledger (docs/honk/SPEC.md). Base units, 6 decimals. Table names stay Honk*. The emission counter is reserved ride TEN4, pending 8h rows included.
 model HonkAccount {
   wallet    String   @id
   balance   BigInt   @default(0)
@@ -281,8 +281,12 @@ model HonkMint {
   band50    Boolean
   band100   Boolean
   createdAt DateTime
+  /// When an 8h reservation may credit the wallet. Rows from before the hold were already credited.
+  releaseAt DateTime @default(now())
+  released  Boolean  @default(true)
 
   @@index([wallet])
+  @@index([released, releaseAt])
   @@schema("economy")
 }
 

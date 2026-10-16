@@ -22,11 +22,11 @@ const dateArg = (name: string, raw: string): Date | string => {
   return Number.isNaN(d.getTime()) ? `--${name} must be a date (YYYY-MM-DD, UTC midnight) or an ISO timestamp` : d;
 };
 
-const COSMETIC_FLAG = '--cosmetic is not a promo effect: cab parts are minted by burning HONK';
+const COSMETIC_FLAG = '--cosmetic is not a promo effect: cab parts are minted by burning TEN4';
 
 /**
  * `promo:create CODE <effect> [--desc TEXT] [--start DATE] [--expires DATE] [--max N] [--per-wallet N] [--note TEXT]` with ONE effect:
- * `--tier 1h|4h|8h --credits N [--pool ID]` (tickets) · `--free-rides N`. `--cosmetic` is refused – cab parts are minted by burning HONK.
+ * `--tier 1h|4h|8h --credits N [--pool ID]` (tickets) · `--free-rides N`. `--cosmetic` is refused – cab parts are minted by burning TEN4.
  */
 export function parsePromoCreate(args: readonly string[]): PromoCreateInput | string {
   if (args.some((a) => a === '--cosmetic' || a.startsWith('--cosmetic='))) return COSMETIC_FLAG;   // not an option: it must not build a cosmetic effect

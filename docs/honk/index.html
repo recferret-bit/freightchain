@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HONK — Freight Chain</title>
-<meta name="description" content="HONK is a capped meme coin. SOL still buys the ticket and pays the pool. HONK is minted only when a paid ride is verified, at distance checkpoints.">
+<title>TEN4 — Freight Chain</title>
+<meta name="description" content="TEN4 is a capped coin. SOL still buys the ticket and pays the pool. TEN4 is minted only when a paid ride is verified, at distance checkpoints. HONK is the in-game verb.">
 <link rel="stylesheet" href="honk.css">
 </head>
 <body>
 <div class="shell">
 <nav class="rail" aria-label="Contents">
-  <a class="brand" href="#what">HONK<small>FREIGHT CHAIN · CAB</small></a>
+  <a class="brand" href="#what">TEN4<small>FREIGHT CHAIN · CAB</small></a>
   <ol>
     <li><a href="#what">What it is</a></li>
     <li><a href="#supply">Supply</a></li>
@@ -29,8 +29,8 @@
 <main>
 <header class="dash">
   <p class="kicker">TRIP SHEET · NUMBERS LOCKED</p>
-  <h1>HONK</h1>
-  <p class="lede">A capped meme coin. SOL still buys the ticket and pays the pool. HONK is minted only when a paid ride's verdict is verified, and only for the distance checkpoints that ride reached. The numbers below are the locked spec. This page is not an offer, a listing, or an audit.</p>
+  <h1>TEN4</h1>
+  <p class="lede">A capped coin, from the CB sign-off 10-4. SOL still buys the ticket and pays the pool. TEN4 is reserved only when a paid ride's verdict is verified, and only for the distance checkpoints that ride reached. HONK stays the word on the chat line. The ticker was checked against CoinGecko, DexScreener, and Jupiter on 2026-10-16; the live HONK mint is someone else's token. This page is not an offer, a listing, or an audit.</p>
   <ul class="lamps">
     <li><i></i>DEVNET SOL HAS NO VALUE</li>
     <li><i></i>LEDGER IN THE GAME · NOT A CHAIN MINT</li>
@@ -39,28 +39,30 @@
 </header>
 
 <section id="what">
-  <h2><span>01</span>What HONK is</h2>
-  <p>HONK is a meme coin with a hard cap. It is not the ticket and it is not the prize.</p>
-  <p>SOL buys the ticket. SOL pays the pool. A pool's prize maths do not change because HONK exists.</p>
+  <h2><span>01</span>What TEN4 is</h2>
+  <p>TEN4 is a coin with a hard cap. It is not the ticket and it is not the prize. Until launch the balance is points on the game ledger.</p>
+  <p>SOL buys the ticket. SOL pays the pool. A pool's prize maths do not change because TEN4 exists. HONK is the verb: burn 1 TEN4 to put HONK on the chat line.</p>
   <p>Starting a ride mints nothing. A crash that never reached a checkpoint mints nothing. A free ride mints nothing. A flagged ride mints nothing. A rejected ride mints nothing.</p>
-  <p>In this change the source of truth is the PostgreSQL ledger. There is no on-chain SPL mint and no new cNFT collection. The coin is not live on devnet. The locked numbers are in <a href="SPEC.md">SPEC.md</a> beside this page.</p>
+  <p>The source of truth until TGE is the PostgreSQL ledger. The coin is not live on devnet. The numbers are in <a href="SPEC.md">SPEC.md</a> beside this page.</p>
 </section>
 
 <section id="supply">
   <h2><span>02</span>Supply</h2>
-  <p>Symbol HONK. Six decimals. No further mint after the emission cap. A burn does not raise the cap and is not reminted. If a ride mint does not fit what is left, it mints the remainder in integer base units, and then the cap is closed.</p>
+  <p>Symbol TEN4. Six decimals. Mint authority is none after initialize. A burn does not raise a cap. A ride that does not fit is clipped to the tightest of the emission cap, the era left, the global day, and the wallet day.</p>
   <div class="readout" aria-label="Supply split">
-    <div><span class="l">GENESIS · POOL ONLY</span><span class="n">2,000,000</span></div>
-    <div><span class="l">RIDE EMISSION CAP</span><span class="n">98,000,000</span></div>
+    <div><span class="l">LIQUIDITY · 50 SOL</span><span class="n">15,000,000</span></div>
+    <div><span class="l">RIDE EMISSION</span><span class="n">55,000,000</span></div>
   </div>
   <div class="scroll">
   <table class="wide">
-    <caption>Max supply is 100,000,000 HONK. Genesis is 2%. It is reserved, not ride-minted.</caption>
-    <thead><tr><th>Bucket</th><th class="num">HONK</th><th>Base units (6 decimals)</th></tr></thead>
+    <caption>Max supply is 100,000,000 TEN4 when the team bucket is on. Team off never mints the 8,000,000.</caption>
+    <thead><tr><th>Bucket</th><th class="num">TEN4</th><th>What it is</th></tr></thead>
     <tbody>
-      <tr><td>Max supply</td><td class="num">100,000,000</td><td>100,000,000 × 10^6</td></tr>
-      <tr><td>Genesis, liquidity pool only</td><td class="num">2,000,000 (2%)</td><td>reserved, not ride-minted</td></tr>
-      <tr><td>Ride emission cap</td><td class="num">98,000,000</td><td>the counter stops here</td></tr>
+      <tr><td>Liquidity</td><td class="num">15,000,000</td><td>paired with 50 SOL; LP burned at initialize</td></tr>
+      <tr><td>Ride emission</td><td class="num">55,000,000</td><td>eras of 27.5M, 13.75M, 6.875M…</td></tr>
+      <tr><td>Season 0 airdrop</td><td class="num">12,000,000</td><td>vault only; no claim instruction yet</td></tr>
+      <tr><td>Treasury</td><td class="num">10,000,000</td><td>36 months linear</td></tr>
+      <tr><td>Team, optional</td><td class="num">8,000,000</td><td>12-month cliff, then 24 or 36 months</td></tr>
     </tbody>
   </table>
   </div>
@@ -81,15 +83,15 @@
     </tbody>
   </table>
   </div>
-  <p>A one-hour ride that reaches every band mints 100 HONK. A longer shift pays more than its hours. The multiplier is ×1, ×5, ×20.</p>
+  <p>A one-hour ride that reaches every band mints 100 TEN4. Era-1 finishes are 100, 500, and 1,200. Each later era pays half.</p>
   <div class="scroll">
   <table class="wide">
-    <caption>Checkpoint mint after a verified pass. The ticket column is the face price of that shift. 4h per dollar is 500 ÷ 15.</caption>
-    <thead><tr><th>Tier</th><th class="num">Ticket</th><th class="num">Multiplier</th><th class="num">20%</th><th class="num">Through 50%</th><th class="num">Finish</th><th class="num">HONK / $</th></tr></thead>
+    <caption>Era-1 checkpoint mint after a verified pass. The ticket column is the face price of that shift. 4h per dollar is 500 ÷ 15.</caption>
+    <thead><tr><th>Tier</th><th class="num">Ticket</th><th class="num">20%</th><th class="num">Through 50%</th><th class="num">Finish</th><th class="num">TEN4 / $</th></tr></thead>
     <tbody>
-      <tr><td>1h</td><td class="num">$5</td><td class="num">×1</td><td class="num">15</td><td class="num">40</td><td class="num">100</td><td class="num">20</td></tr>
-      <tr><td>4h</td><td class="num">$15</td><td class="num">×5</td><td class="num">75</td><td class="num">200</td><td class="num">500</td><td class="num">33.3</td></tr>
-      <tr><td>8h</td><td class="num">$50</td><td class="num">×20</td><td class="num">300</td><td class="num">800</td><td class="num">2,000</td><td class="num">40</td></tr>
+      <tr><td>1h</td><td class="num">$5</td><td class="num">15</td><td class="num">40</td><td class="num">100</td><td class="num">20</td></tr>
+      <tr><td>4h</td><td class="num">$15</td><td class="num">75</td><td class="num">200</td><td class="num">500</td><td class="num">33.3</td></tr>
+      <tr><td>8h</td><td class="num">$50</td><td class="num">180</td><td class="num">480</td><td class="num">1,200</td><td class="num">24</td></tr>
     </tbody>
   </table>
   </div>
@@ -98,7 +100,7 @@
   <div class="bars" aria-label="Finish mint against an hour-proportion line">
     <div class="bar"><span class="name">1h finish</span><span class="track" aria-hidden="true"><span class="fill" style="--w:5%"></span><span class="tick" style="--tick:5%"></span></span><span class="val">100</span></div>
     <div class="bar"><span class="name">4h finish</span><span class="track" aria-hidden="true"><span class="fill" style="--w:25%"></span><span class="tick" style="--tick:20%"></span></span><span class="val">500</span></div>
-    <div class="bar"><span class="name">8h finish</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span><span class="tick" style="--tick:40%"></span></span><span class="val">2,000</span></div>
+    <div class="bar"><span class="name">8h finish</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span><span class="tick" style="--tick:66.7%"></span></span><span class="val">1,200</span></div>
   </div>
   <div class="trip" aria-label="Worked mint examples">
     <div><span class="l">1h · 20%</span><span class="n">15</span></div>
@@ -106,61 +108,60 @@
     <div><span class="l">1h · FINISH</span><span class="n">100</span></div>
     <div><span class="l">4h · THROUGH 50%</span><span class="n">200</span></div>
     <div><span class="l">4h · FINISH</span><span class="n">500</span></div>
-    <div><span class="l">8h · THROUGH 50%</span><span class="n">800</span></div>
-    <div><span class="l">8h · FINISH</span><span class="n">2,000</span></div>
+    <div><span class="l">8h · THROUGH 50%</span><span class="n">480</span></div>
+    <div><span class="l">8h · FINISH</span><span class="n">1,200</span></div>
     <div><span class="l">8 × 1h FINISH</span><span class="n">800</span></div>
   </div>
-  <p>Eight verified 1h finishes mint 800. One verified 8h finish mints 2,000. Two verified 4h finishes mint 1,000. On a verified finish, a longer ticket mints more HONK per dollar: 20, then 33.3, then 40.</p>
-  <p>800 is an 8h ride through the 50% band, and it is also eight finished 1h rides. It is no longer an 8h finish. Free, an unknown tier, or <code>completeDist &lt;= 0</code> mints 0.</p>
+  <p>Eight verified 1h finishes mint 800. One verified 8h finish mints 1,200. Two verified 4h finishes mint 1,000. On a verified finish, TEN4 per ticket dollar is 20, then 33.3, then 24.</p>
+  <p>480 is an 8h ride through the 50% band. Free, an unknown tier, or <code>completeDist &lt;= 0</code> mints 0. Daily caps in era 1: 75,000 global, 2,000 per wallet. The global cap halves each era. The wallet cap does not.</p>
 </section>
 
 <section id="cap">
   <h2><span>04</span>Rides to mint the cap</h2>
-  <p>The ride emission is 98,000,000 HONK. These counts assume every ride verifies and reaches the band named. A crash short of a band, a free ride, a flag, or a reject adds nothing. A burn does not put any of it back.</p>
+  <p>Era 1 is 27,500,000 TEN4. These counts assume every ride verifies and reaches the band named, at the era-1 rate. A crash short of a band, a free ride, a flag, or a reject adds nothing. A burn does not put any of it back. Later eras pay half, so the same ride count does not fill the rest of the 55,000,000.</p>
   <div class="scroll">
   <table class="wide">
     <caption>Face price of the tickets, if every ride is bought and verifies. That spend is the ticket. It is not a market price for HONK.</caption>
     <thead><tr><th>If every ride is</th><th class="num">HONK</th><th class="num">Rides</th><th class="num">Tickets, face</th></tr></thead>
     <tbody>
-      <tr><td>a 1h finish</td><td class="num">100</td><td class="num">980,000</td><td class="num">$4,900,000</td></tr>
-      <tr><td>a 4h finish</td><td class="num">500</td><td class="num">196,000</td><td class="num">$2,940,000</td></tr>
-      <tr><td>an 8h finish</td><td class="num">2,000</td><td class="num">49,000</td><td class="num">$2,450,000</td></tr>
-      <tr><td>a 1h ride that stops at 50%</td><td class="num">40</td><td class="num">2,450,000</td><td class="num">$12,250,000</td></tr>
+      <tr><td>a 1h finish</td><td class="num">100</td><td class="num">275,000</td><td class="num">$1,375,000</td></tr>
+      <tr><td>a 4h finish</td><td class="num">500</td><td class="num">55,000</td><td class="num">$825,000</td></tr>
+      <tr><td>an 8h finish</td><td class="num">1,200</td><td class="num">22,916 + 800 left</td><td class="num">about $1,145,800</td></tr>
+      <tr><td>a 1h ride that stops at 50%</td><td class="num">40</td><td class="num">687,500</td><td class="num">$3,437,500</td></tr>
     </tbody>
   </table>
   </div>
   <p>Bar length is how many verified finishes it takes. An 8h finish is one twentieth of the ride count of a 1h finish.</p>
   <div class="bars" aria-label="Verified finishes that emit the ride cap">
-    <div class="bar"><span class="name">1h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">980,000</span></div>
-    <div class="bar"><span class="name">4h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:20%"></span></span><span class="val">196,000</span></div>
-    <div class="bar"><span class="name">8h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:5%"></span></span><span class="val">49,000</span></div>
+    <div class="bar"><span class="name">1h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">275,000</span></div>
+    <div class="bar"><span class="name">4h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:20%"></span></span><span class="val">55,000</span></div>
+    <div class="bar"><span class="name">8h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:8.3%"></span></span><span class="val">22,917</span></div>
   </div>
-  <p>1,000 wallets, each with 49 verified 8h finishes, is the same 49,000 rides and the whole ride emission.</p>
-  <p>One mix that also lands on 98,000,000: 10,000 verified 8h finishes (20,000,000), 100,000 verified 4h finishes (50,000,000), and 280,000 verified 1h finishes (28,000,000). That is 390,000 rides.</p>
+  <p>22,916 full 8h finishes mint 27,499,200. One more ride in that era is clipped to the 800 left. The global cap of 75,000 a day makes era 1 last about 367 days if it is full every day.</p>
 </section>
 
 <section id="verification">
   <h2><span>05</span>Verification</h2>
-  <p>HONK is minted only when the verdict is <code>verified</code>. Flagged pays 0. Rejected pays 0. Flagged is not a pass. Rejected is not a pass.</p>
-  <p>The mint runs inside the verdict transaction, under the player row lock, after the verdict is saved. One row per ride. A second pass that is still verified does not mint again. Any other status inserts nothing.</p>
-  <p class="note"><b>No clawback.</b> If an admin later rejects a ride that already minted, the coins stay. Spent coins cannot be pulled back.</p>
-  <p>The rider sees the quote before the verdict, and the mint after a pass. Before the verdict, a paid ride is a preview: the amount credited is 0, and the quote is the sum of the checkpoints already reached. After a verified pass with a quote above 0, the ride is minted and the credited amount is what was minted. If the cap clipped it, that amount is the remainder. Flagged or rejected is withheld: credited 0, and the quote still shows what a pass would have paid. A free ride, or any ride that is not paid, is none: zeros, and no bands.</p>
+  <p>TEN4 is reserved only when the verdict is <code>verified</code>. Flagged pays 0. Rejected pays 0. Flagged is not a pass. Rejected is not a pass.</p>
+  <p>The reservation runs inside the verdict transaction, under the player row lock, after the verdict is saved. One row per ride. A 1h or 4h finish credits immediately. An 8h finish waits 48 hours: the emission and that day's caps are reserved, and the wallet is credited by a later crank. A non-verified rejudge before that deletes the reservation. A second pass that is still verified does not mint again.</p>
+  <p class="note"><b>No clawback after credit.</b> If an admin later rejects a ride that already credited, the coins stay. An 8h ride that is still on hold can be taken back.</p>
+  <p>Before the verdict, a paid ride is a preview. A verified 8h that has not been released is pending. A released pass is minted. Flagged or rejected is withheld. A free ride is none.</p>
   <p>Free rides mint nothing.</p>
 </section>
 
 <section id="burn">
   <h2><span>06</span>Stream burn</h2>
-  <p>On a running paid ride that can be watched, a signed-in wallet may burn 1 HONK. The chat line is the word HONK. The truck does not change. No hole, no night, no hull change.</p>
-  <p>Once per wallet, per ride, per 10 seconds. A free ride is refused. If the chat window refuses the line, the burn does not land. Not enough HONK is an error, not a server failure. The answer is the new balance and a pay of 1.</p>
+  <p>On a running paid ride that can be watched, a signed-in wallet may burn 1 TEN4 to HONK. The chat line is the word HONK. The truck does not change. No hole, no night, no hull change.</p>
+  <p>Once per wallet, per ride, per 10 seconds. A free ride is refused. If the chat window refuses the line, the burn does not land. Not enough TEN4 is an error, not a server failure. The answer is the new balance and a pay of 1.</p>
   <p>The gap caps one wallet at 6 burns a minute and 360 an hour. A verified finish funds that many honks, and that many seconds of mashing at the cap.</p>
   <div class="scroll">
   <table class="wide">
     <caption>Time at the cap is how long that mint lasts at one burn every 10 seconds.</caption>
-    <thead><tr><th>What was minted</th><th class="num">HONK</th><th class="num">Honks it funds</th><th class="num">Time at the 10s cap</th></tr></thead>
+    <thead><tr><th>What was minted</th><th class="num">TEN4</th><th class="num">Honks it funds</th><th class="num">Time at the 10s cap</th></tr></thead>
     <tbody>
       <tr><td>1h finish</td><td class="num">100</td><td class="num">100</td><td class="num">16 min 40 s</td></tr>
       <tr><td>4h finish</td><td class="num">500</td><td class="num">500</td><td class="num">1 h 23 min 20 s</td></tr>
-      <tr><td>8h finish</td><td class="num">2,000</td><td class="num">2,000</td><td class="num">5 h 33 min 20 s</td></tr>
+      <tr><td>8h finish</td><td class="num">1,200</td><td class="num">1,200</td><td class="num">3 h 20 min</td></tr>
       <tr><td>one ordinary part</td><td class="num">65</td><td class="num">65</td><td class="num">10 min 50 s</td></tr>
       <tr><td>one gold part</td><td class="num">260</td><td class="num">260</td><td class="num">43 min 20 s</td></tr>
     </tbody>
@@ -171,9 +172,9 @@
   <div class="bars" aria-label="Finish mint against one wallet burning for the whole nominal shift">
     <div class="bar"><span class="name">1h · 100 / 360</span><span class="track burn" aria-hidden="true"><span class="fill" style="--w:27.8%"></span></span><span class="val">27.8%</span></div>
     <div class="bar"><span class="name">4h · 500 / 1,440</span><span class="track burn" aria-hidden="true"><span class="fill" style="--w:34.7%"></span></span><span class="val">34.7%</span></div>
-    <div class="bar"><span class="name">8h · 2,000 / 2,880</span><span class="track burn" aria-hidden="true"><span class="fill" style="--w:69.4%"></span></span><span class="val">69.4%</span></div>
+    <div class="bar"><span class="name">8h · 1,200 / 2,880</span><span class="track burn" aria-hidden="true"><span class="fill" style="--w:41.7%"></span></span><span class="val">41.7%</span></div>
   </div>
-  <p>The 1 HONK line is still chat only. It does not move the truck. Burning 10 HONK is separate: it posts a day or night change on the same effect window as a night or day donation, 20 seconds, one game effect at a time. It is not a donation and it does not pay the driver. The driver's game moves the clock, and the replay shows that about 25 seconds later. The switch that turns donation obstacles off does not turn this off.</p>
+  <p>The chat line is still the word HONK. It does not move the truck. Burning 10 TEN4 is separate: it posts a day or night change. Burning 25 TEN4 sets snow or clear. Neither is a donation. The switch that turns donation obstacles off does not turn these off. A spectator burn does not change the verdict or the prize rank.</p>
   <div class="scroll">
   <table>
     <caption>Day or night on a live ride. Not the 1 HONK chat line.</caption>
@@ -232,7 +233,7 @@
   <p>The HONK column is the burn. The ride column is what covers it after verification. The ticket column is the face price of those rides. A ride that misses the band mints less, so the ticket figure is the cover when the named band is reached. It is not a market price for HONK.</p>
   <div class="scroll">
   <table>
-    <caption>The first five slots are 2,405. The full garage is 4,485. One 8h finish mints 2,000. Two 8h finishes plus one 4h finish mint 4,500, which is 15 above the garage.</caption>
+    <caption>The first five slots are 2,405. The full garage is 4,485. An era-1 8h finish mints 1,200. Four of those are 4,800. Three 8h plus two 4h are 4,600.</caption>
     <thead><tr><th>Upgrade</th><th class="num">Burn</th><th>Verified rides that cover it</th><th>Tickets, face</th></tr></thead>
     <tbody>
       <tr><td>Ordinary part</td><td class="num">65</td><td>One 1h finish mints 100. A 4h ride at 20% mints 75.</td><td>One 1h ticket, $5.</td></tr>
@@ -241,8 +242,8 @@
       <tr><td>Truck colour</td><td class="num">325</td><td>Four 1h finishes mint 400. One 4h finish mints 500.</td><td>$20 in 1h tickets, or one $15 4h ticket.</td></tr>
       <tr><td>Four gold parts</td><td class="num">1,040</td><td>Two 4h finishes plus a 1h ride through 50% mint 1,040. Eleven 1h finishes mint 1,100.</td><td>$35, or $55 in 1h tickets.</td></tr>
       <tr><td>21 ordinary parts</td><td class="num">1,365</td><td>Fourteen 1h finishes mint 1,400. Three 4h finishes mint 1,500.</td><td>$70, or $45.</td></tr>
-      <tr><td>First five slots</td><td class="num">2,405</td><td>One 8h finish plus one 4h finish mints 2,500. Five 4h finishes mint 2,500. Twenty-five 1h finishes mint 2,500.</td><td>$65, $75, or $125.</td></tr>
-      <tr><td>Whole garage</td><td class="num">4,485</td><td>Two 8h finishes plus one 4h finish mint 4,500. Nine 4h finishes mint 4,500. Forty-five 1h finishes mint 4,500.</td><td>$115, $135, or $225.</td></tr>
+      <tr><td>First five slots</td><td class="num">2,405</td><td>Two 8h finishes are 2,400, short by 5. Two 8h plus a 1h 20% band are 2,415. Five 4h finishes, or twenty-five 1h finishes, mint 2,500.</td><td>$105, $75, or $125.</td></tr>
+      <tr><td>Whole garage</td><td class="num">4,485</td><td>Four 8h finishes mint 4,800. Three 8h plus two 4h mint 4,600. Nine 4h finishes mint 4,500. Forty-five 1h finishes mint 4,500.</td><td>$200, $180, $135, or $225.</td></tr>
     </tbody>
   </table>
   </div>
@@ -250,13 +251,13 @@
 
 <section id="badges">
   <h2><span>09</span>Badges</h2>
-  <p>Three new badges, family <code>honk</code>, name HONK. Existing badge ids are not retuned. A rejected ride never has a mint row, so it cannot earn these.</p>
+  <p>Three badges, family key <code>honk</code>, display name TEN4. The ids are not retuned. Only a released mint counts, so an 8h badge waits out the 48 hours. A rejected ride never has a released row.</p>
   <div class="scroll">
   <table>
     <caption>New achievement ids. The description is the condition.</caption>
     <thead><tr><th>Id</th><th>Name</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>honk-haul</code></td><td>First Mint</td><td>A verified paid ride mints HONK.</td></tr>
+      <tr><td><code>honk-haul</code></td><td>First Mint</td><td>A verified paid ride mints TEN4.</td></tr>
       <tr><td><code>honk-haul-2</code></td><td>Checkpoint Hauler</td><td>Five verified paid rides mint the finish band.</td></tr>
       <tr><td><code>honk-haul-3</code></td><td>Long Haul Mint</td><td>Twenty-five verified paid rides mint the finish band.</td></tr>
     </tbody>
@@ -266,22 +267,22 @@
 
 <section id="marketing">
   <h2><span>10</span>Who it is for</h2>
-  <p>Two people already in the game. Someone watching a paid ride, who can spend 1 HONK to put HONK on the chat line. Someone who wants a cab colour, who burns HONK in the garage instead of redeeming a colour code.</p>
-  <p>Say what the cab does. SOL is the ticket and the prize. HONK is minted by verified paid checkpoints, up to a cap, and a missed checkpoint mints nothing. A honk on a stream burns 1 HONK and prints the word. The truck does not move. A colour is a burn recorded in the garage. The quote is on the ride before the verdict. The mint is on the ride after a pass. Flagged and rejected pay 0.</p>
-  <p>Do not say it is a prize. Do not say it yields. Do not say "buy HONK to earn". Do not call it an ICO. Devnet SOL has no value. The coin is not launched on a DEX in this change. Do not claim an audit. Do not claim the coin or the cab visual is live on devnet.</p>
-  <p>The channels are the ones the game already has. The watch page, where the burn is a chat line. The garage, where the price is in HONK and the part equips. The end-of-ride line, where the quote and then the mint are stated. One clip of a honk on a stream is enough to show that the truck does not react.</p>
-  <p>Do not send people to a market. The local pool is not a listing. Until a paid ride has minted on the ledger, the HONK a player can point at in the game is a number in that ledger.</p>
+  <p>Two people already in the game. Someone watching a paid ride, who can burn 1 TEN4 to put HONK on the chat line. Someone who wants a cab colour, who burns TEN4 in the garage instead of redeeming a colour code.</p>
+  <p>Say what the cab does. SOL is the ticket and the prize. TEN4 is minted by verified paid checkpoints, up to a cap, and a missed checkpoint mints nothing. A honk on a stream burns 1 TEN4 and prints the word HONK. The truck does not move. A colour is a burn recorded in the garage. The quote is on the ride before the verdict. The mint is on the ride after a pass. Flagged and rejected pay 0.</p>
+  <p>Do not say it is a prize. Do not say it yields. Do not say "buy TEN4 to earn". Do not call it an ICO. Devnet SOL has no value. The coin is not launched on a DEX in this change. Do not claim an audit. Do not claim the coin or the cab visual is live on devnet.</p>
+  <p>The channels are the ones the game already has. The watch page, where the burn is a chat line. The garage, where the price is in TEN4 and the part equips. The end-of-ride line, where the quote and then the mint are stated. One clip of a honk on a stream is enough to show that the truck does not react.</p>
+  <p>Do not send people to a market. The local pool is not a listing. Until a paid ride has minted on the ledger, the TEN4 a player can point at in the game is a number in that ledger.</p>
 </section>
 
 <section id="pool">
   <h2><span>11</span>Liquidity pool</h2>
-  <p>A local program pairs the whole genesis, 2,000,000 HONK, with 10 SOL. SOL buys HONK and HONK sells back for SOL. The out is the constant product, rounded down. The fee is zero. 10 SOL is the opening deposit, not a dollar price for HONK. The LP tokens sit in the program locker for 365 days. After that, the holder can redeem them for their share of what the pool still holds.</p>
-  <p>No team allocation. No second mint. No market-making promise. No buyback. The ride emission, the other 98,000,000, stays on the game ledger and is not deposited into the pool.</p>
-  <p>That program is not deployed. There is no DEX listing, and no transaction is sent to Raydium. A ride still mints on the ledger.</p>
+  <p>The local program pairs 15,000,000 TEN4 with 50 SOL. The fee is 0.25%. The LP is burned in the initialize transaction. There is no withdraw. 50 SOL is the opening deposit, not a dollar price.</p>
+  <p>The team bucket is optional and off by default in the sense that initialize must choose it. Emission, airdrop, and treasury are separate vaults. The airdrop vault has no claim yet. A real launch should use a standard Raydium CPMM or Meteora DAMM v2 at 0.25–1% with the LP burned. This program is the local mirror.</p>
+  <p>That program is not deployed. There is no DEX listing. Until TGE the balance a player sees is ledger points.</p>
 </section>
 
 <footer class="foot">
-  <p>SOL remains the prize. HONK is not a prize and not an offer. Devnet SOL has no value. The local program has not been audited and is not deployed.</p>
+  <p>SOL remains the prize. TEN4 is not a prize and not an offer. Devnet SOL has no value. The local program has not been audited and is not deployed.</p>
   <p>Locked spec: <a href="SPEC.md">docs/honk/SPEC.md</a>.</p>
 </footer>
 </main>

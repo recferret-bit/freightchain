@@ -32,7 +32,7 @@ export interface Achievement {
 
 export const TIER_NAMES = ['Bronze', 'Silver', 'Gold', 'Platinum'] as const;
 export const FAMILY_NAMES: Record<AchievementFamily, string> = {
-  road: 'Road', shift: 'Shifts', night: 'Night', distance: 'Distance', clean: 'Clean', siberia: 'Siberia', solo: 'Solo', licence: 'Licence', honk: 'HONK', podium: 'Podium',
+  road: 'Road', shift: 'Shifts', night: 'Night', distance: 'Distance', clean: 'Clean', siberia: 'Siberia', solo: 'Solo', licence: 'Licence', honk: 'TEN4', podium: 'Podium',
 };
 
 const km = (f: Facts) => f.totalMetres / 1000;
@@ -78,7 +78,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'free-crossroads', family: 'licence', tier: 2, name: 'Crossroads', desc: 'Clear the MEDIUM free run.', icon: '②', measure: level(2), target: 1 },
   { id: 'free-hard', family: 'licence', tier: 3, name: 'Long Haul', desc: 'Clear the HARD free run – fifteen minutes, no assist.', icon: '③', measure: level(3), target: 1 },
 
-  { id: 'honk-haul', family: 'honk', tier: 1, name: 'First Mint', desc: 'A verified paid ride mints HONK.', icon: '📣', measure: (f) => f.honkMints, target: 1 },
+  { id: 'honk-haul', family: 'honk', tier: 1, name: 'First Mint', desc: 'A verified paid ride mints TEN4.', icon: '📣', measure: (f) => f.honkMints, target: 1 },
   { id: 'honk-haul-2', family: 'honk', tier: 2, name: 'Checkpoint Hauler', desc: 'Five verified paid rides mint the finish band.', icon: '📣', measure: (f) => f.honkFinishes, target: 5 },
   { id: 'honk-haul-3', family: 'honk', tier: 3, name: 'Long Haul Mint', desc: 'Twenty-five verified paid rides mint the finish band.', icon: '📣', measure: (f) => f.honkFinishes, target: 25 },
 

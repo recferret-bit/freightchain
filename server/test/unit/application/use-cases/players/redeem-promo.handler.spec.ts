@@ -79,7 +79,7 @@ describe('RedeemPromoHandler', () => {
 
     it('a stored cab-visual code is refused before a redemption is taken, and nothing is unlocked', async () => {
       const { ctx, redeem } = await setup({ effect: wheel, maxRedemptions: 5 });
-      await expect(redeem()).rejects.toMatchObject({ errorCode: 'visuals_are_honk', message: 'cab visuals are minted by burning HONK' });
+      await expect(redeem()).rejects.toMatchObject({ errorCode: 'visuals_are_honk', message: 'cab visuals are minted by burning TEN4' });
       expect(await ctx.cosmetics.has('w', 'wheel', 'gold')).toBe(false);
       expect(await ctx.cosmetics.listEquipped('w')).toEqual({});
       expect((await ctx.promos.findByCode('HELLO'))?.snapshot().redeemed).toBe(0);

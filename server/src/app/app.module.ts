@@ -16,6 +16,7 @@ import { AchievementMintScheduler } from '../infrastructure/scheduling/achieveme
 import { PoolPayoutScheduler } from '../infrastructure/scheduling/pool-payout.scheduler.js';
 import { TelemetryRetentionScheduler } from '../infrastructure/scheduling/telemetry-retention.scheduler.js';
 import { StaleRideScheduler } from '../infrastructure/scheduling/stale-ride.scheduler.js';
+import { HonkReleaseScheduler } from '../infrastructure/scheduling/honk-release.scheduler.js';
 import { ReplayVerificationScheduler } from '../infrastructure/scheduling/replay-verification.scheduler.js';
 import { ApplicationModule } from '../application/application.module.js';
 import { TokenSignerPort } from '../application/ports/auth/token-signer.port.js';
@@ -43,6 +44,6 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
     PresentationModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: OriginGuard },   // OriginGuard: pentest H7 (login CSRF, sibling hosts)
-    DailyFreeRideScheduler, TelemetryRetentionScheduler, StaleRideScheduler, ReplayVerificationScheduler, ProgramWatcher, PoolCrankScheduler, PoolPayoutScheduler, AchievementMintScheduler],
+    DailyFreeRideScheduler, TelemetryRetentionScheduler, StaleRideScheduler, ReplayVerificationScheduler, ProgramWatcher, PoolCrankScheduler, PoolPayoutScheduler, AchievementMintScheduler, HonkReleaseScheduler],
 })
 export class AppModule {}

@@ -12,7 +12,7 @@ export const localToMs = v => { if (!v) return null; const t = new Date(v).getTi
 export function promoFromForm(f) {
   const code = f.code.trim();
   if (!code) throw new Error('Give the code a name (3–32 letters, digits, - or _).');
-  if (f.kind === 'cosmetic') throw new Error('Cab parts are minted by burning HONK in the garage, not by a promo code.');
+  if (f.kind === 'cosmetic') throw new Error('Cab parts are minted by burning TEN4 in the garage, not by a promo code.');
   let effect;
   if (f.kind === 'free_rides') {
     const count = num(f.rides);

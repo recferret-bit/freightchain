@@ -36,7 +36,7 @@ describe('BurnHonkWeatherHandler', () => {
     expect(await ctx.honkRepo.balance('fan')).toBe(5n * U);
     expect([...ctx.db.honkBurns.values()]).toEqual([expect.objectContaining({ wallet: 'fan', amount: HONK_WEATHER_BURN, kind: 'weather', ref: `${ride.id}:snow` })]);
     const row = ctx.db.rideEvents.find((e) => e.rideId === ride.id);
-    expect(row).toMatchObject({ kind: 'honk', effect: 'snow', lamports: 0, text: 'Burned 25 HONK', slotKey: 'fx', signature: null, applied: null });
+    expect(row).toMatchObject({ kind: 'honk', effect: 'snow', lamports: 0, text: 'Burned 25 TEN4', slotKey: 'fx', signature: null, applied: null });
     expect(RideEvent.restore(row!).needsGame).toBe(true);
     expect(ctx.db.rideEvents.some((e) => e.kind === 'donation')).toBe(false);
   });

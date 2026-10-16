@@ -7,7 +7,10 @@ use {
     },
     anchor_spl::{associated_token, token},
     common::*,
-    freightchain_honk::{error::HonkError, events::HonkInitialized, isqrt, EMISSION_CAP, LOCK_SECS, UNIT},
+    anchor_lang::prelude::Pubkey,
+    freightchain_honk::{
+        error::HonkError, events::HonkInitialized, isqrt, pad8, AIRDROP, EMISSION_CAP, LIQUIDITY, MAX_SUPPLY, MONTH_SECS, TEAM, TOKEN_SYMBOL, TREASURY, UNIT,
+    },
     solana_keypair::Keypair,
     solana_signer::Signer,
 };
@@ -25,54 +28,67 @@ fn with_honk() -> Env {
 }
 
 #[test]
-fn genesis_supply_and_vault_and_mint_authority_stays() {
+fn genesis_supply_is_preminted_and_the_mint_authority_is_none() {
     let e = Env::new();
     let mint = e.mint(&honk_mint_pda());
-    assert_eq!(mint.supply, 2_000_000 * 1_000_000);
-    assert_eq!(mint.supply, GENESIS);
+    assert_eq!(mint.supply, MAX_SUPPLY);
     assert_eq!(mint.decimals, 6);
-    assert_eq!(mint.mint_authority.unwrap(), authority_pda());
+    assert!(mint.mint_authority.is_none());
     assert!(mint.freeze_authority.is_none());
-    assert!(e.mint(&lp_mint_pda()).freeze_authority.is_none());
-    assert_eq!(e.amount(&vault_pda()), GENESIS);
+    let lp = e.mint(&lp_mint_pda());
+    assert!(lp.mint_authority.is_none());
+    assert!(lp.freeze_authority.is_none());
+    assert_eq!(lp.supply, 0);
+    assert_eq!(e.amount(&vault_pda()), LIQUIDITY);
+    assert_eq!(e.amount(&emission_pda()), EMISSION_CAP);
+    assert_eq!(e.amount(&lp_locker_pda()), 0);
+    assert_eq!(e.config().symbol, pad8(TOKEN_SYMBOL));
+    assert_eq!(e.config().name, pad8(b"TEN4"));
 }
 
 #[test]
 fn pool_sol_reserve_is_the_sol_in() {
     let e = Env::new();
-    assert_eq!(e.pool().sol_reserve, 10 * SOL);
+    assert_eq!(e.pool().sol_reserve, OPENING);
     let data_len = e.svm.get_account(&pool_pda()).unwrap().data.len();
     let rent = e.svm.minimum_balance_for_rent_exemption(data_len);
-    assert_eq!(e.bal(&pool_pda()), rent + 10 * SOL);
+    assert_eq!(e.bal(&pool_pda()), rent + OPENING);
 }
 
 #[test]
-fn lp_locker_holds_the_whole_supply() {
-    let e = Env::new();
-    let lp = e.mint(&lp_mint_pda());
-    assert!(lp.mint_authority.is_none());
-    let n = (GENESIS as u128) * (10 * SOL as u128);
+fn lp_is_burned_at_initialize_and_stays_burned() {
+    let mut e = Env::new();
+    let n = (LIQUIDITY as u128) * (OPENING as u128);
     let root = isqrt(n);
     assert!(root * root <= n && (root + 1) * (root + 1) > n);
-    assert_eq!(lp.supply, root as u64);
-    assert_eq!(e.amount(&lp_locker_pda()), lp.supply);
+    assert!(root > 0);
+    assert_eq!(e.mint(&lp_mint_pda()).supply, 0);
+    assert_eq!(e.amount(&lp_locker_pda()), 0);
+    let honk = e.pool().honk_reserve;
+    let sol = e.pool().sol_reserve;
+    e.warp(e.now() + 10 * 365 * 86_400);
+    assert_eq!(e.pool().honk_reserve, honk);
+    assert_eq!(e.pool().sol_reserve, sol);
+    assert_eq!(e.amount(&vault_pda()), LIQUIDITY);
 }
 
 #[test]
 fn initialize_emits_supply_sol_and_lp() {
     let mut e = Env::bare();
-    let meta = unwrap_tx(e.initialize(10 * SOL));
+    let meta = unwrap_tx(e.initialize(OPENING));
     let ev = events::<HonkInitialized>(&meta.logs);
     assert_eq!(ev.len(), 1);
-    assert_eq!(ev[0].supply, GENESIS);
-    assert_eq!(ev[0].sol_in, 10 * SOL);
-    assert_eq!(ev[0].lp, e.mint(&lp_mint_pda()).supply);
+    assert_eq!(ev[0].supply, MAX_SUPPLY);
+    assert_eq!(ev[0].sol_in, OPENING);
+    assert!(ev[0].lp_burned > 0);
+    assert!(ev[0].team_enabled);
+    assert_eq!(&ev[0].symbol[..4], TOKEN_SYMBOL);
 }
 
 #[test]
 fn a_second_initialize_fails() {
     let mut e = Env::new();
-    assert!(e.initialize(10 * SOL).is_err());
+    assert!(e.initialize(OPENING).is_err());
 }
 
 #[test]
@@ -83,7 +99,7 @@ fn initialize_zero_sol_is_zero_amount() {
 
 #[test]
 fn initialize_refuses_anything_but_the_opening_deposit() {
-    for sol_in in [1, SOL, 9 * SOL, 10 * SOL + 1] {
+    for sol_in in [1, SOL, 10 * SOL, OPENING - 1, OPENING + 1] {
         let mut e = Env::bare();
         assert_err!(e.initialize(sol_in), HonkError::ZeroAmount);
     }
@@ -96,8 +112,8 @@ fn swap_of_one_sol_pays_the_constant_product_and_the_vault_falls() {
     let sol_reserve = e.pool().sol_reserve;
     let vault_before = e.amount(&vault_pda());
     let sol_in = SOL;
-    let expected =
-        (honk_reserve as u128) * (sol_in as u128) / ((sol_reserve as u128) + (sol_in as u128));
+    let net = (sol_in as u128) * 9_975 / 10_000;
+    let expected = (honk_reserve as u128) * net / ((sol_reserve as u128) + net);
     unwrap_tx(e.swap(sol_in, expected as u64));
     let user = e.payer.pubkey();
     assert_eq!(e.amount(&ata(&user, &honk_mint_pda())), expected as u64);
@@ -127,8 +143,8 @@ fn swap_under_min_out_is_slippage_and_the_pool_stays() {
     let sol_reserve = e.pool().sol_reserve;
     let vault = e.amount(&vault_pda());
     let sol_in = SOL;
-    let expected =
-        (honk_reserve as u128) * (sol_in as u128) / ((sol_reserve as u128) + (sol_in as u128));
+    let net = (sol_in as u128) * 9_975 / 10_000;
+    let expected = (honk_reserve as u128) * net / ((sol_reserve as u128) + net);
     assert_err!(e.swap(sol_in, expected as u64 + 1), HonkError::Slippage);
     assert_eq!(e.pool().honk_reserve, honk_reserve);
     assert_eq!(e.pool().sol_reserve, sol_reserve);
@@ -193,18 +209,23 @@ fn buy_part_gold_burns_260() {
 }
 
 #[test]
-fn a_verified_ride_mints_to_the_rider_and_not_the_vault() {
+fn a_verified_ride_pays_the_schedule_from_the_emission_vault() {
     let mut e = Env::new();
     let rider = Keypair::new();
     let vault = e.amount(&vault_pda());
+    let emission = e.amount(&emission_pda());
     let supply = e.mint(&honk_mint_pda()).supply;
     let ride = [7u8; 16];
-    unwrap_tx(e.mint_ride(ride, 100 * UNIT, &rider.pubkey()));
+    unwrap_tx(e.mint_ride(ride, 1, 0b111, &rider.pubkey()));
     assert_eq!(e.amount(&vault_pda()), vault);
-    assert_eq!(e.mint(&honk_mint_pda()).supply, supply + 100 * UNIT);
+    assert_eq!(e.mint(&honk_mint_pda()).supply, supply);
+    assert_eq!(e.amount(&emission_pda()), emission - 100 * UNIT);
     assert_eq!(e.amount(&ata(&rider.pubkey(), &honk_mint_pda())), 100 * UNIT);
-    assert!(e.mint_ride(ride, 100 * UNIT, &rider.pubkey()).is_err());
-    assert_err!(e.mint_ride([8u8; 16], EMISSION_CAP, &rider.pubkey()), HonkError::EmissionCap);
+    assert_eq!(e.config().emitted, 100 * UNIT);
+    assert!(e.mint_ride(ride, 1, 0b111, &rider.pubkey()).is_err());
+    assert_err!(e.mint_ride([8u8; 16], 9, 0b111, &rider.pubkey()), HonkError::BadTier);
+    unwrap_tx(e.mint_ride([9u8; 16], 8, 0b111, &rider.pubkey()));
+    assert_eq!(e.amount(&ata(&rider.pubkey(), &honk_mint_pda())), 1_300 * UNIT);
 }
 
 fn assert_part_nft(e: &Env, nft: &anchor_lang::prelude::Pubkey) {
@@ -305,17 +326,7 @@ fn new_cab_slots_use_the_catalog_price() {
 }
 
 #[test]
-fn release_lp_is_too_early() {
-    let mut e = Env::new();
-    let locked = e.amount(&lp_locker_pda());
-    assert!(e.pool().unlock_at > e.now());
-    assert_eq!(e.pool().unlock_at, T0 + LOCK_SECS);
-    assert_err!(e.release_lp(), HonkError::TooEarly);
-    assert_eq!(e.amount(&lp_locker_pda()), locked);
-}
-
-#[test]
-fn selling_the_honk_back_pays_sol_and_refills_the_vault() {
+fn selling_the_honk_back_keeps_the_fee_in_the_pool() {
     let mut e = Env::new();
     unwrap_tx(e.swap(SOL, 0));
     let user = ata(&e.payer.pubkey(), &honk_mint_pda());
@@ -324,51 +335,92 @@ fn selling_the_honk_back_pays_sol_and_refills_the_vault() {
     let honk_reserve = e.pool().honk_reserve;
     let sol_reserve = e.pool().sol_reserve;
     let rent = e.bal(&pool_pda()) - sol_reserve;
-    let expected = (sol_reserve as u128) * (honk as u128) / (honk_reserve as u128 + honk as u128);
+    let net = (honk as u128) * 9_975 / 10_000;
+    let expected = (sol_reserve as u128) * net / ((honk_reserve as u128) + net);
     assert_err!(e.sell(honk, expected as u64 + 1), HonkError::Slippage);
     assert_eq!(e.pool().honk_reserve, honk_reserve);
     unwrap_tx(e.sell(honk, expected as u64));
     assert_eq!(e.amount(&user), 0);
-    assert_eq!(e.pool().honk_reserve, GENESIS);
-    assert_eq!(e.amount(&vault_pda()), GENESIS);
+    assert_eq!(e.pool().honk_reserve, honk_reserve + honk);
+    assert_eq!(e.amount(&vault_pda()), e.pool().honk_reserve);
     assert_eq!(e.pool().sol_reserve, sol_reserve - expected as u64);
+    assert!(e.pool().sol_reserve > OPENING);
     assert_eq!(e.bal(&pool_pda()), rent + e.pool().sol_reserve);
     assert_eq!(e.mint(&honk_mint_pda()).supply, supply);
 }
 
 #[test]
-fn redeeming_the_lp_returns_both_reserves_and_leaves_the_rent() {
-    let mut e = Env::new();
-    assert!(e.withdraw(1, 0, 0).is_err());
-    let supply = e.mint(&lp_mint_pda()).supply;
-    let rent = e.bal(&pool_pda()) - e.pool().sol_reserve;
-    e.warp(e.pool().unlock_at);
-    unwrap_tx(e.release_lp());
-    let half = supply / 2;
-    let honk_half = (GENESIS as u128) * (half as u128) / (supply as u128);
-    let sol_half = (10 * SOL as u128) * (half as u128) / (supply as u128);
-    unwrap_tx(e.withdraw(half, honk_half as u64, sol_half as u64));
-    let rest = e.amount(&ata(&e.payer.pubkey(), &lp_mint_pda()));
-    unwrap_tx(e.withdraw(rest, 0, 0));
-    assert_eq!(e.pool().honk_reserve, 0);
-    assert_eq!(e.pool().sol_reserve, 0);
-    assert_eq!(e.amount(&vault_pda()), 0);
-    assert_eq!(e.amount(&ata(&e.payer.pubkey(), &honk_mint_pda())), GENESIS);
-    assert_eq!(e.bal(&pool_pda()), rent);
-    assert_eq!(e.mint(&lp_mint_pda()).supply, 0);
-    assert_eq!(e.amount(&ata(&e.payer.pubkey(), &lp_mint_pda())), 0);
+fn team_off_never_mints_the_eight_million() {
+    let mut e = Env::bare();
+    let payer = e.payer.pubkey();
+    unwrap_tx(e.initialize_opts(OPENING, payer, payer, Pubkey::default(), false, 0));
+    assert_eq!(e.mint(&honk_mint_pda()).supply, MAX_SUPPLY - TEAM);
+    assert_eq!(e.amount(&team_pda()), 0);
+    assert_eq!(e.amount(&airdrop_pda()), AIRDROP);
+    assert_eq!(e.amount(&treasury_pda()), TREASURY);
+    assert!(!e.config().team_enabled);
+    assert_err!(e.claim_team(), HonkError::TeamDisabled);
 }
 
 #[test]
-fn release_lp_at_unlock_moves_the_locker_to_the_recipient() {
+fn a_wallet_stops_at_two_thousand_a_day() {
     let mut e = Env::new();
-    let locked = e.amount(&lp_locker_pda());
-    assert!(locked > 0);
-    let at = e.pool().unlock_at;
-    e.warp(at);
-    assert_eq!(e.now(), at);
-    let recipient = ata(&e.payer.pubkey(), &lp_mint_pda());
-    unwrap_tx(e.release_lp());
-    assert_eq!(e.amount(&recipient), locked);
-    assert_eq!(e.amount(&lp_locker_pda()), 0);
+    let a = Keypair::new().pubkey();
+    let b = Keypair::new().pubkey();
+    unwrap_tx(e.mint_ride([1u8; 16], 8, 0b111, &a));
+    assert_eq!(e.amount(&ata(&a, &honk_mint_pda())), 1_200 * UNIT);
+    unwrap_tx(e.mint_ride([2u8; 16], 8, 0b111, &a));
+    assert_eq!(e.amount(&ata(&a, &honk_mint_pda())), 2_000 * UNIT);
+    assert_err!(e.mint_ride([3u8; 16], 8, 0b111, &a), HonkError::WalletCap);
+    unwrap_tx(e.mint_ride([4u8; 16], 8, 0b111, &b));
+    assert_eq!(e.amount(&ata(&b, &honk_mint_pda())), 1_200 * UNIT);
+}
+
+#[test]
+fn a_day_that_is_not_today_is_rejected() {
+    let mut e = Env::new();
+    let rider = Keypair::new().pubkey();
+    let payer = e.payer();
+    let day = day_index(e.now()) + 1;
+    assert_err!(
+        e.mint_ride_signed([5u8; 16], 1, 0b111, &rider, &payer, day),
+        HonkError::BadDay
+    );
+}
+
+#[test]
+fn a_stranger_cannot_mint_a_ride() {
+    let mut e = Env::new();
+    let stranger = funded(&mut e.svm, SOL);
+    let rider = Keypair::new().pubkey();
+    let day = day_index(e.now());
+    assert!(e.mint_ride_signed([6u8; 16], 1, 0b111, &rider, &stranger, day).is_err());
+}
+
+#[test]
+fn treasury_pays_nothing_at_open_and_half_after_eighteen_months() {
+    let mut e = Env::new();
+    let treasury = e.config().treasury;
+    assert_err!(e.claim_treasury(), HonkError::TooEarly);
+    e.warp(e.config().opened_at + 18 * MONTH_SECS);
+    unwrap_tx(e.claim_treasury());
+    assert_eq!(e.amount(&ata(&treasury, &honk_mint_pda())), TREASURY / 2);
+    assert_eq!(e.amount(&treasury_pda()), TREASURY / 2);
+    e.warp(e.config().opened_at + 36 * MONTH_SECS);
+    unwrap_tx(e.claim_treasury());
+    assert_eq!(e.amount(&ata(&treasury, &honk_mint_pda())), TREASURY);
+    assert_eq!(e.amount(&treasury_pda()), 0);
+}
+
+#[test]
+fn the_team_cannot_claim_before_the_cliff() {
+    let mut e = Env::new();
+    let team = e.config().team_recipient;
+    assert_err!(e.claim_team(), HonkError::TooEarly);
+    e.warp(e.config().opened_at + 12 * MONTH_SECS - 1);
+    assert_err!(e.claim_team(), HonkError::TooEarly);
+    e.warp(e.config().opened_at + 12 * MONTH_SECS + 18 * MONTH_SECS);
+    unwrap_tx(e.claim_team());
+    assert_eq!(e.amount(&ata(&team, &honk_mint_pda())), TEAM / 2);
+    assert_eq!(e.amount(&team_pda()), TEAM / 2);
 }

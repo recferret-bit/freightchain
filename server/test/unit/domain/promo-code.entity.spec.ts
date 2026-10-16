@@ -54,7 +54,7 @@ describe('PromoCode – the effect', () => {
     expect(make({ kind: 'free_rides', count: 3 })().effect).toEqual({ kind: 'free_rides', count: 3 });
     for (const count of [0, 21, 1.5, -1]) expect(make({ kind: 'free_rides', count }), String(count)).toThrow(/free rides: 1–20/);
   });
-  it('a cosmetic is not created any more – cab visuals are minted by burning HONK', () => {
+  it('a cosmetic is not created any more – cab visuals are minted by burning TEN4', () => {
     for (const effect of [
       { kind: 'cosmetic', slot: 'wheel', item: 'gold' },
       { kind: 'cosmetic', slot: 'wheel', item: 'classic' },

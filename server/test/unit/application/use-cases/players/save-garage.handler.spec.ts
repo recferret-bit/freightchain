@@ -15,7 +15,7 @@ describe('SaveGarageHandler', () => {
     const { ctx, save } = await setup();
     await ctx.cosmetics.equip('w', 'needle', 'lime');
     const g = await save({ wheel: 'gold', dice: 'pink' });
-    expect(g.equipped).toEqual({ wheel: 'gold', truck_color: 'red', gearbox: 'stick', dice: 'pink', needle: 'lime' });
+    expect(g.equipped).toEqual({ wheel: 'gold', truck_color: 'red', gearbox: 'stick', dice: 'pink', needle: 'lime', ornament: 'spear', dash: 'stock', indicator: 'amber', phone: 'black' });
     expect(g.slots[0]?.parts.find((p) => p.id === 'gold')).toMatchObject({ name: 'Wheel · Gold', description: 'A gold sheen ring, gold spokes, and a gold hub.', price: '260' });
     expect(g.slots[0]?.parts.find((p) => p.id === 'classic')).toMatchObject({ name: 'Wheel · Classic', description: 'The stock wheel: a black rim, a dark hub, and the amber mark.', price: null });
     expect(g.slots[3]?.parts.find((p) => p.id === 'pink')).toMatchObject({ name: 'Dice · Pink', description: 'Pink dice with white pips.', price: '65' });

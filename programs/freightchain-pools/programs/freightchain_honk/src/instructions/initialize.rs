@@ -25,10 +25,9 @@ pub struct Initialize<'info> {
         bump,
         mint::decimals = DECIMALS,
         mint::authority = authority,
-        // Omitted freeze authority is none. A coin holder cannot be frozen.
     )]
     pub honk_mint: Account<'info, Mint>,
-    /// CHECK: PDA signer. HONK mint authority stays here so a verified ride can mint under the cap. Freeze authority is left unset on the fungible mint and the LP mint. Part NFTs set it, and there is no thaw.
+    /// CHECK: PDA. Signs the genesis mints, then the mint authority is set to none. It keeps signing vault transfers.
     #[account(seeds = [AUTHORITY_SEED], bump)]
     pub authority: UncheckedAccount<'info>,
     #[account(
@@ -60,26 +59,83 @@ pub struct Initialize<'info> {
         token::authority = locker,
     )]
     pub lp_locker: Account<'info, TokenAccount>,
-    /// CHECK: PDA that owns the locked LP. It signs a transfer only in `release_lp`, and only after `unlock_at`.
+    /// CHECK: Signs the LP burn in this instruction. Nothing later can move LP.
     #[account(seeds = [LOCKER_SEED], bump)]
     pub locker: UncheckedAccount<'info>,
+    #[account(
+        init,
+        payer = payer,
+        seeds = [EMISSION_SEED],
+        bump,
+        token::mint = honk_mint,
+        token::authority = authority,
+    )]
+    pub emission_vault: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = payer,
+        seeds = [AIRDROP_SEED],
+        bump,
+        token::mint = honk_mint,
+        token::authority = authority,
+    )]
+    pub airdrop_vault: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = payer,
+        seeds = [TREASURY_SEED],
+        bump,
+        token::mint = honk_mint,
+        token::authority = authority,
+    )]
+    pub treasury_vault: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = payer,
+        seeds = [TEAM_SEED],
+        bump,
+        token::mint = honk_mint,
+        token::authority = authority,
+    )]
+    pub team_vault: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
-pub fn handle_initialize(ctx: Context<Initialize>, sol_in: u64) -> Result<()> {
-    // The opening deposit is fixed. Any other lamport count, including zero, is the same error.
+pub fn handle_initialize(
+    ctx: Context<Initialize>,
+    sol_in: u64,
+    emitter: Pubkey,
+    treasury: Pubkey,
+    team_recipient: Pubkey,
+    team_enabled: bool,
+    team_linear_months: u8,
+) -> Result<()> {
     require!(sol_in == OPENING_LAMPORTS, HonkError::ZeroAmount);
+    require!(emitter != Pubkey::default(), HonkError::BadAuthority);
+    require!(treasury != Pubkey::default(), HonkError::BadAuthority);
+    if team_enabled {
+        require!(team_recipient != Pubkey::default(), HonkError::BadAuthority);
+        require!(team_linear_months == 24 || team_linear_months == 36, HonkError::BadVest);
+    } else {
+        require!(team_recipient == Pubkey::default(), HonkError::BadAuthority);
+        require!(team_linear_months == 0, HonkError::BadVest);
+    }
     let lp = lp_tokens(sol_in)?;
     let auth_bump = ctx.bumps.authority;
     let honk_mint = ctx.accounts.honk_mint.to_account_info();
-    let vault = ctx.accounts.vault.to_account_info();
+    mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.vault.to_account_info(), LIQUIDITY, auth_bump)?;
+    mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.emission_vault.to_account_info(), EMISSION_CAP, auth_bump)?;
+    mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.airdrop_vault.to_account_info(), AIRDROP, auth_bump)?;
+    mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.treasury_vault.to_account_info(), TREASURY, auth_bump)?;
+    if team_enabled {
+        mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.team_vault.to_account_info(), TEAM, auth_bump)?;
+    }
     let lp_mint = ctx.accounts.lp_mint.to_account_info();
-    let lp_locker = ctx.accounts.lp_locker.to_account_info();
-    mint_to_signed(&ctx, honk_mint, vault, GENESIS, auth_bump)?;
-    // The HONK mint authority stays the program so a verified ride can mint later. The LP mint is closed.
-    mint_to_signed(&ctx, lp_mint.clone(), lp_locker, lp, auth_bump)?;
+    mint_to_signed(&ctx, lp_mint.clone(), ctx.accounts.lp_locker.to_account_info(), lp, auth_bump)?;
+    burn_lp(&ctx, lp)?;
     revoke_mint(&ctx, lp_mint, auth_bump)?;
+    revoke_mint(&ctx, honk_mint, auth_bump)?;
     transfer(
         CpiContext::new(
             ctx.accounts.system_program.key(),
@@ -94,17 +150,31 @@ pub fn handle_initialize(ctx: Context<Initialize>, sol_in: u64) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     let pool = &mut ctx.accounts.pool;
     pool.sol_reserve = sol_in;
-    pool.honk_reserve = GENESIS;
-    pool.unlock_at = now.checked_add(LOCK_SECS).ok_or(HonkError::ZeroOut)?;
+    pool.honk_reserve = LIQUIDITY;
     pool.bump = ctx.bumps.pool;
     let config = &mut ctx.accounts.config;
     config.bump = ctx.bumps.config;
-    config.emitter = ctx.accounts.payer.key();
+    config.emitter = emitter;
+    config.treasury = treasury;
+    config.team_recipient = team_recipient;
+    config.team_enabled = team_enabled;
+    config.team_linear_months = team_linear_months;
     config.emitted = 0;
+    config.day_index = now.div_euclid(DAY_SECS);
+    config.day_emitted = 0;
+    config.treasury_claimed = 0;
+    config.team_claimed = 0;
+    config.opened_at = now;
+    config.name = pad8(TOKEN_NAME);
+    config.symbol = pad8(TOKEN_SYMBOL);
+    let supply = LIQUIDITY + EMISSION_CAP + AIRDROP + TREASURY + if team_enabled { TEAM } else { 0 };
     emit!(HonkInitialized {
-        supply: GENESIS,
+        supply,
         sol_in,
-        lp
+        lp_burned: lp,
+        team_enabled,
+        name: config.name,
+        symbol: config.symbol,
     });
     Ok(())
 }
@@ -125,6 +195,23 @@ fn mint_to_signed<'info>(
                 mint,
                 to,
                 authority: ctx.accounts.authority.to_account_info(),
+            },
+            &[seeds],
+        ),
+        amount,
+    )
+}
+
+fn burn_lp(ctx: &Context<Initialize>, amount: u64) -> Result<()> {
+    let bump = [ctx.bumps.locker];
+    let seeds: &[&[u8]] = &[LOCKER_SEED, &bump];
+    token::burn(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.key(),
+            token::Burn {
+                mint: ctx.accounts.lp_mint.to_account_info(),
+                from: ctx.accounts.lp_locker.to_account_info(),
+                authority: ctx.accounts.locker.to_account_info(),
             },
             &[seeds],
         ),

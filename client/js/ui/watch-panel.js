@@ -1,3 +1,4 @@
+import { TOKEN_SYMBOL } from '../config.js';
 import { fmt } from '../util.js';
 import { st } from '../state.js';
 import { audio } from '../sim/audio.js';
@@ -215,7 +216,7 @@ async function send() {
 const HONK_GAP_MS = 10_000, TIME_GAP_MS = 20_000;
 function honkBtn() {
   const left = P.honkUntil - Date.now();
-  const b = el('button', { id: 'w-honk', type: 'button', disabled: left > 0, title: 'Burn 1 HONK. It shows up in the chat. Nothing happens to the truck.', onclick: sendHonk }, 'HONK');
+  const b = el('button', { id: 'w-honk', type: 'button', disabled: left > 0, title: `Burn 1 ${TOKEN_SYMBOL} to HONK. It shows up in the chat. Nothing happens to the truck.`, onclick: sendHonk }, 'HONK');
   if (left > 0) setTimeout(releaseHonk, left);
   return b;
 }
@@ -249,10 +250,10 @@ async function sendHonk() {
 const FX_IDS = ['w-honk-day', 'w-honk-night', 'w-honk-snow', 'w-honk-clear'];
 function timeControls() {
   const left = P.timeUntil - Date.now(), held = left > 0;
-  const title = on => `Burning 10 HONK turns the ride to ${on}. The driver's clock moves; spectators see it in the replay.`;
-  const btn = (phase, label) => el('button', { id: `w-honk-${phase}`, type: 'button', class: 'alt', disabled: held, title: title(phase), onclick: () => sendTime(phase) }, label, el('small', {}, '10 HONK'));
-  const wxTitle = on => `Burning 25 HONK ${on === 'snow' ? 'makes it snow' : 'clears the snow'}. Not a donation.`;
-  const wx = (weather, label) => el('button', { id: `w-honk-${weather}`, type: 'button', class: 'alt', disabled: held, title: wxTitle(weather), onclick: () => sendWeather(weather) }, label, el('small', {}, '25 HONK'));
+  const title = on => `Burning 10 ${TOKEN_SYMBOL} turns the ride to ${on}. The driver's clock moves; spectators see it in the replay.`;
+  const btn = (phase, label) => el('button', { id: `w-honk-${phase}`, type: 'button', class: 'alt', disabled: held, title: title(phase), onclick: () => sendTime(phase) }, label, el('small', {}, `10 ${TOKEN_SYMBOL}`));
+  const wxTitle = on => `Burning 25 ${TOKEN_SYMBOL} ${on === 'snow' ? 'makes it snow' : 'clears the snow'}. Not a donation.`;
+  const wx = (weather, label) => el('button', { id: `w-honk-${weather}`, type: 'button', class: 'alt', disabled: held, title: wxTitle(weather), onclick: () => sendWeather(weather) }, label, el('small', {}, `25 ${TOKEN_SYMBOL}`));
   if (held) setTimeout(releaseTime, left);
   return [el('div', { class: 'w-fx' }, btn('day', 'DAY'), btn('night', 'NIGHT')), el('div', { class: 'w-fx' }, wx('snow', 'SNOW'), wx('clear', 'CLEAR'))];
 }

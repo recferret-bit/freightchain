@@ -29,7 +29,8 @@ pub type Res = Result<TransactionMetadata, FailedTransactionMetadata>;
 pub const T0: i64 = 1_000_000;
 pub const SOL: u64 = 1_000_000_000;
 pub const UNIT: u64 = freightchain_honk::UNIT;
-pub const GENESIS: u64 = freightchain_honk::GENESIS;
+pub const LIQUIDITY: u64 = freightchain_honk::LIQUIDITY;
+pub const OPENING: u64 = freightchain_honk::OPENING_LAMPORTS;
 
 pub fn code(e: freightchain_honk::error::HonkError) -> u32 {
     e.into()
@@ -82,6 +83,24 @@ pub fn lp_locker_pda() -> Pubkey {
 }
 pub fn locker_pda() -> Pubkey {
     Pubkey::find_program_address(&[b"locker"], &pid()).0
+}
+pub fn emission_pda() -> Pubkey {
+    Pubkey::find_program_address(&[b"emission"], &pid()).0
+}
+pub fn airdrop_pda() -> Pubkey {
+    Pubkey::find_program_address(&[b"airdrop"], &pid()).0
+}
+pub fn treasury_pda() -> Pubkey {
+    Pubkey::find_program_address(&[b"treasury"], &pid()).0
+}
+pub fn team_pda() -> Pubkey {
+    Pubkey::find_program_address(&[b"team"], &pid()).0
+}
+pub fn wallet_day_pda(rider: &Pubkey, day: i64) -> Pubkey {
+    Pubkey::find_program_address(&[b"wallet-day", rider.as_ref(), &day.to_le_bytes()], &pid()).0
+}
+pub fn day_index(ts: i64) -> i64 {
+    ts.div_euclid(86_400)
 }
 pub fn ride_mint_pda(ride_id: &[u8; 16]) -> Pubkey {
     Pubkey::find_program_address(&[b"ride-mint", ride_id.as_ref()], &pid()).0
@@ -155,7 +174,7 @@ impl Env {
 
     pub fn new() -> Env {
         let mut e = Env::bare();
-        unwrap_tx(e.initialize(10 * SOL));
+        unwrap_tx(e.initialize(OPENING));
         e
     }
 
@@ -195,6 +214,10 @@ impl Env {
         let a = self.svm.get_account(&pool_pda()).expect("pool");
         freightchain_honk::Pool::try_deserialize(&mut &a.data[..]).unwrap()
     }
+    pub fn config(&self) -> freightchain_honk::Config {
+        let a = self.svm.get_account(&config_pda()).expect("config");
+        freightchain_honk::Config::try_deserialize(&mut &a.data[..]).unwrap()
+    }
     pub fn mint(&self, k: &Pubkey) -> Mint {
         let a = self.svm.get_account(k).expect("mint");
         Mint::try_deserialize(&mut &a.data[..]).unwrap()
@@ -209,8 +232,28 @@ impl Env {
 
     pub fn initialize(&mut self, sol_in: u64) -> Res {
         let payer = self.payer();
+        self.initialize_opts(sol_in, payer.pubkey(), payer.pubkey(), payer.pubkey(), true, 36)
+    }
+
+    pub fn initialize_opts(
+        &mut self,
+        sol_in: u64,
+        emitter: Pubkey,
+        treasury: Pubkey,
+        team_recipient: Pubkey,
+        team_enabled: bool,
+        team_linear_months: u8,
+    ) -> Res {
+        let payer = self.payer();
         let i = ix(
-            instruction::Initialize { sol_in },
+            instruction::Initialize {
+                sol_in,
+                emitter,
+                treasury,
+                team_recipient,
+                team_enabled,
+                team_linear_months,
+            },
             accounts::Initialize {
                 payer: payer.pubkey(),
                 config: config_pda(),
@@ -221,6 +264,10 @@ impl Env {
                 lp_mint: lp_mint_pda(),
                 lp_locker: lp_locker_pda(),
                 locker: locker_pda(),
+                emission_vault: emission_pda(),
+                airdrop_vault: airdrop_pda(),
+                treasury_vault: treasury_pda(),
+                team_vault: team_pda(),
                 token_program: token::ID,
                 system_program: system_program::ID,
             },
@@ -265,48 +312,86 @@ impl Env {
         self.send(&[i], &user, &[])
     }
 
-    pub fn withdraw(&mut self, lp_in: u64, min_honk: u64, min_sol: u64) -> Res {
-        let user = self.payer();
-        let i = ix(
-            instruction::WithdrawLp {
-                lp_in,
-                min_honk,
-                min_sol,
-            },
-            accounts::WithdrawLp {
-                user: user.pubkey(),
-                pool: pool_pda(),
-                honk_mint: honk_mint_pda(),
-                vault: vault_pda(),
-                user_honk: ata(&user.pubkey(), &honk_mint_pda()),
-                lp_mint: lp_mint_pda(),
-                user_lp: ata(&user.pubkey(), &lp_mint_pda()),
-                token_program: token::ID,
-                system_program: system_program::ID,
-                associated_token_program: associated_token::ID,
-            },
-        );
-        self.send(&[i], &user, &[])
+    pub fn mint_ride(&mut self, ride_id: [u8; 16], tier: u8, bands: u8, rider: &Pubkey) -> Res {
+        let emitter = self.payer();
+        let day = day_index(self.now());
+        self.mint_ride_signed(ride_id, tier, bands, rider, &emitter, day)
     }
 
-    pub fn mint_ride(&mut self, ride_id: [u8; 16], amount: u64, rider: &Pubkey) -> Res {
-        let emitter = self.payer();
+    pub fn mint_ride_signed(
+        &mut self,
+        ride_id: [u8; 16],
+        tier: u8,
+        bands: u8,
+        rider: &Pubkey,
+        emitter: &Keypair,
+        day_index: i64,
+    ) -> Res {
         let i = ix(
-            instruction::MintRide { ride_id, amount },
+            instruction::MintRide {
+                ride_id,
+                tier,
+                bands,
+                day_index,
+            },
             accounts::MintRide {
                 emitter: emitter.pubkey(),
                 config: config_pda(),
                 honk_mint: honk_mint_pda(),
                 authority: authority_pda(),
+                emission_vault: emission_pda(),
                 rider: *rider,
                 rider_honk: ata(rider, &honk_mint_pda()),
                 ride_mint: ride_mint_pda(&ride_id),
+                wallet_day: wallet_day_pda(rider, day_index),
                 token_program: token::ID,
                 system_program: system_program::ID,
                 associated_token_program: associated_token::ID,
             },
         );
-        self.send(&[i], &emitter, &[])
+        self.send(&[i], emitter, &[])
+    }
+
+    pub fn claim_treasury(&mut self) -> Res {
+        let payer = self.payer();
+        let treasury = self.config().treasury;
+        let i = ix(
+            instruction::ClaimTreasury {},
+            accounts::ClaimTreasury {
+                payer: payer.pubkey(),
+                config: config_pda(),
+                honk_mint: honk_mint_pda(),
+                authority: authority_pda(),
+                treasury_vault: treasury_pda(),
+                treasury,
+                treasury_honk: ata(&treasury, &honk_mint_pda()),
+                token_program: token::ID,
+                associated_token_program: associated_token::ID,
+                system_program: system_program::ID,
+            },
+        );
+        self.send(&[i], &payer, &[])
+    }
+
+    pub fn claim_team(&mut self) -> Res {
+        let payer = self.payer();
+        let team = self.config().team_recipient;
+        let i = ix(
+            instruction::ClaimTeam {},
+            accounts::ClaimTeam {
+                payer: payer.pubkey(),
+                config: config_pda(),
+                honk_mint: honk_mint_pda(),
+                authority: authority_pda(),
+                team_vault: team_pda(),
+                team_recipient: team,
+                team_honk: ata(&team, &honk_mint_pda()),
+                token_program: token::ID,
+                associated_token_program: associated_token::ID,
+                system_program: system_program::ID,
+            },
+        );
+        self.send(&[i], &payer, &[])
     }
 
     pub fn burn(&mut self, amount: u64) -> Res {
@@ -360,24 +445,6 @@ impl Env {
         freightchain_honk::Part::try_deserialize(&mut &a.data[..]).unwrap()
     }
 
-    pub fn release_lp(&mut self) -> Res {
-        let recipient = self.payer();
-        let i = ix(
-            instruction::ReleaseLp {},
-            accounts::ReleaseLp {
-                recipient: recipient.pubkey(),
-                pool: pool_pda(),
-                lp_mint: lp_mint_pda(),
-                lp_locker: lp_locker_pda(),
-                locker: locker_pda(),
-                recipient_lp: ata(&recipient.pubkey(), &lp_mint_pda()),
-                token_program: token::ID,
-                associated_token_program: associated_token::ID,
-                system_program: system_program::ID,
-            },
-        );
-        self.send(&[i], &recipient, &[])
-    }
 }
 
 pub fn program_data(logs: &[String]) -> Vec<Vec<u8>> {

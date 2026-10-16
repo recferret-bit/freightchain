@@ -1,4 +1,4 @@
-/* The cosmetics catalog: what a player can wear in the cab. New parts are minted by burning HONK (docs/honk/SPEC.md); a promo code no longer grants one. VISUALS ONLY – no item changes handling, shifting or any rule of the game.
+/* The cosmetics catalog: what a player can wear in the cab. New parts are minted by burning TEN4 (docs/honk/SPEC.md); a promo code no longer grants one. VISUALS ONLY – no item changes handling, shifting or any rule of the game.
    Slots: the steering `wheel`, the `truck_color`, the `gearbox`, the hanging `dice`, the gauge `needle`s, the hood `ornament`, the `dash`, the `indicator`s and the `phone`.
    A HONK burn mints a soulbound entitlement for one of these items. The slot model stays, so more slots or items can be added without touching the plumbing.
    Mirrored by client/js/cosmetics.js for the slots that file draws (a leaf module: the landing's dash cards run the cockpit without three.js) – keep those ids and defaults equal.

@@ -18,10 +18,43 @@ export class MemoryHonkRepository extends HonkRepositoryPort {
     this.db.honkEmission += amount;
   }
 
+  async subEmission(amount: bigint): Promise<void> {
+    this.db.honkEmission -= amount;
+  }
+
+  async emittedOnDay(start: Date, wallet: string | null): Promise<bigint> {
+    const from = start.getTime();
+    const to = from + 86_400_000;
+    let sum = 0n;
+    for (const row of this.db.honkMints.values()) {
+      const t = row.createdAt.getTime();
+      if (t >= from && t < to && (wallet === null || row.wallet === wallet)) sum += row.amount;
+    }
+    return sum;
+  }
+
   async insertMint(row: HonkMintRow): Promise<boolean> {
     if (this.db.honkMints.has(row.rideId)) return false;
     this.db.honkMints.set(row.rideId, row);
     return true;
+  }
+
+  async markReleased(rideId: string): Promise<boolean> {
+    const row = this.db.honkMints.get(rideId);
+    if (!row || row.released) return false;
+    row.released = true;
+    return true;
+  }
+
+  async deleteMint(rideId: string): Promise<boolean> {
+    const row = this.db.honkMints.get(rideId);
+    if (!row || row.released) return false;
+    this.db.honkMints.delete(rideId);
+    return true;
+  }
+
+  async listDue(now: Date, limit: number): Promise<HonkMintRow[]> {
+    return [...this.db.honkMints.values()].filter((r) => !r.released && r.releaseAt.getTime() <= now.getTime()).slice(0, limit);
   }
 
   async balance(wallet: string): Promise<bigint> {
@@ -67,7 +100,7 @@ export class MemoryHonkRepository extends HonkRepositoryPort {
   }
 
   async counts(wallet: string): Promise<{ mints: number; finishes: number }> {
-    const rows = [...this.db.honkMints.values()].filter((r) => r.wallet === wallet && r.amount > 0n);
+    const rows = [...this.db.honkMints.values()].filter((r) => r.wallet === wallet && r.released && r.amount > 0n);
     return { mints: rows.length, finishes: rows.filter((r) => r.band100).length };
   }
 

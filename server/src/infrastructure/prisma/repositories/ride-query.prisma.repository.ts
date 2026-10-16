@@ -85,7 +85,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
     const [started, done, honk] = await Promise.all([
       this.prisma.ride.aggregate({ where: { wallet, startedAt: { not: null } }, _count: { _all: true }, _sum: { lastS: true } }),
       this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { tier: true, trip: true, assist: true, lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true, verdict: { select: { status: true, reasons: true } } } }),
-      this.prisma.honkMint.findMany({ where: { wallet, amount: { gt: 0 } }, select: { band100: true } }),
+      this.prisma.honkMint.findMany({ where: { wallet, released: true, amount: { gt: 0 } }, select: { band100: true } }),
     ]);
     // the badges' rides: a ride the verdict rejected (achievements.ts badgeRejected) earns no completion badge and its metres don't count – its START still
     // does (starting is not a judged fact). Verdicts are only ever on completed rides, so the rejected ones are a part of `done` and come off the metres.

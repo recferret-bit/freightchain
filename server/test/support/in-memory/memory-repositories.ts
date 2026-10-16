@@ -238,8 +238,8 @@ export class MemoryRideQuery extends RideQueryPort {
         siberiaShifts: fair.filter((r) => r.route === 'siberia').length,
         freeUnassisted: fair.filter((r) => r.tier === 'free' && !r.assist).length,
         completedFreeLevels: completedLevels(fair),
-        honkMints: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.amount > 0n).length,
-        honkFinishes: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.amount > 0n && m.band100).length,
+        honkMints: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.released && m.amount > 0n).length,
+        honkFinishes: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.released && m.amount > 0n && m.band100).length,
       },
     };
   }

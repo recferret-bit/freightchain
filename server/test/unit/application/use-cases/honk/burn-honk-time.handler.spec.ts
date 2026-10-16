@@ -36,7 +36,7 @@ describe('BurnHonkTimeHandler', () => {
     expect(await ctx.honkRepo.balance('fan')).toBe(20n * U);
     expect([...ctx.db.honkBurns.values()]).toEqual([expect.objectContaining({ wallet: 'fan', amount: HONK_TIME_BURN, kind: 'time', ref: `${ride.id}:night` })]);
     const row = ctx.db.rideEvents.find((e) => e.rideId === ride.id);
-    expect(row).toMatchObject({ kind: 'honk', effect: 'night', lamports: 0, text: 'Burned 10 HONK', slotKey: 'fx', signature: null, applied: null });
+    expect(row).toMatchObject({ kind: 'honk', effect: 'night', lamports: 0, text: 'Burned 10 TEN4', slotKey: 'fx', signature: null, applied: null });
     expect(RideEvent.restore(row!).needsGame).toBe(true);
     expect(ctx.db.rideEvents.some((e) => e.kind === 'donation')).toBe(false);
   });

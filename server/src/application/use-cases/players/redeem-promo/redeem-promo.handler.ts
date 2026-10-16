@@ -23,7 +23,7 @@ import { RedeemPromoCommand, type PromoRedeemedDto } from './redeem-promo.comman
 
 /**
  * Redeem a promo code – one transaction under the wallet's player lock, whatever the effect: free tickets into a pool (an off-chain grant – it never counts towards
- * the pool's on-chain minimum) or extra free rides. A cosmetic code is refused (`visuals_are_honk`) — cab colours are minted by burning HONK. Everything that can refuse is checked BEFORE a redemption is taken, so a wallet
+ * the pool's on-chain minimum) or extra free rides. A cosmetic code is refused (`visuals_are_honk`) — cab colours are minted by burning TEN4. Everything that can refuse is checked BEFORE a redemption is taken, so a wallet
  * already at the pool's cap does not burn one; the redemption itself is one atomic UPDATE (two wallets never both get the last one,
  * nothing before `startsAt`) and the (code, wallet, n) key enforces the per-wallet limit.
  */
@@ -76,7 +76,7 @@ export class RedeemPromoHandler implements ICommandHandler<RedeemPromoCommand, P
         return { kind: 'free_rides', code, label, added: e.count, freeRides: player.freeRides };
       };
     }
-    if (e.kind === 'cosmetic') throw new ConflictError('cab visuals are minted by burning HONK', 'visuals_are_honk');
+    if (e.kind === 'cosmetic') throw new ConflictError('cab visuals are minted by burning TEN4', 'visuals_are_honk');
     const pool = await this.targetPool(e, now, tx);
     const held = (await this.tickets.find(wallet, pool.id, tx))?.balance ?? 0;
     if (held >= pool.maxPerWallet) throw new ConflictError(`you already hold the maximum of ${pool.maxPerWallet} tickets in this pool`, 'ticket_cap');

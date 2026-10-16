@@ -147,7 +147,9 @@ export class ReplayEngine {
         });
         continue;
       }
-      const holeType = EFFECT_TO_HOLE[ev.effect];
+      const effect = ev.effect;
+      if (effect === 'snow' || effect === 'clear') continue;
+      const holeType = EFFECT_TO_HOLE[effect];
       if (holeType) {
         liveEventsCorrelated++;
         if (ev.applied.lat !== null) {
@@ -159,11 +161,11 @@ export class ReplayEngine {
             lat: ev.applied.lat,
             type: holeType,
             eventId: ev.id ?? 0,
-            effect: ev.effect,
+            effect,
             appliedT: ev.applied.t,
           });
         }
-      } else if (ev.effect === 'night' || ev.effect === 'day') {
+      } else if (effect === 'night' || effect === 'day') {
         const clockRow = rows.find((r) => r.length > SAMPLE_CLOCK_COL && r[SAMPLE_T_COL]! >= ev.applied!.t + 1.5 && r[SAMPLE_T_COL]! <= ev.applied!.t + 6);
         if (!clockRow) {
           liveEventsCorrelated++;

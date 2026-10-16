@@ -11,13 +11,14 @@ const ride = (rideId: string, distance = 10_000) => ({ rideId, wallet: 'w', tier
 
 describe('HonkPrismaRepository (PostgreSQL)', () => {
   let prisma: PrismaService, repo: HonkPrismaRepository, mint: HonkMintService;
+  const clock = { ms: at(3).getTime(), now() { return new Date(this.ms); } };
   beforeAll(async () => {
     prisma = await testPrisma();
     repo = new HonkPrismaRepository(prisma);
-    mint = new HonkMintService(repo, { now: () => at(3) } as ClockPort);
+    mint = new HonkMintService(repo, clock as ClockPort);
   });
   afterAll(() => prisma.$disconnect());
-  beforeEach(() => wipe(prisma));
+  beforeEach(() => { clock.ms = at(3).getTime(); return wipe(prisma); });
 
   it('credits a wallet, debits only what the balance covers, and a reversed burn puts it back', async () => {
     await repo.credit('w', 50n * U, at(1));
@@ -48,8 +49,7 @@ describe('HonkPrismaRepository (PostgreSQL)', () => {
       inTx(prisma, (tx) => mint.credit(ride('same'), tx)),
       inTx(prisma, (tx) => mint.credit(ride('same'), tx)),
     ]);
-    expect(a?.amount).toBe(100n * U);
-    expect(b?.amount).toBe(100n * U);
+    expect([a, b].sort((x, y) => Number(x === null) - Number(y === null))).toEqual([100n * U, null]);
     expect(await prisma.honkMint.count()).toBe(1);
     expect(await repo.balance('w')).toBe(100n * U);
     expect((await prisma.honkSupply.findUnique({ where: { id: 1 } }))?.minted).toBe(100n * U);
@@ -70,8 +70,20 @@ describe('HonkPrismaRepository (PostgreSQL)', () => {
 
   it('a mint that does not fit the emission cap takes the remainder', async () => {
     await prisma.honkSupply.create({ data: { id: 1, minted: HONK_EMISSION_CAP - 10n * U } });
-    expect(await inTx(prisma, (tx) => mint.credit(ride('clip'), tx))).toMatchObject({ amount: 10n * U });
+    expect(await inTx(prisma, (tx) => mint.credit(ride('clip'), tx))).toBe(10n * U);
     expect(await inTx(prisma, (tx) => mint.credit(ride('after'), tx))).toBeNull();
     expect((await prisma.honkSupply.findUnique({ where: { id: 1 } }))?.minted).toBe(HONK_EMISSION_CAP);
+  });
+
+  it('an 8h finish stays unreleased until 48h, then credits 1200', async () => {
+    clock.ms = at(3).getTime();
+    expect(await inTx(prisma, (tx) => mint.credit({ ...ride('long'), tier: '8h' }, tx))).toBeNull();
+    expect(await repo.balance('w')).toBe(0n);
+    expect(await repo.findMint('long')).toMatchObject({ amount: 1200n * U, released: false });
+    expect(await repo.counts('w')).toEqual({ mints: 0, finishes: 0 });
+    clock.ms += 48 * 3600 * 1000;
+    expect(await inTx(prisma, (tx) => mint.releaseIfDue('long', tx))).toBe(1200n * U);
+    expect(await repo.balance('w')).toBe(1200n * U);
+    expect(await repo.counts('w')).toEqual({ mints: 1, finishes: 1 });
   });
 });

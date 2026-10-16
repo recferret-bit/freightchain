@@ -6,6 +6,7 @@ import { RideReplay } from '../../domain/verdict/ride-replay.entity.js';
 import { RideVerdict } from '../../domain/verdict/ride-verdict.entity.js';
 import { isPoolMark } from '../../domain/verdict/pool-attention.js';
 import { VerdictStatus, type VerdictDecision, type VerdictReason } from '../../domain/verdict/verdict.dto.js';
+import { dayIndex } from '../../domain/honk/tokenomics.js';
 import { ConflictError, NotFoundError } from '../../domain/shared/errors.js';
 import { AdminActionRepositoryPort } from '../ports/admin/admin-action.repository.port.js';
 import { RideEventRepositoryPort } from '../ports/live/ride-event.repository.port.js';
@@ -167,7 +168,9 @@ export class VerdictService {
       `guardSwept` refuses (409) when the recording was deleted by the retention sweep – a late batch (neither) may still judge an empty recording. */
   private async mintRide(result: { minted: bigint | null; wallet: string; verdict: RideVerdict } | null): Promise<void> {
     if (!result?.minted) return;
-    await this.emission.mint(result.verdict.rideId, result.wallet, result.minted);
+    const chain = await this.honk.chainOf(result.verdict.rideId);
+    if (!chain) return;
+    await this.emission.mint(result.verdict.rideId, result.wallet, chain.tier, chain.bands, dayIndex(this.clock.now()));
   }
 
   private async judgeLocked(rideId: string, force: boolean, tx: TransactionHandle, guardSwept = force): Promise<{ verdict: RideVerdict; before: string | null; minted: bigint | null; wallet: string } | null> {
@@ -215,8 +218,10 @@ export class VerdictService {
     // cannot recompute them, so they are carried over (also when an admin re-judges: clearing a mark is an admin DECISION – the override –, not a re-run)
     verdict.addReasons(existing?.reasons.filter((r) => isPoolMark(r.code)) ?? []);
     await this.verdicts.save(verdict, tx);
-    // HONK is credited in this same transaction. A flagged or rejected ride mints nothing, and a second pass of a verified ride does not mint again.
-    const minted = verdict.status === 'verified' ? await this.honk.credit({ rideId, wallet: ride.wallet, tier: ride.tier, distance: ride.distance, completeDist: ride.completeDist }, tx) : null;
+    // TEN4 is reserved in this same transaction. 1h and 4h credit now. An 8h row waits; a later non-verified verdict returns that reservation. A released mint is not clawed back, and a second pass does not mint again.
+    const minted = verdict.status === 'verified'
+      ? await this.honk.credit({ rideId, wallet: ride.wallet, tier: ride.tier, distance: ride.distance, completeDist: ride.completeDist }, tx)
+      : await this.honk.cancelPending(rideId, tx).then(() => null);
     this.logger.log({ event: 'verdict', msg: `ride ${rideId}: ${verdict.status}`, rideId, wallet: ride.wallet, status: verdict.status, reasons: verdict.reasons.map((r) => r.code) });
     return { verdict, before: existing?.status ?? null, minted, wallet: ride.wallet };
   }

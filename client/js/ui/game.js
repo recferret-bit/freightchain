@@ -1,4 +1,4 @@
-import { CFG } from '../config.js';
+import { CFG, TOKEN_SYMBOL } from '../config.js';
 import { fmt, store, mulberry32 } from '../util.js';
 import { st, clock, IDLE, resetDisp, rideStart, dn } from '../state.js';
 import { audio } from '../sim/audio.js';
@@ -215,9 +215,10 @@ const verdictText = v => {
 function honkLines(h) {
   if (!h || h.state === 'none') return null;
   const bands = Array.isArray(h.bands) ? h.bands.map(b => `${b.pct}${b.reached ? ' ✓' : ''}`).join(' · ') : '';
-  if (h.state === 'preview') return { k: 'HONK if this ride verifies', v: `${h.quote} HONK`, k2: bands ? 'Bands' : '', v2: bands };
-  if (h.state === 'minted') return { k: 'Minted', v: `${h.pays} HONK` };
-  if (h.state === 'withheld') return { k: 'Verification did not pass', v: '0', k2: 'A pass would have paid', v2: `${h.quote} HONK` };
+  if (h.state === 'preview') return { k: 'Points if this ride verifies', v: `${h.quote} ${TOKEN_SYMBOL}`, k2: bands ? 'Bands' : '', v2: bands };
+  if (h.state === 'pending') return { k: 'Held for the verdict', v: `${h.quote} ${TOKEN_SYMBOL}`, k2: 'Credits after 48 hours', v2: '' };
+  if (h.state === 'minted') return { k: 'Minted', v: `${h.pays} ${TOKEN_SYMBOL}` };
+  if (h.state === 'withheld') return { k: 'Verification did not pass', v: '0', k2: 'A pass would have paid', v2: `${h.quote} ${TOKEN_SYMBOL}` };
   return null;
 }
 const paintHonkInto = (lineId, moreId, h) => {
@@ -249,7 +250,7 @@ function mountHonk() {
     d.append(s, b); return d;
   };
   const box = document.createElement('div');
-  box.id = 'honk-hud'; box.hidden = true; box.setAttribute?.('aria-label', 'HONK');
+  box.id = 'honk-hud'; box.hidden = true; box.setAttribute?.('aria-label', TOKEN_SYMBOL);
   box.append(line('honk-line'), line('honk-line-more'));
   document.body.append(box);
 }

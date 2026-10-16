@@ -16,6 +16,20 @@ pub enum HonkError {
     NotForSale,
     #[msg("Emission cap")]
     EmissionCap,
+    #[msg("Daily cap")]
+    DailyCap,
+    #[msg("Wallet daily cap")]
+    WalletCap,
+    #[msg("Bad tier or bands")]
+    BadTier,
+    #[msg("Bad authority")]
+    BadAuthority,
+    #[msg("Bad vest")]
+    BadVest,
+    #[msg("Team allocation is off")]
+    TeamDisabled,
+    #[msg("Day index does not match the clock")]
+    BadDay,
 }
 
 #[cfg(test)]
@@ -31,5 +45,12 @@ mod tests {
         assert_eq!(u32::from(HonkError::Slippage), 6004);
         assert_eq!(u32::from(HonkError::NotForSale), 6005);
         assert_eq!(u32::from(HonkError::EmissionCap), 6006);
+        assert_eq!(u32::from(HonkError::DailyCap), 6007);
+        assert_eq!(u32::from(HonkError::WalletCap), 6008);
+        assert_eq!(u32::from(HonkError::BadTier), 6009);
+        assert_eq!(u32::from(HonkError::BadAuthority), 6010);
+        assert_eq!(u32::from(HonkError::BadVest), 6011);
+        assert_eq!(u32::from(HonkError::TeamDisabled), 6012);
+        assert_eq!(u32::from(HonkError::BadDay), 6013);
     }
 }

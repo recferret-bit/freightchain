@@ -40,7 +40,7 @@ export class PromoCode {
   }
 
   static create(input: Omit<PromoCodeProps, 'redeemed' | 'disabledAt' | 'createdAt' | 'startsAt'> & { startsAt: Date | null; now: Date }): PromoCode {
-    if (input.effect.kind === 'cosmetic') throw new ConflictError('cab visuals are minted by burning HONK', 'visuals_are_honk');
+    if (input.effect.kind === 'cosmetic') throw new ConflictError('cab visuals are minted by burning TEN4', 'visuals_are_honk');
     const code = PromoCode.normalize(input.code);
     if (!CODE_RE.test(code)) throw new BadRequestError('a promo code is 3–32 letters, digits, "-" or "_"', 'bad_promo_code');
     PromoCode.assertEffect(input.effect);

@@ -40,7 +40,7 @@ export interface RideDto {
   assist: boolean;
   /** the server's check of the recording (verified play); null = not judged – only completed shifts are */
   verdict: VerdictDto | null;
-  /** HONK a paid ride would mint at this distance. Free rides are `none`. */
+  /** TEN4 a paid ride would mint at this distance. An 8h finish stays `pending` until it is released. Free rides are `none`. */
   honk: HonkQuoteDto;
   /** a PAID ride's review (domain/verdict/ride-review.ts): 'under_review' until the machine checks verify it or an admin decides – 'accepted' /
       'rejected'; null for free rides and for rides that did not complete. Derived from `verdict` (a completed paid ride shown without one = under_review). */
@@ -52,8 +52,8 @@ export interface RideDto {
   slot?: number | null;
 }
 
-/** `now`: when given, the open prompt is included (the heartbeat); without it the DTO never carries one. */
-export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date | null = null): RideDto => ({
+/** `now`: when given, the open prompt is included (the heartbeat); without it the DTO never carries one. `honkPaid`: the 8h mint has been credited. */
+export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date | null = null, honkPaid = false): RideDto => ({
   trafficVersion: r.trafficVersion,
   id: r.id,
   tier: r.tier,
@@ -78,7 +78,7 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   tutorial: r.tutorial,
   assist: r.assist,
   verdict,
-  honk: honkQuote(r.tier, r.distance, r.completeDist, verdict?.status ?? null),
+  honk: honkQuote(r.tier, r.distance, r.completeDist, verdict?.status ?? null, { paid: honkPaid }),
   review: reviewOf(r.tier, verdict ? { status: verdict.status, overridden: verdict.override !== null } : null, r.status),
   challenge: now ? (() => { const c = r.openChallenge(now); return c ? toChallengeDto(c) : null; })() : null,
   seedCommitment: r.seedCommitment,

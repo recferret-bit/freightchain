@@ -28,8 +28,8 @@ test('1 and 3 free rides are the presets – any whole number up works, nonsense
 });
 
 test('a truck part is not a promo effect – the form cannot build one', () => {
-  assert.throws(() => promoFromForm({ ...base, kind: 'cosmetic', slot: 'truck_color', item: 'blue' }), /burning HONK/);
-  for (const item of [COSMETICS.wheel[0], 'gold', 'racing', '']) assert.throws(() => promoFromForm({ ...base, kind: 'cosmetic', slot: 'wheel', item }), /burning HONK/, item);
+  assert.throws(() => promoFromForm({ ...base, kind: 'cosmetic', slot: 'truck_color', item: 'blue' }), /burning TEN4/);
+  for (const item of [COSMETICS.wheel[0], 'gold', 'racing', '']) assert.throws(() => promoFromForm({ ...base, kind: 'cosmetic', slot: 'wheel', item }), /burning TEN4/, item);
 });
 
 test('times: a datetime-local value is the admin\'s own time; the end must come after the start', () => {

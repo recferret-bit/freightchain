@@ -17,7 +17,7 @@ describe('admin CLI arguments', () => {
     for (const args of [
       ['GOLD', '--cosmetic', 'wheel:gold'], ['BLUE', '--cosmetic', 'truck_color:blue'], ['RACE', '--cosmetic', 'gearbox:racing'],
       ['A1', '--cosmetic', 'seat:x'], ['A1', '--cosmetic', 'wheel'], ['A1', '--cosmetic=wheel:gold'], ['A1', '--free-rides', '2', '--cosmetic', 'wheel:gold'],
-    ]) expect(parsePromoCreate(args), args.join(' ')).toBe('--cosmetic is not a promo effect: cab parts are minted by burning HONK');
+    ]) expect(parsePromoCreate(args), args.join(' ')).toBe('--cosmetic is not a promo effect: cab parts are minted by burning TEN4');
   });
 
   it('promo:create – readable errors', () => {

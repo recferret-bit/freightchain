@@ -18,6 +18,7 @@ import { homeBlinkUrl } from '../js/ui/share.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
+import { TOKEN_SYMBOL } from '../js/config.js';
 import { FREE_COUNTRIES } from '../js/free-countries.js';
 import { isMobileDevice, showMobileToast } from '../js/mobile.js';
 import { ticketDialog, hideTicketDialog } from './ticket-dialog.js';
@@ -463,7 +464,7 @@ function promoSection() {
   paintPromoLists();
   return [el('h2', {}, 'PROMO CODES'),
     el('form', { class: 'promo-form', id: 'promo', autocomplete: 'off', onsubmit: redeem }, input, el('button', { id: 'promo-go', type: 'submit' }, 'REDEEM'), el('p', { class: 'msg dim', id: 'promo-msg', role: 'status' })),
-    el('p', { class: 'dim' }, 'Tickets and free rides. Cab parts are minted by burning HONK in the ', el('a', { href: '#garage' }, 'garage →')),
+    el('p', { class: 'dim' }, `Tickets and free rides. Cab parts are minted by burning ${TOKEN_SYMBOL} in the `, el('a', { href: '#garage' }, 'garage →')),
     el('div', { id: 'mycodes' }, el('p', { class: 'dim' }, 'Loading…'))];
 }
 async function paintPromoLists() {
@@ -475,7 +476,7 @@ async function paintPromoLists() {
 
 /* ───────── GARAGE ─────────
    Every part can be observed (S.observe): the cab previews it and the detail card shows the garage payload's name, description and burn price.
-   S.pick is owned parts only, applied by APPLY (POST /api/garage/loadout). A locked part is minted here by burning HONK (POST /api/honk/visuals → { nft, balance }).
+   S.pick is owned parts only, applied by APPLY (POST /api/garage/loadout). A locked part is minted here by burning TEN4 (POST /api/honk/visuals → { nft, balance }).
    S.garage = the server's answer. S.honkCatalog = GET /api/honk/catalog (null = that request failed), a price backup only. S.honkBalance = GET /api/honk body.balance, or null when unknown. */
 const catalogRows = body => Array.isArray(body) ? body : Array.isArray(body?.items) ? body.items : Array.isArray(body?.catalog) ? body.catalog : Array.isArray(body?.visuals) ? body.visuals : [];
 const asHonk = v => (typeof v === 'number' && Number.isFinite(v) ? String(v) : typeof v === 'string' && v.trim() ? v.trim() : null);
@@ -493,7 +494,7 @@ function showHonk(amount) {
   const panel = $('garage-detail'); if (!panel || S.tab !== 'garage') return;
   const line = panel.querySelector('.bal');
   if (amount == null) { line?.remove(); return; }
-  const text = `You hold ${amount} HONK.`;
+  const text = `You hold ${amount} ${TOKEN_SYMBOL}.`;
   if (line) { line.textContent = text; return; }
   panel.prepend(el('p', { class: 'dim bal', id: 'garage-honk' }, text));
 }
@@ -548,7 +549,7 @@ async function burnVisual(slot, part) {
     const seen = partAt(S.garage, { slot, id: part.id });
     if (seen?.part.owned) S.pick = { ...S.pick, [slot]: part.id };
     S.observe = { slot, id: part.id };
-    note = { text: 'Minted by burning HONK.' };
+    note = { text: `Minted by burning ${TOKEN_SYMBOL}.` };
   } catch (e) { note = { text: e.message, bad: true }; }
   S.burning = false; paintGarage(note);
 }
