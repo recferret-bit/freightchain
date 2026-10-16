@@ -67,7 +67,7 @@ Achievements: ids are FROZEN (add a tier, never retune one); unlock rows are app
 Analytics: capture is opt-in (`POSTHOG_ENABLED=1`); never print `POSTHOG_KEY`; don't flip `$create_alias`.
 
 Secrets: read env files by key name only, never print values; never commit `deploy/.env` / `deploy/secrets/`; example files hold dummies.
-Pentest: legacy adapters blocked; selected-file `review-with-cli` has Claude, `codex-native`, `grok-native` and `grok-docker` profiles; `grok-docker setup/login` builds a Linux broker and creates its own Docker-volume login, never imports host credentials; host-profile smoke tests do not attest Docker inference, whole-repo audits or providers; no generic exec, unknown auth/events fail closed; guide: `pentest/docs/live-model.md`.
+Pentest: `pentest run` uses a one-shot Docker sandbox (`pentest-sandbox:local`) + MCP stdio bridge (`docker-agent-orchestrator.mjs`, `docker-mcp-bridge.mjs`) for `claude`, `codex`, `grok` and `agy` (`check-agents` checks readiness; `--blocked` writes an offline blocked record); selected-file `review-with-cli` has Claude, `codex-native`, `grok-native` and `grok-docker` profiles; `grok-docker setup/login` builds a Linux broker and creates its own Docker-volume login, never imports host credentials; guide: `pentest/docs/live-model.md`.
 
 **Deploy: nothing reaches production unless the user asks for a deploy in their current message** – not after "commit", "merge", "fix it" or a finished feature. Read-only is always fine (`npm run deploy -- --dry-run`, `deploy:status`, `npm run ops`, the `prod-*` skills). Steps: `docs/agents/deploy.md`.
 
