@@ -6,7 +6,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 
 ## Repo
 
-`client/` the game (`play.html`, `js/`, `shared/`) + site pages (lobby, admin, viewer, `r.html`, `blink.html`, `site/`) · `shared/` workspace package (`@freightchain/shared`) re-exporting `client/shared/` · `landing/` the `/` page + whitepaper + pitch deck (Vite) · `server/` the API + `replay:worker` (Clean Architecture, `prisma/`, `test/`) · `programs/freightchain-pools` the escrow program · `media/` promo clips + sound · `pentest/` multi-agent penetration testing suite · `deploy/` production deploy · `design/` icons, banners · `docs/` architecture + explainers · `.claude/skills/` project skills · `docker-compose.yml` local PostgreSQL (:15433) + optional Redis & worker.
+`client/` the game (`play.html`, `js/`, `shared/`) + site pages (lobby, admin, viewer, `r.html`, `blink.html`, `site/`) · `shared/` workspace package (`@freightchain/shared`) re-exporting `client/shared/` · `landing/` the `/` page + whitepaper + pitch deck (Vite) · `server/` the API + `replay:worker` (Clean Architecture, `prisma/`, `test/`) · `programs/freightchain-pools` the escrow program · `media/` promo clips + sound · `pentest/` multi-agent penetration testing suite for any repo (`--repo <path>` or `--github <url>`) · `deploy/` production deploy · `design/` icons, banners · `docs/` architecture + explainers · `.claude/skills/` project skills · `docker-compose.yml` local PostgreSQL (:15433) + optional Redis & worker.
 
 ## Where the detail is (`docs/agents/`)
 
@@ -67,6 +67,7 @@ Achievements: ids are FROZEN (add a tier, never retune one); unlock rows are app
 Analytics: capture is opt-in (`POSTHOG_ENABLED=1`); never print `POSTHOG_KEY`; don't flip `$create_alias`.
 
 Secrets: read env files by key name only, never print values; never commit `deploy/.env` / `deploy/secrets/`; example files hold dummies.
+Pentest: `pentest run` uses a one-shot Docker sandbox (`pentest-sandbox:local`) + MCP stdio bridge (`docker-agent-orchestrator.mjs`, `docker-mcp-bridge.mjs`) for `claude`, `codex`, `grok` and `agy` (`check-agents` checks readiness; `--blocked` writes an offline blocked record); selected-file `review-with-cli` has Claude, `codex-native`, `grok-native` and `grok-docker` profiles; `grok-docker setup/login` builds a Linux broker and creates its own Docker-volume login, never imports host credentials; guide: `pentest/docs/live-model.md`.
 
 AGY: use Argon (Pro) for heavy reasoning and planning (via `/boost` or subagents); use Gemini Flash 3.8 for implementation and routine code changes.
 

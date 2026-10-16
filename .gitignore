@@ -87,3 +87,6 @@ PROJECT.md
 
 # Local social plans (TikTok warmup and the like). Not product.
 social/
+
+# Pinned native review runtimes: derived source, Cargo caches and binaries stay private.
+pentest/native/.cache/
