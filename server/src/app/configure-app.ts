@@ -10,6 +10,7 @@ import { jsonOnlyMiddleware } from '../infrastructure/http/middleware/json-only.
 import { legacySessionMiddleware } from '../infrastructure/http/middleware/legacy-session.middleware.js';
 import { solanaPayCors } from '../infrastructure/http/middleware/solana-pay-cors.middleware.js';
 import { actionHeadersMiddleware, isActionRequest } from '../infrastructure/http/middleware/action-headers.middleware.js';
+import { apiPath } from '../infrastructure/http/api-path.js';
 import { ridePageMiddleware } from '../infrastructure/http/middleware/ride-page.middleware.js';
 import { PrismaService } from '../infrastructure/prisma/prisma.service.js';
 import { JsonLogger } from '../infrastructure/logging/json-logger.js';
@@ -44,17 +45,22 @@ export function configureApp(app: INestApplication): void {
   app.enableShutdownHooks();
 }
 
+const originHost = (origin: string): string => { try { return new URL(origin).host.toLowerCase(); } catch { return ''; } };
+
 /** The credentialed allowlist, same answers the `cors` package gave Nest's enableCors. Action paths skip it: `*` plus credentials is illegal. */
 export function browserCors(env: EnvService) {
   const allowed = new Set(env.corsOrigins), ownOrigin = new Set([env.adminHost, env.editorHost].filter((h): h is string => !!h));
+  const editor = env.editorHost;
   return function browserCors(req: Request, res: Response, next: NextFunction): void {
     if (isActionRequest(req)) { next(); return; }
     // the admin page and the model editor (storybook) are same-origin with their API: no other origin may READ an answer with their cookie (audit M4 – sign-ins with IPs)
     if (ownOrigin.has(String(req.headers.host ?? '').replace(/:\d+$/, '').toLowerCase())) { next(); return; }
     const origin = req.header('origin');
-    if (!origin || !allowed.has(origin)) { next(); return; }
+    // one door for the model viewer: a crash report, with no cookie. Every other route stays closed to that origin.
+    const viewerCrash = !!editor && !!origin && apiPath(req.path || '') === '/api/client-error' && originHost(origin) === editor;
+    if (!origin || (!allowed.has(origin) && !viewerCrash)) { next(); return; }
     res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    if (!viewerCrash) res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Expose-Headers', 'X-Request-Id');
     if (req.method !== 'OPTIONS') { next(); return; }

@@ -27,6 +27,7 @@ export const SERVER_EVENTS = [
   'achievement_mint_failed',
   'round_opened',
   'round_closed',
+  'client_crashed', // browser crash count. The handler sets source client so judge tiles stay clear. The relay still drops the name.
 ] as const;
 
 export type ServerEventName = (typeof SERVER_EVENTS)[number];

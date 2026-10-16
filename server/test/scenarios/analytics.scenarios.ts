@@ -70,7 +70,7 @@ export function analyticsScenarios(h: () => Harness): void {
 
   it('a crash on an unknown surface is 400', async () => {
     await anon().post('/api/client-error').send({
-      anon_id: ANON, surface: 'admin', name: 'TypeError', value: 'x', frames: [],
+      anon_id: ANON, surface: 'nope', name: 'TypeError', value: 'x', frames: [],
     }).expect(400);
   });
 

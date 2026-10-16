@@ -1,3 +1,4 @@
+import './crash-boot.js';   // before three.js: a throw while the viewer loads is still reported
 import * as THREE from 'three';
 import { renderer } from './world/scene.js';
 import { buildCatalogue } from './catalogue.js';

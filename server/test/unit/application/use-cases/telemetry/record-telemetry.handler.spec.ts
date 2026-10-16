@@ -31,9 +31,10 @@ describe('RecordTelemetryHandler', () => {
     const { analytics, run } = setup();
     expect(await run(null, ANON, [
       { event: 'ride_completed', properties: { ride_id: 'x' } },
+      { event: 'client_crashed', properties: { surface: 'landing', error: 'TypeError' } },
       { event: 'landing_viewed', properties: { surface: 'hero', signature: 'secret', extra: 1 } },
       { event: 'landing_viewed', properties: { surface: 1.5 } },
-    ])).toEqual({ enabled: true, accepted: 1, dropped: 2 });
+    ])).toEqual({ enabled: true, accepted: 1, dropped: 3 });
     expect(analytics.events).toHaveLength(1);
     expect(analytics.events[0]).toMatchObject({ event: 'landing_viewed', distinctId: ANON, properties: { surface: 'hero', source: 'client' } });
     expect(analytics.events[0]?.properties).not.toHaveProperty('signature');

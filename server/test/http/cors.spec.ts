@@ -53,6 +53,21 @@ describe('HTTP · CORS + shared cookie domain', () => {
       expect([json.status, json.body.code, json.headers['set-cookie']]).toEqual([403, 'bad_origin', undefined]);
     });
 
+    it('the model viewer may preflight one crash to api.<apex> without a cookie, and still cannot create a ride', async () => {
+      const STORYBOOK = 'https://storybook.freightchain.fun';
+      const pre = await request(h.server()).options('/api/client-error').set('Host', API).set('Origin', STORYBOOK).set('Access-Control-Request-Method', 'POST').set('Access-Control-Request-Headers', 'content-type').expect(204);
+      expect(pre.headers['access-control-allow-origin']).toBe(STORYBOOK);
+      expect(pre.headers['access-control-allow-credentials']).toBeUndefined();
+      const crash = await request(h.server()).post('/api/client-error').set('Host', API).set('Origin', STORYBOOK).send({
+        anon_id: 'anon_00000000-0000-4000-8000-000000000000', surface: 'viewer', name: 'TypeError', value: 'x', frames: [],
+      });
+      expect(crash.status).toBe(200);
+      expect(crash.body.code).toBeUndefined();
+      expect((await request(h.server()).post('/api/rides').set('Host', API).set('Origin', STORYBOOK).send({ tier: 'free' })).status).toBe(403);
+      const evil = await request(h.server()).options('/api/client-error').set('Host', API).set('Origin', 'https://evil.example').set('Access-Control-Request-Method', 'POST');
+      expect(evil.headers['access-control-allow-origin']).toBeUndefined();
+    });
+
     it('a sibling that is not allowlisted (storybook.*) cannot create a ride with the shared cookie – neither as a form nor as JSON; ride.* can', async () => {
       const cookie = await signedIn();
       expect((await request(h.server()).post('/api/rides').set('Host', API).set('Origin', STORYBOOK).set('Cookie', cookie).type('form').send({ tier: 'free' })).status).toBe(415);

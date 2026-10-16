@@ -129,6 +129,7 @@ describe('PostHogAnalyticsAdapter', () => {
     expect(row).not.toHaveProperty('uuid');
     const properties = row['properties'] as { release?: string; $exception_list: { mechanism: { handled: boolean }; stacktrace: { frames: { function: string; in_app: boolean }[] } }[] };
     expect(properties.release).toBeUndefined();
+    expect(properties).toMatchObject({ $process_person_profile: true });
     expect(properties.$exception_list[0]?.mechanism.handled).toBe(false);
     const frames = properties.$exception_list[0]?.stacktrace.frames ?? [];
     expect(frames.at(-1)).toMatchObject({ function: 'frame', in_app: true });

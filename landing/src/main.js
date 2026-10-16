@@ -1,7 +1,7 @@
+import '../../client/js/crash-boot.js';   // before the rest of this page: a throw while it loads is still reported
 import { api, signIn, walletName } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
 import { API_BASE, GAME_BASE, PITCHDECK_BASE, SITE_BASE, STORYBOOK_BASE, WHITEPAPER_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
 import { track, flushSoon } from '../../client/js/analytics.js';
-import { watchCrashes } from '../../client/js/crash.js';
 import { reportWebVitals } from '../../client/js/web-vitals.js';
 import { livePath, leaveOnClose } from '../../client/site/presence.js';   // this page counts as online in the live feed – and leaves it when closed
 import { sol, km, left, short, hue, hours, driven, ago, plural, TIER, TIER_LONG, ROUTE } from './format.js';
@@ -13,7 +13,6 @@ bindAnchors();   // before the chapter observer, so a #faq load is already on th
 
 /* Landing: seven chapters (ride · loop · economy · roadmap · market · about · faq), fed by the public API only – no session needed to look.
    Everything from the server goes in with textContent (other riders' wallets are rendered here). */
-watchCrashes('landing');
 reportWebVitals('landing');   // before the first track(), so the leave flush includes the final metrics
 
 /* ───── things to fill in ───── */

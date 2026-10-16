@@ -20,7 +20,10 @@ node tools/build-standalone.mjs  # optional: one self-contained dist/freightchai
 ```
 play.html             the game page: markup + importmap + <script type="module" src="js/main.js">
 css/style.css         HUD, toast, menu overlay
-js/main.js            entry: wires modules, runs the frame loop
+js/main.js            entry: wires modules, runs the frame loop. Its first import is js/crash-boot.js
+js/crash-boot.js      first import of every page (game, viewer, lobby, admin, blink, receipt, landing, whitepaper, pitch deck): installs the unhandled-error hook before the rest of the page loads
+js/crash-page.js      which document it is (host + path). Production whitepaper / pitch deck / storybook / admin are `/` on their own host
+js/crash.js           the hook: one scrubbed stack to POST /api/client-error. Nothing runs at its own import
 js/config.js          CFG – every tunable constant (ride length, shake strengths…)
 js/util.js            clamp, approach, rnd (hash noise), mulberry32 (the seeded PRNG), `store` (localStorage that never throws – use it, not raw localStorage), fmt (mm:ss), MONO font
 js/state.js           `st` (truck/ride state; `rideStart()` = the per-ride fields and their start values, shared with `resetRide`), `input`, `disp` (sprung gauge values), drivetrain constants, `clock`

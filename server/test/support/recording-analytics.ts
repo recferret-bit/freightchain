@@ -6,9 +6,11 @@ export class RecordingAnalytics extends AnalyticsPort {
   readonly exceptions: ExceptionCapture[] = [];
   on = true;
   throwOnCapture = false;
+  /** Throws from `capture` only, after `captureException` has already queued. */
+  throwOnEvent = false;
 
   capture(event: AnalyticsEvent): void {
-    if (this.throwOnCapture) throw new Error('analytics capture failed');
+    if (this.throwOnCapture || this.throwOnEvent) throw new Error('analytics capture failed');
     if (!this.on) return;
     this.events.push(event);
   }

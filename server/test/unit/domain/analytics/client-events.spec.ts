@@ -11,7 +11,7 @@ describe('the promo events of the browser plane', () => {
   it('drop on a float or a long string, like every client event; the server events cannot be minted', () => {
     expect(allowClientProperties('promo_redeem_clicked', { surface: 'promo', prefilled: 1.5 })).toBeNull();
     expect(allowClientProperties('promo_invite_viewed', { code: 'x'.repeat(201) })).toBeNull();
-    for (const name of ['promo_redeemed', 'cosmetic_equipped', 'garage_saved', 'promo_created', 'promo_disabled']) expect(isClientEvent(name), name).toBe(false);
+    for (const name of ['promo_redeemed', 'cosmetic_equipped', 'garage_saved', 'promo_created', 'promo_disabled', 'client_crashed']) expect(isClientEvent(name), name).toBe(false);
   });
   it('keeps one web vital and drops a float value', () => {
     expect(CLIENT_EVENTS).toHaveLength(50);

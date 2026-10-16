@@ -35,8 +35,9 @@ export class OriginGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     if (context.getType() !== 'http') return true;
     const request = context.switchToHttp().getRequest<RequestWithPlayer>();
+    const path = apiPath(request.path ?? '');
     const editorHost = this.env.editorHost;
-    if (editorHost && hostOf(request) === editorHost && !/^\/api\/(entities|editor)\//.test(apiPath(request.path ?? ''))) throw new NotFoundError('not found');
+    if (editorHost && hostOf(request) === editorHost && !/^\/api\/(entities|editor)\//.test(path)) throw new NotFoundError('not found');
     if (!UNSAFE.has(request.method)) return true;
     if (this.reflector.getAllAndOverride<boolean>(CROSS_ORIGIN_PUBLIC, [context.getHandler(), context.getClass()])) return true;
     const origin = request.headers.origin;
@@ -44,6 +45,8 @@ export class OriginGuard implements CanActivate {
     let from: string;
     try { from = new URL(origin).host.toLowerCase(); } catch { throw new ForbiddenError('a request from this page is not accepted here', 'bad_origin'); }   // 'null' and junk
     const host = hostOf(request), sameOrigin = from === String(request.headers.host ?? '').toLowerCase();   // host AND port: another localhost port is another origin
+    // the model viewer posts one crash to api.<apex>. That origin is not a general CORS origin, and the storybook host itself still 404s this route.
+    if (path === '/api/client-error' && editorHost && from === editorHost && host !== this.env.adminHost && host !== editorHost) return true;
     if (host === this.env.adminHost || host === editorHost) { if (sameOrigin) return true; }
     else if (sameOrigin || this.allowed.has(origin.replace(/\/$/, ''))) return true;
     throw new ForbiddenError('a request from this page is not accepted here', 'bad_origin');

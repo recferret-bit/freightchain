@@ -114,6 +114,7 @@ export class PostHogAnalyticsAdapter extends AnalyticsPort implements OnApplicat
   private wireException(report: ExceptionCapture): Record<string, unknown> {
     const properties: Record<string, unknown> = {
       source: 'client', $lib: 'freightchain-web', surface: report.surface, $exception_level: 'error',
+      $process_person_profile: true, // an $exception with this unset is stored with no person row, so it never joins the player and cannot be deleted
       $exception_list: [{
         type: report.type, value: report.value,
         mechanism: { handled: false, synthetic: false, type: 'generic' },

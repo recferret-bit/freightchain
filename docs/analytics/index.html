@@ -241,9 +241,9 @@
 
 <section aria-labelledby="s-server">
   <div class="head">
-    <span class="eyebrow">Server events · 27</span>
+    <span class="eyebrow">Server events · 28</span>
     <h2 id="s-server">What the database already decided</h2>
-    <p class="soft">Emitted only after the save resolves, inside <code>emitAnalytics</code>. <code>dedupe_key</code> is a property. The capture <code>uuid</code> is a UUID v5 of <code>https://freightchain.fun/analytics/</code> plus that key, computed in the adapter. Handlers pass <code>uuid: null</code>. Timestamp is the column named here, from <code>ClockPort</code>, except the reconcile-miss row. No <code>$insert_id</code>, no <code>sent_at</code>, no <code>$groups</code>. <code>round_id</code> is a property and is null until a payment sets it.</p>
+    <p class="soft">Emitted only after the save resolves, inside <code>emitAnalytics</code>. <code>client_crashed</code> is the exception: the crash handler sends it with the <code>$exception</code>, and there is no database row. <code>dedupe_key</code> is a property. The capture <code>uuid</code> is a UUID v5 of <code>https://freightchain.fun/analytics/</code> plus that key, computed in the adapter. Handlers pass <code>uuid: null</code>. Timestamp is the column named here, from <code>ClockPort</code>, except the reconcile-miss row. No <code>$insert_id</code>, no <code>sent_at</code>, no <code>$groups</code>. <code>round_id</code> is a property and is null until a payment sets it.</p>
   </div>
   <h3>P0 · the nine the board is allowed to quote</h3>
   <div class="tbl">
@@ -286,6 +286,7 @@
         <tr><td><code>promo_created</code> / <code>promo_disabled</code></td><td>An admin's signed create / disable of a code on the admin page committed (the audit row is in the same transaction). The dev / ops CLI (<code>promo:create</code>, <code>promo:disable</code>) is unsigned, unaudited and emits nothing. Creating a cab-colour code is refused.</td><td><code>promo:&lt;CODE&gt;:created</code> / <code>…:disabled</code> · <code>now</code></td><td>Distinct id <code>freightchain</code> – no wallet. Created: <code>code</code>, <code>kind</code> (tickets or free rides), the effect (<code>tier_id</code>/<code>credits</code>/<code>pool_id</code> or <code>rides</code>), <code>max_redemptions</code>, <code>per_wallet</code>, <code>starts_at</code>, <code>expires_at</code>. Disabled: <code>code</code>, <code>kind</code>, <code>redeemed</code>. No free text.</td></tr>
         <tr><td><code>round_opened</code></td><td>This process inserted the round. The race loser emits nothing.</td><td><code>round-open:&lt;startsAt&gt;</code></td><td>Distinct id <code>freightchain</code>. <code>carry_lamports</code> is what was passed forward. A round-turning 503 emits nothing.</td></tr>
         <tr><td><code>round_closed</code></td><td>The previous round’s close saved in that same transaction.</td><td><code>round-close:&lt;roundId&gt;</code></td><td>Not a payout. No prize is sent.</td></tr>
+        <tr><td><code>client_crashed</code></td><td>An unhandled browser error was accepted on <code>POST /api/client-error</code>. The same report is also the <code>$exception</code>. Noise, a bad anon, and either cap emit nothing. The relay drops this name.</td><td>none · the request clock</td><td><code>source=client</code>, so a judge tile filtered to <code>source=server</code> does not count it. <code>surface</code>, <code>error</code> (the name, such as TypeError; not the message), <code>in_app</code> (the throw site; null when there is no stack), <code>release</code> when it is a 7–40 hex sha. No stack and no message.</td></tr>
       </tbody>
     </table>
   </div>
@@ -387,7 +388,7 @@
   <div class="admin">
     <div class="lock"><span class="n">1</span><b>Optional session</b><span><code>OptionalSessionGuard</code> is the route guard, not an app-wide guard. No cookie is a 200. No player-row lock.</span></div>
     <div class="lock"><span class="n">2</span><b>Ten events</b><span>Zod body. The response is <code>{ enabled, accepted, dropped }</code>. Floats and oversize strings drop the event. A bad name is a drop, not a 400.</span></div>
-    <div class="lock"><span class="n">3</span><b>Client only</b><span><code>source</code> is forced to <code>client</code>. Every server event name is dropped, including <code>ride_completed</code> and <code>payment_confirmed</code>.</span></div>
+    <div class="lock"><span class="n">3</span><b>Client only</b><span><code>source</code> is forced to <code>client</code>. Every server event name is dropped, including <code>ride_completed</code>, <code>payment_confirmed</code>, and <code>client_crashed</code>.</span></div>
     <div class="lock"><span class="n">4</span><b>Quiet when off</b><span><code>POSTHOG_ENABLED</code> unset, <code>0</code>, or <code>false</code>, an empty or non-<code>phc_</code> key, or <code>POSTHOG_DISABLED</code> of <code>1</code> or <code>true</code> returns <code>enabled: false</code>. The API still boots. <code>emitAnalytics</code> does not build the event.</span></div>
   </div>
   <p class="soft">Default throttle is the global 600 per minute. The adapter flushes at 20 events or 1 second. Shutdown flushes for 500 ms, then drops the queue. Logs name the host, the status, the count, and the event names. They never print the key or the body. Tests stub <code>fetch</code> to <code>https://posthog.test</code> with <code>phc_test</code>. CI does not call PostHog.</p>
@@ -398,12 +399,13 @@
     <span class="eyebrow">POST /api/client-error</span>
     <h2 id="s-crashes">Crashes</h2>
   </div>
-  <p>The landing, the whitepaper, the pitch deck, the lobby, and the game (<code>play.html</code>, including the guest run) listen for an unhandled error or a rejected promise. <code>client/js/crash.js</code> posts a short stack to the API. The server sends one <code>$exception</code> on the same batch as the product events. The project token stays on the server. <code>posthog-js</code> stays out. <code>viewer.html</code> sends nothing.</p>
+  <p>Every page listens for an unhandled error or a rejected promise: the landing, the whitepaper, the pitch deck, the lobby, the game (<code>play.html</code>, including the guest run), the admin page, the blink, the receipt (<code>/r</code> and <code>r.html</code>), and the model viewer. <code>client/js/crash-boot.js</code> is the first import, so a throw while the page's modules load is still reported. <code>client/js/crash.js</code> posts a short stack to the API. The admin page posts to its own host. The model viewer posts to <code>api.&lt;apex&gt;</code> with no cookie; that origin is allowed on this one route. The server sends one <code>$exception</code> and one <code>client_crashed</code> on the same batch as the product events. The project token stays on the server. <code>posthog-js</code> stays out. The viewer still sends no product events.</p>
   <div class="admin">
     <div class="lock"><span class="n">1</span><b>Three per page</b><span>One report per error name plus the top frame. <code>console</code> is not hooked. <code>Script error.</code>, <code>ResizeObserver</code>, <code>AbortError</code>, and extension stacks are dropped.</span></div>
     <div class="lock"><span class="n">2</span><b>Capped</b><span>Ten per IP per minute, 2,000 per UTC day. Over the cap the answer is still 200 with <code>accepted: 0</code>. That stays inside the free 100,000 exceptions a month.</span></div>
-    <div class="lock"><span class="n">3</span><b>Scrubbed</b><span>Query strings and long base58 are cut. The wallet is the session cookie, never a field in the body. The pitch deck sends with no cookie and its own anon id.</span></div>
-    <div class="lock"><span class="n">4</span><b>Not a board tile</b><span><code>$exception</code> is not on dashboard 1006663. Session replay stays off. Hidden Vite maps are not uploaded by this path.</span></div>
+    <div class="lock"><span class="n">3</span><b>Scrubbed</b><span>Query strings, URL userinfo, and long base58 are cut. A leading <code>Uncaught TypeError:</code> is peeled so it groups with the same rejection. The wallet is the session cookie, never a field in the body, and the event is attached to that person. The pitch deck and the model viewer send with no cookie and their own anon id.</span></div>
+    <div class="lock"><span class="n">4</span><b>Not a board tile</b><span><code>$exception</code> and <code>client_crashed</code> are not on dashboard 1006663. Session replay stays off. Hidden Vite maps are not uploaded by this path.</span></div>
+    <div class="lock"><span class="n">5</span><b>Also counted</b><span>The same accepted crash emits <code>client_crashed</code>. The relay drops that name, so a page cannot mint the count. Properties are <code>surface</code>, <code>error</code> (the error name, not the text), <code>in_app</code>, and <code>release</code> when it is a sha. The message and the stack stay on the issue. The day's cap counts the crash once.</span></div>
   </div>
 </section>
 

@@ -1,6 +1,7 @@
 /** Unhandled browser crashes. Product events stay on the allowlist; this path is the only one that may carry a stack. */
 
-export const CLIENT_ERROR_SURFACES = ['landing', 'whitepaper', 'pitchdeck', 'lobby', 'game'] as const;
+/** Keep in step with `SURFACES` in client/js/crash.js. */
+export const CLIENT_ERROR_SURFACES = ['landing', 'whitepaper', 'pitchdeck', 'lobby', 'game', 'admin', 'blink', 'receipt', 'viewer'] as const;
 export type ClientErrorSurface = (typeof CLIENT_ERROR_SURFACES)[number];
 
 export const CLIENT_ERROR_IP_LIMIT = 10;
@@ -16,6 +17,7 @@ const THIRD_PARTY = /cdn\.jsdelivr\.net|unpkg\.com|esm\.sh/i;
 const BASE58 = /[1-9A-HJ-NP-Za-km-z]{40,}/g;
 const SCRIPT_ERROR = /^Script error\.?$/;
 const NOISE = /ResizeObserver loop|^AbortError$/;
+const UNCAUGHT = /^Uncaught\s+([A-Za-z_$][\w$]*)\s*:\s*([\s\S]*)$/;
 
 export interface ClientErrorFrameInput {
   filename: string;
@@ -46,8 +48,9 @@ const isSurface = (value: string): value is ClientErrorSurface => (CLIENT_ERROR_
 /** Null when the report is noise (a hidden cross-origin error, an extension, a known browser quirk). */
 export function prepareClientError(input: ClientErrorInput): PreparedClientError | null {
   if (!isSurface(input.surface)) return null;
-  const type = clip(input.name) || 'Error';
-  const value = scrub(input.value);
+  const named = peel(clip(input.name) || 'Error', input.value);
+  const type = named.type.slice(0, 80) || 'Error';
+  const value = scrub(named.value);
   if (SCRIPT_ERROR.test(value) || SCRIPT_ERROR.test(type) || NOISE.test(value) || NOISE.test(type)) return null;
   const frames = [];
   let extensionOnly = input.frames.length > 0;
@@ -75,8 +78,15 @@ export function prepareClientError(input: ClientErrorInput): PreparedClientError
   };
 }
 
+/** Chrome's onerror text is `Uncaught TypeError: …`. Peel that so it groups with the rejection of the same error. A message that merely starts with the word stays. */
+function peel(type: string, value: string): { type: string; value: string } {
+  const match = UNCAUGHT.exec(value.trim());
+  if (!match || (type !== 'Error' && type !== match[1])) return { type, value };
+  return { type: clip(match[1]) || 'Error', value: match[2] };
+}
+
 function scrub(value: string): string {
-  return clip(value.replace(/https?:\/\/\S+/g, (url) => url.split('?')[0] ?? url).replace(BASE58, '[redacted]').replace(/[\u0000-\u001f]/g, ' '));
+  return clip(value.replace(/https?:\/\/\S+/g, (url) => (url.replace(/^(https?:\/\/)[^/\s@]*@/i, '$1').split('?')[0] ?? url)).replace(BASE58, '[redacted]').replace(/[\u0000-\u001f]/g, ' '));
 }
 
 function clip(value: string): string {

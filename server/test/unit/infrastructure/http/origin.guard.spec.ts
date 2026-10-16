@@ -55,5 +55,19 @@ describe('OriginGuard', () => {
     expect(() => g.canActivate(at('POST', '/api/editor/jobs', 'https://freightchain.fun'))).toThrow(ForbiddenError);   // an allowlisted SIBLING neither (same site: the cookie rides along)
     expect(() => g.canActivate(at('GET', '/api/me'))).toThrow(NotFoundError);
     expect(() => g.canActivate(at('POST', '/API/rides', 'https://storybook.freightchain.fun'))).toThrow(NotFoundError);
+    expect(() => g.canActivate(at('POST', '/api/client-error', 'https://storybook.freightchain.fun'))).toThrow(NotFoundError);   // the storybook host itself does not take crash reports
+  });
+
+  it('storybook may post one crash to the API host and nothing else', () => {
+    const g = new OriginGuard(new Reflector(), { corsOrigins: ['https://freightchain.fun'], adminHost: 'admin.freightchain.fun', editorHost: 'storybook.freightchain.fun' } as unknown as EnvService);
+    const at = (path: string, host: string, origin: string) => {
+      const request = { method: 'POST', path, headers: { host, origin } };
+      return { getType: () => 'http', switchToHttp: () => ({ getRequest: () => request }), getHandler: () => Routes.prototype.player, getClass: () => Routes } as unknown as ExecutionContext;
+    };
+    expect(g.canActivate(at('/api/client-error', 'api.freightchain.fun', 'https://storybook.freightchain.fun'))).toBe(true);
+    expect(g.canActivate(at('/API/client-error/', 'api.freightchain.fun', 'https://storybook.freightchain.fun'))).toBe(true);
+    expect(() => g.canActivate(at('/api/rides', 'api.freightchain.fun', 'https://storybook.freightchain.fun'))).toThrow(ForbiddenError);
+    expect(() => g.canActivate(at('/api/client-error', 'api.freightchain.fun', 'https://evil.example'))).toThrow(ForbiddenError);
+    expect(() => g.canActivate(at('/api/client-error', 'admin.freightchain.fun', 'https://storybook.freightchain.fun'))).toThrow(ForbiddenError);
   });
 });

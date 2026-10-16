@@ -1,3 +1,4 @@
+import './crash-boot.js';   // before every other import: a throw while this page loads is still reported
 import * as cosmetics from './cosmetics.js';
 import { CFG } from './config.js';
 import { curv } from './road.js';
@@ -31,7 +32,6 @@ import { mountWatchPanel } from './ui/watch-panel.js';
 import { liveFeed } from './ui/live-feed.js';
 import { cabChain } from './ui/cab-chain.js';
 import { track } from './analytics.js';
-import { watchCrashes } from './crash.js';
 import { guide, setGuide } from './guide.js';
 import { offlineRide, offlineWanted } from './offline-ride.js';
 import { FORK } from './net/patterns.js';
@@ -43,7 +43,6 @@ import { trip, setTrip, tripOf } from './trips.js';
 import { FREE_COUNTRIES } from './free-countries.js';
 import { isMobileDevice, showMobileBlocker } from './mobile.js';
 
-watchCrashes('game');   // unhandled errors, including the guest run; before the first await
 setTrafficRecorder(beginTrafficFrame, endTrafficFrame);
 import './ui/input.js';
 import './ui/tuning.js';

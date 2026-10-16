@@ -1,18 +1,19 @@
-/* Unhandled crashes for the landing, whitepaper, pitch deck, lobby, and game.
-   Posted to our API, which sends one `$exception`. No posthog-js, no console hook.
-   Nothing runs at import: no fetch, no localStorage. file:// and headless (no location) stay silent. */
+/* Unhandled crashes for every page (see crash-page.js). Posted to our API, which sends one `$exception`.
+   No posthog-js, no console hook. Nothing runs at import: no fetch, no localStorage. file:// and headless stay silent. */
 
 import { anonId } from './analytics.js';
 import { API_BASE } from './hosts.js';
 
-const SURFACES = new Set(['landing', 'whitepaper', 'pitchdeck', 'lobby', 'game']);
+const SURFACES = new Set(['landing', 'whitepaper', 'pitchdeck', 'lobby', 'game', 'admin', 'blink', 'receipt', 'viewer']);
 const PER_PAGE = 3;
 const RELEASE = /^[0-9a-f]{7,40}$/;
 const EXTENSION = /^(chrome|moz|safari-web)-extension:/i;
 const SCRIPT_ERROR = /^Script error\.?$/;
 const NOISE = /ResizeObserver loop|^AbortError$/;
-const V8 = /^\s*at (?:async )?(?:(.*?) \()?((?:https?:|file:|\/)[^ :]+):(\d+):(\d+)\)?$/;
-const FF = /^(.*?)@((?:https?:|file:|\/)[^ :]+):(\d+):(\d+)$/;
+const UNCAUGHT = /^Uncaught\s+([A-Za-z_$][\w$]*)\s*:\s*([\s\S]*)$/;
+// `user:pass@` is allowed before the host so the frame still parses; scrub() removes it. An `@` later in the path (three.js) is not userinfo.
+const V8 = /^\s*at (?:async )?(?:(.*?) \()?((?:https?:\/\/(?:[^/\s@]+@)?|(?:chrome|moz|safari-web)-extension:|file:|\/)[^ :]+):(\d+):(\d+)\)?$/;
+const FF = /^(.*?)@((?:https?:\/\/(?:[^/\s@]+@)?|(?:chrome|moz|safari-web)-extension:|file:|\/)[^ :]+):(\d+):(\d+)$/;
 const BASE58 = /[1-9A-HJ-NP-Za-km-z]{40,}/g;
 
 let hooked = false;
@@ -26,7 +27,30 @@ function live() {
 }
 
 function scrub(value) {
-  return String(value ?? '').replace(/https?:\/\/\S+/g, (url) => url.split('?')[0]).replace(BASE58, '[redacted]').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 200);
+  return String(value ?? '').replace(/https?:\/\/\S+/g, (url) => url.replace(/^(https?:\/\/)[^/\s@]*@/i, '$1').split('?')[0]).replace(BASE58, '[redacted]').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 200);
+}
+
+function clamp(value, max) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) return 0;
+  return n > max ? max : n;
+}
+
+/** Chrome prefixes `error` messages with `Uncaught TypeError:`. Rejections do not. Peel it, or the same bug becomes two issues. */
+function peel(name, value) {
+  let type = scrub(name).slice(0, 80) || 'Error';
+  let message = scrub(value);
+  const match = UNCAUGHT.exec(message);
+  if (match && (type === 'Error' || type === match[1])) {
+    type = scrub(match[1]).slice(0, 80) || 'Error';
+    message = scrub(match[2]);
+  }
+  return { type, message };
+}
+
+function matchLine(line) {
+  const text = line.trim(); // a Firefox frame can end in CR; `$` would miss it
+  return V8.exec(text) || FF.exec(text);
 }
 
 /** Youngest frame first, at most eight. Extension frames are dropped. */
@@ -34,26 +58,40 @@ export function framesFromStack(stack) {
   const out = [];
   if (typeof stack !== 'string') return out;
   for (const line of stack.split('\n')) {
-    const match = V8.exec(line) || FF.exec(line);
+    const match = matchLine(line);
     if (!match) continue;
     const filename = scrub(match[2]);
     if (!filename || EXTENSION.test(filename)) continue;
-    out.push({ function: scrub(match[1] || '?') || '?', filename, lineno: Number(match[3]), colno: Number(match[4]) });
+    out.push({ function: scrub(match[1] || '?') || '?', filename, lineno: clamp(match[3], 10_000_000), colno: clamp(match[4], 1_000_000) });
     if (out.length === 8) break;
   }
   return out;
 }
 
+/** True when every parsed frame was an extension. An empty stack is a real stackless error, not this. */
+function extensionOnlyStack(stack) {
+  if (typeof stack !== 'string') return false;
+  let saw = false;
+  for (const line of stack.split('\n')) {
+    const match = matchLine(line);
+    if (!match) continue;
+    saw = true;
+    const filename = scrub(match[2]);
+    if (filename && !EXTENSION.test(filename)) return false;
+  }
+  return saw;
+}
+
 /** Null when the error is noise or has already been reported this page. */
 export function buildReport(name, value, stack, filename, lineno, colno) {
-  const type = scrub(name).slice(0, 80) || 'Error';
-  const message = scrub(value);
+  const { type, message } = peel(name, value);
   if (SCRIPT_ERROR.test(message) || SCRIPT_ERROR.test(type) || NOISE.test(message) || NOISE.test(type)) return null;
-  if (filename && EXTENSION.test(filename)) return null;
+  const file = filename ? scrub(filename) : '';
+  if (file && EXTENSION.test(file)) return null;
   let frames = framesFromStack(stack);
-  if (!frames.length && filename && !EXTENSION.test(String(filename))) {
-    frames = [{ function: '?', filename: scrub(filename), lineno: lineno >>> 0, colno: colno >>> 0 }];
-  }
+  // Dropping extension frames and then sending `frames: []` would look like an in-app error with no stack.
+  if (!frames.length && extensionOnlyStack(stack) && (!file || EXTENSION.test(file))) return null;
+  if (!frames.length && file) frames = [{ function: '?', filename: file, lineno: clamp(lineno, 10_000_000), colno: clamp(colno, 1_000_000) }];
   const top = frames[0];
   const key = `${type}\n${top ? top.filename : ''}\n${top ? top.lineno : message}`;
   if (seen.has(key) || sent >= PER_PAGE) return null;
@@ -62,8 +100,13 @@ export function buildReport(name, value, stack, filename, lineno, colno) {
   return { name: type, value: message || type, frames };
 }
 
+/** The admin page answers the API on its own host, and that host is not a CORS origin of api.<apex>. Every other page uses API_BASE. */
+export function clientErrorUrl(hostname, apiBase) {
+  return String(hostname || '').toLowerCase().startsWith('admin.') ? '/api/client-error' : `${apiBase}/api/client-error`;
+}
+
 /**
- * One hook per document. `credentials: 'omit'` for the pitch deck (no player cookie).
+ * One hook per document. `credentials: 'omit'` for the pitch deck and the model viewer (no player cookie).
  * `release` is a git sha when the page was built with one; otherwise null.
  */
 export function watchCrashes(surface, opt) {
@@ -79,7 +122,7 @@ export function watchCrashes(surface, opt) {
     try { body = JSON.stringify({ anon_id: anonId(), surface, release, ...report }); }
     catch { return; }
     try {
-      void fetch(`${API_BASE}/api/client-error`, { credentials, keepalive: true, method: 'POST', headers: { 'content-type': 'application/json' }, body })
+      void fetch(clientErrorUrl(location.hostname, API_BASE), { credentials, keepalive: true, method: 'POST', headers: { 'content-type': 'application/json' }, body })
         .then(async (res) => {
           const json = await res.json().catch(() => null);
           if (res.ok && json && json.enabled === false) disabled = true;
@@ -88,8 +131,12 @@ export function watchCrashes(surface, opt) {
     } catch { /* no fetch in this document */ }
   };
   addEventListener('error', (event) => {
+    // A failed image is a plain Event, not an ErrorEvent. The listener is bubble-phase; this still ignores it if that ever changes.
+    const ErrorEventRef = globalThis.ErrorEvent;
+    if (typeof ErrorEventRef === 'function' && !(event instanceof ErrorEventRef)) return;
     const err = event.error;
-    post(err?.name || 'Error', event.message || err?.message || '', err?.stack, event.filename, event.lineno, event.colno);
+    const fromError = err && typeof err.message === 'string' ? err.message : '';
+    post(err?.name || 'Error', fromError || event.message || '', err?.stack, event.filename, event.lineno, event.colno);
   });
   addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;

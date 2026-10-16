@@ -2,6 +2,7 @@
    The slides are author-written constants (pitchdeck/data.js), so they go in with innerHTML (the landing's no-innerHTML rule is for server text; this takes none).
    This file is the engine: it renders the slides, turns pages (bottom-bar arrows, keys, a swipe – never a plain click), loads each slide's media only when it is near,
    scales the 1920×1080 stage, and wires the parts in pitchdeck/*.js. Keys: → / space next · ← back · F fullscreen · Home / End. */
+import '../../client/js/crash-boot.js';   // before the deck's modules: a throw while they load is still reported. No cookie on this host.
 import { SLIDES } from './pitchdeck/data.js';
 import { reduced, view, stage, deck, replay, toStage, pop, wakeFrames } from './pitchdeck/core.js';
 import { initTicker, holdTicker, ticker } from './pitchdeck/ticker.js';
@@ -10,9 +11,7 @@ import { fallOnScreen } from './pitchdeck/tilt.js';
 import { initTilt, initDrag, drag, initShakes, initCarousel, initPeek, initSplit, setOnSplit, initScenes, ladderClick } from './pitchdeck/fx.js';
 import { initRoad } from './pitchdeck/road.js';
 import { initStats, slideShown, interact } from './pitchdeck/stats.js';
-import { watchCrashes } from '../../client/js/crash.js';
 
-watchCrashes('pitchdeck', { credentials: 'omit' });   // its own anon id; no player cookie on this host
 deck.innerHTML = SLIDES.map((s, i) => `<section class="slide L-${s.layout.split(' ').join(' L-')}" id="s-${s.id}" data-i="${i}">${s.html}</section>`).join('');
 const slides = [...deck.children], help = document.getElementById('help');
 
