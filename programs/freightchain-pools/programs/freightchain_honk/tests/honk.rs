@@ -7,7 +7,7 @@ use {
     },
     anchor_spl::{associated_token, token},
     common::*,
-    freightchain_honk::{error::HonkError, events::HonkInitialized, isqrt, LOCK_SECS},
+    freightchain_honk::{error::HonkError, events::HonkInitialized, isqrt, EMISSION_CAP, LOCK_SECS, UNIT},
     solana_keypair::Keypair,
     solana_signer::Signer,
 };
@@ -25,13 +25,15 @@ fn with_honk() -> Env {
 }
 
 #[test]
-fn genesis_supply_and_vault_and_mint_authority_none() {
+fn genesis_supply_and_vault_and_mint_authority_stays() {
     let e = Env::new();
     let mint = e.mint(&honk_mint_pda());
     assert_eq!(mint.supply, 2_000_000 * 1_000_000);
     assert_eq!(mint.supply, GENESIS);
     assert_eq!(mint.decimals, 6);
-    assert!(mint.mint_authority.is_none());
+    assert_eq!(mint.mint_authority.unwrap(), authority_pda());
+    assert!(mint.freeze_authority.is_none());
+    assert!(e.mint(&lp_mint_pda()).freeze_authority.is_none());
     assert_eq!(e.amount(&vault_pda()), GENESIS);
 }
 
@@ -190,6 +192,21 @@ fn buy_part_gold_burns_260() {
     assert_part_nft(&e, &nft);
 }
 
+#[test]
+fn a_verified_ride_mints_to_the_rider_and_not_the_vault() {
+    let mut e = Env::new();
+    let rider = Keypair::new();
+    let vault = e.amount(&vault_pda());
+    let supply = e.mint(&honk_mint_pda()).supply;
+    let ride = [7u8; 16];
+    unwrap_tx(e.mint_ride(ride, 100 * UNIT, &rider.pubkey()));
+    assert_eq!(e.amount(&vault_pda()), vault);
+    assert_eq!(e.mint(&honk_mint_pda()).supply, supply + 100 * UNIT);
+    assert_eq!(e.amount(&ata(&rider.pubkey(), &honk_mint_pda())), 100 * UNIT);
+    assert!(e.mint_ride(ride, 100 * UNIT, &rider.pubkey()).is_err());
+    assert_err!(e.mint_ride([8u8; 16], EMISSION_CAP, &rider.pubkey()), HonkError::EmissionCap);
+}
+
 fn assert_part_nft(e: &Env, nft: &anchor_lang::prelude::Pubkey) {
     let mint = e.mint(nft);
     assert_eq!(mint.decimals, 0);
@@ -295,6 +312,51 @@ fn release_lp_is_too_early() {
     assert_eq!(e.pool().unlock_at, T0 + LOCK_SECS);
     assert_err!(e.release_lp(), HonkError::TooEarly);
     assert_eq!(e.amount(&lp_locker_pda()), locked);
+}
+
+#[test]
+fn selling_the_honk_back_pays_sol_and_refills_the_vault() {
+    let mut e = Env::new();
+    unwrap_tx(e.swap(SOL, 0));
+    let user = ata(&e.payer.pubkey(), &honk_mint_pda());
+    let honk = e.amount(&user);
+    let supply = e.mint(&honk_mint_pda()).supply;
+    let honk_reserve = e.pool().honk_reserve;
+    let sol_reserve = e.pool().sol_reserve;
+    let rent = e.bal(&pool_pda()) - sol_reserve;
+    let expected = (sol_reserve as u128) * (honk as u128) / (honk_reserve as u128 + honk as u128);
+    assert_err!(e.sell(honk, expected as u64 + 1), HonkError::Slippage);
+    assert_eq!(e.pool().honk_reserve, honk_reserve);
+    unwrap_tx(e.sell(honk, expected as u64));
+    assert_eq!(e.amount(&user), 0);
+    assert_eq!(e.pool().honk_reserve, GENESIS);
+    assert_eq!(e.amount(&vault_pda()), GENESIS);
+    assert_eq!(e.pool().sol_reserve, sol_reserve - expected as u64);
+    assert_eq!(e.bal(&pool_pda()), rent + e.pool().sol_reserve);
+    assert_eq!(e.mint(&honk_mint_pda()).supply, supply);
+}
+
+#[test]
+fn redeeming_the_lp_returns_both_reserves_and_leaves_the_rent() {
+    let mut e = Env::new();
+    assert!(e.withdraw(1, 0, 0).is_err());
+    let supply = e.mint(&lp_mint_pda()).supply;
+    let rent = e.bal(&pool_pda()) - e.pool().sol_reserve;
+    e.warp(e.pool().unlock_at);
+    unwrap_tx(e.release_lp());
+    let half = supply / 2;
+    let honk_half = (GENESIS as u128) * (half as u128) / (supply as u128);
+    let sol_half = (10 * SOL as u128) * (half as u128) / (supply as u128);
+    unwrap_tx(e.withdraw(half, honk_half as u64, sol_half as u64));
+    let rest = e.amount(&ata(&e.payer.pubkey(), &lp_mint_pda()));
+    unwrap_tx(e.withdraw(rest, 0, 0));
+    assert_eq!(e.pool().honk_reserve, 0);
+    assert_eq!(e.pool().sol_reserve, 0);
+    assert_eq!(e.amount(&vault_pda()), 0);
+    assert_eq!(e.amount(&ata(&e.payer.pubkey(), &honk_mint_pda())), GENESIS);
+    assert_eq!(e.bal(&pool_pda()), rent);
+    assert_eq!(e.mint(&lp_mint_pda()).supply, 0);
+    assert_eq!(e.amount(&ata(&e.payer.pubkey(), &lp_mint_pda())), 0);
 }
 
 #[test]

@@ -10,7 +10,7 @@ import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { PrismaClient } from '@prisma/client';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
-import { burn, buyPart, honkBalance, initialize, mintState, pdas, poolLamports, releaseLp, swapSolForHonk, tokenAccount, vaultBalance } from './honk-program.mjs';
+import { burn, buyPart, honkBalance, initialize, mintRide, mintState, pdas, poolLamports, releaseLp, swapHonkForSol, swapSolForHonk, tokenAccount, vaultBalance } from './honk-program.mjs';
 
 const RPC = process.env.RPC;
 const KEYS = process.env.KEYS;
@@ -58,6 +58,7 @@ async function frozenTransferRefused({ payer, mint, owner, dest }) {
 }
 
 const outFor = (honkReserve, solReserve, solIn) => (honkReserve * solIn) / (solReserve + solIn);
+const solFor = (honkReserve, solReserve, honkIn) => (solReserve * honkIn) / (honkReserve + honkIn);
 
 async function chain() {
   const payer = load('payer');
@@ -73,14 +74,26 @@ async function chain() {
   const lamports = await poolLamports({ rpc: RPC });
   check('genesis supply', minted.supply === GENESIS, String(minted.supply));
   check('genesis vault', vault0 === GENESIS, String(vault0));
-  check('mint authority', minted.mintAuthority === null, minted.mintAuthority || '');
+  check('mint authority', minted.mintAuthority === ids.authority.toBase58(), minted.mintAuthority || '');
+  check('mint not freezable', minted.freezeAuthority === null, minted.freezeAuthority || '');
   check('pool sol', lamports >= Number(opened), String(lamports));
+  const rideId = Buffer.alloc(16, 7);
+  const vaultBeforeRide = await vaultBalance({ rpc: RPC });
+  const supplyBeforeRide = minted.supply;
+  await mintRide({ rpc: RPC, emitter: payer, rider: player.publicKey, rideId, amount: 100n * UNIT });
+  const afterRide = await honkBalance({ rpc: RPC, owner: player.publicKey });
+  const supplyAfterRide = (await mintState({ rpc: RPC })).supply;
+  check('ride mint', afterRide === 100n * UNIT && supplyAfterRide === supplyBeforeRide + 100n * UNIT, `${afterRide} supply ${supplyAfterRide}`);
+  check('ride mint leaves the vault', (await vaultBalance({ rpc: RPC })) === vaultBeforeRide, String(vaultBeforeRide));
+  let replay = '';
+  try { await mintRide({ rpc: RPC, emitter: payer, rider: player.publicKey, rideId, amount: 100n * UNIT }); replay = 'minted twice'; } catch (e) { replay = ''; }
+  check('ride mint once', replay === '', replay);
   const playerIn = SOL;
   const playerOut = outFor(GENESIS, opened, playerIn);
   await swapSolForHonk({ rpc: RPC, user: player, solIn: playerIn, minOut: playerOut });
   const playerBal = await honkBalance({ rpc: RPC, owner: player.publicKey });
   const vault1 = await vaultBalance({ rpc: RPC });
-  check('swap player', playerBal === playerOut, `${playerBal} vs ${playerOut}`);
+  check('swap player', playerBal === playerOut + 100n * UNIT, `${playerBal} vs ${playerOut}`);
   check('swap vault', vault0 - vault1 === playerOut, `${vault0} -> ${vault1}`);
   const specIn = SOL / 10n;
   const specOut = outFor(GENESIS - playerOut, opened + playerIn, specIn);
@@ -94,8 +107,21 @@ async function chain() {
   const supplyAfter = await mintState({ rpc: RPC });
   const vault3 = await vaultBalance({ rpc: RPC });
   check('burn player', burnedBal === playerBal - 100n * UNIT, String(burnedBal));
-  check('burn supply', supplyAfter.supply === GENESIS - 100n * UNIT, String(supplyAfter.supply));
+  check('burn supply', supplyAfter.supply === GENESIS, String(supplyAfter.supply));
   check('burn vault', vault3 === vault2, `${vault2} -> ${vault3}`);
+  const sellIn = UNIT;
+  const honkReserve = GENESIS - playerOut - specOut;
+  const solReserve = opened + playerIn + specIn;
+  const solOut = solFor(honkReserve, solReserve, sellIn);
+  const lamportsBeforeSell = await poolLamports({ rpc: RPC });
+  let slipped = '';
+  try { await swapHonkForSol({ rpc: RPC, user: player, honkIn: sellIn, minSolOut: solOut + 1n }); slipped = 'sell landed'; } catch (e) { slipped = await txErrorText(e); }
+  check('sell under min is slippage', /Slippage|6004|0x1774/i.test(slipped), slipped.slice(0, 200));
+  await swapHonkForSol({ rpc: RPC, user: player, honkIn: sellIn, minSolOut: solOut });
+  const soldBal = await honkBalance({ rpc: RPC, owner: player.publicKey });
+  const vaultSold = await vaultBalance({ rpc: RPC });
+  check('sell honk back', soldBal === burnedBal - sellIn && vaultSold === vault3 + sellIn, `${burnedBal} -> ${soldBal} vault ${vaultSold}`);
+  check('sell pays sol', (await poolLamports({ rpc: RPC })) === lamportsBeforeSell - Number(solOut), String(solOut));
   let early = '';
   try {
     await releaseLp({ rpc: RPC, payer });
@@ -157,6 +183,27 @@ async function creditHonk(wallet, honk) {
   } finally { await prisma.$disconnect(); }
 }
 
+const phantom = (kp, address) => `(() => {
+  const SECRET = ${JSON.stringify([...kp.secretKey])}, PUB = ${JSON.stringify(address)}, RPC = ${JSON.stringify(RPC)};
+  window.__HONK_RPC = RPC; window.__asked = [];
+  const me = () => window.solanaWeb3.Keypair.fromSecretKey(Uint8Array.from(SECRET));
+  const pk = { toString: () => PUB, toBase58: () => PUB };
+  window.phantom = { solana: { isPhantom: true, publicKey: pk, connect: async () => ({ publicKey: pk }), disconnect: async () => {},
+    signAndSendTransaction: async tx => { window.__asked.push('signAndSendTransaction'); tx.partialSign(me());
+      let s = ''; for (const b of tx.serialize()) s += String.fromCharCode(b);
+      const r = await (await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'sendTransaction', params: [btoa(s), { encoding: 'base64', preflightCommitment: 'confirmed' }] }) })).json();
+      if (r.error) throw new Error(r.error.message);
+      const sig = r.result;
+      for (let i = 0; i < 40; i++) {
+        const st = await (await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getSignatureStatuses', params: [[sig], { searchTransactionHistory: true }] }) })).json();
+        const row = st.result?.value?.[0];
+        if (row?.err) throw new Error(JSON.stringify(row.err));
+        if (row && (row.confirmationStatus === 'confirmed' || row.confirmationStatus === 'finalized')) break;
+        await new Promise(done => setTimeout(done, 250));
+      }
+      return { signature: sig }; } } };
+})();`;
+
 async function burned(owner, amount, label) {
   const before = await honkBalance({ rpc: RPC, owner: owner.publicKey });
   const signature = await burn({ rpc: RPC, user: owner, amount });
@@ -192,11 +239,22 @@ async function session() {
   check('ticket ride', created.r.ok && created.j.status === 'created' && created.j.poolId === 1 && ticket?.balance === 0, `${created.r.status} ${JSON.stringify(created.j).slice(0, 240)} ticket ${ticket?.balance}`);
   if (!created.j.id) return;
   const rideId = created.j.id;
-  const D = await launch({ port: +process.env.CHROME_PORT || 9341, shotsDir: 'fc-honk-shots' });
+  const port = +process.env.CHROME_PORT || 9341;
+  // Headless Chrome throttles timers in a background tab. The driver's heartbeat is 10s and the sweeper ends the ride at 150s, so the cab never sees clear.
+  const chromeArgs = ['--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
+  const D = await launch({ port, shotsDir: 'fc-honk-shots', args: chromeArgs });
+  const S = await launch({ port: port + 1, shotsDir: 'fc-honk-watch', args: chromeArgs });
+  const G = await launch({ port: port + 2, shotsDir: 'fc-honk-garage', args: chromeArgs });
   let driving = true;
   try {
+    await D.send('Page.addScriptToEvaluateOnNewDocument', { source: phantom(player.kp, player.address) });
+    await S.send('Page.addScriptToEvaluateOnNewDocument', { source: phantom(spectator.kp, spectator.address) });
+    await G.send('Page.addScriptToEvaluateOnNewDocument', { source: phantom(player.kp, player.address) });
     const [name, value] = player.cookie.split('=');
     await D.send('Network.setCookie', { name, value, url: BASE, httpOnly: true });
+    await G.send('Network.setCookie', { name, value, url: BASE, httpOnly: true });
+    const [sname, svalue] = spectator.cookie.split('=');
+    await S.send('Network.setCookie', { name: sname, value: svalue, url: BASE, httpOnly: true });
     await D.send('Page.navigate', { url: `${BASE}/play.html?ride=${rideId}` });
     for (let i = 0; i < 100 && !(await D.ev('!!window.__game')); i++) await sleep(200);
     await D.ev('document.getElementById("go").click()');
@@ -206,40 +264,54 @@ async function session() {
     await D.ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.st; if (g.mode === "drive") g.s += 20 * Math.max(0, g.t - last); last = g.t; }, 50); })()');
     const keys = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd']];
     (async () => { for (let i = 0; driving; i++) { const [code, key] = keys[i % 3]; try { await D.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(80); await D.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); await sleep(120); } catch { driving = false; } } })();
-    const honkSig = await burned(spectator.kp, 1n * UNIT, 'spectator burned 1');
-    const honk = await post(`watch/${rideId}/honk`, { signature: honkSig }, spectator.cookie);
+    await S.send('Page.navigate', { url: `${BASE}/play.html?watch=${rideId}` });
+    const until = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return true; await sleep(300); } return false; };
+    const click = async (id) => { check(id, await until(() => S.ev(`!!document.getElementById(${JSON.stringify(id)}) && !document.getElementById(${JSON.stringify(id)}).disabled`), 25_000)); await S.ev(`document.getElementById(${JSON.stringify(id)}).click()`); };
+    const chainOf = async (owner) => honkBalance({ rpc: RPC, owner: owner.publicKey });
+    const beforeHonk = await chainOf(spectator.kp);
+    await click('w-honk');
+    check('spectator burned 1', await until(async () => (await chainOf(spectator.kp)) === beforeHonk - 1n * UNIT, 25_000), String(await chainOf(spectator.kp)));
+    const honkLanded = await until(async () => { const feed = await get(`watch/${rideId}`); return Array.isArray(feed.events) && feed.events.some((e) => e.text === 'HONK'); }, 20_000);
     const feed = await get(`watch/${rideId}`);
-    check('honk pays 1', honk.r.ok && honk.j.pays === '1', JSON.stringify(honk.j).slice(0, 200));
+    check('honk pays 1', honkLanded, await S.ev('document.getElementById("w-msg")?.textContent ?? ""') + ' ' + JSON.stringify(feed.events || []).slice(0, 180));
     check('honk chat', Array.isArray(feed.events) && feed.events.some((e) => e.text === 'HONK'), JSON.stringify(feed.events || feed).slice(0, 240));
     const posted = Date.now();
-    const snowSig = await burned(spectator.kp, 25n * UNIT, 'spectator burned 25');
-    const snow = await post(`watch/${rideId}/honk/weather`, { weather: 'snow', signature: snowSig }, spectator.cookie);
+    const beforeSnow = await chainOf(spectator.kp);
+    await click('w-honk-snow');
+    check('spectator burned 25', await until(async () => (await chainOf(spectator.kp)) === beforeSnow - 25n * UNIT, 25_000), String(await chainOf(spectator.kp)));
+    const snowLanded = await until(async () => { const feed = await get(`watch/${rideId}`); return Array.isArray(feed.events) && feed.events.some((e) => e.kind === 'honk' && e.effect === 'snow'); }, 20_000);
     const snowFeed = await get(`watch/${rideId}`);
-    check('snow pays 25', snow.r.ok && snow.j.pays === '25', JSON.stringify(snow.j).slice(0, 200));
+    check('snow pays 25', snowLanded, await S.ev('document.getElementById("w-msg")?.textContent ?? ""'));
     check('snow event', Array.isArray(snowFeed.events) && snowFeed.events.some((e) => e.kind === 'honk' && e.effect === 'snow'));
-    const until = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return true; await sleep(300); } return false; };
     check('cab snow', await until(() => D.ev('__game.st.mode === "drive" && __game.weather.snow === 1 && __game.weather.ambient <= -8'), 25_000), await D.ev('JSON.stringify({ mode: __game.st.mode, weather: __game.weather })'));
     const wait = 21_000 - (Date.now() - posted);
     if (wait > 0) await sleep(wait);
-    const clearSig = await burned(spectator.kp, 25n * UNIT, 'spectator burned 25 to clear');
-    const clear = await post(`watch/${rideId}/honk/weather`, { weather: 'clear', signature: clearSig }, spectator.cookie);
-    const clearFeed = await get(`watch/${rideId}`);
-    check('clear effect', clear.r.ok && clear.j.pays === '25' && Array.isArray(clearFeed.events) && clearFeed.events.some((e) => e.kind === 'honk' && e.effect === 'clear'), JSON.stringify(clear.j).slice(0, 160));
+    const beforeClear = await chainOf(spectator.kp);
+    await click('w-honk-clear');
+    check('spectator burned 25 to clear', await until(async () => (await chainOf(spectator.kp)) === beforeClear - 25n * UNIT, 25_000), String(await chainOf(spectator.kp)));
+    const clearLanded = await until(async () => { const feed = await get(`watch/${rideId}`); return Array.isArray(feed.events) && feed.events.some((e) => e.kind === 'honk' && e.effect === 'clear'); }, 20_000);
+    check('clear effect', clearLanded, await S.ev('document.getElementById("w-msg")?.textContent ?? ""'));
     const donated = await post(`watch/${rideId}/donations`, { effect: 'snow' }, spectator.cookie);
     check('snow is not a donation', donated.r.status === 400, `${donated.r.status} ${JSON.stringify(donated.j).slice(0, 120)}`);
-    check('cab clear', await until(() => D.ev('__game.weather.snow === 0 && __game.weather.ambient === __game.weather.baseAmbient'), 25_000), await D.ev('JSON.stringify(__game.weather)'));
+    const cabClear = () => D.ev('__game.weather.snow === 0 && __game.weather.ambient === __game.weather.baseAmbient');
+    check('cab clear', await until(cabClear, 45_000) || await cabClear(), await D.ev('JSON.stringify(__game.weather)'));
     const before = await get('honk', player.cookie);
-    const fungibleBefore = await honkBalance({ rpc: RPC, owner: player.kp.publicKey });
-    const part = await buyPart({ rpc: RPC, buyer: player.kp, slot: 'truck_color', item: 'blue' });
-    const bought = await post('honk/visuals', { slot: 'truck_color', item: 'blue', signature: part.signature }, player.cookie);
-    check('ledger dropped 65', bought.r.ok && whole(before.balance) - whole(bought.j.balance) === 65n, `${before.balance} -> ${bought.j.balance}`);
-    check('chain mint saved', bought.j.chain?.mint === part.mint, bought.j.chain?.mint || JSON.stringify(bought.j).slice(0, 180));
-    const fungibleAfter = await honkBalance({ rpc: RPC, owner: player.kp.publicKey });
-    const view = await mintState({ rpc: RPC, mint: part.mint });
-    const ata = await tokenAccount({ rpc: RPC, mint: part.mint, owner: player.kp.publicKey });
-    check('player burned 65', fungibleBefore - fungibleAfter === 65n * UNIT, `${fungibleBefore} -> ${fungibleAfter}`);
+    const fungibleBefore = await chainOf(player.kp);
+    await G.send('Page.navigate', { url: `${BASE}/lobby.html#garage` });
+    check('garage blue', await until(() => G.ev('!!document.querySelector("[data-slot=truck_color] [data-item=blue]")'), 25_000));
+    await G.ev('document.querySelector("[data-slot=truck_color] [data-item=blue]").click()');
+    check('garage burn', await until(() => G.ev('!!document.getElementById("garage-burn") && !document.getElementById("garage-burn").disabled'), 15_000));
+    await G.ev('document.getElementById("garage-burn").click()');
+    check('player burned 65', await until(async () => (await chainOf(player.kp)) === fungibleBefore - 65n * UNIT, 30_000), String(await chainOf(player.kp)));
+    let saved = null;
+    check('chain mint saved', await until(async () => { const p = new PrismaClient(); try { saved = await p.honkVisual.findFirst({ where: { wallet: player.address, slot: 'truck_color', item: 'blue' } }); } finally { await p.$disconnect(); } return !!saved?.chainMint; }, 20_000), await G.ev('document.getElementById("garage-msg")?.textContent ?? ""'));
+    const after = await get('honk', player.cookie);
+    check('ledger dropped 65', whole(before.balance) - whole(after.balance) === 65n, `${before.balance} -> ${after.balance}`);
+    if (!saved?.chainMint) return;
+    const view = await mintState({ rpc: RPC, mint: saved.chainMint });
+    const ata = await tokenAccount({ rpc: RPC, mint: saved.chainMint, owner: player.kp.publicKey });
     check('bought part', view.supply === 1n && view.decimals === 0 && ata.isFrozen && ata.amount === 1n && ata.owner === player.address, show({ ...view, frozen: ata.isFrozen, owner: ata.owner }));
-    const refused = await frozenTransferRefused({ payer: player.kp, mint: part.mint, owner: player.kp, dest: spectator.kp });
+    const refused = await frozenTransferRefused({ payer: player.kp, mint: saved.chainMint, owner: player.kp, dest: spectator.kp });
     check('bought transfer refused', refused === '', refused);
   } catch (e) {
     check('session', false, e?.stack || String(e));

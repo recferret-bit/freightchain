@@ -154,4 +154,4 @@ Add the new tables to the integration truncate list. Migration `20261027000000_h
 
 ## Out of scope
 
-A local program holds the genesis pool and is not deployed. No SPL mint key. No Raydium transaction. No change to pool prize maths. No gameplay effect from the 1 HONK chat burn. The 10 HONK burn only moves the clock between day and night. No free-ride mint. No ICO.
+A local program holds the genesis pool and is not deployed. SOL and HONK swap both ways. LP redeems after 365 days. No SPL mint key. No Raydium transaction. No change to pool prize maths. No gameplay effect from the 1 HONK chat burn. The 10 HONK burn only moves the clock between day and night. No free-ride mint. No ICO.

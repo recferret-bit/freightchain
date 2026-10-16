@@ -15,6 +15,21 @@ pub struct Swapped {
 }
 
 #[event]
+pub struct Sold {
+    pub user: Pubkey,
+    pub honk_in: u64,
+    pub sol_out: u64,
+}
+
+#[event]
+pub struct Redeemed {
+    pub user: Pubkey,
+    pub lp_in: u64,
+    pub honk_out: u64,
+    pub sol_out: u64,
+}
+
+#[event]
 pub struct Burned {
     pub user: Pubkey,
     pub amount: u64,

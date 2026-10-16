@@ -4,6 +4,10 @@ use anchor_lang::prelude::*;
 #[derive(InitSpace)]
 pub struct Config {
     pub bump: u8,
+    /// The only key that may call `mint_ride`.
+    pub emitter: Pubkey,
+    /// Ride HONK minted so far. Never includes the genesis in the vault.
+    pub emitted: u64,
 }
 
 #[account]
@@ -26,5 +30,13 @@ pub struct Part {
     pub item: [u8; 16],
     pub gold: bool,
     pub nft_mint: Pubkey,
+    pub bump: u8,
+}
+
+/// One verified ride's on-chain mint. The same ride id cannot mint twice.
+#[account]
+#[derive(InitSpace)]
+pub struct RideMint {
+    pub amount: u64,
     pub bump: u8,
 }

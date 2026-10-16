@@ -27,7 +27,8 @@ async function send(programId, owner, build) {
   const web3 = await loadWeb3();
   const program = new web3.PublicKey(programId);
   const ownerPk = new web3.PublicKey(owner);
-  const connection = new web3.Connection(publicRpc(), 'confirmed');
+  const rpc = (typeof window !== 'undefined' && window.__HONK_RPC) || publicRpc();
+  const connection = new web3.Connection(rpc, 'confirmed');
   const { blockhash } = await connection.getLatestBlockhash('confirmed');
   const tx = new web3.Transaction({ feePayer: ownerPk, recentBlockhash: blockhash });
   const extra = await build(web3, program, ownerPk, tx);

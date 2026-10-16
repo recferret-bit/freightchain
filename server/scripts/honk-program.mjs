@@ -91,6 +91,41 @@ export async function swapSolForHonk({ rpc, user, solIn, minOut }) {
   return send(connectionOf(rpc), new Transaction().add(ix('swap_sol_for_honk', keys, [u64(solIn), u64(minOut)])), [user]);
 }
 
+/** The other side of the constant product. `minSolOut` is lamports. The pool keeps its rent. */
+export async function swapHonkForSol({ rpc, user, honkIn, minSolOut }) {
+  const p = pdas();
+  const keys = [
+    w(user.publicKey, true), w(p.pool), w(p.honkMint), w(p.vault), w(userHonk(user)), ro(TOKEN_PROGRAM_ID),
+  ];
+  return send(connectionOf(rpc), new Transaction().add(ix('swap_honk_for_sol', keys, [u64(honkIn), u64(minSolOut)])), [user]);
+}
+
+/** Burn LP for that share of the vault and the SOL reserve. The locker holds the LP until `release_lp`. */
+export async function withdrawLp({ rpc, user, lpIn, minHonk, minSol }) {
+  const p = pdas();
+  const owner = asPk(user.publicKey ?? user);
+  const keys = [
+    w(owner, true), w(p.pool), w(p.honkMint), w(p.vault), w(userHonk({ publicKey: owner })),
+    w(p.lpMint), w(getAssociatedTokenAddressSync(p.lpMint, owner, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID)),
+    ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId), ro(ASSOCIATED_TOKEN_PROGRAM_ID),
+  ];
+  return send(connectionOf(rpc), new Transaction().add(ix('withdraw_lp', keys, [u64(lpIn), u64(minHonk), u64(minSol)])), [user]);
+}
+
+/** Ride reward. The emitter signs. The vault is not a party to this instruction. */
+export async function mintRide({ rpc, emitter, rider, rideId, amount }) {
+  const p = pdas();
+  const riderPk = asPk(rider);
+  const ride = rideId.length === 16 ? rideId : Buffer.from(rideId);
+  const keys = [
+    w(emitter.publicKey, true), w(p.config), w(p.honkMint), w(p.authority), ro(riderPk),
+    w(userHonk({ publicKey: riderPk })), w(pda([Buffer.from('ride-mint'), ride])),
+    ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId), ro(ASSOCIATED_TOKEN_PROGRAM_ID),
+  ];
+  const data = [ride, u64(amount)];
+  return send(connectionOf(rpc), new Transaction().add(ix('mint_ride', keys, data)), [emitter]);
+}
+
 export async function burn({ rpc, user, amount }) {
   const p = pdas();
   const keys = [w(user.publicKey, true), w(p.honkMint), w(userHonk(user)), ro(TOKEN_PROGRAM_ID)];

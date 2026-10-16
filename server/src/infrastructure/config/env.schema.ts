@@ -65,6 +65,7 @@ export const envSchema = z
     PAYOUT_INTERVAL_MS: z.coerce.number().int().min(0).default(300_000), // the payout job's schedule (needs PAYOUT_SECRET); 0 = only `pool:payout` from the CLI
     ACHIEVEMENT_MINT_SECRET: optional(z.string().min(32)), // base58 keypair = tree creator + collection authority of the badge cNFTs (docs/agents/achievements.md); a mint-only key, never the crank or payout key
     HONK_PROGRAM_ID: optional(z.string()), // freightchain_honk program id. Unset = ledger burns only, no signature. Local validator: GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx
+    HONK_EMITTER_SECRET: optional(z.string().min(32)), // keypair that may mint_ride. The initialize payer. Unset = a verified ride stays on the ledger only
     ACHIEVEMENT_TREE: optional(z.string().min(32).max(44)), // the Bubblegum v2 Merkle tree (scripts/achievements/setup-tree.mjs prints it)
     ACHIEVEMENT_COLLECTION: optional(z.string().min(32).max(44)), // the MPL-Core collection (PermanentFreezeDelegate = soulbound, BubblegumV2)
     ACHIEVEMENT_MINT_INTERVAL_MS: z.coerce.number().int().min(0).default(120_000), // the mint job's schedule (needs the three keys above); 0 = only `achievement:mint` from the CLI

@@ -14,6 +14,8 @@ pub enum HonkError {
     Slippage,
     #[msg("Not for sale")]
     NotForSale,
+    #[msg("Emission cap")]
+    EmissionCap,
 }
 
 #[cfg(test)]
@@ -28,5 +30,6 @@ mod tests {
         assert_eq!(u32::from(HonkError::AlreadyBought), 6003);
         assert_eq!(u32::from(HonkError::Slippage), 6004);
         assert_eq!(u32::from(HonkError::NotForSale), 6005);
+        assert_eq!(u32::from(HonkError::EmissionCap), 6006);
     }
 }

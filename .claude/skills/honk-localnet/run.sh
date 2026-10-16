@@ -70,13 +70,19 @@ MINT="$(tr -d '[:space:]' < "$TMP/keys/mint-address.txt")"
 (cd "$SERVER" && exec env -i PATH="$PATH" HOME="$HOME" ENV_FILE="$TMP/empty.env" \
   DATABASE_URL="$URL" PORT="$PORT" SOLANA_RPC="$RPC" \
   HONK_PROGRAM_ID="GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx" \
+  HONK_EMITTER_SECRET="$(cat "$TMP/keys/payer.json")" \
   HONK_MINT="$MINT" \
   FREE_RIDE_SECONDS=30 SOL_USD=118 TREASURY_PUBKEY="$(pub treasury)" \
   JWT_SECRET="honk-localnet-jwt-secret-not-a-real-key" \
   LIVE_EFFECTS=off LIVE_DONATIONS=off \
+  ${HONK_VERDICT:+DEMO_WALLETS='*' DEMO_SCALE=60} \
   node dist/main.js > "$TMP/server.log" 2>&1) &
 SRV_PID=$!
 for _ in $(seq 1 60); do curl -sf "$BASE/api/health/live" >/dev/null && break; kill -0 "$SRV_PID" 2>/dev/null || { tail -30 "$TMP/server.log"; fail "server exited"; }; sleep 0.5; done
 curl -sf "$BASE/api/health/live" >/dev/null || { tail -30 "$TMP/server.log"; fail "server did not start"; }
 echo "▸ session ($BASE)"
 (cd "$SERVER" && RPC="$RPC" KEYS="$TMP/keys" BASE="$BASE" DATABASE_URL="$URL" ENV_FILE="$TMP/empty.env" CHROME_PORT="$(free_port)" SCENARIO=session node scripts/e2e-honk-chain.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; fail "session"; }
+if [ "${HONK_VERDICT:-0}" = 1 ]; then
+  echo "▸ verified ride ($BASE)"
+  (cd "$SERVER" && RPC="$RPC" KEYS="$TMP/keys" BASE="$BASE" DATABASE_URL="$URL" node scripts/e2e-honk-verdict.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; fail "verdict"; }
+fi

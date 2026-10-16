@@ -26,7 +26,8 @@ pub fn lp_tokens(sol_in: u64) -> Result<u64> {
     Ok(lp)
 }
 
-/// Constant product with a zero fee: `honk_reserve * sol_in / (sol_reserve + sol_in)`.
+/// Constant product, zero fee, output rounded down so the pool keeps the dust.
+/// `honk_reserve * sol_in / (sol_reserve + sol_in)`.
 pub fn honk_out(honk_reserve: u64, sol_reserve: u64, sol_in: u64) -> Result<u64> {
     require!(sol_in > 0, HonkError::ZeroAmount);
     let denom = (sol_reserve as u128)
@@ -40,6 +41,33 @@ pub fn honk_out(honk_reserve: u64, sol_reserve: u64, sol_in: u64) -> Result<u64>
     let out = u64::try_from(out).map_err(|_| HonkError::ZeroOut)?;
     require!(out > 0, HonkError::ZeroOut);
     Ok(out)
+}
+
+/// The other direction of `honk_out`: `sol_reserve * honk_in / (honk_reserve + honk_in)`.
+pub fn sol_out(honk_reserve: u64, sol_reserve: u64, honk_in: u64) -> Result<u64> {
+    require!(honk_in > 0, HonkError::ZeroAmount);
+    let denom = (honk_reserve as u128)
+        .checked_add(honk_in as u128)
+        .ok_or(HonkError::ZeroOut)?;
+    let out = (sol_reserve as u128)
+        .checked_mul(honk_in as u128)
+        .ok_or(HonkError::ZeroOut)?
+        .checked_div(denom)
+        .ok_or(HonkError::ZeroOut)?;
+    let out = u64::try_from(out).map_err(|_| HonkError::ZeroOut)?;
+    require!(out > 0, HonkError::ZeroOut);
+    Ok(out)
+}
+
+/// Pro-rata share of one reserve. Rounded down. `lp_in == supply` returns the whole reserve.
+pub fn take_share(reserve: u64, lp_in: u64, supply: u64) -> Result<u64> {
+    require!(lp_in > 0, HonkError::ZeroAmount);
+    require!(supply > 0 && lp_in <= supply, HonkError::ZeroOut);
+    let out = (reserve as u128)
+        .checked_mul(lp_in as u128)
+        .ok_or(HonkError::ZeroOut)?
+        / (supply as u128);
+    u64::try_from(out).map_err(|_| HonkError::ZeroOut.into())
 }
 
 #[cfg(test)]

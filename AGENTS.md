@@ -76,7 +76,7 @@ Secrets: read env files by key name only, never print values; never commit `depl
 - Client (`client/`): `npm run check` (lint + bundle + headless test); refactor gate `npm run trace:save` / `trace:diff`; real Chrome `node tools/e2e-chrome.mjs` (`PORT=` if busy) – look at the screenshots.
 - Root: `npm run check` (client + landing + server unit + media) AND `npm run server:integration` for server changes; real-Chrome suites: `bash .claude/skills/run-tests/e2e.sh`.
 - Everything else (live server e2e, replays, lobby): `docs/agents/verifying.md`.
-- HONK on a local validator (mint, transfer, burn, soulbound part, paid ride): `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token half).
+- HONK on a local validator (mint, swap, burn, soulbound part, paid ride): `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token half). The full coin suite, including a verified ride: `bash .claude/skills/honk-suite/run.sh`.
 
 ## Style
 

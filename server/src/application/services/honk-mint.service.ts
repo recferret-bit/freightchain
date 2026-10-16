@@ -12,9 +12,10 @@ export class HonkMintService {
     private readonly clock: ClockPort,
   ) {}
 
-  async credit(input: HonkMintInput, tx?: TransactionHandle): Promise<HonkMintRow | null> {
+  /** The amount just credited, or null when this ride already had a mint. */
+  async credit(input: HonkMintInput, tx?: TransactionHandle): Promise<bigint | null> {
     const prior = await this.honk.findMint(input.rideId, tx);
-    if (prior) return prior;
+    if (prior) return null;
     const { bands, quote } = bandAmounts(input.tier, input.distance, input.completeDist);
     const amount = clipToCap(quote, await this.honk.lockEmission(tx));
     if (amount <= 0n) return null;
@@ -25,9 +26,9 @@ export class HonkMintService {
       band50: bands.some((b) => b.pct === 50 && b.reached),
       band100: bands.some((b) => b.pct === 100 && b.reached),
     };
-    if (!(await this.honk.insertMint(row, tx))) return this.honk.findMint(input.rideId, tx);
+    if (!(await this.honk.insertMint(row, tx))) return null;
     await this.honk.addEmission(amount, tx);
     await this.honk.credit(input.wallet, amount, at, tx);
-    return row;
+    return amount;
   }
 }

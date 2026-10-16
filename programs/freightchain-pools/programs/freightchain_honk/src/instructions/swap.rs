@@ -7,7 +7,10 @@ use anchor_spl::{
     token::{self, Mint, Token, TokenAccount},
 };
 
-use crate::{constants::*, error::HonkError, events::Swapped, math::honk_out, state::Pool};
+use crate::{
+    constants::*, error::HonkError, events::{Sold, Swapped}, math::{honk_out, sol_out}, pay::pay_sol,
+    state::Pool,
+};
 
 #[derive(Accounts)]
 pub struct SwapSolForHonk<'info> {
@@ -80,6 +83,65 @@ pub fn handle_swap_sol_for_honk(
         user: ctx.accounts.user.key(),
         sol_in,
         honk_out: out
+    });
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct SwapHonkForSol<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(mut, seeds = [POOL_SEED], bump = pool.bump)]
+    pub pool: Account<'info, Pool>,
+    #[account(seeds = [HONK_MINT_SEED], bump)]
+    pub honk_mint: Account<'info, Mint>,
+    #[account(mut, seeds = [VAULT_SEED], bump, token::mint = honk_mint, token::authority = pool)]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(mut, token::mint = honk_mint, token::authority = user)]
+    pub user_honk: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+
+pub fn handle_swap_honk_for_sol(
+    ctx: Context<SwapHonkForSol>,
+    honk_in: u64,
+    min_sol_out: u64,
+) -> Result<()> {
+    let out = sol_out(
+        ctx.accounts.pool.honk_reserve,
+        ctx.accounts.pool.sol_reserve,
+        honk_in,
+    )?;
+    require!(out >= min_sol_out, HonkError::Slippage);
+    token::transfer(
+        CpiContext::new(
+            ctx.accounts.token_program.key(),
+            token::Transfer {
+                from: ctx.accounts.user_honk.to_account_info(),
+                to: ctx.accounts.vault.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        honk_in,
+    )?;
+    pay_sol(
+        &ctx.accounts.pool.to_account_info(),
+        &ctx.accounts.user.to_account_info(),
+        out,
+    )?;
+    let pool = &mut ctx.accounts.pool;
+    pool.honk_reserve = pool
+        .honk_reserve
+        .checked_add(honk_in)
+        .ok_or(HonkError::ZeroOut)?;
+    pool.sol_reserve = pool
+        .sol_reserve
+        .checked_sub(out)
+        .ok_or(HonkError::ZeroOut)?;
+    emit!(Sold {
+        user: ctx.accounts.user.key(),
+        honk_in,
+        sol_out: out
     });
     Ok(())
 }

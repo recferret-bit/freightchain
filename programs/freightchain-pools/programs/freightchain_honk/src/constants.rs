@@ -7,11 +7,14 @@ pub const LP_MINT_SEED: &[u8] = b"lp-mint";
 pub const LP_LOCKER_SEED: &[u8] = b"lp-locker";
 pub const LOCKER_SEED: &[u8] = b"locker";
 pub const PART_SEED: &[u8] = b"part";
+pub const RIDE_MINT_SEED: &[u8] = b"ride-mint";
 
 pub const DECIMALS: u8 = 6;
 pub const UNIT: u64 = 1_000_000;
-/// The only HONK ever minted. Supply can only fall after this.
+/// Genesis, minted into the pool vault once. Ride rewards are a separate mint and never enter the vault.
 pub const GENESIS: u64 = 2_000_000 * UNIT;
+/// Verified paid rides can mint this much in total. Burns do not raise it.
+pub const EMISSION_CAP: u64 = 98_000_000 * UNIT;
 pub const ORDINARY_PART: u64 = 65 * UNIT;
 pub const GOLD_PART: u64 = 260 * UNIT;
 /// LP stays in the locker until this many seconds after `initialize`.

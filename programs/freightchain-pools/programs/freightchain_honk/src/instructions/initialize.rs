@@ -25,9 +25,10 @@ pub struct Initialize<'info> {
         bump,
         mint::decimals = DECIMALS,
         mint::authority = authority,
+        // Omitted freeze authority is none. A coin holder cannot be frozen.
     )]
     pub honk_mint: Account<'info, Mint>,
-    /// CHECK: PDA signer. Mint authority only until the genesis and LP mints are done, then those are cleared. Freeze authority of part NFTs; there is no thaw.
+    /// CHECK: PDA signer. HONK mint authority stays here so a verified ride can mint under the cap. Freeze authority is left unset on the fungible mint and the LP mint. Part NFTs set it, and there is no thaw.
     #[account(seeds = [AUTHORITY_SEED], bump)]
     pub authority: UncheckedAccount<'info>,
     #[account(
@@ -75,8 +76,8 @@ pub fn handle_initialize(ctx: Context<Initialize>, sol_in: u64) -> Result<()> {
     let vault = ctx.accounts.vault.to_account_info();
     let lp_mint = ctx.accounts.lp_mint.to_account_info();
     let lp_locker = ctx.accounts.lp_locker.to_account_info();
-    mint_to_signed(&ctx, honk_mint.clone(), vault, GENESIS, auth_bump)?;
-    revoke_mint(&ctx, honk_mint, auth_bump)?;
+    mint_to_signed(&ctx, honk_mint, vault, GENESIS, auth_bump)?;
+    // The HONK mint authority stays the program so a verified ride can mint later. The LP mint is closed.
     mint_to_signed(&ctx, lp_mint.clone(), lp_locker, lp, auth_bump)?;
     revoke_mint(&ctx, lp_mint, auth_bump)?;
     transfer(
@@ -96,7 +97,10 @@ pub fn handle_initialize(ctx: Context<Initialize>, sol_in: u64) -> Result<()> {
     pool.honk_reserve = GENESIS;
     pool.unlock_at = now.checked_add(LOCK_SECS).ok_or(HonkError::ZeroOut)?;
     pool.bump = ctx.bumps.pool;
-    ctx.accounts.config.bump = ctx.bumps.config;
+    let config = &mut ctx.accounts.config;
+    config.bump = ctx.bumps.config;
+    config.emitter = ctx.accounts.payer.key();
+    config.emitted = 0;
     emit!(HonkInitialized {
         supply: GENESIS,
         sol_in,

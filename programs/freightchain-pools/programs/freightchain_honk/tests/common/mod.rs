@@ -83,6 +83,9 @@ pub fn lp_locker_pda() -> Pubkey {
 pub fn locker_pda() -> Pubkey {
     Pubkey::find_program_address(&[b"locker"], &pid()).0
 }
+pub fn ride_mint_pda(ride_id: &[u8; 16]) -> Pubkey {
+    Pubkey::find_program_address(&[b"ride-mint", ride_id.as_ref()], &pid()).0
+}
 pub fn part_pda(buyer: &Pubkey, slot: &[u8; 16], item: &[u8; 16]) -> Pubkey {
     Pubkey::find_program_address(
         &[b"part", buyer.as_ref(), slot.as_ref(), item.as_ref()],
@@ -241,6 +244,69 @@ impl Env {
             },
         );
         self.send(&[i], &user, &[])
+    }
+
+    pub fn sell(&mut self, honk_in: u64, min_sol_out: u64) -> Res {
+        let user = self.payer();
+        let i = ix(
+            instruction::SwapHonkForSol {
+                honk_in,
+                min_sol_out,
+            },
+            accounts::SwapHonkForSol {
+                user: user.pubkey(),
+                pool: pool_pda(),
+                honk_mint: honk_mint_pda(),
+                vault: vault_pda(),
+                user_honk: ata(&user.pubkey(), &honk_mint_pda()),
+                token_program: token::ID,
+            },
+        );
+        self.send(&[i], &user, &[])
+    }
+
+    pub fn withdraw(&mut self, lp_in: u64, min_honk: u64, min_sol: u64) -> Res {
+        let user = self.payer();
+        let i = ix(
+            instruction::WithdrawLp {
+                lp_in,
+                min_honk,
+                min_sol,
+            },
+            accounts::WithdrawLp {
+                user: user.pubkey(),
+                pool: pool_pda(),
+                honk_mint: honk_mint_pda(),
+                vault: vault_pda(),
+                user_honk: ata(&user.pubkey(), &honk_mint_pda()),
+                lp_mint: lp_mint_pda(),
+                user_lp: ata(&user.pubkey(), &lp_mint_pda()),
+                token_program: token::ID,
+                system_program: system_program::ID,
+                associated_token_program: associated_token::ID,
+            },
+        );
+        self.send(&[i], &user, &[])
+    }
+
+    pub fn mint_ride(&mut self, ride_id: [u8; 16], amount: u64, rider: &Pubkey) -> Res {
+        let emitter = self.payer();
+        let i = ix(
+            instruction::MintRide { ride_id, amount },
+            accounts::MintRide {
+                emitter: emitter.pubkey(),
+                config: config_pda(),
+                honk_mint: honk_mint_pda(),
+                authority: authority_pda(),
+                rider: *rider,
+                rider_honk: ata(rider, &honk_mint_pda()),
+                ride_mint: ride_mint_pda(&ride_id),
+                token_program: token::ID,
+                system_program: system_program::ID,
+                associated_token_program: associated_token::ID,
+            },
+        );
+        self.send(&[i], &emitter, &[])
     }
 
     pub fn burn(&mut self, amount: u64) -> Res {

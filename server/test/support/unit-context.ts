@@ -134,7 +134,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const registry = new PoolRegistryService(poolChain, pools, clock, entropy);
   const honkRepo = new MemoryHonkRepository(db);
   const honkMint = new HonkMintService(honkRepo, clock);
-  const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock, honkMint);
+  const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock, honkMint, { enabled: () => false, mint: async () => {} });
   const proofs = new AdminProofService(challenges, new NaclSignatureVerifier(), rulesPort, clock, entropy);
   const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
 
