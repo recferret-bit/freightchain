@@ -36,7 +36,7 @@
     <span class="chip">v0.2 · OCT 16 2026</span>
     <span class="chip warn">DEVNET · NO TOKEN</span>
     <a class="cta sm ghost" id="landing-top" data-to="site" data-path="/" href="https://freightchain.fun/" aria-label="Return to the landing" title="Return to the landing">← <span class="hide-sm">LANDING</span></a>
-    <a class="cta sm" id="play-top" data-to="game" data-path="/play.html?offline=1" href="https://ride.freightchain.fun/play.html?offline=1">PLAY</a>
+    <a class="cta sm" id="play-top" data-to="game" data-path="/play.html" href="https://ride.freightchain.fun/play.html">PLAY</a>
   </div>
 </header>
 
@@ -214,7 +214,7 @@
   <div class="tblwrap"><table class="tbl tiers2">
     <thead><tr><th>Tier</th><th>Nominal length</th><th>List price</th><th>What it is</th></tr></thead>
     <tbody>
-      <tr><td><b>FREE</b></td><td>3–15 minutes</td><td>$0</td><td>Three levels: EASY (3 min, two crossroads), MEDIUM (5 min, three crossroads and a fork), HARD (15 min, six crossroads, two forks, no assist, no tutorial); it ends by itself at the line. Ten at sign-up; daily refill stops at five. Its own leaderboard and badges. No pool.</td></tr>
+      <tr><td><b>FREE</b></td><td>3–30 minutes</td><td>$0</td><td>Three levels: EASY (3 min, two crossroads), MEDIUM (5 min, three crossroads and a fork), HARD (30 min, six crossroads, two forks, no assist, no tutorial); it ends by itself at the line. Unlimited. Its own leaderboard and badges. Not a prize entry. No pool.</td></tr>
       <tr><td><b>1 H</b></td><td>1 hour</td><td>$5</td><td>Soon. Opens at 20 tickets, or it refunds. The standard road.</td></tr>
       <tr><td><b>4 H</b></td><td>4 hours</td><td>$15</td><td>Soon. Tighter bends, busier traffic. Sold only once a 4-hour pool opens.</td></tr>
       <tr><td><b>8 H</b></td><td>8 hours</td><td>$50</td><td>Soon. The hardest road. Sold only once an 8-hour pool opens.</td></tr>
@@ -263,7 +263,7 @@
   <div class="tblwrap"><table class="tbl">
     <thead><tr><th>Reward</th><th>Who gets it</th><th>State</th></tr></thead>
     <tbody>
-      <tr><td><b>Free rides</b> – 10 at sign-up, daily refill stops at 5</td><td>Every wallet</td><td><span class="pill ok">LIVE</span></td></tr>
+      <tr><td><b>Training rides</b> – unlimited. One granted paid ticket a week for an eligible wallet</td><td>Every wallet</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>Free board</b> – every completed free ride ranks</td><td>Free drivers</td><td><span class="pill ok">LIVE</span></td></tr>
       <tr><td><b>SNS (.sol) driver identity</b> – drivers holding a .sol primary domain are recognized across all leaderboards, profile dialogs, and ride receipts via zero-dependency Mainnet-Beta PDA resolution</td><td>All .sol owners</td><td><span class="pill ok">LIVE · MAINNET RPC</span></td></tr>
       <tr><td><b>Native 1-click SIWS</b> – unified wallet-standard connect and sign sheet (solana:signIn) with domain origin binding and single-use burned nonces</td><td>Phantom, Solflare, Backpack</td><td><span class="pill ok">LIVE</span></td></tr>
@@ -446,7 +446,7 @@
 
   <h3 class="sub">PROMOTION &amp; GROWTH</h3>
   <div class="grid3">
-    <article class="card"><h3>FREE FIRST</h3><p>Ten at sign-up, daily refill stops at five; then connect Solana.</p></article>
+    <article class="card"><h3>FREE FIRST</h3><p>Unlimited training. One granted paid ticket a week. Then connect Solana.</p></article>
     <article class="card"><h3>WATCH BEFORE YOU BUY</h3><p>Every ride has a public live page and a replay. A visitor sees real drivers, real distances and the real board before connecting a wallet.</p></article>
     <article class="card"><h3>PROMO &amp; SPONSORS</h3><p>Promo codes hand out tickets of a tier. Sponsors can add SOL to a pool; it is split like ticket money and visibly raises the pot. If the pool fails, each sponsor gets it back.</p></article>
   </div>
@@ -648,7 +648,7 @@
     <article class="card"><h3>TRAFFIC · EVERY FRAME</h3><p>Lossless timing, pre-contact truck pose and trailer angle, speed, fork choice, and hull before/after contact. This evidence is inside the batch hash. Display-only car tracks are not evidence.</p></article>
   </div>
   <p>For required-proof rides, the client seals a batch after <b>2 game seconds or 500 frames</b>, whichever comes first. Legacy recordings used 15-second batches. The server stamps <code>trafficVersion=1</code> at start; dropping optional replay columns cannot select legacy rules. <code>TRAFFIC_PROOF_REQUIRED</code> defaults to true.</p>
-  <p class="dim"><b>Never recorded:</b> your screen, other tabs or apps, microphone or camera. The offline game records nothing.</p>
+  <p class="dim"><b>Never recorded:</b> your screen, other tabs or apps, microphone or camera. A training ride records the drive, the same way a paid ride does.</p>
 
   <figure class="diagram evidence-figure" id="traffic-evidence">
     <div class="chart-scroll" tabindex="0" role="region" aria-label="Traffic verification diagram; scroll horizontally on a narrow screen">

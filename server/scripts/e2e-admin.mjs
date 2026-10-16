@@ -176,7 +176,7 @@ if (holdable) {
 // ── SETTINGS: a knob (signed), one wallet's free rides (signed, +/-), a form mistake signs nothing
 const setsBefore = await A.ev('window.__signed');
 await A.ev('location.hash = "#settings"');
-check('settings: the tab lists the knobs with their values (free rides + the AI editor\'s five)', await until(async () => (await A.ev('document.querySelectorAll("#set-table input").length')) === 7 && (await A.ev('document.querySelector("#set-table input[data-key=free_rides_daily_max]")?.value')) === '5'));
+check('settings: the tab lists the knobs with their values (weekly ticket + retired free rides + the AI editor\'s five)', await until(async () => (await A.ev('document.querySelectorAll("#set-table input").length')) === 8 && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_tier]")?.value')) === '1' && (await A.ev('document.querySelector("#set-table input[data-key=free_rides_daily_max]")?.value')) === '5'));
 await A.shot('settings-desktop');
 await A.ev('(() => { const i = document.querySelector("#set-table input[data-key=free_rides_daily_max]"); i.value = "7"; })()');
 await A.ev('document.querySelector("#set-table button[data-key=free_rides_daily_max]").click()');

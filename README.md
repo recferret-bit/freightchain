@@ -138,7 +138,7 @@ The production replay worker was restarting at the read-only check. Its explicit
 | --- | --- | --- |
 | Landing and lobby | [freightchain.fun](https://freightchain.fun) | The pitch, live boards, sign-in |
 | Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow, validation, streams, risks |
-| Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is a guest run |
+| Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` starts the real EASY ride |
 | Ride receipt | `freightchain.fun/r/:id` | Live or finished ride, explorer link, X card. Open one from [REPLAYS](https://freightchain.fun/lobby.html#replays) |
 | Pitch deck | [pitchdeck.freightchain.fun](https://pitchdeck.freightchain.fun) | Eight playable slides. ← → in the floating tip (or the keys), F full screen; on a phone big corner buttons, one full screen button, full screen on the first tap, and an ask for motion sensors (allowed, the spawned SOL falls with the tilt). Live |
 | Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes; the 3D model editor for listed wallets (`EDITOR_WALLETS`) |
@@ -151,7 +151,7 @@ Landing chapters: [RIDE](https://freightchain.fun/#ride), [LOOP](https://freight
 
 ## Ten minutes
 
-One minute: open the [landing](https://freightchain.fun) and press PLAY FREE RIDE NOW. That is the guest run. No wallet, nothing recorded.
+One minute: open the [landing](https://freightchain.fun) and press PLAY FREE RIDE NOW. That starts the real EASY ride. No wallet: an anonymous session. Progress on it does not merge into a later sign-in.
 
 1. Read the hero. The page says devnet, and that the SOL there is not mainnet money. It also says the $5, $15 and $50 shifts are soon. That line stays until a pool of that tier is open.
 2. Open the [whitepaper](https://whitepaper.freightchain.fun). Escrow is on devnet and not audited. The garage is a lobby tab: paint, wheel, gearbox, dice, needles. It does not change the handling.
@@ -311,7 +311,7 @@ The fifth route is the Pan-American through the Atacama, long sweepers. Same bui
 
 A shift completes when distance reaches `k × 28 m/s × nominal length`. There is no minimum time. The governor is what makes the line take about that long. Paid tiers use `k = 0.5`. After a paid finish the road continues until the driver ends it. A free level ends itself.
 
-A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html` with no ride id is a guest run: two minutes, one crossroads, nothing recorded, no account.
+Training rides are unlimited. They count for statistics and achievements only. Every eligible wallet gets one granted paid ticket a week (default 1 hour). It can be ranked and watched, and it does not mint TEN4. `play.html` with no ride id starts the real EASY ride.
 
 The lobby picks the free level (`POST /api/rides`, `level` 1–3). Each level has its own board. Assist, on EASY and MEDIUM only, halves hull damage and battery drain. While the verdict is enforced, a rejected recording earns no badge. It still counts as a ride that started.
 
@@ -420,7 +420,7 @@ Layers point inward. Domain code does not read the clock or the environment. Tim
 
 - **Landing.** [`landing/`](landing/index.html). Vite. The hero video loads after the page, and never on a phone.
 - **Lobby.** [`client/lobby.html`](client/lobby.html). New ride, Live, Replays, Leaderboard, Achievements, Garage, Profile. Promo codes are on the profile. `#promo` opens that tab.
-- **Game.** [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. Anything else is an uncounted guest run. `file://` cannot load the modules.
+- **Game.** [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. Bare `play.html` starts the real EASY ride. `?sim=1` is the tool sim. `file://` cannot load the modules.
 - **Receipt.** [`client/r.html`](client/r.html). Server middleware injects the Open Graph and Twitter Card tags.
 - **Whitepaper.** [`landing/whitepaper.html`](landing/whitepaper.html). Its numbers are asserted against the code by [`landing/test/whitepaper.test.js`](landing/test/whitepaper.test.js).
 - **Admin.** Nginx basic auth, then `ADMIN_WALLETS`. On a split deploy, `/api/admin` answers only when `Host` is `admin.<apex>`. Includes `#replays` for 10 Hz replay verification sessions and red flags.

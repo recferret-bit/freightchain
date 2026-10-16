@@ -7,7 +7,7 @@ import {
   type RejudgeFilter,
   RideQueryPort, type FinishedRideRow, type HistoryFilter, type HistoryRideRow, type LeaderboardEntry, type LeaderboardPage, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type UpcomingRideRow,
 } from '../../../application/ports/rides/ride-query.port.js';
-import { completedLevels } from '../../../domain/rides/ride-trip.js';
+import { completedLevels, freeFinishCounts } from '../../../domain/rides/ride-trip.js';
 import { PrismaService } from '../prisma.service.js';
 
 const CLEAN_HULL = 99.5;
@@ -100,6 +100,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
         siberiaShifts: fair.filter((r) => r.route === SIBERIA).length,
         freeUnassisted: fair.filter((r) => r.tier === 'free' && !r.assist).length,
         completedFreeLevels: completedLevels(fair),
+        freeFinishes: freeFinishCounts(fair),
         honkMints, honkFinishes,
       },
     };

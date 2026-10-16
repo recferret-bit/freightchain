@@ -13,7 +13,7 @@ describe('MintAchievementsHandler – soulbound badge cNFTs', () => {
     await ctx.freeRide('w', true);
     await ctx.achievements.evaluate('w');
     ctx.clock.advance(ageSeconds);
-    const handler = new MintAchievementsHandler(ctx.mintChain, ctx.mints, ctx.achievements, ctx.rules, ctx.analytics, ctx.clock);
+    const handler = new MintAchievementsHandler(ctx.mintChain, ctx.mints, ctx.achievements, ctx.rules, ctx.analytics, ctx.clock, ctx.players);
     const run = (batch = 10, retry = false) => handler.execute(new MintAchievementsCommand(HOUR, batch, retry));
     const row = async (id = 'first-mile') => (await ctx.mints.listByWallet('w')).find((m) => m.achievementId === id);
     return { ctx, run, row };

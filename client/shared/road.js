@@ -72,6 +72,7 @@ export const TRIP_ROADS = {
   'free-1b': { first: ['xroad4'], weights: { dual: 1 }, holeChance: 1, firstLen: [500, 500] },
   'free-2b': { first: ['open', 'xroad', 'fork', 'xroad', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 1.5, firstLen: [450, 450] },
   'free-3b': { first: ['open', 'xroad', 'highway', 'xroad', 'fork', 'xroad', 'xroad', 'fork', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 2, firstLen: [450, 450] },
+  'free-3c': { first: ['open', 'xroad', 'highway', 'xroad', 'fork', 'xroad', 'xroad', 'fork', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 2, firstLen: [450, 450] },
   'free-1c': { first: ['xroad4', 'xroad4'], weights: { dual: 1 }, holeChance: 1, firstLen: [500, 500] },
   'free-2c': { first: ['open', 'xroad', 'fork', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 1.5, firstLen: [450, 450] },
 };

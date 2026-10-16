@@ -1,6 +1,7 @@
 import { Injectable, Optional } from '@nestjs/common';
 import type { Player } from '../../domain/players/player.entity.js';
-import { toMeDto, type MeDto } from '../../domain/players/player.dto.js';
+import { toMeDto, type MeDto, type WeeklyTicketDto } from '../../domain/players/player.dto.js';
+import type { WeeklyTicketRecord } from '../ports/prize/weekly-ticket.repository.port.js';
 import { readyFreeRideOf } from '../../domain/rides/ride.dto.js';
 import { RulesConfigPort } from '../ports/config/rules-config.port.js';
 import { RideRepositoryPort } from '../ports/rides/ride.repository.port.js';
@@ -19,14 +20,15 @@ export class MeProfileService {
     @Optional() private readonly nameService?: NameServicePort,
   ) {}
 
-  /** `now`: the instant the caller touched the player at (so the grant and `nextFreeRideAt` agree) */
-  async of(player: Player, now: Date): Promise<MeDto> {
+  /** `now`: the instant the caller touched the player at. `ticket` is this week's grant when GET /api/me issued it. */
+  async of(player: Player, now: Date, ticket: WeeklyTicketRecord | null = null): Promise<MeDto> {
     const rules = this.rules.get(), wallet = player.wallet;
     const [tickets, open, sns] = await Promise.all([
       this.tickets.balances(wallet, now),
       this.rides.listOpenByWallet(wallet),
       this.nameService ? this.nameService.reverse(wallet) : Promise.resolve(undefined),
     ]);
-    return toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules), tickets, readyFreeRideOf(open), sns);
+    const weeklyTicket: WeeklyTicketDto | null = ticket ? { tier: ticket.tier, expiresAt: ticket.expiresAt.getTime(), rideId: ticket.rideId } : null;
+    return toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules), tickets, readyFreeRideOf(open), sns, weeklyTicket);
   }
 }

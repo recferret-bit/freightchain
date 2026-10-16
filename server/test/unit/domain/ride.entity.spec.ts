@@ -40,7 +40,7 @@ describe('Ride – the free LEVELS (EASY / MEDIUM / HARD)', () => {
   it('each level stamps its trip and its own finish line (k × 28 m/s × minSeconds); no level = EASY; a paid ride has none', () => {
     expect(free(1, 60)).toMatchObject({ trip: 'free-1c', level: 1, minSeconds: 60, completeDist: 0.3 * 28 * 60 });
     expect(free(2, 180)).toMatchObject({ trip: 'free-2c', level: 2, minSeconds: 180, completeDist: 0.4 * 28 * 180 });
-    expect(free(3, 600)).toMatchObject({ trip: 'free-3b', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600 });
+    expect(free(3, 600)).toMatchObject({ trip: 'free-3c', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600 });
     expect(order().level).toBeNull();
     expect(Ride.restore({ ...freeRide().snapshot(), trip: 'free' }).level).toBeNull();   // a free ride from before the levels
   });
@@ -62,7 +62,7 @@ describe('Ride – the free LEVELS (EASY / MEDIUM / HARD)', () => {
     expect(() => r.chooseFree(3, 600, true, false)).toThrow(ConflictError);
     expect(r).toMatchObject({ trip: 'free-2c', minSeconds: 180, assist: true });
     expect(r.chooseFree(3, 600, false, false)).toBe(true);
-    expect(r).toMatchObject({ trip: 'free-3b', route: 'brenner', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600, tutorial: false, assist: false });
+    expect(r).toMatchObject({ trip: 'free-3c', route: 'brenner', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600, tutorial: false, assist: false });
     expect(() => order().chooseFree(1, 60, false, false)).toThrow(ConflictError);
     r.start(T0);
     expect(() => r.chooseFree(1, 60, false, false)).toThrow(ConflictError);   // a running ride keeps its road

@@ -20,7 +20,7 @@ describe('GetMeHandler', () => {
     const p = await ctx.storedPlayer('w');
     for (let i = 0; i < 6; i++) p.spendFreeRide(); // 10 → 4, under the daily cap
     await ctx.players.save(p);
-    expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ freeRides: 4, freeRidesMax: 5, nextFreeRideAt: Date.UTC(2036, 9, 9) });
+    expect(await handler.execute(new GetMeQuery('w'))).toMatchObject({ freeRides: 4, freeRidesMax: 5, nextFreeRideAt: null, weeklyTicket: null });
   });
 
   it('says whether the tutorial was done (a ride started with it on)', async () => {

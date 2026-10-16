@@ -23,7 +23,7 @@ describe('RankedEntryService', () => {
 
   it('stamps an allowed country for an 18+ wallet, and refuses age, unknown, sanctioned, UK/EU and a blocked US state', async () => {
     const { ctx, claim } = setup();
-    const ride = await ctx.freeRide('w');
+    const ride = await ctx.paidOrder('w', 50_000_000, { offer: false });
     await expect(claim(ride)).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
     const player = await ctx.storedPlayer('w');
     player.setAgreements({ age18: true, loss: false }, ctx.now());
@@ -37,25 +37,11 @@ describe('RankedEntryService', () => {
     expect(await claim(ride, { 'CF-IPCountry': 'US', 'CF-Region-Code': 'CA' })).toEqual({ country: 'US', region: 'CA' });
   });
 
-  it('counts the first 2 free and first 5 paid ranked starts of the prize week, then the next week is open again', async () => {
+  it('refuses a training ride before geo, then caps paid ranked starts at 5 for the prize week', async () => {
     const { ctx, claim } = setup();
     await ctx.accept('w');
-    const free = async (id: string) => {
-      const ride = Ride.createFree({ id, wallet: 'w', seed: 1, minSeconds: 10, now: ctx.now() });
-      await ctx.rides.insert(ride);
-      return ride;
-    };
-    const startFree = async (id: string) => {
-      const ride = await free(id);
-      await claim(ride);
-      ride.start(ctx.now(), null, 0, { country: 'CA', region: null });
-      await ctx.rides.save(ride);
-      const done = await ctx.reload(id); done.finish('failed', null, ctx.now()); await ctx.rides.save(done);
-    };
-    await startFree('f1');
-    await startFree('f2');
-    const third = await free('f3');
-    await expect(claim(third)).rejects.toMatchObject({ errorCode: 'ranked_free_cap' });
+    const training = await ctx.freeRide('w');
+    await expect(claim(training, {})).rejects.toMatchObject({ errorCode: 'ranked_training' });
     const paid = async (id: string, go: boolean) => {
       const ride = Ride.createPaidOrder({ id, wallet: 'w', tier: '1h', seed: 2, minSeconds: 3600, timeScale: 1, priceUsd: 5, lamports: 1, solUsd: 100, now: ctx.now(), quoteTtlMs: 60_000 });
       ride.markPaid(1, ctx.now());
@@ -94,7 +80,7 @@ describe('RankedEntryService', () => {
 
   it('an env list replaces the default block', async () => {
     const { ctx, claim } = setup(new Lists({ sanctionedCountries: ['CA'], prizeBlockedCountries: [], blockedUsStates: [] }));
-    const ride = await ctx.freeRide('w');
+    const ride = await ctx.paidOrder('w', 50_000_000, { offer: false });
     const player = await ctx.storedPlayer('w');
     player.setAgreements({ age18: true, loss: false }, ctx.now());
     await ctx.players.save(player);

@@ -11,6 +11,7 @@ import { RoundService } from './services/round.service.js';
 import { VerdictService } from './services/verdict.service.js';
 import { HonkMintService } from './services/honk-mint.service.js';
 import { RankedEntryService } from './services/ranked-entry.service.js';
+import { WeeklyTicketService } from './services/weekly-ticket.service.js';
 import { PoolAttentionService } from './services/pool-attention.service.js';
 import { AttestationService } from './services/attestation.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
@@ -21,6 +22,7 @@ import { ReportClientErrorHandler } from './use-cases/telemetry/report-client-er
 import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
 import { LogoutHandler } from './use-cases/auth/logout/logout.handler.js';
 import { RequestChallengeHandler } from './use-cases/auth/request-challenge/request-challenge.handler.js';
+import { StartGuestHandler } from './use-cases/auth/start-guest/start-guest.handler.js';
 import { VerifySignInHandler } from './use-cases/auth/verify-signin/verify-signin.handler.js';
 import { GetChainFeesHandler } from './use-cases/chain/get-chain-fees/get-chain-fees.handler.js';
 import { GetLeaderboardHandler } from './use-cases/economy/get-leaderboard/get-leaderboard.handler.js';
@@ -142,7 +144,7 @@ import { GetPrizeBoardHandler } from './use-cases/prize/get-prize-board/get-priz
 const services: Provider[] = [
   EntityCatalogService, EntityWriteService,
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
-  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService, RankedEntryService,
+  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService, RankedEntryService, WeeklyTicketService,
 ];
 
 import { ReconcileStatsHandler } from './use-cases/stats/reconcile-stats/reconcile-stats.handler.js';
@@ -177,7 +179,7 @@ const handlers: Provider[] = [
   CreateEditorJobHandler, CancelEditorJobHandler, ListEditorJobsHandler, GetEditorJobHandler, GetEditorJobEventsHandler, McpConfigsHandler, McpSaveDraftHandler,
   GetEntityBundleHandler, ListEntitiesHandler, GetEntityHandler, ListRevisionsHandler, GetRevisionHandler, SaveDraftHandler, RestoreRevisionHandler, RequestPublishChallengeHandler, PublishRevisionHandler, RequestEditorChallengeHandler, VerifyEditorSignInHandler, GetEditorMeHandler,
   GetStatsHandler, GetDailyStatsHandler, ReconcileStatsHandler,
-  RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
+  RequestChallengeHandler, VerifySignInHandler, StartGuestHandler, GetMeHandler, LogoutHandler,
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, GetPublicRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler, SweepSignInsHandler, RejudgeRidesHandler, GetRideReplaysHandler, ProcessReplayQueueHandler,

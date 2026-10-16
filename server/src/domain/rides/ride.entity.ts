@@ -79,6 +79,8 @@ export interface RideProps {
   prizeRegion?: string | null;
   /** The ride-promo code that granted this shift. Null on a free ride, a ticket ride, and a paid order. Not a purchase, and it does not mint TEN4. */
   promoCode?: string | null;
+  /** The week's granted paid ticket (AMOE). A paid-tier ride that was not bought. It does not mint TEN4. */
+  weeklyGrant?: boolean;
 }
 
 /** What issuing a prompt needs from the caller: an id and a random draw (the entity stays pure). */
@@ -110,7 +112,7 @@ export class Ride {
     return {
       trafficVersion: 0, timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, startHour: null, loadout: null, trip: null, tutorial: false, assist: false, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
       startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, challenges: [], nextChallengeAt: null, version: 1, paymentReference: null,
-      seedCommitment: null, blockhash: null, slot: null, ranked: false, cleanMetres: null, prizeCountry: null, prizeRegion: null, promoCode: null,
+      seedCommitment: null, blockhash: null, slot: null, ranked: false, cleanMetres: null, prizeCountry: null, prizeRegion: null, promoCode: null, weeklyGrant: false,
     };
   }
 
@@ -130,6 +132,14 @@ export class Ride {
       ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
       status: RideStatus.Created, createdAt: i.now, timeScale: i.timeScale, poolId: i.poolId, roundId: i.roundId, paidAt: i.now,
       seedCommitment: i.seedCommitment ?? null, blockhash: i.blockhash ?? null, slot: i.slot ?? null,
+    });
+  }
+
+  /** The week's granted ticket. Ready at once, price 0, paid tier, no pool, no TEN4. The caller has already claimed the row. */
+  static createWeeklyGrant(i: Omit<PromoRideInput, 'promoCode'>): Ride {
+    return new Ride({
+      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
+      status: RideStatus.Created, createdAt: i.now, timeScale: i.timeScale, paidAt: i.now, weeklyGrant: true,
     });
   }
 
@@ -154,6 +164,7 @@ export class Ride {
     return new Ride({
       ...props, trafficVersion: props.trafficVersion ?? 0, paymentReference: props.paymentReference ?? null,
       ranked: props.ranked === true, cleanMetres: props.cleanMetres ?? null, prizeCountry: props.prizeCountry ?? null, prizeRegion: props.prizeRegion ?? null,
+      weeklyGrant: props.weeklyGrant === true,
     });
   }
 
@@ -201,6 +212,8 @@ export class Ride {
   get isFree(): boolean { return this.p.tier === 'free'; }
   /** Granted by a ride promo. Not a purchase. A ranked start uses the promo slot, and the ride does not mint TEN4. */
   get isPromo(): boolean { return this.p.promoCode != null && this.p.promoCode !== ''; }
+  /** Granted paid ticket for this prize week. Ranked use takes a paid slot. It does not mint TEN4. */
+  get isWeeklyGrant(): boolean { return this.p.weeklyGrant === true; }
   get promoCode(): string | null { return this.p.promoCode ?? null; }
   get seedCommitment(): string | null { return this.p.seedCommitment ?? null; }
   get blockhash(): string | null { return this.p.blockhash ?? null; }

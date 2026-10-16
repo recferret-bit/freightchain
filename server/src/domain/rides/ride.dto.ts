@@ -56,6 +56,8 @@ export interface RideDto {
   cleanMetres: number | null;
   /** Set when a ride promo granted the shift. The price is 0 and TEN4 is not minted. */
   promo: boolean;
+  /** The week's granted paid ticket. Price 0, watchable, ranked as paid. TEN4 is not minted. */
+  weeklyGrant: boolean;
 }
 
 /** `now`: when given, the open prompt is included (the heartbeat); without it the DTO never carries one. `honkPaid`: the 8h mint has been credited. */
@@ -84,8 +86,8 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   tutorial: r.tutorial,
   assist: r.assist,
   verdict,
-  honk: honkQuote(r.isPromo ? 'free' : r.tier, r.distance, r.completeDist, verdict?.status ?? null, { paid: honkPaid }),
-  review: reviewOf(r.isPromo ? 'free' : r.tier, verdict ? { status: verdict.status, overridden: verdict.override !== null } : null, r.status),
+  honk: honkQuote(r.isPromo || r.isWeeklyGrant ? 'free' : r.tier, r.distance, r.completeDist, verdict?.status ?? null, { paid: honkPaid }),
+  review: reviewOf(r.isPromo || r.isWeeklyGrant ? 'free' : r.tier, verdict ? { status: verdict.status, overridden: verdict.override !== null } : null, r.status),
   challenge: now ? (() => { const c = r.openChallenge(now); return c ? toChallengeDto(c) : null; })() : null,
   seedCommitment: r.seedCommitment,
   blockhash: r.blockhash,
@@ -93,6 +95,7 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   ranked: r.ranked,
   cleanMetres: r.cleanMetres,
   promo: r.isPromo,
+  weeklyGrant: r.isWeeklyGrant,
 });
 
 /** The wallet's READY free ride (ordered, not started – its credit is already spent): ordering a free ride again hands it back, re-chosen at the level and

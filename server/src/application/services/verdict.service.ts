@@ -223,8 +223,8 @@ export class VerdictService {
     verdict.addReasons(existing?.reasons.filter((r) => isPoolMark(r.code)) ?? []);
     await this.verdicts.save(verdict, tx);
     // TEN4 is reserved in this same transaction. 1h and 4h credit now. An 8h row waits; a later non-verified verdict returns that reservation. A released mint is not clawed back, and a second pass does not mint again.
-    // A promo ride is not a paid ticket ride, so it does not mint TEN4. A non-verified verdict returns an unreleased reservation.
-    const minted = verdict.status === 'verified' && !ride.isPromo
+    // A promo ride and the weekly granted ticket are not purchases, so they do not mint TEN4. A non-verified verdict returns an unreleased reservation.
+    const minted = verdict.status === 'verified' && !ride.isPromo && !ride.isWeeklyGrant
       ? await this.honk.credit({ rideId, wallet: ride.wallet, tier: ride.tier, distance: ride.distance, completeDist: ride.completeDist }, tx)
       : await this.honk.cancelPending(rideId, tx).then(() => null);
     this.logger.log({ event: 'verdict', msg: `ride ${rideId}: ${verdict.status}`, rideId, wallet: ride.wallet, status: verdict.status, reasons: verdict.reasons.map((r) => r.code) });

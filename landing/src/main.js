@@ -259,7 +259,7 @@ if (shots.length > 1 && !reduced) {
       box.replaceChildren(v);
       $('demo-note').textContent = 'Devnet demo.';
     } else {
-      const practice = el('a', { href: `${GAME_BASE}/play.html?offline=1` }, 'Try the game offline');
+      const practice = el('a', { href: `${GAME_BASE}/play.html` }, 'Play the EASY ride');
       practice.addEventListener('click', async (e) => {
         if (isMobileDevice()) {
           e.preventDefault();
@@ -274,7 +274,7 @@ if (shots.length > 1 && !reduced) {
         track('offline_practice_clicked');
         flushSoon();
       });
-      $('demo-note').replaceChildren('The demo video is not here yet. ', practice, ' – a few free runs, then connect a Solana wallet.');
+      $('demo-note').replaceChildren('The demo video is not here yet. ', practice, ' – the real EASY ride, then connect a Solana wallet.');
     }
     dlg.showModal();
   };
@@ -284,7 +284,7 @@ if (shots.length > 1 && !reduced) {
 
 /* ───── links to the game (static markup says /play.html; on split hosts that lives on ride.<apex>) ───── */
 for (const a of document.querySelectorAll('a[href="/play.html"]')) {
-  a.href = `${GAME_BASE}/play.html?offline=1`;
+  a.href = `${GAME_BASE}/play.html`;
   a.addEventListener('click', async (e) => {
     if (isMobileDevice()) {
       e.preventDefault();
@@ -423,7 +423,8 @@ function paintSession(me) {
   S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.classList.remove('ghost'); btn.onclick = onConnect; playTop.textContent = 'LOBBY';
   const playFree = $('play-free'); if (playFree) playFree.hidden = true;
   chip.textContent = short(me.wallet); chip.title = `signed in: ${me.wallet}`; chip.hidden = false;
-  chipRides.textContent = `${me.freeRides} free · ${plural(heldTickets(me.tickets), 'paid ride')}`; chipRides.hidden = false;
+  const weekly = me.weeklyTicket && !me.weeklyTicket.rideId ? ` · weekly ${me.weeklyTicket.tier}` : '';
+  chipRides.textContent = `training${weekly} · ${plural(heldTickets(me.tickets), 'paid ride')}`; chipRides.hidden = false;
   msg.textContent = ''; msg.className = 'msg';
   paintBoards();
 }
@@ -449,7 +450,7 @@ playTop.onclick = async () => {
     });
   } else {
     flushSoon();
-    location.href = `${GAME_BASE}/play.html?offline=1`;
+    location.href = `${GAME_BASE}/play.html`;
   }
 };
 track('landing_viewed', { surface: 'landing' });   // once per load, not on the 20 s refresh, and not after /api/pool

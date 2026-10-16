@@ -1,6 +1,6 @@
 # Weekly prize contest — spec
 
-**Draft. Needs legal review.** Not legal advice. The owner chose variant B of the 2026-10-16 prize-pool research. Variant B is a skill contest. It is not an equal-chance free method of entry, and copy must not call the free rides one.
+**Draft. Needs legal review.** Not legal advice. The owner chose variant B of the 2026-10-16 prize-pool research. Variant B is a skill contest. Training rides are not an entry. The free path onto a board is one granted paid ticket per wallet per week (AMOE), plus a separate promo-code slot. Flag for counsel: 18+ is a checkbox, country comes from edge headers, and a wallet is free, so this is closer to an equal-chance entry than a promo code and it is not a finished one-person method of entry.
 
 This contest is not the on-chain ticket vault (`programs/freightchain-pools`). That program still sells tickets and pays its own winners root. This contest is funded by the operator: a published base plus a capped share of the previous week's ticket revenue, paid in USDC after KYC. The program was not changed. TEN4 is never a prize, an entry, or a score boost.
 
@@ -22,9 +22,21 @@ A leftover cent from the floor goes to the 8h board.
 
 ## Ranked starts
 
-A wallet may buy as many tickets as it wants. A start counts only when it is declared ranked before it starts, and only when the tier's nominal length would finish by Sunday 12:00 UTC. An 8h ranked start has to begin by Sunday 04:00 UTC. A 4h start by Sunday 08:00. A 1h start by Sunday 11:00. A free start has to fit that level's nominal seconds. Ending exactly at Sunday 12:00 is allowed. A start that would run past the close is `409 ranked_window` and the ride stays ready, so it can still start unranked.
+A wallet may buy as many tickets as it wants. A start counts only when it is declared ranked before it starts, and only when the tier's nominal length would finish by Sunday 12:00 UTC. An 8h ranked start has to begin by Sunday 04:00 UTC. A 4h start by Sunday 08:00. A 1h start by Sunday 11:00. Ending exactly at Sunday 12:00 is allowed. A start that would run past the close is `409 ranked_window` and the ride stays ready, so it can still start unranked. A training ride (`tier` free, not a promo) is `409 ranked_training`. It is not an entry.
 
-Per wallet per week the counted starts are the first 2 free declarations, the first 1 promo declaration, and the first 5 paid declarations, in start order. A ride promo is not a purchase. It uses the promo slot, not a free slot and not a paid slot. A missing or late declaration does not use a slot. Anything past those caps is unranked. An unranked paid ride still earns TEN4, donations, and cosmetics. A promo ride does not mint TEN4, ranked or not. The board uses the best single counted attempt on that tier, not the best ride the wallet bought. A promo 1h, 4h, or 8h ride is on that tier's board.
+Per wallet per week the counted starts are the first 5 paid declarations and the first 1 promo declaration, in start order. The weekly granted ticket is a paid tier, so it uses one of those five paid slots. A sixth slot was not added: five purchased starts plus the grant plus the promo would be seven ranked starts. A ride promo is not a purchase. It uses the promo slot. A missing or late declaration does not use a slot. Anything past those caps is unranked. An unranked purchased ride still earns TEN4, donations, and cosmetics. A promo ride does not mint TEN4. The granted ticket does not mint TEN4 either (see below). The board uses the best single counted attempt on that tier. A granted or promo 1h, 4h, or 8h ride is on that tier's board.
+
+### Weekly granted ticket (AMOE)
+
+One row in `player.WeeklyTicket` per wallet per prize week (`weekId` is that Monday). It is granted, not purchased. The tier is `GameSetting` `weekly_ticket_tier`: 1, 4, or 8 hours, default 1. The tier is fixed when the row is inserted (`ON CONFLICT DO NOTHING`). It expires at Sunday 12:00 UTC (`week.end`) and does not stack. The next week is a new row. Nothing is issued between Sunday 12:00 and Monday 00:00.
+
+Issued lazily on `GET /api/me` and when ordering that tier, only when all of these hold: the wallet is not a guest, `age18At` is set, and `prizeAccess.ranked` is true from the edge geo headers. Unknown country fails closed. The loss stamp is not required. A guest never receives one.
+
+Ordering the configured tier spends it (`Ride.weeklyGrant`, price 0, status created). It can be watched, because it is not a free ride. Declaring it ranked uses a paid slot and re-checks 18+ and geo. It is preferred over a purchased pool ticket so it is not left to expire.
+
+**TEN4: no.** Wallets are free, 18+ is a checkbox, and a client can spoof geo if the edge does not strip those headers. An automatic weekly mint would be an emission faucet. Purchased rides and admin ticket-promo rides still mint TEN4. Ride-promo codes do not. The USDC board is the free prize path.
+
+Anti-sybil, as built: one grant per wallet per week, not cumulative, guests excluded, 18+ and prize geo required to receive it and to start it ranked. Still open: a person can open many wallets and enter the USDC board once per wallet per week. Board attention marks, the 10-participant floor, and KYC before a payout stay. Counsel should say whether that is an acceptable free method of entry.
 
 ## Score
 
@@ -59,7 +71,7 @@ The finisher pool is split equally across clean finishes, including a rider who 
 
 `prizeAccess`. Lists are the defaults in `prize-rules.ts`. `PRIZE_SANCTIONED_COUNTRIES`, `PRIZE_BLOCKED_COUNTRIES`, and `PRIZE_BLOCKED_US_STATES` replace a list when set (empty keeps the default). There is no admin screen.
 
-The country is read at ranked start from edge headers: `CF-IPCountry` and `CF-Region-Code`, then `X-FC-Country` and `X-FC-Region` (`HeaderGeoAdapter`). No paid geo API. `XX` and anything that is not two letters is unknown and fails closed. The edge must set these headers and strip a client-supplied copy, or a caller can invent `X-FC-Country`. The 18+ attestation is the wallet's existing `age18At`. A free ranked start does not also require the loss stamp. Paid rides still do, because every paid start does. The country and region are stored on the ride. KYC is not stored, so a board row's `payout` is false and a settlement would roll those cents.
+The country is read at ranked start, and when the weekly ticket is granted, from edge headers: `CF-IPCountry` and `CF-Region-Code`, then `X-FC-Country` and `X-FC-Region` (`HeaderGeoAdapter`). No paid geo API. `XX` and anything that is not two letters is unknown and fails closed. The edge must set these headers and strip a client-supplied copy, or a caller can invent `X-FC-Country`. The 18+ attestation is the wallet's existing `age18At`. It is required to receive the weekly ticket and to start any ride ranked. The loss stamp is required for a purchased paid start. It is not required for the weekly grant or a promo ride. The country and region are stored on the ride. KYC is not stored, so a board row's `payout` is false and a settlement would roll those cents.
 
 - 18+ attestation (`age18`). Unknown age fails closed.
 - Sanctioned-country draft: CU, IR, KP, SY. This is not an OFAC determination. Regions that are not a country code are not listed.
@@ -74,9 +86,10 @@ Eight weeks from `SEASON_EPOCH` (`2026-10-12`). Week 8 is the live final (`seaso
 
 ## Wired
 
-- `POST /api/rides/:id/start` body `{ ranked?: boolean }`. The game's start screen has a RANKED checkbox. A refusal is `409` (`ranked_ineligible`, `ranked_free_cap`, `ranked_paid_cap`) and the ride stays ready, so the driver can start it unranked.
-- Caps run inside the player-row lock: ranked starts whose `startedAt` is in the current prize week, 2 free, 1 promo, and 5 paid. A start that cannot finish by Sunday 12:00 UTC is refused first (`ranked_window`).
-- `GET /api/prize/board?tier=1h|4h|8h&at=` returns `bestByWallet` of ended ranked rides of that tier. Free ranked starts count against the cap and are not on these three boards.
+- `POST /api/rides/:id/start` body `{ ranked?: boolean }`. The game's start screen has a RANKED checkbox. A refusal is `409` (`ranked_ineligible`, `ranked_training`, `guest_easy_only`, `ranked_window`, `ranked_promo_cap`, `ranked_paid_cap`) and the ride stays ready, so the driver can start it unranked.
+- Caps run inside the player-row lock: ranked starts whose `startedAt` is in the current prize week, 5 paid (the weekly grant counts as paid) and 1 promo. A training ride is refused before geo. A start that cannot finish by Sunday 12:00 UTC is `ranked_window`.
+- `GET /api/prize/board?tier=1h|4h|8h&at=` returns `bestByWallet` of ended ranked rides of that tier. Training rides are not on these boards. A granted ticket of that tier is.
+- `POST /api/auth/guest` opens an anonymous EASY session. That wallet cannot be ranked and does not receive the weekly ticket. Its achievements do not merge.
 - Spectator road effects on a ranked ride are refused, as above.
 
 ## Not built

@@ -4,6 +4,7 @@ import { BadRequestError } from '../../../src/domain/shared/errors.js';
 const defaults = {
   freeOnSignup: SETTING_DEFAULTS.free_on_signup,
   freeRidesDailyMax: SETTING_DEFAULTS.free_rides_daily_max,
+  weeklyTicketHours: 1,
   editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 32_000, editorMaxInputKTokens: 500, editorJobsParallel: 5,
 };
 
@@ -26,6 +27,8 @@ describe('game settings', () => {
 
   it('zero is allowed; anything else the domain refuses is bad_setting', () => {
     expect(() => assertSettingValue('free_on_signup', 0)).not.toThrow();
+    expect(() => assertSettingValue('weekly_ticket_tier', 4)).not.toThrow();
+    expect(() => assertSettingValue('weekly_ticket_tier', 2)).toThrow(BadRequestError);
     for (const [key, value] of [['nope', 1], ['free_on_signup', 100_001], ['free_on_signup', -1], ['free_on_signup', 1.5]] as const) {
       expect(() => assertSettingValue(key, value)).toThrow(BadRequestError);
       try { assertSettingValue(key, value); } catch (e) { expect(e).toMatchObject({ errorCode: 'bad_setting' }); }

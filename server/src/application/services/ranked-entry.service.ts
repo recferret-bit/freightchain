@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { FREE_RANKED_STARTS, PAID_RANKED_STARTS, PROMO_RANKED_STARTS, nominalShiftSeconds, prizeAccess, prizeWeek, rankedStartFits } from '../../domain/prize/prize-rules.js';
+import { PAID_RANKED_STARTS, PROMO_RANKED_STARTS, nominalShiftSeconds, prizeAccess, prizeWeek, rankedStartFits } from '../../domain/prize/prize-rules.js';
 import type { Player } from '../../domain/players/player.entity.js';
 import type { Ride } from '../../domain/rides/ride.entity.js';
 import { ConflictError } from '../../domain/shared/errors.js';
@@ -22,6 +22,8 @@ export class RankedEntryService {
   ) {}
 
   async claim(player: Player, ride: Ride, headers: GeoHeaders, now: Date, tx?: TransactionHandle): Promise<GeoFix & { country: string }> {
+    if (player.guest) throw new ConflictError('a guest session can only play the EASY run', 'guest_easy_only');
+    if (ride.isFree && !ride.isPromo) throw new ConflictError('a training ride is not ranked', 'ranked_training');
     const fix = this.geo.locate(headers);
     const access = prizeAccess({
       age18: player.age18At !== null,
@@ -39,8 +41,7 @@ export class RankedEntryService {
     const week = prizeWeek(now);
     const used = await this.rides.countRankedStarts(player.wallet, week.start, week.end, tx);
     if (ride.isPromo && used.promo >= PROMO_RANKED_STARTS) throw new ConflictError('this week already has its ranked promo start', 'ranked_promo_cap');
-    if (!ride.isPromo && ride.isFree && used.free >= FREE_RANKED_STARTS) throw new ConflictError('this week already has 2 ranked free starts', 'ranked_free_cap');
-    if (!ride.isPromo && !ride.isFree && used.paid >= PAID_RANKED_STARTS) throw new ConflictError('this week already has 5 ranked paid starts', 'ranked_paid_cap');
+    if (!ride.isPromo && used.paid >= PAID_RANKED_STARTS) throw new ConflictError('this week already has 5 ranked paid starts', 'ranked_paid_cap');
     return { country: fix.country, region: fix.region };
   }
 }

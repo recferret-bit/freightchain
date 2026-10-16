@@ -1,6 +1,7 @@
 import { DAY_MS } from '../shared/time.js';
 
-/* Weekly skill contest (docs/prize/SPEC.md). Variant B: not an equal-chance free method of entry.
+/* Weekly skill contest (docs/prize/SPEC.md). The free path onto a board is one granted paid ticket per wallet per week
+   (AMOE: not purchased, uses a paid ranked slot, does not mint TEN4). A training ride is not an entry.
    The on-chain ticket vault is a different pot. TEN4 is never a prize. Draft geo lists need legal review. */
 
 export const PRIZE_CURRENCY = 'USDC' as const;
@@ -25,8 +26,7 @@ export const SEASON_WEEKS = 8;
 export const SEASON_EPOCH = '2026-10-12';
 export const LIVE_FINAL_WEEK = 8;
 
-/** First 2 declared free starts, 1 declared promo start, and first 5 declared paid starts. */
-export const FREE_RANKED_STARTS = 2;
+/** A training ride is not ranked. Counted starts are 1 declared promo and the first 5 declared paid starts. */
 export const PROMO_RANKED_STARTS = 1;
 export const PAID_RANKED_STARTS = 5;
 
@@ -216,7 +216,7 @@ export interface RankedDeclaration {
   startedAt: number;
 }
 
-export type AttemptReason = 'counted' | 'not-declared' | 'declared-late' | 'free-cap' | 'paid-cap' | 'promo-cap';
+export type AttemptReason = 'counted' | 'not-declared' | 'declared-late' | 'training' | 'paid-cap' | 'promo-cap';
 
 export interface ClassifiedStart extends RankedDeclaration {
   counted: boolean;
@@ -226,20 +226,17 @@ export interface ClassifiedStart extends RankedDeclaration {
 /** First declared starts in start order, per wallet. A late or missing declaration does not use a slot. */
 export function classifyStarts(rows: readonly RankedDeclaration[]): ClassifiedStart[] {
   const order = [...rows].sort((a, b) => a.startedAt - b.startedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  const free = new Map<string, number>();
   const paid = new Map<string, number>();
   const promo = new Map<string, number>();
   return order.map((row) => {
     if (row.declaredAt === null) return { ...row, counted: false, reason: 'not-declared' as const };
     if (row.declaredAt > row.startedAt) return { ...row, counted: false, reason: 'declared-late' as const };
-    const bucket = row.promo ? 'promo' : row.paid ? 'paid' : 'free';
-    const used = bucket === 'promo' ? promo : bucket === 'paid' ? paid : free;
-    const cap = bucket === 'promo' ? PROMO_RANKED_STARTS : bucket === 'paid' ? PAID_RANKED_STARTS : FREE_RANKED_STARTS;
+    if (!row.promo && !row.paid) return { ...row, counted: false, reason: 'training' as const };
+    const bucket = row.promo ? 'promo' : 'paid';
+    const used = bucket === 'promo' ? promo : paid;
+    const cap = bucket === 'promo' ? PROMO_RANKED_STARTS : PAID_RANKED_STARTS;
     const n = used.get(row.wallet) ?? 0;
-    if (n >= cap) {
-      const reason = bucket === 'promo' ? 'promo-cap' as const : bucket === 'paid' ? 'paid-cap' as const : 'free-cap' as const;
-      return { ...row, counted: false, reason };
-    }
+    if (n >= cap) return { ...row, counted: false, reason: bucket === 'promo' ? 'promo-cap' as const : 'paid-cap' as const };
     used.set(row.wallet, n + 1);
     return { ...row, counted: true, reason: 'counted' as const };
   });

@@ -57,7 +57,7 @@ const me = () => ({ wallet: WALLET.toBase58(), freeRides, freeRidesMax: 5, nextF
 const FREE_LEVELS = [   // = server/src/domain/rides/ride-trip.ts FREE_LEVELS at FREE_RIDE_SECONDS 180 (GET /api/tiers → the free tier's `levels`). route = that level's country.
   { level: 1, trip: 'free-1c', name: 'EASY', seconds: 180, completeDist: 1512, tutorial: true, assist: true, route: 'stuart' },
   { level: 2, trip: 'free-2c', name: 'MEDIUM', seconds: 300, completeDist: 3360, tutorial: true, assist: true, route: 'route66' },
-  { level: 3, trip: 'free-3b', name: 'HARD', seconds: 900, completeDist: 10080, tutorial: false, assist: false, route: 'brenner' },
+  { level: 3, trip: 'free-3c', name: 'HARD', seconds: 1800, completeDist: 20160, tutorial: false, assist: false, route: 'brenner' },
 ];
 const TIERS = [{ id: 'free', usd: 0, seconds: 180, completeDist: 1512, onSale: true, levels: FREE_LEVELS }, { id: '1h', usd: 5, seconds: 3600, completeDist: 50400, onSale: true }, { id: '4h', usd: 15, seconds: 14400, completeDist: 201600, onSale: false }, { id: '8h', usd: 50, seconds: 28800, completeDist: 403200, onSale: false }];
 const problem = (status, code, detail) => ({ status, body: { type: `/problems/${code}`, title: 'Error', status, code, detail } });
@@ -111,7 +111,7 @@ const R = [
       Object.assign(ready, { minSeconds: lv.seconds, completeDist: lv.completeDist, trip: lv.trip, level: lv.level, route: lv.route, tutorial: !!b.tutorial, assist: !!b.assist });
       return { body: ready };
     }
-    if (tier === 'free') { if (freeRides <= 0) return problem(409, 'conflict', 'no free rides left'); freeRides--; } else {
+    if (tier === 'free') { /* training does not spend a balance */ } else {
       const held = pools.filter(p => p.tier === tier && tickets.get(p.id)?.balance > 0), live = held.find(p => p.status === 'active');
       if (!live) return held.length ? problem(409, 'pool_not_live', `pool not live yet – ${toGo(held[0])} more tickets needed`) : problem(409, 'no_tickets', `no ${tier} tickets left`);
       tickets.get(live.id).balance--; grants.push({ poolId: live.id, delta: -1, source: 'spend', ref: 'stub-ride', at: NOW() });

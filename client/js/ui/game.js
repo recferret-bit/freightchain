@@ -59,7 +59,7 @@ const BAIL_BTN = {
   done: { id: 'bail-done', name: "I'M DONE", tip: 'landing' },
 };
 const bailBtn = kind => { const b = BAIL_BTN[kind]; return `<button type="button" class="alt bail-link" id="${b.id}" title="${b.tip}"><b>${b.name}</b><small>${b.tip}</small></button>`; };
-/* Guest run (play.html?offline=1): nobody is counted, recorded or judged – no request is made at all. The menu only picks the two helpers. */
+/* Tool sim (play.html?sim=1): nothing is recorded. The product page is a real EASY ride (easy-entry.js), not this menu. */
 const guestOpt = { tutorial: store.get('freightchain.guest-tutorial') !== '0', assist: store.get('freightchain.assist') !== '0' };
 function showOfflineMenu(title, sub, extra) {
   const again = !!extra;
@@ -94,7 +94,7 @@ function showOnlineMenu(title, sub, extra) {
     ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Finish line</span><b>${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>
     <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>
     ${online.ride?.poolId != null ? '<div class="row"><span>Road</span><b class="seal">checking the seal…</b></div>' : ''}`}
-    ${over || bad ? '' : `<label class="row" style="cursor:pointer"><span>RANKED – this start counts for the weekly board (2 free and 5 paid). Spectator weather, day and night, and road obstacles are refused. Chat HONK stays.</span><input type="checkbox" id="ranked-toggle" ${store.get('freightchain.ranked') === '1' ? 'checked' : ''}></label>`}
+    ${over || bad ? '' : `<label class="row" style="cursor:pointer"><span>RANKED – this start counts for the weekly board (5 paid, including the weekly ticket, plus 1 promo ride). Spectator weather, day and night, and road obstacles are refused. Chat HONK stays.</span><input type="checkbox" id="ranked-toggle" ${store.get('freightchain.ranked') === '1' ? 'checked' : ''}></label>`}
     <div class="btns">${over || bad ? `${over && online.ride ? '<button type="button" class="alt share-x-btn" id="share-x-end" title="Share your ride on 𝕏"><b>POST ON 𝕏</b><small>share progress & receipt</small></button>' : ''}<button class="alt bail-link" id="lobby" title="lobby" style="margin-left:auto"><b>${lastOutcome?.ok ? 'BACK TO THE LOBBY' : 'I MISS THE YARD'}</b><small>lobby</small></button>` : '<button id="go">START RIDE</button>'}</div>`;
   overlay.classList.remove('hide');
   const rankedBox = document.getElementById('ranked-toggle');
@@ -144,7 +144,7 @@ export async function startRide() {   // only an online ride awaits the server
       online.error = e.message;
       track('ride_start_failed', { ride_id: online.ride.id, http_status: typeof e.status === 'number' ? e.status : null, code: typeof e.code === 'string' ? e.code : null });
       if (e.code === 'rides_closed') { online.done = true; showMenu('RIDES CLOSED', 'This pool counts only shifts that end by its play deadline – one started now could not reach the line in time. Your ticket stays in the pool.'); }   // the server closed the ride: nothing to end
-      else if (e.code === 'ranked_ineligible' || e.code === 'ranked_free_cap' || e.code === 'ranked_paid_cap') showMenu('RANKED REFUSED', 'Uncheck RANKED to drive this run unranked. It still earns TEN4.');
+      else if (e.code === 'ranked_ineligible' || e.code === 'ranked_training' || e.code === 'guest_easy_only' || e.code === 'ranked_window' || e.code === 'ranked_promo_cap' || e.code === 'ranked_paid_cap') showMenu('RANKED REFUSED', 'Uncheck RANKED to drive this run unranked.');
       else showMenu('RIDE REFUSED', 'The server did not accept this ride.');
       return;
     }

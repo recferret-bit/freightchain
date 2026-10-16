@@ -121,7 +121,7 @@ check('the 3d-assets spec gate refuses "a car with 2 wheels" before any model ru
 await E.shot('06-spec-refused');
 
 // the game draws what the API publishes
-await E.send('Page.navigate', { url: `${BASE}/play.html` });
+await E.send('Page.navigate', { url: `${BASE}/play.html?sim=1` });
 check('the game boots from the API bundle', await until(() => probe(E, `!!window.__game && !document.body.textContent.includes('could not be loaded')`), 30000));
 await sleep(1500); await E.shot('07-game');
 

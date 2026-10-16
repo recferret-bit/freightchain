@@ -9,12 +9,13 @@ export interface Facts {
   cleanRuns: number; // completed shifts with the hull at ~100 %
   siberiaShifts: number; // completed shifts on the Trans-Siberian route
   freeUnassisted: number; // FREE rides judged complete that were driven without ASSIST (the tutorial does not matter – it changes nothing in the truck)
-  completedFreeLevels: number[]; // the free LEVELS (1 EASY · 2 MEDIUM · 3 HARD – ride-trip.ts FREE_LEVELS, from Ride.trip) with a ride judged complete
-  honkMints: number; // verified paid rides that minted HONK (any checkpoint)
+  completedFreeLevels: number[]; // the free LEVELS (1 EASY · 2 MEDIUM · 3 HARD) with at least one judged completion. Licence badges read this and stay at one clear.
+  freeFinishes: number[]; // [EASY, MEDIUM, HARD] completion counts, including frozen trip ids. The longer ladders read this.
+  honkMints: number; // verified paid rides that minted TEN4 (any checkpoint)
   honkFinishes: number; // of those, the ones that reached the finish band
 }
 
-export type AchievementFamily = 'road' | 'shift' | 'night' | 'distance' | 'clean' | 'siberia' | 'solo' | 'licence' | 'honk' | 'podium';
+export type AchievementFamily = 'road' | 'shift' | 'night' | 'distance' | 'clean' | 'siberia' | 'solo' | 'licence' | 'medium' | 'hard' | 'honk' | 'podium';
 
 export interface Achievement {
   id: string;
@@ -32,11 +33,12 @@ export interface Achievement {
 
 export const TIER_NAMES = ['Bronze', 'Silver', 'Gold', 'Platinum'] as const;
 export const FAMILY_NAMES: Record<AchievementFamily, string> = {
-  road: 'Road', shift: 'Shifts', night: 'Night', distance: 'Distance', clean: 'Clean', siberia: 'Siberia', solo: 'Solo', licence: 'Licence', honk: 'TEN4', podium: 'Podium',
+  road: 'Road', shift: 'Shifts', night: 'Night', distance: 'Distance', clean: 'Clean', siberia: 'Siberia', solo: 'Solo', licence: 'Licence', medium: 'Medium', hard: 'Hard', honk: 'TEN4', podium: 'Podium',
 };
 
 const km = (f: Facts) => f.totalMetres / 1000;
 const level = (n: number) => (f: Facts) => (f.completedFreeLevels.includes(n) ? 1 : 0);
+const finishes = (index: number) => (f: Facts) => f.freeFinishes[index] ?? 0;
 
 export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'first-mile', family: 'road', tier: 1, name: 'First Mile', desc: 'Start your first ride.', icon: '⛟', measure: (f) => f.started, target: 1 },
@@ -76,7 +78,15 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
 
   { id: 'free-easy', family: 'licence', tier: 1, name: 'Learner’s Permit', desc: 'Clear the EASY free run.', icon: '①', measure: level(1), target: 1 },
   { id: 'free-crossroads', family: 'licence', tier: 2, name: 'Crossroads', desc: 'Clear the MEDIUM free run.', icon: '②', measure: level(2), target: 1 },
-  { id: 'free-hard', family: 'licence', tier: 3, name: 'Long Haul', desc: 'Clear the HARD free run – fifteen minutes, no assist.', icon: '③', measure: level(3), target: 1 },
+  { id: 'free-hard', family: 'licence', tier: 3, name: 'Long Haul', desc: 'Clear the HARD free run – thirty minutes, no assist.', icon: '③', measure: level(3), target: 1 },
+
+  { id: 'free-medium-3', family: 'medium', tier: 1, name: 'Medium Regular', desc: 'Clear the MEDIUM free run 3 times.', icon: '②', measure: finishes(1), target: 3 },
+  { id: 'free-medium-5', family: 'medium', tier: 2, name: 'Medium Hauler', desc: 'Clear the MEDIUM free run 5 times.', icon: '②', measure: finishes(1), target: 5 },
+  { id: 'free-medium-10', family: 'medium', tier: 3, name: 'Medium Veteran', desc: 'Clear the MEDIUM free run 10 times.', icon: '②', measure: finishes(1), target: 10 },
+
+  { id: 'free-hard-2', family: 'hard', tier: 1, name: 'Hard Repeat', desc: 'Clear the HARD free run twice.', icon: '③', measure: finishes(2), target: 2 },
+  { id: 'free-hard-3', family: 'hard', tier: 2, name: 'Hard Hauler', desc: 'Clear the HARD free run 3 times.', icon: '③', measure: finishes(2), target: 3 },
+  { id: 'free-hard-5', family: 'hard', tier: 3, name: 'Hard Veteran', desc: 'Clear the HARD free run 5 times.', icon: '③', measure: finishes(2), target: 5 },
 
   { id: 'honk-haul', family: 'honk', tier: 1, name: 'First Mint', desc: 'A verified paid ride mints TEN4.', icon: '📣', measure: (f) => f.honkMints, target: 1 },
   { id: 'honk-haul-2', family: 'honk', tier: 2, name: 'Checkpoint Hauler', desc: 'Five verified paid rides mint the finish band.', icon: '📣', measure: (f) => f.honkFinishes, target: 5 },

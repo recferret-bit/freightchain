@@ -22,7 +22,7 @@
 {"@context":"https://schema.org","@graph":[
  {"@type":"Organization","@id":"https://freightchain.fun/#org","name":"Freight Chain","url":"https://freightchain.fun/","logo":"https://freightchain.fun/icons/icon-512.png","sameAs":["https://x.com/FreightChainSol","https://www.youtube.com/@FreightChainGame"]},
  {"@type":"WebSite","@id":"https://freightchain.fun/#site","name":"Freight Chain","url":"https://freightchain.fun/","inLanguage":"en","publisher":{"@id":"https://freightchain.fun/#org"}},
- {"@type":["VideoGame","WebApplication"],"@id":"https://freightchain.fun/#game","name":"Freight Chain","url":"https://freightchain.fun/","description":"Freight Chain is a browser truck-driving game in the spirit of Desert Bus, with server-timed shifts and escrowed prize pools on Solana.","image":"https://freightchain.fun/media/og.jpg","genre":["Driving simulation","Truck simulator"],"gamePlatform":"Web browser","applicationCategory":"GameApplication","operatingSystem":"Any desktop browser","playMode":"SinglePlayer","inLanguage":"en","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"10 free rides at sign-up; paid shifts are tickets into escrowed prize pools (Solana devnet)"},"publisher":{"@id":"https://freightchain.fun/#org"},"sameAs":["https://whitepaper.freightchain.fun/"]}
+ {"@type":["VideoGame","WebApplication"],"@id":"https://freightchain.fun/#game","name":"Freight Chain","url":"https://freightchain.fun/","description":"Freight Chain is a browser truck-driving game in the spirit of Desert Bus, with server-timed shifts and escrowed prize pools on Solana.","image":"https://freightchain.fun/media/og.jpg","genre":["Driving simulation","Truck simulator"],"gamePlatform":"Web browser","applicationCategory":"GameApplication","operatingSystem":"Any desktop browser","playMode":"SinglePlayer","inLanguage":"en","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Unlimited training rides; one granted paid ticket a week; paid shifts are tickets into escrowed prize pools (Solana devnet)"},"publisher":{"@id":"https://freightchain.fun/#org"},"sameAs":["https://whitepaper.freightchain.fun/"]}
 ]}
 </script>
 <meta name="theme-color" content="#0b0a09">
@@ -48,7 +48,7 @@
   <div class="right">
     <span class="chip lcd" id="chip-live" title="trucks on the road right now">– ON THE ROAD</span>
     <span class="chip wallet" id="chip-wallet" hidden></span>
-    <span class="chip" id="chip-rides" hidden title="free rides left · paid ride tickets you hold"></span>
+    <span class="chip" id="chip-rides" hidden title="training is unlimited · paid ride tickets you hold · a weekly granted ticket when you have one"></span>
     <button class="cta sm" id="play-top">PLAY</button>
   </div>
 </header>
@@ -318,7 +318,7 @@
           <tr class="leg"><th colspan="3">LEG 1 · DEPOT <small>mid-Sep – Oct 5</small></th><td class="stamp"><span class="st done">DONE</span></td></tr>
           <tr class="done"><td class="box">☑</td><td>The driving sim – cab, five routes, endless generated roads, climate, traffic, holes</td><td class="note">pre-existing, disclosed</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>Repo split; NestJS + PostgreSQL server; Sign-In With Solana; six hosts under one cookie</td><td class="note">September</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>Server-timed rides: heartbeats, speed bound, 10 free rides at signup, daily refill up to 5, SOL/USD quotes</td><td class="note">September</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Server-timed rides: heartbeats, speed bound, unlimited training, one granted paid ticket a week, SOL/USD quotes</td><td class="note">September</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>Lobby: new ride · live · replays · leaderboard · achievements · garage · profile; this page</td><td class="note">September</td><td></td></tr>
 
           <tr class="leg"><th colspan="3">LEG 2 · THE FAIR <small>Oct 6–12</small></th><td class="stamp"><span class="st now">ROLLING</span></td></tr>
@@ -436,12 +436,12 @@
     <article class="fq" data-item="wallet">
       <button type="button" aria-expanded="false">Can I play without a crypto wallet?</button>
       <i class="chev" aria-hidden="true"></i>
-      <div class="fq-a"><div><p>A <a href="/play.html">practice ride</a> needs no account and is not recorded. The 10 signup rides, the daily refill and a ticket need a sign-in with Phantom or Solflare.</p></div></div>
+      <div class="fq-a"><div><p>PLAY FREE RIDE NOW starts the real EASY ride. No wallet: an anonymous session, and that progress does not merge into a later sign-in. Training rides are unlimited. A ticket, and the weekly granted shift, need a sign-in with Phantom or Solflare.</p></div></div>
     </article>
     <article class="fq" data-item="free">
       <button type="button" aria-expanded="false">Is Freight Chain free?</button>
       <i class="chev" aria-hidden="true"></i>
-      <div class="fq-a"><div><p>Practice is free. A new wallet gets 10 free rides, then a daily refill up to 5, and a promo code can add more. A paid shift is a ticket into a pool. Those shifts are marked soon.</p></div></div>
+      <div class="fq-a"><div><p>Training is free and unlimited. It is not ranked and it is not a prize entry. Every eligible wallet also gets one granted paid ticket a week (default 1 hour). A paid shift is a ticket into a pool. Those shifts are marked soon.</p></div></div>
     </article>
     <article class="fq" data-item="buy">
       <button type="button" aria-expanded="false">Do I have to buy a token, an NFT, or any crypto to try it?</button>
@@ -487,7 +487,7 @@
 </section>
 </main>
 
-<footer>Devnet build · nothing here is real money · <a href="/lobby.html">lobby</a> · <a href="/play.html">offline practice</a> · <a href="/viewer.html" id="storybook-link">storybook</a> · <a href="https://whitepaper.freightchain.fun/" id="whitepaper-link">whitepaper</a> · <a href="https://pitchdeck.freightchain.fun/" id="pitchdeck-link">pitch deck</a></footer>
+<footer>Devnet build · nothing here is real money · <a href="/lobby.html">lobby</a> · <a href="/play.html">EASY ride</a> · <a href="/viewer.html" id="storybook-link">storybook</a> · <a href="https://whitepaper.freightchain.fun/" id="whitepaper-link">whitepaper</a> · <a href="https://pitchdeck.freightchain.fun/" id="pitchdeck-link">pitch deck</a></footer>
 
 <dialog id="demo" class="demo"><button class="x" id="demo-x" aria-label="close">✕</button><div id="demo-frame"></div><p class="dim" id="demo-note"></p></dialog>
 

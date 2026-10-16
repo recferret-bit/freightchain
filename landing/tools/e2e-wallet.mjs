@@ -117,7 +117,7 @@ await send('Page.navigate', { url: BASE + '/' }); await sleep(1800); await until
 check('landing shows the wallet chip', (await ev(`document.getElementById('chip-wallet').textContent`)) === short);
 check('CTA becomes OPEN THE LOBBY, top button LOBBY', /OPEN THE LOBBY/.test(await ev(`document.getElementById('connect').textContent`)) && (await ev(`document.getElementById('play-top').textContent`)) === 'LOBBY');
 check('play-free is hidden when signed in (only one OPEN THE LOBBY button in hero)', await ev(`document.getElementById('play-free').hidden`));
-check('rides chip shows the free rides and paid tickets (no duplicate "Signed in as" line)', /^\d+ free · \d+ paid rides?$/.test(await ev(`document.getElementById('chip-rides').hidden ? '' : document.getElementById('chip-rides').textContent`)) && !(await ev(`document.getElementById('msg').textContent`)).includes(short));
+check('rides chip shows training and paid tickets (no duplicate "Signed in as" line)', /^training · \d+ paid rides?$/.test(await ev(`document.getElementById('chip-rides').hidden ? '' : document.getElementById('chip-rides').textContent`)) && !(await ev(`document.getElementById('msg').textContent`)).includes(short));
 await shot('landing-signed-in');
 await ev(`document.getElementById('connect').click()`);
 check('OPEN THE LOBBY goes to the lobby, still signed in', (await until(`location.pathname === '/lobby.html'`)) && (await ev(`fetch(${JSON.stringify(API + '/api/me')}, { credentials: 'include' }).then(r => r.status)`)) === 200);
@@ -127,8 +127,8 @@ check('top-bar LOBBY button goes to the lobby too', await until(`location.pathna
 
 // 6 · the offline game link on the landing points at the game host (same origin here)
 await send('Page.navigate', { url: BASE + '/' }); await sleep(1500);
-const wantGame = API !== BASE ? `http://ride.${new URL(BASE).hostname}/play.html?offline=1` : '/play.html?offline=1';   // split hosts: the guest free run lives on ride.<apex>
-check(`"try it offline" link targets the game host (${wantGame})`, (await ev(`document.querySelector('a.link[href$="?offline=1"]')?.getAttribute('href')`)) === wantGame);
+const wantGame = API !== BASE ? `http://ride.${new URL(BASE).hostname}/play.html` : '/play.html';   // split hosts: the EASY ride lives on ride.<apex>
+check(`EASY ride link targets the game host (${wantGame})`, (await ev(`document.querySelector('footer a[href$="/play.html"]')?.getAttribute('href')`)) === wantGame);
 
 // 7 · the promo invite block: /?promo=CODE pre-fills it, the code survives the sign-in and lands pre-filled (never redeemed) on the lobby's PROMO tab
 await send('Network.clearBrowserCookies'); await open('ok', '/?promo=GoldWheel');

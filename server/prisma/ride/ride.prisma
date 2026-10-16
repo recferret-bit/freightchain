@@ -70,6 +70,7 @@ model Ride {
   prizeCountry   String? // ISO country from the edge headers at the ranked start; null on an unranked ride
   prizeRegion    String? // USPS state when prizeCountry is US
   promoCode      String? // ride promo that granted this shift; null = not a promo ride. Not a purchase and it does not mint TEN4
+  weeklyGrant    Boolean         @default(false) // the week's granted paid ticket (AMOE). Not a purchase and it does not mint TEN4.
   pledges          Pledge[]
 
   @@index([wallet, status])

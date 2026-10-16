@@ -50,6 +50,7 @@ export class RedeemPromoHandler implements ICommandHandler<RedeemPromoCommand, P
       const now = this.clock.now();
       const player = await this.players.findByWalletForUpdate(wallet, tx);
       if (!player) throw new NotFoundError('player not found');
+      if (player.guest) throw new ConflictError('a guest session can only play the EASY run', 'guest_easy_only');
       const promo = await this.promos.findByCode(code, tx);
       if (!promo) throw new NotFoundError('no such promo code');
       const used = await this.promos.countRedemptions(code, wallet, tx);

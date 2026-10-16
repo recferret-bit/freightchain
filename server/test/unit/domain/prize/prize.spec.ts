@@ -1,6 +1,6 @@
 import { announcePool, bestByWallet, cleanBps, nextBaseCents, rankedAttemptScore, seasonQualifiers, settleBoard, splitBoardCents, weekBonus } from '../../../../src/domain/prize/prize-pool.js';
 import {
-  BASE_STEPS_CENTS, BLOCKED_US_STATES, BONUS_CAP_CENTS, FREE_RANKED_STARTS, MIN_PAYOUT_CENTS, PAID_RANKED_STARTS, PROMO_RANKED_STARTS,
+  BASE_STEPS_CENTS, BLOCKED_US_STATES, BONUS_CAP_CENTS, MIN_PAYOUT_CENTS, PAID_RANKED_STARTS, PROMO_RANKED_STARTS,
   PLACE_BPS, PRIZE_BLOCKED_COUNTRIES, SANCTIONED_COUNTRIES, TOKEN_IS_PRIZE, classifyStarts, openSettlement, prizeAccess, prizePhase, prizeWeek, rankedRoadEffects, rankedSpectatorBlocked, rankedStartFits, seasonOf,
 } from '../../../../src/domain/prize/prize-rules.js';
 
@@ -68,7 +68,7 @@ describe('ranked starts', () => {
     id, wallet: 'w', tier: '1h' as const, paid, declaredAt, startedAt,
   });
 
-  it('counts the first two free and the first five paid declarations, in start order', () => {
+  it('does not count a training declaration; counts the first five paid, in start order', () => {
     const rows = [
       row('late', true, 50, 10),
       row('none', false, null, 20),
@@ -76,12 +76,12 @@ describe('ranked starts', () => {
       ...[1, 2, 3, 4, 5, 6].map((n) => row(`p${n}`, true, 1, 200 + n)),
     ];
     const out = classifyStarts(rows);
-    expect(out.filter((r) => r.counted).map((r) => r.id)).toEqual(['f1', 'f2', 'p1', 'p2', 'p3', 'p4', 'p5']);
-    expect(out.find((r) => r.id === 'f3')?.reason).toBe('free-cap');
+    expect(out.filter((r) => r.counted).map((r) => r.id)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+    expect(out.find((r) => r.id === 'f1')?.reason).toBe('training');
+    expect(out.find((r) => r.id === 'f3')?.reason).toBe('training');
     expect(out.find((r) => r.id === 'p6')?.reason).toBe('paid-cap');
     expect(out.find((r) => r.id === 'late')?.reason).toBe('declared-late');
     expect(out.find((r) => r.id === 'none')?.reason).toBe('not-declared');
-    expect(FREE_RANKED_STARTS).toBe(2);
     expect(PROMO_RANKED_STARTS).toBe(1);
     expect(PAID_RANKED_STARTS).toBe(5);
   });
@@ -91,7 +91,8 @@ describe('ranked starts', () => {
     const out = classifyStarts([promo('a', 1), promo('b', 2), row('f', false, 1, 3), row('p', true, 1, 4)]);
     expect(out.find((r) => r.id === 'a')?.reason).toBe('counted');
     expect(out.find((r) => r.id === 'b')?.reason).toBe('promo-cap');
-    expect(out.filter((r) => r.counted).map((r) => r.id)).toEqual(['a', 'f', 'p']);
+    expect(out.find((r) => r.id === 'f')?.reason).toBe('training');
+    expect(out.filter((r) => r.counted).map((r) => r.id)).toEqual(['a', 'p']);
   });
 
   it('a second wallet has its own caps, and an undeclared ride does not consume one', () => {

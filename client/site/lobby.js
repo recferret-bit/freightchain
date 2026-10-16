@@ -46,8 +46,12 @@ const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'free', boardLevel: Number(store.get('freightchain.board-level')) || 3, boardTier: store.get('freightchain.board-tier') === '4h' || store.get('freightchain.board-tier') === '8h' ? store.get('freightchain.board-tier') : '1h', pending: null, pendingNote: '', pools: null, standings: {}, stAt: {}, tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') !== '0', level: Number(store.get('freightchain.level')) || 1 } };   // opt = the free ride's level + two checkboxes: tutorial null = follow the server (on until a ride was started with it), assist and the level are remembered here
 let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
-const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;   // always balance/daily cap. A surplus (signup, a promo, an admin grant) stays; the refill stops at the cap
-const freeCd = m => m.nextFreeRideAt == null ? 'full' : `+1 in ${left(m.nextFreeRideAt - now())}`;   // the daily credit lands at 00:00 UTC, up to the cap
+const freeLeft = () => 'training · unlimited';   // no counted balance. Statistics and achievements still count; the ride is not ranked and not a prize entry
+const weeklyChip = m => {   // the granted paid ticket (AMOE). Unspent until ordered. Gone at Sunday 12:00 UTC; it does not stack
+  const t = m.weeklyTicket;
+  if (!t || t.rideId || t.expiresAt <= now()) return '';
+  return ` · weekly ${t.tier}`;
+};
 
 const paintPaid = m => { $('chip-paid').textContent = paidChip(m.tickets); };
 let meGen = 0;   // a slower /api/me from before a buy must not paint the old ticket count over the new one
@@ -72,7 +76,7 @@ function paintHeader() {
   if (m.sns) seedSns(m.wallet, m.sns);
   $('chip-wallet').replaceChildren(el('span', { class: 'dot', style: `background:hsl(${hue(m.wallet)} 60% 50%)` }), formatDriver(m.wallet, m.sns));
   $('chip-wallet').title = m.wallet;
-  $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
+  $('chip-free').textContent = `${freeLeft()}${weeklyChip(m)}`;
   paintPaid(m);
   $('chip-live').textContent = liveChip();
 }
@@ -188,7 +192,7 @@ const tierInfo = t => {   // the card states the real shift; a demo wallet also 
 };
 function tierOff(t) {
   if (S.pending) return 'finish the paid ride waiting for you first';
-  if (t.id === 'free') return S.me.freeRides <= 0 && !S.me.readyFreeRide ? 'no free rides left – the next one at 00:00 UTC' : '';   // a READY free ride needs no credit
+  if (t.id === 'free') return '';   // training is unlimited. A ready free ride is still handed back by START
   return t.available ? '' : 'not available right now';
 }
 /* /api/me's `readyFreeRide` = the free ride ordered but not started (its credit already spent): START hands it back, so it stays on at 0 credits (tierOff).
@@ -337,7 +341,8 @@ function paintRules() {
     el('li', {}, 'End the shift early, abandon it or crash and it does ', el('b', {}, 'not'), ' count as finished. A ticket is spent when its ride is created.'),
     el('li', {}, 'Pool tickets: your entry sits in the pool’s vault on chain, not with us. A pool that misses its goal refunds every ticket in full; in a live pool the finished shifts rank for its prize share. ', el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'How the escrow works →')),
     el('li', {}, 'The game records your inputs while you drive. After the shift the server checks that recording – complete, consistent with your ride, human-timed – and verified shifts rank for prizes (the leaderboard says when that check is switched on). Flagged shifts wait for a review.'),
-    el('li', {}, `Free rides: no fee, no prize. A new wallet starts with a few; the daily refill (+1 at 00:00 UTC) tops you up to ${S.me?.freeRidesMax ?? 5}. A promo or an admin grant can sit above that.`)));
+    el('li', {}, 'Training rides: unlimited, no fee, no prize, not ranked, no live stream. Statistics and achievements still count.'),
+    el('li', {}, 'One granted paid ticket a week (default 1 hour) for a wallet that is 18+ and in an eligible country. It is not a purchase. It can be ranked like a paid start and it can be watched. It expires Sunday 12:00 UTC and does not stack. It does not mint TEN4.')));
 }
 /* per-card message lines (msg-<key>); kept in S.msgs so a repaint (poll, +/−) does not wipe them */
 function setPayQr(key, url) { S.payQr = url ? { key, url } : null; mountPayQr(); }
@@ -691,15 +696,9 @@ async function refreshPool() {   // the pot + every pool's progress (sold / escr
   if (S.tab === 'new') { paintPool(); if (t && !S.busy) paintTiers(); }
 }
 function tickCountdowns() { const n = now(); document.querySelectorAll('.pcd[data-at]').forEach(c => { c.textContent = left(+c.dataset.at - n); }); document.querySelectorAll('.phcd[data-at]').forEach(c => { c.textContent = span(+c.dataset.at - n); }); }   // .phcd: a phase line's coarse "14 h"
-function tickFree() {   // the "next free ride" counter; at 00:00 UTC ask the server (it grants, then says when the next one comes)
+function tickFree() {   // the weekly ticket drops off the chip when Sunday 12:00 UTC passes. Training has no countdown
   const m = S.me; if (!m) return;
-  $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
-  document.querySelectorAll('.fr-cd').forEach(n => { n.textContent = freeCd(m); });
-  if (m.nextFreeRideAt != null && now() >= m.nextFreeRideAt && (S.meMiss ?? 0) < 3 && Date.now() - (S.meAt ?? 0) > 5000) {   // gives up after 3 refreshes that bring no new time (clock skew); a reload retries
-    S.meAt = Date.now();
-    const gen = ++meGen, prev = m.nextFreeRideAt;
-    api('me', undefined, { report: false }).then(x => { if (gen !== meGen) return; S.meMiss = x.nextFreeRideAt === prev ? (S.meMiss ?? 0) + 1 : 0; takeMe(x); }, () => { if (gen === meGen) S.meMiss = (S.meMiss ?? 0) + 1; });
-  }
+  $('chip-free').textContent = `${freeLeft()}${weeklyChip(m)}`;
 }
 function tick() {
   tickFree();
@@ -727,7 +726,7 @@ if (S.me) {
   if (S.pool?.round?.id != null) viewed.round_id = S.pool.round.id;   // pool is not loaded yet; do not delay the pageview for it
   track('lobby_viewed', viewed);
   paintHeader();
-  for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html?offline=1`;   // guest free runs. The click listener above stays on the element. Paid and watch links already carry their own query
+  for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html`;   // bare play.html orders the real EASY ride. Paid and watch links already carry their own query
   $('out').onclick = async () => { track('player_signed_out'); flushSoon(); await signOut(); location.href = '/'; };
   [S.tiers, S.pool, S.pools] = await Promise.all(['tiers', 'pool', 'pools'].map(x => api(x, undefined, { report: false }).catch(() => null)));
   await pollLive();

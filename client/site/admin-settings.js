@@ -3,8 +3,9 @@
    Server text goes in with textContent only – ctx.el never touches innerHTML. */
 
 const KNOBS = [
-  ['free_on_signup', 'freeOnSignup', 'Free rides on sign-up', 'what a NEW wallet starts with; existing wallets are not topped up'],
-  ['free_rides_daily_max', 'freeRidesDailyMax', 'Daily refill cap', 'the +1 at 00:00 UTC stops here and never takes a surplus away'],
+  ['weekly_ticket_tier', 'weeklyTicketHours', 'Weekly granted ticket (hours)', '1, 4 or 8. One free paid ticket per wallet per week. Expires Sunday 12:00 UTC. Does not stack'],
+  ['free_on_signup', 'freeOnSignup', 'Free rides on sign-up (retired)', 'stored only. Training rides are unlimited and do not spend this'],
+  ['free_rides_daily_max', 'freeRidesDailyMax', 'Daily refill cap (retired)', 'the midnight refill no longer runs. The column stays'],
   ['editor_jobs_per_day', 'editorJobsPerDay', 'AI editor: jobs per day', 'model-editor requests per editor wallet per UTC day (storybook)'],
   ['editor_max_steps', 'editorMaxSteps', 'AI editor: steps per job', 'model turns one request may take (each may call the MCP tools)'],
   ['editor_max_output_tokens', 'editorMaxOutputTokens', 'AI editor: output tokens', 'total output tokens across all model turns in one job'],
@@ -33,6 +34,7 @@ export async function settingsTab(ctx, wallet0 = '') {
     const save = el('button', { type: 'button', 'data-key': key, onclick: async () => {
       const value = Number(input.value);
       if (input.value === '' || !Number.isInteger(value) || value < 0 || value > MAX) { tell(`${label}: a whole number from 0 to ${MAX}.`, 'bad'); return; }
+      if (key === 'weekly_ticket_tier' && value !== 1 && value !== 4 && value !== 8) { tell('Weekly ticket: 1, 4 or 8 hours.', 'bad'); return; }
       if (value === s[prop]) { tell(`${label} is already ${value}.`); return; }
       save.disabled = true;   // one click = one signature
       try {

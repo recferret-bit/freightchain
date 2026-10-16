@@ -70,7 +70,7 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
       } else if (running) {
         throw new ConflictError('another ride is in progress');
       }
-      if (!ride.isFree && !ride.isPromo) player.requirePaidPlay(); // a free start and a promo ride stay open; a promo ride was not bought
+      if (!ride.isFree && !ride.isPromo && !ride.isWeeklyGrant) player.requirePaidPlay(); // training, a promo, and the weekly grant were not bought
       if (ride.poolId !== null) {   // a ticket ride starts only while a shift started now ends by its pool's play deadline (H6) – the pool row is read, not locked: its deadline comes from chain and never changes
         const pool = await this.pools.findById(ride.poolId, tx);
         if (pool && !pool.canFinishBy(now, ride.completeDist / MAX_SPEED)) {   // ordered in time (the spend checked the whole shift): it starts while its finish line is still reachable

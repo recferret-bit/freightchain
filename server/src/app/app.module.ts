@@ -9,7 +9,6 @@ import { EnvService } from '../infrastructure/config/env.service.js';
 import { staticHeaders } from '../infrastructure/http/static-cache.js';
 import { throttlerOptions } from '../infrastructure/http/throttling.js';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module.js';
-import { DailyFreeRideScheduler } from '../infrastructure/scheduling/daily-free-ride.scheduler.js';
 import { ProgramWatcher } from '../infrastructure/scheduling/program-watcher.js';
 import { PoolCrankScheduler } from '../infrastructure/scheduling/pool-crank.scheduler.js';
 import { AchievementMintScheduler } from '../infrastructure/scheduling/achievement-mint.scheduler.js';
@@ -34,7 +33,7 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
   return [...(landing ? [{ rootPath: env.landingDir, renderPath: '/', exclude, serveStaticOptions }] : []), { rootPath: env.clientDir, exclude, serveStaticOptions }];
 }
 
-/** The composition root: environment, rate limiting, the midnight free-ride job, the 00:30 recording-retention sweep and the program watcher (WATCH_INTERVAL_MS), the site served from the same origin as the API, and the presentation layer. */
+/** The composition root: environment, rate limiting, the 00:30 recording-retention sweep and the program watcher (WATCH_INTERVAL_MS), the site served from the same origin as the API, and the presentation layer. The daily free-ride job is retired. */
 @Module({
   imports: [
     EnvModule,
@@ -47,6 +46,6 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
     PresentationModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: OriginGuard },   // OriginGuard: audit H7 (login CSRF, sibling hosts)
-    DailyFreeRideScheduler, TelemetryRetentionScheduler, StaleRideScheduler, ReplayVerificationScheduler, ProgramWatcher, PoolCrankScheduler, PoolPayoutScheduler, AchievementMintScheduler, HonkReleaseScheduler],
+    TelemetryRetentionScheduler, StaleRideScheduler, ReplayVerificationScheduler, ProgramWatcher, PoolCrankScheduler, PoolPayoutScheduler, AchievementMintScheduler, HonkReleaseScheduler],
 })
 export class AppModule {}

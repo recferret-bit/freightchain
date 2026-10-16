@@ -40,6 +40,11 @@ import { StatsService } from '../../src/application/services/stats.service.js';
 import { MemoryStatsRepository } from './in-memory/memory-stats-repository.js';
 import { MemoryCacheAdapter } from '../../src/infrastructure/cache/memory-cache.adapter.js';
 import { GameSettingsService } from '../../src/application/services/game-settings.service.js';
+import { WeeklyTicketService } from '../../src/application/services/weekly-ticket.service.js';
+import { PrizeGeoPort } from '../../src/application/ports/prize/prize-geo.port.js';
+import { DEFAULT_GEO } from '../../src/domain/prize/prize-rules.js';
+import { HeaderGeoAdapter } from '../../src/infrastructure/prize/header-geo.adapter.js';
+import { MemoryWeeklyTicketRepository } from './in-memory/memory-weekly-ticket.js';
 import { LiveAccessService } from '../../src/application/services/live-access.service.js';
 import { MemorySettingsRepository } from './in-memory/memory-settings.js';
 import { MemoryDailySeedRepository } from './in-memory/memory-daily-seeds.js';
@@ -127,7 +132,8 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const settingsRepo = new MemorySettingsRepository(db);
   const settings = new GameSettingsService(settingsRepo);
   const dailySeeds = new MemoryDailySeedRepository(db);
-  const sessions = new PlayerSessionService(players, settings, rulesPort, clock, analytics);
+  const sessions = new PlayerSessionService(players, settings, clock);
+  const weekly = new WeeklyTicketService(new MemoryWeeklyTicketRepository(db), settings, new HeaderGeoAdapter(), new class extends PrizeGeoPort { rules() { return DEFAULT_GEO; } }());
   const lookup = new RideLookupService(rides);
   const nameService = new StubNameServiceAdapter();
   const meProfile = new MeProfileService(rulesPort, poolTickets, rides, nameService);
@@ -182,7 +188,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   return {
     db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, mints, mintChain, batches, hasher, verdictRepo, replayRepo, replayQueue, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
     pools, poolPayouts, pledges, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement, honkRepo, honkMint,
-    sessions, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, accept, freeRide, paidOrder, paidRide, reload, storedPlayer,
+    sessions, weekly, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, accept, freeRide, paidOrder, paidRide, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats, nameService,
   };
 }
