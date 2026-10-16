@@ -56,44 +56,18 @@ const { meta, reports, health: currentHealth } = loadAuditors(reportDir);
 const health = readJson('report-health.json', currentHealth);
 const nonce = crypto.randomBytes(24).toString('base64');
 const policy = `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'`;
-const validationBanner = `<div class="visuals-section"><p class="note"><strong>${health.state === 'validated_outputs' ? 'OUTPUTS VALIDATED — NOT A CLEAN-AUDIT CERTIFICATE' : 'INCOMPLETE REVIEW'}</strong>. These are unverified model assertions. No execution evidence or served-model/provider attestation was collected. Zero findings is not proof of safety.</p>${(health.errors || []).map((e) => `<p class="note">${esc(e)}</p>`).join('')}</div>`;
 const workerManifest = readJson('workers.json', {});
 const workerJobs = Array.isArray(workerManifest?.jobs) ? workerManifest.jobs.slice(0, 1000).filter((j) => j && typeof j.name === 'string' && typeof j.state === 'string') : [];
-const isolationBanner = meta.isolation?.policy === 'read_only_source_review'
-  ? `<div class="visuals-section"><div class="section-title"><span>Read-only worker isolation policy</span></div><p class="note">Live transport is blocked: subscription delegation and tools-disabled transport are not verified. No host reviewer fallback, model call, lead scanner or target build was started. These are parent-recorded blocked jobs, not successful reviews.</p>${workerJobs.map((j) => `<p class="note">${esc(j.name)} · ${esc(j.state)} · ${esc(j.reason || '')}</p>`).join('')}<p class="note">Source snapshot digest: <code>${esc(meta.isolation.sourceDigest)}</code>. Named secret exclusions do not certify secret-free source.</p></div>`
-  : meta.isolation?.policy === 'report_finalization'
-    ? `<div class="visuals-section"><div class="section-title"><span>Saved review finalization</span></div><p class="note">This phase only collected a report from the saved AGY conversation. No new Docker container, build, test, scanner or source inspection ran. Sandbox coverage below was copied from <code>${esc(meta.recovery?.fromReport || 'the prior review')}</code> for the same captured source digest. The original timed-out attempt remains recorded; untested coverage is not a pass.</p></div>`
-    : '';
-
 let sandboxMd = '';
 try { sandboxMd = readReportText(reportDir, 'harness/sandbox.md'); } catch { /* disclose unavailable coverage */ }
-function sandboxBanner(md) {
-  const rows = [];
-  for (const line of String(md || '').split('\n')) {
-    const match = line.match(/^\| (.+?) \| (ran|failed|impossible) \| (.*) \|$/);
-    if (!match || match[1] === 'check') continue;
-    rows.push({ name: match[1], result: match[2], detail: match[3] });
-  }
-  if (!rows.length) return '<div class="visuals-section"><p class="note">Sandbox coverage unavailable or invalid — not a pass.</p></div>';
-  const n = (kind) => rows.filter((row) => row.result === kind).length;
-  const standing = (row) => /No production host or RPC was contacted|Deployed program bytes were not compared/.test(row.detail);
-  const gaps = rows.filter((row) => row.result !== 'ran' && !standing(row)).slice(0, 8);
-  const gapText = gaps.map((row) => `${row.name} (${row.result})`).join('; ');
-  return `
-    <div class="visuals-section">
-      <div class="section-title"><span>Sandbox coverage</span></div>
-      <p class="note">${n('ran')} finished, ${n('failed')} failed, ${n('impossible')} not started, as reported by the sandbox. These records share storage with target processes and are not authenticated execution evidence. A failed or not-started row is not a pass.${gapText ? ` ${esc(gapText)}.` : ''} Intended policy: no production probes; deployed bytes are compared only with an operator-selected <code>--rpc</code> URL.</p>
-    </div>`;
-}
-const sandboxBannerHtml = sandboxBanner(sandboxMd);
+const sandboxRows = String(sandboxMd).split('\n').flatMap((line) => {
+  const m = line.match(/^\| (.+?) \| (ran|failed|impossible) \| (.*) \|$/);
+  return m ? [{ name: m[1], result: m[2], detail: m[3] }] : [];
+});
 
 const targetName = meta.name || path.basename(path.resolve(reportDir));
 const dateLabel = (meta.date ? new Date(meta.date) : new Date()).toISOString().slice(0, 10);
 const sourceLine = [meta.source, meta.ref && `@ ${meta.ref}`, meta.commit && `(${meta.commit})`].filter(Boolean).join(' ');
-const reviewers = Array.isArray(meta.agents)
-  ? meta.agents.map((a) => (meta.models && meta.models[a]) ? `${a} (requested: ${meta.models[a]}; served identity unverified)` : `${a} (served identity unverified)`).join(', ')
-  : '';
-
 // Assets share the report's trust boundary; display source, never active SVG.
 const diagrams = fs.existsSync(assetsDir)
   ? fs.readdirSync(assetsDir).filter((f) => f.endsWith('.svg') && fs.lstatSync(path.join(assetsDir, f)).isFile() && fs.statSync(path.join(assetsDir, f)).size <= 512 * 1024).sort().map((f) => ({
@@ -105,7 +79,7 @@ const diagrams = fs.existsSync(assetsDir)
 // Compute summary counts
 const counts = {
   total: findings.length,
-  high: findings.filter((f) => f.severity === 'high' || f.severity === 'critical').length, // critical shares the red card
+  high: findings.filter((f) => f.severity === 'high' || f.severity === 'critical').length,
   medium: findings.filter((f) => f.severity === 'medium').length,
   low: findings.filter((f) => f.severity === 'low').length,
   info: findings.filter((f) => f.severity === 'info').length,
@@ -129,8 +103,7 @@ const surfaces = Object.fromEntries(
       const sev = f.severity === 'critical' ? 'high' : f.severity;
       if (Object.hasOwn(levels, sev)) levels[sev] += 1;
     }
-    const tone = levels.high ? 'high' : levels.medium ? 'medium' : levels.low ? 'low' : levels.info ? 'info' : 'zero';
-    return [id, { total: rows.length, tone, ...levels }];
+    return [id, { total: rows.length, ...levels }];
   }),
 );
 
@@ -177,7 +150,9 @@ function loadModelRows() {
     const slug = meta.models && meta.models[row.key];
     const total = levels.reduce((n, level) => n + (row.counts[level] || 0), 0);
     const available = reports.some((r) => adapterOf(r.name) === row.key);
-    return { ...row, label: `${slug || row.key} (requested; served identity unverified)${available ? '' : ' — no valid outputs'}`, total };
+    const expectedOutputs = (health.expected || []).filter(name => adapterOf(name) === row.key).length;
+    const acceptedOutputs = (health.accepted || []).filter(name => adapterOf(name) === row.key).length;
+    return { ...row, label: slug || row.key, available, total, expectedOutputs, acceptedOutputs };
   }).sort((a, b) => {
     const ia = MODEL_ORDER.indexOf(a.key);
     const ib = MODEL_ORDER.indexOf(b.key);
@@ -203,7 +178,7 @@ function modelChart() {
       return `<span class="seg seg-${cls}" style="width:${((n / row.total) * 100).toFixed(2)}%"></span>`;
     }).join('');
     return `<div class="chart-row">
-      <div class="chart-name">${esc(row.label)}</div>
+      <div class="chart-name">${esc(row.label)}<div class="note">${row.available ? `${row.acceptedOutputs}/${row.expectedOutputs} outputs received` : 'no valid outputs'}</div></div>
       <div class="chart-track"><div class="chart-fill" style="width:${width.toFixed(2)}%">${segs}</div></div>
       <div class="chart-total">${row.total}</div>
     </div>`;
@@ -218,7 +193,7 @@ function modelTable() {
       const cls = !n ? 'zero' : (level === 'high' ? 'high' : '');
       return `<td${cls ? ` class="${cls}"` : ''}>${n}</td>`;
     }).join('');
-    return `<tr><th scope="row">${esc(row.label)}</th>${cells}<td>${row.total}</td></tr>`;
+    return `<tr><th scope="row">${esc(row.label)}<div class="note">${row.available ? `${row.acceptedOutputs}/${row.expectedOutputs} outputs received` : 'no valid outputs'}</div></th>${cells}<td>${row.total}</td></tr>`;
   }).join('');
   const totals = modelLevels.map((level) => {
     const n = modelRows.reduce((sum, row) => sum + (row.counts[level] || 0), 0);
@@ -232,792 +207,138 @@ function modelTable() {
   </table>`;
 }
 
-const modelHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="${esc(policy)}">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${esc(targetName)} — Findings by model</title>
-  <style>
-    :root {
-      --ground: #121410;
-      --panel: #1a1c18;
-      --bone: #e6e2d6;
-      --mute: #8a877c;
-      --rule: #2e312b;
-      --brass: #9c7c45;
-      --harm: #a33b32;
-      --harm-text: #f08a80;
-      --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-      --font-sans: "IBM Plex Sans", "Helvetica Neue", sans-serif;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: var(--ground);
-      color: var(--bone);
-      font-family: var(--font-sans);
-      font-size: 15.5px;
-      line-height: 1.5;
-      padding-bottom: 64px;
-    }
-    .container { max-width: 820px; margin: 0 auto; padding: 0 24px; }
-    header { border-bottom: 1px solid var(--rule); padding: 36px 0 22px; margin-bottom: 22px; }
-    .kicker {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--brass);
-      margin-bottom: 12px;
-    }
-    h1 { font-size: 26px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.15; }
-    .note { color: var(--mute); font-size: 14.5px; max-width: 62ch; margin-top: 10px; }
-    .nav { margin-top: 16px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
-    .nav a { color: var(--brass); text-decoration: none; border-bottom: 1px solid var(--brass); }
-    .nav a:hover { color: var(--bone); }
-    .legend { display: flex; flex-wrap: wrap; gap: 18px; list-style: none; margin-bottom: 8px; }
-    .legend li {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--mute);
-    }
-    .swatch { width: 10px; height: 10px; display: inline-block; }
-    .swatch-high { background: var(--harm); }
-    .swatch-medium { background: var(--brass); }
-    .swatch-low { background: var(--bone); }
-    .swatch-info, .swatch-other { background: var(--mute); }
-    .chart-row {
-      display: grid;
-      grid-template-columns: minmax(148px, 16rem) 1fr 2.6rem;
-      gap: 14px;
-      align-items: center;
-      padding: 9px 0;
-      border-bottom: 1px solid var(--rule);
-    }
-    .chart-name { font-family: var(--font-mono); font-size: 12.5px; color: var(--bone); }
-    .chart-track { height: 14px; }
-    .chart-fill { display: flex; height: 14px; }
-    .seg { display: block; height: 14px; }
-    .seg-high { background: var(--harm); }
-    .seg-medium { background: var(--brass); }
-    .seg-low { background: var(--bone); }
-    .seg-info, .seg-other { background: var(--mute); }
-    .chart-total {
-      font-family: var(--font-mono);
-      font-size: 13px;
-      font-weight: 500;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-    h2 {
-      font-size: 18px;
-      font-weight: 500;
-      margin: 32px 0 8px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--brass);
-      display: inline-block;
-    }
-    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-    th, td {
-      padding: 10px 12px 10px 0;
-      border-bottom: 1px solid var(--rule);
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-    th {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--mute);
-    }
-    td { font-family: var(--font-mono); font-size: 13px; }
-    th:first-child, td:first-child, tbody th, tfoot th { text-align: left; color: var(--bone); }
-    tbody th { font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; letter-spacing: 0; text-transform: none; white-space: nowrap; }
-    td.high, tfoot td.high { color: var(--harm-text); }
-    td.zero { color: var(--mute); }
-    tfoot th, tfoot td { border-bottom: 0; border-top: 1px solid var(--brass); }
-    @media (max-width: 640px) {
-      .chart-row { grid-template-columns: 1fr 2.6rem; }
-      .chart-track { grid-column: 1 / -1; }
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="container">
-      <div class="kicker">Findings by model · ${esc(dateLabel)}</div>
-      <h1>${esc(targetName)}</h1>
-      <p class="note">Each bar is that model's own findings, counted from its auditor file before findings are merged. Critical is counted with high.</p>
-      <p class="nav"><a href="report.html">Full report</a></p>
-    </div>
-  </header>
-  <div class="container">
-    ${validationBanner}
-    ${isolationBanner}
-    <ul class="legend">
-      ${modelLevels.map((level) => {
-        const cls = SEVERITY_LEVELS.includes(level) ? level : 'other';
-        return `<li><i class="swatch swatch-${cls}"></i>${esc(level)}</li>`;
-      }).join('')}
-    </ul>
-    <div class="chart" aria-hidden="true">${modelChart()}</div>
-    <h2>Counts</h2>
-    ${modelTable()}
-  </div>
-</body>
-</html>
-`;
+const styles = fs.readFileSync(path.join(scriptsDir, 'report-style.css'), 'utf8');
+const browserScript = fs.readFileSync(path.join(scriptsDir, 'report-browser.js'), 'utf8');
+const accepted = health.accepted?.length || 0;
+const expected = health.expected?.length || 0;
+const complete = health.state === 'validated_outputs';
+const toneOf = (level) => ({ critical: 'red', high: 'red', medium: 'orange', low: 'blue', info: 'blue' })[level] || 'blue';
+const shortSurface = { S1: 'Identity & access', S2: 'Input & injection', S3: 'Logic & value', S4: 'Secrets & config', S5: 'Dependencies', S6: 'Client & web' };
 
-const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="${esc(policy)}">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${esc(targetName)} - Security & Security review</title>
-  <style>
-    :root {
-      --ground: #121410;
-      --panel: #1a1c18;
-      --bone: #e6e2d6;
-      --mute: #8a877c;
-      --rule: #2e312b;
-      --brass: #9c7c45;
-      --harm: #a33b32;
-      --harm-text: #f08a80;
-      --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-      --font-sans: "IBM Plex Sans", "Helvetica Neue", sans-serif;
-    }
+// Format only inert text; source Markdown never supplies links, HTML or attributes.
+function inline(value) {
+  return esc(value).replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+}
+function prose(value) {
+  return String(value || '').split(/(```[\s\S]*?```)/g).map((part) => {
+    if (part.startsWith('```')) return `<pre><code>${esc(part.replace(/^```[^\n]*\n?/, '').replace(/```$/, ''))}</code></pre>`;
+    return part.split(/\n\s*\n/).filter(Boolean).map((block) => {
+      const lines = block.split('\n');
+      if (lines.every((line) => /^\s*[-*] /.test(line))) return `<ul>${lines.map((line) => `<li>${inline(line.replace(/^\s*[-*] /, ''))}</li>`).join('')}</ul>`;
+      if (lines.every((line) => /^\s*\d+\. /.test(line))) return `<ol>${lines.map((line) => `<li>${inline(line.replace(/^\s*\d+\. /, ''))}</li>`).join('')}</ol>`;
+      return `<p>${inline(block)}</p>`;
+    }).join('');
+  }).join('');
+}
+const block = (title, text, tone = '') => text ? `<div class="content-block ${tone}"><h4>${esc(title)}</h4><div class="prose">${prose(text)}</div></div>` : '';
+const citations = (items) => items?.length ? `<div class="citations">${items.map(item => `<code>${esc(item)}</code>`).join('')}</div>` : '';
+const disclosure = (title, body) => `<details class="disclosure"><summary>${esc(title)}</summary>${body}</details>`;
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: var(--ground);
-      color: var(--bone);
-      font-family: var(--font-sans);
-      font-size: 15.5px;
-      line-height: 1.55;
-      padding: 0 0 80px 0;
-    }
+// Scored clusters retain only a short impact. Recover full analysis from accepted claims.
+const originalClaims = new Map();
+for (const report of reports) {
+  report.data.filter(item => item.title && !item.verified_safe).forEach((item, index) => originalClaims.set(`${report.name}#${index}`, item));
+}
+function findingCard(f, index) {
+  const originals = (f.claimIds || []).map(id => originalClaims.get(id)).filter(Boolean);
+  const primary = originals[0] || f.findings?.[0] || {};
+  const impact = primary.impact || 'No impact statement was provided by the auditor.';
+  const status = String(f.status || '').replace(/_/g, ' ').toLowerCase();
+  const reviews = Array.isArray(f.reviews) ? f.reviews : [];
+  const technical = originals.length ? originals : [primary];
+  return `<details class="finding ${toneOf(f.severity)}" data-severity="${esc(severityLevel(f.severity))}" data-surface="${esc(String(f.surface).toUpperCase().slice(0, 2))}">
+    <summary><span class="finding-index">${String(index + 1).padStart(2, '0')}</span><div>
+      <div class="finding-tags"><span class="pill ${toneOf(f.severity)}">${esc(f.severity)}</span><span class="meta-label">${esc(f.surface)}</span><span class="pill">${esc(status)}</span></div>
+      <h3>${esc(f.title)}</h3><p class="finding-preview">${esc(impact)}</p>
+    </div><span class="expand-icon" aria-hidden="true"></span></summary>
+    <div class="finding-body">
+      <div class="finding-priority"><strong>Priority ${esc(f.score)}</strong><span>Heuristic · not a probability</span><span>${esc((f.auditors || f.vendors || []).join(' · '))}</span></div>
+      <div class="action-grid">${block('Impact', impact, 'red')}${block('Recommended fix', f.remediation || primary.fix || 'No fix was provided.', 'green')}</div>
+      ${disclosure('Source analysis & validation', technical.map((claim, i) => `${technical.length > 1 ? `<p class="meta-label">Claim ${i + 1} · ${esc(f.claimIds?.[i] || '')}</p>` : ''}${block('Preconditions', claim.preconditions)}${block('Analysis', claim.analysis)}${block('Validation & limits', claim.validation)}${claim.attack?.length ? block('Historical review notes', claim.attack.join('\n\n')) : ''}`).join(''))}
+      ${f.locations?.length ? disclosure(`Affected files · ${f.locations.length}`, citations(f.locations)) : ''}
+      ${reviews.length ? disclosure(`Peer reviews · ${reviews.length}`, `<p class="note">Model statements; no independent reproduction evidence.</p>${reviews.map(r => `<div class="review"><span class="pill ${r.verdict === 'refuted' ? 'red' : r.verdict === 'upheld' ? 'green' : 'orange'}">${esc(r.reviewer)} · ${esc(r.verdict)}</span><div class="prose">${prose(r.reason)}</div>${citations(r.evidence)}</div>`).join('')}`) : ''}
+      ${f.pocs?.length ? disclosure('Historical regression material · unexecuted', `<pre>${esc(f.pocs.join('\n'))}</pre>`) : ''}
+    </div></details>`;
+}
 
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 24px;
-    }
+function rail(modelPage) {
+  return `<aside class="rail"><a href="report.html" class="brand"><span class="emblem" aria-hidden="true"></span><span>AUDIT / CORE<small>SOURCE SECURITY REVIEW</small></span></a>
+    <div class="rail-label">Report navigation</div><nav aria-label="Report">
+    <a href="report.html" ${!modelPage ? 'class="active" aria-current="page"' : ''}><span>01</span>Overview</a>
+    <a href="${modelPage ? 'report.html' : ''}#findings"><span>02</span>Findings <small>${counts.total}</small></a>
+    <a href="findings-by-model.html" ${modelPage ? 'class="active" aria-current="page"' : ''}><span>03</span>By model</a>
+    <a href="${modelPage ? 'report.html' : ''}#evidence"><span>04</span>Evidence & scope</a></nav>
+    <div class="rail-bottom"><span class="signal"></span>SAVED REVIEW<br>${esc(dateLabel)}<br>REF / ${esc(meta.commit || 'not recorded')}</div></aside>`;
+}
+function page(body, modelPage = false) {
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta http-equiv="Content-Security-Policy" content="${esc(policy)}"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(targetName)} — ${modelPage ? 'Findings by model' : 'Security audit'}</title><style>${styles}</style></head>
+    <body><a class="skip-link" href="#main">Skip to report</a>${rail(modelPage)}<div class="workspace">
+    <div class="topbar"><span><b>Security intelligence</b> / ${modelPage ? 'Model comparison' : 'Audit overview'}</span><span class="topbar-detail">${esc(dateLabel)} &nbsp; / &nbsp; ${expected} review assignments</span></div>
+    <main id="main">${body}<footer class="footer"><span>Audit / Core · Source security review</span><span>Model assertions · Unverified provenance</span><span>${esc(meta.commit || dateLabel)}</span></footer></main></div>
+    ${!modelPage ? `<script nonce="${nonce}">${browserScript}</script>` : ''}</body></html>`;
+}
+function hero(modelPage = false) {
+  return `<header class="hero"><div><div class="eyebrow">${modelPage ? 'Reviewer output / 03' : 'Source assessment / 01'}</div><h1>${modelPage ? 'MODEL <span>REPORT.</span>' : 'AUDIT <span>REPORT.</span>'}</h1><p class="target">${esc(targetName)}</p><div class="source">${esc([meta.mode === 'remote' ? 'GITHUB' : 'SOURCE', meta.commit && `REF ${meta.commit}`, meta.surface && `SCOPE ${meta.surface}`].filter(Boolean).join(' / '))}</div></div>
+    <div class="hero-status"><span class="eyebrow">${complete ? 'Outputs validated' : 'Incomplete review'}</span><strong>${accepted} / ${expected} assignments</strong><p>${complete ? 'Review outputs accepted. Claims remain unverified.' : 'Coverage gaps remain. See evidence & scope.'}</p><div class="progress" aria-hidden="true">${Array.from({ length: expected }, (_, i) => `<i${i < accepted ? ' class="done"' : ''}></i>`).join('')}</div></div></header>`;
+}
+const notice = `<div class="notice"><b>${complete ? 'UNVERIFIED CLAIMS' : 'INCOMPLETE REVIEW'}</b><span>Model assertions, not a safety certificate. ${complete ? 'Zero findings does not prove safety.' : 'Missing reviews are not passes.'}</span><a href="report.html#validation">View limitations ↗</a></div>`;
+const sectionTitle = (id, title, side = '') => `<div class="section-heading"><h2><span class="section-num">${id}</span>${title}</h2>${side ? `<span class="meta-label">${esc(side)}</span>` : ''}</div>`;
+const requestedModels = modelRows.map(row => `<tr><td><strong>${esc(row.key)}</strong></td><td>${esc(row.label)}</td><td>${row.available ? 'Valid outputs available' : 'no valid outputs'}</td></tr>`).join('');
+const validationDetails = `<p class="note"><strong>${complete ? 'OUTPUTS VALIDATED — NOT A CLEAN-AUDIT CERTIFICATE' : 'INCOMPLETE REVIEW'}</strong>. These are unverified model assertions. No authenticated execution evidence or served-model/provider attestation was collected. Zero findings is not proof of safety.</p>
+  ${(health.errors || []).length ? `<ul class="validation-errors">${health.errors.map(error => `<li>${esc(error)}</li>`).join('')}</ul>` : ''}
+  <p class="note">Agreement means matching titles and citations across asserted adapters. First-pass independence and served-provider identity are not enforced. Peer verdicts are model statements; priority scores are heuristic.</p>
+  <div class="table-scroll"><table><caption class="meta-label">Requested models · served identity unverified</caption><thead><tr><th>Adapter</th><th>Requested model</th><th>Output</th></tr></thead><tbody>${requestedModels}</tbody></table></div>
+  ${sourceLine ? `<p class="note">Captured source: <code>${esc(sourceLine)}</code></p>` : ''}
+  ${meta.isolation?.sourceDigest ? `<p class="note">Snapshot SHA-256: <code>${esc(meta.isolation.sourceDigest)}</code></p>` : ''}`;
+const isolationDetails = meta.isolation?.policy === 'read_only_source_review'
+  ? `<h3>Read-only worker isolation policy</h3><p class="note">Live transport is blocked: subscription delegation and tools-disabled transport are not verified. No host reviewer fallback, model call, lead scanner or target build was started. These are parent-recorded blocked jobs, not successful reviews.</p>${workerJobs.map(j => `<p class="note">${esc(j.name)} · ${esc(j.state)} · ${esc(j.reason || '')}</p>`).join('')}`
+  : meta.isolation?.policy === 'report_finalization'
+    ? `<h3>Saved review finalization</h3><p class="note">No new Docker container, build, test, scanner or source inspection ran during finalization. Coverage was copied from <code>${esc(meta.recovery?.fromReport || 'the prior review')}</code> for the same source digest; untested coverage is not a pass.</p>` : '';
+const sandboxDetails = sandboxRows.length
+  ? `<p class="note">${sandboxRows.filter(r => r.result === 'ran').length} finished · ${sandboxRows.filter(r => r.result === 'failed').length} failed · ${sandboxRows.filter(r => r.result === 'impossible').length} not started. Sandbox-reported records are not authenticated execution evidence. Finished does not mean passed; failed or not started is not a pass.</p><div class="table-scroll"><table><thead><tr><th>Check</th><th>Observed status</th><th>Coverage & limits</th></tr></thead><tbody>${sandboxRows.map(r => `<tr><td>${esc(r.name)}</td><td class="result-${r.result}">${r.result === 'impossible' ? 'Not started' : r.result === 'ran' ? 'Finished' : 'Failed'}</td><td>${esc(r.detail)}</td></tr>`).join('')}</tbody></table></div>`
+  : '<p class="note">Sandbox coverage unavailable or invalid — not a pass.</p>';
+const controlsDetails = verifiedSafe.length ? `<details class="panel"><summary><span class="pill green">Controls</span>Auditor control assertions<span class="meta-label">${verifiedSafe.length} reported</span></summary><div class="panel-body"><p class="note">Unverified model assertions, not certified controls. Contradiction detection and tiebreak escalation are not implemented.</p><div class="controls-list">${verifiedSafe.map(s => `<details class="control"><summary><span>${esc(s.control)}</span><span class="pill ${s.holds === false ? 'red' : 'green'}">${s.holds === false ? 'Reported broken' : 'Reported holding'}</span></summary><div class="prose">${prose(s.evidence || s.how_attacked)}<p class="meta-label">${esc(s.auditor)} · unverified</p></div></details>`).join('')}</div></div></details>` : '';
 
-    /* Header */
-    header {
-      border-bottom: 1px solid var(--rule);
-      padding: 40px 0 28px 0;
-      margin-bottom: 28px;
-    }
-    .header-badge {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--brass);
-      margin-bottom: 12px;
-    }
-    h1 {
-      font-size: 30px;
-      font-weight: 500;
-      letter-spacing: -0.015em;
-      line-height: 1.15;
-      margin-bottom: 10px;
-    }
-    .header-sub {
-      color: var(--mute);
-      font-size: 15.5px;
-      max-width: 66ch;
-    }
-    .header-sub code {
-      background: none;
-      padding: 0;
-      color: var(--bone);
-      font-size: 12.5px;
-    }
-    .header-nav {
-      margin-top: 16px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    .header-nav a {
-      color: var(--brass);
-      text-decoration: none;
-      border-bottom: 1px solid var(--brass);
-    }
-    .header-nav a:hover { color: var(--bone); }
+const html = page(`${hero()}${notice}
+  <section class="stats" aria-label="Finding totals">
+    ${[
+      ['red', 'High severity', counts.high, 'Critical + high model claims', '01'],
+      ['orange', 'Medium severity', counts.medium, 'Medium model claims', '02'],
+      ['blue', 'Low + info', counts.low + counts.info, 'Lower severity model claims', '03'],
+      ['green', 'Model agreement', counts.modelAgreement, 'Matching claims · unverified', '04'],
+    ].map(([tone, label, number, detail, index]) => `<div class="stat ${tone}"><div class="stat-label">${label}<span>${index}</span></div><div class="stat-number">${number}</div><small>${detail}</small></div>`).join('')}
+  </section>
+  <section aria-labelledby="surface-heading">${sectionTitle('01', '<span id="surface-heading">Surface map</span>', 'Select a surface to filter')}<div class="surface-grid">
+    ${Object.entries(SURFACE_NAMES).map(([id, label]) => {
+      const s = surfaces[id];
+      const assignments = (health.expected || []).filter(name => String(name).includes(`-${id.toLowerCase()}-`));
+      const valid = assignments.filter(name => (health.accepted || []).includes(name)).length;
+      const missing = assignments.length > valid;
+      const coverage = !assignments.length ? 'Outside scope' : missing ? 'Review incomplete' : 'Outputs received';
+      return `<button type="button" class="surface" data-surface-filter="${id}" aria-pressed="false" aria-label="Filter ${id}: ${esc(label)}, ${s.total} findings. ${coverage}"><div><div class="surface-code">${id} / ${String(Object.keys(SURFACE_NAMES).indexOf(id) + 1).padStart(2, '0')}</div><div class="surface-name">${esc(shortSurface[id])}</div></div><span class="surface-total">${s.total}</span><div class="surface-bottom">${s.total ? `<span><span class="red">${s.high}H</span> / <span class="orange">${s.medium}M</span> / <span class="blue">${s.low + s.info}L</span></span>` : '<span class="no-claims">No claims</span>'}<span class="${missing ? 'coverage-gap' : 'no-claims'}">${!assignments.length ? 'Out of scope' : missing ? 'Incomplete' : `${valid}/${assignments.length} received`}</span></div></button>`;
+    }).join('')}
+  </div></section>
+  <section id="findings" aria-label="Findings">${sectionTitle('02', 'Findings', `${counts.total} prioritized model claims`)}
+    <div class="toolbar"><div class="filter-group" role="group" aria-label="Filter by severity">
+      ${[['all', 'All', counts.total], ['high', 'High+', counts.high], ['medium', 'Medium', counts.medium], ['low', 'Low + info', counts.low + counts.info]].map(([key, label, n]) => `<button type="button" class="filter-btn${key === 'all' ? ' active' : ''}" data-filter="${key}" aria-pressed="${key === 'all'}">${label}<span>${n}</span></button>`).join('')}
+    </div><label class="search-wrap"><span aria-hidden="true">⌕</span><input type="search" id="search-box" aria-label="Search findings, files, fixes and evidence" placeholder="Search findings, files, fixes…"></label></div>
+    <div class="list-caption"><span id="results-count" role="status" aria-live="polite">${counts.total} / ${counts.total} findings</span><button type="button" id="reset-filters" class="text-button" hidden>Clear filters</button><button type="button" id="expand-all" class="text-button">Expand findings</button></div>
+    <div id="findings-container">${findings.map(findingCard).join('')}</div><div class="empty" id="empty-results" hidden>No findings match. Try another filter or search.</div>
+  </section>
+  <section id="evidence" aria-label="Evidence and scope">${sectionTitle('03', 'Evidence & scope', 'Full detail on demand')}
+    <details class="panel" id="validation"><summary><span class="pill orange">${complete ? 'Validated' : 'Incomplete'}</span>Review status & limitations<span class="meta-label">${health.errors?.length || 0} gaps</span></summary><div class="panel-body">${validationDetails}${isolationDetails}</div></details>
+    <details class="panel"><summary><span class="pill blue">Coverage</span>Sandbox & checks<span class="meta-label">${sandboxRows.length} records</span></summary><div class="panel-body">${sandboxDetails}${sandboxMd ? disclosure('Original sandbox record', `<pre>${esc(sandboxMd)}</pre>`) : ''}</div></details>
+    ${controlsDetails}
+    ${diagrams.length ? `<details class="panel"><summary>Attached diagram source<span class="meta-label">${diagrams.length} files</span></summary><div class="panel-body"><p class="note">Attachments are displayed as inert source.</p>${diagrams.map(d => disclosure(d.title, `<pre>${esc(d.svg)}</pre>`)).join('')}</div></details>` : ''}
+  </section>`);
 
-    /* Stat Cards */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      margin-bottom: 28px;
-      background: var(--panel);
-      border: 1px solid var(--rule);
-    }
-    .stat-card {
-      padding: 16px 18px 14px;
-      display: flex;
-      flex-direction: column;
-    }
-    .stat-card + .stat-card { border-left: 1px solid var(--rule); }
-    .stat-num {
-      font-family: var(--font-mono);
-      font-size: 26px;
-      font-weight: 500;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
-      margin-bottom: 8px;
-    }
-    .stat-label {
-      font-size: 11px;
-      color: var(--mute);
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-weight: 500;
-    }
-    .stat-high { color: var(--harm-text); }
+const modelHtml = page(`${hero(true)}${notice}${sectionTitle('03', 'Findings by model', 'Before deduplication')}
+  <p class="note">Each model’s own claims, before merging. Critical is grouped with high. Counts measure output, not reviewer quality.</p>
+  <section class="panel"><ul class="legend">${modelLevels.map(level => `<li><i class="swatch swatch-${SEVERITY_LEVELS.includes(level) ? level : 'other'}" aria-hidden="true"></i>${esc(level)}</li>`).join('')}</ul><div aria-hidden="true">${modelChart()}</div></section>
+  <section class="panel model-meta"><h2>Severity breakdown</h2><div class="table-scroll">${modelTable()}</div></section>
+  <details class="panel"><summary>Requested models & validation<span class="meta-label">Identity unverified</span></summary><div class="panel-body">${validationDetails}${isolationDetails}</div></details>`, true);
 
-    /* Infographics & Charts Section */
-    .visuals-section { margin-bottom: 32px; }
-    .section-title {
-      font-size: 18px;
-      font-weight: 500;
-      margin-bottom: 8px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--brass);
-      display: inline-block;
-    }
-    .note { color: var(--mute); font-size: 14.5px; max-width: 68ch; margin: 8px 0 14px; }
-    .svg-container {
-      width: 100%;
-      overflow: hidden;
-      border: 1px solid var(--rule);
-      background: var(--ground);
-      margin-top: 12px;
-      margin-bottom: 24px;
-    }
-    .svg-container svg {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
-
-    /* One row per surface. The severity numbers are the content; a zero stays mute. */
-    .surface-list {
-      margin-top: 16px;
-      background: var(--panel);
-      border: 1px solid var(--rule);
-    }
-    .surface-row {
-      display: grid;
-      grid-template-columns: 3.4rem minmax(12rem, 1fr) auto;
-      gap: 8px 20px;
-      align-items: center;
-      padding: 14px 18px 14px 15px;
-      border-left: 3px solid var(--rule);
-    }
-    .surface-row + .surface-row { border-top: 1px solid var(--rule); }
-    .surface-row.tone-high { border-left-color: var(--harm); }
-    .surface-row.tone-medium { border-left-color: var(--brass); }
-    .surface-row.tone-low { border-left-color: var(--bone); }
-    .surface-row.tone-info { border-left-color: var(--mute); }
-    .surface-id {
-      font-family: var(--font-mono);
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 0.12em;
-      color: var(--bone);
-    }
-    .surface-name {
-      font-size: 15px;
-      font-weight: 500;
-      line-height: 1.3;
-      color: var(--bone);
-    }
-    .threats { display: flex; gap: 18px; }
-    .threat {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      min-width: 4.6rem;
-    }
-    .threat .n {
-      font-family: var(--font-mono);
-      font-size: 22px;
-      font-weight: 500;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
-    }
-    .threat .k {
-      margin-top: 4px;
-      font-family: var(--font-mono);
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-    }
-    .t-high .n, .t-high .k { color: var(--harm-text); }
-    .t-medium .n, .t-medium .k { color: var(--brass); }
-    .t-low .n, .t-low .k { color: var(--bone); }
-    .t-info .n, .t-info .k { color: var(--mute); }
-    .threat.is-zero .n, .threat.is-zero .k { color: var(--mute); }
-
-    /* Controls & Filters */
-    .filter-bar {
-      border-top: 1px solid var(--rule);
-      border-bottom: 1px solid var(--rule);
-      padding: 12px 0;
-      margin-bottom: 16px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .filter-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-    .filter-label {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--mute);
-      margin-right: 4px;
-    }
-    .filter-btn {
-      background: transparent;
-      color: var(--mute);
-      border: 1px solid var(--rule);
-      padding: 5px 10px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.06em;
-      cursor: pointer;
-    }
-    .filter-btn:hover { color: var(--bone); border-color: var(--mute); }
-    .filter-btn.active {
-      color: var(--bone);
-      border-color: var(--brass);
-    }
-    .search-input {
-      background: var(--ground);
-      border: 1px solid var(--rule);
-      color: var(--bone);
-      padding: 6px 10px;
-      font-family: var(--font-sans);
-      font-size: 14px;
-      width: 260px;
-      outline: none;
-    }
-    .search-input:focus { border-color: var(--brass); }
-
-    /* Finding Cards */
-    .finding-card {
-      background: var(--panel);
-      border: 1px solid var(--rule);
-      margin-bottom: 10px;
-      overflow: hidden;
-    }
-    .finding-header {
-      padding: 16px 18px;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-      cursor: pointer;
-      user-select: none;
-    }
-    .finding-header:hover { background: #20241e; }
-    .finding-card.open .finding-header { border-bottom: 1px solid var(--rule); }
-    .finding-title-row {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .finding-title {
-      font-size: 17px;
-      font-weight: 500;
-      color: var(--bone);
-      margin-top: 8px;
-    }
-    .badge-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      align-items: baseline;
-    }
-    .badge {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--mute);
-    }
-    .badge-high, .badge-critical, .badge-refuted { color: var(--harm-text); }
-    .badge-upheld { color: var(--brass); }
-    .badge-partial { color: var(--bone); }
-    .score-badge {
-      font-size: 12px;
-      font-weight: 500;
-      font-family: var(--font-mono);
-      color: var(--bone);
-      font-variant-numeric: tabular-nums;
-      min-width: 3ch;
-      text-align: right;
-    }
-
-    .finding-body {
-      padding: 16px 18px 8px;
-      display: none;
-      font-size: 15px;
-      color: var(--bone);
-    }
-    .finding-card.open .finding-body {
-      display: block;
-    }
-
-    .finding-section {
-      margin-bottom: 16px;
-    }
-    .finding-section-title {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--mute);
-      margin-bottom: 6px;
-    }
-    .harm-box, .fix-box {
-      border-left: 2px solid var(--harm);
-      padding: 2px 0 2px 12px;
-      color: var(--bone);
-      font-size: 15px;
-      max-width: 68ch;
-    }
-    .fix-box { border-left-color: var(--brass); }
-    .attack-list { padding-left: 18px; color: var(--mute); font-size: 14.5px; }
-    pre {
-      background: var(--ground);
-      border: 1px solid var(--rule);
-      padding: 12px 14px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--bone);
-      overflow-x: auto;
-      margin-top: 6px;
-    }
-    code {
-      font-family: var(--font-mono);
-      font-size: 12.5px;
-      color: var(--bone);
-    }
-
-    /* Verified Safe Table */
-    .safe-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14.5px;
-      margin-top: 8px;
-    }
-    .safe-table th {
-      text-align: left;
-      padding: 8px 12px 8px 0;
-      color: var(--mute);
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      border-bottom: 1px solid var(--brass);
-    }
-    .safe-table td {
-      padding: 10px 12px 10px 0;
-      border-bottom: 1px solid var(--rule);
-      vertical-align: top;
-    }
-    .verdict { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--brass); }
-    .verdict.broke { color: var(--harm-text); }
-    @media (max-width: 720px) {
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
-      .stat-card + .stat-card { border-left: 0; border-top: 1px solid var(--rule); }
-      .surface-row { grid-template-columns: 3.4rem 1fr; }
-      .threats { grid-column: 1 / -1; }
-    }
-  </style>
-</head>
-<body>
-
-  <header>
-    <div class="container">
-      <div class="header-badge">Model Security Review · ${esc(dateLabel)}</div>
-      <h1>${esc(targetName)} Security Audit</h1>
-      <p class="header-sub">
-        Adversarial multi-agent audit${meta.surface && meta.surface !== 'all' ? ` of surface ${esc(String(meta.surface).toUpperCase())}` : ''}${reviewers ? ` by ${esc(reviewers)}` : ''}.
-        ${sourceLine ? `<br><code>${esc(sourceLine)}</code>` : ''}
-      </p>
-      <p class="header-nav"><a href="findings-by-model.html">Findings by model</a></p>
-    </div>
-  </header>
-
-  <div class="container">
-
-    <!-- Top Scorecards -->
-    ${validationBanner}
-    ${isolationBanner}
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-num stat-high">${counts.high}</div>
-        <div class="stat-label">High Severity Model Claims</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num stat-medium">${counts.medium}</div>
-        <div class="stat-label">Medium Severity</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num stat-low">${counts.low + counts.info}</div>
-        <div class="stat-label">Low & Informational</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num stat-quorum">${counts.modelAgreement}</div>
-        <div class="stat-label">Model Agreement (Unverified)</div>
-      </div>
-    </div>
-    <p class="note">Agreement means multiple asserted CLI adapters reported matching titles and citations. First-pass independence and served-provider identity are not enforced. Upheld, partial, and refuted are later model statements, not reproduction evidence. Scores are heuristic priorities, not probabilities.</p>
-
-    ${sandboxBannerHtml}
-
-    <!-- Visual Architecture & Infographics -->
-    <div class="visuals-section">
-      <div class="section-title">
-        <span>Surfaces</span>
-      </div>
-      <p class="note">Each row is one surface. A colored number is how many findings sit at that severity. A mute zero means none.</p>
-
-      <div class="surface-list">
-        ${(() => {
-          const showInfo = Object.values(surfaces).some((s) => s.info);
-          const levels = showInfo ? ['high', 'medium', 'low', 'info'] : ['high', 'medium', 'low'];
-          const labelFor = { high: 'High', medium: 'Medium', low: 'Low', info: 'Info' };
-          return Object.entries(SURFACE_NAMES).map(([id, label]) => {
-            const s = surfaces[id];
-            const cells = levels.map((k) => {
-              const n = s[k];
-              return `<div class="threat t-${k}${n ? '' : ' is-zero'}"><span class="n">${n}</span><span class="k">${labelFor[k]}</span></div>`;
-            }).join('');
-            return `<div class="surface-row tone-${s.tone}">
-            <div class="surface-id">${id}</div>
-            <div class="surface-name">${esc(label)}</div>
-            <div class="threats">${cells}</div>
-          </div>`;
-          }).join('');
-        })()}
-      </div>
-    </div>
-
-    ${sandboxMd ? `
-    <div class="visuals-section">
-      <div class="section-title"><span>Sandbox</span></div>
-      <pre style="white-space: pre-wrap;">${esc(sandboxMd)}</pre>
-    </div>` : ''}
-
-    ${diagrams.length ? `
-    <!-- Optional diagrams from <report-dir>/assets/*.svg -->
-    <div class="visuals-section">
-      <div class="section-title">
-        <span>Diagrams</span>
-      </div>
-      ${diagrams.map((d) => `
-      <h3 class="finding-section-title" style="margin-top: 16px;">${esc(d.title)}</h3>
-      <pre class="svg-container">${esc(d.svg)}</pre>`).join('')}
-    </div>` : ''}
-
-    <!-- Filter & Search Controls -->
-    <div class="filter-bar">
-      <div class="filter-group">
-        <span class="filter-label">Severity</span>
-        <button class="filter-btn active" data-filter="all">ALL (${counts.total})</button>
-        <button class="filter-btn" data-filter="high">HIGH+ (${counts.high})</button>
-        <button class="filter-btn" data-filter="medium">MEDIUM (${counts.medium})</button>
-        <button class="filter-btn" data-filter="low">LOW (${counts.low + counts.info})</button>
-      </div>
-
-      <input type="text" class="search-input" id="search-box" placeholder="Search findings, files, or fixes...">
-    </div>
-
-    <!-- Finding Cards List -->
-    <div id="findings-container">
-      ${findings.map((f, idx) => `
-        <div class="finding-card ${idx === 0 ? 'open' : ''}" data-severity="${f.severity === 'critical' ? 'high' : esc(f.severity)}" data-surface="${esc(f.surface)}" data-title="${esc(String(f.title).toLowerCase())}">
-          <div class="finding-header">
-            <div class="finding-title-row">
-              <div class="badge-row">
-                <span class="badge badge-${f.severity === 'critical' ? 'high' : esc(f.severity)}">${esc(f.severity)}</span>
-                <span class="badge badge-surface">${esc(f.surface)}</span>
-                <span class="badge badge-${String(f.status).includes('REFUTED') ? 'refuted' : (String(f.status).includes('UPHELD') || f.status === 'MODEL_AGREEMENT') ? 'upheld' : String(f.status).includes('PARTIAL') ? 'partial' : 'quorum'}">${esc(f.status.replace(/_/g, ' '))}</span>
-                <span class="badge">${esc(f.vendors.join(', '))}</span>
-              </div>
-              <div class="finding-title">${esc(f.title)}</div>
-            </div>
-            <div class="score-badge">${esc(f.score)}</div>
-          </div>
-
-          <div class="finding-body">
-            ${Array.isArray(f.reviews) && f.reviews.length ? `
-            <div class="finding-section">
-              <div class="finding-section-title">Cross-check</div>
-              ${f.reviews.map((r) => `<p class="note"><span class="badge badge-${r.verdict === 'refuted' ? 'refuted' : r.verdict === 'upheld' ? 'upheld' : 'partial'}">${esc(r.reviewer)} · ${esc(r.verdict)}</span> ${esc(r.reason)}</p>`).join('')}
-            </div>` : ''}
-            <div class="finding-section">
-              <div class="finding-section-title">Harm & Blast Radius</div>
-              <div class="harm-box">
-                ${esc(f.findings?.[0]?.impact || 'No impact statement was provided by the auditor.')}
-              </div>
-            </div>
-
-            <div class="finding-section">
-              <div class="finding-section-title">Source Analysis & Impact</div>
-              <p style="margin-bottom: 8px;">${f.findings?.[0]?.preconditions ? `<strong>Preconditions:</strong> ${esc(f.findings[0].preconditions)}` : ''}</p>
-              ${f.findings?.[0]?.analysis ? `<p>${esc(f.findings[0].analysis)}</p>` : ''}
-              ${f.findings?.[0]?.validation ? `<p><strong>Validation and limits:</strong> ${esc(f.findings[0].validation)}</p>` : ''}
-              ${Array.isArray(f.findings?.[0]?.attack) ? `
-                <ul class="attack-list">
-                  ${f.findings[0].attack.map(step => `<li>${esc(step)}</li>`).join('')}
-                </ul>
-              ` : ''}
-            </div>
-
-            ${f.remediation ? `
-              <div class="finding-section">
-                <div class="finding-section-title">Remediation Patch / Fix Proposal</div>
-                <div class="fix-box">
-                  ${esc(f.remediation)}
-                </div>
-              </div>
-            ` : ''}
-
-            ${f.locations && f.locations.length > 0 ? `
-              <div class="finding-section">
-                <div class="finding-section-title">Affected Locations</div>
-                <pre>${esc(f.locations.join('\n'))}</pre>
-              </div>
-            ` : ''}
-
-            ${f.pocs && f.pocs.length > 0 ? `
-              <div class="finding-section">
-                <div class="finding-section-title">Proposed / Unexecuted Regression Material</div>
-                <pre>${esc(f.pocs.join('\n'))}</pre>
-              </div>
-            ` : ''}
-          </div>
-        </div>
-      `).join('')}
-    </div>
-
-    ${verifiedSafe.length ? `
-    <!-- Verified Safe Section: what the auditors attacked and found holding -->
-    <div class="visuals-section" style="margin-top: 40px;">
-      <div class="section-title">
-        <span>Auditor control assertions</span>
-      </div>
-      <p class="note">
-        Unverified model assertions. No automatic contradiction detection or tiebreak escalation is implemented.
-      </p>
-      <table class="safe-table">
-        <thead>
-          <tr>
-            <th>Security Invariant / Control</th>
-            <th>Review Evidence</th>
-            <th>Auditor</th>
-            <th>Verdict</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${verifiedSafe.map((s) => `
-          <tr>
-            <td><strong>${esc(s.control)}</strong></td>
-            <td>${esc(s.how_attacked)}</td>
-            <td>${esc(s.auditor)}</td>
-            <td class="verdict${s.holds === false ? ' broke' : ''}">${s.holds === false ? 'Reported broken' : 'Reported holding (unverified)'}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>` : ''}
-
-  </div>
-
-  <script nonce="${nonce}">
-    // Real-time filtering and search
-    const buttons = document.querySelectorAll('.filter-btn');
-    const searchBox = document.getElementById('search-box');
-    const cards = document.querySelectorAll('.finding-card');
-    document.querySelectorAll('.finding-header').forEach(header => {
-      header.addEventListener('click', () => header.parentElement.classList.toggle('open'));
-    });
-
-    let currentSeverity = 'all';
-
-    buttons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        buttons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentSeverity = btn.getAttribute('data-filter');
-        filterCards();
-      });
-    });
-
-    searchBox.addEventListener('input', () => {
-      filterCards();
-    });
-
-    function filterCards() {
-      const q = searchBox.value.toLowerCase();
-      cards.forEach(card => {
-        const sev = card.getAttribute('data-severity');
-        const title = card.getAttribute('data-title');
-        const matchSev = currentSeverity === 'all' || sev === currentSeverity;
-        const matchSearch = !q || title.includes(q) || card.textContent.toLowerCase().includes(q);
-
-        if (matchSev && matchSearch) {
-          card.style.display = 'block';
-        } else {
-          card.style.display = 'none';
-        }
-      });
-    }
-  </script>
-</body>
-</html>
-`;
-
-const outputHtmlPath = path.join(reportDir, 'report.html');
-const modelHtmlPath = path.join(reportDir, 'findings-by-model.html');
 writeReportFile(reportDir, 'report.html', html);
 writeReportFile(reportDir, 'findings-by-model.html', modelHtml);
-
-console.log(`\n======================================================`);
-console.log(` Standalone HTML review written:`);
-console.log(` ${outputHtmlPath}`);
-console.log(` ${modelHtmlPath}`);
-console.log(`======================================================\n`);
+console.log(`Standalone review pages written to ${reportDir}`);
 if (health.state === 'incomplete') process.exitCode = 2;

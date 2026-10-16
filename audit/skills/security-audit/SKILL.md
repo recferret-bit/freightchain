@@ -89,6 +89,14 @@ The immutable MCP commit binds workflow, source digest, requested model, reviewe
 
 Peer reviewers inspect the cited source and existing evidence for every assigned claim, then submit `upheld|partial|refuted` verdicts with reasons and citations. No missing verdict or evidence is invented. Agreement remains unverified model agreement.
 
+## Report presentation
+
+Use `./audit/bin/audit html <report-dir>` to regenerate the two standalone HTML pages from saved evidence; presentation changes do not require a new model review. The shared generator is `audit/scripts/generate-html-report.mjs`, with `report-style.css` and `report-browser.js` beside it.
+
+Keep the report compact: severity totals and surface coverage first, collapsed finding rows with short impact previews, impact and fix on expansion, then source analysis, citations, peer reviews and coverage logs in deeper disclosures. Preserve complete evidence in the disclosures. Use native keyboard-accessible details, severity/surface filters and full-text search. A missing assignment remains visibly incomplete, including on a zero-finding surface.
+
+The visual direction is modern mechanical/Transformers-inspired: white panels, orange accents, black navigation, angular geometry and strong typography. Red marks high severity, blue lower severity, and green reported controls/fixes or explicitly unverified model agreement. Colors accompany text labels; green never certifies safety. Keep pages offline, escape all reviewer/source content, render attached SVG as inert source, and retain the nonce CSP. Check desktop and mobile in a real browser after layout changes. Keep both copies of this skill identical.
+
 ## Long sessions and recovery
 
 Reviews have no runner reasoning deadline. Heartbeats every 30 seconds distinguish process, transport and agent activity. The preparation budget does not end a held review container. Individual protocol controls and test executions remain bounded; tests are limited to 90 seconds.

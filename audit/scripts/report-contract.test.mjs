@@ -278,6 +278,25 @@ test('renderer displays benign SVG source inertly and remains offline', (t) => {
   assert.match(recovered, /&lt;prior-review&gt;/);
 });
 
+test('renderer preserves original analysis and formats it without activating source markup', (t) => {
+  const f = fixture(t);
+  f.save('claude', [finding({
+    analysis: '**Ownership control**\n\n- Check `wallet_id`.\n- Keep the original evidence.',
+    validation: 'Source only. <img src=x onerror="alert(1)">',
+    fix: 'Reject `<script>` in the rendered source.',
+  }), controls]);
+  assert.equal(run('generate-html-report.mjs', f.dir).status, 0);
+  const html = fs.readFileSync(path.join(f.dir, 'report.html'), 'utf8');
+  assert.match(html, /<strong>Ownership control<\/strong>/);
+  assert.match(html, /<li>Check <code>wallet_id<\/code>\.<\/li>/);
+  assert.match(html, /Keep the original evidence\./);
+  assert.match(html, /&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;/);
+  assert.doesNotMatch(html, /<img src=x|<script>/);
+  const findingTags = html.match(/<details class="finding [^>]+>/g);
+  assert.equal(findingTags.length, 1);
+  assert.ok(findingTags.every(tag => !/\sopen(?:\s|=|>)/.test(tag)));
+});
+
 test('both skill copies stay identical and describe incomplete reviews', () => {
   const a = fs.readFileSync(path.join(root, 'audit/skills/security-audit/SKILL.md'), 'utf8');
   const b = fs.readFileSync(path.join(root, '.claude/skills/security-audit/SKILL.md'), 'utf8');
