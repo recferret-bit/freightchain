@@ -56,9 +56,9 @@ test('head basics: lang, title, description, viewport, theme colour, social prev
   for (const m of ['name="description"', 'name="viewport"', 'name="theme-color"', 'property="og:title"', 'property="og:image"', 'name="twitter:card"']) assert.ok(html.includes(m), m);
 });
 
-test('exactly one h1 (the hero), one h2 per remaining chapter + the promo band\'s (no level skipped before chapter 02)', () => {
+test('exactly one h1 (the hero), one h2 for the pitch-deck band, the promo band, and each chapter 02–07 (no level skipped before chapter 02)', () => {
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-  assert.equal((html.match(/<h2[\s>]/g) ?? []).length, 7, 'the promo band + chapters 02–07');
+  assert.equal((html.match(/<h2[\s>]/g) ?? []).length, 8, 'the pitch-deck band + the promo band + chapters 02–07');
   assert.doesNotMatch(html.slice(0, html.indexOf('<h2')), /<h3[\s>]/, 'no h3 before the first h2');
 });
 
@@ -84,6 +84,8 @@ test('split hosts: the game link goes through GAME_BASE and nothing calls a bare
   assert.match(main, /STORYBOOK_BASE/); assert.match(html, /id="storybook-link"/, 'footer links to the model viewer');
   assert.match(main, /WHITEPAPER_BASE/); assert.match(html, /id="whitepaper-link"/, 'footer links to the whitepaper');
   assert.match(main, /PITCHDECK_BASE/); assert.match(html, /id="pitchdeck-link"/, 'footer links to the pitch deck');
+  assert.match(html, /id="pitchdeck-band" href="https:\/\/pitchdeck\.freightchain\.fun\/"/, 'the band under the hero links the pitch deck');
+  assert.match(main, /for \(const id of \['pitchdeck-band', 'pitchdeck-link'\]\)/);
   assert.match(main, /GAME_BASE/); assert.doesNotMatch(main, /\/play\.html'/, 'no hard-coded /play.html in a JS string');
   for (const f of ['src/main.js', 'src/dash-live.js']) assert.doesNotMatch(readFileSync(join(root, f), 'utf8'), /fetch\(|XMLHttpRequest/, `${f}: API calls go through client/site/wallet.js (API_BASE)`);
 });
@@ -105,7 +107,7 @@ test('sign-in: redirect + session UI go through SITE_BASE, the wallet chip exist
 test('promo invite: a form in its own band right after the hero (an <aside>, not a chapter – no nav link, its own h2), the code rides to the lobby PROMO tab through SITE_BASE, shown with textContent only', () => {
   for (const id of ['invite', 'invite-code', 'invite-go', 'invite-msg']) assert.ok(ids.includes(id), id);
   assert.match(html, /<form class="invite[^"]*" id="invite"/);
-  assert.match(html, /<\/section>\s*<!--[^>]*PROMO CODE[^>]*-->\s*<aside class="promo-band" id="promo-band"[\s\S]*?<form class="invite[\s\S]*?<\/aside>\s*<div class="road"/, 'the band sits between the hero and the road to chapter 02');
+  assert.match(html, /<\/section>\s*<div class="road"[\s\S]*?<\/div>\s*<!--[^>]*PITCH DECK[^>]*-->\s*<aside class="deck-band"[\s\S]*?<\/aside>\s*<div class="road"[\s\S]*?<\/div>\s*<!--[^>]*PROMO CODE[^>]*-->\s*<aside class="promo-band" id="promo-band"[\s\S]*?<form class="invite[\s\S]*?<\/aside>\s*<div class="road"/, 'a road, the pitch-deck invite, a road, then the promo band, sit between the hero and the road to chapter 02');
   assert.match(main, /new URLSearchParams\(location\.search\)\.get\('promo'\)/, 'an invite link: /?promo=CODE pre-fills the field');
   assert.match(main, /\$\{SITE_BASE\}\/lobby\.html\$\{code \? `\?promo=\$\{encodeURIComponent\(code\)\}#promo` : ''\}/, 'the lobby is opened on #promo with the code, url-encoded');
   assert.match(main, /const code = inviteIn\.value\.trim\(\) \|\| invite;/, 'a code typed but not submitted survives CONNECT');

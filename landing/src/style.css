@@ -39,10 +39,10 @@ button:focus-visible,a:focus-visible,.card3d:focus-visible,.fq button:focus-visi
 @keyframes pulse{50%{opacity:.25}}
 
 /* ── CTA ── */
-.cta{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:2px solid var(--amber);background:var(--amber);color:#1b1408;font-weight:700;letter-spacing:1px;border-radius:6px;padding:14px 22px;box-shadow:0 0 28px #ffb02e33;transition:transform .15s,box-shadow .15s}
+.cta{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:2px solid var(--amber);background:var(--amber);color:#1b1408;font-weight:700;letter-spacing:1px;border-radius:6px;height:48px;padding:0 22px;box-shadow:0 0 28px #ffb02e33;transition:transform .15s,box-shadow .15s}
 .cta:hover{transform:translateY(-1px);box-shadow:0 0 36px #ffb02e66}
 .cta.ghost{background:#0008;color:var(--amber);box-shadow:none}
-.cta.sm{padding:7px 16px;font-size:12px;border-radius:4px;box-shadow:none}
+.cta.sm{padding:0 16px;font-size:12px;border-radius:4px;box-shadow:none}
 .cta:disabled{opacity:.45;cursor:not-allowed;transform:none}
 .link{color:var(--amber);font-size:13px}
 
@@ -359,13 +359,26 @@ footer{width:min(1100px,100%);margin:0 auto;padding:30px 20px 50px;color:var(--d
   .cta{width:100%;text-align:center}
 }
 
+/* pitch-deck invite: a short row between the two roads. The frame crossfades four slide pages. */
+.deck-band{padding:40px 0}
+.deck-in{display:flex;align-items:center;gap:48px;width:min(1100px,100%);margin:0 auto;padding:0 20px;text-decoration:none;color:inherit}
+.deck-shot{position:relative;flex:none;width:min(400px,38%);aspect-ratio:16/9;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#000}
+.deck-shot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;animation:kb 16s infinite}
+.deck-shot img:nth-child(2){animation-delay:-4s}.deck-shot img:nth-child(3){animation-delay:-8s}.deck-shot img:nth-child(4){animation-delay:-12s}
+.deck-copy{flex:1;min-width:0}.deck-copy .eyebrow{margin:0 0 2px}.deck-copy h2{font-size:clamp(18px,2.2vw,26px);line-height:1.15;color:var(--amber)}
+.deck-meta{display:block;margin-top:2px;color:var(--dim);font-size:13px}
+.deck-in:hover .deck-shot{border-color:var(--needle)}
+.deck-in .cta{width:auto;flex:none;animation:deckglow 1.6s ease-in-out infinite}
+@keyframes deckglow{50%{box-shadow:0 0 22px #ffb02e}}
+@media (max-width:880px){.deck-band{padding:28px 0}.deck-in{display:grid;grid-template-columns:1.4fr 1fr;gap:10px 32px;padding:0 14px}.deck-shot{width:100%}.deck-copy h2{font-size:16px}.deck-in .cta{grid-column:1 / -1;width:100%}}
+@media (prefers-reduced-motion:reduce){.deck-shot img,.deck-in .cta{animation:none}.deck-shot img:first-child{opacity:1}}
 .promo-band{background:linear-gradient(180deg,var(--bg) 0,#17130b 100%);border-top:1px solid #ffffff12;border-bottom:1px solid #ffffff12}
 .promo-in{width:min(1100px,100%);margin:0 auto;padding:44px 20px;display:grid;grid-template-columns:1.2fr 1fr;gap:28px 48px;align-items:center}
 .promo-copy h2{margin:6px 0 16px;font-size:clamp(22px,3vw,32px);color:var(--amber)}
 .perks{list-style:none;margin:0;padding:0;display:grid;gap:10px}.perks li{display:grid;grid-template-columns:140px 1fr;gap:12px;align-items:baseline;font-size:14px}.perks b{font-size:12px;letter-spacing:1.5px;color:var(--needle)}.perks span{color:var(--dim)}
 .invite{display:grid;gap:8px;background:#0b0a0999;border:1px solid #ffcf5a40;border-radius:10px;padding:20px}
 .invite label{font-size:11px;letter-spacing:2px;color:var(--amber)}
-.invite-row{display:flex;gap:10px}.invite input{flex:1 1 auto;min-width:0;background:#0006;border:1px solid #ffffff30;border-radius:6px;color:inherit;padding:12px 14px;font:inherit;font-size:18px;text-transform:uppercase;letter-spacing:2px}
+.invite-row{display:flex;gap:10px;align-items:center}.invite input{flex:1 1 auto;min-width:0;background:#0006;border:1px solid #ffffff30;border-radius:6px;color:inherit;height:48px;padding:0 14px;font:inherit;font-size:18px;text-transform:uppercase;letter-spacing:2px}
 .invite input:focus-visible{outline:2px solid #ffcf5a;outline-offset:1px}
 .invite .hint{font-size:12px;color:var(--dim,#9d957f)}.invite .hint.bad{color:#ff8a7a}
 @media (max-width:760px){.promo-in{grid-template-columns:1fr;padding:32px 20px}.perks li{grid-template-columns:1fr;gap:2px}.invite-row{flex-direction:column}}

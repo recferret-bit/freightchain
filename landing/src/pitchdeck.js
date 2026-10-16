@@ -5,7 +5,8 @@
 import { SLIDES } from './pitchdeck/data.js';
 import { reduced, view, stage, deck, replay, toStage, pop } from './pitchdeck/core.js';
 import { initTicker, holdTicker, ticker } from './pitchdeck/ticker.js';
-import { initCoins, donate, adopt, setOnGrab } from './pitchdeck/coins.js';
+import { initCoins, donate, adopt, setOnGrab, setCoinGravity } from './pitchdeck/coins.js';
+import { fallOnScreen } from './pitchdeck/tilt.js';
 import { initTilt, initDrag, drag, initShakes, initCarousel, initPeek, initSplit, setOnSplit, initScenes, ladderClick } from './pitchdeck/fx.js';
 import { initRoad } from './pitchdeck/road.js';
 import { initStats, slideShown, interact } from './pitchdeck/stats.js';
@@ -136,16 +137,43 @@ const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
 document.body.classList.toggle('touch', touch);
 /* a tap on anything that answers it shows a soft Solana-gradient ring instead of the browser's blue highlight (-webkit-tap-highlight-color is off in the CSS) */
 const TAPS = `${CARDS}, .pts li.don, .pts li.adopt, .ladder li, .split > div, .exits .exit, [data-go], button`;
-if (touch && !reduced) addEventListener('pointerdown', e => { if (e.target.closest?.(TAPS)) { const [x, y] = toStage(e.clientX, e.clientY); pop('tap', '', x, y); } }, { passive: true });
+if (touch && !reduced) addEventListener('pointerdown', e => { if (e.target.closest?.('#tilt, #turn')) return; if (e.target.closest?.(TAPS)) { const [x, y] = toStage(e.clientX, e.clientY); pop('tap', '', x, y); } }, { passive: true });
 if (touch) setTimeout(() => help.classList.add('quiet'), 6000);   // a phone: the "swipe" tip fades after a while (or the first page turn) – the zoomed slides need the bottom edge
 if (touch) addEventListener('pointerup', function first(e) { if (e.target.closest('#fs')) return; removeEventListener('pointerup', first); setFull(true); });
 let sx = 0, sy = 0, swipe = false;
-addEventListener('touchstart', e => { swipe = !e.target.closest('.fx .shot'); sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+addEventListener('touchstart', e => { swipe = !e.target.closest('.fx .shot, #tilt'); sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
 addEventListener('touchend', e => {
   if (!swipe) return;
   const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
   if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { flashTip(dx < 0 ? 'go-r' : 'go-l'); show(view.cur + (dx < 0 ? 1 : -1), 'swipe'); }
 }, { passive: true });
+
+/* a phone: ask before reading the motion sensors (iOS only shows its dialog from a tap, and reports acceleration opposite the spec).
+   Allowed → spawned SOL falls with the tilt. Not now, or no sensors, leaves gravity straight down. */
+function initTiltAsk() {
+  const box = document.getElementById('tilt');
+  if (!touch || reduced || !window.isSecureContext || !window.DeviceMotionEvent) return;
+  box.hidden = false;
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const angle = () => { const a = window.screen.orientation?.angle; if (typeof a === 'number') return a; const w = window.orientation || 0; return w < 0 ? w + 360 : w; };
+  document.getElementById('tilt-no').addEventListener('click', () => { box.hidden = true; });
+  document.getElementById('tilt-yes').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true;
+    if (typeof window.DeviceMotionEvent.requestPermission === 'function') {
+      let state = 'denied';
+      try { state = await window.DeviceMotionEvent.requestPermission(); } catch { /* dismissed, or the tap was not a gesture */ }
+      if (state !== 'granted') { box.hidden = true; return; }
+    }
+    box.hidden = true; interact('tilt');
+    addEventListener('devicemotion', ev => {
+      const a = ev.accelerationIncludingGravity;
+      if (!a || a.x == null || a.y == null) return;
+      const f = fallOnScreen(ios ? -a.x : a.x, ios ? -a.y : a.y, angle());
+      setCoinGravity(f.x, f.y);
+    });
+  });
+}
+initTiltAsk();
 
 const turn = document.getElementById('turn'), portrait = matchMedia('(orientation: portrait) and (max-width: 900px)');
 let skipTurn = false;

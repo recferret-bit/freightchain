@@ -1,6 +1,7 @@
 /* slide 3's money show. DONATIONS drops SOL coins onto the stage: discs under gravity that bounce, roll and pile up between its walls over every slide (at most COIN_MAX,
    the oldest go first), bounce off the showing slide's cards, and can be grabbed and thrown. WEB3 ADOPTION pulls them into the bullet and pays out their real value.
-   The LIVE banner runs from the mouse, and it and the clip card are springs that sag under the SOL lying on them. */
+   The LIVE banner runs from the mouse, and it and the clip card are springs that sag under the SOL lying on them.
+   Gravity is straight down until a phone allows motion sensors: then gX/gY (fractions of G, from tilt.js) follow the phone. */
 import { DONATE, SOL_USD } from './data.js';
 import { reduced, view, stage, deck, toStage, slideOf, everyFrame, pop, toast, shakeScreen } from './core.js';
 
@@ -32,6 +33,17 @@ const weighed = [];   // the page-3 card and banner: spring bodies that sag unde
 
 /** wake the pile (it sleeps once settled) */
 export const wakeCoins = () => { coinStill = 0; coinRaf ||= requestAnimationFrame(coinTick); };
+
+/* gravity in fractions of G. (0, 1) is straight down the screen. A phone that allowed sensors streams a smoothed tilt in;
+   `slant` is a real tip (not "held normally"), and only then do the side walls act as floors. */
+let gX = 0, gY = 1, slant = false, wokeX = 0, wokeY = 1;
+export function setCoinGravity(x, y) {
+  gX += (x - gX) * .2; gY += (y - gY) * .2;
+  slant = Math.abs(gX) > .2 || gY < .75;
+  if (Math.hypot(gX - wokeX, gY - wokeY) < .04) return;
+  wokeX = gX; wokeY = gY;
+  if (coins.length) wakeCoins();
+}
 
 /* only the box the coins covered last frame is cleared (a pile resting on the floor is a thin strip, not the whole stage): every coin is drawn inside this frame's box */
 let dirty = null;   // [x0, y0, x1, y1] in canvas px
@@ -88,17 +100,26 @@ function hitBox(c, b) {   // a disc against a tilted rounded box: into the box's
 }
 function bounds(c, h) {
   if (c.y - c.r >= CEIL) c.in = true;   // the ceiling only once a coin has dropped in: they are born above it
-  if (c.in && c.y - c.r < CEIL) { c.y = CEIL + c.r; if (c.vy < 0) c.vy = -c.vy * E_FLOOR; }
-  if (c.y + c.r > floor()) { c.y = floor() - c.r; if (c.vy > 0) c.vy = c.vy > 90 ? -c.vy * E_FLOOR : 0; c.touch = true; }   // a slow landing stops dead: no endless micro-bounce
-  if (c.x - c.r < 0) { c.x = c.r; if (c.vx < 0) c.vx = -c.vx * E_FLOOR; } else if (c.x + c.r > view.w) { c.x = view.w - c.r; if (c.vx > 0) c.vx = -c.vx * E_FLOOR; }
-  if (c.touch) { c.vx *= 1 - .5 * h; c.w += (c.vx / c.r - c.w) * Math.min(1, 10 * h); } else c.w *= 1 - .3 * h;   // touching something it rolls (spin = v / r) and slowly loses speed; in the air it keeps its spin
+  if (!slant) {   // straight down: the floor is the only shelf. A tip (slant) makes every wall one, so a coin can rest on the low side
+    if (c.in && c.y - c.r < CEIL) { c.y = CEIL + c.r; if (c.vy < 0) c.vy = -c.vy * E_FLOOR; }
+    if (c.y + c.r > floor()) { c.y = floor() - c.r; if (c.vy > 0) c.vy = c.vy > 90 ? -c.vy * E_FLOOR : 0; c.touch = true; }   // a slow landing stops dead: no endless micro-bounce
+    if (c.x - c.r < 0) { c.x = c.r; if (c.vx < 0) c.vx = -c.vx * E_FLOOR; } else if (c.x + c.r > view.w) { c.x = view.w - c.r; if (c.vx > 0) c.vx = -c.vx * E_FLOOR; }
+    if (c.touch) { c.vx *= 1 - .5 * h; c.w += (c.vx / c.r - c.w) * Math.min(1, 10 * h); } else c.w *= 1 - .3 * h;   // touching something it rolls (spin = v / r) and slowly loses speed; in the air it keeps its spin
+    return;
+  }
+  const halt = (v, into) => into ? (Math.abs(v) > 90 ? -v * E_FLOOR : 0) : v;   // a slow hit sticks, a fast one bounces
+  if (c.in && c.y - c.r < CEIL) { c.y = CEIL + c.r; c.vy = halt(c.vy, c.vy < 0); c.touch = true; }
+  if (c.y + c.r > floor()) { c.y = floor() - c.r; c.vy = halt(c.vy, c.vy > 0); c.touch = true; }
+  if (c.x - c.r < 0) { c.x = c.r; c.vx = halt(c.vx, c.vx < 0); c.touch = true; }
+  else if (c.x + c.r > view.w) { c.x = view.w - c.r; c.vx = halt(c.vx, c.vx > 0); c.touch = true; }
+  if (c.touch) { const k = 1 - .5 * h; c.vx *= k; c.vy *= k; c.w += (c.vx / c.r - c.w) * Math.min(1, 10 * h); } else c.w *= 1 - .3 * h;
 }
 function coinTick(t) {
   const dt = Math.min(1 / 30, (t - coinT) / 1000 || 1 / 60), h = dt / 4; coinT = t;
   readBoxes(); boxTouch = false; for (const p of weighed) p.load = 0;
   if (suckOn) suckStep(t);
   for (let s = 0; s < 4; s++) {   // 4 substeps a frame, 4 collision passes each: enough for a stable pile of ~120
-    for (const c of coins) { if (c === held) { c.vx = Math.max(-4000, Math.min(4000, (hx - c.x) * 20)); c.vy = Math.max(-4000, Math.min(4000, (hy - c.y) * 20)); } else c.vy += G * h; c.x += c.vx * h; c.y += c.vy * h; c.a += c.w * h; c.touch = false; }
+    for (const c of coins) { if (c === held) { c.vx = Math.max(-4000, Math.min(4000, (hx - c.x) * 20)); c.vy = Math.max(-4000, Math.min(4000, (hy - c.y) * 20)); } else { c.vx += G * gX * h; c.vy += G * gY * h; } c.x += c.vx * h; c.y += c.vy * h; c.a += c.w * h; c.touch = false; }
     const ord = coins.slice().sort((p, q) => p.x - q.x), n = ord.length;   // sweep along x: only neighbours closer than the widest pair (r ≤ 30) can touch – O(n·k), not n²
     for (let it = 0; it < 4; it++) for (let i = 0; i < n; i++) { const p = ord[i], lim = p.x + p.r + 34; for (let j = i + 1; j < n && ord[j].x < lim; j++) collide(p, ord[j]); }
     for (const c of coins) { for (const b of boxes) hitBox(c, b); bounds(c, h); }
