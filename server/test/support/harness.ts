@@ -101,7 +101,7 @@ export interface Harness {
 }
 
 /** Everything the app reads from the environment that a test may change – cleared before each harness so files can't leak into each other. */
-const TUNABLES = ['THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'THROTTLE_PROMO_LIMIT', 'HB_TIMEOUT_MS', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS', 'SIGNIN_RETENTION_DAYS', 'CHALLENGE_INTERVAL_SECONDS',
+const TUNABLES = ['TRAFFIC_PROOF_REQUIRED', 'THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'THROTTLE_PROMO_LIMIT', 'HB_TIMEOUT_MS', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS', 'SIGNIN_RETENTION_DAYS', 'CHALLENGE_INTERVAL_SECONDS',
   'CHALLENGE_FREE_RIDES', 'LIVE_CHAT', 'LIVE_DONATIONS', 'LIVE_FREE_DONATIONS', 'LIVE_EFFECTS', 'PAYMENT_MODE', 'TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'ORDER_TTL_MINUTES', 'WATCH_INTERVAL_MS', 'WEBHOOK_SECRET', 'CRANK_SECRET', 'CRANK_INTERVAL_MS', 'FEE_PAYER_SECRET', 'SOLANA_COMMITMENT',
   'POSTHOG_KEY', 'POSTHOG_HOST', 'POSTHOG_ENABLED', 'POSTHOG_DISABLED', 'POSTHOG_PROJECT_ID'];
 
@@ -114,6 +114,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
   Object.assign(process.env, {
     NODE_ENV: 'test', JWT_SECRET: 'test-secret-'.padEnd(48, 'x'), SOL_USD: '100', TREASURY_PUBKEY: TREASURY, THROTTLE_LIMIT: '1000000', THROTTLE_AUTH_LIMIT: '1000000', THROTTLE_PROMO_LIMIT: '1000000',
     ACHIEVEMENT_MINT_SECRET: '', ACHIEVEMENT_TREE: '', ACHIEVEMENT_COLLECTION: '', // never the developer's .env: scenarios must not mint (or show a tree)
+    TRAFFIC_PROOF_REQUIRED: 'false', // historical API fixtures; strict protocol has its own HTTP and Chrome coverage
     WATCH_INTERVAL_MS: '0', // the program watcher off: scenarios settle through the webhook / their own calls
     DATABASE_URL: persistence === 'postgres' ? testDatabaseUrl() : 'postgresql://unused:unused@127.0.0.1:1/unused_test',   // NEVER the shell's DATABASE_URL
     ...env,
@@ -170,6 +171,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const app = moduleRef.createNestApplication();
   configureApp(app);
   await app.init();
+  // Supertest starts an unlistening server itself and closes it when the in-flight count hits zero; the next request then reads a null address.
+  await app.listen(0, '127.0.0.1');
   const prisma = persistence === 'postgres' ? app.get(PrismaService, { strict: false }) : null;
 
   return {

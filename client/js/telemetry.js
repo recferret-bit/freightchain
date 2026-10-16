@@ -2,14 +2,15 @@ import { CFG } from './config.js';
 import { st } from './state.js';
 import { API_BASE } from './hosts.js';
 import { inputBits, maskOf } from './input-bits.js';
+import { encodeTrafficProof } from '../shared/traffic-proof.js';
 import { net } from './net/network.js';
 
 /* Ride recording for the server's verdict (verified play): every input event + a 10 Hz sample of the truck, uploaded in hash-chained batches.
    ONLINE ONLY – recording starts in beginOnline() (online.js) and is a no-op otherwise, so the offline game, the headless trace and the viewer are untouched.
-   The server does not re-simulate anything: it checks the chain, that the recording agrees with what was reported, and how human the input timing looks
+   The server checks the chain, re-simulates traffic from the hashed frame evidence, checks the reported driving and measures input timing
    (server/src/domain/verdict). Batch shape + canonical text must match server/src/domain/telemetry/ride-batch.entity.ts. */
 
-const rec = { extra: () => [0, 0], held: new Set(), tapped: 0, trafficOf: () => [], traffic: [], tacc: 0, on: false, rideId: '', seq: 0, prevHash: '', t0: 0, acc: 0, wall0: 0, samples: [], inputs: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null };
+const rec = { trafficVersion: 0, frames: [], extra: () => [0, 0], held: new Set(), tapped: 0, trafficOf: () => [], traffic: [], tacc: 0, on: false, rideId: '', seq: 0, prevHash: '', t0: 0, acc: 0, wall0: 0, samples: [], inputs: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null };
 const r = (v, decimals) => { if (!Number.isFinite(v)) return 0; const f = 10 ** decimals; return Math.round(v * f) / f; };   // NaN would serialise as null and the server refuses the batch   // the shortest JSON (x / 100, not x * 0.01: no 0.30000000000000004)
 
 /** One input event: ms since the ride started (wall clock – human timing is measured in real time), the key code or dash button, 1 = down / 0 = up.
@@ -39,7 +40,7 @@ export function tickTelemetry(dt) {
   if (rec.acc >= period) { rec.acc -= period; if (rec.acc >= period) rec.acc = 0; rec.samples.push(sample()); }   // keep the remainder: a true 10 Hz at any frame rate
   rec.tacc += dt;
   if (rec.tacc >= 1 / TRAFFIC_HZ) { rec.tacc = 0; rec.traffic.push([r(st.t, 2), ...rec.trafficOf()]); }   // the cars around the truck, for replays (not judged)
-  if (st.t - rec.t0 >= CFG.TELEMETRY_BATCH_SECONDS) cut();
+  if (st.t - rec.t0 >= (rec.trafficVersion ? 2 : CFG.TELEMETRY_BATCH_SECONDS) || rec.frames.length >= 500) cut();
 }
 /** [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock, flags, inputs, fork] – the order the server reads (the verdict uses the first 12; the
     last four are only for spectators' replays (watch.js): the hour of the day, the cab's switches – so a replay shows the lights, wipers, heater and cooling the driver had –,
@@ -51,17 +52,19 @@ export function releaseInputs() { rec.held.clear(); }
 /* set by ui/game.js (it can see the day/night, wiper and radio state; this module stays below world/ and cockpit/): [clock hour, FLAGS bitmask] */
 export const FLAGS = { engine: 1, key: 2, park: 4, head: 8, cab: 16, heater: 32, washing: 64, wipeSlow: 128, wipeFast: 256, radio: 512, rev: 1024, cooler: 2048, phone: 4096 };   // append bits; old recordings keep their meaning
 
-export function startTelemetry(rideId) {
-  Object.assign(rec, { on: true, rideId, seq: 0, prevHash: rideId, t0: st.t, acc: 0, tacc: 0, wall0: performance.now(), held: new Set(), tapped: 0, samples: [], inputs: [], traffic: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null });
+export function startTelemetry(rideId, trafficVersion = 0) {
+  Object.assign(rec, { on: true, rideId, trafficVersion, frames: [], seq: 0, prevHash: rideId, t0: st.t, acc: 0, tacc: 0, wall0: performance.now(), held: new Set(), tapped: 0, samples: [], inputs: [], traffic: [], queue: [], sealing: Promise.resolve(), sending: null, refused: null });
 }
 
 /** Seal what is recorded so far into a batch (chained after the previous one) and send. */
 function cut() {
   const body = { seq: rec.seq++, prevHash: '', t0: r(rec.t0, 2), t1: r(Math.max(st.t, rec.t0), 2), samples: rec.samples, inputs: rec.inputs };
+  if (rec.trafficVersion) body.trafficProof = encodeTrafficProof(rec.frames);
+  rec.frames = [];
   const traffic = rec.traffic; rec.t0 = st.t; rec.samples = []; rec.inputs = []; rec.traffic = [];
   rec.sealing = rec.sealing.then(async () => {   // the hash of batch n is the prevHash of n+1, so batches are sealed one after another
     body.prevHash = rec.prevHash;
-    const text = JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs });
+    const text = JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs, ...(body.trafficProof !== undefined ? { trafficProof: body.trafficProof } : {}) });
     body.hash = await sha256(text).catch(() => sha256(text)).catch(() => null);   // one retry, then a failed digest must not stop the chain: the batch goes unhashed (the server hashed it itself; the verdict only flags it)
     rec.prevHash = body.hash ?? `unhashed-${body.seq}`;
     if (traffic.length && text.length + JSON.stringify(traffic).length < TRAFFIC_BODY_BUDGET) body.traffic = traffic;   // beside the hashed text, never in it; dropped rather than risk the 100 kB body limit
@@ -101,7 +104,7 @@ function send() {
 /** End of the ride: seal the last partial batch and upload it – called right before /end, which waits for this at most FLUSH_WAIT_MS (online.js). */
 export async function flushTelemetry() {
   if (!rec.on) return;
-  if (rec.samples.length || rec.inputs.length) cut();
+  if (rec.samples.length || rec.inputs.length || rec.frames.length) cut();
   rec.on = false;
   await rec.sealing;
   await send();
@@ -119,3 +122,10 @@ function retryInBackground(until) {
 const TRAFFIC_HZ = 2, TRAFFIC_BODY_BUDGET = 90_000;
 
 export const telemetry = rec;   // debug / e2e: __game.telemetry
+
+/** Exact pre-contact state; display-only traffic snapshots cannot substitute for this hashed evidence. */
+export function beginTrafficFrame(dt) {
+  if (!rec.on || !rec.trafficVersion || !(dt > 0)) return null;
+  return [dt, net.clock, st.s, st.d, st.psi, st.tyaw, st.v, st.vel, st.hull, +st.rev, net.forkAt(st.s)?.choice ?? 0, 0];
+}
+export function endTrafficFrame(frame) { if (frame) { frame[11] = st.hull; rec.frames.push(frame); } }

@@ -33,6 +33,9 @@ export const SAMPLE_TIME_SLACK = 0.05; // sample times may stick out of their ba
 export const BATCH_MAX_BYTES = 98_304; // canonical JSON; below Express's default 100 kB body limit (a real 15 s batch is ≈ 15 kB)
 export const BATCH_MAX_SEQ = 100_000;
 export const MAX_GAME_SECONDS = 1e7;
+/** Coarse work limits before geometry: allow ample fork/rounding slack, but never scan kilometres per 10 Hz step or repeatedly sweep a whole road. */
+export const SAMPLE_WORK_SLACK_METRES = 1000;
+export const BATCH_MAX_TRAVEL_METRES = 10_000; // cumulative |Δs| including the previous batch's tail
 export const INPUT_CODE_MAX_LENGTH = 32;
 /** Input codes that start with this are the in-game PHONE's events (client/js/telemetry.js recordPhone: its taps, pans, power / boot, route lost). They are kept in the recording
     for audits and replays but are NOT driving: the verdict never counts them as an input, as a press, or in the human-timing statistics. */

@@ -51,7 +51,7 @@ export async function beginOnline() {
   if (started.tutorial !== online.ride.tutorial || started.assist !== online.ride.assist) setGuide(started);   // (HARD's assist is refused by the server: false here too)
   online.running = true;   // the server has started the ride: its road plan is served from now on (road-plan.js)
   setLoadout(started.loadout);   // what the server stamped on the ride (what spectators and replays draw) – normally what the menu already wore
-  startTelemetry(online.ride.id);   // inputs + 10 Hz samples, uploaded in hash-chained batches (the server's verdict reads them)
+  startTelemetry(online.ride.id, started.trafficVersion ?? 0);   // inputs + 10 Hz samples, uploaded in hash-chained batches (the server's verdict reads them)
   resetPrompts();
   timer = setInterval(() => api(`rides/${online.ride.id}/heartbeat`, progress()).then(r => showPrompt(r.challenge), () => { /* a lost beat is the server's call (timeout) */ }), 10_000);   // the response may carry a challenge (prompt.js): the handler shows whatever the DTO names
 }

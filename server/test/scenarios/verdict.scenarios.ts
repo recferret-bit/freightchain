@@ -28,9 +28,19 @@ export function verdictScenarios(h: () => Harness): void {
 
   /** a demo paid 1 h shift (60 s, 840 m): pay, start, beat (collecting the dispatch prompts the heartbeats carry), upload the recording – with the prompts
       answered `reactionMs` after they were issued (null = ignored) –, end */
-  async function paidShift(rider: Rider, rec: Partial<RecordingOptions> | null, metres = 910, reactionMs: number | null = 600) {
+  async function paidShift(rider: Rider, rec: (Partial<RecordingOptions> & { neutral?: boolean }) | null, metres = 910, reactionMs: number | null = 600) {
     const { id, prompts, road } = await driven(rider, metres);
-    if (rec) await upload(rider.agent, id, recording(id, { seconds: 70, distance: metres, answers: reactionMs === null ? [] : answersFor(prompts, reactionMs), road, ...rec }));
+    if (rec) {
+      const batches = recording(id, { seconds: 70, distance: metres, answers: reactionMs === null ? [] : answersFor(prompts, reactionMs), road, ...rec });
+      if (rec.neutral) {
+        let prevHash = id;
+        for (const b of batches) {
+          for (const row of b.samples) row[6] = 0;
+          b.prevHash = prevHash; b.hash = hashBatch(b); prevHash = b.hash;
+        }
+      }
+      await upload(rider.agent, id, batches);
+    }
     return (await rider.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: metres, t: 70, hull: 100 }).expect(200)).body;
   }
   async function driven(rider: Rider, metres = 910) {
@@ -155,22 +165,23 @@ export function verdictScenarios(h: () => Harness): void {
       // the road plan the game was handed is public: the same holes the verdict uses
       const plan = (await anon().get(`/api/watch/${r.id}/road`).query({ from: 0, to: distance }).expect(200)).body;
       const answers = prompts.map((c, i) => ({ atMs: c.issuedMs + 450 + ((i * 173) % 600), code: c.codes[0] as string })); // a person's reactions vary (a long drive gets many prompts)
-      await upload(d.agent, r.id, recording(r.id, { seconds, distance, answers, ...(honest ? { road: r.seed, trip: r.trip } : {}) }));
+      await upload(d.agent, r.id, recording(r.id, { seconds, distance, answers, ...(honest ? { road: r.seed, trip: r.trip, route: r.route } : {}) }));
       const end = (await d.agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'shift', s: distance, t: seconds, hull: 100 }).expect(200)).body;
       return { end, plan, h2 };
     }
 
-    it('took the damage the game takes at every planned hole it drove through → VERIFIED, the holes counted HIT in the scores', async () => {
+    it('taking planned hole damage produces no obstacle verdict reason; traffic is judged independently', async () => {
       const { end, plan, h2 } = await throughTheHoles(true);
       expect(plan.holes.filter((x: { lat: number; s: number }) => Math.abs(x.lat - 2.4) < 0.01 && x.s <= h2).length).toBe(2);
-      expect(end).toMatchObject({ status: 'completed', verdict: { status: 'verified', reasons: [] } });
+      expect(end.status).toBe('completed');
+      expect(end.verdict.reasons.filter((r: { code: string }) => !r.code.startsWith('traffic-'))).toEqual([]);
     });
 
     it('a game with the holes taken out drives through them without a scratch → COMPLETED but REJECTED obstacle-ignored (a paid shift so judged never ranks)', async () => {
       const { end } = await throughTheHoles(false);
       expect(end.status).toBe('completed');
       expect(end.verdict.status).toBe('rejected');
-      expect(end.verdict.reasons.map((x: { code: string }) => x.code)).toEqual(['obstacle-ignored']);
+      expect(end.verdict.reasons.filter((x: { severity: string }) => x.severity === 'reject').map((x: { code: string }) => x.code)).toEqual(['obstacle-ignored']);
       expect(end.verdict.reasons[0].detail).toMatch(/drove through 2 of the \d+ planned holes it reached without a scratch/);
     });
   });
@@ -251,7 +262,8 @@ export function verdictScenarios(h: () => Harness): void {
     it('stores a 10 Hz RideReplay record on /end and exposes it at GET /api/rides/:id/replays', async () => {
       const d = await login(VERDICT_DEMO);
       const end = await paidShift(d, { replay: true });
-      expect(end.verdict.status).toBe('verified');
+      expect(['verified', 'flagged']).toContain(end.verdict.status);
+      expect(end.verdict.reasons.filter((r: { code: string }) => !r.code.startsWith('traffic-'))).toEqual([]);
       const replaysRes = (await d.agent.get(`/api/rides/${end.id}/replays`).expect(200)).body;
       expect(replaysRes.rideId).toBe(end.id);
       expect(replaysRes.replays).toHaveLength(1);
@@ -259,19 +271,19 @@ export function verdictScenarios(h: () => Harness): void {
         rideId: end.id,
         simHz: 10,
         seq: 1,
-        status: 'verified',
-        redFlags: [],
+        status: end.verdict.status,
+        redFlags: expect.any(Array),
       });
     });
 
-    it('rejects a client that deleted traffic cars on the frontend and drove straight through them (traffic-collision-ignored)', async () => {
+    it('flags sustained constant speed in neutral even with the legacy 12-column recording', async () => {
       const d = await login(VERDICT_DEMO);
-      const end = await paidShift(d, { replay: true, ignoreTraffic: true });
-      expect(end.verdict.status).toBe('rejected');
-      expect(end.verdict.reasons.map((r: { code: string }) => r.code)).toContain('traffic-collision-ignored');
+      const end = await paidShift(d, { neutral: true });
+      expect(end.verdict.status).toBe('flagged');
+      expect(end.verdict.reasons.map((r: { code: string }) => r.code)).toContain('physics-coasting-mismatch');
       const replaysRes = (await d.agent.get(`/api/rides/${end.id}/replays`).expect(200)).body;
-      expect(replaysRes.replays[0].status).toBe('rejected');
-      expect(replaysRes.replays[0].redFlags.some((f: { code: string }) => f.code === 'traffic-collision-ignored')).toBe(true);
+      expect(replaysRes.replays[0].status).toBe('flagged');
+      expect(replaysRes.replays[0].redFlags).toContainEqual(expect.objectContaining({ code: 'physics-coasting-mismatch', severity: 'flag' }));
     });
 
     it('processes multiple queued ride sessions concurrently via ProcessReplayQueueCommand', async () => {

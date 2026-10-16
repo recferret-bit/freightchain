@@ -3,7 +3,7 @@ import type { EnvService } from '../../../../src/infrastructure/config/env.servi
 
 const env = (over: Record<string, unknown> = {}) => ({
   freeRideSeconds: 10, hbMinIntervalMs: 500, demoWallets: new Set(['d']), demoScale: 30, initialSeedLamports: 7, treasuryPubkey: 'T', appDomain: 'd.example', appOrigin: 'https://d.example',
-  verdictEnforce: false, telemetryRetentionDays: 30, adminWallets: new Set(['A']), adminHost: null, gameHost: null, hbTimeoutMs: 150_000, liveFlags: { chat: 'free', donations: true, freeDonations: false, effects: 'off' },
+  trafficProofRequired: true, verdictEnforce: false, telemetryRetentionDays: 30, adminWallets: new Set(['A']), adminHost: null, gameHost: null, hbTimeoutMs: 150_000, liveFlags: { chat: 'free', donations: true, freeDonations: false, effects: 'off' },
   paymentMode: 'transfer', ticketProgramId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 15_000, orderTtlMs: 3_600_000, solanaCommitment: 'confirmed',
   crankSecret: undefined, priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, onchainSessionTtlHours: 24,
   signInRetentionDays: 180,
@@ -15,7 +15,7 @@ describe('EnvRulesConfigAdapter', () => {
     expect(new EnvRulesConfigAdapter(env()).get()).toEqual({
       freeOnSignup: 5, freeRidesMax: 5, freeRideSeconds: 10, hbMinIntervalMs: 500, hbTimeoutMs: 150_000, quoteTtlMs: 600_000, nonceTtlMs: 300_000,
       demoWallets: new Set(['d']), demoScale: 30, initialSeedLamports: 7, treasury: 'T', appDomain: 'd.example', appOrigin: 'https://d.example', gameDomain: null, gameOrigin: null, live: { chat: 'free', donations: true, freeDonations: false, effects: 'off' },
-      verdictEnforce: false, telemetryRetentionDays: 30, signInRetentionDays: 180, adminWallets: new Set(['A']), adminDomain: 'd.example', adminOrigin: 'https://d.example',
+      trafficProofRequired: true, verdictEnforce: false, telemetryRetentionDays: 30, signInRetentionDays: 180, adminWallets: new Set(['A']), adminDomain: 'd.example', adminOrigin: 'https://d.example',
       paymentMode: 'transfer', programId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 15_000, orderTtlMs: 3_600_000, commitment: 'confirmed',
       crankEnabled: false, priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, sessionTtlHours: 24,
     });

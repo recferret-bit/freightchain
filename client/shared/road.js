@@ -118,3 +118,9 @@ export function holeDamage(type, v, axle) {
 export const ROAD_PLAN_MAX_SPAN = 10000;
 export const ROAD_PLAN_WINDOW = 6000;
 export const ROAD_PLAN_MAX_S = 1000000;
+
+/** The footprint consumed by both traffic AI and the browser's hole rendering/collision adapter. */
+export function shapeHole(id, ci, type, s, lat) {
+  const T = HOLES[type];
+  return { id, ci, type, s, lat, ells: T.ells, l0: lat + Math.min(...T.ells.map(e => e.dl - e.b)), l1: lat + Math.max(...T.ells.map(e => e.dl + e.b)), ext: Math.max(...T.ells.map(e => Math.abs(e.ds) + e.a)) };
+}

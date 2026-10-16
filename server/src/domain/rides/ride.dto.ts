@@ -8,6 +8,7 @@ import type { FreeLevel } from './ride-trip.js';
 
 /** The wire view of a ride. Timestamps are epoch milliseconds. `timeScale` > 1 marks a DEMO ride (the shift is that many times shorter). */
 export interface RideDto {
+  trafficVersion: number;
   id: string;
   tier: string;
   seed: number;
@@ -50,6 +51,7 @@ export interface RideDto {
 
 /** `now`: when given, the open prompt is included (the heartbeat); without it the DTO never carries one. */
 export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date | null = null): RideDto => ({
+  trafficVersion: r.trafficVersion,
   id: r.id,
   tier: r.tier,
   seed: r.seed,

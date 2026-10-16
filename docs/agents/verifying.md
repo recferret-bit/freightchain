@@ -31,3 +31,5 @@ node tools/headless-test.mjs /tmp/fc-test.js
   If the Claude-in-Chrome extension isn't connected, (1) is the way to see the game; headless Chrome works with `--use-angle=swiftshader --enable-unsafe-swiftshader`.
 - (3) is deterministic (seeded `Math.random`, simulated clock): save its output before a refactor and `diff` after – identical means behaviour unchanged. Logic only; the 2D context and three.js are stubs.
   It also runs named checks (depot start, the right turn onto the main road, signal cycle, cross traffic, same seed → same layout, 60 km out) and exits 1 if one fails.
+
+Traffic anti-cheat end to end: `bash .claude/skills/run-tests/e2e.sh traffic` runs real honest and modified clients against a private server build and throwaway PostgreSQL database. `E2E_POSTGRES_CONTAINER` and `E2E_POSTGRES_PORT` select a separate test PostgreSQL container with the compose test credentials; the runner never starts or restarts that custom container. See `verified-play.md` for the complete positive/negative matrix.

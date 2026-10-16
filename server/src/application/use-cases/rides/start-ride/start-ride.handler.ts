@@ -79,7 +79,7 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
         }
       }
       const wardrobe = toWardrobeDto(await this.cosmetics.listUnlocked(wallet, tx), await this.cosmetics.listEquipped(wallet, tx));
-      ride.start(now, wardrobe.equipped);   // what is worn right now (owned items only) goes with the ride: live streams and replays draw it
+      ride.start(now, wardrobe.equipped, this.rules.get().trafficProofRequired === false ? 0 : 1);   // what is worn right now (owned items only) goes with the ride: live streams and replays draw it
       const saved = await this.rides.save(ride, tx);
       if (ride.tutorial && player.markTutorialPassed(now)) await this.players.save(player, tx);   // starting a ride with the tutorial on = it was done: the lobby leaves it off from now on
       return { dto: toRideDto(saved), started: saved.snapshot(), failed } satisfies StartFacts;

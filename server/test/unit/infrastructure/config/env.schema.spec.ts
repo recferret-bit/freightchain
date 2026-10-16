@@ -1,15 +1,23 @@
 import { Keypair } from '@solana/web3.js';
+import { readFileSync } from 'node:fs';
 import { validateEnv } from '../../../../src/infrastructure/config/env.schema.js';
 
 const base = { DATABASE_URL: 'postgresql://x' };
 const prod = { ...base, NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), TREASURY_PUBKEY: Keypair.generate().publicKey.toBase58(), TRUST_PROXY: '1' };
 
 describe('validateEnv', () => {
+  it('the deployed worker supplies the explicit production proxy setting required by its CLI EnvModule', () => {
+    const compose = readFileSync(new URL('../../../../../deploy/docker-compose.prod.yml', import.meta.url), 'utf8');
+    const worker = compose.split('\n  worker:\n')[1]!.split('\nnetworks:')[0]!;
+    const setting = (key: string) => worker.match(new RegExp(`^      ${key}: ["']?([^"'\\s#]+)`, 'm'))?.[1];
+    expect(validateEnv({ ...prod, NODE_ENV: setting('NODE_ENV'), TRUST_PROXY: setting('TRUST_PROXY') })).toMatchObject({ NODE_ENV: 'production', TRUST_PROXY: 0 });
+  });
   it('needs only DATABASE_URL in development and applies the defaults', () => {
     expect(validateEnv(base)).toMatchObject({
       PORT: 3000,
       NODE_ENV: 'development',
       FREE_RIDE_SECONDS: 180,
+      TRAFFIC_PROOF_REQUIRED: true,
       CHALLENGE_FREE_RIDES: 'on',
       THROTTLE_LIMIT: 600,
       THROTTLE_AUTH_LIMIT: 30,

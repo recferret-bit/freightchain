@@ -52,12 +52,14 @@ and `server/scripts/e2e-blinks.mjs` (`blinks`: the Solana Actions through Dialec
 then stops the server and drops the database – also on failure.
 
 ```sh
-bash .claude/skills/run-tests/e2e.sh            # all eleven
-bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks
+bash .claude/skills/run-tests/e2e.sh            # all eighteen
+bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic
 ```
 
 Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots`, `fc-board-shots`, `fc-close-shots` in the OS temp dir) with the Read tool – the scripts
 cannot judge layout. Say plainly what passed, what failed (with output), and what still needs a human eye.
+
+The `traffic` suite covers strict version-1 frame validation with real honest and modified Chrome clients; the legacy API matrices in `verified`, `verified-deep` and the historical road-isolation suite explicitly run version 0. Private client snapshots prevent concurrent source changes from altering a running suite. Set `E2E_POSTGRES_CONTAINER` and `E2E_POSTGRES_PORT` to use a separate running test PostgreSQL container (same compose test credentials); only the throwaway database is created/dropped there.
 
 ## 4. Optional: the money on a local chain (~4 min)
 

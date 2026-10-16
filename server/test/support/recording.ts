@@ -55,6 +55,8 @@ export interface RecordingOptions {
   road?: number;
   /** the ride's trip (Ride.trip – where its holes may start: the free run has none within its reach); default null = HOLE_FIRST */
   trip?: string | null;
+  /** server-assigned route; free rides need not use the seed-derived paid route */
+  route?: string;
   /** when true with `replay: true`, the synthetic truck does NOT dodge seeded traffic cars (simulates a client with traffic deleted) */
   ignoreTraffic?: boolean;
 }
@@ -124,7 +126,7 @@ export function recording(rideId: string, opts: RecordingOptions): BatchBody[] {
     bodies.push({ seq, t0, t1, samples: sampleRows(t0, t1, opts.seconds, opts.distance ?? 14 * opts.seconds, rnd, opts.replay ? (t) => [12.5, 3, inputMaskAt(events, t)] : undefined), inputs });
   }
   const allSamples = bodies.flatMap((b) => b.samples);
-  if (opts.road !== undefined && !opts.ignoreTraffic) dodgeTraffic(allSamples, opts.road, opts.trip ?? null);
+  if (opts.road !== undefined && !opts.ignoreTraffic) dodgeTraffic(allSamples, opts.road, opts.trip ?? null, opts.route);
   if (opts.road !== undefined) takeHoles(allSamples, opts.road, opts.trip ?? null);
   const batches: BatchBody[] = [];
   let prevHash = rideId;
@@ -137,11 +139,11 @@ export function recording(rideId: string, opts: RecordingOptions): BatchBody[] {
   return batches;
 }
 
-/** Steers a synthetic honest recording around backend-simulated traffic cars on the ride's seed. */
-export function dodgeTraffic(rows: number[][], seed: number, trip: string | null = null): void {
+/** Steers a synthetic API fixture around reconstructed traffic. This is not a browser-physics oracle; traffic may still flag it. */
+export function dodgeTraffic(rows: number[][], seed: number, trip: string | null = null, route?: string): void {
   const plan = RoadPlan.forSeed(seed, trip);
-  const sim = new TrafficSimulator(seed, trip, plan);
-  let curD = rows[0]?.[2] ?? 2.4;
+  const sim = new TrafficSimulator(seed, trip, plan, route);
+  let curD = rows[0]?.[2] ?? 2.4, trafficDamage = 0;
   for (let i = 0; i < rows.length; i++) {
     const p = rows[i - 1], q = rows[i]!;
     const blocked = sim.cars.some((c) => c.s - q[1]! >= -18 && c.s - q[1]! <= 22 && Math.abs(c.lat - 2.4) < 1.5);
@@ -149,7 +151,13 @@ export function dodgeTraffic(rows: number[][], seed: number, trip: string | null
     const diff = targetD - curD;
     curD = round(curD + Math.sign(diff) * Math.min(0.4, Math.abs(diff)), 0.01);
     q[2] = curD;
-    if (p) sim.stepSamplePair(p, q);
+    q[7] = Math.max(0, q[7]! - trafficDamage);
+    if (p) {
+      // Synthetic fixtures also take incidental scrape/bump damage; dodging a wide vehicle is not always collision-free.
+      // Fatal contacts remain visible failures. Browser parity is tested against independent captured frames.
+      const damage = sim.stepSamplePair(p, q).filter((c) => c.kind !== 'crash').reduce((sum, c) => sum + c.expectedDamage, 0);
+      trafficDamage += damage; q[7] = Math.max(0, q[7]! - damage);
+    }
   }
 }
 

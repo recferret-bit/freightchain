@@ -10,6 +10,16 @@ describe('RidePrismaRepository (PostgreSQL)', () => {
   afterAll(() => prisma.$disconnect());
   beforeEach(async () => { await wipe(prisma); await seedPlayer(prisma, 'w'); });
 
+  it('persists the server-selected traffic protocol when a ready ride starts; old rides retain version zero', async () => {
+    const ride = freeRideAt('w');
+    await repo.insert(ride);
+    expect((await repo.findById(ride.id))?.trafficVersion).toBe(0);
+    const ready = (await repo.findById(ride.id))!;
+    ready.start(at(1), null, 1);
+    await repo.save(ready);
+    expect((await repo.findById(ride.id))?.trafficVersion).toBe(1);
+  });
+
   it('round-trips every field (BigInt lamports ⇄ number, dates, enums, nulls)', async () => {
     const order = orderAt('w', T0, 4_242_424_242);
     await repo.insert(order);

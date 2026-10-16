@@ -12,10 +12,14 @@ the recording must show it pressed within 20 s; most prompts ignored rejects, in
 (`server/src/domain/road`), handed to the game as its obstacle plan, every batch measured against it (`obstacle-ignored` / `obstacle-no-impact`, `offroad-ignored`,
 `accel-without-gas`), replays drawing the server's holes with the NO IMPACT marks.
 
+## Traffic frame validation
+
+`bash .claude/skills/run-tests/e2e.sh traffic` runs nine cases: honest normal/automatic-finish/slow clients, an honest fatal collision, cars removed (with/without replay columns), ignored collision damage, stripped/re-hashed proof and malformed/re-hashed proof. Strict server-stamped version-1 evidence is required. Assert `/end` and persisted replay verdicts, accepted uploads, intact hashes and no browser errors. See `docs/agents/verified-play.md`.
+
 ## Run it
 
 ```sh
-bash .claude/skills/verified-play-test/run.sh              # ≈ 15 min: e2e.sh verified verified-deep road browser close
+bash .claude/skills/verified-play-test/run.sh              # ≈ 20 min: e2e.sh verified verified-deep road traffic browser close
 bash .claude/skills/run-tests/e2e.sh verified             # prompts (≈ 3 min)
 bash .claude/skills/run-tests/e2e.sh verified-deep        # every verdict code, protocol, admin, profile, retention (≈ 2.5 min)
 bash .claude/skills/run-tests/e2e.sh road                 # the server's road: honest vs holes-removed driver, the replay, the audit (≈ 6 min)

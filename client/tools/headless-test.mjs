@@ -184,10 +184,11 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
 // traffic around the truck (sim/traffic.js): an oncoming overtaker on a 1+1 road never pulls into the lane the truck is crawling down; a car pinned against the
 // truck's nose is ONE crash (st.crashV) and one bump's worth of hull, not one every 0.8 s
 { G.setGuide({}); G.st.mode='done'; G.startRide(); st.park=false; st.engineOn=true; st.keyOn=true;
+  const trafficHoles=G.CFG.HOLES; G.CFG.HOLES=false; // these queue/contact fixtures require a clear road
   const one=s=>net.lanes(s,1)===1&&net.lanes(s,-1)===1; let s0=null;
   for(let s=net.Sm+600;s<net.Sm+40000&&s0===null;s+=50){ let ok=!net.near(s-100,s+700).some(j=>j.kind!=='start')&&!(net.forksNear?.(s-100,s+700)||[]).length; for(let x=s-50;ok&&x<s+700;x+=25) ok=one(x); if(ok) s0=s; }
   check(s0!==null,'a 1+1 stretch without junctions for the traffic checks'+(s0!==null?' at '+s0.toFixed(0)+' m':''));
-  if(s0!==null){ const hold=v=>{ st.d=2.4; st.psi=0; st.v=v; };
+  if(s0!==null){ const hold=v=>{ st.d=2.4; st.psi=0; st.tyaw=net.mainAt(st.s).t; st.v=v; };
     Object.assign(st,{s:s0,d:2.4,psi:0,v:3,hull:100,crashV:0}); G.roads.lastS=st.s; step(2); G.traffic.length=0;
     const slow=G.spawn('sedan','slow','oncoming',260,-2.4), fast=G.spawn('sedan','overtake','oncoming',310,-2.4); let worst=Infinity, pulled=false;
     if(slow&&fast){ for(let i=0;i<60*25&&st.mode==='drive';i++){ hold(3); step(1);
@@ -197,7 +198,7 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
     const fire=G.spawn('fire','emergency','oncoming',20,2.4);
     if(fire){ for(let i=0;i<60*6&&st.mode==='drive';i++){ hold(1); Object.assign(fire,{s:st.s+3.3+fire.def.len/2-.3,lat:2.4,v:0,lv:0}); step(1); } }
     check(!!fire&&st.crashV===1&&100-st.hull<1.5&&st.mode==='drive','a vehicle pinned against the truck for 6 s is one crash (crashV '+st.crashV+', hull −'+(100-st.hull).toFixed(2)+' %)'); }
-  if(s0!==null){ const hold=(v,d=2.4)=>{ st.d=d; st.psi=0; st.v=v; st.vel=v; };
+  if(s0!==null){ const hold=(v,d=2.4)=>{ st.d=d; st.psi=0; st.tyaw=net.mainAt(st.s).t; st.v=v; st.vel=v; };
     // WEIGHT: the rig at 5 m/s into a stopped sedan keeps most of its speed and shoves it along; into a freighter it loses far more and the freighter barely moves
     const bump=(type,len)=>{ Object.assign(st,{s:s0+300,d:2.4,psi:0,v:5,vel:5,rev:false,hull:100,crashV:0}); G.roads.lastS=st.s; step(2); G.traffic.length=0;
       const c=G.spawn(type,'slow','ahead',3.3+len/2+2.5,2.4); if(!c) return null; Object.assign(c,{v:0,vDes:.05}); let r=null;
@@ -220,7 +221,7 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
     check(!!jam&&jam.seen.includes('honk')&&jam.bus.s-st.s<12&&jam.q.state==='drive'&&!jam.over&&jam.sedWait&&jam.lane,'a bus with a car right behind it honks ['+jam?.seen+'], the car waits in its lane (overtake '+jam?.over+', waiting '+jam?.sedWait+')');
     const chain=nose(7);
     check(!!chain&&chain.seen.includes('back')&&chain.away>14&&!chain.over,'a car 7 m behind the bus backs away with it, the bus gets out ['+chain?.seen+'] ('+chain?.away.toFixed(1)+' m)'); }
-  st.mode='done'; }
+  G.CFG.HOLES=trafficHoles; st.mode='done'; }
 // one pool, one ride (the server gives every rider of a pool its seed): the same seed starts the trip among the same cars, whatever the last trip left behind
 { const cars=()=>{ st.s=0; G.roads.newTrip(12345); return G.traffic.map(a=>a.preset+a.pick+'@'+a.s.toFixed(2)+'/'+a.lat.toFixed(2)+'>'+a.vDes.toFixed(2)).join(' '); };
   const t1=cars(), t2=cars(); check(t1!==''&&t1===t2,'same seed -> same starting traffic ('+G.traffic.length+' cars)'); }

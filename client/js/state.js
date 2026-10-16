@@ -7,9 +7,9 @@ import { RATIOS } from '../shared/physics.js';
 export { RATIOS };   // 7 forward gears, geometric ×1.42 (spread 8.2:1; was 3:1, so 5th could pull from a crawl). An upshift at 2500 rpm lands ≈ 1750 (peak torque); top gear unchanged = same top speed.
                                                                        // Each gear's useful range (km/h, 1000–2500 rpm): 1st 5–14 · 2nd 7–20 · 3rd 10–28 · 4th 14–40 · 5th 20–57 · 6th 28–80 · 7th 40–100
 export const MAX_GEAR = RATIOS.length - 1;
-export const REV_RATIO = 3.8;                // gear -1 (R)
+export { REV_RATIO, REDLINE } from '../shared/physics.js';                // gear -1 (R)
 export const K_RPM = 2400 / (30 * 0.75);     // wheel rpm per (m/s · ratio)
-export const IDLE = 700, REDLINE = 2800, STALL_RPM = 450;
+export const IDLE = 700, STALL_RPM = 450;
 /* Every per-ride field and its start value: the initial `st` below and resetRide() (ui/game.js) both use it, so a new field is added in ONE place.
    The varying ones are passed in: engine/rpm (CFG.START_ENGINE_OFF), engine temperature (ambient), steering pull side (ui/game.js sets it from the road seed). */
 export const rideStart = ({ rpm, engineOn, temp, pull }) => ({ s: 0, d: 2.4, psi: 0, v: 0, gear: 0, rpm, freeRpm: IDLE, engineOn, batt: CFG.BATT.START, battDead: false, park: true,   // the truck starts parked: release the brake (B / PARK) before moving

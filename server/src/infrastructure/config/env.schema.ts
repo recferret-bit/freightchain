@@ -81,6 +81,7 @@ export const envSchema = z
     /** how long an admin sign-in lasts (minutes); there is no silent renewal – the wallet signs again */
     ADMIN_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(120),
     /** verified play: 'true' = the paid boards rank verified shifts only; 'false' = SHADOW mode – every ride is still judged and the verdict shown, but ranking ignores it */
+    TRAFFIC_PROOF_REQUIRED: z.enum(['true', 'false']).default('true').transform(v => v === 'true'),
     VERDICT_ENFORCE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** days a ride's recording is kept after the ride ended (flagged rides are kept until reviewed); 0 = keep forever */
     TELEMETRY_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),

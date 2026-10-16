@@ -25,6 +25,8 @@ export interface RideProps {
   status: RideStatus;
   createdAt: Date;
   timeScale: number;
+  /** Server-stamped at start; 0 retains historical sparse-telemetry rules. */
+  trafficVersion?: number;
   priceUsd: number;
   lamports: number;
   solUsd: number | null;
@@ -93,7 +95,7 @@ export class Ride {
 
   private static blank(): Omit<RideProps, 'id' | 'wallet' | 'tier' | 'seed' | 'minSeconds' | 'completeDist' | 'status' | 'createdAt'> {
     return {
-      timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, startHour: null, loadout: null, trip: null, tutorial: false, assist: false, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
+      trafficVersion: 0, timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, startHour: null, loadout: null, trip: null, tutorial: false, assist: false, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
       startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, challenges: [], nextChallengeAt: null, version: 1, paymentReference: null,
       seedCommitment: null, blockhash: null, slot: null,
     };
@@ -128,7 +130,7 @@ export class Ride {
   }
 
   static restore(props: RideProps): Ride {
-    return new Ride({ ...props, paymentReference: props.paymentReference ?? null });
+    return new Ride({ ...props, trafficVersion: props.trafficVersion ?? 0, paymentReference: props.paymentReference ?? null });
   }
 
   get paymentReference(): string | null { return this.p.paymentReference ?? null; }
@@ -142,6 +144,7 @@ export class Ride {
 
   get props(): RideProps { return this.p; }
   get id(): string { return this.p.id; }
+  get trafficVersion(): number { return this.p.trafficVersion ?? 0; }
   get wallet(): string { return this.p.wallet; }
   get tier(): RideTierId { return this.p.tier; }
   get seed(): number { return this.p.seed; }
@@ -200,7 +203,7 @@ export class Ride {
   /** How much recording the ride may hold by `now`, from the server's wall time since the start (see telemetry-rules). */
   recordingAllowance(now: Date): RecordingAllowance {
     const elapsed = Math.max(0, (now.getTime() - (this.p.startedAt ?? now).getTime()) / 1000);
-    return { maxGameSeconds: elapsed * GAME_TIME_FACTOR + GAME_TIME_SLACK_SECONDS, maxSeq: Math.floor(elapsed / MIN_BATCH_SECONDS) + BATCH_SEQ_SLACK, maxBytes: Math.floor(elapsed * RECORDING_BYTES_PER_SECOND) + RECORDING_BYTES_SLACK };
+    return { maxGameSeconds: elapsed * GAME_TIME_FACTOR + GAME_TIME_SLACK_SECONDS, maxSeq: Math.floor(elapsed / (this.trafficVersion ? .2 : MIN_BATCH_SECONDS)) + BATCH_SEQ_SLACK, maxBytes: Math.floor(elapsed * (this.trafficVersion ? 65_536 : RECORDING_BYTES_PER_SECOND)) + RECORDING_BYTES_SLACK };
   }
 
   /** Heartbeats closer together than hbMinIntervalMs are ignored – no free progress by spamming. */
@@ -225,10 +228,11 @@ export class Ride {
   }
 
   /** `loadout`: what the wallet wears right now – the ride keeps it, so a replay shows the cockpit it was really driven in. */
-  start(now: Date, loadout: Loadout | null = null): void {
+  start(now: Date, loadout: Loadout | null = null, trafficVersion = 0): void {
     this.mustBe(RideStatus.Created);
     this.p.status = RideStatus.Running;
     this.p.loadout = loadout;
+    this.p.trafficVersion = trafficVersion;
     this.p.startedAt = now;
     this.p.lastHbAt = now;
   }

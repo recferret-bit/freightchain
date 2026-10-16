@@ -1,4 +1,4 @@
-/* Thresholds of the verdict (verified play). The server re-simulates NOTHING: it validates the recording (chain, bounds, agreement with what was
+/* Thresholds of the verdict (verified play). The server uses shared simulation kernels for diagnostic reconstruction and it validates the recording (chain, bounds, agreement with what was
    reported), measures how human the input timing is, and checks the answers to the dispatch prompts it issued. Only a broken / missing / inconsistent
    recording – or prompts ignored for most of the ride – REJECTS; timing statistics only FLAG (a flagged ride does not rank until someone looks at it) –
    they start loose and are meant to be tightened on real data. Since version 3 the recording is also held against the server's own rebuild of the ride's road
@@ -6,7 +6,7 @@
    (recording-empty, sample-gap, coverage from the samples and at least the governor's time for the distance), the position must not outrun its own
    speedometer (speed-mismatch), the gas bit must match the gas presses (inputs-mismatch, flag) and a coarse clock no longer switches timing checks off.
    Bump RULES_VERSION on any change. */
-export const RULES_VERSION = 4;
+export const RULES_VERSION = 7;
 
 /** a recorded speed above MAX_SPEED × this rejects (the governor is 28 m/s; float noise and the ±1 % display jitter fit under it) */
 export const SPEED_TOLERANCE = 1.05;

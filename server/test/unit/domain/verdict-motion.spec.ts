@@ -152,7 +152,9 @@ describe('the recording against itself', () => {
   it('a batch with a fault (it rejects on its own) is no gap: the steps beside it are not measured, whether its rows stopped early or were refused whole', () => {
     const rows = (t0: number) => Array.from({ length: 150 }, (_, i) => row(t0 + i * 0.1, (t0 + i * 0.1) * 20, 20));
     for (const bad of [[...rows(15).slice(0, 3), [16, 300, 2.4, 0, 20]], rows(15).map((r, i) => (i === 3 ? [r[0]! + 60, ...r.slice(1)] : r))]) {
-      const facts = chained([{ seq: 0, t0: 0, t1: 15, samples: rows(0), inputs: [] }, { seq: 1, t0: 15, t1: 30, samples: bad, inputs: [] }, { seq: 2, t0: 30, t1: 45, samples: rows(30), inputs: [] }]);
+      const facts = chained([{ seq: 0, t0: 0, t1: 15, samples: rows(0), inputs: [] }, { seq: 1, t0: 15, t1: 30, samples: rows(15), inputs: [] }, { seq: 2, t0: 30, t1: 45, samples: rows(30), inputs: [] }]);
+      const saved = facts[1]!.snapshot();
+      facts[1] = RideBatch.restore({ ...saved, body: { ...saved.body, samples: bad }, summary: null }); // old recordings bypass today's upload gate
       expect(facts[1]!.summary.fault).not.toBeNull();
       expect(checkMotion({ rideId: 'r', driveSeconds: 45, distance: 900 }, facts).reasons).toEqual([]);
     }

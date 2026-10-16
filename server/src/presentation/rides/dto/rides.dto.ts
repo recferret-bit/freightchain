@@ -66,11 +66,12 @@ export const batchBodySchema = z
     t1: gameSeconds,
     samples: z.array(z.array(z.number().finite()).max(SAMPLE_MAX_WIDTH)).max(BATCH_MAX_SAMPLES),
     inputs: z.array(z.tuple([z.number().finite().min(0), z.string().max(INPUT_CODE_MAX_LENGTH), z.union([z.literal(0), z.literal(1)])])).max(BATCH_MAX_INPUTS),
+    trafficProof: z.string().max(85_000).optional(),
     hash: z.string().regex(/^[0-9a-f]{64}$/, 'must be a lowercase hex SHA-256').nullish(),
     // replays' traffic track: LENIENT – anything malformed is dropped (.catch), never a 400 (a refused batch would break the recording's chain)
     traffic: z.array(z.array(z.number().finite()).max(TRAFFIC_MAX_ROW)).max(TRAFFIC_MAX_FRAMES).optional().catch(undefined),
   })
-  .transform((b): BatchBody => ({ seq: b.seq, prevHash: b.prevHash, t0: b.t0, t1: b.t1, samples: b.samples, inputs: b.inputs, hash: b.hash ?? null, ...(b.traffic?.length ? { traffic: b.traffic } : {}) }));
+  .transform((b): BatchBody => ({ seq: b.seq, prevHash: b.prevHash, t0: b.t0, t1: b.t1, samples: b.samples, inputs: b.inputs, hash: b.hash ?? null, ...(b.trafficProof !== undefined ? { trafficProof: b.trafficProof } : {}), ...(b.traffic?.length ? { traffic: b.traffic } : {}) }));
 export type BatchBodyInput = z.infer<typeof batchBodySchema>;
 
 export const endRideBodySchema = z

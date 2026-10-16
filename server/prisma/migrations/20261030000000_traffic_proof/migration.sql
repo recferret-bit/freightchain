@@ -1,0 +1,1 @@
+ALTER TABLE "ride"."Ride" ADD COLUMN "trafficVersion" INTEGER NOT NULL DEFAULT 0;

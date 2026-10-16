@@ -16,6 +16,19 @@ export function telemetryScenarios(h: () => Harness): void {
     return { w, ride };
   };
 
+  it('refuses unsafe road work before storing the batch; the same sequence can then accept a valid recording', async () => {
+    const { w, ride } = await startedRide();
+    const [valid] = recording(ride.id, { seconds: 10 });
+    for (const distance of [1e12, 1e7, -1e7]) {
+      const samples = valid!.samples.map((row) => [...row]);
+      samples[1]![1] = distance;
+      const res = await w.agent.post(`/api/rides/${ride.id}/batches`).send({ ...valid, samples }).expect(400);
+      expect(res.body.code).toBe('bad_batch');
+    }
+    const res = await w.agent.post(`/api/rides/${ride.id}/batches`).send(valid).expect(200);
+    expect(res.body).toMatchObject({ seq: 0, stored: true, hashOk: true });
+  });
+
   it('stores a chained recording during the ride; a re-sent batch is stored:false; a wrong hash is kept but not trusted', async () => {
     const { w, ride } = await startedRide();
     const batches = recording(ride.id, { seconds: 30 });

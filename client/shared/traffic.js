@@ -65,7 +65,7 @@ export const tripTrafficFor = trip => TRIP_TRAFFIC[trip ?? 'classic'] ?? TRIP_TR
 
 export const bumpDmg = (def, closing, crashClosing = CRASH_CLOSING) => Math.min(25, 4 * def.mass * (closing / crashClosing) ** 2 + 0.5);
 
-/** Swept continuous collision test along a step [s0..s1, d0..d1]: checks 4 sub-instants against cab + trailer boxes so fast closing speeds never tunnel. */
+/** Legacy axis-aligned sampled contact helper. The game and verifier use traffic-simulation.js for actual AI/contact responses. */
 export function checkTruckTrafficSwept(car, s0, s1, d0, d1, vTruck) {
   const { def } = car;
   const sPrev = car.sPrev ?? car.s, latPrev = car.latPrev ?? car.lat;

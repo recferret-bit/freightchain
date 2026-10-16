@@ -12,13 +12,13 @@ export const sleep = ms => new Promise(r => setTimeout(r, ms));
     where the truck started, all the way). window.__undrive() lets go (the physics' own speed again). */
 export const driveHook = (speed = 20, extra = '', lane = null) => `(() => { const g = __game, st = g.st, d0 = st.d, own = { v: st.v, vel: st.vel }; for (const k of ['v', 'vel']) Object.defineProperty(st, k, { configurable: true, enumerable: true, get: () => (st.mode === 'drive' ? ${speed} : own[k]), set: (x) => { own[k] = x; } }); window.__drive = setInterval(() => { if (st.mode !== 'drive') return; ${extra} ${lane === null ? 'st.d = d0; st.psi = 0;' : `if (st.s > g.net.Sm + 10) { st.d = ${lane}; st.psi = 0; }`} }, 40); window.__undrive = () => { clearInterval(window.__drive); for (const k of ['v', 'vel']) { const x = own[k]; delete st[k]; st[k] = x; } }; })()`;
 
-export async function launch({ port, shotsDir, args = [], evalProblems = false }) {
+export async function launch({ port, shotsDir, args = [], evalProblems = false, timeoutMs = 30_000 }) {
   const CH = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
   const prof = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-prof-')), SHOTS = process.env.SHOTS || path.join(os.tmpdir(), shotsDir); fs.mkdirSync(SHOTS, { recursive: true });
   const chrome = spawn(CH, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${prof}`, '--no-first-run', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--window-size=1280,720', ...args, 'about:blank'], { stdio: 'ignore' });
   process.on('exit', () => chrome.kill());
-  let tabs; for (let i = 0; i < 50; i++) { try { tabs = await (await fetch(`http://localhost:${port}/json`)).json(); if (tabs.length) break; } catch { /* not up yet */ } await sleep(200); }
-  if (!tabs?.length) throw new Error(`Chrome did not open a debugging port on :${port} (is another run still using it? set PORT=…)`);
+  let tabs; for (let i = 0; i < 150; i++) { try { tabs = await (await fetch(`http://localhost:${port}/json`, { signal: AbortSignal.timeout(2000) })).json(); if (tabs.some(t => t.type === 'page')) break; } catch { /* not up yet */ } await sleep(200); }
+  if (!tabs?.some(t => t.type === 'page')) { chrome.kill(); throw new Error(`Chrome did not open a debugging port on :${port} (is another run still using it? set PORT=…)`); }
   const ws = new WebSocket(tabs.find(t => t.type === 'page').webSocketDebuggerUrl); await new Promise(r => ws.onopen = r);
   let id = 0; const pend = {}, problems = [];
   ws.onmessage = m => {
@@ -28,7 +28,11 @@ export async function launch({ port, shotsDir, args = [], evalProblems = false }
     else if (d.method === 'Runtime.consoleAPICalled' && ['error', 'warning'].includes(d.params.type)) problems.push('console.' + d.params.type + ': ' + d.params.args.map(a => a.value ?? a.description).join(' '));
     else if (d.method === 'Log.entryAdded' && d.params.entry.level === 'error') problems.push('log.error: ' + d.params.entry.text + ' ' + (d.params.entry.url || ''));
   };
-  const send = (method, params = {}) => new Promise(r => { const i = ++id; pend[i] = r; ws.send(JSON.stringify({ id: i, method, params })); });
+  const send = (method, params = {}) => new Promise((resolve, reject) => {
+    const i = ++id, timer = setTimeout(() => { delete pend[i]; reject(new Error(`CDP ${method} timed out after ${timeoutMs / 1000} s`)); }, timeoutMs);
+    pend[i] = value => { clearTimeout(timer); resolve(value); };
+    ws.send(JSON.stringify({ id: i, method, params }));
+  });
   const ev = async expr => {
     const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
     if (evalProblems && r.exceptionDetails) problems.push('EVAL: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text) + ' in ' + expr.slice(0, 80));
@@ -37,8 +41,14 @@ export async function launch({ port, shotsDir, args = [], evalProblems = false }
   const shot = async name => { const r = await send('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync(path.join(SHOTS, name + '.png'), Buffer.from(r.data, 'base64')); };
   const filt = () => problems.filter(p => !/favicon/.test(p));
   await send('Runtime.enable'); await send('Log.enable'); await send('Page.enable');
-  const finish = (code, ms = 0) => { ws.close(); chrome.kill(); setTimeout(() => { try { fs.rmSync(prof, { recursive: true, force: true }); } catch { /* temp dir */ } process.exit(code); }, ms); };
-  return { send, ev, shot, filt, problems, SHOTS, finish };
+  let closing = null;
+  const close = () => closing ??= (async () => {
+    ws.close();
+    if (chrome.exitCode === null) { const exited = new Promise(resolve => chrome.once('exit', resolve)); chrome.kill(); await Promise.race([exited, sleep(2000)]); }
+    try { fs.rmSync(prof, { recursive: true, force: true }); } catch { /* Chrome may still be releasing its temporary profile */ }
+  })();
+  const finish = (code, ms = 0) => { close().finally(() => setTimeout(() => process.exit(code), ms)); };
+  return { send, ev, shot, filt, problems, SHOTS, finish, close };
 }
 
 /** Answer the game's dispatch prompts the way a person does (verified play – client/js/prompt.js): poll the open prompt and press its key 400–1200 ms

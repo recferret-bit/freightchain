@@ -30,3 +30,5 @@ Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and
 - **Test / tool env vars** (`TEST_DATABASE_URL`, `BASE`, `PORT`, `CHROME_PORT`, `CHROME`, `SHOTS`, `ADMIN_KEYPAIR`, `SMOKE_ADMIN_AUTH`, `DEPLOY_ENV_FILE`, …) are tabulated in the guide; Chrome debug ports are shared between sessions – set `PORT` / `CHROME_PORT` when another session may be running.
 - **Browser state** that looks like config (`localStorage` `freightchain.*`: assist, level (the free level picked in the lobby), truck tuning, radio, admin, and `freightchain.anon`) lives in the player's browser – a stale value explains "only broken in my browser".
 - Known drift is listed at the bottom of `docs/configuration.md`; when you fix or add a key, update that page in the same change.
+
+Traffic verification: new starts stamp `trafficVersion=1` when `TRAFFIC_PROOF_REQUIRED=true` (default). The hashed `trafficProof` field is mandatory for those rides; body-level version claims cannot downgrade it. Protocol and browser tests: `docs/agents/verified-play.md`, `e2e.sh traffic`.
