@@ -8,9 +8,9 @@ import { aPool } from '../support/pools.js';
 import { aPromo } from '../support/promos.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
 
-/* Promo codes beyond tickets (docs/promocodes.md): extra free rides, codes that start later, the player's list of what they
+/* Promo codes beyond tickets (docs/promocodes.md): a free 1h/4h/8h ride code, codes that start later, the player's list of what they
    redeemed, and the admin's PROMOCODES tab – a signed create / disable, the active list and the log of who used what.
-   Cab visuals are minted by burning HONK, not granted by a code. Same scenarios on in-memory and PostgreSQL. */
+   Extra free-ride codes are retired. Cab visuals are minted by burning TEN4, not granted by a code. Same scenarios on in-memory and PostgreSQL. */
 export const PROMOS_ADMIN = newWallet();
 export const PROMOS_ENV = { FREE_RIDE_SECONDS: '10', ADMIN_WALLETS: PROMOS_ADMIN.address };
 
@@ -29,29 +29,28 @@ export function promoScenarios(h: () => Harness): void {
     return w.agent.post('/api/honk/visuals').send({ slot, item }).expect(200);
   };
 
-  describe('free rides', () => {
-    it('+3 free rides on top of the daily ones – above the cap – and the next midnight neither adds nor takes any', async () => {
-      await seedPromo('THREE', { effect: { kind: 'free_rides', count: 3 } });
+  describe('ride codes', () => {
+    it('grants one free shift, does not touch the daily free rides, and a second redeem is refused', async () => {
+      await seedPromo('THREE', { effect: { kind: 'ride', tier: '4h' } });
       const w = await login();
       expect(await me(w)).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });
-      expect((await redeem(w, ' three ').expect(200)).body).toEqual({ kind: 'free_rides', code: 'THREE', label: '3 free rides', added: 3, freeRides: 13 });
-      expect(await me(w)).toMatchObject({ freeRides: 13, freeRidesMax: 5, nextFreeRideAt: null });
-      sec(86_400 + 60);
-      expect(await me(w)).toMatchObject({ freeRides: 13, nextFreeRideAt: null });
+      expect((await redeem(w, ' three ').expect(200)).body).toEqual({ kind: 'ride', code: 'THREE', label: 'one free 4h ride (not for sale)', tier: '4h' });
+      expect(await me(w)).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });
+      expect((await w.agent.get('/api/promo/mine').expect(200)).body.grants).toEqual([{ code: 'THREE', tier: '4h' }]);
       expect((await redeem(w, 'THREE').expect(409)).body).toMatchObject({ code: 'promo_unavailable', detail: 'you have already redeemed this promo code' });
     });
 
-    it('the rides are real: a free shift spends one, below the cap the daily refill resumes', async () => {
-      await seedPromo('ONE', { effect: { kind: 'free_rides', count: 1 } });
+    it('ordering that tier claims the grant even when the shift is not on sale, and a retired free-ride code grants nothing', async () => {
+      await seedPromo('ONE', { effect: { kind: 'ride', tier: '1h' } });
+      await seedPromo('OLD', { effect: { kind: 'free_rides', count: 3 } });
       const w = await login();
       await redeem(w, 'ONE').expect(200);
-      for (let i = 0; i < 7; i++) { // 11 − 7, under the cap of 5
-        const r = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-        await w.agent.post(`/api/rides/${r.id}/start`).expect(200);
-        sec(2); await w.agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
-      }
-      expect((await me(w)).freeRides).toBe(4);
-      expect((await me(w)).nextFreeRideAt).not.toBeNull();
+      expect((await redeem(w, 'OLD').expect(409)).body).toMatchObject({ code: 'promo_retired' });
+      const ride = (await w.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+      expect(ride).toMatchObject({ tier: '1h', status: 'created', priceUsd: 0, lamports: 0, promo: true });
+      expect((await w.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body.id).toBe(ride.id);
+      expect((await me(w)).freeRides).toBe(10);
+      expect((await w.agent.get('/api/promo/mine').expect(200)).body.grants).toEqual([]);
     });
   });
 
@@ -205,7 +204,7 @@ export function promoScenarios(h: () => Harness): void {
 
   describe('when a code is valid', () => {
     it('a scheduled code is refused until its start – and works from that instant; an ended one never again', async () => {
-      await seedPromo('LATER', { effect: { kind: 'free_rides', count: 1 }, startsAt: new Date(now() + 3_600_000), expiresAt: new Date(now() + 7_200_000) });
+      await seedPromo('LATER', { effect: { kind: 'ride', tier: '1h' }, startsAt: new Date(now() + 3_600_000), expiresAt: new Date(now() + 7_200_000) });
       const w = await login();
       expect((await redeem(w, 'LATER').expect(409)).body).toMatchObject({ code: 'promo_unavailable', detail: 'this promo code is not active yet' });
       sec(3_600);
@@ -216,14 +215,14 @@ export function promoScenarios(h: () => Harness): void {
     });
 
     it('/api/promo/mine lists what the wallet redeemed, newest first, with what it gave and the code\'s description', async () => {
-      await seedPromo('FIRST', { effect: { kind: 'free_rides', count: 2 }, description: 'Welcome gift' });
-      await seedPromo('SECOND', { effect: { kind: 'free_rides', count: 1 } });
+      await seedPromo('FIRST', { effect: { kind: 'ride', tier: '8h' }, description: 'Welcome gift' });
+      await seedPromo('SECOND', { effect: { kind: 'ride', tier: '1h' } });
       const w = await login();
-      expect((await w.agent.get('/api/promo/mine').expect(200)).body).toEqual({ redemptions: [] });
+      expect((await w.agent.get('/api/promo/mine').expect(200)).body).toEqual({ redemptions: [], grants: [] });
       await redeem(w, 'FIRST').expect(200); sec(5); await redeem(w, 'SECOND').expect(200);
       expect((await w.agent.get('/api/promo/mine').expect(200)).body.redemptions).toEqual([
-        { code: 'SECOND', label: '1 free ride', description: null, kind: 'free_rides', at: now() },
-        { code: 'FIRST', label: '2 free rides', description: 'Welcome gift', kind: 'free_rides', at: now() - 5000 },
+        { code: 'SECOND', label: 'one free 1h ride (not for sale)', description: null, kind: 'ride', at: now() },
+        { code: 'FIRST', label: 'one free 8h ride (not for sale)', description: 'Welcome gift', kind: 'ride', at: now() - 5000 },
       ]);
       await anon().get('/api/promo/mine').expect(401);
     });
@@ -236,7 +235,7 @@ export function promoScenarios(h: () => Harness): void {
       const { body } = await admin.agent.post('/api/admin/promos/challenge').set('x-fc-admin', '1').send(challenge).expect(200);
       return { message: body.message as string, signature: sign(key, body.message) };
     };
-    const earlyBird = () => ({ code: ' early bird ', effect: { kind: 'free_rides', count: 1 }, description: 'For the first hundred', maxRedemptions: 100, perWallet: 1, startsAt: null, expiresAt: now() + 86_400_000, note: 'launch' });
+    const earlyBird = () => ({ code: ' early bird ', effect: { kind: 'ride', tier: '1h' }, description: 'For the first hundred', maxRedemptions: 100, perWallet: 1, startsAt: null, expiresAt: now() + 86_400_000, note: 'launch' });
 
     it('does not exist for anyone but an admin: signed out or a rider → 404 on every route', async () => {
       const rider = await login();
@@ -253,19 +252,19 @@ export function promoScenarios(h: () => Harness): void {
       const admin = await asAdmin();
       const promo = earlyBird();
       const proof = await signed(admin, 'create', { action: 'promo_create', promo });
-      expect(proof.message).toContain('Action: CREATE promo code EARLYBIRD\nGives: 1 free ride\nPromo: {"code":"EARLYBIRD"');
+      expect(proof.message).toContain('Action: CREATE promo code EARLYBIRD\nGives: one free 1h ride (not for sale)\nPromo: {"code":"EARLYBIRD"');
       await admin.agent.post('/api/admin/promos').send({ promo, signature: proof.signature }).expect(403); // the header, like every admin change
       const ok = await admin.agent.post('/api/admin/promos').set('x-fc-admin', '1').send({ promo, signature: proof.signature }).expect(200);
-      expect(ok.body).toMatchObject({ code: 'EARLYBIRD', label: '1 free ride', state: 'active', description: 'For the first hundred', maxRedemptions: 100, redeemed: 0, startsAt: now(), note: 'launch' });
+      expect(ok.body).toMatchObject({ code: 'EARLYBIRD', label: 'one free 1h ride (not for sale)', state: 'active', description: 'For the first hundred', maxRedemptions: 100, redeemed: 0, startsAt: now(), note: 'launch' });
       await admin.agent.post('/api/admin/promos').set('x-fc-admin', '1').send({ promo, signature: proof.signature }).expect(401); // a replay
 
       expect((await admin.agent.get('/api/admin/promos?state=active').expect(200)).body.promos.map((p: { code: string }) => p.code)).toEqual(['EARLYBIRD']);
       expect((await admin.agent.get('/api/admin/promos?state=ended').expect(200)).body.promos).toEqual([]);
       const rider = await login();
-      expect((await redeem(rider, 'earlybird').expect(200)).body).toMatchObject({ kind: 'free_rides', code: 'EARLYBIRD', label: '1 free ride', added: 1, freeRides: 11 });
+      expect((await redeem(rider, 'earlybird').expect(200)).body).toMatchObject({ kind: 'ride', code: 'EARLYBIRD', tier: '1h' });
 
       const audit = (await admin.agent.get('/api/admin/actions').expect(200)).body.rows;
-      expect(audit[0]).toMatchObject({ wallet: PROMOS_ADMIN.address, action: 'promo.create', target: 'EARLYBIRD', detail: { effect: { kind: 'free_rides', count: 1 }, signed: { message: proof.message, signature: proof.signature } } });
+      expect(audit[0]).toMatchObject({ wallet: PROMOS_ADMIN.address, action: 'promo.create', target: 'EARLYBIRD', detail: { effect: { kind: 'ride', tier: '1h' }, signed: { message: proof.message, signature: proof.signature } } });
 
       const visual = { ...promo, code: 'VISUAL', effect: { kind: 'cosmetic', slot: 'wheel', item: 'crimson' } };
       expect((await admin.agent.post('/api/admin/promos/challenge').set('x-fc-admin', '1').send({ action: 'promo_create', promo: visual }).expect(409)).body).toMatchObject({ code: 'visuals_are_honk' }); // refused when the text is asked for, before a signature exists
@@ -306,7 +305,7 @@ export function promoScenarios(h: () => Harness): void {
       await seedPromo('SOON', { startsAt: new Date(now() + 3_600_000) });
       await seedPromo('NOW');
       await seedPromo('SHORT', { expiresAt: new Date(now() + 10_000) });
-      await seedPromo('ONE', { maxRedemptions: 1, effect: { kind: 'free_rides', count: 1 } });
+      await seedPromo('ONE', { maxRedemptions: 1, effect: { kind: 'ride', tier: '1h' } });
       await seedPromo('OFF');
       await redeem(await login(), 'ONE').expect(200);
       const proof = await signed(admin, 'disable', { action: 'promo_disable', code: 'OFF' });
@@ -320,12 +319,13 @@ export function promoScenarios(h: () => Harness): void {
 
     it('redemptions: who used which code, newest first – narrowed by code or wallet', async () => {
       const admin = await asAdmin();
-      await seedPromo('AAA', { effect: { kind: 'free_rides', count: 2 }, perWallet: 2 });
-      await seedPromo('BBB', { effect: { kind: 'free_rides', count: 1 } });
+      await h().app.get(PoolRepositoryPort, { strict: false }).upsert(aPool({ id: 1, status: 'active' }));
+      await seedPromo('AAA', { effect: { kind: 'tickets', tier: '1h', poolId: 1, credits: 1 }, perWallet: 2 });
+      await seedPromo('BBB', { effect: { kind: 'ride', tier: '4h' } });
       const a = await login(), b = await login();
       await redeem(a, 'AAA').expect(200); sec(1); await redeem(b, 'AAA').expect(200); sec(1); await redeem(a, 'BBB').expect(200); sec(1); await redeem(a, 'AAA').expect(200);
       const rows = (q = '') => admin.agent.get(`/api/admin/promos/redemptions${q}`).expect(200).then((r) => r.body.rows as { code: string; wallet: string; n: number; label: string; at: number }[]);
-      expect((await rows()).map((r) => [r.code, r.wallet, r.n, r.label])).toEqual([['AAA', a.address, 2, '2 free rides'], ['BBB', a.address, 1, '1 free ride'], ['AAA', b.address, 1, '2 free rides'], ['AAA', a.address, 1, '2 free rides']]);
+      expect((await rows()).map((r) => [r.code, r.wallet, r.n, r.label])).toEqual([['AAA', a.address, 2, '1 × 1h ride ticket (pool #1)'], ['BBB', a.address, 1, 'one free 4h ride (not for sale)'], ['AAA', b.address, 1, '1 × 1h ride ticket (pool #1)'], ['AAA', a.address, 1, '1 × 1h ride ticket (pool #1)']]);
       expect((await rows('?code=bbb')).map((r) => r.wallet)).toEqual([a.address]);
       expect((await rows(`?wallet=${b.address}`)).map((r) => r.code)).toEqual(['AAA']);
       expect(await rows('?limit=1')).toHaveLength(1);
@@ -334,7 +334,7 @@ export function promoScenarios(h: () => Harness): void {
 
     it('disable: signed for exactly this code → riders are refused from then on, what was granted stays; audited', async () => {
       const admin = await asAdmin();
-      await seedPromo('STOPME', { effect: { kind: 'free_rides', count: 2 } });
+      await seedPromo('STOPME', { effect: { kind: 'ride', tier: '8h' } });
       const a = await login(), b = await login();
       await redeem(a, 'STOPME').expect(200);
       const wrong = await signed(admin, 'disable', { action: 'promo_disable', code: 'OTHER' });
@@ -344,7 +344,8 @@ export function promoScenarios(h: () => Harness): void {
       const ok = await admin.agent.post('/api/admin/promos/stopme/disable').set('x-fc-admin', '1').send({ signature: proof.signature }).expect(200);
       expect(ok.body).toMatchObject({ code: 'STOPME', state: 'disabled', redeemed: 1, disabledAt: now() });
       expect((await redeem(b, 'STOPME').expect(409)).body).toMatchObject({ detail: 'this promo code is no longer valid' });
-      expect((await me(a)).freeRides).toBe(12); // 10 at signup + 2, kept after the code is disabled
+      expect((await me(a)).freeRides).toBe(10); // a ride code is not a free-ride balance
+      expect((await a.agent.get('/api/promo/mine').expect(200)).body.grants).toEqual([{ code: 'STOPME', tier: '8h' }]);
       const unknown = await signed(admin, 'disable', { action: 'promo_disable', code: 'NOPE' });
       await admin.agent.post('/api/admin/promos/nope/disable').set('x-fc-admin', '1').send({ signature: unknown.signature }).expect(404);
       const audit = (await admin.agent.get('/api/admin/actions').expect(200)).body.rows;

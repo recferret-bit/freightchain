@@ -16,8 +16,8 @@ Commands:
   migrate      Apply the database migrations (prisma migrate deploy)
   db:reset     Truncate every table (refused in production)
   promo:create CODE <effect> [--desc TEXT] [--start DATE] [--expires DATE] [--max N] [--per-wallet N] [--note TEXT]
-               A promo code with ONE effect: --tier 1h|4h|8h --credits N [--pool ID] (free tickets into the tier's live pool, or the pinned pool)
-               · --free-rides N (extra free rides). Cab parts are minted by burning TEN4, not by a promo code.
+               A promo code with ONE effect: --ride 1h|4h|8h (one free shift, not a purchase, once per wallet, no TEN4)
+               · --tier 1h|4h|8h --credits N [--pool ID] (tickets into the tier's live pool, or the pinned pool). --free-rides is retired. Cab parts are minted by burning TEN4.
   promo:list   Every promo code with its usage
   promo:disable CODE
                Stop a code (tickets already granted stay)

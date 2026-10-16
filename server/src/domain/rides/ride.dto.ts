@@ -54,6 +54,8 @@ export interface RideDto {
   ranked: boolean;
   /** Metres before the first mistake. Null means the distance so far is still clean. */
   cleanMetres: number | null;
+  /** Set when a ride promo granted the shift. The price is 0 and TEN4 is not minted. */
+  promo: boolean;
 }
 
 /** `now`: when given, the open prompt is included (the heartbeat); without it the DTO never carries one. `honkPaid`: the 8h mint has been credited. */
@@ -82,14 +84,15 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   tutorial: r.tutorial,
   assist: r.assist,
   verdict,
-  honk: honkQuote(r.tier, r.distance, r.completeDist, verdict?.status ?? null, { paid: honkPaid }),
-  review: reviewOf(r.tier, verdict ? { status: verdict.status, overridden: verdict.override !== null } : null, r.status),
+  honk: honkQuote(r.isPromo ? 'free' : r.tier, r.distance, r.completeDist, verdict?.status ?? null, { paid: honkPaid }),
+  review: reviewOf(r.isPromo ? 'free' : r.tier, verdict ? { status: verdict.status, overridden: verdict.override !== null } : null, r.status),
   challenge: now ? (() => { const c = r.openChallenge(now); return c ? toChallengeDto(c) : null; })() : null,
   seedCommitment: r.seedCommitment,
   blockhash: r.blockhash,
   slot: r.slot !== null && r.slot !== undefined ? Number(r.slot) : null,
   ranked: r.ranked,
   cleanMetres: r.cleanMetres,
+  promo: r.isPromo,
 });
 
 /** The wallet's READY free ride (ordered, not started – its credit is already spent): ordering a free ride again hands it back, re-chosen at the level and

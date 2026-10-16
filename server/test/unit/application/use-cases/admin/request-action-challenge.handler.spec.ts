@@ -19,8 +19,9 @@ describe('RequestActionChallengeHandler', () => {
   it('a new promo code is validated BEFORE the wallet is asked to sign: what the entity would refuse is a 400 now and no challenge is stored', async () => {
     const ctx = unitContext();
     const h = new RequestActionChallengeHandler(ctx.proofs, ctx.clock);
-    const promo = { code: 'HELLO', effect: { kind: 'free_rides' as const, count: 3 }, description: null, maxRedemptions: null, perWallet: 1, startsAt: null, expiresAt: null, note: null };
+    const promo = { code: 'HELLO', effect: { kind: 'ride' as const, tier: '1h' as const }, description: null, maxRedemptions: null, perWallet: 1, startsAt: null, expiresAt: null, note: null };
     const ask = (over = {}) => h.execute(new RequestActionChallengeCommand(ADMIN_UNIT_WALLET, { action: 'promo_create', promo: { ...promo, ...over } }));
+    await expect(ask({ effect: { kind: 'free_rides' as const, count: 3 } })).rejects.toMatchObject({ errorCode: 'promo_retired' });
     await expect(ask({ description: 'x'.repeat(201) })).rejects.toMatchObject({ errorCode: 'bad_promo_code' });
     await expect(ask({ expiresAt: new Date(ctx.clock.ms - 1) })).rejects.toMatchObject({ errorCode: 'bad_promo_code' });
     await expect(ask({ effect: { kind: 'cosmetic', slot: 'wheel', item: 'classic' } })).rejects.toMatchObject({ errorCode: 'visuals_are_honk' });

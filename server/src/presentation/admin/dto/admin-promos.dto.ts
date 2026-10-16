@@ -11,8 +11,8 @@ const nullable = <T extends z.ZodTypeAny>(inner: T) => z.preprocess((v) => (v ==
 const epochMs = z.number().int().min(0).max(8_640_000_000_000_000).transform((n) => new Date(n));
 
 const effect = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('ride'), tier: z.enum(PAID_TIER_IDS) }),
   z.object({ kind: z.literal('tickets'), tier: z.enum(PAID_TIER_IDS), poolId: nullable(z.number().int().min(0).max(4_294_967_295)), credits: z.number().int().min(1).max(100) }),
-  z.object({ kind: z.literal('free_rides'), count: z.number().int().min(1).max(100) }),
   z.object({ kind: z.literal('cosmetic'), slot: z.enum(COSMETIC_SLOTS), item: z.string().trim().min(1).max(32) }),
 ]);
 

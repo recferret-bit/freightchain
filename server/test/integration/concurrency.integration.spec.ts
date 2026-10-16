@@ -124,8 +124,8 @@ describe('concurrency (PostgreSQL)', () => {
   describe('promo codes beyond tickets', () => {
     const promos = () => harness.app.get(PromoRepositoryPort, { strict: false });
 
-    it('a free-ride code racing the midnight grant: the rides are added once and the grant never takes them back', async () => {
-      await promos().insert(aPromo(harness.clock.now(), { code: 'RIDES', effect: { kind: 'free_rides', count: 3 }, maxRedemptions: null }));
+    it('a ride code racing the midnight grant: one grant is written, and the daily free rides stay put', async () => {
+      await promos().insert(aPromo(harness.clock.now(), { code: 'RIDES', effect: { kind: 'ride', tier: '1h' }, maxRedemptions: null }));
       const a = await login();
       sec(86_400); // tomorrow: the daily grant is due for everyone
       const bus = harness.app.get(CommandBus, { strict: false });
@@ -136,13 +136,14 @@ describe('concurrency (PostgreSQL)', () => {
       ]);
       expect(redeems.filter((r) => r.status === 200)).toHaveLength(1);
       expect(redeems.filter((r) => r.status === 409)).toHaveLength(PARALLEL - 1);
-      expect(await freeRides(a)).toBe(13); // 10, above the daily cap so the grant adds nothing, + 3
+      expect(await freeRides(a)).toBe(10); // signup is above the daily cap, so the grant adds nothing; a ride code is not a free-ride credit
       expect(await prisma.promoRedemption.count({ where: { wallet: a.address } })).toBe(1);
+      expect(await prisma.promoRideGrant.count({ where: { wallet: a.address, rideId: null } })).toBe(1);
     });
 
     it('the last redemption of a scheduled code at the instant it starts goes to ONE wallet; one second earlier to nobody', async () => {
       const now = harness.clock.now();
-      await promos().insert(aPromo(now, { code: 'OPENING', effect: { kind: 'free_rides', count: 1 }, maxRedemptions: 1, startsAt: new Date(now.getTime() + 60_000) }));
+      await promos().insert(aPromo(now, { code: 'OPENING', effect: { kind: 'ride', tier: '4h' }, maxRedemptions: 1, startsAt: new Date(now.getTime() + 60_000) }));
       const riders = await parallel(PARALLEL, () => login());
       const redeem = () => Promise.all(riders.map((r) => r.agent.post('/api/promo/redeem').send({ code: 'OPENING' })));
       sec(59);

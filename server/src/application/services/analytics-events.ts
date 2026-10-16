@@ -173,6 +173,7 @@ export function achievementMintFailed(wallet: string, achievementId: string, att
 export function promoRedeemed(p: { wallet: string; code: string; n: number; isDemo: boolean; now: Date; result: PromoRedeemedDto }): AnalyticsEvent {
   const r = p.result, base = { code: p.code, kind: r.kind, redemption_n: p.n, is_demo: p.isDemo };
   const properties: Props = r.kind === 'tickets' ? { ...base, tier_id: r.tier, pool_id: r.poolId, tickets_added: r.added, ticket_balance: r.balance }
+    : r.kind === 'ride' ? { ...base, tier_id: r.tier }
     : r.kind === 'free_rides' ? { ...base, rides_added: r.added, free_rides: r.freeRides } : { ...base, slot: r.slot, item: r.item };
   const set: Props | undefined = r.kind === 'free_rides' ? { free_rides: r.freeRides } : r.kind === 'cosmetic' ? { [r.slot]: r.item } : undefined;
   return serverEvent('promo_redeemed', p.wallet, `promo:${p.code}:${p.wallet}:${p.n}`, p.now, properties, set);
@@ -196,7 +197,8 @@ export function garageSaved(wallet: string, worn: Record<string, string>, change
 /** An admin made a code (signed + audited). Aggregate, not a player: no wallet, no free text. */
 export function promoCreated(p: { code: string; effect: PromoEffect; maxRedemptions: number | null; perWallet: number; startsAt: Date; expiresAt: Date | null; now: Date }): AnalyticsEvent {
   const e = p.effect;
-  const effect: Props = e.kind === 'tickets' ? { tier_id: e.tier, pool_id: e.poolId, credits: e.credits } : e.kind === 'free_rides' ? { rides: e.count } : { slot: e.slot, item: e.item };
+  const effect: Props = e.kind === 'tickets' ? { tier_id: e.tier, pool_id: e.poolId, credits: e.credits }
+    : e.kind === 'ride' ? { tier_id: e.tier } : e.kind === 'free_rides' ? { rides: e.count } : { slot: e.slot, item: e.item };
   return serverEvent('promo_created', SYSTEM_DISTINCT_ID, `promo:${p.code}:created`, p.now, {
     code: p.code, kind: e.kind, ...effect, max_redemptions: p.maxRedemptions, per_wallet: p.perWallet, starts_at: p.startsAt.getTime(), expires_at: p.expiresAt?.getTime() ?? null,
   });

@@ -1,7 +1,7 @@
 import { announcePool, bestByWallet, cleanBps, nextBaseCents, rankedAttemptScore, seasonQualifiers, settleBoard, splitBoardCents, weekBonus } from '../../../../src/domain/prize/prize-pool.js';
 import {
-  BASE_STEPS_CENTS, BLOCKED_US_STATES, BONUS_CAP_CENTS, FREE_RANKED_STARTS, MIN_PAYOUT_CENTS, PAID_RANKED_STARTS,
-  PLACE_BPS, PRIZE_BLOCKED_COUNTRIES, SANCTIONED_COUNTRIES, TOKEN_IS_PRIZE, classifyStarts, prizeAccess, prizeWeek, rankedRoadEffects, rankedSpectatorBlocked,
+  BASE_STEPS_CENTS, BLOCKED_US_STATES, BONUS_CAP_CENTS, FREE_RANKED_STARTS, MIN_PAYOUT_CENTS, PAID_RANKED_STARTS, PROMO_RANKED_STARTS,
+  PLACE_BPS, PRIZE_BLOCKED_COUNTRIES, SANCTIONED_COUNTRIES, TOKEN_IS_PRIZE, classifyStarts, openSettlement, prizeAccess, prizePhase, prizeWeek, rankedRoadEffects, rankedSpectatorBlocked, rankedStartFits, seasonOf,
 } from '../../../../src/domain/prize/prize-rules.js';
 
 const score = (wallet: string, metres: number, corrections = 0, submittedAt = 0, payout = true) => ({
@@ -9,13 +9,29 @@ const score = (wallet: string, metres: number, corrections = 0, submittedAt = 0,
 });
 
 describe('prize week and eligibility', () => {
-  const mon = Date.UTC(2026, 9, 12, 19);
+  const mon = Date.UTC(2026, 9, 12);
 
-  it('opens Monday 19:00 UTC and keeps the previous week until then', () => {
-    expect(prizeWeek(new Date(mon))).toMatchObject({ id: '2026-10-12', start: new Date(mon) });
+  it('ranks Monday 00:00 UTC through Sunday 12:00 UTC, then verifies, hears appeals, and pays on Tuesday', () => {
+    const week = prizeWeek(new Date(mon));
+    expect(week).toMatchObject({ id: '2026-10-12', start: new Date(mon) });
+    expect(week.end.toISOString()).toBe('2026-10-18T12:00:00.000Z');
+    expect(week.verifyEnd.toISOString()).toBe('2026-10-19T12:00:00.000Z');
+    expect(week.appealsEnd.toISOString()).toBe('2026-10-20T12:00:00.000Z');
+    expect(week.payoutAt.toISOString()).toBe('2026-10-20T12:00:00.000Z');
     expect(prizeWeek(new Date(mon - 1)).id).toBe('2026-10-05');
     expect(prizeWeek(new Date(Date.UTC(2026, 9, 18, 18))).id).toBe('2026-10-12');
-    expect(prizeWeek(new Date(mon)).end.getTime()).toBe(mon + 7 * 86_400_000);
+    expect(prizePhase(new Date(Date.UTC(2026, 9, 14, 12)))).toBe('ranked');
+    expect(prizePhase(new Date(Date.UTC(2026, 9, 18, 12)))).toBe('verification');
+    expect(prizePhase(new Date(Date.UTC(2026, 9, 18, 18)))).toBe('verification');
+    expect(prizePhase(new Date(Date.UTC(2026, 9, 19, 18)))).toBe('ranked');
+    expect(openSettlement(new Date(Date.UTC(2026, 9, 20, 8)))?.appealsEnd.toISOString()).toBe('2026-10-20T12:00:00.000Z');
+    expect(openSettlement(new Date(Date.UTC(2026, 9, 21)))).toBeNull();
+    expect(seasonOf('2026-10-12')).toEqual({ season: 1, week: 1, liveFinal: false });
+    expect(seasonOf('2026-11-30')).toEqual({ season: 1, week: 8, liveFinal: true });
+    expect(rankedStartFits(new Date(Date.UTC(2026, 9, 18, 4)), 8 * 3600)).toBe(true);
+    expect(rankedStartFits(new Date(Date.UTC(2026, 9, 18, 4, 0, 1)), 8 * 3600)).toBe(false);
+    expect(rankedStartFits(new Date(Date.UTC(2026, 9, 18, 11)), 3600)).toBe(true);
+    expect(rankedStartFits(new Date(Date.UTC(2026, 9, 18, 12)), 60)).toBe(false);
   });
 
   it('fails closed: age, unknown country, sanctions, UK/EU, a blocked US state, and KYC only at payout', () => {
@@ -66,7 +82,16 @@ describe('ranked starts', () => {
     expect(out.find((r) => r.id === 'late')?.reason).toBe('declared-late');
     expect(out.find((r) => r.id === 'none')?.reason).toBe('not-declared');
     expect(FREE_RANKED_STARTS).toBe(2);
+    expect(PROMO_RANKED_STARTS).toBe(1);
     expect(PAID_RANKED_STARTS).toBe(5);
+  });
+
+  it('a promo declaration uses its own slot and does not spend a free or paid one', () => {
+    const promo = (id: string, startedAt: number) => ({ id, wallet: 'w', tier: '4h' as const, paid: false, promo: true, declaredAt: 1, startedAt });
+    const out = classifyStarts([promo('a', 1), promo('b', 2), row('f', false, 1, 3), row('p', true, 1, 4)]);
+    expect(out.find((r) => r.id === 'a')?.reason).toBe('counted');
+    expect(out.find((r) => r.id === 'b')?.reason).toBe('promo-cap');
+    expect(out.filter((r) => r.counted).map((r) => r.id)).toEqual(['a', 'f', 'p']);
   });
 
   it('a second wallet has its own caps, and an undeclared ride does not consume one', () => {

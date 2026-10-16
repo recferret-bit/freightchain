@@ -69,6 +69,7 @@ model Ride {
   cleanMetres    Float? // metres before the first hull drop or crash; null = still clean (the score is lastS)
   prizeCountry   String? // ISO country from the edge headers at the ranked start; null on an unranked ride
   prizeRegion    String? // USPS state when prizeCountry is US
+  promoCode      String? // ride promo that granted this shift; null = not a promo ride. Not a purchase and it does not mint TEN4
   pledges          Pledge[]
 
   @@index([wallet, status])

@@ -12,8 +12,10 @@ describe('admin CLI arguments', () => {
     expect((parsePromoCreate(['X1Y', '--tier', '4h', '--credits', '1', '--expires', '2026-10-31T18:00:00Z']) as { expiresAt: Date }).expiresAt).toEqual(new Date(Date.UTC(2026, 9, 31, 18)));
   });
 
-  it('promo:create – free rides; --cosmetic never builds an effect', () => {
-    expect(parsePromoCreate(['THREE', '--free-rides', '3'])).toMatchObject({ code: 'THREE', effect: { kind: 'free_rides', count: 3 } });
+  it('promo:create – a ride code; --free-rides and --cosmetic never build an effect', () => {
+    expect(parsePromoCreate(['HAUL', '--ride', '4h'])).toMatchObject({ code: 'HAUL', effect: { kind: 'ride', tier: '4h' }, perWallet: 1 });
+    expect(parsePromoCreate(['THREE', '--free-rides', '3'])).toBe('--free-rides is retired; use --ride 1h|4h|8h');
+    expect(parsePromoCreate(['HAUL', '--ride', '4h', '--per-wallet', '2'])).toBe('a ride code is once per wallet');
     for (const args of [
       ['GOLD', '--cosmetic', 'wheel:gold'], ['BLUE', '--cosmetic', 'truck_color:blue'], ['RACE', '--cosmetic', 'gearbox:racing'],
       ['A1', '--cosmetic', 'seat:x'], ['A1', '--cosmetic', 'wheel'], ['A1', '--cosmetic=wheel:gold'], ['A1', '--free-rides', '2', '--cosmetic', 'wheel:gold'],
@@ -29,7 +31,7 @@ describe('admin CLI arguments', () => {
     expect(parsePromoCreate(['A1', '--tier', '1h', '--credits', '1', '--start', 'soon'])).toMatch(/--start must be a date/);
     expect(parsePromoCreate(['A1', '--bogus'])).toMatch(/Unknown option/);
     expect(parsePromoCreate(['A1'])).toMatch(/exactly one effect/);
-    expect(parsePromoCreate(['A1', '--free-rides', '0'])).toBe('--free-rides must be a whole number ≥ 1');
+    expect(parsePromoCreate(['A1', '--ride', '2h'])).toBe('--ride must be 1h, 4h or 8h');
   });
 
   it('tickets:grant', () => {

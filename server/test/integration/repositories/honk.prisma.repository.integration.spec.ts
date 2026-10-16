@@ -68,9 +68,12 @@ describe('HonkPrismaRepository (PostgreSQL)', () => {
     expect(await repo.findPart('wheel', 'nope')).toBeNull();
   });
 
-  it('a mint that does not fit the emission cap takes the remainder', async () => {
+  it('a mint near the emission cap pays the era-scaled finish, not the raw room', async () => {
     await prisma.honkSupply.create({ data: { id: 1, minted: HONK_EMISSION_CAP - 10n * U } });
-    expect(await inTx(prisma, (tx) => mint.credit(ride('clip'), tx))).toBe(10n * U);
+    // 10 TEN4 of cap room is era 22. A finished 1h there is 23 base units, and the band split pays 21.
+    expect(await inTx(prisma, (tx) => mint.credit(ride('clip'), tx))).toBe(21n);
+    expect((await prisma.honkSupply.findUnique({ where: { id: 1 } }))?.minted).toBe(HONK_EMISSION_CAP - 10n * U + 21n);
+    await prisma.honkSupply.update({ where: { id: 1 }, data: { minted: HONK_EMISSION_CAP } });
     expect(await inTx(prisma, (tx) => mint.credit(ride('after'), tx))).toBeNull();
     expect((await prisma.honkSupply.findUnique({ where: { id: 1 } }))?.minted).toBe(HONK_EMISSION_CAP);
   });

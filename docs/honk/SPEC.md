@@ -6,7 +6,7 @@ The ticker TEN4 was checked against CoinGecko, DexScreener, and Jupiter on 2026-
 
 ## What it is
 
-TEN4 is a capped coin. SOL still buys a ticket and pays a pool. TEN4 is reserved only when a paid ride's verdict is `verified`, at distance checkpoints. Free rides mint nothing. Starting a ride mints nothing. A crash that never reached a checkpoint mints nothing.
+TEN4 is a capped coin. SOL still buys a ticket and pays a pool. TEN4 is reserved only when a paid ride's verdict is `verified`, at distance checkpoints. Free rides mint nothing. A ride granted by a promo code mints nothing, ranked or not. Starting a ride mints nothing. A crash that never reached a checkpoint mints nothing.
 
 Until TGE the PostgreSQL ledger is the source of truth. The UI calls the balance points, not a live coin. `HONK_PROGRAM_ID` unset means ledger-only: burns need no signature. When it is set, the wallet signs first and the server confirms that transaction before the ledger debit. Do not claim the coin or the visual is live on devnet. Do not deploy.
 

@@ -1,7 +1,7 @@
 import type { Loadout } from '../economy/cosmetics.js';
 import { ConflictError } from '../shared/errors.js';
 import { RideStatus, type RideOutcome } from './ride-status.js';
-import type { RideTierId } from './ride-tier.js';
+import type { PaidTierId, RideTierId } from './ride-tier.js';
 import type { RideReport } from './ride-report.js';
 import {
   CHALLENGE_KINDS, CHALLENGE_MAX_PER_RIDE, CHALLENGE_WINDOW_MS, challengeInterval, firstChallengeAt, nextChallengeAt, pickChallenge,
@@ -77,6 +77,8 @@ export interface RideProps {
   prizeCountry?: string | null;
   /** USPS state when `prizeCountry` is US. */
   prizeRegion?: string | null;
+  /** The ride-promo code that granted this shift. Null on a free ride, a ticket ride, and a paid order. Not a purchase, and it does not mint TEN4. */
+  promoCode?: string | null;
 }
 
 /** What issuing a prompt needs from the caller: an id and a random draw (the entity stays pure). */
@@ -92,6 +94,9 @@ export interface PaidOrderInput {
   id: string; wallet: string; tier: RideTierId; seed: number; minSeconds: number; timeScale: number;
   priceUsd: number; lamports: number; solUsd: number; now: Date; quoteTtlMs: number;
 }
+export interface PromoRideInput {
+  id: string; wallet: string; tier: PaidTierId; seed: number; minSeconds: number; timeScale: number; promoCode: string; now: Date;
+}
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
@@ -105,7 +110,7 @@ export class Ride {
     return {
       trafficVersion: 0, timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, startHour: null, loadout: null, trip: null, tutorial: false, assist: false, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
       startedAt: null, lastHbAt: null, lastS: 0, lastT: 0, driveSeconds: 0, hull: null, endedAt: null, reason: null, challenges: [], nextChallengeAt: null, version: 1, paymentReference: null,
-      seedCommitment: null, blockhash: null, slot: null, ranked: false, cleanMetres: null, prizeCountry: null, prizeRegion: null,
+      seedCommitment: null, blockhash: null, slot: null, ranked: false, cleanMetres: null, prizeCountry: null, prizeRegion: null, promoCode: null,
     };
   }
 
@@ -125,6 +130,14 @@ export class Ride {
       ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
       status: RideStatus.Created, createdAt: i.now, timeScale: i.timeScale, poolId: i.poolId, roundId: i.roundId, paidAt: i.now,
       seedCommitment: i.seedCommitment ?? null, blockhash: i.blockhash ?? null, slot: i.slot ?? null,
+    });
+  }
+
+  /** A ride granted by a ride promo code. Ready at once, price 0, no pool, no TEN4. The caller has already claimed the grant. */
+  static createPromo(i: PromoRideInput): Ride {
+    return new Ride({
+      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
+      status: RideStatus.Created, createdAt: i.now, timeScale: i.timeScale, promoCode: i.promoCode,
     });
   }
 
@@ -186,6 +199,9 @@ export class Ride {
   get hull(): number | null { return this.p.hull; }
   get version(): number { return this.p.version; }
   get isFree(): boolean { return this.p.tier === 'free'; }
+  /** Granted by a ride promo. Not a purchase. A ranked start uses the promo slot, and the ride does not mint TEN4. */
+  get isPromo(): boolean { return this.p.promoCode != null && this.p.promoCode !== ''; }
+  get promoCode(): string | null { return this.p.promoCode ?? null; }
   get seedCommitment(): string | null { return this.p.seedCommitment ?? null; }
   get blockhash(): string | null { return this.p.blockhash ?? null; }
   get slot(): bigint | number | null { return this.p.slot ?? null; }

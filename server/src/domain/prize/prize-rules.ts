@@ -9,12 +9,25 @@ export const TOKEN_IS_PRIZE = false;
 export const PRIZE_TIERS = ['1h', '4h', '8h'] as const;
 export type PrizeTier = (typeof PRIZE_TIERS)[number];
 
-/** Monday 19:00 UTC through the next Monday 19:00 UTC. Not the legacy round, which opens at Monday 00:00. */
-export const PRIZE_WEEK_OPEN_HOUR_UTC = 19;
-export const SEASON_WEEKS = 8;
+/** Ranked play is Monday 00:00 UTC through Sunday 12:00 UTC. Not the legacy round. */
+export const PRIZE_WEEK_OPEN_HOUR_UTC = 0;
+const HOUR_MS = 3_600_000;
+/** Sunday 12:00 UTC, measured from Monday 00:00. */
+export const RANKED_CLOSE_MS = (6 * 24 + 12) * HOUR_MS;
+/** Verification runs Sunday 12:00 UTC through Monday 12:00 UTC. */
+export const VERIFY_END_MS = (7 * 24 + 12) * HOUR_MS;
+/** Appeals run until Tuesday 12:00 UTC. Payouts begin then and finish on Tuesday. */
+export const APPEALS_END_MS = (8 * 24 + 12) * HOUR_MS;
+export const PAYOUT_END_MS = 9 * 24 * HOUR_MS;
 
-/** First 2 declared free starts and first 5 declared paid starts. Not best-of-everything-bought. */
+export const SEASON_WEEKS = 8;
+/** First Monday of season 1. Week 8 of each season is the live final. */
+export const SEASON_EPOCH = '2026-10-12';
+export const LIVE_FINAL_WEEK = 8;
+
+/** First 2 declared free starts, 1 declared promo start, and first 5 declared paid starts. */
 export const FREE_RANKED_STARTS = 2;
+export const PROMO_RANKED_STARTS = 1;
 export const PAID_RANKED_STARTS = 5;
 
 export const MIN_BOARD_PARTICIPANTS = 10;
@@ -118,12 +131,77 @@ export function rankedSpectatorBlocked(
   return true;
 }
 
-export function prizeWeek(at: Date): { id: string; start: Date; end: Date } {
+export interface PrizeWeek {
+  id: string;
+  /** Monday 00:00 UTC. Ranked starts are allowed from here. */
+  start: Date;
+  /** Sunday 12:00 UTC. A ranked start must be able to finish by this instant. */
+  end: Date;
+  /** Monday 12:00 UTC. Verification of this week. Overlaps the next ranked window. */
+  verifyEnd: Date;
+  /** Tuesday 12:00 UTC. Appeals close and payouts begin. */
+  appealsEnd: Date;
+  payoutAt: Date;
+  /** Wednesday 00:00 UTC. The Tuesday payout day is over. */
+  payoutEnds: Date;
+}
+
+export type PrizePhase = 'ranked' | 'verification' | 'appeals' | 'payout';
+
+/** The ranked week that contains `at`. The week changes at Monday 00:00 UTC, so Sunday afternoon is still the week that opened on Monday. */
+export function prizeWeek(at: Date): PrizeWeek {
   const day = (at.getUTCDay() + 6) % 7;
-  const mondayOpen = Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate() - day, PRIZE_WEEK_OPEN_HOUR_UTC);
-  const startMs = at.getTime() < mondayOpen ? mondayOpen - 7 * DAY_MS : mondayOpen;
+  const startMs = Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate() - day, PRIZE_WEEK_OPEN_HOUR_UTC);
   const start = new Date(startMs);
-  return { id: start.toISOString().slice(0, 10), start, end: new Date(startMs + 7 * DAY_MS) };
+  const appealsEnd = new Date(startMs + APPEALS_END_MS);
+  return {
+    id: start.toISOString().slice(0, 10),
+    start,
+    end: new Date(startMs + RANKED_CLOSE_MS),
+    verifyEnd: new Date(startMs + VERIFY_END_MS),
+    appealsEnd,
+    payoutAt: appealsEnd,
+    payoutEnds: new Date(startMs + PAYOUT_END_MS),
+  };
+}
+
+/** Phase of the week `prizeWeek(at)` returns. The previous week's verification and appeals still run after the next Monday 00:00 (`openSettlement`). */
+export function prizePhase(at: Date): PrizePhase {
+  const week = prizeWeek(at);
+  const t = at.getTime();
+  if (t < week.end.getTime()) return 'ranked';
+  if (t < week.verifyEnd.getTime()) return 'verification';
+  if (t < week.appealsEnd.getTime()) return 'appeals';
+  return 'payout';
+}
+
+/** The previous week while its verification, appeals, or Tuesday payout is still open. Null once that Tuesday has ended. */
+export function openSettlement(at: Date): PrizeWeek | null {
+  const previous = prizeWeek(new Date(prizeWeek(at).start.getTime() - 7 * DAY_MS));
+  return at.getTime() < previous.payoutEnds.getTime() ? previous : null;
+}
+
+/** True when a ranked start at `now` can finish a shift of `nominalSeconds` before Sunday 12:00 UTC. Ending exactly at the close is allowed. */
+export function rankedStartFits(now: Date, nominalSeconds: number): boolean {
+  if (!Number.isFinite(nominalSeconds) || nominalSeconds < 0) return false;
+  const week = prizeWeek(now);
+  const t = now.getTime();
+  if (t < week.start.getTime() || t >= week.end.getTime()) return false;
+  return t + nominalSeconds * 1000 <= week.end.getTime();
+}
+
+/** Catalog length. A demo `timeScale` shortens `minSeconds`; the window uses the unscaled shift. */
+export function nominalShiftSeconds(ride: { minSeconds: number; timeScale: number }): number {
+  const scale = ride.timeScale > 0 ? ride.timeScale : 1;
+  return ride.minSeconds * scale;
+}
+
+export function seasonOf(weekId: string): { season: number; week: number; liveFinal: boolean } {
+  const epoch = Date.parse(`${SEASON_EPOCH}T00:00:00.000Z`);
+  const week = Date.parse(`${weekId}T00:00:00.000Z`);
+  const n = Math.round((week - epoch) / (7 * DAY_MS));
+  const index = ((n % SEASON_WEEKS) + SEASON_WEEKS) % SEASON_WEEKS;
+  return { season: Math.floor((n - index) / SEASON_WEEKS) + 1, week: index + 1, liveFinal: index + 1 === LIVE_FINAL_WEEK };
 }
 
 export interface RankedDeclaration {
@@ -131,12 +209,14 @@ export interface RankedDeclaration {
   wallet: string;
   tier: PrizeTier;
   paid: boolean;
+  /** A ride promo. Counts in its own weekly slot, not in the free or paid caps. */
+  promo?: boolean;
   /** Null when the driver never declared. A stamp after `startedAt` does not count. */
   declaredAt: number | null;
   startedAt: number;
 }
 
-export type AttemptReason = 'counted' | 'not-declared' | 'declared-late' | 'free-cap' | 'paid-cap';
+export type AttemptReason = 'counted' | 'not-declared' | 'declared-late' | 'free-cap' | 'paid-cap' | 'promo-cap';
 
 export interface ClassifiedStart extends RankedDeclaration {
   counted: boolean;
@@ -148,13 +228,18 @@ export function classifyStarts(rows: readonly RankedDeclaration[]): ClassifiedSt
   const order = [...rows].sort((a, b) => a.startedAt - b.startedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const free = new Map<string, number>();
   const paid = new Map<string, number>();
+  const promo = new Map<string, number>();
   return order.map((row) => {
     if (row.declaredAt === null) return { ...row, counted: false, reason: 'not-declared' as const };
     if (row.declaredAt > row.startedAt) return { ...row, counted: false, reason: 'declared-late' as const };
-    const used = row.paid ? paid : free;
-    const cap = row.paid ? PAID_RANKED_STARTS : FREE_RANKED_STARTS;
+    const bucket = row.promo ? 'promo' : row.paid ? 'paid' : 'free';
+    const used = bucket === 'promo' ? promo : bucket === 'paid' ? paid : free;
+    const cap = bucket === 'promo' ? PROMO_RANKED_STARTS : bucket === 'paid' ? PAID_RANKED_STARTS : FREE_RANKED_STARTS;
     const n = used.get(row.wallet) ?? 0;
-    if (n >= cap) return { ...row, counted: false, reason: row.paid ? 'paid-cap' as const : 'free-cap' as const };
+    if (n >= cap) {
+      const reason = bucket === 'promo' ? 'promo-cap' as const : bucket === 'paid' ? 'paid-cap' as const : 'free-cap' as const;
+      return { ...row, counted: false, reason };
+    }
     used.set(row.wallet, n + 1);
     return { ...row, counted: true, reason: 'counted' as const };
   });

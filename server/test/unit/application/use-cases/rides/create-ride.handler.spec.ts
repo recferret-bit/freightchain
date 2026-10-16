@@ -7,12 +7,13 @@ import { FixedRules, DEMO_UNIT_WALLET, unitContext, unitRules } from '../../../.
 import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 import { StubPrice } from '../../../../support/stub-price.js';
 import { aPool } from '../../../../support/pools.js';
+import { aPromo } from '../../../../support/promos.js';
 import { setTierOnSaleForTest } from '../../../../../src/domain/rides/ride-tier.js';
 
 const setup = (price = new StubPrice(), rules = unitRules()) => {
   const ctx = unitContext(rules);
   const analytics = new RecordingAnalytics();
-  const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy, ctx.poolTickets, ctx.rounds, analytics, ctx.stats, ctx.dailySeeds);
+  const handler = new CreateRideHandler(ctx.players, ctx.rides, ctx.sessions, price, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy, ctx.poolTickets, ctx.rounds, analytics, ctx.stats, ctx.dailySeeds, ctx.promos);
   return {
     ctx, analytics, handler,
     create: async (tier: 'free' | '1h' | '4h' | '8h', wallet = 'w', tutorial = false, assist = false, level: 1 | 2 | 3 | null = null, opts: { offer?: boolean } = {}) => {
@@ -29,6 +30,18 @@ describe('CreateRideHandler', () => {
   it('the 1-hour shift with no pool is not on sale', async () => {
     setTierOnSaleForTest('1h', false);
     await expect(setup().create('1h')).rejects.toThrow(new ConflictError('the 1-hour shift is not on sale yet', 'tier_not_on_sale'));
+  });
+
+  it('a ride promo is a ready shift at price 0 when the tier is not on sale, and it does not spend a free ride', async () => {
+    setTierOnSaleForTest('1h', false);
+    const { ctx, create } = setup();
+    await ctx.promos.insert(aPromo(ctx.now(), { code: 'SPRINT', effect: { kind: 'ride', tier: '1h' } }));
+    await ctx.promos.insertGrant({ code: 'SPRINT', wallet: 'w', n: 1, tier: '1h', rideId: null, createdAt: ctx.now() });
+    const ride = await create('1h', 'w', false, false, null, { offer: false });
+    expect(ride).toMatchObject({ tier: '1h', status: 'created', priceUsd: 0, lamports: 0, poolId: null, promo: true });
+    expect((await ctx.storedPlayer('w')).freeRides).toBe(10);
+    expect(await ctx.promos.listUnspent('w')).toEqual([]);
+    expect((await create('1h', 'w', false, false, null, { offer: false })).id).toBe(ride.id);
   });
 
   it('a free ride: ready at once, one credit spent, a re-ask hands back the same ride', async () => {

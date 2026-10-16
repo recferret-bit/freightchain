@@ -14,10 +14,9 @@ export function promoFromForm(f) {
   if (!code) throw new Error('Give the code a name (3–32 letters, digits, - or _).');
   if (f.kind === 'cosmetic') throw new Error('Cab parts are minted by burning TEN4 in the garage, not by a promo code.');
   let effect;
-  if (f.kind === 'free_rides') {
-    const count = num(f.rides);
-    if (!Number.isInteger(count) || count < 1) throw new Error('Free rides: a whole number from 1 up.');
-    effect = { kind: 'free_rides', count };
+  if (f.kind === 'ride') {
+    if (!PAID.includes(f.tier)) throw new Error('Pick a ride length.');
+    effect = { kind: 'ride', tier: f.tier };
   } else {
     const credits = num(f.credits), poolId = num(f.poolId);
     if (!PAID.includes(f.tier)) throw new Error('Pick a ride length for the tickets.');
@@ -27,7 +26,7 @@ export function promoFromForm(f) {
   const startsAt = localToMs(f.start), expiresAt = localToMs(f.end);
   if (Number.isNaN(startsAt) || Number.isNaN(expiresAt)) throw new Error('A start / end time is not a valid date.');
   if (expiresAt != null && expiresAt <= (startsAt ?? Date.now())) throw new Error('The end must be after the start (and in the future).');
-  const max = num(f.max), perWallet = num(f.perWallet) ?? 1;
+  const max = num(f.max), perWallet = f.kind === 'ride' ? 1 : (num(f.perWallet) ?? 1);
   if (max != null && (!Number.isInteger(max) || max < 1)) throw new Error('Max redemptions: a whole number from 1 up, or empty for unlimited.');
   if (!Number.isInteger(perWallet) || perWallet < 1) throw new Error('Per wallet: a whole number from 1 up.');
   return { code, effect, description: f.description.trim() || null, maxRedemptions: max, perWallet, startsAt, expiresAt, note: f.note.trim() || null };
@@ -84,11 +83,10 @@ function form(ctx, { say, reload }) {
   const inp = (id, attrs = {}) => el('input', { id, ...attrs });
   const sel = (id, opts, attrs = {}) => el('select', { id, ...attrs }, opts.map(([v, l]) => el('option', { value: v }, l)));
   const code = inp('pf-code', { maxlength: 32, placeholder: 'e.g. WELCOME', autocapitalize: 'characters', spellcheck: 'false', autocomplete: 'off' });
-  const kind = sel('pf-kind', [['free_rides', 'Free rides'], ['tickets', 'Free paid-ride tickets']]);   // cab colours are HONK burns now – a listed cosmetic code still shows, a new one is not offered
-  const rides = inp('pf-rides', { type: 'number', min: 1, max: 20, value: 1 });
-  const presets = el('div', { class: 'presets' }, el('span', {}, 'Quick set'), el('div', {}, [1, 3].map(n => el('button', { type: 'button', class: 'ghost', onclick: () => { rides.value = n; } }, `${n} free ride${n === 1 ? '' : 's'}`))));
+  const kind = sel('pf-kind', [['ride', 'One free ride (1h / 4h / 8h)'], ['tickets', 'Pool tickets']]);   // extra free rides are retired; cab colours are TEN4 burns
+  const rideTier = sel('pf-ride', PAID.map(t => [t, { '1h': '1 hour', '4h': '4 hours', '8h': '8 hours' }[t]]));
   const tier = sel('pf-tier', PAID.map(t => [t, { '1h': '1 hour', '4h': '4 hours', '8h': '8 hours' }[t]])), credits = inp('pf-credits', { type: 'number', min: 1, max: 100, value: 1 }), poolId = inp('pf-pool', { type: 'number', min: 0, placeholder: 'live pool of the tier' });
-  const groups = { free_rides: el('div', { class: 'grp g3' }, field('Rides per redemption', rides, '1–20; may go above the daily 5'), presets), tickets: el('div', { class: 'grp g3' }, field('Ride length', tier), field('Tickets per redemption', credits), field('Pin to pool #', poolId, 'empty = the live pool of that length')) };
+  const groups = { ride: el('div', { class: 'grp g3' }, field('Ride length', rideTier, 'one shift, once per wallet, not for sale, no TEN4')), tickets: el('div', { class: 'grp g3' }, field('Ride length', tier), field('Tickets per redemption', credits), field('Pin to pool #', poolId, 'empty = the live pool of that length')) };
   const showKind = () => { for (const [k, g] of Object.entries(groups)) g.hidden = k !== kind.value; };
   kind.onchange = showKind; showKind();
   const description = inp('pf-desc', { maxlength: 200, placeholder: 'shown to players, e.g. "Welcome gift"' }), start = inp('pf-start', { type: 'datetime-local' }), end = inp('pf-end', { type: 'datetime-local' });
@@ -98,7 +96,7 @@ function form(ctx, { say, reload }) {
     e.preventDefault();
     let promo;
     try {
-      promo = promoFromForm({ code: code.value, kind: kind.value, rides: rides.value, tier: tier.value, credits: credits.value, poolId: poolId.value, description: description.value, start: start.value, end: end.value, max: max.value, perWallet: perWallet.value, note: note.value });
+      promo = promoFromForm({ code: code.value, kind: kind.value, tier: kind.value === 'ride' ? rideTier.value : tier.value, credits: credits.value, poolId: poolId.value, description: description.value, start: start.value, end: end.value, max: max.value, perWallet: perWallet.value, note: note.value });
     } catch (err) { say(err.message, true); return; }
     go.disabled = true;
     try {

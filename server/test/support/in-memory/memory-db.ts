@@ -40,6 +40,7 @@ export class MemoryDb {
   promos = new Map<string, PromoCodeProps>();
   /** key `${code}|${wallet}|${n}` */
   redemptions = new Map<string, Date>();
+  promoGrants: import('../../../src/application/ports/economy/promo.repository.port.js').PromoRideGrantRecord[] = [];
   orders = new Map<string, TicketOrderProps>();
   /** key `${wallet}|${slot}|${item}` */
   cosmeticUnlocks = new Map<string, CosmeticUnlockRecord>();

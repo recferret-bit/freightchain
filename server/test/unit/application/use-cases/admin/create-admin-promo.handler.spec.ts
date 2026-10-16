@@ -10,14 +10,14 @@ const handlerOf = (ctx: UnitContext) => new CreateAdminPromoHandler(ctx.promoCre
 describe('CreateAdminPromoHandler', () => {
   it('creates the code the wallet signed for, and audits it with the request id, the effect and the signed text', async () => {
     const ctx = unitContext(), admin = testAdmin(ctx);
-    const input = promoInput({ code: 'wheel-1', effect: { kind: 'free_rides', count: 2 }, description: 'A golden wheel', maxRedemptions: 100 });
+    const input = promoInput({ code: 'haul-1', effect: { kind: 'ride', tier: '4h' }, description: 'A free haul', maxRedemptions: 100 });
     const signature = await admin.sign({ action: 'promo_create', promo: input });
     const dto = await handlerOf(ctx).execute(new CreateAdminPromoCommand(admin.wallet, input, 'req-7', signature));
-    expect(dto).toMatchObject({ code: 'WHEEL-1', label: '2 free rides', state: 'active', description: 'A golden wheel' });
-    expect(await ctx.promos.findByCode('WHEEL-1')).not.toBeNull();
+    expect(dto).toMatchObject({ code: 'HAUL-1', label: 'one free 4h ride (not for sale)', state: 'active', description: 'A free haul' });
+    expect(await ctx.promos.findByCode('HAUL-1')).not.toBeNull();
     const [row] = ctx.db.adminActions;
-    expect(row).toMatchObject({ wallet: admin.wallet, action: 'promo.create', target: 'WHEEL-1', detail: { effect: { kind: 'free_rides', count: 2 }, signed: { signature } }, requestId: 'req-7', at: ctx.now() });
-    expect((row?.detail['signed'] as { message: string }).message).toContain('Action: CREATE promo code WHEEL-1');
+    expect(row).toMatchObject({ wallet: admin.wallet, action: 'promo.create', target: 'HAUL-1', detail: { effect: { kind: 'ride', tier: '4h' }, signed: { signature } }, requestId: 'req-7', at: ctx.now() });
+    expect((row?.detail['signed'] as { message: string }).message).toContain('Action: CREATE promo code HAUL-1');
   });
 
   it('a signed cab visual is refused: nothing is stored and nothing is audited', async () => {
@@ -60,7 +60,7 @@ describe('CreateAdminPromoHandler', () => {
     await handlerOf(ctx).execute(new CreateAdminPromoCommand(admin.wallet, first, null, await admin.sign({ action: 'promo_create', promo: first })));
     ctx.db.adminActions.length = 0;
     await expect(handlerOf(ctx).execute(new CreateAdminPromoCommand(admin.wallet, first, null, await admin.sign({ action: 'promo_create', promo: first })))).rejects.toBeInstanceOf(ConflictError);
-    const bad = promoInput({ code: 'BAD', effect: { kind: 'free_rides', count: 0 } });
+    const bad = promoInput({ code: 'BAD', effect: { kind: 'ride', tier: '4h' }, perWallet: 2 });
     await expect(handlerOf(ctx).execute(new CreateAdminPromoCommand(admin.wallet, bad, null, await admin.sign({ action: 'promo_create', promo: bad })))).rejects.toBeInstanceOf(BadRequestError);
     expect(ctx.db.adminActions).toEqual([]);
   });

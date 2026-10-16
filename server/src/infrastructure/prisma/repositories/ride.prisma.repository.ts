@@ -75,18 +75,18 @@ export class RidePrismaRepository extends RideRepositoryPort {
     return rows[0] ? RideMapper.toDomain(rows[0]) : null;
   }
 
-  async countRankedStarts(wallet: string, from: Date, to: Date, tx?: TransactionHandle): Promise<{ free: number; paid: number }> {
-    const rows = await clientFor(this.prisma, tx).ride.groupBy({
-      by: ['tier'],
+  async countRankedStarts(wallet: string, from: Date, to: Date, tx?: TransactionHandle): Promise<{ free: number; paid: number; promo: number }> {
+    const rows = await clientFor(this.prisma, tx).ride.findMany({
       where: { wallet, ranked: true, startedAt: { gte: from, lt: to } },
-      _count: { _all: true },
+      select: { tier: true, promoCode: true },
     });
-    let free = 0, paid = 0;
+    let free = 0, paid = 0, promo = 0;
     for (const row of rows) {
-      const n = row._count._all;
-      if (row.tier === 'free') free += n; else paid += n;
+      if (row.promoCode) promo += 1;
+      else if (row.tier === 'free') free += 1;
+      else paid += 1;
     }
-    return { free, paid };
+    return { free, paid, promo };
   }
 
   async listRankedEnded(tier: string, from: Date, to: Date, tx?: TransactionHandle): Promise<Ride[]> {

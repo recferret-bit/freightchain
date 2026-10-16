@@ -169,8 +169,9 @@ export function promoError(e) {
   if (e?.status === 400) return 'Type a promo code first.';
   return e?.message ?? String(e);
 }
-/** What a redemption did, as one sentence – the answer is `{ kind: 'tickets' | 'free_rides' | 'cosmetic', code, label, … }`. */
+/** What a redemption did, as one sentence. A ride code is not a purchase and does not mint TEN4. */
 export function promoOk(r) {
+  if (r.kind === 'ride') return `One free ${r.tier} ride (${r.code}). It is not for sale. Start it from your profile. It does not mint TEN4.`;
   if (r.kind === 'free_rides') return `+${plural(r.added, 'free ride')} (${r.code}) · you now have ${r.freeRides}`;
   if (r.kind === 'cosmetic') return `Unlocked ${r.label} (${r.code}) – it is on your truck now. Pick parts in the GARAGE.`;
   return `+${plural(r.added, 'ticket')} (${r.code}) in pool #${r.poolId} · you hold ${r.balance} · cap ${r.cap}${r.added === 0 ? ' – you are at the cap, nothing added' : ''}`;

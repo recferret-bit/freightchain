@@ -75,6 +75,23 @@ describe('RankedEntryService', () => {
     expect(await claim(sixth)).toEqual({ country: 'CA', region: null });
   });
 
+  it('refuses a ranked start that cannot finish by Sunday 12:00 UTC, and a second promo start that week', async () => {
+    const { ctx, claim } = setup();
+    await ctx.accept('w');
+    ctx.clock.advance((3 * 24 + 16) * 3600 + 1); // Sunday 04:00:01 UTC
+    const late = Ride.createPaidOrder({ id: 'late', wallet: 'w', tier: '8h', seed: 1, minSeconds: 8 * 3600, timeScale: 1, priceUsd: 50, lamports: 1, solUsd: 100, now: ctx.now(), quoteTtlMs: 60_000 });
+    late.markPaid(1, ctx.now());
+    await expect(claim(late)).rejects.toMatchObject({ errorCode: 'ranked_window' });
+    const promo = Ride.createPromo({ id: 'pr', wallet: 'w', tier: '1h', seed: 1, minSeconds: 60, timeScale: 1, promoCode: 'HAUL', now: ctx.now() });
+    await ctx.rides.insert(promo);
+    await claim(promo);
+    promo.start(ctx.now(), null, 0, { country: 'CA', region: null });
+    await ctx.rides.save(promo);
+    const second = Ride.createPromo({ id: 'pr2', wallet: 'w', tier: '1h', seed: 1, minSeconds: 60, timeScale: 1, promoCode: 'NEXT', now: ctx.now() });
+    await expect(claim(second)).rejects.toMatchObject({ errorCode: 'ranked_promo_cap' });
+    expect(second.status).toBe(RideStatus.Created);
+  });
+
   it('an env list replaces the default block', async () => {
     const { ctx, claim } = setup(new Lists({ sanctionedCountries: ['CA'], prizeBlockedCountries: [], blockedUsStates: [] }));
     const ride = await ctx.freeRide('w');

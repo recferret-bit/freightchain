@@ -6,7 +6,7 @@
 
 The contest is a skill contest. The score is how far a driver gets along a fixed weekly route before the first mistake. It is not a raffle and not a sweepstakes.
 
-Free rides and paid rides are not equal entries. A driver may count two free ranked starts and up to five paid ranked starts each week. Do not describe the free rides as an equal-chance way to win.
+Free rides and paid rides are not equal entries. A driver may count two free ranked starts, one promo ranked start, and up to five paid ranked starts each week. A promo ride is a 1 hour, 4 hour, or 8 hour shift given by a code. It is not sold and it is not a prize entry that anyone can buy. Do not describe the free rides as an equal-chance way to win.
 
 The prize is USDC. The TEN4 token is not a prize, not an entry fee, and not a way to raise a score.
 
@@ -26,7 +26,7 @@ A driver whose country is unknown is refused. Ranked entry does not wait for ide
 
 ## 3. The week and the boards
 
-A week runs from Monday 19:00 UTC to the next Monday 19:00 UTC.
+Ranked driving runs from Monday 00:00 UTC to Sunday 12:00 UTC. A ranked start has to be able to finish by Sunday 12:00 UTC. An 8 hour ranked start has to begin by 04:00 UTC that Sunday. Verification runs from Sunday 12:00 UTC to Monday 12:00 UTC. Appeals are open until Tuesday 12:00 UTC. Payouts are sent on Tuesday, after appeals close. The next week of ranked driving opens on Monday at 00:00 UTC while the previous week is still being checked.
 
 There are three boards. Sprint is the 1 hour route and receives 25% of that week's contest pool. Haul is the 4 hour route and receives 30%. Long Haul is the 8 hour route and receives 45%.
 
@@ -36,7 +36,7 @@ Every ranked start on a board in a week is meant to use that week's route. That 
 
 Before the truck moves, the driver chooses ranked or unranked.
 
-Each week, the first two free starts that were declared ranked, and the first five paid starts that were declared ranked, are the ones that can score. The board keeps the best one of those. Later starts, and any start that was not declared in time, do not score. They can still earn TEN4, take donations, and unlock cosmetics. Tickets are not limited to five.
+Each week, the first two free starts that were declared ranked, the first promo start that was declared ranked, and the first five paid starts that were declared ranked, are the ones that can score. The board keeps the best one of those. Later starts, and any start that was not declared in time, do not score. A paid start that does not score can still earn TEN4, take donations, and unlock cosmetics. A promo ride does not earn TEN4. Tickets are not limited to five. A promo code is once per wallet and adds at most one ranked start that week, on top of the two free and five paid.
 
 Declaring a start ranked after it has already started does not count and does not use a slot.
 
@@ -75,7 +75,7 @@ A board with fewer than ten drivers pays from its base only, and only to the pla
 
 ## 7. Season
 
-A season is eight weeks. On each board, the eight drivers with the best record of weekly places go to a final. Missing a week counts against that record. The final is one route, with spectator road effects off. The final is not built. Ten percent of each week's bonus is what funds it.
+A season is eight weeks. Week 8 is the live final. On each board, the eight drivers with the best record of weekly places from the season go to that final. Missing a week counts against that record. The final is one route, people can watch it, and spectator road effects stay off. The final ride is not built. Ten percent of each week's bonus is what funds it.
 
 ## 8. What is not live
 

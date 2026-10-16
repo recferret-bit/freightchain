@@ -112,8 +112,8 @@ describe('RidePrismaRepository (PostgreSQL)', () => {
     const plain = freeRideAt('w', at(20));
     plain.start(at(20));
     await repo.insert(plain);
-    expect(await repo.countRankedStarts('w', T0, at(100))).toEqual({ free: 2, paid: 0 });
-    expect(await repo.countRankedStarts('w', at(50), at(100))).toEqual({ free: 0, paid: 0 });
+    expect(await repo.countRankedStarts('w', T0, at(100))).toEqual({ free: 2, paid: 0, promo: 0 });
+    expect(await repo.countRankedStarts('w', at(50), at(100))).toEqual({ free: 0, paid: 0, promo: 0 });
     const ended = await repo.listRankedEnded('free', T0, at(100));
     expect(ended.map((r) => r.id)).toEqual([ranked.id]);
     expect(ended[0]?.cleanMetres).toBe(0);

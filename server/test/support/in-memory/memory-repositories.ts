@@ -172,9 +172,11 @@ export class MemoryRideRepository extends RideRepositoryPort {
     return [...this.db.rides.values()].some((r) => r.props.wallet === wallet && r.props.poolId === poolId && r.props.status === RideStatus.Completed && inWindow(this.db, r.props));
   }
 
-  async countRankedStarts(wallet: string, from: Date, to: Date): Promise<{ free: number; paid: number }> {
+  async countRankedStarts(wallet: string, from: Date, to: Date): Promise<{ free: number; paid: number; promo: number }> {
     const rows = [...this.db.rides.values()].filter((r) => r.props.wallet === wallet && r.props.ranked === true && inRange(r.props.startedAt, from, to));
-    return { free: rows.filter((r) => r.props.tier === 'free').length, paid: rows.filter((r) => r.props.tier !== 'free').length };
+    const promo = rows.filter((r) => r.props.promoCode).length;
+    const free = rows.filter((r) => !r.props.promoCode && r.props.tier === 'free').length;
+    return { free, promo, paid: rows.length - free - promo };
   }
 
   async listRankedEnded(tier: string, from: Date, to: Date): Promise<Ride[]> {

@@ -25,7 +25,9 @@ export class PromoCode {
 
   /** Throws a 400 `bad_promo_code` unless the effect is well formed. */
   static assertEffect(e: PromoEffect): void {
-    if (e.kind === 'tickets') {
+    if (e.kind === 'ride') {
+      if (!isPaidTierId(e.tier)) throw new BadRequestError('a ride code gives a 1h, 4h or 8h shift', 'bad_promo_code');
+    } else if (e.kind === 'tickets') {
       if (!isPaidTierId(e.tier)) throw new BadRequestError('tickets need a paid tier (1h, 4h or 8h)', 'bad_promo_code');
       if (!Number.isInteger(e.credits) || e.credits < 1) throw new BadRequestError('a promo code must give at least 1 ticket', 'bad_promo_code');
       if (e.poolId !== null && (!Number.isInteger(e.poolId) || e.poolId < 0)) throw new BadRequestError('poolId must be a pool id (or none)', 'bad_promo_code');
@@ -41,6 +43,8 @@ export class PromoCode {
 
   static create(input: Omit<PromoCodeProps, 'redeemed' | 'disabledAt' | 'createdAt' | 'startsAt'> & { startsAt: Date | null; now: Date }): PromoCode {
     if (input.effect.kind === 'cosmetic') throw new ConflictError('cab visuals are minted by burning TEN4', 'visuals_are_honk');
+    if (input.effect.kind === 'free_rides') throw new ConflictError('extra free-ride codes are retired; grant a 1h, 4h or 8h ride instead', 'promo_retired');
+    if (input.effect.kind === 'ride' && input.perWallet !== 1) throw new BadRequestError('a ride code is redeemed once per wallet', 'bad_promo_code');
     const code = PromoCode.normalize(input.code);
     if (!CODE_RE.test(code)) throw new BadRequestError('a promo code is 3–32 letters, digits, "-" or "_"', 'bad_promo_code');
     PromoCode.assertEffect(input.effect);

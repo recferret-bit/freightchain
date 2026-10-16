@@ -9,22 +9,23 @@ import { COSMETICS, LOOKS, SLOTS, defaultLoadout, loadout, look, setLoadout } fr
 
 /* The admin page's promo form, the lobby's wardrobe wording and the client cosmetics catalog (mirrored from server/src/domain/economy/cosmetics.ts – the server's
    cosmetics.spec.ts compares the lists; here: every item has a look, junk never breaks the cockpit). */
-const base = { code: ' welcome ', kind: 'free_rides', rides: '3', tier: '1h', credits: '1', poolId: '', slot: 'wheel', item: 'gold', description: '  Hi ', start: '', end: '', max: '', perWallet: '', note: '' };
+const base = { code: ' welcome ', kind: 'ride', tier: '4h', credits: '1', poolId: '', slot: 'wheel', item: 'gold', description: '  Hi ', start: '', end: '', max: '', perWallet: '2', note: '' };
 
-test('the form → a promo body: trimmed text, blank = none, per wallet defaults to 1', () => {
-  assert.deepEqual(promoFromForm(base), { code: 'welcome', effect: { kind: 'free_rides', count: 3 }, description: 'Hi', maxRedemptions: null, perWallet: 1, startsAt: null, expiresAt: null, note: null });
+test('the form → a promo body: trimmed text, blank = none, a ride code is once per wallet', () => {
+  assert.deepEqual(promoFromForm(base), { code: 'welcome', effect: { kind: 'ride', tier: '4h' }, description: 'Hi', maxRedemptions: null, perWallet: 1, startsAt: null, expiresAt: null, note: null });
   assert.deepEqual(promoFromForm({ ...base, kind: 'tickets', tier: '4h', credits: '2', poolId: '7', max: '50', perWallet: '2', note: ' vip ' }),
     { code: 'welcome', effect: { kind: 'tickets', tier: '4h', poolId: 7, credits: 2 }, description: 'Hi', maxRedemptions: 50, perWallet: 2, startsAt: null, expiresAt: null, note: 'vip' });
 });
 
-test('1 and 3 free rides are the presets – any whole number up works, nonsense is a sentence, not a signature request', () => {
-  assert.equal(promoFromForm({ ...base, rides: '1' }).effect.count, 1);
-  for (const rides of ['0', '1.5', '', 'x']) assert.throws(() => promoFromForm({ ...base, rides }), /Free rides/, rides);
+test('a ride code needs a paid length; nonsense is a sentence, not a signature request', () => {
+  assert.equal(promoFromForm({ ...base, tier: '8h' }).effect.tier, '8h');
+  assert.throws(() => promoFromForm({ ...base, tier: 'free' }), /ride length/);
   assert.throws(() => promoFromForm({ ...base, code: '  ' }), /Give the code a name/);
   assert.throws(() => promoFromForm({ ...base, kind: 'tickets', credits: '0' }), /Tickets/);
   assert.throws(() => promoFromForm({ ...base, kind: 'tickets', tier: 'free' }), /ride length/);
   assert.throws(() => promoFromForm({ ...base, max: '0' }), /Max redemptions/);
-  assert.throws(() => promoFromForm({ ...base, perWallet: '0' }), /Per wallet/);
+  assert.equal(promoFromForm({ ...base, perWallet: '0' }).perWallet, 1); // a ride code ignores the field
+  assert.throws(() => promoFromForm({ ...base, kind: 'tickets', perWallet: '0' }), /Per wallet/);
 });
 
 test('a truck part is not a promo effect – the form cannot build one', () => {

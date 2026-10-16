@@ -8,7 +8,7 @@ The rules live in `server/src/domain/prize/`. Pool maths and eligibility are pur
 
 ## Week
 
-Monday 19:00 UTC through the next Monday 19:00 UTC (`prizeWeek`). The legacy pay-per-ride round stays Monday 00:00 UTC and is a different ledger.
+Ranked play is Monday 00:00 UTC through Sunday 12:00 UTC (`prizeWeek`). Verification is Sunday 12:00 UTC through Monday 12:00 UTC. Appeals run until Tuesday 12:00 UTC, and payouts begin then, on Tuesday. The next ranked week opens Monday 00:00, so verification and appeals of the closing week overlap it (`openSettlement`). The legacy pay-per-ride round is a different ledger.
 
 Three boards, one shared weekly route (the same seed for every ranked start of that tier). Shares of the week's distributable cents:
 
@@ -22,7 +22,9 @@ A leftover cent from the floor goes to the 8h board.
 
 ## Ranked starts
 
-A wallet may buy as many tickets as it wants. A start counts only when it is declared ranked before it starts. Per wallet per week the counted starts are the first 2 free declarations and the first 5 paid declarations, in start order. A missing or late declaration does not use a slot. Anything past those caps is unranked. An unranked paid ride still earns TEN4, donations, and cosmetics. The board uses the best single counted attempt on that tier, not the best ride the wallet bought.
+A wallet may buy as many tickets as it wants. A start counts only when it is declared ranked before it starts, and only when the tier's nominal length would finish by Sunday 12:00 UTC. An 8h ranked start has to begin by Sunday 04:00 UTC. A 4h start by Sunday 08:00. A 1h start by Sunday 11:00. A free start has to fit that level's nominal seconds. Ending exactly at Sunday 12:00 is allowed. A start that would run past the close is `409 ranked_window` and the ride stays ready, so it can still start unranked.
+
+Per wallet per week the counted starts are the first 2 free declarations, the first 1 promo declaration, and the first 5 paid declarations, in start order. A ride promo is not a purchase. It uses the promo slot, not a free slot and not a paid slot. A missing or late declaration does not use a slot. Anything past those caps is unranked. An unranked paid ride still earns TEN4, donations, and cosmetics. A promo ride does not mint TEN4, ranked or not. The board uses the best single counted attempt on that tier, not the best ride the wallet bought. A promo 1h, 4h, or 8h ride is on that tier's board.
 
 ## Score
 
@@ -68,12 +70,12 @@ The country is read at ranked start from edge headers: `CF-IPCountry` and `CF-Re
 
 ## Season
 
-Eight weeks. The final field on each board is the top 8 by the sum of weekly places (`seasonQualifiers`). A missed week scores 1000, which is worse than any real place, so skipping a week cannot help. The final itself (one seed, no spectator road effects) is not built.
+Eight weeks from `SEASON_EPOCH` (`2026-10-12`). Week 8 is the live final (`seasonOf`). The final field on each board is the top 8 by the sum of weekly places (`seasonQualifiers`). A missed week scores 1000, which is worse than any real place, so skipping a week cannot help. The final is one route, watchable, with spectator road effects off. The final ride itself is not built. The same Monday–Sunday window applies to it.
 
 ## Wired
 
 - `POST /api/rides/:id/start` body `{ ranked?: boolean }`. The game's start screen has a RANKED checkbox. A refusal is `409` (`ranked_ineligible`, `ranked_free_cap`, `ranked_paid_cap`) and the ride stays ready, so the driver can start it unranked.
-- Caps run inside the player-row lock: ranked starts whose `startedAt` is in the current prize week, 2 free and 5 paid.
+- Caps run inside the player-row lock: ranked starts whose `startedAt` is in the current prize week, 2 free, 1 promo, and 5 paid. A start that cannot finish by Sunday 12:00 UTC is refused first (`ranked_window`).
 - `GET /api/prize/board?tier=1h|4h|8h&at=` returns `bestByWallet` of ended ranked rides of that tier. Free ranked starts count against the cap and are not on these three boards.
 - Spectator road effects on a ranked ride are refused, as above.
 

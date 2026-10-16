@@ -6,12 +6,13 @@ Status: built on branch `promocodes`, server + lobby + admin + landing + cockpit
 
 ## What a code can do
 
-Truck-part promo codes are not a feature. A code gives tickets or extra free rides. Creating or redeeming `kind: cosmetic` is refused (409 `visuals_are_honk`). An unlock a cosmetic code already wrote stays wearable. The cosmetic columns stay so an old row still loads.
+Truck-part promo codes are not a feature. A code gives one free shift or pool tickets. Creating or redeeming `kind: cosmetic` is refused (409 `visuals_are_honk`). Creating or redeeming `kind: free_rides` is refused (409 `promo_retired`). An old row of either kind still loads. An unlock a cosmetic code already wrote stays wearable. Past free-ride redemptions stay in the log. The `freeRides` column is not dropped.
 
 | kind | effect of ONE redemption | notes |
 |---|---|---|
-| `free_rides` | `+count` free rides (1–20; the admin form has **1** and **3** presets) | added **on top of** the daily ones and **may exceed the daily cap** (default 5, `free_rides_daily_max` in `player.GameSetting`). The cap only limits the daily refill (`Player.applyDailyGrant`, the midnight SQL): it adds below the cap and never takes anything away, and the lobby countdown shows "full" at or above it. A refund of an unstarted free ride adds one unless the wallet is exactly at the cap. Rule chosen with the owner's brief in mind ("+3 rides" must be worth 3). |
-| `tickets` | `credits` free paid-ride tickets of a tier (`1h` / `4h` / `8h`), into the live pool of that tier or a pinned pool | the old promo. An off-chain grant (a sponsored entry): it does **not** count towards the pool's on-chain minimum. Clamped at the pool's per-wallet cap; a wallet already at the cap is refused (409 `ticket_cap`) **before** a redemption is used. Free tickets "per type of ride" = one code per tier. |
+| `ride` | one `1h`, `4h`, or `8h` shift | free of charge. Not sold, not a ticket, not tied to a purchase. Once per wallet (`perWallet` must be 1). Ordering that tier claims the grant and creates a ready ride at price 0, even when the shift is not on sale. It does not mint TEN4. Declaring it ranked uses the promo slot: +1 ranked start per wallet per week, on top of 2 free and 5 paid. |
+| `tickets` | `credits` pool tickets of a tier (`1h` / `4h` / `8h`), into the live pool of that tier or a pinned pool | kept. This is a sponsored entry into the ticket vault, not a ride promo. It does **not** count towards the pool's on-chain minimum. A ride started from the ticket is a paid start and can mint TEN4. Clamped at the pool's per-wallet cap; a wallet already at the cap is refused (409 `ticket_cap`) **before** a redemption is used. |
+| `free_rides` | **retired.** Creating or redeeming one returns 409 `promo_retired` and takes no redemption. | old rows still load. The daily free-ride balance is unchanged by a code. |
 | `cosmetic` | **refused.** Creating or redeeming one returns 409 `visuals_are_honk`. Cab colours are minted by burning TEN4 (`docs/honk/SPEC.md`). A row already stored still loads; an unlock it already granted stays wearable. | not a way to get a new part |
 
 Common fields: `code` (3–32 of `A–Z 0–9 - _`, stored upper-case, typed case- and space-insensitively), `description` (player-facing, ≤ 200), `maxRedemptions` (empty = unlimited), `perWallet` (default 1), `startsAt` (default now) → `expiresAt` (empty = no end), `note` (private, ≤ 500).
@@ -46,15 +47,15 @@ What stays the same in every look: the cab interior, the dashboard body, the ins
 ## API
 
 Player (signed in):
-- `POST /api/promo/redeem {code}` → a union on `kind`: `{kind:'tickets', code, label, poolId, tier, added, balance, cap}` · `{kind:'free_rides', code, label, added, freeRides}`. A cosmetic code is 409 `visuals_are_honk` and takes no redemption. 404 unknown · 409 `promo_unavailable` (disabled / ended / **not active yet** / used up / already redeemed by you) · `no_open_pool` · `ticket_cap`.
-- `GET /api/promo/mine` → `{redemptions: [{code, label, description, kind, at}]}` (newest first, ≤ 100).
+- `POST /api/promo/redeem {code}` → a union on `kind`: `{kind:'ride', code, label, tier}` · `{kind:'tickets', code, label, poolId, tier, added, balance, cap}`. A cosmetic code is 409 `visuals_are_honk`. A retired free-ride code is 409 `promo_retired`. Neither takes a redemption. 404 unknown · 409 `promo_unavailable` (disabled / ended / **not active yet** / used up / already redeemed by you) · `no_open_pool` · `ticket_cap`.
+- `GET /api/promo/mine` → `{redemptions: [{code, label, description, kind, at}], grants: [{code, tier}]}` (redemptions newest first, ≤ 100; grants are unspent ride promos).
 - `GET /api/wardrobe` → `{equipped: {slot: part}, unlocked: {slot: [default, …]}}` (every slot always set). **The Garage API** (`GET /api/garage`, `POST /api/garage/loadout` – catalog + progress, save a whole selection all-or-nothing) is in docs/garage.md.
 - `POST /api/wardrobe/equip {slot, item}` → the wardrobe · 400 `bad_cosmetic` · 409 `not_owned`.
 
 Admin (`/api/admin/promos…`, same guard as the rest: admin host, `fc_admin` session, `X-FC-Admin` on changes):
 - `GET /api/admin/promos[?state=active|scheduled|ended|exhausted|disabled]` · `GET /api/admin/promos/redemptions[?code=&wallet=&limit=]`.
 - `POST /api/admin/promos/challenge {action:'promo_create', promo} | {action:'promo_disable', code}` → the text to sign. `POST /api/admin/promos {promo, signature}` creates, `POST /api/admin/promos/:code/disable {signature}` stops. The signed text names the action, what it gives and **every field of the code as one JSON line** (`promoJson` in `domain/admin/admin-proof.ts`); free text only ever appears JSON-quoted. The audit row (`promo.create` / `promo.disable`, target = the code) keeps text + signature, written in the same transaction as the change.
-- CLI (dev / ops, no signature): `promo:create CODE <effect> [--desc] [--start] [--expires] [--max] [--per-wallet] [--note]` with `--tier 1h --credits 2 [--pool N]` · `--free-rides 3`. `--cosmetic` is not a create flag: it is refused (cab parts are minted by burning TEN4). `promo:list`, `promo:disable CODE`.
+- CLI (dev / ops, no signature): `promo:create CODE <effect> [--desc] [--start] [--expires] [--max] [--per-wallet] [--note]` with `--ride 1h|4h|8h` · `--tier 1h --credits 2 [--pool N]`. `--free-rides` is refused. `--cosmetic` is refused (cab parts are minted by burning TEN4). `promo:list`, `promo:disable CODE`.
 
 ## Where it lives
 
@@ -62,7 +63,7 @@ Admin (`/api/admin/promos…`, same guard as the rest: admin host, `fc_admin` se
 |---|---|
 | domain | `economy/promo-code.entity.ts` (rules, `stateAt`, `whyNotRedeemable`), `promo.types.ts` (`PromoEffect`), `promo.dto.ts` (`describeEffect`, DTOs), `cosmetics.ts`, `wardrobe.dto.ts`, `admin/admin-proof.ts` (intents), `players/player.entity.ts` (`grantFreeRides`) |
 | application | `use-cases/players/{redeem-promo,get-my-promos,get-wardrobe,equip-cosmetic,get-garage,save-garage}`, `use-cases/admin/{create-admin-promo,disable-admin-promo,list-promo-redemptions}`, `use-cases/promos/*` (CLI), `services/promo-creation.service.ts`, ports `promo.repository.port.ts`, `cosmetic.repository.port.ts` |
-| infrastructure | Prisma repos + `promo.mapper.ts` (the effect is stored flat: `kind` + nullable columns), migration `20261011000000_promo_effects` (`economy.PromoCode` + `startsAt`, `description`, `kind`, `freeRides`, `cosmeticSlot/Item`; `player.CosmeticUnlock`, `player.CosmeticEquip`) |
+| infrastructure | Prisma repos + `promo.mapper.ts` (the effect is stored flat: `kind` + nullable columns), migration `20261011000000_promo_effects` and `20261101000000_promo_rides` (`economy.PromoRideGrant`, `ride.Ride.promoCode`; `freeRides` is not dropped) |
 | presentation | `economy/promos.http.controller.ts`, `admin/admin-promos.http.controller.ts` (+ DTO schemas) |
 | client | `site/lobby-promo.js` + the codes section of the PROFILE tab in `site/lobby.js`; `site/admin-promos.js` + the PROMO CODES tab in `site/admin.js`; the landing's invite form (`landing/index.html`, `src/main.js`); `js/cosmetics.js`, `js/cockpit/rig.js`, `js/online.js` |
 
@@ -93,5 +94,5 @@ Race-safety: redeeming runs in ONE transaction under the player row lock. The re
 
 - Items differ in colour only; a different SHAPE (or an NFT's own cab model) means new drawing code in `rig.js`.
 - A code cannot be edited or deleted – only disabled; there is no bulk "generate N single-use codes" yet.
-- A `free_rides` grant has no expiry of its own; the rides are spent like any free ride.
+- A ride-promo grant has no expiry of its own. It is claimed when that tier is ordered. An old `free_rides` redemption is not reversed.
 - Promo analytics were checked with stubbed ingest (unit + HTTP scenarios), not against the real EU project – run the `posthog-test` skill / look at Activity after a deploy.

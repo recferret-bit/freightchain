@@ -26,7 +26,7 @@ const COSMETIC_FLAG = '--cosmetic is not a promo effect: cab parts are minted by
 
 /**
  * `promo:create CODE <effect> [--desc TEXT] [--start DATE] [--expires DATE] [--max N] [--per-wallet N] [--note TEXT]` with ONE effect:
- * `--tier 1h|4h|8h --credits N [--pool ID]` (tickets) · `--free-rides N`. `--cosmetic` is refused – cab parts are minted by burning TEN4.
+ * `--ride 1h|4h|8h` (one free shift, once per wallet) · `--tier 1h|4h|8h --credits N [--pool ID]` (tickets). `--free-rides` and `--cosmetic` are refused.
  */
 export function parsePromoCreate(args: readonly string[]): PromoCreateInput | string {
   if (args.some((a) => a === '--cosmetic' || a.startsWith('--cosmetic='))) return COSMETIC_FLAG;   // not an option: it must not build a cosmetic effect
@@ -35,7 +35,7 @@ export function parsePromoCreate(args: readonly string[]): PromoCreateInput | st
     parsed = parseArgs({
       args: [...args], allowPositionals: true,
       options: {
-        tier: { type: 'string' }, credits: { type: 'string' }, pool: { type: 'string' }, 'free-rides': { type: 'string' },
+        ride: { type: 'string' }, tier: { type: 'string' }, credits: { type: 'string' }, pool: { type: 'string' }, 'free-rides': { type: 'string' },
         desc: { type: 'string' }, start: { type: 'string' }, expires: { type: 'string' }, max: { type: 'string' }, 'per-wallet': { type: 'string' }, note: { type: 'string' },
       },
     });
@@ -44,13 +44,13 @@ export function parsePromoCreate(args: readonly string[]): PromoCreateInput | st
   }
   const { values: v, positionals } = parsed;
   if (positionals.length !== 1) return 'give exactly one code';
-  const kinds = [v.tier !== undefined || v.credits !== undefined || v.pool !== undefined, v['free-rides'] !== undefined].filter(Boolean).length;
-  if (kinds !== 1) return 'give exactly one effect: --tier + --credits (tickets), or --free-rides N';
+  if (v['free-rides'] !== undefined) return '--free-rides is retired; use --ride 1h|4h|8h';
+  const kinds = [v.ride !== undefined, v.tier !== undefined || v.credits !== undefined || v.pool !== undefined].filter(Boolean).length;
+  if (kinds !== 1) return 'give exactly one effect: --ride 1h|4h|8h, or --tier + --credits (tickets)';
   let effect: PromoEffect;
-  if (v['free-rides'] !== undefined) {
-    const count = int('free-rides', v['free-rides'], 1);
-    if (typeof count === 'string') return count;
-    effect = { kind: 'free_rides', count };
+  if (v.ride !== undefined) {
+    if (!isPaidTierId(v.ride)) return '--ride must be 1h, 4h or 8h';
+    effect = { kind: 'ride', tier: v.ride };
   } else {
     if (!isPaidTierId(v.tier)) return '--tier must be 1h, 4h or 8h';
     const credits = int('credits', v.credits, 1);
@@ -62,6 +62,7 @@ export function parsePromoCreate(args: readonly string[]): PromoCreateInput | st
   const perWallet = v['per-wallet'] === undefined ? 1 : int('per-wallet', v['per-wallet'], 1);
   const max = v.max === undefined ? null : int('max', v.max, 1);
   for (const x of [perWallet, max]) if (typeof x === 'string') return x;
+  if (effect.kind === 'ride' && perWallet !== 1) return 'a ride code is once per wallet';
   const startsAt = v.start === undefined ? null : dateArg('start', v.start);
   const expiresAt = v.expires === undefined ? null : dateArg('expires', v.expires);
   for (const x of [startsAt, expiresAt]) if (typeof x === 'string') return x;
