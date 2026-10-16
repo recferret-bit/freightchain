@@ -140,7 +140,7 @@ On 13 Oct twelve AI auditors from four vendors attacked six surfaces in pairs, b
 | Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow, validation, streams, risks |
 | Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is a guest run |
 | Ride receipt | `freightchain.fun/r/:id` | Live or finished ride, explorer link, X card. Open one from [REPLAYS](https://freightchain.fun/lobby.html#replays) |
-| Pitch deck | [pitchdeck.freightchain.fun](https://pitchdeck.freightchain.fun) | Eight playable slides. ← → in the floating tip (or the keys), F full screen; on a phone big corner buttons, one full screen button, full screen on the first tap. Live |
+| Pitch deck | [pitchdeck.freightchain.fun](https://pitchdeck.freightchain.fun) | Eight playable slides. ← → in the floating tip (or the keys), F full screen; on a phone big corner buttons, one full screen button, full screen on the first tap, and an ask for motion sensors (allowed, the spawned SOL falls with the tilt). Live |
 | Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes, no API |
 | API | [api.freightchain.fun/api/health](https://api.freightchain.fun/api/health) | JSON under `/api/`. Anything else on that host 404s |
 | Admin | [admin.freightchain.fun](https://admin.freightchain.fun) | HTTP basic auth, then a second wallet sign-in |

@@ -113,7 +113,7 @@ const ALLOW: Record<ClientEventName, readonly string[]> = {
   /* value is ms, except CLS where it is the score × 1000 (0.1 → 100). The relay only accepts integers. */
   web_vital: ['surface', 'metric', 'value', 'rating', 'navigation'],
   /* the pitch deck (pitchdeck.<apex>): the landing footer's link click; one open per load (from = landing / whitepaper / homescreen / direct / other — `source` is the relay's client/server plane — src = the link's own ?src= tag); the FIRST view of each slide per load (via = load / key / button / swipe / hash);
-     the visible time on a slide in ms (sent when the slide changes or the page is left); the first use of each toy per load (what = donate / adopt / tier / coin_drag / split / exit_sign / honk / lane / card / plan_bar / fullscreen / install_hint) */
+     the visible time on a slide in ms (sent when the slide changes or the page is left); the first use of each toy per load (what = donate / adopt / tier / coin_drag / split / exit_sign / honk / lane / card / plan_bar / fullscreen / install_hint / tilt) */
   pitchdeck_link_clicked: ['surface'],
   pitchdeck_viewed: ['surface', 'from', 'src', 'touch', 'standalone'],
   pitchdeck_slide_viewed: ['slide', 'index', 'via'],
