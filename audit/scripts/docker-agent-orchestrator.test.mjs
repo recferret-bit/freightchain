@@ -17,6 +17,8 @@ function fixture(t, agents = ['claude', 'grok', 'agy', 'codex'], surface = 'all'
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const started = new Map(), active = new Set(), completed = [];
   let stopped = false;
+  let loseSandbox;
+  const lost = new Promise(resolve => { loseSandbox = resolve; });
   const review = async options => {
     const { identity } = options;
     assert.equal(stopped, false);
@@ -39,7 +41,7 @@ function fixture(t, agents = ['claude', 'grok', 'agy', 'codex'], surface = 'all'
       return { code: 0, observedExitCode: 0, elapsedMs: 1, sessionId: identity.name, directory: options.directory, ...result };
     } finally { active.delete(identity.agent); completed.push(identity.name); }
   };
-  const startSandbox = async () => ({ container: 'inert-sandbox', hostRunDir: path.join(root, 'container-output'), stop: async () => {
+  const startSandbox = async () => ({ container: 'inert-sandbox', lost, hostRunDir: path.join(root, 'container-output'), stop: async () => {
     assert.equal(active.size, 0, 'cleanup waits for every active session');
     stopped = true;
   } });
@@ -52,8 +54,24 @@ function fixture(t, agents = ['claude', 'grok', 'agy', 'codex'], surface = 'all'
       await delay(5);
     }
   };
-  return { out, started, active, completed, run, waitFor, get stopped() { return stopped; } };
+  return { out, started, active, completed, run, waitFor, loseSandbox, get stopped() { return stopped; } };
 }
+
+test('sandbox loss cancels active sessions, preserves queued assignments and starts no peer checks', async t => {
+  const f = fixture(t);
+  await f.waitFor(() => f.started.size === 4);
+  f.loseSandbox(new Error('Inert sandbox loss'));
+  await f.waitFor(() => [...f.started.values()].every(options => options.signal.aborted));
+  for (const options of f.started.values()) options.release({ code: 130, failureReason: 'cancelled' });
+  const result = await f.run;
+  assert.equal(result.cancelled, false, 'infrastructure loss is not an operator cancellation');
+  assert.ok(result.stageFailures.includes('sandbox_unavailable'));
+  assert.equal(f.started.size, 4);
+  const jobs = readReportJson(f.out, 'workers.json').jobs;
+  assert.ok(jobs.every(job => job.failure.reason === 'sandbox_unavailable'));
+  assert.ok(jobs.filter(job => ['s5', 's6'].includes(job.surface.id)).every(job => job.state === 'pending'));
+  assert.equal(f.stopped, true);
+});
 
 test('providers overlap, their own surfaces queue, and peer reviews start together after all surfaces finish', { timeout: 10_000 }, async t => {
   const f = fixture(t);
@@ -195,4 +213,69 @@ test('saved completion repair requires a normal turn, clean process exit and no 
   assert.equal(savedTurnCompleted(root,'claude-s1-auth',directory),false);
   state.observedExitCode=0;state.failureReason='protocol_error';writeState();
   assert.equal(savedTurnCompleted(root,'claude-s1-auth',directory),false);
+});
+
+test('resume preserves a report committed before a failed turn and requires a clean acknowledgement', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-committed-resume-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const target = path.join(root, 'source'); fs.mkdirSync(target);
+  fs.writeFileSync(path.join(target, 'source.js'), 'export const inert = true;');
+  let phase = 0;
+  const review = async ({ identity, directory, bridgeArgs }) => {
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, 'state.json'), JSON.stringify({ identity, sessionId: identity.name }));
+    const out = bridgeArgs[bridgeArgs.indexOf('--report-dir') + 1];
+    if (!phase) commitSubmission(out, identity.name, identity, [{ verified_safe: [] }]);
+    else assert.ok(readReportJson(out, `submissions/${identity.name}.json`).hash, 'the saved report is retained without another submission');
+    return { code: phase ? 0 : 1, observedExitCode: 0, failureReason: phase ? null : 'native_turn_failed', sessionId: identity.name, directory };
+  };
+  const startSandbox = async ({ out }) => ({ container: 'inert', hostRunDir: out, stop: async () => {} });
+  const request = { target, out: path.join(root, 'first'), surface: 's3', agents: ['agy'], models: { agy: 'fixture' } };
+  assert.ok((await runOrchestratedAudit(request, { review, startSandbox })).stageFailures.length);
+  phase = 1;
+  const recovered = path.join(root, 'recovered');
+  assert.deepEqual((await runOrchestratedAudit({ ...request, out: recovered, resumeFrom: request.out }, { review, startSandbox })).stageFailures, []);
+  assert.equal(readReportJson(recovered, 'workers.json').jobs[0].state, 'collected');
+});
+
+test('explicit restart gives a failed local session a new full review without reusing its failed report', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-restart-local-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const target = path.join(root, 'source'); fs.mkdirSync(target);
+  fs.writeFileSync(path.join(target, 'source.js'), 'export const inert = true;');
+  let phase = 0, firstDirectory, secondDirectory;
+  const review = async ({ identity, directory, bridgeArgs, resume }) => {
+    const out = bridgeArgs[bridgeArgs.indexOf('--report-dir') + 1];
+    if (phase) { secondDirectory = directory; assert.equal(resume, false); assert.equal(fs.existsSync(path.join(out, `submissions/${identity.name}.json`)), false); assert.ok(fs.existsSync(path.join(out, `harness/prior-${identity.name}.json`)), 'old work is retained only as untrusted notes'); }
+    else firstDirectory = directory;
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, 'state.json'), JSON.stringify({ identity, sessionId: identity.name, failureReason: phase ? null : 'native_turn_failed' }));
+    commitSubmission(out, identity.name, identity, [{ verified_safe: [] }]);
+    return { code: phase ? 0 : 1, observedExitCode: 0, failureReason: phase ? null : 'native_turn_failed', sessionId: identity.name, directory };
+  };
+  const startSandbox = async ({ out }) => ({ container: 'inert', hostRunDir: out, stop: async () => {} });
+  const request = { target, out: path.join(root, 'first'), surface: 's3', agents: ['agy'], models: { agy: 'fixture' } };
+  await runOrchestratedAudit(request, { review, startSandbox });
+  phase = 1;
+  const recovered = path.join(root, 'fresh');
+  const result = await runOrchestratedAudit({ ...request, out: recovered, resumeFrom: request.out, restartFailed: true }, { review, startSandbox });
+  assert.deepEqual(result.stageFailures, []);
+  assert.notEqual(secondDirectory, firstDirectory);
+  assert.equal(readReportJson(recovered, 'workers.json').jobs[0].restartedFrom, firstDirectory);
+
+  const workers = readReportJson(request.out, 'workers.json'); workers.jobs[0].failure.reason = 'provider_policy';
+  fs.writeFileSync(path.join(request.out, 'workers.json'), JSON.stringify(workers));
+  let calls = 0;
+  const blocked = path.join(root, 'blocked');
+  const failed = await runOrchestratedAudit({ ...request, out: blocked, resumeFrom: request.out, restartFailed: true }, { review: async () => { calls++; assert.fail('Provider refusals cannot receive a fresh conversation'); }, startSandbox });
+  assert.ok(failed.stageFailures.length);
+  assert.equal(calls, 0);
+  assert.equal(readReportJson(blocked, 'workers.json').jobs[0].failure.reason, 'provider_policy');
+  workers.jobs[0].failure.reason = 'native_turn_failed';
+  fs.writeFileSync(path.join(request.out, 'workers.json'), JSON.stringify(workers));
+  const meta = readReportJson(request.out, 'meta.json'); meta.providerFailures = { agy: 'usage_limit' };
+  fs.writeFileSync(path.join(request.out, 'meta.json'), JSON.stringify(meta));
+  const quota = path.join(root, 'quota');
+  await runOrchestratedAudit({ ...request, out: quota, resumeFrom: request.out, restartFailed: true }, { review: async () => assert.fail('Provider-wide limits also block restarts'), startSandbox });
+  assert.equal(readReportJson(quota, 'workers.json').jobs[0].failure.reason, 'usage_limit');
 });

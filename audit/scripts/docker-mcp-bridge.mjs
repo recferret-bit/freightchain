@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import crypto from 'node:crypto';
-import { testCounts } from './scanner-evidence.mjs';
+import { testCounts, missingTestArtifact } from './scanner-evidence.mjs';
 /**
  * docker-mcp-bridge.mjs
  *
@@ -21,6 +21,7 @@ import { citation, validCrosscheckRow, validateAuditor, readReportJson, writeRep
 import { commitSubmission, deriveSubmission, validateSubmissionIdentity } from './audit-submission.mjs';
 import { REVIEW_WORKFLOW, REVIEW_SCOPE, REVIEW_TOOLS, selectExistingTest, EXISTING_TEST_RUNNER } from './review-workflow.mjs';
 import { withExistingTestLock } from './existing-test-lock.mjs';
+import { selectTestArtifacts } from './test-artifacts.mjs';
 
 const CONTAINER_ROOTS = ['/work/src', '/out/harness', '/out/crosscheck', '/out/auditors'];
 const SAFE_ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
@@ -439,12 +440,14 @@ export async function callBridgeTool(ctx, name, args = {}) {
     if (!entries || catalog.workflow !== REVIEW_WORKFLOW) throw new Error('Existing test catalog unavailable');
     if (name === 'list_existing_tests') return JSON.stringify({ scope: 'existing_offline_tests_only', tests: entries.map(({ id, kind, cwd, description }) => ({ id, kind, cwd, description })) });
     const entry = selectExistingTest(catalog, args.test_id, sourceDigest);
+    if (fs.existsSync(path.join(reportDir, 'harness/test-artifacts.json'))) entry.artifacts = selectTestArtifacts(readReportJson(reportDir, 'harness/test-artifacts.json'), catalog.sourceDigest);
     return withExistingTestLock(reportDir, async () => {
       const inspected = spawnSync(dockerBin, ['inspect', '--format', '{"running":{{json .State.Running}},"mode":{{json .HostConfig.NetworkMode}},"networks":{{json .NetworkSettings.Networks}}}', container], { encoding: 'utf8', timeout: 8000, maxBuffer: 64 * 1024 });
       let network;
       try { network = JSON.parse(inspected.stdout); } catch { throw new Error('Cannot verify offline test containment'); }
       if (inspected.status !== 0 || network.running !== true || typeof network.mode !== 'string' || network.mode === 'host' || network.mode.startsWith('container:') || !network.networks || Object.keys(network.networks).some(key => key !== 'none')) throw new Error('Tests require a network-disconnected container');
-      const result = await execInContainer(dockerBin, container, ['node', '-e', EXISTING_TEST_RUNNER], { input: JSON.stringify(entry), timeoutMs: 100_000 });
+      const result = await execInContainer(dockerBin, container, ['node', '-e', EXISTING_TEST_RUNNER], { input: JSON.stringify(entry), timeoutMs: entry.timeoutMs + 10_000 });
+      const failureDetail = result.code !== 0 ? missingTestArtifact(result.stderr) : null;
       const key = ctx.submissionIdentity?.name || auditor || agent;
       if (key) {
         const file = `harness/existing-test-results-${key}.json`;
@@ -455,9 +458,9 @@ export async function callBridgeTool(ctx, name, args = {}) {
         const evidenceFile = `harness/existing-test-output-${key}-${sequence}.json`;
         const evidence = JSON.stringify({ stdout: result.stdout, stderr: result.stderr });
         writeReportFile(reportDir, evidenceFile, evidence);
-        writeReportFile(reportDir, file, JSON.stringify([...prior, { testId: entry.id, sourceDigest: catalog.sourceDigest, kind: entry.kind, cwd: entry.cwd, exitCode: result.code, counts, evidenceFile, evidenceHash: crypto.createHash('sha256').update(evidence).digest('hex'), at: new Date().toISOString(), scope: 'existing_offline_test_only' }].slice(-200)));
+        writeReportFile(reportDir, file, JSON.stringify([...prior, { testId: entry.id, sourceDigest: catalog.sourceDigest, kind: entry.kind, cwd: entry.cwd, exitCode: result.code, counts, ...(failureDetail ? { failureDetail } : {}), evidenceFile, evidenceHash: crypto.createHash('sha256').update(evidence).digest('hex'), at: new Date().toISOString(), scope: 'existing_offline_test_only' }].slice(-200)));
       }
-      return `Existing test ${entry.id}; exit code: ${result.code}\nSTDOUT:\n${result.stdout || '(empty)'}\nSTDERR:\n${result.stderr || '(empty)'}`;
+      return `Existing test ${entry.id}; exit code: ${result.code}${failureDetail ? `\n${failureDetail}` : ''}\nSTDOUT:\n${result.stdout || '(empty)'}\nSTDERR:\n${result.stderr || '(empty)'}`;
     });
   }
 

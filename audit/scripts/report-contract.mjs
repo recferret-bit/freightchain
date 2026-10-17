@@ -182,7 +182,8 @@ export function loadAuditors(root) {
     let log = '';
     let hasLog = false;
     try { log = readReportText(root, rel, 8 * 1024 * 1024); hasLog = true; } catch { /* older runs may have no log */ }
-    const recorded = crosscheck ? meta.providerFailures?.[name] : jobs.find(job => job?.name === name)?.failure?.reason;
+    const observed = code === 130 ? meta.stageFailures?.includes('sandbox_unavailable') ? 'sandbox_unavailable' : 'cancelled' : undefined;
+    const recorded = observed || (crosscheck ? meta.providerFailures?.[name] : jobs.find(job => job?.name === name)?.failure?.reason);
     const message = Object.hasOwn(FAILURE_MESSAGES, recorded) ? FAILURE_MESSAGES[recorded] : classifyAuditFailure({ code, stdout: log }).message;
     return `${message}${hasLog ? ` Log: ${rel}.` : ''}`;
   };

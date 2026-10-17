@@ -20,16 +20,20 @@ Review ONE repository selected with `--repo <path>` or `--github <owner/repo>`. 
 
 `--plan` prints requested models without launching a review. `--blocked` writes an offline blocked record. `check-agents --live` explicitly makes provider requests against an inert fixture; it qualifies transport and session recovery only. It is not a security review or clearance of a provider-policy rejection.
 
+`--resume-from ... --restart-failed` requests new full reviews for failed local sessions, preserving their old sessions/reports. New reports and clean native completion are required. Recorded provider refusals, quota/login failures and unresolved provider errors cannot be restarted this way.
+
 Keep the requested models and existing official subscription logins. Never change models, providers, credentials, billing routes or wording to get around a refusal. A suspected false positive needs provider feedback or the appropriate approved access. Skill text cannot grant provider access.
 
 ## Enforced boundaries
 
 - `audit run` always uses `source_security_review_v1`. Target builds, install scripts, active scanners, local web-server startup and tests do not run during networked preparation. Trusted static scanners and lockfile advisory checks may run and retain their limitations.
 - Reviewers can inspect source, configuration, dependency manifests, harness leads and existing test coverage, trace a vulnerability to a specific control, and recommend defensive fixes.
+- AGY may read the exact staged audit skill and the audit server’s known CLI-generated MCP schema files for tool discovery. Other host files and tools remain denied.
 - The bridge exposes only `get_audit_context`, `get_review_plan`, `list_files`, `read_file`, `search_code`, `list_existing_tests`, `run_existing_tests` and role-specific report submission.
 - `run_existing_tests` accepts a frozen `test_id` only. The parent discovers existing `package.json` test scripts, Cargo packages/workspaces and `test.sh` files from the captured source. The bridge reconstructs fixed runner arguments, verifies manifest hashes, and requires a running container with its network disconnected. No caller-provided command, arguments, code, path, environment or URL is accepted.
 - A trusted manifest-only preparation step may fetch locked crates.io dependencies without target execution; custom registries, Git dependencies and target Cargo configuration are refused. Dependencies must already be available inside the container before offline tests start. npm runs offline with pre/post scripts disabled; Cargo runs locked and offline. Missing dependencies, unsupported runners, compilation failures and timeouts are coverage gaps. Never install packages or substitute a new test to obtain a pass.
 - Do not generate or execute exploits, create PoCs, build abuse clients, forge recordings, probe external or deployed services, issue transactions, or modify target source. The old generic execution and PoC MCP methods are rejected even when called directly. `audit run --rpc` is rejected.
+- The operator may supply `--test-artifacts <cargo-target-dir>` to import `deploy/*.so` separately from the source snapshot. Hash-checked copies are staged before existing tests; generated keypairs are excluded. Their provenance remains `operator_supplied_unverified_build`; do not claim the supplied bytes were reproduced from source.
 - Existing tests execute untrusted repository code in the offline Docker container. Their output is evidence about that test only, not proof that a vulnerability was reproduced or that the whole repository is safe. Normal permissions and prompt instructions are not containment; Docker isolation and the bridge enforce the execution boundary. The official host CLIs remain trusted processes.
 - The standalone legacy `pocs` utility is outside this workflow and is never invoked by a reviewer. Do not use it to extend review scope.
 
@@ -99,7 +103,7 @@ The visual direction is modern mechanical/Transformers-inspired: white panels, o
 
 ## Long sessions and recovery
 
-Reviews have no runner reasoning deadline. Heartbeats every 30 seconds distinguish process, transport and agent activity. The preparation budget does not end a held review container. Individual protocol controls and test executions remain bounded; tests are limited to 90 seconds.
+Reviews have no runner reasoning deadline. Heartbeats every 30 seconds distinguish process, transport and agent activity. The preparation budget does not end a held review container. Individual protocol controls and test executions remain bounded; npm tests are limited to 90 seconds; Cargo and shell suites have 15 minutes including cold compilation.
 
 Preserve the original private `sessions/` directories. `--resume-from` requires the same review workflow, source, models, reviewers and assignments. Legacy adversarial sessions cannot be resumed into this workflow. A transport loss permits one exact-session reconnect if supported; refusal, quota and authentication failures never auto-retry.
 

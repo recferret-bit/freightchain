@@ -26,6 +26,7 @@ export const FAILURE_MESSAGES = {
   turn_incomplete: 'Agent ended its turn without a successful completion status.',
   provider_error: 'Agent/provider rejected the turn; inspect its private session record.',
   native_turn_failed: 'Native CLI did not produce a successful structured turn result.',
+  sandbox_unavailable: 'Docker sandbox was lost before review completion; inspect harness/sandbox-run/lifecycle.json and resume into a fresh sandbox.',
   permission_denied: 'Agent requested a host capability unavailable to this audit session.',
 };
 

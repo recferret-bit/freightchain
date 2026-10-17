@@ -512,9 +512,8 @@ if [ -n "$HOLD_FILE" ] && running; then
       fs.writeFileSync(file, JSON.stringify({ container, workDir: "/work/src", outDir: "/out", hostRunDir, hostOutDir }) + "\n");
     ' "$READY_FILE" "$SBX" "$RUN" "$OUT"
   fi
-  while [ -f "$HOLD_FILE" ] && running; do
-    sleep 1
-  done
+  # A transient inspect/daemon failure must never release an active review.
+  node "$SCRIPT_DIR/sandbox-lifecycle.mjs" "$SBX" "$HOLD_FILE" "$RUN/lifecycle.json"
   : > "$RUN/sandbox.release" 2>/dev/null || true
   if running; then docker kill "$SBX" >/dev/null 2>&1 || true; fi
   docker wait "$SBX" >/dev/null 2>&1 || true

@@ -10,9 +10,10 @@ const safePath = value => typeof value === 'string' && value.length <= 1000 && !
 const safeCwd = value => value === '.' || safePath(value);
 
 export function testCommand(kind) {
-  if (kind === 'npm') return { command: 'npm', args: ['--offline', '--ignore-scripts', 'run', 'test'] };
-  if (kind === 'cargo') return { command: 'cargo', args: ['test', '--locked', '--offline'] };
-  if (kind === 'shell') return { command: 'bash', args: ['--noprofile', '--norc', './test.sh'] };
+  if (kind === 'npm') return { command: 'npm', args: ['--offline', '--ignore-scripts', 'run', 'test'], timeoutMs: 90000 };
+  // A cold Solana/LiteSVM test build exceeds the small JavaScript suite budget.
+  if (kind === 'cargo') return { command: 'cargo', args: ['test', '--locked', '--offline'], timeoutMs: 900000 };
+  if (kind === 'shell') return { command: 'bash', args: ['--noprofile', '--norc', './test.sh'], timeoutMs: 900000 };
   throw new Error('Unsupported existing test runner');
 }
 
@@ -49,6 +50,8 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 (async()=>{
  let input='';for await(const chunk of process.stdin)input+=chunk;
  const entry=JSON.parse(input),root='/work/src';
+ const timeoutMs=entry.timeoutMs??90000;
+ if(![90000,900000].includes(timeoutMs))throw Error('Invalid existing test time limit');
  for(const file of entry.files){
   const target=path.resolve(root,file.path);
   if(!target.startsWith(root+'/')||fs.realpathSync(target)!==target)throw Error('Existing test file path changed');
@@ -57,9 +60,20 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
  }
  const cwd=path.resolve(root,entry.cwd);
  if(cwd!==root&&!cwd.startsWith(root+'/')||fs.realpathSync(cwd)!==cwd)throw Error('Existing test directory changed');
+ for(const file of entry.artifacts||[]){
+  if(!/^deploy\\/[a-zA-Z0-9_][a-zA-Z0-9_-]*\\.so$/.test(file.path)||!/^([a-f0-9]{64})$/.test(file.sha256))throw Error('Invalid test artifact');
+  const source='/out/test-artifacts/'+file.path;
+  const bytes=fs.readFileSync(source);
+  if(fs.realpathSync(source)!==source||crypto.createHash('sha256').update(bytes).digest('hex')!==file.sha256)throw Error('Test artifact changed');
+  const target=path.join('/work/target',file.path);
+  fs.mkdirSync(path.dirname(target),{recursive:true});
+  if(fs.realpathSync(path.dirname(target))!==path.dirname(target))throw Error('Test artifact destination changed');
+  const fd=fs.openSync(target,fs.constants.O_WRONLY|fs.constants.O_CREAT|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK,0o644);
+  try{const stat=fs.fstatSync(fd);if(!stat.isFile()||stat.nlink!==1)throw Error('Test artifact destination changed');fs.ftruncateSync(fd,0);fs.writeFileSync(fd,bytes)}finally{fs.closeSync(fd)}
+ }
  const child=spawn(entry.command,entry.args,{cwd,env:{...process.env,CI:'1',CARGO_NET_OFFLINE:'true',GOPROXY:'off',GOSUMDB:'off',npm_config_offline:'true',npm_config_ignore_scripts:'true'},detached:true,stdio:['ignore','pipe','pipe']});
  const kill=()=>{try{process.kill(-child.pid,'SIGKILL')}catch{}};
- const timer=setTimeout(()=>{process.exitCode=124;kill()},90000);
+ const timer=setTimeout(()=>{process.exitCode=124;kill()},timeoutMs);
  child.stdout.pipe(process.stdout);child.stderr.pipe(process.stderr);
  child.on('error',err=>{clearTimeout(timer);console.error(err.message);process.exitCode=127});
  child.on('close',code=>{clearTimeout(timer);kill();if(process.exitCode!==124)process.exitCode=code??1});

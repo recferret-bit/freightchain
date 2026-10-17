@@ -19,7 +19,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AUDIT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-TARGET_DIR="" OUTPUT_DIR="" TARGET_NAME="" SURFACE="all" AGENT_LIST="claude,grok,agy,codex" RPC="" RESUME_FROM=""
+TARGET_DIR="" OUTPUT_DIR="" TARGET_NAME="" SURFACE="all" AGENT_LIST="claude,grok,agy,codex" RPC="" RESUME_FROM="" TEST_ARTIFACTS="" RESTART_FAILED=0
 TARGET_MODE="local" TARGET_SOURCE="" TARGET_REF="" TARGET_COMMIT=""
 MODEL_ALL="" MODELS_CSV="" PLAN=0 BLOCKED="${AUDIT_BLOCKED_RUN:-0}"
 MODEL_CLI_CLAUDE="" MODEL_CLI_GROK="" MODEL_CLI_AGY="" MODEL_CLI_CODEX=""
@@ -99,6 +99,8 @@ while [[ $# -gt 0 ]]; do
     --plan) PLAN=1; shift ;;
     --blocked) BLOCKED=1; shift ;;
     --resume-from) RESUME_FROM="${2:?--resume-from needs a report directory}"; shift 2 ;;
+    --test-artifacts) TEST_ARTIFACTS="${2:?--test-artifacts needs a Cargo target directory}"; shift 2 ;;
+    --restart-failed) RESTART_FAILED=1; shift ;;
     --rpc) RPC="${2:?--rpc needs an https URL}"; shift 2 ;;
     *) echo "orchestrate: unknown option $1" >&2; exit 1 ;;
   esac
@@ -210,9 +212,9 @@ REQUEST_FILE="$(mktemp "${TMPDIR:-/tmp}/audit-review-request.XXXXXX")"
 trap 'rm -f -- "$REQUEST_FILE"' EXIT
 node -e '
 const fs = require("node:fs");
-const [file, target, out, name, mode, source, ref, commit, surface, agents, models, rpc, resumeFrom] = process.argv.slice(1);
-fs.writeFileSync(file, JSON.stringify({target, out, name, mode, source, ref, commit, surface, agents: agents.split(","), models: JSON.parse(models), rpc: rpc || "", resumeFrom: resumeFrom || null}), {mode: 0o600});
-' "$REQUEST_FILE" "$TARGET_DIR" "$OUTPUT_DIR" "$TARGET_NAME" "$TARGET_MODE" "$TARGET_SOURCE" "$TARGET_REF" "$TARGET_COMMIT" "$SURFACE" "$AGENTS_CSV" "$MODELS_JSON" "$RPC" "$RESUME_FROM"
+const [file, target, out, name, mode, source, ref, commit, surface, agents, models, rpc, resumeFrom, testArtifacts, restartFailed] = process.argv.slice(1);
+fs.writeFileSync(file, JSON.stringify({target, out, name, mode, source, ref, commit, surface, agents: agents.split(","), models: JSON.parse(models), rpc: rpc || "", resumeFrom: resumeFrom || null, testArtifacts: testArtifacts || null, restartFailed: restartFailed === "1"}), {mode: 0o600});
+' "$REQUEST_FILE" "$TARGET_DIR" "$OUTPUT_DIR" "$TARGET_NAME" "$TARGET_MODE" "$TARGET_SOURCE" "$TARGET_REF" "$TARGET_COMMIT" "$SURFACE" "$AGENTS_CSV" "$MODELS_JSON" "$RPC" "$RESUME_FROM" "$TEST_ARTIFACTS" "$RESTART_FAILED"
 
 code=0
 if [ "${BLOCKED:-${AUDIT_BLOCKED_RUN:-0}}" = "1" ]; then

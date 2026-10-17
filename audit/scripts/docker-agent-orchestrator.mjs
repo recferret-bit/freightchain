@@ -13,6 +13,7 @@
  */
 
 import crypto from 'node:crypto';
+import { stageTestArtifacts } from './test-artifacts.mjs';
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -192,6 +193,7 @@ export async function startOneShotDocker({ target, out }) {
   const args = [SANDBOX_SCRIPT, '--review-only', '--target', target, '--out', out, '--hold-file', holdFile, '--ready-file', readyFile];
   const child = spawn('bash', args, { stdio: ['ignore', 'inherit', 'inherit'], env: process.env });
   let closed = false;
+  let stopping = false;
   let exitCode = null;
   const closePromise = new Promise((resolve) => {
     child.on('close', (code) => { closed = true; exitCode = code ?? 1; resolve(exitCode); });
@@ -202,10 +204,21 @@ export async function startOneShotDocker({ target, out }) {
       try {
         const info = JSON.parse(fs.readFileSync(readyFile, 'utf8'));
         if (info.container) {
+          let reportLoss;
+          const lost = new Promise(resolve => { reportLoss = resolve; });
+          const lifecycleFile = path.join(info.hostRunDir, 'lifecycle.json');
+          const monitor = setInterval(() => {
+            try { if (JSON.parse(fs.readFileSync(lifecycleFile, 'utf8')).state === 'lost') reportLoss(new Error('Docker sandbox was lost; inspect harness/sandbox-run/lifecycle.json.')); }
+            catch { /* the lifecycle writer may not have published its first probe */ }
+          }, 1000);
+          closePromise.then(() => { clearInterval(monitor); if (!stopping) reportLoss(new Error('One-shot Docker sandbox exited before review completion; inspect harness/sandbox-run/lifecycle.json.')); });
           return {
             container: info.container,
             hostRunDir: info.hostRunDir,
+            lost,
             stop: async () => {
+              stopping = true;
+              clearInterval(monitor);
               try { fs.rmSync(holdFile, { force: true }); } catch {}
               await Promise.race([closePromise, new Promise((r) => setTimeout(r, 15_000))]);
               spawnSync(resolveDockerBin(), ['rm', '-f', info.container], { stdio: 'ignore' });
@@ -234,6 +247,7 @@ async function runProviderQueues(agents, jobs, execute) {
 
 export async function runOrchestratedAudit(request, { review = runReviewSession, startSandbox = startOneShotDocker } = {}) {
   if (request.rpc || request.resume) throw new Error('Source security review excludes deployed RPC comparisons and legacy adversarial-session finalization');
+  if (request.restartFailed && !request.resumeFrom) throw new Error('--restart-failed requires --resume-from');
   const output = path.resolve(request.out);
   if (output === fs.realpathSync(request.target)) throw new Error('output cannot be the source root');
   if (fs.existsSync(output) && fs.readdirSync(output).length) throw new Error('output directory must be empty');
@@ -245,6 +259,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
   writeReportFile(output, 'source-manifest.json', `${JSON.stringify(snapshot.manifest, null, 2)}\n`);
   writeReportFile(output, 'harness/existing-tests.json', JSON.stringify(buildExistingTestCatalog(snapshot.snapshot, snapshot.manifest), null, 2));
   disposeSnapshot(snapshot);
+  if (request.testArtifacts) stageTestArtifacts(request.testArtifacts, output, sourceDigest);
 
   const surfaceArg = String(request.surface || 'all').toLowerCase();
   const selectedSurfaces = surfaceArg === 'all' ? SURFACES : SURFACES.filter((s) => s.id === surfaceArg || s.slug === surfaceArg);
@@ -286,6 +301,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
   fs.mkdirSync(path.join(output, 'harness', 'assignments'), { mode: 0o700 });
 
   let session = null;
+  let sandboxFailure = null;
   const cancellation = new AbortController();
   const cleanupSignal = () => { cancellation.abort(); };
   const initialMeta = { name: request.name || path.basename(request.target), mode: request.mode || 'local', source: request.source || request.target, surface: surfaceArg, agents: request.agents, models: request.models, auditors: jobs.map(job => job.name), workerExits, crosscheckExits, stageFailures, finalized: false, workflow: REVIEW_WORKFLOW, agentTransport: 'acp_v1', submissionAuthority: 'mcp_commit' };
@@ -302,19 +318,40 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
     },
   });
   const execute = async ({ name, agent, role, surface, prompt, assignment, logFile }) => {
+    if (sandboxFailure) throw sandboxFailure;
     const identity = { name, agent, role, workflow: REVIEW_WORKFLOW, model: request.models[agent], sourceDigest, assignmentDigest: digest(assignment), ...(surface ? { surface } : {}) };
     const identityFile = path.join(output, 'harness', 'identities', `${name}.json`);
     writeReportFile(output, `harness/identities/${name}.json`, JSON.stringify(identity));
     writeReportFile(output, `harness/assignments/${name}.json`, JSON.stringify(assignment));
     let directory = path.join(output, 'sessions', name);
     let resuming = false;
+    let restartedFrom;
     if (resumeRoot) {
       const priorDirectory = previousSessionDirectory(resumeRoot, name);
       if (fs.existsSync(path.join(priorDirectory, 'state.json'))) {
         const saved = readReportJson(priorDirectory, 'state.json');
-        if (saved.identity?.assignmentDigest === identity.assignmentDigest) { directory = priorDirectory; resuming = true; }
+        const priorMeta = readReportJson(resumeRoot, 'meta.json');
+        const priorExit = role === 'auditor' ? priorMeta.workerExits?.[name] : priorMeta.crosscheckExits?.[agent];
+        if (request.restartFailed && priorExit !== 0) {
+          const failure = role === 'auditor' ? readReportJson(resumeRoot, 'workers.json').jobs.find(job => job.name === name)?.failure?.reason : priorMeta.providerFailures?.[agent];
+          const rel = `harness/sandbox-run/${role === 'auditor' ? 'agent-' : ''}${name}.log`;
+          let log = ''; try { log = readReportText(resumeRoot, rel, 8 * 1024 * 1024); } catch { /* saved structured failures still apply */ }
+          const classified = classifyAuditFailure({ code: 1, stdout: log }).reason;
+          const blocked = [failure, saved.failureReason, priorMeta.providerFailures?.[agent], classified].find(reason => ['provider_policy', 'usage_limit', 'auth_required', 'provider_error'].includes(reason));
+          if (blocked) { const error = new Error('A provider refusal, quota, login or unresolved provider error cannot be restarted in a new conversation'); error.reason = blocked; throw error; }
+          restartedFrom = priorDirectory;
+          if (role === 'auditor' && fs.existsSync(path.join(resumeRoot, 'submissions', `${name}.json`))) {
+            const prior = readCanonicalSubmission(resumeRoot, name, identity);
+            const file = `prior-${name}.json`, notes = JSON.stringify(prior.report.payload);
+            writeReportFile(output, `harness/${file}`, notes);
+            const directory = path.join(session.hostRunDir, 'harness');
+            fs.mkdirSync(directory, { recursive: true }); fs.chmodSync(directory, 0o755);
+            fs.writeFileSync(path.join(directory, file), notes, { mode: 0o644 }); fs.chmodSync(path.join(directory, file), 0o644);
+            prompt += `\n\nThe failed session left untrusted candidate notes at /out/harness/${file}. They are leads only: validate them against the captured source during the full assigned review, add omissions and discard unsupported claims. Submit a new complete report; the old notes are not an accepted review.`;
+          }
+        } else if (saved.identity?.assignmentDigest === identity.assignmentDigest) { directory = priorDirectory; resuming = true; }
       }
-      if (role === 'auditor' && !resuming && !neverStarted.has(name)) throw new Error(`No matching saved session for ${name}`);
+      if (role === 'auditor' && !resuming && !restartedFrom && !neverStarted.has(name)) throw new Error(`No matching saved session for ${name}`);
       if (resuming && fs.existsSync(path.join(resumeRoot, 'submissions', `${name}.json`))) {
         const previous = readCanonicalSubmission(resumeRoot, name, identity);
         const priorMeta = readReportJson(resumeRoot, 'meta.json');
@@ -326,6 +363,9 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
           const saved = readReportJson(directory, 'state.json');
           return { code: 0, observedExitCode: 0, elapsedMs: 0, sessionId: saved.sessionId, directory, transport: recoveredCompletion ? 'recovered_protocol_completion' : 'reused_committed_submission', stopReason: 'reused', identity, reusedFrom: resumeRoot, recoveredCompletion };
         }
+        // Keep committed evidence while requiring a fresh successful turn. The
+        // saved conversation is explicitly told not to submit it a second time.
+        commitSubmission(output, name, identity, previous.report.payload, previous.report.summary);
       }
     }
     const bridgeArgs = ['--docker-bin', dockerBin, '--container', session.container, '--report-dir', output, '--role', role, '--agent', agent, '--identity-file', identityFile];
@@ -337,7 +377,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
       const reason = Object.hasOwn(FAILURE_MESSAGES, result.failureReason) ? result.failureReason : 'process_error';
       result.failure = { reason, message: FAILURE_MESSAGES[reason] };
     }
-    return { ...result, identity };
+    return { ...result, identity, ...(restartedFrom ? { restartedFrom } : {}) };
   };
   process.on('SIGINT', cleanupSignal);
   process.on('SIGTERM', cleanupSignal);
@@ -348,6 +388,12 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
     try {
       if (sealed.manifest.digest !== sourceDigest) throw new Error('Source changed before sandbox creation; start a new review');
       session = await startSandbox({ target: sealed.snapshot, out: output });
+      session.lost?.then(error => {
+        if (!error) return;
+        sandboxFailure = error;
+        stageFailures.push('sandbox_unavailable');
+        cancellation.abort();
+      });
     } finally { disposeSnapshot(sealed); }
     console.log(`      Container ${session.container} is ready and airgapped (network disconnected).`);
 
@@ -360,7 +406,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
 
     console.log(`[2/4] Running ${jobs.length} surface audit job(s) in parallel across [${request.agents.join(', ')}] via MCP bridge (one active job per provider)...`);
     await runProviderQueues(request.agents, jobs, async job => {
-      if (cancellation.signal.aborted) { job.state = 'cancelled'; workerExits[job.name] = 130; stageFailures.push(`auditor_cancelled:${job.name}`); saveWorkers(); return; }
+      if (cancellation.signal.aborted) { job.state = sandboxFailure ? 'pending' : 'cancelled'; workerExits[job.name] = sandboxFailure ? 1 : 130; job.failure = sandboxFailure ? { reason: 'sandbox_unavailable', message: FAILURE_MESSAGES.sandbox_unavailable } : undefined; stageFailures.push(`auditor_cancelled:${job.name}`); saveWorkers(); return; }
       if (providerFailures[job.adapter]) {
         job.state = 'pending';
         job.failure = { reason: providerFailures[job.adapter], message: FAILURE_MESSAGES[providerFailures[job.adapter]] };
@@ -376,6 +422,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
         console.log(`  -> [${job.name}] (${job.adapter} @ ${job.requestedModel}) auditing ${job.surface.code} (${job.surface.name})...`);
         let prompt = buildAuditorPrompt({ targetName: request.name, auditorName: job.name, surface: job.surface, reportDir: output });
         const res = await execute({ name: job.name, agent: job.adapter, role: 'auditor', surface: job.surface.code, prompt, assignment: job.surface, logFile });
+        if (sandboxFailure) res.failure = { reason: 'sandbox_unavailable', message: FAILURE_MESSAGES.sandbox_unavailable };
         job.sessionId = res.sessionId;
         job.sessionDirectory = res.directory;
         job.transport = res.transport;
@@ -386,6 +433,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
         job.elapsedMs = res.elapsedMs;
         job.logFile = path.relative(output, logFile);
         if (res.reusedFrom) job.reusedFrom = res.reusedFrom;
+        if (res.restartedFrom) job.restartedFrom = res.restartedFrom;
         if (res.code !== 0) {
           job.failure = res.failure || classifyAuditFailure(res);
           throw new Error(job.failure.message);
@@ -413,7 +461,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
       } catch (err) {
         workerExits[job.name] = job.turnCode || 1;
         job.state = 'failed';
-        job.failure ||= classifyAuditFailure({ code: 0 }, job.observedExitCode == null ? 'setup_error' : 'invalid_report');
+        job.failure ||= Object.hasOwn(FAILURE_MESSAGES, err.reason) ? { reason: err.reason, message: FAILURE_MESSAGES[err.reason] } : classifyAuditFailure({ code: 0 }, job.observedExitCode == null ? 'setup_error' : 'invalid_report');
         if (['usage_limit', 'auth_required', 'provider_policy'].includes(job.failure.reason)) providerFailures[job.adapter] = job.failure.reason;
         stageFailures.push(`auditor_error:${job.name}`);
         console.error(`  <- [${job.name}] ${job.failure.message} See ${path.relative(output, logFile)}.`);
@@ -495,7 +543,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
     isolation: { policy: 'docker_mcp_bridge', sourceDigest, liveTransport: 'docker_mcp_stdio', privateOutputs: 'validated', workerManifest: 'workers.json' },
   };
   writeReportFile(output, 'meta.json', `${JSON.stringify(finalMeta, null, 2)}\n`);
-  return { stageFailures, output, cancelled: cancellation.signal.aborted };
+  return { stageFailures, output, cancelled: cancellation.signal.aborted && !sandboxFailure };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

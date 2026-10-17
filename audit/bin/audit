@@ -25,7 +25,7 @@ shift || true
 ARG_REPO="" ARG_GITHUB="" ARG_REF="" ARG_WORKDIR="" ARG_CLEAN=0
 SURFACE="all" OUT_DIR="" AGENTS="claude,grok,agy,codex" POCS_DIR="" POSITIONAL=()
 MODEL_ALL="" MODELS_CSV="" MODEL_CLAUDE="" MODEL_GROK="" MODEL_AGY="" MODEL_CODEX="" PLAN=0
-RPC="" RESUME_FROM=""
+RPC="" RESUME_FROM="" TEST_ARTIFACTS="" RESTART_FAILED=0
 
 # Flags shared by `run` and `pocs`; anything else is a positional argument.
 parse_flags() {
@@ -47,6 +47,8 @@ parse_flags() {
       --model-codex) MODEL_CODEX="${2:?--model-codex needs a slug}"; shift 2 ;;
       --plan) PLAN=1; shift ;;
       --resume-from) RESUME_FROM="${2:?--resume-from needs a report directory}"; shift 2 ;;
+      --test-artifacts) TEST_ARTIFACTS="${2:?--test-artifacts needs a Cargo target directory}"; shift 2 ;;
+      --restart-failed) RESTART_FAILED=1; shift ;;
       --rpc) RPC="${2:?--rpc needs an https URL}"; shift 2 ;;
       --pocs) POCS_DIR="${2:?--pocs needs a path}"; shift 2 ;;
       -*) die "unknown option: $1 (see 'audit help')" ;;
@@ -119,6 +121,8 @@ case "$COMMAND" in
     [ "$PLAN" -eq 1 ] && model_args+=(--plan)
     [ -n "$RPC" ] && model_args+=(--rpc "$RPC")
     [ -n "$RESUME_FROM" ] && model_args+=(--resume-from "$RESUME_FROM")
+    [ -n "$TEST_ARTIFACTS" ] && model_args+=(--test-artifacts "$TEST_ARTIFACTS")
+    [ "$RESTART_FAILED" -eq 1 ] && model_args+=(--restart-failed)
     bash "$AUDIT_ROOT/scripts/orchestrate.sh" \
       --target "$TARGET_DIR" --name "$TARGET_NAME" --mode "$TARGET_MODE" \
       --source "$TARGET_SOURCE" --ref "$TARGET_REF" --commit "$TARGET_COMMIT" \
@@ -132,6 +136,8 @@ case "$COMMAND" in
 
   pocs|test)
     parse_flags "$@"
+    [ -z "$TEST_ARTIFACTS" ] || die "--test-artifacts is only for 'audit run'"
+    [ "$RESTART_FAILED" -eq 0 ] || die "--restart-failed is only for 'audit run'"
     [ "$PLAN" -eq 0 ] || die "--plan is only for 'audit run'"
     [ -z "$RESUME_FROM" ] || die "--resume-from is only for 'audit run'"
     trap cleanup_target EXIT
@@ -191,6 +197,8 @@ Options (run, pocs):
   --workdir <dir>          --github only: clone base directory (default: $AUDIT_TMP or /tmp/audit-targets)
   --clean                  --github only: delete the clone when the run ends (default: keep it)
 Options (run):
+  --test-artifacts <dir>   Import deploy/*.so from a prebuilt Cargo target directory; hashes are recorded, source equivalence remains unverified
+  --restart-failed         With --resume-from, review failed assignments in new sessions; provider refusals, quotas and login errors remain blocked
   -s, --surface <id>       s1..s6 or all (default: all)
   -o, --out <dir>          report directory (default: audit/reports/<timestamp>-<repo>)
   -a, --agents <list>      comma-separated subset of claude,grok,agy,codex (default: claude,grok,agy,codex)

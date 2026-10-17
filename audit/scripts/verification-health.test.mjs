@@ -68,3 +68,12 @@ test('a passing attempt cannot conceal another failed attempt in the same run', 
   assert.equal(f.check().state, 'incomplete');
   assert.equal(f.check().suites[0].state, 'failed_or_unverified');
 });
+
+test('missing program bytes are explained from the retained compiler output', t => {
+  const f = fixture(t);
+  const row = f.data['harness/existing-test-results-verification.json'][0];
+  row.exitCode = 101;
+  f.data[f.output].stderr = "error: couldn't read `/work/target/tmp/../deploy/ratpool_escrow.so`: No such file or directory (os error 2)";
+  row.evidenceHash = crypto.createHash('sha256').update(JSON.stringify(f.data[f.output])).digest('hex');
+  assert.match(f.check().gaps.join('\n'), /Missing program artifact deploy\/ratpool_escrow.so.*--test-artifacts/);
+});

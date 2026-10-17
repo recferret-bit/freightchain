@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import { scannerEvidence, testCounts } from './scanner-evidence.mjs';
+import { scannerEvidence, testCounts, missingTestArtifact } from './scanner-evidence.mjs';
 
 // Review output validation and executed coverage are different gates.
 export function verificationHealth(root, read) {
@@ -24,6 +24,7 @@ export function verificationHealth(root, read) {
   if (!catalog?.tests?.length) gaps.push('No executable test suite was catalogued; test coverage is unverified.');
   for (const entry of catalog?.tests || []) {
     const rows = attempts.filter(row => row.testId === entry.id && row.sourceDigest === manifest.digest);
+    const details = new Set();
     let passed = rows.length > 0;
     for (const row of rows) {
       try {
@@ -32,11 +33,12 @@ export function verificationHealth(root, read) {
         const hash = crypto.createHash('sha256').update(JSON.stringify(evidence)).digest('hex');
         const counts = testCounts(evidence.stdout);
         if (hash !== row.evidenceHash) throw Error();
+        if (row.exitCode !== 0) { const detail = missingTestArtifact(evidence.stderr); if (detail) details.add(detail); }
         if (!(row.exitCode === 0 && counts?.passed > 0 && counts.failed === 0 && counts.skipped === 0)) passed = false;
       } catch { passed = false; gaps.push(`Missing or altered test output for ${entry.id}.`); }
     }
     suites.push({ id: entry.id, state: passed ? 'passed' : rows.length ? 'failed_or_unverified' : 'not_run', attempts: rows.length });
-    if (!passed) gaps.push(`${entry.description}: no successful execution with nonzero test counts and no skipped tests.`);
+    if (!passed) gaps.push(`${entry.description}: no successful execution with nonzero test counts and no skipped tests.${details.size ? ' ' + [...details].join(' ') : ''}`);
   }
   try {
     const record = read('harness/scanner-results.json');

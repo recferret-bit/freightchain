@@ -86,6 +86,18 @@ test('missing workers cannot become a complete zero-finding report', (t) => {
   assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir, 'report-health.json'))).state, 'incomplete');
 });
 
+test('cancelled cross-checks are not relabeled from historical MCP error prose', t => {
+  const f = fixture(t, ['claude', 'grok']);
+  f.save('claude'); f.save('grok'); f.cross();
+  f.meta.crosscheckExits.grok = 130;
+  f.put('meta.json', f.meta);
+  fs.mkdirSync(path.join(f.dir, 'harness/sandbox-run'));
+  fs.writeFileSync(path.join(f.dir, 'harness/sandbox-run/crosscheck-grok.log'), 'Historical audit_docker unavailable message.');
+  const message = loadAuditors(f.dir).health.errors.find(error => error.startsWith('grok: missing or failed cross-check exit'));
+  assert.match(message, /Review cancelled/);
+  assert.doesNotMatch(message, /Docker MCP tools were unavailable/);
+});
+
 test('incomplete reports explain recorded policy refusals, MCP failures and timeouts', (t) => {
   const f = fixture(t, ['claude', 'grok', 'agy', 'codex']);
   const logs = path.join(f.dir, 'harness', 'sandbox-run');

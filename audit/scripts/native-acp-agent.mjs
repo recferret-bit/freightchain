@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { StringDecoder } from 'node:string_decoder';
 import { fileURLToPath } from 'node:url';
 import { buildCliInvocation } from './agent-launch.mjs';
 import { readReportJson, writeReportFile } from './report-contract.mjs';
@@ -78,43 +79,57 @@ export class NativeAcpAgent {
       let resultSeen = false;
       let successful = false;
       let invalid = false;
+      let resultStatus = 'missing';
+      let parseFailure = null;
+      const decoder = new StringDecoder('utf8');
       const fail = () => { invalid = true; this.stop('SIGTERM'); };
       child.stdin.on('error', () => {});
       child.stdin.end(invocation.stdin || '');
       child.stderr.on('data', data => process.stderr.write(data));
+      const frame = line => {
+        try {
+          const value = JSON.parse(line);
+          if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error();
+          if (value.event === 'init' && UUID.test(value.conversation_id || '')) {
+            if (this.state.nativeId && this.state.nativeId !== value.conversation_id) { parseFailure = 'session_mismatch'; throw new Error(); }
+            this.state.nativeId = value.conversation_id; this.save();
+          }
+          if (value.event === 'step_update') {
+            const step = value.step_update;
+            if (step?.tool_name) this.update({ sessionUpdate: 'tool_call_update', toolCallId: String(step.step_index), title: step.tool_name, status: step.state === 'STEP_STATE_DONE' ? 'completed' : 'in_progress' });
+            else this.update({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: '' } });
+          }
+          if (value.event === 'result') {
+            if (resultSeen) { parseFailure = 'duplicate_result'; throw new Error(); }
+            resultSeen = true;
+            successful = value.result?.status === 'SUCCESS';
+            resultStatus = successful ? 'success' : value.result?.status === 'ERROR' ? 'error' : 'unrecognized';
+            if (typeof value.result?.response === 'string') this.update({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: value.result.response } });
+          }
+        } catch { parseFailure ||= 'invalid_frame'; fail(); }
+      };
       child.stdout.on('data', data => {
-        buffer += data.toString('utf8');
+        buffer += decoder.write(data);
         for (let at; (at = buffer.indexOf('\n')) >= 0;) {
           const line = buffer.slice(0, at).trim(); buffer = buffer.slice(at + 1);
           if (!line) continue;
-          try {
-            const frame = JSON.parse(line);
-            if (frame.event === 'init' && UUID.test(frame.conversation_id || '')) {
-              if (this.state.nativeId && this.state.nativeId !== frame.conversation_id) throw new SessionError('session_identity_rejected');
-              this.state.nativeId = frame.conversation_id; this.save();
-            }
-            if (frame.event === 'step_update') {
-              const step = frame.step_update;
-              if (step?.tool_name) this.update({ sessionUpdate: 'tool_call_update', toolCallId: String(step.step_index), title: step.tool_name, status: step.state === 'STEP_STATE_DONE' ? 'completed' : 'in_progress' });
-              else this.update({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: '' } });
-            }
-            if (frame.event === 'result') {
-              resultSeen = true;
-              successful = frame.result?.status === 'SUCCESS';
-              if (typeof frame.result?.response === 'string') this.update({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: frame.result.response } });
-            }
-          } catch { fail(); }
+          if (line.length > 4 * 1024 * 1024) { parseFailure = 'oversized_frame'; fail(); break; }
+          frame(line);
         }
-        if (buffer.length > 4 * 1024 * 1024) fail();
+        if (buffer.length > 4 * 1024 * 1024) { parseFailure = 'oversized_frame'; fail(); }
       });
       child.once('error', () => { invalid = true; });
-      child.once('close', (code) => {
+      child.once('close', (code, signal) => {
+        buffer += decoder.end();
+        // A complete final JSON object need not have a trailing newline.
+        if (buffer.trim() && !invalid) frame(buffer.trim());
         this.active = null;
         this.stop('SIGKILL');
         this.state.turns++;
+        this.state.lastTurn = { exitCode: code, signal, resultStatus, resultSeen, parseFailure, sessionBound: UUID.test(this.state.nativeId || '') };
         this.save();
         if (this.cancelled) resolve({ stopReason: 'cancelled' });
-        else if (invalid || buffer.trim() || code !== 0 || !successful || !resultSeen || !UUID.test(this.state.nativeId || '')) reject(new SessionError('native_turn_failed'));
+        else if (invalid || code !== 0 || !successful || !resultSeen || !UUID.test(this.state.nativeId || '')) reject(new SessionError('native_turn_failed'));
         else resolve({ stopReason: 'end_turn' });
       });
     });

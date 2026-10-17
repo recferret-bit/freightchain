@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { REVIEW_IMAGE, createSnapshot, disposeSnapshot } from './worker-isolation.mjs';
 import { buildExistingTestCatalog } from './review-workflow.mjs';
 import { callBridgeTool, resolveDockerBin } from './docker-mcp-bridge.mjs';
+import { holdSandbox, probeSandbox } from './sandbox-lifecycle.mjs';
 const scripts = path.dirname(fileURLToPath(import.meta.url));
 const dockerBin = resolveDockerBin();
 const docker = args => {
@@ -73,4 +74,15 @@ test('real Docker enforces offline existing tests, manifest binding and unlimite
   assert.equal(docker(['exec', offline, 'cat', '/tmp/test-runs']), 'ran\nran');
   const connected = start('bridge');
   await assert.rejects(callBridgeTool({ ...ctx, container: connected }, 'run_existing_tests', { test_id: entry.id }), /network-disconnected/);
+  const lifecycle = [];
+  let probes = 0;
+  const released = await holdSandbox({
+    held: () => probes < 5,
+    probe: async () => ++probes === 1 ? { state: 'unavailable' } : probeSandbox(dockerBin, offline),
+    record: status => lifecycle.push(status),
+    wait: async () => { if (probes === 2) docker(['stop', offline]); },
+  });
+  assert.equal(released, false);
+  assert.deepEqual(lifecycle.map(row => row.state), ['unavailable', 'running', 'stopped', 'lost']);
+  assert.equal(lifecycle.at(-1).reason, 'container_stopped');
 });
