@@ -205,7 +205,7 @@ Viewers may send donations to a driver during a live ride. **100% of the donatio
 
 ## 15. Seasons
 
-15.1. Contests run in Seasons of Prize Weeks (Season 1: 7 weeks starting [PLACEHOLDER: November 2, 2026], with the final in the last week, followed by a break). Each Season's rules version is published before it starts.
+15.1. Contests run in Seasons of Prize Weeks (Season 1: 7 weeks starting [PLACEHOLDER: January 11, 2027], with the final in the last week, followed by a break). Each Season's rules version is published before it starts.
 
 15.2. We may **modify, postpone, pause, shorten or cancel** a Season, a Prize Week or a final for operational, security, legal or fair-play reasons, or if fraud or technical failure affects the integrity of a contest. If we cancel a running contest, we will handle announced prize money as described in the Official Rules [LAWYER: define fallback — e.g. award on standings at cancellation or roll over].
 
