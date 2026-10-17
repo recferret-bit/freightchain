@@ -104,9 +104,9 @@
 
 7.1. **Objective Skill Scoring.** Every ranked ride is re-simulated and verified by the server at 10 Hz (`ReplayEngine`) against the authoritative seeded road, obstacles, holes and traffic proof. Rides are ranked by:
 1. **Clean Completion / Fault-Free Distance Share (`cleanBps`, `0..10000`):** The basis-point share of the route completed before the first mistake (hull drop below 100 or collision), or full clean completion (`10000` bps = `100%`) at the finish line (`completeDist`).
-2. **Driving Precision (`corrections`):** At a clean finish (`10000` bps), fewer steering corrections rank higher, followed by earlier finish submission (`submittedAt`) when measured.
+2. **Driving Precision (`corrections`):** At a clean finish (`10000` bps), fewer steering corrections rank higher when measured. For a single wallet's own multiple attempts, `bestByWallet` retains the wallet's highest-scoring attempt (or earliest submission `submittedAt` if the wallet ties its own best score).
 
-7.2. **No Wallet-Address Tie-Breaker.** Alphabetical or numerical order of wallet addresses is **never** used to break a tie on any leaderboard (`ranksAbove`, `settleBoard`, `seasonQualifiers`).
+7.2. **No Timestamp or Wallet-Address Tie-Breaker Across Players.** Neither submission timestamp (`submittedAt`) nor alphabetical/numerical order of wallet addresses is used to break a tie between different wallets on any leaderboard (`ranksAbove`, `settleBoard`, `settleSeasonFinal`, `seasonQualifiers`).
 
 7.3. **Equal Tie-Splitting.** Tied players occupying places `k` through `k + m - 1` share the same competition place `k` and **combine the prize amounts of all occupied places `k … k + m - 1` and divide the combined total equally** (`floor` to whole cents; odd cents roll over).
 

@@ -1,6 +1,6 @@
 import {
   announcePool, bestByWallet, capRolloverCents, cleanBps, nextBaseCents, rankedAttemptScore,
-  seasonQualifiers, settleBoard, settleSeasonFinal, splitBoardCents, unifiedWeekPool, weekBonus,
+  ranksAbove, seasonQualifiers, settleBoard, settleSeasonFinal, splitBoardCents, unifiedWeekPool, weekBonus,
 } from '../../../../src/domain/prize/prize-pool.js';
 import {
   BASE_STEPS_CENTS, BLOCKED_US_STATES, BONUS_CAP_CENTS, BONUS_MAX_OF_FIXED_BPS, FREE_PRIZE_BOARD_CAP_BPS,
@@ -110,16 +110,26 @@ describe('ranked starts', () => {
 });
 
 describe('board score', () => {
-  it('is the clean share of the route, and the best counted row is the one that ranks', () => {
+  it('is the clean share of the route, and the best counted row is the one that ranks without breaking cross-wallet ties by submission time', () => {
     expect(cleanBps(2500, 10_000)).toBe(2500);
     expect(cleanBps(10_000, 10_000)).toBe(10_000);
     expect(cleanBps(11_000, 10_000)).toBe(10_000);
     expect(cleanBps(0, 10_000)).toBe(0);
     expect(rankedAttemptScore({ wallet: 'a', cleanMetres: null, distance: 2500, completeMetres: 10_000, submittedAt: 5, payout: false })).toMatchObject({ bps: 2500, corrections: 0, payout: false });
     expect(rankedAttemptScore({ wallet: 'a', cleanMetres: 100, distance: 2500, completeMetres: 10_000, submittedAt: 5, payout: false }).bps).toBe(100);
-    const rows = [score('a', 4000, 0, 5), score('a', 9000, 0, 9), score('b', 10_000, 4, 3), score('b', 10_000, 1, 8), score('c', 10_000, 1, 2)];
+    const rows = [
+      score('a', 4000, 0, 5),
+      score('a', 9000, 0, 9),
+      score('b', 10_000, 4, 3),
+      score('b', 10_000, 1, 8),
+      score('b', 10_000, 1, 12),
+      score('c', 10_000, 1, 2),
+    ];
     expect(bestByWallet(rows).map((r) => r.wallet)).toEqual(['c', 'b', 'a']);
     expect(bestByWallet(rows).find((r) => r.wallet === 'b')?.submittedAt).toBe(8);
+    const best = bestByWallet(rows);
+    expect(ranksAbove(best[0]!, best[1]!)).toBe(false);
+    expect(ranksAbove(best[1]!, best[0]!)).toBe(false);
   });
 });
 
@@ -181,7 +191,7 @@ describe('board settlement', () => {
     expect(paid.map((l) => l.placeCents)).toEqual([1_875, 1_125, 750, 562, 562]);
     expect(paid.every((l) => l.cents >= MIN_PAYOUT_CENTS)).toBe(true);
     expect(paid.reduce((s, l) => s + l.cents, 0) + board.rollCents).toBe(7_500);
-    const finish = ten().map((r, i) => i === 0 ? r : { ...r, bps: 1000 });
+    const finish = ten().map((r, i) => i === 0 ? r : { ...r, bps: 2000 - i * 100 });
     const withFinisher = settleBoard({ tier: '1h', baseCents: 100_000, bonusCents: 0, carryCents: 0, scores: finish });
     const first = withFinisher.lines.find((l) => l.place === 1)!;
     const tenth = withFinisher.lines.find((l) => l.place === 10)!;
@@ -189,11 +199,11 @@ describe('board settlement', () => {
     expect(first.finisherCents).toBeLessThan(Math.floor(20_000));
   });
 
-  it('splits tied places equally without breaking ties by wallet address', () => {
+  it('splits tied places equally without breaking ties by wallet address or submission timestamp', () => {
     const scores = [
-      score('z', 9000, 0, 10),
+      score('z', 9000, 0, 20),
       score('a', 9000, 0, 10),
-      score('m', 8000, 0, 20),
+      score('m', 8000, 0, 30),
     ];
     const board = settleBoard({ tier: '1h', baseCents: 7_500, bonusCents: 0, carryCents: 0, scores });
     expect(board.lines.map((l) => ({ wallet: l.wallet, place: l.place, placeCents: l.placeCents }))).toEqual([
@@ -217,6 +227,20 @@ describe('board settlement', () => {
     expect(f2.cents).toBe(500); // clipped from 1_500 so free1 + free2 = 3_000 (30% of 10_000)
     expect(f1.cents + f2.cents).toBe(3_000);
     expect(p9.cents).toBe(1_000); // 11th overall (purchased ticket) receives the 1_000 excess
+
+    // Tied free-ticket winners at the same rank split the remaining 30% cap equally, and tied next purchased finishers split the excess equally
+    const tiedScores = [
+      score('freeZ', 9_900, 0, 5, true, true),
+      score('freeA', 9_900, 0, 1, true, true),
+      ...Array.from({ length: 8 }, (_, i) => score(`paid${i + 1}`, 9_000 - i * 100, 0, 10 + i, true, false)),
+      score('paid9b', 8_000, 0, 30, true, false),
+      score('paid9a', 8_000, 0, 25, true, false),
+    ];
+    const tiedBoard = settleBoard({ tier: '1h', baseCents: 10_000, bonusCents: 0, carryCents: 0, scores: tiedScores });
+    expect(tiedBoard.lines.find((l) => l.wallet === 'freeA')?.cents).toBe(1_500);
+    expect(tiedBoard.lines.find((l) => l.wallet === 'freeZ')?.cents).toBe(1_500);
+    expect(tiedBoard.lines.find((l) => l.wallet === 'paid9a')?.cents).toBe(500);
+    expect(tiedBoard.lines.find((l) => l.wallet === 'paid9b')?.cents).toBe(500);
   });
 
   it('a thin board pays base only, rolls this bonus, and sends last week’s roll to the season', () => {
@@ -269,7 +293,7 @@ describe('season final', () => {
     expect(seasonQualifiers(cutoffTie).map((r) => r.wallet)).toEqual(['w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9']);
   });
 
-  it('settles the dynamic N-finalist table for 8, >8 (cutoff tie), and <8 completing finalists', () => {
+  it('settles the dynamic N-finalist table for 8, >8 (cutoff tie), and <8 completing finalists, splitting ties across different submit times', () => {
     const eight = Array.from({ length: 8 }, (_, i) => score(`f${i + 1}`, 10_000, i, i));
     const settled8 = settleSeasonFinal(100_000, eight);
     expect(settled8.lines.map((l) => l.cents)).toEqual([30_000, 20_000, 14_000, 10_000, 8_000, 7_000, 6_000, 5_000]);
@@ -284,5 +308,13 @@ describe('season final', () => {
     const settled3 = settleSeasonFinal(100_000, three);
     expect(settled3.lines.map((l) => l.cents)).toEqual([30_000, 20_000, 14_000]);
     expect(settled3.rollCents).toBe(36_000);
+
+    const tiedTopTwo = [score('f1', 10_000, 2, 100), score('f2', 10_000, 2, 500), score('f3', 10_000, 5, 200)];
+    const settledTied = settleSeasonFinal(100_000, tiedTopTwo);
+    expect(settledTied.lines.map((l) => ({ wallet: l.wallet, place: l.place, cents: l.cents }))).toEqual([
+      { wallet: 'f1', place: 1, cents: 25_000 },
+      { wallet: 'f2', place: 1, cents: 25_000 },
+      { wallet: 'f3', place: 3, cents: 14_000 },
+    ]);
   });
 });

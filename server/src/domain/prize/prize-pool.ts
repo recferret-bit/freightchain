@@ -165,20 +165,24 @@ export function rankedAttemptScore(row: {
   };
 }
 
-/** One wallet's best counted attempt. A higher clean share wins. At a clean finish, fewer corrections win, then the earlier submit. */
+/** One wallet's best counted attempt. A higher clean share wins; at a clean finish, fewer corrections win, then the wallet's own earlier submit. */
 export function bestByWallet(rows: readonly BoardScore[]): BoardScore[] {
   const best = new Map<string, BoardScore>();
   for (const row of rows) {
     const held = best.get(row.wallet);
-    if (!held || ranksAbove(row, held)) best.set(row.wallet, row);
+    if (!held || ranksAbove(row, held) || (!ranksAbove(held, row) && row.submittedAt < held.submittedAt)) {
+      best.set(row.wallet, row);
+    }
   }
-  return [...best.values()].sort((a, b) => ranksAbove(a, b) ? -1 : ranksAbove(b, a) ? 1 : (a.wallet < b.wallet ? -1 : a.wallet > b.wallet ? 1 : 0));
+  return [...best.values()].sort((a, b) => (
+    ranksAbove(a, b) ? -1 : ranksAbove(b, a) ? 1 : a.submittedAt - b.submittedAt || (a.wallet < b.wallet ? -1 : a.wallet > b.wallet ? 1 : 0)
+  ));
 }
 
 export function ranksAbove(a: BoardScore, b: BoardScore): boolean {
   if (a.bps !== b.bps) return a.bps > b.bps;
   if (a.bps === 10_000 && a.corrections !== b.corrections) return a.corrections < b.corrections;
-  return a.submittedAt < b.submittedAt;
+  return false;
 }
 
 export interface PayoutLine {
@@ -256,37 +260,60 @@ export function settleBoard(input: BoardFundInput): BoardSettlement {
     }
     rollCents += finisherPool - finisherPaid;
   }
+  for (const line of lines) line.cents = line.placeCents + line.finisherCents;
   const hasFree = ranked.some((r) => r.free === true);
   let freeRemaining = hasFree
     ? Math.floor(payableCents * (input.freePrizeCapBps ?? FREE_PRIZE_BOARD_CAP_BPS) / 10_000)
     : Number.MAX_SAFE_INTEGER;
   let clippedFree = 0;
-  for (const line of lines) {
-    line.cents = line.placeCents + line.finisherCents;
-    const row = byWallet.get(line.wallet);
-    if (row?.free) {
-      const allowedFree = Math.min(line.cents, freeRemaining);
-      const clipped = line.cents - allowedFree;
-      if (clipped > 0) {
-        clippedFree += clipped;
-        line.cents = allowedFree;
-        line.placeCents = Math.min(line.placeCents, allowedFree);
-        line.finisherCents = allowedFree - line.placeCents;
-      }
-      freeRemaining -= allowedFree;
+  for (let i = 0; i < lines.length;) {
+    const rowI = byWallet.get(lines[i]!.wallet)!;
+    let j = i + 1;
+    while (j < lines.length) {
+      const rowJ = byWallet.get(lines[j]!.wallet)!;
+      if (ranksAbove(rowI, rowJ) || ranksAbove(rowJ, rowI)) break;
+      j++;
     }
+    const freeGroup = lines.slice(i, j).filter((l) => byWallet.get(l.wallet)?.free);
+    if (freeGroup.length > 0) {
+      const groupTotal = freeGroup.reduce((s, l) => s + l.cents, 0);
+      if (groupTotal <= freeRemaining) {
+        freeRemaining -= groupTotal;
+      } else {
+        const eachAllowed = Math.floor(freeRemaining / freeGroup.length);
+        for (const line of freeGroup) {
+          clippedFree += line.cents - eachAllowed;
+          line.cents = eachAllowed;
+          line.placeCents = Math.min(line.placeCents, eachAllowed);
+          line.finisherCents = eachAllowed - line.placeCents;
+        }
+        freeRemaining = 0;
+      }
+    }
+    i = j;
   }
   if (clippedFree > 0) {
-    // Pass excess down to the highest-ranked eligible purchased-ticket finisher outside the paid places, or roll over.
+    // Pass excess down to the highest-ranked eligible purchased-ticket finisher(s) outside the paid places, or roll over.
     const nextPurchased = ranked.find((r) => !r.free && r.payout !== false && !lines.some((l) => l.wallet === r.wallet && l.place !== null));
     if (nextPurchased) {
-      const existing = lines.find((l) => l.wallet === nextPurchased.wallet);
-      if (existing) {
-        existing.placeCents += clippedFree;
-        existing.cents += clippedFree;
-      } else {
-        lines.push({ wallet: nextPurchased.wallet, place: places + 1, placeCents: clippedFree, finisherCents: 0, cents: clippedFree, paid: false });
+      const tiedNext = ranked.filter((r) => (
+        !r.free && r.payout !== false
+        && !lines.some((l) => l.wallet === r.wallet && l.place !== null)
+        && !ranksAbove(nextPurchased, r) && !ranksAbove(r, nextPurchased)
+      ));
+      const eachClipped = Math.floor(clippedFree / tiedNext.length);
+      const nextPlace = 1 + ranked.findIndex((r) => !ranksAbove(r, nextPurchased) && !ranksAbove(nextPurchased, r));
+      for (const recipient of tiedNext) {
+        const existing = lines.find((l) => l.wallet === recipient.wallet);
+        if (existing) {
+          existing.place ??= nextPlace;
+          existing.placeCents += eachClipped;
+          existing.cents += eachClipped;
+        } else {
+          lines.push({ wallet: recipient.wallet, place: nextPlace, placeCents: eachClipped, finisherCents: 0, cents: eachClipped, paid: false });
+        }
       }
+      rollCents += clippedFree - eachClipped * tiedNext.length;
     } else {
       rollCents += clippedFree;
     }

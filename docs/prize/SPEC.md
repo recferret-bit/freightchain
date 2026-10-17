@@ -55,9 +55,9 @@ Anti-sybil, as built: one unspent grant per wallet per tier per interval, not cu
 
 ## Score
 
-Percent of route distance before the first mistake, in basis points (`cleanBps`, `rankedAttemptScore`). On a ranked ride the server freezes `cleanMetres` at the previous heartbeat when hull falls below 100 or a crash counter rises. Until that happens the clean distance is the reported distance. A failed or abandoned ranked ride still scores that prefix. Corrections are not measured yet, so the tie-break below a clean finish is submission time. Wallet addresses never break ties (`ranksAbove`): tied scores share the same competition place and divide their combined place cents equally (`settleBoard`).
+Percent of route distance before the first mistake, in basis points (`cleanBps`, `rankedAttemptScore`). On a ranked ride the server freezes `cleanMetres` at the previous heartbeat when hull falls below 100 or a crash counter rises. Until that happens the clean distance is the reported distance. A failed or abandoned ranked ride still scores that prefix. Corrections are not measured yet (`corrections` defaults to 0). Neither submission time (`submittedAt`) nor wallet address breaks a tie across different wallets (`ranksAbove`): tied scores share the same competition place and divide their combined place cents equally (`settleBoard`, `settleSeasonFinal`). For a single wallet's own multiple attempts, `bestByWallet` keeps the wallet's highest-scoring attempt (or earliest submission if the wallet ties its own best score).
 
-Order: higher clean share, then at a clean finish fewer corrections, then the earlier submission. Corrections are not a tie-break below a clean finish. Equal scores tie and split their occupied place shares equally.
+Order: higher clean share, then at a clean finish fewer corrections. Corrections are not a tie-break below a clean finish. Equal scores tie and split their occupied place shares equally.
 
 On a ranked run, spectator obstacles, weather, and day/night must not change the road (`rankedRoadEffects`). The server **refuses** them (`409 ranked_effects_off`) before TEN4 or SOL is spent: TEN4 day/night burns, TEN4 weather burns, and donation obstacles or donation day/night. A chat HONK still burns 1 TEN4 and posts the line. A tip that does not touch the road is still allowed. If a paid donation was already sent, it is delivered as a tip so the money is not lost and the road still does not change. Unranked rides keep today's effects.
 
@@ -67,10 +67,10 @@ Integer cents. Currency USDC. Unified operator + sponsor model (`unifiedWeekPool
 
 - Fixed weekly pool `F = B + S`, where `B` is the operator base and `S` is verified sponsor funding.
 - Base `B` starts at $300. Steps are $300, $750, $1,500, $3,000 (`nextBaseCents`). The base moves up one step when each of the last four weeks took in more than four times the current base, and does not reset between seasons.
-- Performance bonus `P = min(0.40 * R, $2,500, 0.90 * F)` (`BONUS_MAX_OF_FIXED_BPS = 9_000`), where `R` is the previous week's ticket revenue (`cappedBonusCents`, `unifiedWeekPool`). Because it uses the previous week, it can be announced before this week opens.
+- Performance bonus `P = min(0.40 * R, $2,500, 0.90 * F)` (`BONUS_MAX_OF_FIXED_BPS = 9_000`), where `R` is the previous week's ticket revenue (`weekBonus`, `unifiedWeekPool`). Because it uses the previous week, it can be announced before this week opens.
 - Incoming rollover `C` is capped at `C <= 25% * F` (`ROLLOVER_CAP_OF_FIXED_BPS = 2_500`, `capRolloverCents`); any excess above `0.25 * F` is routed to the Season Final.
-- Total weekly pool `T = F + P + C` is split `85%` to the three weekly boards (`WEEK_BOARD_SHARE_BPS = 8_500`), `5%` to next-week rollover (`WEEK_ROLLOVER_SHARE_BPS = 500`), and `10%` to the Season Final (`FINAL_RESERVE_BPS = 1_000`). On the final week of a season (`isFinalWeek`), the `10%` goes to that same week's Season Final and the `5%` rolls into Week 1 of the next season (capped at `25% F`).
-- Legacy helper `weekPool(baseCents, prevWeekRevenueCents)` remains for pure operator-base callers (`F = B`, `90%` of `P` to boards, `10%` to final).
+- Total weekly pool `T = F + P + C` is split `85%` to the three weekly boards (`WEEK_BOARD_SHARE_BPS = 8_500`), `5%` to next-week rollover (`WEEK_ROLLOVER_SHARE_BPS = 500`), and `10%` to the Season Final (`SEASON_RESERVE_BPS = 1_000`). On the final week of a season (`LIVE_FINAL_WEEK = 7`, `seasonOf(week.id).liveFinal`), the `10%` goes to that same week's Season Final and the `5%` rolls into Week 1 of the next season (capped at `25% F`).
+- Legacy helper `announcePool(baseCents, previousRevenueCents)` remains for pure operator-base callers (`F = B`, `90%` of `P` to boards, `10%` to final).
 - A board with fewer than 10 unique wallets pays its base share only. Its bonus share rolls one week. Last week's roll is not rolled again: it goes to the season final.
 - Unpaid place shares, an unused finisher pool, a payout under $5, and a winner who is not cleared for payout also roll one week. The next thin week sends that roll to the season final. Rolls do not compound into a jackpot.
 - TEN4 is not part of the pool.
@@ -81,7 +81,7 @@ Of each board's payable cents, 80% is places and 20% is the finisher pool.
 
 The top-10 shares are 25 / 15 / 10 / 7.5 / 7.5 / 3 / 3 / 3 / 3 / 3. Ranks 6–10 are 3% each. A tail of 5% each would total 90% and would not leave 20% for finishers, so that parenthetical was not used. Tied places combine their occupied place shares and split them equally (`Math.floor` to whole cents; odd cents roll).
 
-Free-ticket entries (`entryType: 'free'` on `BoardEntry`) are capped at `30%` of a board's payable pool (`FREE_PRIZE_BOARD_CAP_BPS = 3_000` in `settleBoard`). When total free-entry prizes exceed `floor(0.30 * boardCents)`, each free winner is scaled down proportionally and the excess cents cascade in rank order to the next ranked paid-ticket finishers who did not already win a top-10 place (capped at the 10th-place prize each), with any remainder rolling over.
+Free-ticket entries (`free: true` on `BoardScore`) are capped at `30%` of a board's payable pool (`FREE_PRIZE_BOARD_CAP_BPS = 3_000` in `settleBoard`). Free-ticket winners are funded in rank order (1st place downward; tied free-ticket winners at the cap boundary split the remaining free cap equally) until `floor(0.30 * payableCents)` is reached, and any excess cents above the `30%` cap pass down to the next highest-ranked eligible purchased-ticket finisher(s) outside the paid places (or roll over if none exist).
 
 Above 100 participants the board pays the top 10% (`ceil(n / 10)` places) from the same 80%, on linear weights. The research did not publish that curve. This one is a draft stand-in.
 

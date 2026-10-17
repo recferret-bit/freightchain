@@ -532,6 +532,19 @@ fn merkle_airdrop_claims_receipt_enforces_wallet_cap_and_burns_unclaimed_after_9
         e.claim_airdrop(2, &w1, 600 * UNIT, vec![]),
         HonkError::WalletCap
     );
+    let l1_c3 = airdrop_leaf(3, &w1, 300 * UNIT);
+    unwrap_tx(e.set_airdrop_root(3, merkle_root_from(l1_c3, &[]), 500_000 * UNIT));
+    unwrap_tx(e.claim_airdrop(3, &w1, 300 * UNIT, vec![]));
+    let l1_c4 = airdrop_leaf(4, &w1, 200 * UNIT);
+    unwrap_tx(e.set_airdrop_root(4, merkle_root_from(l1_c4, &[]), 500_000 * UNIT));
+    unwrap_tx(e.claim_airdrop(4, &w1, 200 * UNIT, vec![]));
+    assert_eq!(e.amount(&ata(&w1, &honk_mint_pda())), AIRDROP_WALLET_CAP);
+    let l1_c5 = airdrop_leaf(5, &w1, UNIT);
+    unwrap_tx(e.set_airdrop_root(5, merkle_root_from(l1_c5, &[]), 500_000 * UNIT));
+    assert_err!(
+        e.claim_airdrop(5, &w1, UNIT, vec![]),
+        HonkError::WalletCap
+    );
     assert_eq!(AIRDROP_WALLET_CAP, 2_000 * UNIT);
 
     let supply_before = e.mint(&honk_mint_pda()).supply;

@@ -65,11 +65,11 @@ Eighty percent of a board is paid to places. On a board of 100 drivers or fewer 
 | 5 | 7.5% |
 | 6 through 10 | 3% each |
 
-Tied drivers share the same place and split the combined prize of the places they occupy equally (wallet addresses never break a tie).
+Tied drivers share the same place and split the combined prize of the places they occupy equally (neither submission time nor wallet address breaks a tie across drivers).
 
 Twenty percent is split equally among drivers who finish the route with no mistake. A driver in the top 10 can also take a finisher share. No finisher share is larger than the 10th-place prize. The rest of that 20% is not paid that week.
 
-Prizes won on free tickets (weekly granted tickets or promo rides) are capped at 30% of the board's pool (`free_prize_board_cap_bps = 3000`). Any excess above 30% cascades in rank order to the next ranked paid-ticket finishers who did not already win a top-10 place (up to the 10th-place prize each), and any remainder rolls over.
+Prizes won on free tickets (weekly granted tickets or promo rides) are capped at 30% of the board's pool (`free_prize_board_cap_bps = 3000`). Free-ticket winners are funded in rank order (1st place downward; tied free-ticket winners at the cap boundary split the remaining free cap equally) until the 30% cap is reached, and any excess above 30% passes down to the next highest-ranked eligible purchased-ticket finisher(s) outside the paid places (or rolls over if none exist).
 
 If more than 100 drivers score, the places extend to the top 10% of the field. The 80% is then split on a straight declining slope. That slope is a draft. A lawyer and the owner can replace it before the contest opens.
 

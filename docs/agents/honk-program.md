@@ -19,14 +19,14 @@ Error codes, in order: `ZeroAmount` 6000, `ZeroOut` 6001, `TooEarly` 6002, `Alre
 
 Build with `anchor build --arch v0 -p freightchain_honk` from `programs/` (LiteSVM 0.10 needs SBF v0). Do not change `freightchain_pools`.
 
-PDA seeds: `config`, `authority`, `honk-mint`, `vault`, `pool`, `lp-mint`, `lp-locker`, `locker`, `emission`, `airdrop`, `referral`, `treasury`, `team`, `wallet-day` + rider + day, `wallet-month` + referrer + month, `referral-mint` + referee + milestone, `airdrop-campaign` + campaign, `airdrop-receipt` + campaign + recipient, `wallet-airdrop` + recipient, `part` + buyer + slot + item, and `ride-mint` + ride id. The seeds keep the word honk. The token name on Config is TEN4.
+PDA seeds: `config`, `authority`, `honk-mint`, `vault`, `pool`, `lp-mint`, `lp-locker`, `locker`, `emission`, `airdrop`, `referral`, `treasury`, `team`, `wallet-day` + rider + day, `wallet-month` + referrer + month, `referral-mint` + reward_id, `airdrop` + campaign, `airdrop` + campaign + wallet, `wallet-airdrop` + wallet, `part` + buyer + slot + item, and `ride-mint` + ride id. The seeds keep the word honk. The token name on Config is TEN4.
 
 `initialize(sol_in, emitter, treasury, team_recipient, team_enabled, team_linear_months)`
 
 - Pre-mints liquidity, emission, airdrop, referral, treasury, and team into their vaults. Then sets the TEN4 mint authority to none. Freeze authority stays omitted. There is no Metaplex CPI.
 - Mints LP `isqrt(liquidity * sol_in)` into the locker, burns it, and sets the LP mint authority to none. No `release_lp`. No `withdraw_lp`.
-- Accepts only `sol_in == 50_000_000_000`. Anything else fails with `ZeroAmount`. `payer` must be the program's upgrade authority (`program_data.upgrade_authority_address`; an immutable program or non-upgrade-authority signer fails with `BadAuthority`). Requires `team_enabled == true`, `team_linear_months == 24`, and a non-default `team_recipient` (any other combination fails with `BadVest`).
-- Accounts, in order: payer, config, honk_mint, authority, vault, pool, lp_mint, lp_locker, locker, emission_vault, airdrop_vault, referral_vault, treasury_vault, team_vault, program, program_data, token_program, system_program.
+- Accepts only `sol_in == 50_000_000_000`. Anything else fails with `ZeroAmount`. `payer` must be the program's upgrade authority (`program_data.upgrade_authority_address`; an immutable program or non-upgrade-authority signer fails with `BadAuthority`). Requires `team_enabled == true` (else `TeamDisabled`), `team_recipient != Pubkey::default()` (else `BadAuthority`), and `team_linear_months == 24` (else `BadVest`).
+- Accounts, in order: payer, program, program_data, config, honk_mint, authority, vault, pool, lp_mint, lp_locker, locker, emission_vault, airdrop_vault, referral_vault, treasury_vault, team_vault, token_program, system_program.
 
 `swap_sol_for_honk(sol_in: u64, min_out: u64)`
 
@@ -51,30 +51,30 @@ PDA seeds: `config`, `authority`, `honk-mint`, `vault`, `pool`, `lp-mint`, `lp-l
 - Only `config.emitter` may call it. Tier is 1, 4, or 8. Bands are bit 0 = 20%, bit 1 = 50%, bit 2 = 100%. The amount is the era schedule, clipped to the emission cap, the era left, the global day, and the wallet day. It is transferred from the emission vault. Supply does not rise. The same ride id cannot pay twice. `day_index` must be the clock's unix day.
 - Accounts: emitter, config, honk_mint, authority, emission_vault, rider, rider_honk, ride_mint, wallet_day, token_program, system_program, associated_token_program.
 
-`pay_referral(referee: Pubkey, milestone: u8, month_index: i64)`
+`pay_referral(reward_id: [u8; 16], base_amount: u64, month_index: i64)`
 
-- Only `config.emitter` may call it. `milestone` is 1 (100 TEN4 in era 1) or 2 (50 TEN4 in era 1), shifted right by `max(era_ref, era_ride)`. `month_index` must equal `(clock.unix_timestamp - config.opened_at) / (30 * 86_400)` or it fails with `BadMonth`. Clipped to referral vault cap, referral era remaining, monthly global cap (30,000 for months 0–2, then 60,000), and monthly wallet cap (1,000). One `ReferralMint` PDA per `(referee, milestone)`.
+- Only `config.emitter` may call it. `base_amount` must be `100 * UNIT` (milestone 1) or `50 * UNIT` (milestone 2) or it fails with `BadTier`. The era quote shifts `base_amount` right by `max(era_ref, era_ride)` (`quote == 0` fails with `ZeroOut`). `month_index` must equal `(clock.unix_timestamp - config.opened_at) / (30 * 86_400)` or it fails with `BadMonth`. Clipped to referral vault cap (`EmissionCap`), referral era remaining, monthly global cap (30,000 for months 0–2, then 60,000; `DailyCap`), and monthly wallet cap (1,000; `WalletCap`). One `ReferralMint` PDA `[b"referral-mint", reward_id]` per `reward_id`.
 - Accounts: emitter, config, honk_mint, authority, referral_vault, referrer, referrer_honk, referral_mint, wallet_month, token_program, system_program, associated_token_program.
 
 `burn_referral_tail()`
 
-- Only `config.emitter` may call it once `referral_era_index(config.referral_emitted) >= 8` (else `TooEarly`). Burns any remaining tokens in `referral_vault` and sets `config.referral_emitted = REFERRAL`.
-- Accounts: emitter, config, honk_mint, authority, referral_vault, token_program.
+- Permissionless (`payer` signer) once `referral_era_index(config.referral_emitted) >= 8` (else `TooEarly`) and `referral_vault.amount > 0` (else `ZeroAmount`). Burns any remaining tokens in `referral_vault` and sets `config.referral_emitted = REFERRAL`.
+- Accounts: payer, config, honk_mint, authority, referral_vault, token_program.
 
 `set_airdrop_root(campaign: u8, merkle_root: [u8; 32], allocation: u64)`
 
-- Only `config.emitter` may call it. Creates `airdrop_campaign` PDA `[b"airdrop-campaign", campaign]` with `opened_at = clock.unix_timestamp`, `expires_at = opened_at + 90 days`, and reserves `allocation` inside the 8,000,000 airdrop cap.
-- Accounts: emitter, config, campaign_state, system_program.
+- Only `config.emitter` may call it. Requires `allocation > 0 && merkle_root != [0u8; 32]` (`ZeroAmount`) and `config.airdrop_allocated + allocation <= AIRDROP` (`EmissionCap`). Creates `campaign_account` PDA `[b"airdrop", &[campaign]]` with `opened_at = clock.unix_timestamp` and `expires_at = opened_at + 90 days`.
+- Accounts: emitter, config, campaign_account, system_program.
 
 `claim_airdrop(campaign: u8, amount: u64, proof: Vec<[u8; 32]>)`
 
-- Signed by `recipient`. Verifies `sha256(0x00 || campaign || recipient || amount_le)` against `campaign_state.merkle_root` before `expires_at`, enforces per-wallet lifetime airdrop cap (`2,000 * UNIT`) and campaign allocation, records `airdrop_receipt`, and transfers `amount` from `airdrop_vault`.
-- Accounts: recipient, config, campaign_state, honk_mint, authority, airdrop_vault, recipient_honk, receipt, wallet_airdrop, token_program, system_program, associated_token_program.
+- Signed by `recipient`. Verifies `sha256(b"fc:airdrop:v1" || [campaign] || wallet || amount_le)` against `campaign_account.merkle_root` before `expires_at` (`AirdropClosed` if expired or burned, `BadMerkleProof` on mismatch), enforces campaign allocation (`EmissionCap`) and per-wallet lifetime airdrop cap (`2,000 * UNIT`, `WalletCap`), records `receipt` PDA `[b"airdrop", &[campaign], wallet]` and `wallet_airdrop` PDA `[b"wallet-airdrop", wallet]`, and transfers `amount` from `airdrop_vault`.
+- Accounts: recipient, config, campaign_account, honk_mint, authority, airdrop_vault, recipient_honk, receipt, wallet_airdrop, token_program, system_program, associated_token_program.
 
 `burn_unclaimed(campaign: u8)`
 
-- Only `config.emitter` may call it after `clock.unix_timestamp >= campaign_state.expires_at`. Burns `campaign_state.allocation - campaign_state.claimed` from `airdrop_vault` and marks `burned = true`.
-- Accounts: emitter, config, campaign_state, honk_mint, authority, airdrop_vault, token_program.
+- Permissionless (`payer` signer) once `clock.unix_timestamp >= campaign_account.expires_at` (`TooEarly` before expiry, `AirdropClosed` if already burned). Burns `campaign_account.allocation - campaign_account.claimed` (`ZeroAmount` if 0) from `airdrop_vault` and marks `burned = true`.
+- Accounts: payer, config, campaign_account, honk_mint, authority, airdrop_vault, token_program.
 
 `claim_treasury` / `claim_team` pay the vested delta to the recipient stored at initialize. Nothing vested is `TooEarly`. Team off is `TeamDisabled`. There is no cancel and no change of recipient.
 

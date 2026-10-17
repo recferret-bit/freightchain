@@ -22,7 +22,7 @@ Until TGE the PostgreSQL ledger is the source of truth. The UI calls the balance
 | Treasury | 10,000,000 | 36 months linear, cliff 0 |
 | Team | 8,000,000 | 12-month cliff, then 24 months linear (`team_enabled = true`, `team_linear_months = 24`) |
 
-`team_enabled` must be `true` with `team_linear_months = 24` and a non-default recipient at `initialize` (any other combination returns `BadVest`). The 8,000,000 sit in the team vault (`claim_team`, PDA `[b"team"]`, `TEAM_CLIFF_MONTHS = 12`, `TEAM_LINEAR_MONTHS = 24`). Vesting is in the program (non-cancelable, recipient immutable). A month is 30 days.
+`team_enabled` must be `true` (else `TeamDisabled`) with a non-default recipient (else `BadAuthority`) and `team_linear_months = 24` (else `BadVest`) at `initialize`. The 8,000,000 sit in the team vault (`claim_team`, PDA `[b"team"]`, `TEAM_CLIFF_MONTHS = 12`, `TEAM_LINEAR_MONTHS = 24`). Vesting is in the program (non-cancelable, recipient immutable). A month is 30 days.
 
 Mint authority is set to none in `initialize`. Freeze authority on the fungible mint is omitted. There is no Metaplex account in this program (LiteSVM has no metadata program). Config stores the name and symbol bytes. At TGE the Metaplex metadata must copy those bytes with `is_mutable = false` and the update authority cleared.
 
