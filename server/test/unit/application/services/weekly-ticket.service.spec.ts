@@ -37,8 +37,8 @@ describe('WeeklyTicketService', () => {
   it('spends the matching tier once, and refuses offer or claim if geo becomes ineligible after issuance', async () => {
     const ctx = unitContext();
     const player = await ctx.accept('w');
-    expect(await ctx.weekly.offer(player, CA, ctx.now())).not.toBeNull();
-    expect(await ctx.weekly.offer(player, { 'cf-ipcountry': 'DE' }, ctx.now())).toBeNull();
+    expect(await ctx.weekly.offer(player, CA, ctx.now())).toHaveLength(1);
+    expect(await ctx.weekly.offer(player, { 'cf-ipcountry': 'DE' }, ctx.now())).toEqual([]);
     expect(await ctx.weekly.claim(player, { 'cf-ipcountry': 'DE' }, '1h', 'ride-blocked', ctx.now(), tx)).toBe(false);
     expect(await ctx.weekly.claim(player, CA, '4h', 'ride-other', ctx.now(), tx)).toBe(false);
     expect(await ctx.weekly.claim(player, CA, '1h', 'ride-1', ctx.now(), tx)).toBe(true);
