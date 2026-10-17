@@ -73,16 +73,18 @@ export class ConfirmDonationHandler implements ICommandHandler<ConfirmDonationCo
   private async deliver(order: DonationOrder, signature: string, now: Date): Promise<RideEvent> {
     const ride = await this.rides.findById(order.rideId);
     const live = !!ride && ride.isInStatus(RideStatus.Running) && !ride.isStaleRunning(now, this.rules.get());
-    const effectsOn = !!ride && liveFeatures(this.rules.get().live, ride).effects;
+    const rankedBlocks = !!ride?.ranked && EFFECTS[order.effect].game;
+    const effectsOn = !!ride && liveFeatures(this.rules.get().live, ride).effects && !rankedBlocks;
     const paid = { orderId: order.id, signature, lamports: order.lamports };
     const make = (effect: EffectId, note: string | null) => RideEvent.donation({ rideId: order.rideId, wallet: order.wallet, effect, note, now, paid });
+    const tipWhy = !live ? 'arrived after the ride ended' : rankedBlocks ? 'is off on a ranked ride' : 'is off on this ride';
     const asTip = (reason: string) => make('tip', `${order.note ? `${order.note} – ` : ''}${EFFECTS[order.effect].game ? `${order.effect} ${reason}, delivered as a tip` : ''}`.slice(0, NOTE_MAX_LENGTH) || null);
     let event: RideEvent | null = null;
     if (EFFECTS[order.effect].game && live && effectsOn) {
       event = await this.events.insert(make(order.effect, order.note), EFFECT_WINDOW_MS);
       if (!event) { const dup = await this.events.findBySignature(signature); if (dup) return dup; }
       if (!event) event = await this.events.insert(asTip('came inside another effect\'s 20 s'));
-    } else event = await this.events.insert(EFFECTS[order.effect].game ? asTip(live ? 'is off on this ride' : 'arrived after the ride ended') : make(order.effect, order.note));
+    } else event = await this.events.insert(EFFECTS[order.effect].game ? asTip(tipWhy) : make(order.effect, order.note));
     const inserted = event !== null;   // this call wrote the event (a racing delivery of the same transfer finds it below and counts nothing)
     event ??= await this.events.findBySignature(signature);   // a racing delivery of the same transfer won
     if (!event) throw new ConflictError('the donation could not be recorded – confirm again', 'retry');

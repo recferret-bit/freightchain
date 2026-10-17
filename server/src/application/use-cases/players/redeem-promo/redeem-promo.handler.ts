@@ -22,10 +22,10 @@ import { withVersionRetry } from '../../../services/version-retry.js';
 import { RedeemPromoCommand, type PromoRedeemedDto } from './redeem-promo.command.js';
 
 /**
- * Redeem a promo code – one transaction under the wallet's player lock, whatever the effect: free tickets into a pool (an off-chain grant – it never counts towards
- * the pool's on-chain minimum) or extra free rides. A cosmetic code is refused (`visuals_are_honk`) — cab colours are minted by burning HONK. Everything that can refuse is checked BEFORE a redemption is taken, so a wallet
- * already at the pool's cap does not burn one; the redemption itself is one atomic UPDATE (two wallets never both get the last one,
- * nothing before `startsAt`) and the (code, wallet, n) key enforces the per-wallet limit.
+ * Redeem a promo code – one transaction under the wallet's player lock. A ride code grants one 1h, 4h or 8h shift (not a purchase, no TEN4). A ticket code grants
+ * free tickets into a pool (an off-chain grant – it never counts towards the pool's on-chain minimum). A retired free-ride code and a cosmetic code are refused
+ * before a redemption is taken. Everything that can refuse is checked BEFORE a redemption is taken, so a wallet already at the pool's cap does not burn one; the
+ * redemption itself is one atomic UPDATE (two wallets never both get the last one, nothing before `startsAt`) and the (code, wallet, n) key enforces the per-wallet limit.
  */
 @CommandHandler(RedeemPromoCommand)
 export class RedeemPromoHandler implements ICommandHandler<RedeemPromoCommand, PromoRedeemedDto> {
@@ -50,6 +50,7 @@ export class RedeemPromoHandler implements ICommandHandler<RedeemPromoCommand, P
       const now = this.clock.now();
       const player = await this.players.findByWalletForUpdate(wallet, tx);
       if (!player) throw new NotFoundError('player not found');
+      if (player.guest) throw new ConflictError('a guest session can only play the EASY run', 'guest_easy_only');
       const promo = await this.promos.findByCode(code, tx);
       if (!promo) throw new NotFoundError('no such promo code');
       const used = await this.promos.countRedemptions(code, wallet, tx);
@@ -58,7 +59,7 @@ export class RedeemPromoHandler implements ICommandHandler<RedeemPromoCommand, P
       const e = promo.effect;
       const label = describeEffect(e);
       // refuse BEFORE burning a redemption; `apply` runs after it is taken
-      const apply = await this.prepare(e, wallet, now, tx);
+      const apply = await this.prepare(e, wallet, used, now, tx);
       if (!(await this.promos.takeRedemption(code, now, tx))) throw new ConflictError('this promo code has been fully redeemed', 'promo_unavailable');
       if (!(await this.promos.insertRedemption(code, wallet, used + 1, now, tx))) throw new ConflictError('you have already redeemed this promo code', 'promo_unavailable');
       return { result: await apply(player, code, label), n: used + 1, now };
@@ -68,15 +69,15 @@ export class RedeemPromoHandler implements ICommandHandler<RedeemPromoCommand, P
   }
 
   /** Checks what the effect needs and returns the step that grants it. */
-  private async prepare(e: PromoEffect, wallet: string, now: Date, tx: TransactionHandle): Promise<(player: Player, code: string, label: string) => Promise<PromoRedeemedDto>> {
-    if (e.kind === 'free_rides') {
-      return async (player, code, label) => {
-        player.grantFreeRides(e.count);
-        await this.players.save(player, tx);
-        return { kind: 'free_rides', code, label, added: e.count, freeRides: player.freeRides };
+  private async prepare(e: PromoEffect, wallet: string, used: number, now: Date, tx: TransactionHandle): Promise<(player: Player, code: string, label: string) => Promise<PromoRedeemedDto>> {
+    if (e.kind === 'free_rides') throw new ConflictError('extra free-ride codes are retired', 'promo_retired');
+    if (e.kind === 'cosmetic') throw new ConflictError('cab visuals are minted by burning TEN4', 'visuals_are_honk');
+    if (e.kind === 'ride') {
+      return async (_player, code, label) => {
+        await this.promos.insertGrant({ code, wallet, n: used + 1, tier: e.tier, rideId: null, createdAt: now }, tx);
+        return { kind: 'ride', code, label, tier: e.tier };
       };
     }
-    if (e.kind === 'cosmetic') throw new ConflictError('cab visuals are minted by burning HONK', 'visuals_are_honk');
     const pool = await this.targetPool(e, now, tx);
     const held = (await this.tickets.find(wallet, pool.id, tx))?.balance ?? 0;
     if (held >= pool.maxPerWallet) throw new ConflictError(`you already hold the maximum of ${pool.maxPerWallet} tickets in this pool`, 'ticket_cap');

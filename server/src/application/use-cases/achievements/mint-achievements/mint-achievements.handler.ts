@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { ACHIEVEMENT_BY_ID, ACHIEVEMENTS } from '../../../../domain/achievements/achievements.js';
-import { SKIP_DEMO_WALLET, SKIP_NO_LONGER_EARNED, type AchievementMintRecord } from '../../../../domain/achievements/achievement-mint.js';
+import { SKIP_DEMO_WALLET, SKIP_GUEST_WALLET, SKIP_NO_LONGER_EARNED, type AchievementMintRecord } from '../../../../domain/achievements/achievement-mint.js';
 import { DomainError } from '../../../../domain/shared/errors.js';
 import { AchievementMintChainPort } from '../../../ports/achievements/achievement-mint-chain.port.js';
 import { AchievementMintRepositoryPort } from '../../../ports/achievements/achievement-mint.repository.port.js';
@@ -10,6 +10,7 @@ import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { achievementMinted, achievementMintFailed } from '../../../services/analytics-events.js';
+import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { AchievementService } from '../../../services/achievement.service.js';
 import { isDemoWallet } from '../../../services/demo.js';
 import { MintAchievementsCommand, type MintPassDto } from './mint-achievements.command.js';
@@ -39,6 +40,7 @@ export class MintAchievementsHandler implements ICommandHandler<MintAchievements
     private readonly rules: RulesConfigPort,
     private readonly analytics: AnalyticsPort,
     private readonly clock: ClockPort,
+    private readonly players: PlayerRepositoryPort,
   ) {}
 
   async execute(cmd: MintAchievementsCommand): Promise<MintPassDto> {
@@ -75,7 +77,12 @@ export class MintAchievementsHandler implements ICommandHandler<MintAchievements
     const ids = ACHIEVEMENTS.filter((a) => a.measure && this.chain.metadataUri(a.id)).map((a) => a.id);
     const due = await this.mints.listUnqueued(new Date(now.getTime() - delayMs), ids, QUEUE_READ);
     const rules = this.rules.get();
-    return this.mints.enqueue(due.map((u) => ({ wallet: u.wallet, achievementId: u.achievementId, skip: isDemoWallet(rules, u.wallet) ? SKIP_DEMO_WALLET : null })), now);
+    const guests = new Set<string>();
+    for (const u of due) {
+      if (guests.has(u.wallet) || isDemoWallet(rules, u.wallet)) continue;
+      if ((await this.players.findByWallet(u.wallet))?.guest) guests.add(u.wallet);
+    }
+    return this.mints.enqueue(due.map((u) => ({ wallet: u.wallet, achievementId: u.achievementId, skip: isDemoWallet(rules, u.wallet) ? SKIP_DEMO_WALLET : guests.has(u.wallet) ? SKIP_GUEST_WALLET : null })), now);
   }
 
   /** a transaction already sent: 'minted' | 'failed' (attempts ran out) | 'waiting' */

@@ -23,7 +23,7 @@ const CHAIN = [
   { c: '#b98cff', st: 'BUILT', h: 'Soulbound NFTs', big: '31 BADGES', p: 'Earned from verified rides. Compressed NFTs, frozen in your wallet.', extra: ACH_ICON,
     why: 'Reputation you cannot buy. A badge proves what you actually drove, and it cannot be sold or lent.',
     fit: 'Unlocks are append-only. A separate key mints them later, after a re-check that skips rejected rides. Frozen means nobody can thaw them.' },
-  { c: '#ffffff', st: 'SPEC · NOT LIVE', h: 'HONK', big: '100M CAP', p: 'A capped meme coin, minted only for the distance a verified paid ride reached: 20, 50 and 100 % checkpoints.', small: 'An in-game ledger for now · not a chain mint',
+  { c: '#ffffff', st: 'SPEC · NOT LIVE', h: 'TEN4', big: '100M CAP', p: 'A capped coin, minted only for the distance a verified paid ride reached: 20, 50 and 100 % checkpoints. HONK stays the chat-line verb.', small: 'Ledger points until launch · not a chain mint',
     why: 'A reason to keep driving beyond the prize pool: a score that is yours, and a currency to spend on the cab.',
     fit: 'Minted only on verified paid rides. Burn 1 in chat, 65 / 260 for cab visuals. SOL still buys tickets; the pool maths never change.' },
   { c: '#6fb0ff', st: 'DEVNET · PUBLIC', h: 'Blinks', big: 'BUY IN A LINK', p: 'Solana Actions turn a link into a ticket purchase, in any client that can show a Blink.', small: '/actions.json · /api/actions',
@@ -55,8 +55,8 @@ const PLAN = [
     more: 'Load-test the API and the replay worker, close every audit finding, then a third-party audit of the escrow program.' },
   { k: 'COMMUNITY', sub: 'players and streamers', c: '#b98cff', from: 1, to: 4, t: 'Streamers · Discord · weekly challenges', n: 'build in public, every week',
     more: 'People before money: streamer partnerships, a Discord and weekly challenges, so the first pools already have an audience.' },
-  { k: 'TOKEN LAUNCH', sub: 'HONK', c: '#ffffff', from: 4, to: 4, t: 'HONK on chain', n: 'genesis → pool',
-    more: 'An SPL mint: 100M cap, 2M to the pool, 98M earned by rides.' },
+  { k: 'TOKEN LAUNCH', sub: 'TEN4', c: '#ffffff', from: 4, to: 4, t: 'TEN4 on chain', n: 'liquidity → pool',
+    more: 'An SPL mint: 100M cap, 15M to the pool, 55M earned by rides.' },
   { k: 'PAID EVENTS', sub: 'backed by us', c: '#ff5a4d', from: 2, to: 4, t: 'Funded prize pools · streamer cups', n: 'we seed the pool',
     more: 'We fund the prizes: marketing rides and streamer cups, so a pool never opens empty and the stream has a reason to exist.' },
   { k: 'AI MODS', sub: 'community-made content', c: '#ff9ad5', from: 3, to: 4, t: 'AI-built mods via MCP · storybook', n: 'vehicles, props, landmarks',
@@ -80,8 +80,8 @@ const EXITS = [
     more: 'Marketing rides and streamer cups: we put up the prize through the escrow\'s sponsor(). Free to enter, real SOL to win, refunded to us if it fails.' },
   { t: 'Creator garage', s: 'paid access to community creations', when: 'JAN',
     more: 'Players build trucks, props and landmarks with AI over MCP in the storybook. Others pay to unlock them; the creator gets a cut.' },
-  { t: 'HONK listing', s: 'the token, listed', when: 'FEB', sol: true,
-    more: 'After the audit and mainnet: HONK on chain, then a DEX listing. 100M cap, earned only by verified distance.' },
+  { t: 'TEN4 listing', s: 'the token, listed', when: 'FEB', sol: true,
+    more: 'After the audit and mainnet: TEN4 on chain, then a DEX listing. 100M cap, earned only by verified distance.' },
 ];
 /* the truck that drives to the exit you look at: a side view facing right (trailer, red cab with an exhaust stack, four wheels with a spoke each, so they visibly turn) */
 const TRUCK = `<svg viewBox="0 0 184 74" aria-hidden="true"><rect x="2" y="6" width="118" height="46" rx="5" fill="#ece6d3"/><text x="61" y="35" text-anchor="middle" font-family="Anton,Impact,sans-serif" font-size="15" fill="#050505" letter-spacing="1">FREIGHT CHAIN</text><rect x="127" y="0" width="5" height="17" rx="2" fill="#9a9a9a"/><path d="M124 54V22a7 7 0 0 1 7-7h23l22 22v17z" fill="#ff3b2f"/><path d="M154 20h-19v15h33z" fill="#bfe6ff"/><rect x="0" y="52" width="178" height="6" rx="2" fill="#2b2b2b"/>${[22, 48, 140, 164].map(x => `<g class="wh"><circle cx="${x}" cy="60" r="10" fill="#111" stroke="#777" stroke-width="3"/><path d="M${x} 52v16" stroke="#777" stroke-width="2"/></g>`).join('')}</svg>`;
@@ -197,7 +197,7 @@ export const SLIDES = [
       </div>
       <div class="exits">
         <div class="row">${EXITS.map((x, i) => `<div class="exit${x.sol ? ' sol' : ''}" style="--i:${i}"><div class="sign"><div class="f"><span class="tab">EXIT ${i + 1}</span><b>${x.t}</b><small>${x.s}</small><em><i>↗</i>${x.when}</em></div><div class="bk"><span class="tab">EXIT ${i + 1}</span><p>${x.more}</p></div></div><i class="post"></i><i class="post"></i></div>`).join('')}</div>
-        <div class="hwy"><i class="lane"></i><canvas class="warp" aria-hidden="true"></canvas><div class="truck" title="Honk">${TRUCK}</div><span class="honks">HONK MINED <b>0</b> / 100,000,000 CAP</span></div>
+        <div class="hwy"><i class="lane"></i><canvas class="warp" aria-hidden="true"></canvas><div class="truck" title="Honk">${TRUCK}</div><span class="honks">TEN4 MINED <b>0</b> / 100,000,000 CAP</span></div>
         <div class="lanes-ctl"><button type="button" class="ln up" aria-label="Change to the far lane">▲</button><button type="button" class="ln dn" aria-label="Change to the near lane">▼</button></div>
       </div>` },
 ];

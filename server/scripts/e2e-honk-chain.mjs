@@ -10,14 +10,15 @@ import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { PrismaClient } from '@prisma/client';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
-import { burn, buyPart, honkBalance, initialize, mintRide, mintState, pdas, poolLamports, releaseLp, swapHonkForSol, swapSolForHonk, tokenAccount, vaultBalance } from './honk-program.mjs';
+import { burn, buyPart, emissionBalance, honkBalance, initialize, mintRide, mintState, pdas, poolLamports, swapHonkForSol, swapSolForHonk, tokenAccount, vaultBalance } from './honk-program.mjs';
 
 const RPC = process.env.RPC;
 const KEYS = process.env.KEYS;
 const BASE = process.env.BASE;
 const SCENARIO = process.env.SCENARIO || 'all';
 const UNIT = 1_000_000n;
-const GENESIS = 2_000_000n * UNIT;
+const SUPPLY = 100_000_000n * UNIT;
+const LIQUIDITY = 15_000_000n * UNIT;
 const SERVER = fileURLToPath(new URL('..', import.meta.url));
 const fails = [];
 const show = (v) => JSON.stringify(v, (_, x) => (typeof x === 'bigint' ? x.toString() : x));
@@ -57,8 +58,9 @@ async function frozenTransferRefused({ payer, mint, owner, dest }) {
   }
 }
 
-const outFor = (honkReserve, solReserve, solIn) => (honkReserve * solIn) / (solReserve + solIn);
-const solFor = (honkReserve, solReserve, honkIn) => (solReserve * honkIn) / (honkReserve + honkIn);
+const netOf = (amount) => (amount * 9975n) / 10000n;
+const outFor = (honkReserve, solReserve, solIn) => { const net = netOf(solIn); return (honkReserve * net) / (solReserve + net); };
+const solFor = (honkReserve, solReserve, honkIn) => { const net = netOf(honkIn); return (solReserve * net) / (honkReserve + net); };
 
 async function chain() {
   const payer = load('payer');
@@ -67,36 +69,40 @@ async function chain() {
   const ids = pdas();
   writeFileSync(join(KEYS, 'mint-address.txt'), `${ids.honkMint.toBase58()}\n`);
   const SOL = 1_000_000_000n;
-  const opened = 10n * SOL;
+  const opened = 50n * SOL;
   await initialize({ rpc: RPC, payer, solIn: opened });
   const minted = await mintState({ rpc: RPC });
   const vault0 = await vaultBalance({ rpc: RPC });
   const lamports = await poolLamports({ rpc: RPC });
-  check('genesis supply', minted.supply === GENESIS, String(minted.supply));
-  check('genesis vault', vault0 === GENESIS, String(vault0));
-  check('mint authority', minted.mintAuthority === ids.authority.toBase58(), minted.mintAuthority || '');
+  const lp = await mintState({ rpc: RPC, mint: ids.lpMint });
+  check('premint supply', minted.supply === SUPPLY, String(minted.supply));
+  check('pool vault is the liquidity bucket', vault0 === LIQUIDITY, String(vault0));
+  check('mint authority none', minted.mintAuthority === null, minted.mintAuthority || '');
   check('mint not freezable', minted.freezeAuthority === null, minted.freezeAuthority || '');
+  check('lp burned', lp.supply === 0n && lp.mintAuthority === null, String(lp.supply));
   check('pool sol', lamports >= Number(opened), String(lamports));
   const rideId = Buffer.alloc(16, 7);
   const vaultBeforeRide = await vaultBalance({ rpc: RPC });
+  const emissionBefore = await emissionBalance({ rpc: RPC });
   const supplyBeforeRide = minted.supply;
-  await mintRide({ rpc: RPC, emitter: payer, rider: player.publicKey, rideId, amount: 100n * UNIT });
+  await mintRide({ rpc: RPC, emitter: payer, rider: player.publicKey, rideId, tier: 1, bands: 0b111 });
   const afterRide = await honkBalance({ rpc: RPC, owner: player.publicKey });
   const supplyAfterRide = (await mintState({ rpc: RPC })).supply;
-  check('ride mint', afterRide === 100n * UNIT && supplyAfterRide === supplyBeforeRide + 100n * UNIT, `${afterRide} supply ${supplyAfterRide}`);
-  check('ride mint leaves the vault', (await vaultBalance({ rpc: RPC })) === vaultBeforeRide, String(vaultBeforeRide));
+  check('ride mint', afterRide === 100n * UNIT && supplyAfterRide === supplyBeforeRide, `${afterRide} supply ${supplyAfterRide}`);
+  check('ride mint leaves the pool vault', (await vaultBalance({ rpc: RPC })) === vaultBeforeRide, String(vaultBeforeRide));
+  check('ride mint pays the emission vault', emissionBefore - (await emissionBalance({ rpc: RPC })) === 100n * UNIT, String(emissionBefore));
   let replay = '';
-  try { await mintRide({ rpc: RPC, emitter: payer, rider: player.publicKey, rideId, amount: 100n * UNIT }); replay = 'minted twice'; } catch (e) { replay = ''; }
+  try { await mintRide({ rpc: RPC, emitter: payer, rider: player.publicKey, rideId, tier: 1, bands: 0b111 }); replay = 'minted twice'; } catch (e) { replay = ''; }
   check('ride mint once', replay === '', replay);
   const playerIn = SOL;
-  const playerOut = outFor(GENESIS, opened, playerIn);
+  const playerOut = outFor(LIQUIDITY, opened, playerIn);
   await swapSolForHonk({ rpc: RPC, user: player, solIn: playerIn, minOut: playerOut });
   const playerBal = await honkBalance({ rpc: RPC, owner: player.publicKey });
   const vault1 = await vaultBalance({ rpc: RPC });
   check('swap player', playerBal === playerOut + 100n * UNIT, `${playerBal} vs ${playerOut}`);
   check('swap vault', vault0 - vault1 === playerOut, `${vault0} -> ${vault1}`);
   const specIn = SOL / 10n;
-  const specOut = outFor(GENESIS - playerOut, opened + playerIn, specIn);
+  const specOut = outFor(LIQUIDITY - playerOut, opened + playerIn, specIn);
   await swapSolForHonk({ rpc: RPC, user: spectator, solIn: specIn, minOut: specOut });
   const specBal = await honkBalance({ rpc: RPC, owner: spectator.publicKey });
   const vault2 = await vaultBalance({ rpc: RPC });
@@ -107,10 +113,10 @@ async function chain() {
   const supplyAfter = await mintState({ rpc: RPC });
   const vault3 = await vaultBalance({ rpc: RPC });
   check('burn player', burnedBal === playerBal - 100n * UNIT, String(burnedBal));
-  check('burn supply', supplyAfter.supply === GENESIS, String(supplyAfter.supply));
+  check('burn supply', supplyAfter.supply === SUPPLY - 100n * UNIT, String(supplyAfter.supply));
   check('burn vault', vault3 === vault2, `${vault2} -> ${vault3}`);
   const sellIn = UNIT;
-  const honkReserve = GENESIS - playerOut - specOut;
+  const honkReserve = LIQUIDITY - playerOut - specOut;
   const solReserve = opened + playerIn + specIn;
   const solOut = solFor(honkReserve, solReserve, sellIn);
   const lamportsBeforeSell = await poolLamports({ rpc: RPC });
@@ -122,14 +128,6 @@ async function chain() {
   const vaultSold = await vaultBalance({ rpc: RPC });
   check('sell honk back', soldBal === burnedBal - sellIn && vaultSold === vault3 + sellIn, `${burnedBal} -> ${soldBal} vault ${vaultSold}`);
   check('sell pays sol', (await poolLamports({ rpc: RPC })) === lamportsBeforeSell - Number(solOut), String(solOut));
-  let early = '';
-  try {
-    await releaseLp({ rpc: RPC, payer });
-    early = 'release landed';
-  } catch (e) {
-    early = await txErrorText(e);
-  }
-  check('release too early', /TooEarly|6002|0x1772/i.test(early), early.slice(0, 400));
   const beforePart = await honkBalance({ rpc: RPC, owner: player.publicKey });
   const bought = await buyPart({ rpc: RPC, buyer: player, slot: 'wheel', item: 'gold' });
   const afterPart = await honkBalance({ rpc: RPC, owner: player.publicKey });

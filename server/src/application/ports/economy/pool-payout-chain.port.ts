@@ -4,7 +4,7 @@ export interface SignedPayout {
   lastValidBlockHeight: number;
 }
 
-/** Attestation.status (programs/freightchain-pools constants.rs) */
+/** Attestation.status (programs/freightchain_pools/src/constants.rs) */
 export const ATTESTATION_UNVERIFIED = 0;
 export const ATTESTATION_VERIFIED = 1;
 export const ATTESTATION_FLAGGED = 2;

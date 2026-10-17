@@ -7,6 +7,7 @@ describe('live features (LIVE_* flags resolved per ride)', () => {
 
   it('all / off per paid ride; free rides have all features disabled; no donations = no effects; free donations off = paid on chain', () => {
     expect(liveFeatures(flags(), paid)).toEqual({ chat: true, donations: true, payment: 'mock', effects: true });
+    expect(liveFeatures(flags(), { isFree: false, ranked: true })).toEqual({ chat: true, donations: true, payment: 'mock', effects: false });
     expect(liveFeatures(flags(), free)).toEqual({ chat: false, donations: false, payment: 'mock', effects: false });
     expect(liveFeatures(flags({ chat: 'free', effects: 'free' }), paid)).toMatchObject({ chat: false, effects: false });
     expect(liveFeatures(flags({ chat: 'off', effects: 'off' }), paid)).toMatchObject({ chat: false, effects: false });
@@ -26,9 +27,9 @@ describe('live features (LIVE_* flags resolved per ride)', () => {
 
   it('withoutMuted: a muted wallet\'s lines vanish and its notes blank; everyone else is untouched', () => {
     const e = (id: number, kind: 'message' | 'donation' | 'honk', wallet: string, text: string | null): RideEventDto => ({ id, kind, wallet, text, effect: kind === 'message' ? null : kind === 'honk' ? 'night' : 'sinkhole', lamports: 0, at: 0, applied: null, signature: null });
-    const weather = { ...e(5, 'honk', 'troll', 'Burned 25 HONK'), effect: 'snow' as const };
-    const feed = [e(1, 'message', 'troll', 'boo'), e(2, 'donation', 'troll', 'note'), e(3, 'message', 'fan', 'hi'), e(4, 'honk', 'troll', 'Burned 10 HONK'), weather];
+    const weather = { ...e(5, 'honk', 'troll', 'Burned 25 TEN4'), effect: 'snow' as const };
+    const feed = [e(1, 'message', 'troll', 'boo'), e(2, 'donation', 'troll', 'note'), e(3, 'message', 'fan', 'hi'), e(4, 'honk', 'troll', 'Burned 10 TEN4'), weather];
     expect(withoutMuted(feed, new Set())).toBe(feed);
-    expect(withoutMuted(feed, new Set(['troll'])).map((x) => [x.id, x.text])).toEqual([[2, null], [3, 'hi'], [4, 'Burned 10 HONK'], [5, 'Burned 25 HONK']]);
+    expect(withoutMuted(feed, new Set(['troll'])).map((x) => [x.id, x.text])).toEqual([[2, null], [3, 'hi'], [4, 'Burned 10 TEN4'], [5, 'Burned 25 TEN4']]);
   });
 });

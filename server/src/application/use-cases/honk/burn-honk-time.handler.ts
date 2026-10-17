@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { RideEvent } from '../../../domain/live/ride-event.entity.js';
 import { EFFECT_WINDOW_MS } from '../../../domain/live/live-rules.js';
-import { formatHonk, HONK_TIME_BURN } from '../../../domain/honk/tokenomics.js';
+import { formatHonk, HONK_TIME_BURN, TOKEN_SYMBOL } from '../../../domain/honk/tokenomics.js';
 import { ConflictError } from '../../../domain/shared/errors.js';
 import { HonkRepositoryPort } from '../../ports/honk/honk.repository.port.js';
 import { PlayerRepositoryPort } from '../../ports/players/player.repository.port.js';
@@ -15,13 +15,14 @@ import { LiveAccessService } from '../../services/live-access.service.js';
 import { effectBusy } from '../live/post-ride-event/post-ride-event.handler.js';
 import { requireHonkBurn } from './honk-chain.js';
 
-export class BurnHonkTimeCommand {
+class BurnHonkTimeCommand {
   constructor(public readonly wallet: string, public readonly rideId: string, public readonly phase: 'day' | 'night', public readonly signature?: string) {}
 }
+export { BurnHonkTimeCommand };
 
 export interface HonkTimeBurnResult { balance: string; pays: string; phase: 'day' | 'night' }
 
-/** Burns 10 HONK and posts a day or night change on the ride's effect window. Not a donation: the driver is not paid, and a refused line is refunded. */
+/** Burns 10 TEN4 and posts a day or night change on the ride's effect window. Not a donation: the driver is not paid, and a refused line is refunded. */
 @CommandHandler(BurnHonkTimeCommand)
 export class BurnHonkTimeHandler implements ICommandHandler<BurnHonkTimeCommand, HonkTimeBurnResult> {
   private readonly logger = new Logger(BurnHonkTimeHandler.name);
@@ -42,10 +43,10 @@ export class BurnHonkTimeHandler implements ICommandHandler<BurnHonkTimeCommand,
     await this.access.requirePostable(rideId, wallet, { kind: 'honk-time' }, now);   // paid, live, not the driver, not muted. Not a donation, so LIVE_EFFECTS does not gate it.
     await requireHonkBurn(this.chain, signature, wallet, HONK_TIME_BURN);
     const burnId = this.entropy.uuid();
-    const text = `Burned ${formatHonk(HONK_TIME_BURN)} HONK`;
+    const text = `Burned ${formatHonk(HONK_TIME_BURN)} ${TOKEN_SYMBOL}`;
     await this.transactions.run(async (tx) => {
       await this.players.findByWalletForUpdate(wallet, tx);
-      if (!(await this.honk.debit(wallet, HONK_TIME_BURN, now, tx))) throw new ConflictError('not enough HONK', 'honk_balance');
+      if (!(await this.honk.debit(wallet, HONK_TIME_BURN, now, tx))) throw new ConflictError(`not enough ${TOKEN_SYMBOL}`, 'honk_balance');
       await this.honk.insertBurn({ id: burnId, wallet, amount: HONK_TIME_BURN, kind: 'time', ref: `${rideId}:${phase}`, createdAt: now }, tx);
     });
     const event = () => RideEvent.honkPhase({ rideId, wallet, phase, text, now });

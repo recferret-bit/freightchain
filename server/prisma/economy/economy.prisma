@@ -133,15 +133,16 @@ model PoolPayout {
   @@schema("economy")
 }
 
-// A promo code has ONE effect (kind): tickets (an off-chain grant into a pool - a sponsored entry; it does not count towards the pool's minimum), free_rides
-// (extra free rides, may exceed freeRidesMax) or cosmetic (unlocks + equips a wheel / truck colour / gearbox). Immutable once created, apart from disabledAt.
+// A promo code has ONE effect (kind): ride (one free 1h/4h/8h shift, not a purchase), tickets (an off-chain grant into a pool - a sponsored entry; it does
+// not count towards the pool's minimum), free_rides (retired; old rows still load) or cosmetic (old unlocks). Immutable once created, apart from disabledAt.
 model PromoCode {
   code           String            @id // stored upper-case without spaces; redeemed case-insensitively
-  kind           String            @default("tickets") // tickets | free_rides | cosmetic
+  kind           String            @default("tickets") // ride | tickets | free_rides | cosmetic
   poolId         Int? // tickets: null = the newest open/active pool of `tier`
-  tier           String? // tickets
+  tier           String? // ride or tickets: 1h | 4h | 8h
   credits        Int? // tickets: tickets per redemption
-  freeRides      Int? // free_rides: rides per redemption
+  freeRides      Int? // free_rides: rides per redemption (retired; kept so an old row still loads)
+  grants         PromoRideGrant[]
   cosmeticSlot   String? // cosmetic
   cosmeticItem   String? // cosmetic
   description    String? // player-facing text
@@ -168,6 +169,21 @@ model PromoRedemption {
   @@id([code, wallet, n])
   @@index([wallet])
   @@index([at])
+  @@schema("economy")
+}
+
+// One unspent or spent ride from a `ride` promo. The redemption row stays even after the ride is created. rideId null = still waiting to be ordered.
+model PromoRideGrant {
+  code      String
+  wallet    String
+  n         Int
+  tier      String
+  rideId    String?   @unique
+  createdAt DateTime
+  promo     PromoCode @relation(fields: [code], references: [code])
+
+  @@id([code, wallet, n])
+  @@index([wallet, tier, rideId])
   @@schema("economy")
 }
 
@@ -265,7 +281,7 @@ model Pledge {
   @@schema("economy")
 }
 
-// HONK ledger (docs/honk/SPEC.md). Base units, 6 decimals. The emission counter is the ride mint, not the 2% genesis.
+// TEN4 ledger (docs/honk/SPEC.md). Base units, 6 decimals. Table names stay Honk*. The emission counter is reserved ride TEN4, pending 8h rows included.
 model HonkAccount {
   wallet    String   @id
   balance   BigInt   @default(0)
@@ -285,8 +301,12 @@ model HonkMint {
   band50    Boolean
   band100   Boolean
   createdAt DateTime
+  /// When an 8h reservation may credit the wallet. Rows from before the hold were already credited.
+  releaseAt DateTime @default(now())
+  released  Boolean  @default(true)
 
   @@index([wallet])
+  @@index([released, releaseAt])
   @@schema("economy")
 }
 

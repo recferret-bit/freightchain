@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const POCS = join(ROOT, 'audit/pocs');
 const SERVER = join(ROOT, 'server');
-const PROGRAM = join(ROOT, 'programs/freightchain-pools');
+const PROGRAM = join(ROOT, 'programs');
 const args = process.argv.slice(2);
 const withProgram = args.includes('--program');
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Level check – is every FREE LEVEL (client/js/trips.js free-1c / free-2c / free-3b: EASY / MEDIUM / HARD) passable by a human, and does each one mean
+// Level check – is every FREE LEVEL (client/js/trips.js free-1c / free-2c / free-3c: EASY / MEDIUM / HARD) passable by a human, and does each one mean
 // what its name says? Runs the REAL game modules in Node (stubbed three.js + a fake DOM, like client/tools/headless-test.mjs) on many seeds × routes:
 //   ROAD   the road a level's shift covers (its finish line + 40 %): junctions, forks, lanes, the sharpest bend, sinkholes – and for every sinkhole whether a
 //          driver who reacts to its warning sign HOLE_WARN m ahead can still stop or steer round it at the speed the road allows there.
@@ -9,7 +9,7 @@
 //          off-road, how long.
 //   VERDICT per level, against LIMITS below (the level's promise). Exit 1 if a level fails one – a road change that makes EASY need skill, or HARD impossible,
 //          fails here.
-// Usage (repo root): node .claude/skills/level-check/check.mjs [--levels free-1c,free-2c,free-3b] [--routes level|all|route66,siberia] [--seeds 6] [--react 1.0]
+// Usage (repo root): node .claude/skills/level-check/check.mjs [--levels free-1c,free-2c,free-3c] [--routes level|all|route66,siberia] [--seeds 6] [--react 1.0]
 //                    [--no-drive] [--no-road] [--care .8] [--verbose] [--only route66:39608 – one drive, with TRACE=1 a line per second]
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -30,7 +30,7 @@ const ONLY = arg('only', null), SEEDS = +arg('seeds', 6), REACT = +arg('react', 
 const LIMITS = {
   'free-1c': { name: 'EASY', road: { junctionsMin: 2, junctionsMax: 2, forksMax: 0, holesMax: 0, lanesMin: 2, radiusMin: 220 }, drive: { finishMin: 1, hullLostMax: 10, crashesMax: 0 } },
   'free-2c': { name: 'MEDIUM', road: { junctionsMin: 3, junctionsMax: 3, forksMin: 1, radiusMin: 90, trapsMax: 0 }, drive: { finishMin: .9, hullLostMax: 35, crashesMax: 0 } },
-  'free-3b': { name: 'HARD', road: { junctionsMin: 6, junctionsMax: 6, forksMin: 2, radiusMin: 55, trapsMax: 0 }, drive: { finishMin: .75, hullLostMax: 60, crashesMax: 1 } },
+  'free-3c': { name: 'HARD', road: { junctionsMin: 6, junctionsMax: 6, forksMin: 2, radiusMin: 55, trapsMax: 0 }, drive: { finishMin: .75, hullLostMax: 60, crashesMax: 1 } },
 };
 const levels = arg('levels', Object.keys(LIMITS).join(',')).split(',');
 

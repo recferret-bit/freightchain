@@ -15,7 +15,7 @@ const ITEM_NAME = {
   stock: 'Stock', amber: 'Amber', ice: 'Ice', silver: 'Silver', clear: 'Clear',
 };
 export const itemName = item => ITEM_NAME[item] ?? item;
-const KIND_ICON = { tickets: '🎟', free_rides: '⛟', cosmetic: '✦' };
+const KIND_ICON = { ride: '⛟', tickets: '🎟', free_rides: '⛟', cosmetic: '✦' };
 
 /** GET /api/promo/mine → the list. */
 export function redemptionList(rows) {

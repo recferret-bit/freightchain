@@ -1,4 +1,4 @@
-import { CFG } from '../config.js';
+import { CFG, TOKEN_SYMBOL } from '../config.js';
 import { fmt, store, mulberry32 } from '../util.js';
 import { st, clock, IDLE, resetDisp, rideStart, dn } from '../state.js';
 import { audio } from '../sim/audio.js';
@@ -59,7 +59,7 @@ const BAIL_BTN = {
   done: { id: 'bail-done', name: "I'M DONE", tip: 'landing' },
 };
 const bailBtn = kind => { const b = BAIL_BTN[kind]; return `<button type="button" class="alt bail-link" id="${b.id}" title="${b.tip}"><b>${b.name}</b><small>${b.tip}</small></button>`; };
-/* Guest run (play.html?offline=1): nobody is counted, recorded or judged – no request is made at all. The menu only picks the two helpers. */
+/* Tool sim (play.html?sim=1): nothing is recorded. The product page is a real EASY ride (easy-entry.js), not this menu. */
 const guestOpt = { tutorial: store.get('freightchain.guest-tutorial') !== '0', assist: store.get('freightchain.assist') !== '0' };
 function showOfflineMenu(title, sub, extra) {
   const again = !!extra;
@@ -89,13 +89,16 @@ export function showMenu(title, sub, extra = '') {
 /* online ride (play.html?ride=…): the server issued it, so no mock wallet here – START begins the server-timed ride, afterwards the only way on is the lobby.
    No key chart: tutorial and assist are chosen before the drive (the lobby, or the guest menu), and the tutorial dialog teaches the truck. */
 function showOnlineMenu(title, sub, extra) {
-  const over = online.done, bad = !!online.error;
+  const over = online.done, bad = !!online.error, canRank = !!(online.ride && (online.ride.tier !== 'free' || online.ride.promo));
   panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}
     ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Finish line</span><b>${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>
     <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>
     ${online.ride?.poolId != null ? '<div class="row"><span>Road</span><b class="seal">checking the seal…</b></div>' : ''}`}
+    ${over || bad || !canRank ? '' : `<label class="row" style="cursor:pointer"><span>RANKED – this start counts for the weekly board (5 paid, including a granted ticket, plus 1 promo ride). Spectator weather, day and night, and road obstacles are refused. Chat HONK stays.</span><input type="checkbox" id="ranked-toggle" ${store.get('freightchain.ranked') === '1' ? 'checked' : ''}></label>`}
     <div class="btns">${over || bad ? `${over && online.ride ? '<button type="button" class="alt share-x-btn" id="share-x-end" title="Share your ride on 𝕏"><b>POST ON 𝕏</b><small>share progress & receipt</small></button>' : ''}<button class="alt bail-link" id="lobby" title="lobby" style="margin-left:auto"><b>${lastOutcome?.ok ? 'BACK TO THE LOBBY' : 'I MISS THE YARD'}</b><small>lobby</small></button>` : '<button id="go">START RIDE</button>'}</div>`;
   overlay.classList.remove('hide');
+  const rankedBox = document.getElementById('ranked-toggle');
+  if (rankedBox) rankedBox.onchange = (e) => { store.set('freightchain.ranked', e.target.checked ? '1' : '0'); };
   const go = document.getElementById('go');
   if (go) go.onclick = startRide;
   const lobby = document.getElementById('lobby');
@@ -137,9 +140,15 @@ export async function startRide() {   // only an online ride awaits the server
   audio.start();   // inside this click, before the server round-trip: WebKit will not resume a context created after the await, and `start` has to begin decoding
   if (online.ride) {
     track('ride_start_clicked', { ride_id: online.ride.id, route_id: env.theme.id, phase: dn.phase });
-    try { await beginOnline(); } catch (e) {
-      online.error = e.message;
+    const canRank = !!(online.ride.tier !== 'free' || online.ride.promo);
+    try { await beginOnline({ ranked: canRank && store.get('freightchain.ranked') === '1' }); } catch (e) {
       track('ride_start_failed', { ride_id: online.ride.id, http_status: typeof e.status === 'number' ? e.status : null, code: typeof e.code === 'string' ? e.code : null });
+      if (e.code === 'ranked_ineligible' || e.code === 'ranked_training' || e.code === 'guest_easy_only' || e.code === 'ranked_window' || e.code === 'ranked_promo_cap' || e.code === 'ranked_paid_cap') {
+        store.set('freightchain.ranked', '0');
+        showMenu('RANKED REFUSED', e.message || 'Uncheck RANKED to drive this run unranked.');
+        return;
+      }
+      online.error = e.message;
       if (e.code === 'rides_closed') { online.done = true; showMenu('RIDES CLOSED', 'This pool counts only shifts that end by its play deadline – one started now could not reach the line in time. Your ticket stays in the pool.'); }   // the server closed the ride: nothing to end
       else showMenu('RIDE REFUSED', 'The server did not accept this ride.');
       return;
@@ -215,9 +224,10 @@ const verdictText = v => {
 function honkLines(h) {
   if (!h || h.state === 'none') return null;
   const bands = Array.isArray(h.bands) ? h.bands.map(b => `${b.pct}${b.reached ? ' ✓' : ''}`).join(' · ') : '';
-  if (h.state === 'preview') return { k: 'HONK if this ride verifies', v: `${h.quote} HONK`, k2: bands ? 'Bands' : '', v2: bands };
-  if (h.state === 'minted') return { k: 'Minted', v: `${h.pays} HONK` };
-  if (h.state === 'withheld') return { k: 'Verification did not pass', v: '0', k2: 'A pass would have paid', v2: `${h.quote} HONK` };
+  if (h.state === 'preview') return { k: 'Points if this ride verifies', v: `${h.quote} ${TOKEN_SYMBOL}`, k2: bands ? 'Bands' : '', v2: bands };
+  if (h.state === 'pending') return { k: 'Held for the verdict', v: `${h.quote} ${TOKEN_SYMBOL}`, k2: 'Credits after 48 hours', v2: '' };
+  if (h.state === 'minted') return { k: 'Minted', v: `${h.pays} ${TOKEN_SYMBOL}` };
+  if (h.state === 'withheld') return { k: 'Verification did not pass', v: '0', k2: 'A pass would have paid', v2: `${h.quote} ${TOKEN_SYMBOL}` };
   return null;
 }
 const paintHonkInto = (lineId, moreId, h) => {
@@ -249,7 +259,7 @@ function mountHonk() {
     d.append(s, b); return d;
   };
   const box = document.createElement('div');
-  box.id = 'honk-hud'; box.hidden = true; box.setAttribute?.('aria-label', 'HONK');
+  box.id = 'honk-hud'; box.hidden = true; box.setAttribute?.('aria-label', TOKEN_SYMBOL);
   box.append(line('honk-line'), line('honk-line-more'));
   document.body.append(box);
 }

@@ -2,10 +2,16 @@
    Every change is signed by the admin's wallet for exactly that change (ctx.signAt → the server's text → the wallet) and audited.
    Server text goes in with textContent only – ctx.el never touches innerHTML. */
 
-/* key, camelCase field on GET /api/admin/settings, label, hint, min, max. Free-ride knobs stay 0..100_000. Each referral knob has its own range. */
+/* key, camelCase field on GET /api/admin/settings, label, hint, min, max. Free-ride knobs stay 0..100_000. Each knob has its own range. */
 export const SETTING_KNOBS = [
-  ['free_on_signup', 'freeOnSignup', 'Free rides on sign-up', 'what a new wallet starts with; existing wallets are not topped up', 0, 100_000],
-  ['free_rides_daily_max', 'freeRidesDailyMax', 'Daily refill cap', 'the +1 at 00:00 UTC stops here and never takes a surplus away', 0, 100_000],
+  ['weekly_ticket_1h_enabled', 'weeklyTicket1hEnabled', '1h granted ticket', '0 off, 1 on. Default on. Not a purchase. Does not mint TEN4', 0, 1],
+  ['weekly_ticket_1h_days', 'weeklyTicket1hDays', '1h grant interval (days)', 'how often one 1h ticket is granted. At least 1. Default 7', 1, 100_000],
+  ['weekly_ticket_4h_enabled', 'weeklyTicket4hEnabled', '4h granted ticket', '0 off, 1 on. Default off', 0, 1],
+  ['weekly_ticket_4h_days', 'weeklyTicket4hDays', '4h grant interval (days)', 'how often one 4h ticket is granted. At least 1. Default 7, and the flag is off', 1, 100_000],
+  ['weekly_ticket_8h_enabled', 'weeklyTicket8hEnabled', '8h granted ticket', '0 off, 1 on. Default off', 0, 1],
+  ['weekly_ticket_8h_days', 'weeklyTicket8hDays', '8h grant interval (days)', 'how often one 8h ticket is granted. At least 1. Default 7, and the flag is off', 1, 100_000],
+  ['free_on_signup', 'freeOnSignup', 'Free rides on sign-up (retired)', 'stored only. Training rides are unlimited and do not spend this', 0, 100_000],
+  ['free_rides_daily_max', 'freeRidesDailyMax', 'Daily refill cap (retired)', 'the midnight refill no longer runs. The column stays', 0, 100_000],
   ['referral_max', 'referralMax', 'Invite cap', 'the most invites one wallet can hold', 1, 1000],
   ['referral_invite_start', 'referralInviteStart', 'Invites at the start', 'how many invites a wallet has before any verified paid shift', 0, 1000],
   ['referral_invite_step', 'referralInviteStep', 'Invites each step', 'extra invites earned each time the step is reached', 0, 1000],

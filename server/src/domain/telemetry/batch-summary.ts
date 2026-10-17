@@ -49,6 +49,8 @@ export interface BatchSummary {
   /** the samples against the server's road (world-facts.ts): hole passes, off-road spells, speed gained without gas. Measured when the batch was accepted;
       null = not measured (a batch stored before the server rebuilt the road, re-summarised from its payload without the ride's seed) */
   world: WorldFacts | null;
+  /** the last clean s before the first sample in this batch with hull < 100 (absent = every sample in this batch has hull >= 100) */
+  firstDamageS?: number;
 }
 
 export interface Step { ds: number; dt: number; t: number; over: number }
@@ -70,6 +72,8 @@ export function summariseBatch(seq: number, t0: number, t1: number, samples: rea
   const out: BatchSummary = { v: SUMMARY_VERSION, samples: samples.length, first: null, last: null, maxSpeed: 0, worstStep: null, fault: null, inputs: inputs.map((e) => [e[0], e[1], e[2]]), world: plan && !unsafe ? measureWorld(samples, plan, prefix) : null };
   if (unsafe) { out.fault = { code: 'bad-sample', detail: unsafe }; return out; }
   let prev: readonly number[] | null = null, gap = 0, ds = 0, vdt = 0, firstV = 0, gasEdges: number | null = 0, gasWas = false, dupT = 0, bucket = Number.NaN;
+  let firstDamageS: number | null = null;
+  const prefixCleanS = prefix.at(-1)?.[1] ?? 0;
   const print: [number, number][] = [];
   for (const row of samples) {
     const [t = NaN, s = NaN, , , v = NaN] = row;
@@ -82,6 +86,7 @@ export function summariseBatch(seq: number, t0: number, t1: number, samples: rea
       out.fault ??= { code: 'sample-out-of-order', detail: `the truck moved ${round(Math.abs(s - (prev[1] ?? 0)), 10)} m in no time at t=${t} s in batch ${seq}` };
       break;
     }
+    if (firstDamageS === null && (row[7] ?? 100) < 100) firstDamageS = round(prev ? (prev[1] ?? 0) : prefixCleanS, 10);
     out.first ??= [round(t, 1000), round(s, 1000)]; // 3 decimals: the client rounds its rows already; a stored JSON number must read back equal
     out.last = [round(t, 1000), round(s, 1000)];
     out.maxSpeed = Math.max(out.maxSpeed, v);
@@ -107,6 +112,7 @@ export function summariseBatch(seq: number, t0: number, t1: number, samples: rea
     out.dupT = dupT;
     out.print = print;
     if (samples.length > 1) out.gap = round(gap, 1000);
+    if (firstDamageS !== null) out.firstDamageS = firstDamageS;
   }
   return out;
 }
@@ -131,6 +137,7 @@ export function parseSummary(raw: unknown): BatchSummary | null {
   return {
     v: SUMMARY_VERSION, samples: s.samples, first: s.first ?? null, last: s.last ?? null, maxSpeed: s.maxSpeed, worstStep: s.worstStep ?? null, ...(s.forkStep ? { forkStep: s.forkStep } : {}), fault: s.fault ?? null, inputs: s.inputs as InputEvent[],
     ...(num(s.gap) ? { gap: s.gap } : {}), ...(num(s.dupT) ? { dupT: s.dupT } : {}), ...(Array.isArray(s.print) && s.print.every(pair) ? { print: s.print } : {}), ...(pair(s.edgeV) ? { edgeV: s.edgeV } : {}), ...motion, ...(s.gasEdges === null || num(s.gasEdges) ? { gasEdges: s.gasEdges } : {}),
+    ...(num(s.firstDamageS) ? { firstDamageS: s.firstDamageS } : {}),
     world: parseWorldFacts(s.world),
   };
 }

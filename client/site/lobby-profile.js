@@ -1,5 +1,5 @@
 import { api } from './wallet.js';
-import { promoError, promoOk, sol, shortAddr as short } from './pools.js';
+import { promoError, promoOk, rideError, sol, shortAddr as short } from './pools.js';
 import { profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
 import { agreementsCard } from './lobby-agreements.js';
@@ -7,6 +7,8 @@ import { redemptionList } from './lobby-promo.js';
 import { referralSection } from './lobby-referral.js';
 import { $, el } from './dom.js';
 import { SITE_BASE } from '../js/hosts.js';
+import { TOKEN_SYMBOL } from '../js/config.js';
+import { isMobileDevice, showMobileToast } from '../js/mobile.js';
 import { track } from '../js/analytics.js';
 import { formatDriver, seedSns } from './sns.js';
 
@@ -17,12 +19,21 @@ const REVIEW = { under_review: ['UNDER REVIEW', 'warn'], accepted: ['ACCEPTED', 
 const rideCheck = r => r.review ? el('b', { class: REVIEW[r.review]?.[1] ?? 'warn', title: 'paid rides are reviewed before prizes are paid' }, ` · ${REVIEW[r.review]?.[0] ?? String(r.review).toUpperCase()}`)
   : r.verdict ? el('b', { class: r.verdict === 'verified' ? 'good' : 'bad', title: 'recording check – only verified shifts rank' }, ` · ${r.verdict.toUpperCase()}`) : '';
 
-export function createProfileTab({ S, view, getSeq, bumpMeGen, paintHeader, refreshMe, refund, km, avatar, ROUTES, TIER_NAME }) {
+export function createProfileTab({ S, view, getSeq, bumpMeGen, paintHeader, refreshMe, refund, play, km, avatar, ROUTES, TIER_NAME }) {
+  async function startPromoRide(tier) {
+    if (isMobileDevice()) { showMobileToast({ liveAction: () => { location.hash = '#live'; }, replaysAction: () => { location.hash = '#replays'; } }); return; }
+    try { play(await api('rides', { tier }), tier); } catch (e) { const m = $('promo-msg'); if (m) { m.textContent = rideError(e, tier); m.className = 'msg bad'; } }
+  }
+
   async function paintPromoLists() {
     const my = getSeq(), mine = await api('promo/mine', undefined, { report: false }).catch(e => e);
     if (my !== getSeq()) return;
     const codes = $('mycodes'); if (!codes) return;
-    codes.replaceChildren(mine instanceof Error ? el('p', { class: 'bad' }, `Could not load your codes (${mine.message}).`) : redemptionList(mine.redemptions));
+    if (mine instanceof Error) { codes.replaceChildren(el('p', { class: 'bad' }, `Could not load your codes (${mine.message}).`)); return; }
+    const grants = Array.isArray(mine.grants) ? mine.grants : [];
+    codes.replaceChildren(
+      ...grants.map(g => el('p', {}, el('button', { type: 'button', id: `promo-start-${g.tier}`, onclick: () => startPromoRide(g.tier) }, `Start free ${g.tier} ride`), el('span', { class: 'dim' }, ` from ${g.code}. Not a purchase, and it does not mint ${TOKEN_SYMBOL}.`))),
+      redemptionList(mine.redemptions));
   }
 
   async function redeem(e) {
@@ -33,7 +44,7 @@ export function createProfileTab({ S, view, getSeq, bumpMeGen, paintHeader, refr
     track('promo_redeem_clicked', { surface: 'profile', prefilled: !!S.invited && code.replace(/\s+/g, '').toUpperCase() === S.invited }); S.invited = null;
     go.disabled = true; show('Redeeming…', 'dim');
     try {
-      const r = await api('promo/redeem', { code }); input.value = ''; show(promoOk(r), 'good'); if (r.kind === 'tickets') S.focus = r.tier;
+      const r = await api('promo/redeem', { code }); input.value = ''; show(promoOk(r), 'good'); if (r.kind === 'tickets' || r.kind === 'ride') S.focus = r.tier;
       await refreshMe();
       S.garage = null;
       if (S.tab === 'profile') await paintPromoLists();
@@ -46,7 +57,7 @@ export function createProfileTab({ S, view, getSeq, bumpMeGen, paintHeader, refr
     paintPromoLists();
     return [el('h2', {}, 'PROMO CODES'),
       el('form', { class: 'promo-form', id: 'promo', autocomplete: 'off', onsubmit: redeem }, input, el('button', { id: 'promo-go', type: 'submit' }, 'REDEEM'), el('p', { class: 'msg dim', id: 'promo-msg', role: 'status' })),
-      el('p', { class: 'dim' }, 'Tickets and free rides. Cab parts are minted by burning HONK in the ', el('a', { href: '#garage' }, 'garage →')),
+      el('p', { class: 'dim' }, `A ride code gives one 1h, 4h or 8h shift, free of charge. It is not sold and it does not mint ${TOKEN_SYMBOL}. Pool tickets are a separate grant. Cab parts are minted by burning ${TOKEN_SYMBOL} in the `, el('a', { href: '#garage' }, 'garage →')),
       el('div', { id: 'mycodes' }, el('p', { class: 'dim' }, 'Loading…'))];
   }
 

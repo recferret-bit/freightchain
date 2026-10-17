@@ -2,7 +2,7 @@ import { BadRequestError, ConflictError } from '../shared/errors.js';
 import type { PledgeChainEvent, PledgeProps, PledgeStatus } from './pledge.types.js';
 
 /**
- * The mirror of one Pledge account (programs/freightchain-pools pledge.rs). The money never moves here: the sponsor's wallet sends create_pledge, the payout
+ * The mirror of one Pledge account (programs/freightchain_pools/src/instructions/pledge.rs). The money never moves here: the sponsor's wallet sends create_pledge, the payout
  * key (or anyone) sends settle_pledge / refund_pledge, and this row only follows the program's events – it never computes a payout of its own.
  */
 export class Pledge {

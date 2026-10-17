@@ -45,8 +45,8 @@ export function mountEditor(viewer) {
     el('p', { text: 'Connect a wallet that is on the editor list to create and change models. Everyone else can look around.' }),
     el('button', { class: 'ed-btn', onpointerdown: () => prepareEditorSignIn(), onclick: () => signIn().catch(e => status(e.status === 404 ? 'this wallet is not on the editor list' : e.message, true)) }, 'CONNECT WALLET'));
   const tabs = el('div', { class: 'ed-tabs' }), body = el('div', { class: 'ed-body' }), entity = el('div', { class: 'ed-entity' });
-  const panel = el('div', { id: 'editor' },
-    el('div', { class: 'ed-head' }, el('b', { text: 'EDITOR' }), who, el('button', { class: 'ed-x', title: 'close', onclick: () => setOpen(false) }, '×')),
+  const panel = el('div', { id: 'editor', 'aria-hidden': 'true' },
+    el('div', { class: 'ed-head' }, el('b', { text: 'EDITOR' }), who, el('button', { class: 'ed-btn', title: 'hide the editor', 'aria-label': 'Hide the editor', onclick: () => setOpen(false) }, 'HIDE')),
     signin, entity, tabs, body, msg);
   document.body.append(panel);
 
@@ -55,7 +55,14 @@ export function mountEditor(viewer) {
   const showTab = t => { tab = t; for (const b of tabs.children) b.classList.toggle('on', b.dataset.t === t); body.textContent = ''; body.append(views[t].node); views[t].shown?.(); };
   for (const t of Object.keys(views)) tabs.append(el('button', { class: 'ed-tab', 'data-t': t, onclick: () => showTab(t) }, t));
 
-  function setOpen(open) { document.body.classList.toggle('editing', open); if (open && !st.me) { prepareEditorSignIn(); refreshMe(); } }
+  function setOpen(open) {
+    document.body.classList.toggle('editing', open);
+    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+    document.getElementById('editor-show')?.setAttribute('aria-expanded', String(open));
+    if (open && !st.me) { prepareEditorSignIn(); refreshMe(); }
+  }
+  document.documentElement.classList.add('editor-ready');
+  document.getElementById('editor-show')?.addEventListener('click', () => setOpen(true));
   function paintAuth() {
     signin.hidden = !!st.me; tabs.hidden = body.hidden = entity.hidden = !st.me;
     who.textContent = st.me ? short(st.me.wallet) : '';

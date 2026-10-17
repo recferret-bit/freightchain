@@ -50,11 +50,14 @@ describe('PromoCode – the effect', () => {
     expect(make(ticketEffect({ poolId: 7, credits: 3 }))().effect).toEqual({ kind: 'tickets', tier: '1h', poolId: 7, credits: 3 });
     for (const bad of [{ credits: 0 }, { credits: 1.5 }, { tier: 'free' }, { poolId: -1 }, { poolId: 1.5 }]) expect(make(ticketEffect(bad as never)), JSON.stringify(bad)).toThrow(BadRequestError);
   });
-  it('free rides: 1 to 20 whole rides', () => {
-    expect(make({ kind: 'free_rides', count: 3 })().effect).toEqual({ kind: 'free_rides', count: 3 });
-    for (const count of [0, 21, 1.5, -1]) expect(make({ kind: 'free_rides', count }), String(count)).toThrow(/free rides: 1–20/);
+  it('a ride code is one 1h, 4h or 8h shift, once per wallet; extra free rides are retired', () => {
+    expect(make({ kind: 'ride', tier: '8h' })().effect).toEqual({ kind: 'ride', tier: '8h' });
+    expect(make({ kind: 'ride', tier: 'free' })).toThrow(BadRequestError);
+    expect(() => PromoCode.create({ ...base, effect: { kind: 'ride', tier: '1h' }, perWallet: 2, now: NOW })).toThrow(/once per wallet/);
+    expect(make({ kind: 'free_rides', count: 3 })).toThrow(ConflictError);
+    try { make({ kind: 'free_rides', count: 3 })(); } catch (error) { expect(error).toMatchObject({ errorCode: 'promo_retired' }); }
   });
-  it('a cosmetic is not created any more – cab visuals are minted by burning HONK', () => {
+  it('a cosmetic is not created any more – cab visuals are minted by burning TEN4', () => {
     for (const effect of [
       { kind: 'cosmetic', slot: 'wheel', item: 'gold' },
       { kind: 'cosmetic', slot: 'wheel', item: 'classic' },

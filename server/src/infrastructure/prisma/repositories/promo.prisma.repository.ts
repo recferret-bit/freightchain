@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { PromoCode } from '../../../domain/economy/promo-code.entity.js';
-import { PromoRepositoryPort, type PromoRedemptionRecord } from '../../../application/ports/economy/promo.repository.port.js';
+import { PromoRepositoryPort, type PromoRedemptionRecord, type PromoRideGrantRecord } from '../../../application/ports/economy/promo.repository.port.js';
+import type { PaidTierId } from '../../../domain/rides/ride-tier.js';
 import type { TransactionHandle } from '../../../application/ports/shared/transaction.port.js';
 import { PromoMapper } from '../mappers/promo.mapper.js';
 import { clientFor, isUniqueViolation } from '../prisma-client.js';
@@ -56,5 +57,30 @@ export class PromoPrismaRepository extends PromoRepositoryPort {
 
   async listRedemptions({ code, wallet, limit }: { code?: string; wallet?: string; limit: number }, tx?: TransactionHandle): Promise<PromoRedemptionRecord[]> {
     return clientFor(this.prisma, tx).promoRedemption.findMany({ where: { ...(code ? { code } : {}), ...(wallet ? { wallet } : {}) }, orderBy: [{ at: 'desc' }, { code: 'asc' }, { n: 'desc' }], take: limit });
+  }
+
+  async insertGrant(grant: PromoRideGrantRecord, tx: TransactionHandle): Promise<void> {
+    await clientFor(this.prisma, tx).promoRideGrant.create({ data: grant });
+  }
+
+  async hasUnspent(wallet: string, tier: PaidTierId, tx?: TransactionHandle): Promise<boolean> {
+    const n = await clientFor(this.prisma, tx).promoRideGrant.count({ where: { wallet, tier, rideId: null } });
+    return n > 0;
+  }
+
+  async claimUnspent(wallet: string, tier: PaidTierId, rideId: string, tx: TransactionHandle): Promise<string | null> {
+    const rows = await clientFor(this.prisma, tx).$queryRaw<{ code: string }[]>`
+      UPDATE "economy"."PromoRideGrant" AS g SET "rideId" = ${rideId}
+      WHERE g."rideId" IS NULL AND (g.code, g.wallet, g.n) = (
+        SELECT code, wallet, n FROM "economy"."PromoRideGrant"
+        WHERE wallet = ${wallet} AND tier = ${tier} AND "rideId" IS NULL
+        ORDER BY "createdAt" ASC LIMIT 1 FOR UPDATE)
+      RETURNING g.code`;
+    return rows[0]?.code ?? null;
+  }
+
+  async listUnspent(wallet: string, tx?: TransactionHandle): Promise<PromoRideGrantRecord[]> {
+    const rows = await clientFor(this.prisma, tx).promoRideGrant.findMany({ where: { wallet, rideId: null }, orderBy: { createdAt: 'asc' } });
+    return rows.map((row) => ({ code: row.code, wallet: row.wallet, n: row.n, tier: row.tier as PaidTierId, rideId: row.rideId, createdAt: row.createdAt }));
   }
 }

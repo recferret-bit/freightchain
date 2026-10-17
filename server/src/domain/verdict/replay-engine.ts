@@ -100,7 +100,7 @@ export class ReplayEngine {
       if (!redFlags.some((x) => x.code === f.code && x.atSecond === f.atSecond)) redFlags.push(f);
     };
 
-    const rideFacts = { rideId: ride.id, driveSeconds: ride.driveSeconds, distance: ride.distance };
+    const rideFacts = { rideId: ride.id, driveSeconds: ride.driveSeconds, distance: ride.distance, ranked: ride.ranked, cleanMetres: ride.cleanMetres };
     const plan = roadPlanFor(ride.seed, ride.trip);
     for (const r of checkChain(rideFacts, facts)) {
       addFlag({ code: r.code, category: 'recording', severity: r.severity, detail: r.detail, atSecond: null, atMetre: null, evidence: null });
@@ -147,9 +147,10 @@ export class ReplayEngine {
         });
         continue;
       }
+      const effect = ev.effect;
       // Snow and clear move the cab. They are not holes and they do not move the clock.
-      if (ev.effect === 'snow' || ev.effect === 'clear') continue;
-      const holeType = EFFECT_TO_HOLE[ev.effect];
+      if (effect === 'snow' || effect === 'clear') continue;
+      const holeType = EFFECT_TO_HOLE[effect];
       if (holeType) {
         liveEventsCorrelated++;
         if (ev.applied.lat !== null) {
@@ -161,11 +162,11 @@ export class ReplayEngine {
             lat: ev.applied.lat,
             type: holeType,
             eventId: ev.id ?? 0,
-            effect: ev.effect,
+            effect,
             appliedT: ev.applied.t,
           });
         }
-      } else if (ev.effect === 'night' || ev.effect === 'day') {
+      } else if (effect === 'night' || effect === 'day') {
         const clockRow = rows.find((r) => r.length > SAMPLE_CLOCK_COL && r[SAMPLE_T_COL]! >= ev.applied!.t + 1.5 && r[SAMPLE_T_COL]! <= ev.applied!.t + 6);
         if (!clockRow) {
           liveEventsCorrelated++;

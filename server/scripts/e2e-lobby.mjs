@@ -55,7 +55,7 @@ await size(rider, 1100, 900, false); await size(obs, 1100, 900, false);
 // ── NEW RIDE
 await open(rider, A, `${BASE}/lobby.html#new`);
 check('lobby renders: one card per shift', await until(async () => (await rider.ev('document.querySelectorAll(".tier:not(.result)").length')) === 4));
-check('header shows the wallet, 10/5 free rides', (await rider.ev('document.getElementById("chip-wallet").textContent')) === A.short && /10\/5 free rides/.test(await rider.ev('document.getElementById("chip-free").textContent')), await rider.ev('document.getElementById("chip-free").textContent'));
+check('header shows the wallet and unlimited training', (await rider.ev('document.getElementById("chip-wallet").textContent')) === A.short && /training · unlimited/.test(await rider.ev('document.getElementById("chip-free").textContent')), await rider.ev('document.getElementById("chip-free").textContent'));
 const esc = (await get('pools')).pools.reduce((a, p) => a + p.vaultLamports, 0);
 check('top box: the escrow across the pools on sale', /IN ESCROW/.test(await txt(rider, '.pool .lbl')) && (await txt(rider, '.pool .big')) === sol(esc), await txt(rider, '.pool .big'));
 check('free card: START FREE RIDE', (await rider.ev('document.getElementById("start").textContent')) === 'START FREE RIDE');
@@ -82,15 +82,15 @@ check('free card: TUTORIAL and ASSIST are on for a new rider', (await rider.ev('
 await rider.ev('document.getElementById("opt-assist").click()'); await sleep(1300);   // a repaint (the 1 s tick) must keep the choice
 check('turning ASSIST off survives a repaint', (await rider.ev('document.getElementById("opt-assist").checked')) === false && (await rider.ev('document.getElementById("opt-tutorial").checked')) === true);
 await rider.ev('document.getElementById("opt-assist").click()');   // choose it on again before HARD temporarily locks both helpers off
-// the LEVEL picker (GET /api/tiers → levels; FREE_RIDE_SECONDS=3 → 3 s / 5 s / 15 s): EASY by default, HARD locks ASSIST off, the ride is free-3b
+// the LEVEL picker (GET /api/tiers → levels; FREE_RIDE_SECONDS=3 → 3 s / 15 s / 30 s): EASY by default, HARD locks ASSIST off, the ride is free-3c
 check('free card: a LEVEL picker EASY / MEDIUM / HARD, each a different country, EASY picked', (await rider.ev('[...document.querySelectorAll(".levels .lv b")].map(b => b.textContent).join(",")')) === 'EASY,MEDIUM,HARD' && (await rider.ev('[...document.querySelectorAll(".levels .cty")].map(n => n.textContent).join("|")')) === 'Australia|USA|Austria · Italy' && (await rider.ev('document.getElementById("level-1").checked')) === true && /EASY/.test(await txt(rider, '.lv.on b')) && /Stuart Highway/.test(await txt(rider, '.lv.on')) && /side-wind/.test(await txt(rider, '.lv.on')) && /0:03/.test(await txt(rider, '.lv.on')) && (await rider.ev('document.getElementById("free-shift") == null')) === true, await txt(rider, '#tier-free .levels') + ' | ' + await txt(rider, '.lv.on'));
 await rider.ev('document.getElementById("level-3").click()'); await sleep(300);
-check('HARD picked: the chip says so, TUTORIAL and ASSIST are unchecked + disabled, and each block keeps its own text', /HARD/.test(await txt(rider, '.lv.on b')) && /Brenner Pass/.test(await txt(rider, '.lv.on')) && /0:15/.test(await txt(rider, '.lv.on')) && (await rider.ev('document.getElementById("opt-tutorial").checked')) === false && (await rider.ev('document.getElementById("opt-tutorial").disabled')) === true && (await rider.ev('document.getElementById("opt-assist").checked')) === false && (await rider.ev('document.getElementById("opt-assist").disabled')) === true && /ignition/.test(await txt(rider, 'label[for="opt-tutorial"]')) && /twice as long/.test(await txt(rider, 'label[for="opt-assist"]')) && !/no assist on HARD/i.test(await txt(rider, '#tier-free .guide')), await txt(rider, '.lv.on') + ' | ' + await txt(rider, '#tier-free .guide'));
+check('HARD picked: the chip says so, TUTORIAL and ASSIST are unchecked + disabled, and each block keeps its own text', /HARD/.test(await txt(rider, '.lv.on b')) && /Brenner Pass/.test(await txt(rider, '.lv.on')) && /0:30/.test(await txt(rider, '.lv.on')) && (await rider.ev('document.getElementById("opt-tutorial").checked')) === false && (await rider.ev('document.getElementById("opt-tutorial").disabled')) === true && (await rider.ev('document.getElementById("opt-assist").checked')) === false && (await rider.ev('document.getElementById("opt-assist").disabled')) === true && /ignition/.test(await txt(rider, 'label[for="opt-tutorial"]')) && /twice as long/.test(await txt(rider, 'label[for="opt-assist"]')) && !/no assist on HARD/i.test(await txt(rider, '#tier-free .guide')), await txt(rider, '.lv.on') + ' | ' + await txt(rider, '#tier-free .guide'));
 await sleep(1300);
 check('…and the pick survives a repaint', (await rider.ev('document.getElementById("level-3").checked')) === true && (await rider.ev('document.getElementById("opt-tutorial").disabled')) === true && (await rider.ev('document.getElementById("opt-assist").disabled')) === true);
 await rider.shot('free-levels-hard');
 await rider.ev('document.getElementById("start").click()');
-check('START at HARD opens a ride on trip free-3b – 15 s, no tutorial, no assist, and the world is Brenner', await until(async () => await rider.ev('!!window.__game?.online?.ride && __game.online.ride.trip === "free-3b" && __game.online.ride.level === 3 && __game.online.ride.route === "brenner" && __game.weather.ambient === 3 && __game.weather.snow === 0.25 && /Brenner Pass/.test(document.getElementById("panel")?.textContent || "") && __game.online.ride.minSeconds === 15 && __game.online.ride.assist === false && __game.online.ride.tutorial === false && __game.trip.id === "free-3b"')), await rider.ev('JSON.stringify({ ride: window.__game?.online?.ride ?? null, weather: window.__game?.weather ?? null })'));
+check('START at HARD opens a ride on trip free-3c – 30 s, no tutorial, no assist, and the world is Brenner', await until(async () => await rider.ev('!!window.__game?.online?.ride && __game.online.ride.trip === "free-3c" && __game.online.ride.level === 3 && __game.online.ride.route === "brenner" && __game.weather.ambient === 3 && __game.weather.snow === 0.25 && /Brenner Pass/.test(document.getElementById("panel")?.textContent || "") && __game.online.ride.minSeconds === 30 && __game.online.ride.assist === false && __game.online.ride.tutorial === false && __game.trip.id === "free-3c"')), await rider.ev('JSON.stringify({ ride: window.__game?.online?.ride ?? null, weather: window.__game?.weather ?? null })'));
 const hardId = await rider.ev('__game.online.ride.id');
 await open(rider, A, `${BASE}/lobby.html`); await until(async () => !!(await rider.ev('document.getElementById("level-3")')));
 check('back in the lobby: HARD is remembered', (await rider.ev('document.getElementById("level-3").checked')) === true);
@@ -124,7 +124,7 @@ check('the finish line ends the free ride', await until(async () => await rider.
 check('server verdict COMPLETED + the recording check on the result screen', await until(async () => /^COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.getElementById("verdict")?.textContent || ""'))), await rider.ev('document.getElementById("verdict")?.textContent || ""'));
 await rider.ev('document.getElementById("lobby").click()');
 check('BACK TO LOBBY returns to the lobby', await until(async () => (await rider.ev('location.pathname')) === '/lobby.html'));
-check('…and the free-ride count dropped to 9/5', await until(async () => /9\/5 free rides/.test(await txt(rider, '#chip-free'))));
+check('…and training stays unlimited', await until(async () => /training · unlimited/.test(await txt(rider, '#chip-free'))));
 check('the finished free ride stays out of live', !(await get('live')).rides.some(r => r.id === freeRideId));
 
 // ── another signed-in lobby. 8h is not on sale and 1h/4h have pools, so this seed has no legacy order to recover.
@@ -178,8 +178,8 @@ check('PROFILE: stats + the ride in history', await until(async () => (await rid
 check('PROFILE: the ride in history carries its recording verdict', await until(async () => /COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await txt(rider, '.hist .hrow'))), await txt(rider, '.hist .hrow'));
 const rejected = /COMPLETED · REJECTED/.test(await txt(rider, '.hist .hrow'));
 await rider.ev('location.hash = "#achievements"');
-check('ACHIEVEMENTS: 38 badges in ten ladders plus legacy Top 20', await until(async () => (await rider.ev('document.querySelectorAll(".a, .ac").length')) === 39)
-  && (await rider.ev('document.querySelectorAll("#ach .fam").length')) === 10
+check('ACHIEVEMENTS: 44 badges in twelve ladders plus legacy Top 20', await until(async () => (await rider.ev('document.querySelectorAll(".a, .ac").length')) === 45)
+  && (await rider.ev('document.querySelectorAll("#ach .fam").length')) === 12
   && (await rider.ev(`!!document.querySelector('[data-id="honk-haul"]') && !!document.querySelector('[data-id="convoy-4"]')`)));
 const ach = await rider.ev('[...document.querySelectorAll(".a, .ac")].map(a => (a.classList.contains("lock") ? "-" : "+") + a.querySelector(".nm").textContent).join("|")');
 // The drive above sets the distance directly, so its recording is REJECTED; with the verdict enforced (this server's default) a rejected recording
@@ -209,14 +209,13 @@ await open(obs, P, `${BASE}/lobby.html#new`);
 check('PROMO: no code field in the header or on the NEW RIDE tab – it is in the PROFILE', await until(async () => (await obs.ev('document.getElementById("promo-code") === null && location.hash === "#new"')) === true));
 await obs.ev('location.hash = "#profile"');
 check('PROFILE: the code field + REDEEM sit in the promo codes section', await until(async () => (await obs.ev('!!document.querySelector("#view #promo #promo-code") && !!document.getElementById("promo-go")')) === true));
-check('PROFILE: the promo codes section – cab parts are HONK, no codes yet', await until(async () => /Cab parts are minted by burning HONK/.test(await txt(obs, '#view')) && /No codes redeemed yet/.test(await txt(obs, '#my-codes'))));
+check('PROFILE: the promo codes section – cab parts are TEN4, no codes yet', await until(async () => /Cab parts are minted by burning TEN4/.test(await txt(obs, '#view')) && /No codes redeemed yet/.test(await txt(obs, '#my-codes'))));
 check('PROFILE: referral code and three gift paints render', await until(async () => /^[A-Z2-9]{8}$/.test(await txt(obs, '#ref-code')))
   && (await obs.ev('document.querySelectorAll("#ref-box .ref-gifts button").length')) === 3);
 const promoGo = async code => { await obs.ev(`document.getElementById("promo-code").value = ${JSON.stringify(code)}; document.getElementById("promo-go").click()`); await until(async () => !/Redeeming/.test(await txt(obs, '#promo-msg')) && (await txt(obs, '#promo-msg')) !== ''); return txt(obs, '#promo-msg'); };
-check('PROMO: THREE → +3 free rides, the chip shows 13/5 (above the daily cap)', /^\+3 free rides \(THREE\) · you now have 13/.test(await promoGo('three')) && await until(async () => /13\/5 free rides/.test(await txt(obs, '#chip-free'))), await txt(obs, '#chip-free'));
-check('PROMO: …and the next daily credit is not counted down (at / above the cap)', /full/.test(await txt(obs, '#chip-free')), await txt(obs, '#chip-free'));
-check('PROMO: THREE again is refused with the reason', /already redeemed/.test(await promoGo('THREE')), await txt(obs, '#promo-msg'));
-check('PROMO: the list shows the free-ride code', await until(async () => /THREE.*3 free rides/.test(await txt(obs, '#my-codes'))), await txt(obs, '#my-codes'));
+check('PROMO: THREE (retired extra free rides) is refused and training stays unlimited', /retired|extra free-ride/.test(await promoGo('three')) && /training · unlimited/.test(await txt(obs, '#chip-free')), await txt(obs, '#promo-msg') + ' | ' + await txt(obs, '#chip-free'));
+check('PROMO: THREE again is still refused', /retired|extra free-ride/.test(await promoGo('THREE')), await txt(obs, '#promo-msg'));
+check('PROMO: a refused code is not listed', await until(async () => /No codes redeemed yet/.test(await txt(obs, '#my-codes'))), await txt(obs, '#my-codes'));
 await creditHonk(P.address, 390); // gold wheel 260, blue paint 65, pink dice 65
 const gold = await mintPart(P, 'wheel', 'gold');
 check('HONK: burning 260 mints the gold wheel and wears it', gold.r.status === 200 && gold.j.nft?.item === 'gold' && gold.j.balance === '130', JSON.stringify(gold.j));
@@ -230,12 +229,12 @@ check('GARAGE: the three referral paints are gifts, with no burn purchase', awai
   return p?.classList.contains('lock') && p.querySelector('.pr')?.textContent === 'Referral gift';
 })`));
 await obs.ev(`${part('truck_color', 'convoy')}.click()`);
-check('GARAGE: a referral paint explains qualification without a HONK burn button', await until(async () => /through an invite/.test(await txt(obs, '#garage-detail')))
+check('GARAGE: a referral paint explains qualification without a TEN4 burn button', await until(async () => /through an invite/.test(await txt(obs, '#garage-detail')))
   && (await obs.ev('document.getElementById("garage-burn") === null')));
-check('GARAGE: an owned part says it was minted by burning HONK; the default says everybody has it; the preview is there', /Minted by burning HONK/.test(await obs.ev(`${part('wheel', 'gold')}.title`)) && /Everybody has this one/.test(await obs.ev(`${part('wheel', 'classic')}.title`)) && (await obs.ev('!!document.querySelector("#garage-preview canvas")')) === true);
+check('GARAGE: an owned part says it was minted by burning TEN4; the default says everybody has it; the preview is there', /Minted by burning TEN4/.test(await obs.ev(`${part('wheel', 'gold')}.title`)) && /Everybody has this one/.test(await obs.ev(`${part('wheel', 'classic')}.title`)) && (await obs.ev('!!document.querySelector("#garage-preview canvas")')) === true);
 check('GARAGE: nothing to save yet (SAVE disabled)', (await obs.ev('document.getElementById("garage-save").disabled')) === true);
 await obs.ev(`${part('needle', 'cyan')}.click()`);
-check('GARAGE: a locked part can be looked at (description and burn price) and cannot be picked – the API refuses it too (409 not_owned, nothing saved)', await until(async () => /Preview only/.test(await txt(obs, '#garage-detail')) && /Burns 65 HONK/.test(await txt(obs, '#garage-detail')) && /Cyan needles/.test(await txt(obs, '#garage-detail'))) && (await obs.ev(`${part('needle', 'cyan')}.classList.contains('on')`)) === false && (await obs.ev('document.getElementById("garage-save").disabled')) === true && (await post('garage/loadout', { loadout: { needle: 'cyan', wheel: 'classic' } }, P.cookie)).r.status === 409 && (await get('garage', P.cookie)).equipped.wheel === 'gold');
+check('GARAGE: a locked part can be looked at (description and burn price) and cannot be picked – the API refuses it too (409 not_owned, nothing saved)', await until(async () => /Preview only/.test(await txt(obs, '#garage-detail')) && /Burns 65 TEN4/.test(await txt(obs, '#garage-detail')) && /Cyan needles/.test(await txt(obs, '#garage-detail'))) && (await obs.ev(`${part('needle', 'cyan')}.classList.contains('on')`)) === false && (await obs.ev('document.getElementById("garage-save").disabled')) === true && (await post('garage/loadout', { loadout: { needle: 'cyan', wheel: 'classic' } }, P.cookie)).r.status === 409 && (await get('garage', P.cookie)).equipped.wheel === 'gold');
 await obs.ev(`${part('wheel', 'classic')}.click()`);
 check('GARAGE: picking a part marks it SELECTED, enables SAVE / RESET and says "Not saved yet"', await until(async () => (await obs.ev(`${part('wheel', 'classic')}.classList.contains('on')`)) === true) && /SELECTED/.test(await obs.ev(`${part('wheel', 'classic')}.textContent`)) && (await obs.ev('document.getElementById("garage-save").disabled')) === false && /Not applied yet/.test(await txt(obs, '#garage-actions')));
 await obs.ev('document.getElementById("garage-reset").click()');
@@ -290,16 +289,16 @@ const toPools = async () => { await obs.ev('document.querySelectorAll(".rv").for
 await obs.shot('landing-desktop'); await toPools(); await obs.shot('landing-pools-desktop');
 await obs.ev('scrollTo({ top: 0, behavior: "instant" })'); await size(obs, 390, 844, true); await sleep(300); await obs.shot('landing-phone'); await toPools(); await obs.shot('landing-pools-phone');
 
-// ── the READY free ride at 0 credits: spend nine credits out of band, order the tenth (MEDIUM) and leave it unstarted – the lobby keeps START on and hands back THAT ride   (last: its nine burnt rides would crowd the finished one off the landing ticker – it shows the 8 newest)
+// ── a READY free ride after several finishes: training does not spend a balance. The lobby keeps START on and hands back THAT ride
 for (let i = 0; i < 9; i++) { const { j } = await post('rides', { tier: 'free' }, C.cookie); await post(`rides/${j.id}/start`, {}, C.cookie); await post(`rides/${j.id}/end`, { outcome: 'failed', s: 0, t: 0, reason: 'e2e' }, C.cookie); }
 const readyC = (await post('rides', { tier: 'free', level: 2 }, C.cookie)).j;
 const meC = await get('me', C.cookie);
-check('API: 0 free rides left, /api/me carries the ready free ride (id, level 2, trip free-2c)', meC.freeRides === 0 && meC.readyFreeRide?.id === readyC.id && meC.readyFreeRide.level === 2 && meC.readyFreeRide.trip === 'free-2c', JSON.stringify({ freeRides: meC.freeRides, ready: meC.readyFreeRide }));
+check('API: the signup balance is untouched and /api/me carries the ready free ride (id, level 2, trip free-2c)', meC.freeRides === 10 && meC.readyFreeRide?.id === readyC.id && meC.readyFreeRide.level === 2 && meC.readyFreeRide.trip === 'free-2c', JSON.stringify({ freeRides: meC.freeRides, ready: meC.readyFreeRide }));
 await open(third, C, `${BASE}/lobby.html?ready=1#new`);   // a new query: the same URL with only a hash would not reload the page (no fresh /api/me)
-check('0/5 free rides, yet START is ENABLED and says the ride is ready; MEDIUM is preselected from the ride', await until(async () => /^0\/5 free rides/.test(await txt(third, '#chip-free')) && (await third.ev('document.getElementById("start")?.disabled')) === false && (await txt(third, '#start')) === 'START FREE RIDE · ready' && (await third.ev('document.getElementById("level-2")?.checked')) === true), `${await txt(third, '#chip-free')} | ${await txt(third, '#start')}`);
+check('training stays unlimited and START is ENABLED and says the ride is ready; MEDIUM is preselected from the ride', await until(async () => /training · unlimited/.test(await txt(third, '#chip-free')) && (await third.ev('document.getElementById("start")?.disabled')) === false && (await txt(third, '#start')) === 'START FREE RIDE · ready' && (await third.ev('document.getElementById("level-2")?.checked')) === true), `${await txt(third, '#chip-free')} | ${await txt(third, '#start')}`);
 await third.shot('free-ready-desktop');
 await third.ev('document.getElementById("start").click()');
-check('…START reopens the SAME ride (no credit spent, still 0)', await until(async () => await third.ev(`!!window.__game?.online?.ride && __game.online.ride.id === ${JSON.stringify(readyC.id)}`)) && (await get('me', C.cookie)).freeRides === 0, await third.ev('JSON.stringify(window.__game?.online?.ride?.id ?? null)'));
+check('…START reopens the SAME ride (no credit spent, balance still 10)', await until(async () => await third.ev(`!!window.__game?.online?.ride && __game.online.ride.id === ${JSON.stringify(readyC.id)}`)) && (await get('me', C.cookie)).freeRides === 10, await third.ev('JSON.stringify(window.__game?.online?.ride?.id ?? null)'));
 
 const p1 = problems(rider), p2 = problems(obs); check('no page errors (rider, observer)', !p1.length && !p2.length, [...p1, ...p2].join(' | '));
 console.log(`screenshots: ${rider.SHOTS}`);

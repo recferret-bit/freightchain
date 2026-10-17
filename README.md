@@ -163,7 +163,7 @@ The production replay worker was restarting at the read-only check. Its explicit
 | --- | --- | --- |
 | Landing and lobby | [freightchain.fun](https://freightchain.fun) | The pitch, live boards, sign-in |
 | Whitepaper | [whitepaper.freightchain.fun](https://whitepaper.freightchain.fun) | Rules, escrow, validation, streams, risks |
-| Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` is a guest run |
+| Game | [ride.freightchain.fun/play.html](https://ride.freightchain.fun/play.html) | The truck. A ride id comes from the lobby. Bare `play.html` starts the real EASY ride |
 | Ride receipt | `freightchain.fun/r/:id` | Live or finished ride, explorer link, X card. Open one from [REPLAYS](https://freightchain.fun/lobby.html#replays) |
 | Pitch deck | [pitchdeck.freightchain.fun](https://pitchdeck.freightchain.fun) | Eight playable slides. ← → in the floating tip (or the keys), F full screen; on a phone big corner buttons, one full screen button, full screen on the first tap, and an ask for motion sensors (allowed, the spawned SOL falls with the tilt). Live |
 | Model viewer | [storybook.freightchain.fun](https://storybook.freightchain.fun) | The meshes; the 3D model editor for listed wallets (`EDITOR_WALLETS`) |
@@ -176,7 +176,7 @@ Landing chapters: [RIDE](https://freightchain.fun/#ride), [LOOP](https://freight
 
 ## Ten minutes
 
-One minute: open the [landing](https://freightchain.fun) and press PLAY FREE RIDE NOW. That is the guest run. No wallet, nothing recorded.
+One minute: open the [landing](https://freightchain.fun) and press PLAY FREE RIDE NOW. That starts the real EASY ride. No wallet: an anonymous session. Progress on it does not merge into a later sign-in.
 
 1. Read the hero. The page says devnet, and that the SOL there is not mainnet money. It also says the $5, $15 and $50 shifts are soon. That line stays until a pool of that tier is open.
 2. Open the [whitepaper](https://whitepaper.freightchain.fun). Escrow is on devnet and not audited. The garage is a lobby tab: paint, wheel, gearbox, dice, needles. It does not change the handling.
@@ -197,10 +197,10 @@ Each row is something a reviewer can open. The limit is in the same row as the c
 
 | What | Solana piece | What it does, and what it does not | Code |
 | --- | --- | --- | --- |
-| Road seed | `create_pool` / `open_next_pool` read the newest SlotHashes entry and store `SHA-256(pool id as little-endian u32 ‖ slot hash ‖ slot as little-endian u64)` | No caller passes the seed. Everyone in the pool drives the road derived from that commitment. The program does not draw the road itself | [`create_pool.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/create_pool.rs) · [`provable-seed.ts`](server/src/domain/road/provable-seed.ts) |
+| Road seed | `create_pool` / `open_next_pool` read the newest SlotHashes entry and store `SHA-256(pool id as little-endian u32 ‖ slot hash ‖ slot as little-endian u64)` | No caller passes the seed. Everyone in the pool drives the road derived from that commitment. The program does not draw the road itself | [`create_pool.rs`](programs/freightchain_pools/src/instructions/create_pool.rs) · [`provable-seed.ts`](server/src/domain/road/provable-seed.ts) |
 | Recording root | RFC 6962 Merkle tree over the ride's accepted batch hashes | The attestation names which recording it covers. The program does not recompute the drive | [`telemetry-merkle.ts`](server/src/domain/telemetry/telemetry-merkle.ts) |
-| Prize gate | `Attestation` PDA `[attestation, pool account, driver]`: root, verified km, verified or flagged. `pay_prize` requires VERIFIED and verified km above 0 | The admin or the payout key signs it. Either key may also sign `pay_prize`. Recording does not wait for `payout_at`. Paying does. It is the server's verdict, not a proof of the physics | [`settle.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/settle.rs) |
-| Per-km pledge | `Pledge` `[pledge, ride_id, sponsor]`. The sponsor signs `create_pledge` | A VERIFIED attestation pays `cap × min(verified km, target) / target`. FLAGGED pays 0. If paying the driver would leave that account under rent, the sponsor gets the cap back. `refund_pledge` returns the cap only when the pool is refunding, cancelled, or settled, or still active 14 days after `payout_at`, and there is no verified or flagged attestation. Neither instruction checks a review window. Both are permissionless | [`pledge.rs`](programs/freightchain-pools/programs/freightchain_pools/src/instructions/pledge.rs) |
+| Prize gate | `Attestation` PDA `[attestation, pool account, driver]`: root, verified km, verified or flagged. `pay_prize` requires VERIFIED and verified km above 0 | The admin or the payout key signs it. Either key may also sign `pay_prize`. Recording does not wait for `payout_at`. Paying does. It is the server's verdict, not a proof of the physics | [`settle.rs`](programs/freightchain_pools/src/instructions/settle.rs) |
+| Per-km pledge | `Pledge` `[pledge, ride_id, sponsor]`. The sponsor signs `create_pledge` | A VERIFIED attestation pays `cap × min(verified km, target) / target`. FLAGGED pays 0. If paying the driver would leave that account under rent, the sponsor gets the cap back. `refund_pledge` returns the cap only when the pool is refunding, cancelled, or settled, or still active 14 days after `payout_at`, and there is no verified or flagged attestation. Neither instruction checks a review window. Both are permissionless | [`pledge.rs`](programs/freightchain_pools/src/instructions/pledge.rs) |
 | Sign-in | `solana:signIn` (CAIP-122), Wallet Standard | One prompt where the wallet supports it. Older wallets fall back to connect plus `signMessage`. The server checks the fields it issued and burns `nonce:<nonce>` on the first try | [`wallet.js`](client/site/wallet.js) · [`sign-in.ts`](server/src/domain/auth/sign-in.ts) |
 | .sol names | SPL Name Service on mainnet, read with `@solana/web3.js` | Server cache: a hit for 24 h, a miss for 30 min. Shown on leaderboards, the profile, and `/r/:id` when a name exists | [`sns-name-service.adapter.ts`](server/src/infrastructure/sns/sns-name-service.adapter.ts) |
 | Solana Pay and Actions | Transaction request plus a reference key. `/actions.json` maps `/` to one ticket and `/r/:id` to the ride | Devnet. The buyer pays the network fee. A blink buy still needs the 18+ and loss stamps, which only the site can record. Not listed in the Dialect registry, so X shows an ordinary card. [`/blink.html`](client/blink.html) renders the card on our site | [`actions`](server/src/domain/actions) · [`solana-pay.js`](client/site/solana-pay.js) |
@@ -250,9 +250,9 @@ Who can move money:
 | `close_pool` before the 14-day grace | Admin or the payout key, after `payout_at` | Can close without paying prizes. The prize share then goes to the seed treasury. This protects against a lost key. It does not protect against a dishonest admin |
 | Crank key | The server, for `open_next_pool`, `fail_pool`, `expire_pool`, `refund`, `close_pool` | It cannot send `pay_prize` |
 
-The program on devnet (v3) has 21 instructions, 18 events, and 32 errors. The source here is v5 (30, 28, 50; built on v4's 29, 27, 48), not deployed yet. The shared lamport table is [`vault-split.ts`](server/src/domain/economy/vault-split.ts), with the same cases in [`vault-split-cases.json`](server/test/fixtures/chain/vault-split-cases.json). Spec: [`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md) and [`docs/pool-program/index.html`](docs/pool-program/index.html). Trust the id in `declare_id!`. The program README's first paragraph can lag it.
+The program on devnet (v3) has 21 instructions, 18 events, and 32 errors. The source here is v5 (30, 28, 50; built on v4's 29, 27, 48), not deployed yet. The shared lamport table is [`vault-split.ts`](server/src/domain/economy/vault-split.ts), with the same cases in [`vault-split-cases.json`](server/test/fixtures/chain/vault-split-cases.json). Spec: [`programs/README.md`](programs/README.md) and [`docs/pool-program/index.html`](docs/pool-program/index.html). Trust the id in `declare_id!`. The program README's first paragraph can lag it.
 
-`npm run program:verify` rebuilds in the Solana Foundation image and compares the hash to [`programs/freightchain-pools/verifiable-build.hash`](programs/freightchain-pools/verifiable-build.hash) (`f1c45eff…` for the v4 source, Solana 4.1.2; devnet still runs v3, `47a630e8…`). The explorer "verified" badge is not submitted yet. `deploy` refuses an RPC whose genesis is not devnet.
+`npm run program:verify` rebuilds in the Solana Foundation image and compares the hash to [`programs/verifiable-build.hash`](programs/verifiable-build.hash) (`f1c45eff…` for the v4 source, Solana 4.1.2; devnet still runs v3, `47a630e8…`). The explorer "verified" badge is not submitted yet. `deploy` refuses an RPC whose genesis is not devnet.
 
 Badges: 38 soulbound compressed NFTs in 10 ladders, including HONK and Convoy, Metaplex Bubblegum v2, minted by a key that can mint and nothing else. An hour after the unlock, and after a second check that skips a rejected ride. Transfer is refused on chain. Collection [`56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC`](https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet), tree [`45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336`](https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet). A wallet that does not speak DAS still has the mint transaction on the badge card. Detail: [`docs/agents/achievements.md`](docs/agents/achievements.md).
 
@@ -274,7 +274,7 @@ Badges: 38 soulbound compressed NFTs in 10 ladders, including HONK and Convoy, M
 | Badge cNFTs | Yes | Devnet. Mainnet waits on the same gates as the program |
 | Token, mainnet, third-party audit, captcha | No. An AI security check is [done](#security-check-and-contracts-audit) | No |
 
-Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits on an audit, the devnet exit list, and an explicit deploy. Trust the program id in [`lib.rs`](programs/freightchain-pools/programs/freightchain_pools/src/lib.rs) and on the explorer.
+Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits on an audit, the devnet exit list, and an explicit deploy. Trust the program id in [`lib.rs`](programs/freightchain_pools/src/lib.rs) and on the explorer.
 
 ## Limits
 
@@ -299,6 +299,7 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 | How a player drives, and what a finish means | [Whitepaper 02–03](https://whitepaper.freightchain.fun/#drive) |
 | Where the money sits | [Whitepaper 05](https://whitepaper.freightchain.fun/#onchain) · [contract spec](docs/pool-program/index.html) |
 | What the server checks | [Anti-cheat](docs/anti-cheat/index.html) · [player page](docs/verified-play/index.html) |
+| One person, many wallets (planned) | [Anti-sybil and Convoy](docs/roadmap/anti-sybil.md) |
 | What a spectator sees | [Replays and donations](docs/replay-and-donations/index.html) |
 | Whether the money tests pass | [Localnet walkthrough](docs/localnet-e2e/index.html) |
 | What the security check found, and what is fixed | [Security check and contracts audit](#security-check-and-contracts-audit) · [whitepaper 08](https://whitepaper.freightchain.fun/#audit) · [report](https://github.com/recferret-bit/freightchain/tree/16870e81) |
@@ -336,7 +337,7 @@ The fifth route is the Pan-American through the Atacama, long sweepers. Same bui
 
 A shift completes when distance reaches `k × 28 m/s × nominal length`. There is no minimum time. The governor is what makes the line take about that long. Paid tiers use `k = 0.5`. After a paid finish the road continues until the driver ends it. A free level ends itself.
 
-A new wallet starts with 10 free rides. The daily refill adds one at 00:00 UTC and stops at 5. A promo can sit above that cap. `play.html` with no ride id is a guest run: two minutes, one crossroads, nothing recorded, no account.
+Training rides are unlimited. They count for statistics and achievements only. Every eligible wallet gets one granted paid ticket a week (default 1 hour). It can be ranked and watched, and it does not mint TEN4. `play.html` with no ride id starts the real EASY ride.
 
 The lobby picks the free level (`POST /api/rides`, `level` 1–3). Each level has its own board. Assist, on EASY and MEDIUM only, halves hull damage and battery drain. While the verdict is enforced, a rejected recording earns no badge. It still counts as a ride that started.
 
@@ -445,7 +446,7 @@ Layers point inward. Domain code does not read the clock or the environment. Tim
 
 - **Landing.** [`landing/`](landing/index.html). Vite. The hero video loads after the page, and never on a phone.
 - **Lobby.** [`client/lobby.html`](client/lobby.html). New ride, Live, Replays, Leaderboard, Achievements, Garage, Profile. Promo codes and [referral invites](docs/features/referral/README.md) are on the profile. `#promo` opens that tab.
-- **Game.** [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. Anything else is an uncounted guest run. `file://` cannot load the modules.
+- **Game.** [`client/play.html`](client/play.html). `?ride=` is an online shift. `?watch=` is a spectator. Bare `play.html` starts the real EASY ride. `?sim=1` is the tool sim. `file://` cannot load the modules.
 - **Receipt.** [`client/r.html`](client/r.html). Server middleware injects the Open Graph and Twitter Card tags.
 - **Whitepaper.** [`landing/whitepaper.html`](landing/whitepaper.html). Its numbers are asserted against the code by [`landing/test/whitepaper.test.js`](landing/test/whitepaper.test.js).
 - **Admin.** Nginx basic auth, then `ADMIN_WALLETS`. On a split deploy, `/api/admin` answers only when `Host` is `admin.<apex>`. Includes `#replays` for 10 Hz replay verification sessions and red flags.
@@ -552,7 +553,7 @@ flowchart TB
 - [`mcp/`](mcp) — the entity MCP server: the `3d-assets` skill as tools for the AI model editor (Streamable HTTP for the server's bridge, stdio for Claude Code). Production HTTP counters are shared in Redis with a restricted MCP user; AI jobs use a shared PostgreSQL queue with atomic admission and claims; the bridge owns its tool policy, AI writes remain checked drafts, and publishing requires a wallet signature.
 - [`media/`](media) — promo clips and the chiptune synth.
 - [`audit/`](audit) — one-shot Docker sandbox + MCP stdio bridge (`docker-agent-orchestrator.mjs`, `agent-session.mjs`, `docker-mcp-bridge.mjs`) orchestrating local agentic CLIs (`claude`, `codex`, `grok`, `agy`) inside an airgapped container, plus sealed source snapshots, private-outbox workers and selected-file `review-with-cli` coordination; `setup-agents` installs locked ACP adapters, `check-agents` checks availability and `check-agents --live` qualifies inert read/resume/submission, and `check-model-cli --all` inventories selected-file relay profiles. Separate brokers live under `audit/native/{codex-review,grok-review}`. `grok-docker setup/login` builds the Linux Grok broker and obtains a separate Docker-volume login; `--provider grok-docker` runs inference inside Docker behind provider-only HTTPS egress. Detail: [`audit/README.md`](audit/README.md).
-- [`programs/`](programs/freightchain-pools) — the Anchor program. Anchor 1.2.
+- [`programs/`](programs) — the Anchor programs (`freightchain_pools`, `freightchain_honk`). Anchor 1.2.
 - [`server/`](server) — NestJS 12, Prisma, PostgreSQL, the replay worker, and the dedicated AI worker (`npm run editor:worker`).
 
 Also at the root: `package.json`, `docker-compose.yml` (PostgreSQL on `127.0.0.1:15433`, Redis and `worker` optional under profiles), [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md).
@@ -619,7 +620,7 @@ npm run program:verify                                      # reproducible build
 npm run test:localnet                                       # the program on a local validator, lamports checked
 ```
 
-`npm run check` needs `npm run install:landing` and `npm run install:media` once. The program tools need the Solana toolchain on `PATH` ([`programs/freightchain-pools/README.md`](programs/freightchain-pools/README.md)). Deploy: [`deploy/README.md`](deploy/README.md). Env keys: [`docs/configuration.md`](docs/configuration.md). There is no CI.
+`npm run check` needs `npm run install:landing` and `npm run install:media` once. The program tools need the Solana toolchain on `PATH` ([`programs/README.md`](programs/README.md)). Deploy: [`deploy/README.md`](deploy/README.md). Env keys: [`docs/configuration.md`](docs/configuration.md). There is no CI.
 
 ## 3D entity editor and AI generation
 
@@ -709,7 +710,7 @@ The fallback is **five running jobs globally plus queued overflow**, not five pe
 | `editor_jobs_parallel` | 5 | Global running claims; 0 pauses new claims |
 | `editor_jobs_per_day` | 40 | Jobs admitted per editor wallet per UTC day |
 | `editor_max_steps` | 24 | Agent turns per job |
-| `editor_max_output_tokens` | 32000 | Cumulative output token budget |
+| `editor_max_output_tokens` | 100000 | Cumulative output token budget |
 | `editor_max_input_ktokens` | 500 | Cumulative input budget, in thousands of tokens, including repeated history |
 
 These are signed admin **GameSetting** values, not environment variables. A stored value overrides the fallback: on an existing installation, open admin → Settings → **AI editor: parallel jobs** → `5` → **SIGN & SAVE**. Lowering concurrency leaves current claims running and blocks new starts until the count falls below the new value.

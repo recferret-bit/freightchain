@@ -162,3 +162,7 @@ export const CFG = {
 // The road never ends. A shift is complete after COMPLETE_DIST metres (speed is governed, so the distance can't be covered faster than
 // COMPLETE_DIST_K × RIDE_MIN_SECONDS; RIDE_MIN_SECONDS is the nominal shift length, not a minimum time).
 CFG.COMPLETE_DIST = CFG.COMPLETE_DIST_K * CFG.MAX_SPEED * CFG.RIDE_MIN_SECONDS;
+
+/** The coin. HONK stays the verb (the chat line, the watch button). A rename changes this, the server tokenomics constants, and the program constants. */
+export const TOKEN_NAME = 'TEN4';
+export const TOKEN_SYMBOL = 'TEN4';

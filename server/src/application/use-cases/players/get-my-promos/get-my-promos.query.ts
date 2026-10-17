@@ -5,6 +5,13 @@ export class GetMyPromosQuery {
   constructor(public readonly wallet: string) {}
 }
 
+export interface MyPromoGrantDto {
+  code: string;
+  tier: string;
+}
+
 export interface MyPromosDto {
   redemptions: MyPromoRedemptionDto[];
+  /** Ride promos this wallet has not ordered yet. */
+  grants: MyPromoGrantDto[];
 }

@@ -31,10 +31,9 @@ export class PlayerPrismaRepository extends PlayerRepositoryPort {
     return result.count === 1;
   }
 
-  async grantDailyFreeRides(today: string, cap: number): Promise<number> {
-    // rows are locked in wallet order, so two instances running at the same midnight queue up instead of deadlocking.
-    // `cap` is the live daily maximum: it wins over a stored per-player max, and a surplus is never taken away.
-    return this.prisma.$executeRaw`UPDATE "player"."Player" SET "freeRides" = CASE WHEN "freeRides" < ${cap} THEN "freeRides" + 1 ELSE "freeRides" END, "freeRidesMax" = ${cap}, "freeDay" = ${today}, "version" = "version" + 1 WHERE "wallet" IN (SELECT "wallet" FROM "player"."Player" WHERE "freeDay" < ${today} ORDER BY "wallet" FOR UPDATE)`;
+  async grantDailyFreeRides(_today: string, _cap: number): Promise<number> {
+    // Retired. Training rides are unlimited. The columns stay; this no longer writes them.
+    return 0;
   }
 
   async save(player: Player, tx?: TransactionHandle): Promise<Player> {

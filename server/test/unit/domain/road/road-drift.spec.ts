@@ -97,7 +97,7 @@ describe('the server\'s road = the game\'s road (drift)', () => {
   });
 
   /** the second round of free levels: [crossroads, forks] each layout holds, however the seed falls (net/patterns.js xroad / open – exact by construction) */
-  const EXACT: Record<string, [number, number]> = { 'free-g': [1, 0], 'free-1b': [1, 0], 'free-2b': [4, 1], 'free-3b': [6, 2], 'free-1c': [2, 0], 'free-2c': [3, 1] };
+  const EXACT: Record<string, [number, number]> = { 'free-g': [1, 0], 'free-1b': [1, 0], 'free-2b': [4, 1], 'free-3b': [6, 2], 'free-3c': [6, 2], 'free-1c': [2, 0], 'free-2c': [3, 1] };
 
   it('each trip\'s LAYOUT knobs are the same on both sides (trips.js road = TRIP_ROADS), and so are its layout and holes', async () => {
     const { net, obstacles } = game, trips = await load('trips.js');

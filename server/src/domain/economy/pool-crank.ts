@@ -1,6 +1,6 @@
 import type { PoolChainState, SeriesChainState } from './chain-events.js';
 
-/** The program's SETTLE_GRACE_SECS (programs/freightchain-pools constants.rs): after payout_at + this, an Active pool no longer needs the admin or the payout key. */
+/** The program's SETTLE_GRACE_SECS (programs/freightchain_pools/src/constants.rs): after payout_at + this, an Active pool no longer needs the admin or the payout key. */
 export const SETTLE_GRACE_MS = 14 * 86_400_000;
 /** refunds per crank transaction (8 fit one transaction under the 1232-byte limit, ~13k CU each – README "Refund and idempotency") */
 export const REFUND_BATCH = 8;

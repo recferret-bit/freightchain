@@ -33,7 +33,7 @@ When invoked on `<path-to-token-file>`, execute all three passes sequentially be
 
 1. **Read Target File & Main Project Context**:
    - Read the target file at `<path-to-token-file>` (never guess if the path is missing or unreadable).
-   - Cross-reference the main repository (`README.md`, `programs/freightchain-pools`, `server/src/domain/verdict`, `client/js/trips.js`, `docs/garage.md`, `docs/agents/escrow.md`, `docs/agents/verified-play.md`).
+   - Cross-reference the main repository (`README.md`, `programs/freightchain_pools`, `server/src/domain/verdict`, `client/js/trips.js`, `docs/garage.md`, `docs/agents/escrow.md`, `docs/agents/verified-play.md`).
    - Run `node .claude/skills/coin-grill/grill.mjs <path-to-token-file> [--out <report.html>]` to run the deterministic checks and generate the baseline HTML structure, then enrich or refine if the input file contains custom nuances.
 
 2. **Pass 1 of 3 — Baseline On-Chain Technical, Structural & Project-Fit Grill**:
@@ -49,7 +49,7 @@ When invoked on `<path-to-token-file>`, execute all three passes sequentially be
        - `Token-2022` extensions: Flag `PermanentDelegate` (critical seizure risk) and `TransferFeeConfig` (breaks vault 1:1 accounting and harms Jupiter routing).
    - **Main Project & General Coin Fit**:
      - **No Pay-to-Win Invariant**: In Freight Chain, the `28 m/s` speed governor, axle sinkhole damage (`dmg * (v/28)^2`), and 10 Hz `ReplayEngine` verification (`@freightchain/shared`) are non-negotiable fairness guarantees. Any token utility that buffs speed, hull armor, battery drain, or anti-cheat leniency is a **CRITICAL** flaw.
-     - **SOL Escrow Compatibility**: Paid shift pools (`programs/freightchain-pools`) and per-km pledges work cleanly in native SOL. Forcing users to buy a volatile token just to enter paid shifts introduces slippage and onboarding drop-off; keep paid shift pools in SOL (Dual-Rail) while using the token for spectator chaos, cosmetics, bonds, and seasonal sponsorship.
+     - **SOL Escrow Compatibility**: Paid shift pools (`programs/freightchain_pools`) and per-km pledges work cleanly in native SOL. Forcing users to buy a volatile token just to enter paid shifts introduces slippage and onboarding drop-off; keep paid shift pools in SOL (Dual-Rail) while using the token for spectator chaos, cosmetics, bonds, and seasonal sponsorship.
    - **Tokenomics, Allocations & Vesting**:
      - Allocations must sum to `100.0%`.
      - Combined Insider share (`Team + Investors/Advisors`) must stay `<= 30%` (target `<= 25%`) with `0%` unlocked at TGE, `>= 12-month` cliff, and `24–36 month` linear vesting on-chain (e.g., Streamflow).

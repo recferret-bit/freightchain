@@ -1,7 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { EditorJobRepositoryPort } from '../../../application/ports/editor/editor-job.repository.port.js';
-import type { EditorJobRecord, JobEventRecord, JobEventType, JobStatus } from '../../../domain/editor/editor-job.js';
+import type { EditorJobRecord, EditorMcpCallInput, EditorMcpCallRecord, JobEventRecord, JobEventType, JobStatus } from '../../../domain/editor/editor-job.js';
 import type { TransactionHandle } from '../../../application/ports/shared/transaction.port.js';
 import { clientFor } from '../prisma-client.js';
 import { PrismaService } from '../prisma.service.js';
@@ -129,6 +130,22 @@ export class EditorJobPrismaRepository extends EditorJobRepositoryPort {
   async events(jobId: string, after: number, limit: number): Promise<JobEventRecord[]> {
     const rows = await this.prisma.editorJobEvent.findMany({ where: { jobId, seq: { gt: after } }, orderBy: { seq: 'asc' }, take: limit });
     return rows.map((r) => ({ jobId: r.jobId, seq: r.seq, type: r.type as JobEventType, payload: r.payload as Record<string, unknown>, at: r.at }));
+  }
+
+  async recordMcpCall(call: EditorMcpCallInput): Promise<EditorMcpCallRecord> {
+    return this.prisma.$transaction(async (db) => {
+      await db.$queryRaw`SELECT "id" FROM "asset"."EditorJob" WHERE "id" = ${call.jobId}::uuid FOR UPDATE`;
+      const max = await db.editorMcpCall.aggregate({ where: { jobId: call.jobId }, _max: { seq: true } });
+      const seq = (max._max.seq ?? 0) + 1;
+      const id = randomUUID();
+      await db.editorMcpCall.create({ data: { id, jobId: call.jobId, wallet: call.wallet, seq, tool: call.tool, args: call.args as Prisma.InputJsonValue, result: call.result, ok: call.ok, createdAt: call.createdAt } });
+      return { ...call, id, seq };
+    });
+  }
+
+  async mcpCalls(jobId: string): Promise<EditorMcpCallRecord[]> {
+    const rows = await this.prisma.editorMcpCall.findMany({ where: { jobId }, orderBy: { seq: 'asc' } });
+    return rows.map((r) => ({ id: r.id, jobId: r.jobId, wallet: r.wallet, seq: r.seq, tool: r.tool, args: r.args as Record<string, unknown>, result: r.result, ok: r.ok, createdAt: r.createdAt }));
   }
 
   async countSince(wallet: string, since: Date): Promise<number> {

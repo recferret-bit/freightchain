@@ -84,9 +84,9 @@ bindShotRotator('.deck-shot img', 4000, reduced);
       box.replaceChildren(v);
       $('demo-note').textContent = 'Devnet demo.';
     } else {
-      const practice = el('a', { href: `${GAME_BASE}/play.html?offline=1` }, 'Try the game offline');
+      const practice = el('a', { href: `${GAME_BASE}/play.html` }, 'Play the EASY ride');
       practice.addEventListener('click', e => guardMobilePlay(e, { siteBase: SITE_BASE, onMobile: () => dlg.close() }, () => { track('offline_practice_clicked'); flushSoon(); }));
-      $('demo-note').replaceChildren('The demo video is not here yet. ', practice, ' – a few free runs, then connect a Solana wallet.');
+      $('demo-note').replaceChildren('The demo video is not here yet. ', practice, ' – the real EASY ride, then connect a Solana wallet.');
     }
     dlg.showModal();
   };
@@ -96,7 +96,7 @@ bindShotRotator('.deck-shot img', 4000, reduced);
 
 /* ───── links to the game & split hosts ───── */
 for (const a of document.querySelectorAll('a[href="/play.html"]')) {
-  a.href = `${GAME_BASE}/play.html?offline=1`;
+  a.href = `${GAME_BASE}/play.html`;
   a.addEventListener('click', e => guardMobilePlay(e, { siteBase: SITE_BASE }, () => { track('offline_practice_clicked'); flushSoon(); }));
 }
 $('storybook-link').href = STORYBOOK_BASE || '/viewer.html';
@@ -214,7 +214,9 @@ function paintSession(me) {
   S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.classList.remove('ghost'); btn.onclick = onConnect; playTop.textContent = 'LOBBY';
   const playFree = $('play-free'); if (playFree) playFree.hidden = true;
   chip.textContent = short(me.wallet); chip.title = `signed in: ${me.wallet}`; chip.hidden = false;
-  chipRides.textContent = `${me.freeRides} free · ${plural(heldTickets(me.tickets), 'paid ride')}`; chipRides.hidden = false;
+  const live = (me.weeklyTickets ?? []).filter(t => !t.rideId && t.expiresAt > Date.now());
+  const weekly = live.length ? ` · weekly ${live.map(t => t.tier).join(' ')}` : '';
+  chipRides.textContent = `training${weekly} · ${plural(heldTickets(me.tickets), 'paid ride')}`; chipRides.hidden = false;
   msg.textContent = ''; msg.className = 'msg';
   paintBoards(S, now, watchUrl);
 }
@@ -235,7 +237,7 @@ if (pairOk) { msg.textContent = 'Sign in here to approve the computer that showe
 playTop.onclick = e => {
   track('play_top_clicked', { signed_in: !!S.me });
   if (S.me) toLobby();
-  else guardMobilePlay(e, { siteBase: SITE_BASE }, () => { flushSoon(); location.href = `${GAME_BASE}/play.html?offline=1`; });
+  else guardMobilePlay(e, { siteBase: SITE_BASE }, () => { flushSoon(); location.href = `${GAME_BASE}/play.html`; });
 };
 track('landing_viewed', { surface: 'landing' });
 if (linkCode) track('promo_invite_viewed', { code: CODE_SHAPE.test(codeOf(linkCode)) ? codeOf(linkCode) : null });

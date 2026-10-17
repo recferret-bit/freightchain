@@ -1,4 +1,5 @@
 import type { CosmeticSlot } from '../../../../domain/economy/cosmetics.js';
+import type { PaidTierId } from '../../../../domain/rides/ride-tier.js';
 
 export class RedeemPromoCommand {
   constructor(
@@ -19,6 +20,12 @@ export type PromoRedeemedDto =
       added: number;
       balance: number;
       cap: number;
+    }
+  | {
+      kind: 'ride';
+      code: string;
+      label: string;
+      tier: PaidTierId;
     }
   | {
       kind: 'free_rides';

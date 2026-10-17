@@ -34,13 +34,14 @@ describe('RidesHttpController', () => {
     await c.reconcile(me, params); expect(commands.last()).toEqual(new ReconcilePaymentCommand('W', 'ride-1'));
     await c.start(me, params, {}); expect(commands.last()).toEqual(new StartRideCommand('W', 'ride-1', null));
     await c.start(me, params, { trip: 'free-2' }); expect(commands.last()).toEqual(new StartRideCommand('W', 'ride-1', 'free-2'));
+    await c.start(me, params, { ranked: true }, { 'cf-ipcountry': 'CA' }); expect(commands.last()).toEqual(new StartRideCommand('W', 'ride-1', null, true, { 'cf-ipcountry': 'CA' }));
     const report = heartbeatBodySchema.parse({ s: 10, t: 2, hull: 90, route: 'brenner' });
     await c.heartbeat(me, params, report); expect(commands.last()).toEqual(new HeartbeatRideCommand('W', 'ride-1', report));
     const end = endRideBodySchema.parse({ outcome: 'failed', s: 'NaN', reason: 'crash' });
     await c.end(me, params, end); expect(commands.last()).toEqual(new EndRideCommand('W', 'ride-1', 'failed', end.report, 'crash'));
     const batch = batchBodySchema.parse(recording('ride-1', { seconds: 10 })[0]);
     await c.batch(me, params, batch); expect(commands.last()).toEqual(new UploadBatchCommand('W', 'ride-1', batch));
-    expect(commands.sent).toHaveLength(10);
+    expect(commands.sent).toHaveLength(11);
     expect(queries.sent).toHaveLength(4);
   });
 
@@ -68,6 +69,8 @@ describe('RidesHttpController', () => {
       expect(startRideBodySchema.parse({})).toEqual({});
       expect(startRideBodySchema.parse({ trip: 'free-3' })).toEqual({ trip: 'free-3' });
       for (const trip of ['', 'x'.repeat(33), 3, null]) expect(startRideBodySchema.safeParse({ trip }).success, String(trip)).toBe(false);
+      expect(startRideBodySchema.parse({ ranked: true })).toEqual({ ranked: true });
+      expect(startRideBodySchema.safeParse({ ranked: 'yes' }).success).toBe(false);
     });
     it('confirm: a base58 transaction signature', () => {
       expect(confirmPaymentBodySchema.safeParse({ signature: newSignature() }).success).toBe(true);

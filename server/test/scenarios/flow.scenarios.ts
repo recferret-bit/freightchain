@@ -64,53 +64,35 @@ export function flowScenarios(h: () => Harness): void {
   });
 
   describe('free rides', () => {
-    it('spends a credit per ride, reuses an unstarted ride, grants +1 per UTC day', async () => {
+    it('reuses an unstarted training ride and does not move the stored number', async () => {
       const { agent } = await login();
       const r1 = (await agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-      expect(r1).toMatchObject({ status: 'created', minSeconds: 10, completeDist: 84, trip: 'free-1c', level: 1 });   // the EASY line: 0.3 × 28 × 10 (no level asked = EASY)
-      expect((await agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body.id).toBe(r1.id);   // same unstarted ride, no 2nd credit
-      expect((await agent.get('/api/me')).body.freeRides).toBe(9);
+      expect(r1).toMatchObject({ status: 'created', minSeconds: 10, completeDist: 84, trip: 'free-1c', level: 1 });
+      expect((await agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body.id).toBe(r1.id);
+      expect((await agent.get('/api/me')).body).toMatchObject({ freeRides: 10, nextFreeRideAt: null });
       await agent.post('/api/rides').send({ tier: 'paid1h' }).expect(400);
       sec(86_400);
-      expect((await agent.get('/api/me')).body.freeRides).toBe(9);   // still above the daily cap of 5: no refill, nothing taken
-      expect((await agent.get('/api/me')).body.freeRides).toBe(9);
+      expect((await agent.get('/api/me')).body.freeRides).toBe(10);
     });
 
-    it('the midnight job tops up everyone below the cap by one, never above it, once a day; /api/me counts down to the next one', async () => {
+    it('the retired midnight job grants nobody', async () => {
       const grant = () => h().app.get(CommandBus).execute(new GrantDailyFreeRidesCommand()) as Promise<{ day: string; players: number }>;
-      const spendOne = async (agent: ReturnType<typeof request.agent>) => {
-        const r = (await agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-        await agent.post(`/api/rides/${r.id}/start`).expect(200);
-        await agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'failed', s: 0, reason: 'test' }).expect(200);
-      };
-      const a = await login(), b = await login();
-      const me = async (agent: ReturnType<typeof request.agent>) => (await agent.get('/api/me').expect(200)).body;
-      expect(await me(b.agent)).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });   // above the daily cap: no timer
-      for (let i = 0; i < 7; i++) await spendOne(a.agent);                           // 10 → 3, under the cap
-      const midnight = Math.floor(h().clock.ms / 86_400_000) * 86_400_000 + 86_400_000;
-      expect(await me(a.agent)).toMatchObject({ freeRides: 3, freeRidesMax: 5, nextFreeRideAt: midnight });
-      expect((await grant()).players).toBe(0);                                      // same UTC day: nothing to give yet
-      h().clock.ms = midnight + 1;                                                 // 00:00:00.001 UTC – nobody has opened the app
-      expect((await grant()).players).toBe(2);
-      expect((await grant()).players).toBe(0);                                      // once a day
-      expect(await me(a.agent)).toMatchObject({ freeRides: 4, nextFreeRideAt: midnight + 86_400_000 });
-      expect(await me(b.agent)).toMatchObject({ freeRides: 10, nextFreeRideAt: null });   // surplus stays; the cap does not take it
-      sec(86_400); await grant(); await grant();
-      expect((await me(a.agent)).freeRides).toBe(5);
-      expect((await me(a.agent)).nextFreeRideAt).toBeNull();
-      sec(86_400); await grant();
-      expect((await me(a.agent)).freeRides).toBe(5);
-      expect((await a.agent.get('/api/profile')).body).toMatchObject({ freeRides: 5, freeRidesMax: 5, nextFreeRideAt: null });
+      const a = await login();
+      expect((await grant()).players).toBe(0);
+      sec(86_400);
+      expect((await grant()).players).toBe(0);
+      expect((await a.agent.get('/api/me')).body).toMatchObject({ freeRides: 10, nextFreeRideAt: null });
     });
 
-    it('runs out after the free credits are spent', async () => {
+    it('training rides stay orderable after many finishes', async () => {
       const { agent } = await login();
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 3; i++) {
         const r = (await agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
         await agent.post(`/api/rides/${r.id}/start`).expect(200);
         await agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'failed', s: 0, reason: 'test' }).expect(200);
       }
-      await agent.post('/api/rides').send({ tier: 'free' }).expect(409);
+      await agent.post('/api/rides').send({ tier: 'free' }).expect(200);
+      expect((await agent.get('/api/me')).body.freeRides).toBe(10);
     });
   });
 

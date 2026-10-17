@@ -204,7 +204,7 @@ export function paymentScenarios(h: () => Harness): void {
       const sig = pay(a, o);
       const free = (await a.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body; // lets the unpaid order lapse
       expect((await a.agent.get(`/api/rides/${o.id}`)).body.status).toBe('expired');
-      expect((await a.agent.get('/api/me')).body.freeRides).toBe(9);
+      expect((await a.agent.get('/api/me')).body.freeRides).toBe(10);
       const paid = (await a.agent.post(`/api/rides/${o.id}/confirm`).send({ signature: sig }).expect(200)).body;
       expect(paid).toMatchObject({ status: 'paid', ride: { id: o.id, status: 'created' } });
       expect((await a.agent.get(`/api/rides/${free.id}`)).body.status).toBe('cancelled');
@@ -259,7 +259,7 @@ export function paymentScenarios(h: () => Harness): void {
     it('the free path is unchanged: no payment, 10 credits, never scaled', async () => {
       const a = await login(), r = await order(a, 'free');
       expect(r).toMatchObject({ tier: 'free', status: 'created', timeScale: 1, lamports: 0, minSeconds: 180 });
-      expect((await a.agent.get('/api/me')).body.freeRides).toBe(9);
+      expect((await a.agent.get('/api/me')).body.freeRides).toBe(10);
     });
   });
 

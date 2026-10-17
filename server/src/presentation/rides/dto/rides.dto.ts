@@ -17,8 +17,12 @@ export const createRideBodySchema = z.object({
 export type CreateRideBody = z.infer<typeof createRideBodySchema>;
 
 /** `trip`: the trip id the game built its road from (GET /api/rides/:id → `trip`, null read as 'classic'). Optional – absent = not compared (older games).
-    A ride re-chosen in the lobby between that read and this start has another trip: 409 `ride_rechosen`, the game reloads the ride (StartRideHandler). */
-export const startRideBodySchema = z.object({ trip: z.string().min(1).max(TRIP_ID_MAX_LENGTH).optional() });
+    A ride re-chosen in the lobby between that read and this start has another trip: 409 `ride_rechosen`, the game reloads the ride (StartRideHandler).
+    `ranked`: declare this start for the weekly skill board. Absent = unranked. A blocked country, missing 18+, or a full weekly cap is 409, not a silent downgrade. */
+export const startRideBodySchema = z.object({
+  trip: z.string().min(1).max(TRIP_ID_MAX_LENGTH).optional(),
+  ranked: z.boolean().optional(),
+});
 export type StartRideBody = z.infer<typeof startRideBodySchema>;
 
 export const confirmPaymentBodySchema = z.object({ signature: z.string().refine(isTransactionSignature, TRANSACTION_SIGNATURE_MESSAGE) });

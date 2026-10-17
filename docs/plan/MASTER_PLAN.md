@@ -10,8 +10,8 @@
 
 | Что | Состояние |
 |---|---|
-| `main` | Рефералка v1 + Pool Program v5 (`programs/freightchain-pools`, `server/`, `docs/plan/`, `docs/legal/`) |
-| PR #3 | `cursor/ten4-tokenomics-6271`, HEAD `a486c350`; слияние с `main` даёт 36 конфликтов |
+| `main` | PR #3 (`cursor/ten4-tokenomics-6271`) влит в `main` вместе с Pool Program v5 (`programs/freightchain_pools`), `programs/freightchain_honk`, недельным конкурсом мастерства (`server/src/domain/prize/`), промо-поездками, EASY, `docs/plan/`, `docs/legal/` |
+| PR #3 | ✅ Влит в `main` (`SEASON_WEEKS = 7`, `LIVE_FINAL_WEEK = 7`, равное деление ничьих и ничьи на границе топ-8 согласованы в `server/src/domain/prize/`) |
 | Pool Program v5 | **Реализован и покрыт тестами в репо** (`Config 167`, `Series 132`, `Pool 362`, `set_pool_rules`, `8500/500/1000`, `max_player_share_bps <= 4999`, `paid_tickets_enabled`; 163 Rust-теста + unit/integration тесты сервера) |
 | Деплой | Очистка devnet и деплой v5 — только по команде владельца |
 | Публикации и рассылки | Только после одобрения владельца |
@@ -21,7 +21,7 @@
 
 | Дата | Событие |
 |---|---|
-| после решения владельца | Мерж PR #3 (шаги 1–7, `pr3_update_plan.md`; для Pre-season — MVP-часть, см. `DEVNET_PRESEASON.md` §1) |
+| ✅ выполнено | Мерж PR #3 в `main` (шаги 1 и 4; остальные шаги Season 1 — по `DEVNET_PRESEASON.md` §7 и `GAPS.md` G26/G27) |
 | по команде владельца (рекомендовано после Pre-season, см. `GAPS.md` G17) | Очистка devnet и деплой pool v5 с новым program id (код v5 уже в репо; для Pre-season не обязателен) |
 | пн 02.11.2026 | **Pre-season (devnet):** регистрация, обязательные шаги кампании (тестовая поездка + Telegram + X: подписка и пост с кодом) |
 | пн 09.11 – вс 15.11 12:00 | Pre-season: призовая неделя, одна доска 1h, 1 попытка, фонд $500 |
@@ -175,7 +175,7 @@
 | Страницы | `/terms`, `/privacy`, `/rules` на apex (страницы Vite лендинга), ссылки в футере, на экране кошелька, в KYC и аирдропе |
 | Pre-season, вход | Решено: призовая попытка — **только** за обязательные задания аирдропа, другого бесплатного входа нет. Риск: обязательные действия в соцсетях могут считаться неденежным consideration — вопрос сербскому юристу. «Репост» = цитата с личным кодом; обязательный набор (раунд 19) — тест + Telegram (канал и чат) + X подписка + пост об участии с кодом; Discord по желанию |
 | Pre-season | Организатор — владелец-физлицо (без юрлица); короткие правила и уведомление о данных — `docs/legal/PRESEASON_RULES.md`; полные Terms/Privacy — с Season 1 |
-| Official Rules | Не написаны под новую модель (в PR #3 старый черновик `docs/prize/OFFICIAL-RULES.md`); предложено следующим шагом |
+| Official Rules | ✅ Шаблон Season 1 готов в `docs/legal/OFFICIAL_RULES.md` (сверено с `server/src/domain/prize/` и `docs/prize/OFFICIAL-RULES.md`) — на проверку юристу |
 | Обработчики в политике | Cloudflare, twitterapi.io, Didit, Helius, ipinfo, Chainalysis, PostHog |
 
 ## 11. Инфраструктура
@@ -200,14 +200,14 @@
 
 | Шаг | Содержание |
 |---|---|
-| 1 | Влить `main` → PR #3 (36 конфликтов), сохранить решения из раздела 5 |
+| 1 | ✅ Влить PR #3 в `main`, сохранить решения из раздела 5 и согласовать `SEASON_WEEKS = 7` + равное деление ничьих в `server/src/domain/prize/` |
 | 2 | Переделка рефералки (`referral_plan.md`) |
-| 3 | Корзина TEN4 4M в `freightchain_honk`; команда включена (`initialize` с `team_enabled = true`, 24 мес) |
-| 4 | Pool v5 = v4 без рефералки (+ аудит `d5678764`, `abd24db7`), единая модель пулов (**реализовано и протестировано в `programs/freightchain-pools` и `server/`**); Solana Pay |
+| 3 | ✅ Корзина TEN4 8M аирдроп + 4M рефералка в `freightchain_honk` (`pay_referral`, `burn_referral_tail`, `set_airdrop_root`, `claim_airdrop`, `burn_unclaimed`); команда включена (`initialize` с `team_enabled = true`, 24 мес; 40 Rust-тестов + unit-тесты `tokenomics.spec.ts`) |
+| 4 | ✅ Pool v5 = v4 без рефералки (+ аудит `d5678764`, `abd24db7`), единая модель пулов (`unifiedWeekPool`, `capRolloverCents`, потолок 30% бесплатных билетов в `settleBoard`, динамический финал `settleSeasonFinal` на `N` финалистов — **реализовано и протестировано в `programs/freightchain_pools` и `server/src/domain/prize/`**); Solana Pay (`G26`) |
 | 4b–4g | Рейтинг Convoy; сезоны; аирдроп; trust; приватность и гео; Cloudflare |
 | 5 | Тексты и документация |
 | 6 | Тесты — владелец локально |
-| 7 | PR #3 → `main` по решению владельца |
+| 7 | ✅ PR #3 влит в `main` |
 
 **Миграции:** `20261104000000_referral_rework`, `20261104100000_referral_reward`, `20261104200000_seasons`, `20261105000000_prize_sponsor`, `20261105100000_ticket_orders`, `20261105200000_trust`, `20261105300000_tax`, `20261105400000_privacy` (+ `player.TermsAcceptance`), `20261107000000_airdrop`.
 
@@ -226,7 +226,7 @@
 
 **Контракты:**
 - pool v5 (**реализован в репо**): убраны `referral_bps`, `referral_share`, `payout_cap`; добавлены `set_pool_rules`, `max_player_share_bps <= 4999`, `paid_tickets_enabled`; `split` из трёх долей (`8500/500/1000`); IDL `metadata.version = 0.5.0`; `Config 167 B`, `Series 132 B`, `Pool 362 B`; деплой на devnet с новым program id — по команде владельца.
-- honk: `AIRDROP = 8M`, `REFERRAL = 4M`, `pay_referral`, `burn_referral_tail`, `set_airdrop_root`, `claim_airdrop`, `burn_unclaimed`; `claim_team` и `claim_treasury` без изменений.
+- honk (**реализован в репо**): `AIRDROP = 8M`, `REFERRAL = 4M`, `TEAM_LINEAR_MONTHS = 24` (`team_enabled = true`), `pay_referral`, `burn_referral_tail`, `set_airdrop_root`, `claim_airdrop`, `burn_unclaimed`; `claim_team` и `claim_treasury` без изменений.
 
 ## 13. Документы для репозитория
 

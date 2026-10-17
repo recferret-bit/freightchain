@@ -1,5 +1,5 @@
 /* Cab colours the cockpit draws – VISUALS ONLY, no item changes handling or shifting. Colours differ; the hood ornament is the one shape that changes
-   (cockpit/rig.js). Nine slots: `wheel`, `truck_color`, `gearbox`, `dice`, `needle`, `ornament`, `dash`, `indicator`, `phone`. Parts are minted by burning HONK; Convoy, Signal and Amber paints are referral gifts. Later an NFT replaces / extends the items – the slot model stays.
+   (cockpit/rig.js). Nine slots: `wheel`, `truck_color`, `gearbox`, `dice`, `needle`, `ornament`, `dash`, `indicator`, `phone`. Parts are minted by burning TEN4; Convoy, Signal and Amber paints are referral gifts. Later an NFT replaces / extends the items – the slot model stays.
    A leaf module (no imports: the landing's dash cards run cockpit/* without three.js). The catalog mirrors server/src/domain/economy/cosmetics.ts – a server test
    (cosmetics.spec.ts) reads COSMETICS below and fails on drift. The first item of a slot is its default. To add an item: append its id here and in the server file and give it a palette
    in LOOKS (same keys as the default's). The DEFAULT loadout must keep drawing exactly what the cockpit always drew (the headless test pins the colours; the promo videos and the
