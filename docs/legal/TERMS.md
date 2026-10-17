@@ -290,6 +290,9 @@ Support: [PLACEHOLDER: support email] · Legal notices and arbitration opt-out: 
 
 ## Notes for the team (delete before publishing)
 
+**Scope (17.10.2026):** these Terms apply from Season 1 (mainnet, 11.01.2027) once the operator entity exists. The devnet Pre-season (November 2026) is run by an individual organizer under separate short event rules — `docs_drafts/legal/PRESEASON_RULES.md`.
+
+
 **[LAWYER] items to decide:**
 1. Age: 18+ everywhere, or 19/21 where the age of majority is higher (prize features) — §2.1.
 2. Ineligible persons scope (employees, family, sponsor staff) — §2.3.
