@@ -3,7 +3,7 @@ import type { PaidTierId } from '../rides/ride-tier.js';
 import type { ReadyFreeRideDto } from '../rides/ride.dto.js';
 import type { Player } from './player.entity.js';
 
-/** The week's granted paid ticket, or null when none is live. `rideId` null means it has not been ordered. */
+/** One live granted paid ticket. `rideId` null means it has not been ordered. */
 export interface WeeklyTicketDto {
   tier: PaidTierId;
   expiresAt: number;
@@ -36,8 +36,8 @@ export interface MeDto {
   agreements: AgreementsDto;
   /** primary Solana Name Service (.sol) domain name, or null */
   sns?: string | null;
-  /** This week's granted paid ticket. Null until GET /api/me issues it, or when the wallet is not eligible. */
-  weeklyTicket: WeeklyTicketDto | null;
+  /** Live granted paid tickets, one per enabled tier. Empty until GET /api/me issues them, or when the wallet is not eligible. */
+  weeklyTickets: WeeklyTicketDto[];
 }
 
 /** What PUT /api/profile/agreements and the profile / me payloads say about the two boxes. */
@@ -63,7 +63,7 @@ export const toMeDto = (
   tickets: TicketBalanceDto[],
   readyFreeRide: ReadyFreeRideDto | null,
   sns?: string | null,
-  weeklyTicket: WeeklyTicketDto | null = null,
+  weeklyTickets: WeeklyTicketDto[] = [],
 ): MeDto => ({
   wallet: player.wallet,
   freeRides: player.freeRides,
@@ -78,5 +78,5 @@ export const toMeDto = (
   readyFreeRide,
   agreements: toAgreementsDto(player),
   ...(sns !== undefined ? { sns } : {}),
-  weeklyTicket,
+  weeklyTickets,
 });

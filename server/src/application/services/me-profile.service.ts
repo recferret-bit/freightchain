@@ -20,15 +20,15 @@ export class MeProfileService {
     @Optional() private readonly nameService?: NameServicePort,
   ) {}
 
-  /** `now`: the instant the caller touched the player at. `ticket` is this week's grant when GET /api/me issued it. */
-  async of(player: Player, now: Date, ticket: WeeklyTicketRecord | null = null): Promise<MeDto> {
+  /** `now`: the instant the caller touched the player at. `grants` are the live tickets when GET /api/me issued them. */
+  async of(player: Player, now: Date, grants: WeeklyTicketRecord[] = []): Promise<MeDto> {
     const rules = this.rules.get(), wallet = player.wallet;
     const [tickets, open, sns] = await Promise.all([
       this.tickets.balances(wallet, now),
       this.rides.listOpenByWallet(wallet),
       this.nameService ? this.nameService.reverse(wallet) : Promise.resolve(undefined),
     ]);
-    const weeklyTicket: WeeklyTicketDto | null = ticket ? { tier: ticket.tier, expiresAt: ticket.expiresAt.getTime(), rideId: ticket.rideId } : null;
-    return toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules), tickets, readyFreeRideOf(open), sns, weeklyTicket);
+    const weeklyTickets: WeeklyTicketDto[] = grants.map((ticket) => ({ tier: ticket.tier, expiresAt: ticket.expiresAt.getTime(), rideId: ticket.rideId }));
+    return toMeDto(player, now, isDemoWallet(rules, wallet), demoScaleOf(rules), tickets, readyFreeRideOf(open), sns, weeklyTickets);
   }
 }

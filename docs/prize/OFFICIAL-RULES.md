@@ -6,7 +6,7 @@
 
 The contest is a skill contest. The score is how far a driver gets along a fixed weekly route before the first mistake. It is not a raffle and not a sweepstakes.
 
-Training rides are not entries. Each week a wallet that is 18 or older and in an eligible place receives one granted paid ticket (default one hour; the operator can set four or eight). It is not sold. It can be declared ranked, and that declaration uses one of the five paid ranked starts. A separate promo code can add one more ranked start. The granted ticket expires Sunday at 12:00 UTC and does not carry into the next week. Counsel must review this free path. Age is a checkbox. Country is read from the network edge. A person can open more than one wallet. Do not describe training rides as a way to win.
+Training rides are not entries. A wallet that is 18 or older and in an eligible place receives a granted paid ticket on each tier the operator has switched on. The default is one 1 hour ticket every 7 days. The 4 hour and 8 hour grants are off, and each has its own interval (default 7 days) for when it is switched on. A grant is not sold. Declaring one ranked uses one of the five paid ranked starts. A separate promo code can add one more ranked start. An unused grant expires when the next one of that tier is due, or at Sunday 12:00 UTC, whichever is earlier. It does not carry forward and a second unused grant of the same tier is not issued. Ranked starts still have to finish by Sunday 12:00 UTC. Counsel must review this free path. Age is a checkbox. Country is read from the network edge. A person can open more than one wallet. Do not describe training rides as a way to win.
 
 The prize is USDC. The TEN4 token is not a prize, not an entry fee, and not a way to raise a score.
 
@@ -36,7 +36,7 @@ Every ranked start on a board in a week is meant to use that week's route. That 
 
 Before the truck moves, the driver chooses ranked or unranked.
 
-Each week, the first five paid starts that were declared ranked, and the first promo start that was declared ranked, are the ones that can score. The weekly granted ticket is one of those five paid starts when it is declared ranked. The board keeps the best one of those. Later starts, and any start that was not declared in time, do not score. A training ride cannot be declared ranked. A purchased start that does not score can still earn TEN4, take donations, and unlock cosmetics. A promo ride does not earn TEN4. The granted ticket does not earn TEN4: a free wallet must not print the token. Tickets are not limited to five. A promo code is once per wallet and adds at most one ranked start that week, on top of the five paid.
+Each week, the first five paid starts that were declared ranked, and the first promo start that was declared ranked, are the ones that can score. Each granted ticket is one of those five paid starts when it is declared ranked. The board keeps the best one of those. Later starts, and any start that was not declared in time, do not score. A training ride cannot be declared ranked. A purchased start that does not score can still earn TEN4, take donations, and unlock cosmetics. A promo ride does not earn TEN4. The granted ticket does not earn TEN4: a free wallet must not print the token. Tickets are not limited to five. A promo code is once per wallet and adds at most one ranked start that week, on top of the five paid.
 
 Declaring a start ranked after it has already started does not count and does not use a slot.
 
