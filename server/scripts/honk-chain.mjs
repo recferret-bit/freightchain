@@ -1,4 +1,4 @@
-// Local HONK only (docs/agents/honk-localnet.md). The game balance stays the ledger. Classic SPL for the fungible mint; Token-2022 for a soulbound part.
+// Local TEN4 only (docs/agents/honk-localnet.md). The game balance stays the ledger. Classic SPL for the fungible mint; Token-2022 for a soulbound part.
 import { Connection, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
 import {
   TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, ExtensionType, TYPE_SIZE, LENGTH_SIZE, getMintLen,
@@ -98,7 +98,7 @@ export async function mintPartNft({ rpc, payer, authority, owner, name, uri, min
     if (view.supply === 1n && view.owner === owner) return { mint: mintPk.toBase58(), signature: null, owner };
     throw new Error(`part mint ${mintPk.toBase58()} exists but ${owner} does not hold 1`);
   }
-  const meta = { updateAuthority: authority.publicKey, mint: mintPk, name, symbol: 'HONK', uri, additionalMetadata: [] };
+  const meta = { updateAuthority: authority.publicKey, mint: mintPk, name, symbol: 'TEN4', uri, additionalMetadata: [] };
   const extensions = [ExtensionType.NonTransferable, ExtensionType.MetadataPointer];
   const mintLen = getMintLen(extensions);
   // The metadata TLV is written after the mint exists, and that realloc must stay rent-exempt. The extra bytes cover TLV padding.
@@ -110,7 +110,7 @@ export async function mintPartNft({ rpc, payer, authority, owner, name, uri, min
     createInitializeMetadataPointerInstruction(mintPk, authority.publicKey, mintPk, TOKEN_2022_PROGRAM_ID),
     createInitializeNonTransferableMintInstruction(mintPk, TOKEN_2022_PROGRAM_ID),
     createInitializeMint2Instruction(mintPk, 0, authority.publicKey, null, TOKEN_2022_PROGRAM_ID),
-    createInitializeInstruction({ programId: TOKEN_2022_PROGRAM_ID, metadata: mintPk, updateAuthority: authority.publicKey, mint: mintPk, mintAuthority: authority.publicKey, name, symbol: 'HONK', uri }),
+    createInitializeInstruction({ programId: TOKEN_2022_PROGRAM_ID, metadata: mintPk, updateAuthority: authority.publicKey, mint: mintPk, mintAuthority: authority.publicKey, name, symbol: 'TEN4', uri }),
     createAssociatedTokenAccountInstruction(payer.publicKey, ata, ownerPk, mintPk, TOKEN_2022_PROGRAM_ID),
     createMintToInstruction(mintPk, ata, authority.publicKey, 1n, [], TOKEN_2022_PROGRAM_ID),
   );

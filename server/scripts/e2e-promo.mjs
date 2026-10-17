@@ -133,7 +133,7 @@ check('lobby: the TICKETS code puts 2 tickets into the live 1h pool', r.good && 
 await creditHonk(u1.address, 520); // gold 260 + four parts at 65
 let minted = 0;
 for (const [slot, item] of PARTS) { const m = await post('honk/visuals', { slot, item }, u1.cookie); if (m.r.status === 200) minted++; }
-check('lobby: burning HONK mints the five cab parts', minted === 5 && (await get('honk', u1.cookie)).j.balance === '0', String(minted));
+check('lobby: burning TEN4 mints the five cab parts', minted === 5 && (await get('honk', u1.cookie)).j.balance === '0', String(minted));
 r = await redeemUI(C('RIDE1'));
 check('lobby: the 1-free-ride code works too (14/5 free rides)', r.good && await until(async () => /14\/5 free rides/.test(await txt(B, '#chip-free'))), r.text);
 r = await redeemUI('NO-SUCH-' + T);
@@ -176,7 +176,7 @@ check('lobby (arrived from the landing): REDEEM works – the ticket code', awai
 await L.shot('promo-lobby-from-landing');
 const landed = await signInCookie(L);
 await creditHonk(bs58.encode(u4kp.publicKey), 65);
-check('…and burning 65 HONK wears the pink dice', (await post('honk/visuals', { slot: 'dice', item: 'pink' }, landed)).r.status === 200 && (await get('wardrobe', landed)).j.equipped.dice === 'pink');
+check('…and burning 65 TEN4 wears the pink dice', (await post('honk/visuals', { slot: 'dice', item: 'pink' }, landed)).r.status === 200 && (await get('wardrobe', landed)).j.equipped.dice === 'pink');
 await L.send('Page.navigate', { url: `${BASE}/` });
 await until(async () => !(await L.ev('document.getElementById("chip-wallet")?.hidden ?? true')));
 await L.ev(`document.getElementById('invite-code').value = ${JSON.stringify(C('RIDE1'))}; document.getElementById('invite').requestSubmit()`);

@@ -80,7 +80,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
     return rows.map((r) => ({ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, lastS: r.lastS, endedAt: r.endedAt }));
   }
 
-  /** Aggregate over the started rides, the completed rides themselves (few per wallet) for the per-ride achievement facts, HONK counts, and the convoy count. */
+  /** Aggregate over the started rides, the completed rides themselves (few per wallet) for the per-ride achievement facts, TEN4 counts, and the convoy count. */
   async summary(wallet: string, opts: { skipRejected?: boolean } = {}): Promise<RideSummary> {
     const [started, done, honkMints, honkFinishes, qualifiedReferrals] = await Promise.all([
       this.prisma.ride.aggregate({ where: { wallet, startedAt: { not: null } }, _count: { _all: true }, _sum: { lastS: true } }),

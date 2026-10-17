@@ -18,7 +18,7 @@ async function wallet() {
   const { r } = await post('auth/verify', { wallet: address, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) });
   return { address, short: `${address.slice(0, 4)}…${address.slice(-4)}`, cookie: r.headers.get('set-cookie').split(';')[0] };
 }
-/** Test-only ledger credit. The product has no credit route. `honk` is whole HONK. */
+/** Test-only ledger credit. The product has no credit route. `honk` is whole TEN4. */
 async function creditHonk(wallet, honk) {
   const prisma = new PrismaClient();
   const amount = BigInt(honk) * 1_000_000n, updatedAt = new Date();
@@ -218,7 +218,7 @@ check('PROMO: THREE again is still refused', /retired|extra free-ride/.test(awai
 check('PROMO: a refused code is not listed', await until(async () => /No codes redeemed yet/.test(await txt(obs, '#my-codes'))), await txt(obs, '#my-codes'));
 await creditHonk(P.address, 390); // gold wheel 260, blue paint 65, pink dice 65
 const gold = await mintPart(P, 'wheel', 'gold');
-check('HONK: burning 260 mints the gold wheel and wears it', gold.r.status === 200 && gold.j.nft?.item === 'gold' && gold.j.balance === '130', JSON.stringify(gold.j));
+check('TEN4: burning 260 mints the gold wheel and wears it', gold.r.status === 200 && gold.j.nft?.item === 'gold' && gold.j.balance === '130', JSON.stringify(gold.j));
 
 // ── GARAGE: the catalog, the progression, picking parts, SAVE into the database
 const part = (slot, item) => `document.querySelector("#garage-slots [data-slot=${slot}] [data-item=${item}]")`;
@@ -247,7 +247,7 @@ check('PROMO: an invite link (lobby.html?promo=CODE) opens the PROFILE with the 
 await obs.ev('document.getElementById("promo-go").click()'); await until(async () => /Unknown promo code/.test(await txt(obs, '#promo-msg')));
 check('PROMO: BLUEPAINT is not a colour code', /Unknown promo code/.test(await txt(obs, '#promo-msg')), await txt(obs, '#promo-msg'));
 const blue = await mintPart(P, 'truck_color', 'blue');
-check('HONK: burning 65 mints the blue paint (the saved wheel stays classic)', blue.r.status === 200 && (await get('wardrobe', P.cookie)).equipped.truck_color === 'blue' && (await get('wardrobe', P.cookie)).equipped.wheel === 'classic', JSON.stringify(blue.j));
+check('TEN4: burning 65 mints the blue paint (the saved wheel stays classic)', blue.r.status === 200 && (await get('wardrobe', P.cookie)).equipped.truck_color === 'blue' && (await get('wardrobe', P.cookie)).equipped.wheel === 'classic', JSON.stringify(blue.j));
 await mintPart(P, 'dice', 'pink');
 await obs.send('Page.navigate', { url: `${BASE}/lobby.html#garage` });
 check('GARAGE: it opens at 3 of 48 (gold wheel, blue paint, pink dice)', await until(async () => /^COLLECTION3 \/ 48/.test(await txt(obs, '#garage-progress'))), await txt(obs, '#garage-progress'));
@@ -260,14 +260,14 @@ const cosRide = await post('rides', { tier: 'free' }, P.cookie);
 await obs.send('Page.navigate', { url: `${BASE}/play.html?ride=${cosRide.j.id}` });
 check('PROMO: the game opens a ride of that wallet already wearing its parts (gold wheel, blue paint, pink dice)', await until(async () => JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')) === wornJson), JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')));
 await post(`rides/${cosRide.j.id}/start`, {}, P.cookie);
-check('HONK: the started ride stamps all nine loadout slots', JSON.stringify((await get(`rides/${cosRide.j.id}`, P.cookie)).loadout) === wornJson);
+check('TEN4: the started ride stamps all nine loadout slots', JSON.stringify((await get(`rides/${cosRide.j.id}`, P.cookie)).loadout) === wornJson);
 const cosmeticWatch = await fetch(`${BASE}/api/watch/${cosRide.j.id}`);
 check('the free cosmetic ride stays private while running', cosmeticWatch.status === 403 && (await cosmeticWatch.json()).code === 'free_ride_no_stream');
 const cosmeticEnd = await post(`rides/${cosRide.j.id}/end`, { outcome: 'failed', s: 0, t: 0, hull: 100, reason: 'e2e' }, P.cookie);
 check('the ended free ride exposes its stamped loadout to replays', cosmeticEnd.r.ok && JSON.stringify((await get(`watch/${cosRide.j.id}`)).ride.loadout) === wornJson);
 await post('garage/loadout', { loadout: { wheel: 'classic', truck_color: 'red', dice: 'white' } }, P.cookie);   // the driver changes back AFTER the start: the ride keeps what it was driven with
 await obs.send('Page.navigate', { url: `${BASE}/play.html?watch=${cosRide.j.id}` });
-check('HONK: a replay wears what the ride was driven with (the watch page never reads a wardrobe – only the ride\'s loadout), though the driver now wears the classics', await until(async () => JSON.stringify(await obs.ev('window.__game?.watch?.ride?.loadout')) === wornJson && JSON.stringify(await obs.ev('({ ...__game.cosmetics.loadout })')) === wornJson), JSON.stringify(await obs.ev('({ w: window.__game?.watch?.ride?.loadout, c: window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null })')));
+check('TEN4: a replay wears what the ride was driven with (the watch page never reads a wardrobe – only the ride\'s loadout), though the driver now wears the classics', await until(async () => JSON.stringify(await obs.ev('window.__game?.watch?.ride?.loadout')) === wornJson && JSON.stringify(await obs.ev('({ ...__game.cosmetics.loadout })')) === wornJson), JSON.stringify(await obs.ev('({ w: window.__game?.watch?.ride?.loadout, c: window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null })')));
 await sleep(1200); await obs.shot('promo-in-game');
 check('…and no unexpected page errors (promo, garage)', problems(obs).length === 0, problems(obs).join(' | '));
 await obs.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await sleep(800);

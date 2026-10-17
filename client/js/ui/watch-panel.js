@@ -212,7 +212,7 @@ async function send() {
   try { const e = await api(`watch/${encodeURIComponent(watch.id)}/messages`, { text: t.value }); t.value = ''; say(''); addOwn(e); }
   catch (e) { say(e.message, 'bad'); if (e.status === 401) refreshMe(); }
 }
-/* Burns 1 HONK into the ride's chat (the server writes a normal message whose text is HONK). No effect on the truck.
+/* Burns 1 TEN4 into the ride's chat (the server writes a normal message whose text is HONK). No effect on the truck.
    The button stays down for the server's 10 s gap; a refusal (balance, rate, sign-in) is the API's own sentence. */
 const HONK_GAP_MS = 10_000, TIME_GAP_MS = 20_000;
 function honkBtn() {
@@ -247,7 +247,7 @@ async function sendHonk() {
     if (e.status === 401) refreshMe();
   }
 }
-/* 10 HONK moves the driver's clock (day or night); 25 HONK sets snow or clear. All four share the 20s effect window. The donation effect switch does not hide these. */
+/* 10 TEN4 moves the driver's clock (day or night); 25 TEN4 sets snow or clear. All four share the 20s effect window. The donation effect switch does not hide these. */
 const FX_IDS = ['w-honk-day', 'w-honk-night', 'w-honk-snow', 'w-honk-clear'];
 function timeControls() {
   const left = P.timeUntil - Date.now(), held = left > 0;

@@ -25,7 +25,7 @@ export function liveFeatures(flags: LiveFlags, ride: { isFree: boolean; ranked?:
   return { chat: flags.chat === 'all', donations, payment: flags.freeDonations ? 'mock' : 'chain', effects: donations && flags.effects === 'all' && !ride.ranked };
 }
 
-/** null = allowed; otherwise why not (the 403's text). `honk-time` and `honk-weather` are HONK burns, not donations: the ride checks already ran, and the donation effect switch does not gate them. */
+/** null = allowed; otherwise why not (the 403's text). `honk-time` and `honk-weather` are TEN4 burns, not donations: the ride checks already ran, and the donation effect switch does not gate them. */
 export function refusalFor(features: LiveFeaturesDto, input: { kind: 'message' } | { kind: 'donation'; effect: EffectId } | { kind: 'honk-time' } | { kind: 'honk-weather' }): string | null {
   if (input.kind === 'message') return features.chat ? null : 'chat is off on this ride';
   if (input.kind === 'honk-time' || input.kind === 'honk-weather') return null;

@@ -1,4 +1,4 @@
-// HONK on a local validator, through program GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx. SCENARIO=chain | session | all.
+// TEN4 on a local validator, through program GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx. SCENARIO=chain | session | all.
 // RPC, KEYS (payer.json, player.json, spectator.json). Session also needs BASE, DATABASE_URL, CHROME_PORT. The server mints no second NFT.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -217,7 +217,7 @@ async function session() {
   const agreedS = await put('profile/agreements', { age18: true, loss: true }, spectator.cookie);
   check('agreements', agreedP.r.ok && agreedS.r.ok, `${agreedP.r.status} ${agreedS.r.status}`);
   await creditHonk(player.address, 65);
-  await creditHonk(spectator.address, 51); // 1 chat + 25 snow + 25 clear. Chain HONK already came from the swaps.
+  await creditHonk(spectator.address, 51); // 1 chat + 25 snow + 25 clear. Chain TEN4 already came from the swaps.
   try {
     execFileSync('node', ['dist/cli/index.js', 'pool:seed', '--id', '1', '--tier', '1h', '--status', 'active', '--min', '1'], { cwd: SERVER, env: process.env, stdio: 'pipe' });
   } catch (e) {

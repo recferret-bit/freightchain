@@ -1,4 +1,4 @@
-// Local HONK program (docs/agents/honk-program.md). Not deployed. The coin is this program's mint, not a keypair mint.
+// Local TEN4 (freightchain_honk) program (docs/agents/honk-program.md). Not deployed. The coin is this program's mint, not a keypair mint.
 // Instruction data is Anchor: sha256("global:<name>").subarray(0, 8) plus little-endian borsh. Amounts are base units; sol_in is lamports.
 import { createHash } from 'node:crypto';
 import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, sendAndConfirmTransaction } from '@solana/web3.js';
