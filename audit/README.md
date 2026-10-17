@@ -77,7 +77,7 @@ A cybersecurity provider rejection does not identify its exact trigger. Correctl
 
 Findings carry `analysis` and `validation`; reviewed controls carry `evidence`. For historical report compatibility, stored findings retain empty `attack`/`poc` fields and controls mirror evidence into `how_attacked`. Terminal prose and JSON fences never supply findings. Model agreement is not proof; incomplete or refused reviews are not zero-finding passes.
 
-The standalone HTML reports use a white/orange mechanical dashboard with black navigation and red, blue and green status accents. Findings start collapsed; severity/surface filters and full-text search lead to impact, fixes and expandable evidence. Missing coverage stays visible. The shared presentation lives in `scripts/generate-html-report.mjs`, `scripts/report-style.css` and `scripts/report-browser.js`; `html` below regenerates both pages from saved evidence without calling reviewers.
+The standalone HTML reports use a white/orange mechanical dashboard with black navigation and red, blue and green status accents. Findings start collapsed; severity/surface filters and full-text search lead to impact, fixes and expandable evidence. Missing coverage stays visible. The shared presentation lives in `scripts/generate-html-report.mjs`, `scripts/report-style.css` and `scripts/report-browser.js`; `html` below regenerates both pages from saved evidence without calling reviewers. The [operator guide](docs/index.html) uses the same shared stylesheet, with quick-start commands, a workflow map, six review surfaces and expandable tool/session/evidence references; `docs/style.css` contains its documentation-specific layouts.
 
 ```sh
 ./audit/bin/audit verify /path/to/report
