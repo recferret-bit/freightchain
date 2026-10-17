@@ -1,4 +1,3 @@
-import { TOKEN_SYMBOL } from '../config.js';
 import { fmt } from '../util.js';
 import { st } from '../state.js';
 import { audio } from '../sim/audio.js';
@@ -7,22 +6,30 @@ import { SITE_BASE } from '../hosts.js';
 import { watch, seek, goLive, addEvent, roadCheck, replayEnd, LIVE_LAG } from '../watch.js';
 import { EFFECT_INFO, solText } from '../live-effects.js';
 import { el } from '../../site/dom.js';
-import { api, prepareSignIn, signIn } from '../../site/wallet.js';
-import { phoneStep, signAndSend } from '../../site/pay.js';
-import { solanaPayUrl, donationPayPath } from '../../site/solana-pay.js';
-import { API_BASE } from '../hosts.js';
+import { api, prepareSignIn } from '../../site/wallet.js';
 import { explorerTx } from '../../site/pools.js';
 import { formatDriver, getCachedSns, reverseResolveSns } from '../../site/sns.js';
 import { paintPledges, pledgeForm } from './watch-pledges.js';
+import { resumeDonation, createWatchActions } from './watch-actions.js';
 
-/* The watch page's panel (play.html?watch=<id>): who / where / how far, the timeline (live edge or replay with speeds), the ride's feed, and – signed in –
-   the chat box, the donation buttons and – on a ticket ride – pledges per km (watch-pledges.js). Server text only through el() / textContent. Spectator actions go to /api/watch/:id/* (server/src/presentation/live). */
+/* The watch page's panel (play.html?watch=<id>): timeline, road check, live feed, and spectator actions. */
 const TIER = { free: 'TEST RIDE', '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8 HOURS' };
 const STATUS = { running: 'ON THE ROAD', completed: 'COMPLETED', abandoned: 'ABANDONED', failed: 'FAILED' };
 const P = { me: null, root: null, busy: false, endShown: false, honkUntil: 0, timeUntil: 0 };
 const $ = id => document.getElementById(id);
 const hms = t => (t >= 3600 ? `${Math.floor(t / 3600)}:${fmt(t % 3600)}` : fmt(t));
 const km = m => (m / 1000).toFixed(1);
+const say = (text, cls = 'dim') => { const m = $('w-msg'); if (m) { m.textContent = text; m.className = `w-small ${cls}`; } };
+const addOwn = e => addEvent(e);
+
+const actions = createWatchActions({
+  P,
+  $,
+  say,
+  refreshMe: () => refreshMe(),
+  paintMe: () => paintMe(),
+  addOwn,
+});
 
 export function mountWatchPanel() {
   document.getElementById('overlay')?.classList.add('hide');
@@ -75,27 +82,13 @@ function mountError() {
   document.body.append(el('aside', { id: 'watch', class: 'w-error' }, el('b', {}, 'NOTHING TO WATCH'), el('p', {}, watch.error), el('a', { href: `${SITE_BASE}/lobby.html#live` }, '← trucks on the road')));
 }
 
-const donationKey = rideId => `freightchain.donation.${rideId}`;
-const rememberDonation = (rideId, orderId) => { try { sessionStorage.setItem(donationKey(rideId), orderId); } catch { /* private mode */ } };
-const forgetDonation = rideId => { try { sessionStorage.removeItem(donationKey(rideId)); } catch { /* private mode */ } };
 async function refreshMe() {
   try { P.me = await api('me'); } catch { P.me = null; }
   paintMe();
   if (watch.ride && watch.ride.poolId !== null && watch.ride.poolId !== undefined) paintPledges($('w-pledges'), watch.ride, P.me);
-  if (P.me) resumeDonation().catch(() => {});
-}
-/** A phone payment whose page reloaded before confirm: the order id is in this browser, the reference is on the server. */
-async function resumeDonation() {
-  if (watch.features?.payment !== 'chain' || !watch.id) return;
-  let orderId = null; try { orderId = sessionStorage.getItem(donationKey(watch.id)); } catch { return; }
-  if (!orderId) return;
-  const r = await api(`watch/${encodeURIComponent(watch.id)}/donation-orders/${orderId}/reconcile`, {}).catch(() => null);
-  if (r?.status !== 'paid') return;
-  forgetDonation(watch.id);
-  if (!watch.events.has(r.event.id)) addOwn(r.event);
+  if (P.me) resumeDonation(addOwn).catch(() => {});
 }
 
-/* ───── the parts that change ───── */
 function paint() {
   const r = watch.ride; if (!r || !P.root) return;
   $('w-route').textContent = r.route ? getTheme(r.route).name : 'route not reported yet';
@@ -109,8 +102,7 @@ function paint() {
   $('w-sound').textContent = audio.muted || !audio.ctx ? '🔇' : '🔊';
   paintMe(); paintClock();
 }
-/* the end of a finished ride's replay: the same result dialog a driver gets (game.js showOnlineMenu). watch.atEnd is every way it ends
-   (the finish line, a crash, an abandon, the recording running out — the last frame is held buffering). Seeking back hides it. */
+
 function paintEnd() {
   const r = watch.ride, ov = $('overlay'), panel = $('panel');
   if (!ov || !panel) return;
@@ -124,11 +116,12 @@ function paintEnd() {
     el('div', { class: 'btns' }, el('button', { type: 'button', id: 'lobby', class: 'alt bail-link', style: 'margin-left:auto', onclick: () => { location.href = `${SITE_BASE}/lobby.html`; } }, el('b', {}, 'BACK TO THE LOBBY'), el('small', {}, 'lobby'))));
   ov.classList.remove('hide', 'booting'); ov.classList.add('replay-end');
 }
+
 function paintClock() {
   const r = watch.ride; if (!r || !P.root) return;
   const sk = $('w-seek'), end = Math.max(1, Math.floor(replayEnd()));
   sk.max = end; if (document.activeElement !== sk) sk.value = Math.floor(watch.wt);
-  $('w-time').textContent = `${hms(st.t)} / ${hms(r.live ? r.minSeconds : replayEnd())}`;   // a finished ride: its own length, not the nominal shift
+  $('w-time').textContent = `${hms(st.t)} / ${hms(r.live ? r.minSeconds : replayEnd())}`;
   $('w-dist').textContent = `${km(st.s)} / ${km(r.completeDist)} km`;
   $('w-hull').textContent = `${Math.round(st.hull)}%`;
   const note = !watch.rows.length ? (r.live || (watch.rec.lastSeq !== null && !watch.batches.has(watch.rec.lastSeq)) ? 'waiting for the first recording…' : 'no recording kept for this ride')
@@ -137,8 +130,6 @@ function paintClock() {
   paintRoad(end); paintEnd();
 }
 
-/* the ROAD CHECK: what the recorded truck did at the server's holes (watch.js roadCheck) – a line in the panel, a mark on the timeline per hole hit (amber)
-   or driven through untouched (red, click = jump there), and the NO IMPACT stamp while the replay passes one */
 let marksKey = '';
 function paintRoad(end) {
   const c = roadCheck(), box = $('w-road');
@@ -154,7 +145,6 @@ function paintRoad(end) {
   if (on) stamp.replaceChildren(el('b', {}, 'NO IMPACT'), el('span', {}, `the server's ${watch.stamp.type} at ${km(watch.stamp.s)} km – this truck drove through it without a scratch (the game takes ${watch.stamp.expected.toFixed(1)} % hull)`));
 }
 
-/* ───── feed ───── */
 function feedLine(e) {
   const box = $('w-feed'); if (!box) return;
   const fx = EFFECT_INFO[e.effect], mine = P.me && e.wallet === P.me.wallet, honk = e.kind === 'honk';
@@ -172,188 +162,31 @@ function feedLine(e) {
 const appliedText = e => (!e.applied ? ' · waiting for the driver' : e.applied.placed === false ? ' ✗ no room on the road – it fizzled' : ' ✓ on the road');
 function markApplied(e) { const ap = document.querySelector(`.w-line[data-id="${e.id}"] .w-ap`); if (ap) ap.textContent = appliedText(e); }
 
-/* ───── signed-in actions ───── */
 function paintMe() {
   const box = $('w-me'); if (!box || !watch.ride) return;
   const r = watch.ride;
   if (!r.live) { box.replaceChildren(el('p', { class: 'dim w-small' }, 'This ride is over – the feed is read-only. Chat and donations go to rides on the road.')); return; }
   if (!P.me) {
     box.replaceChildren(el('p', { class: 'w-small' }, 'Sign in with your Solana wallet to write to the driver and send donations that change their ride.'),
-      el('button', { onclick: connect, onpointerdown: () => prepareSignIn(), disabled: P.busy }, 'CONNECT WALLET'), el('div', { id: 'w-msg', class: 'w-small' }));
+      el('button', { onclick: actions.connect, onpointerdown: () => prepareSignIn(), disabled: P.busy }, 'CONNECT WALLET'), el('div', { id: 'w-msg', class: 'w-small' }));
     prepareSignIn();
     return;
   }
   if (P.me.wallet === r.wallet) { box.replaceChildren(el('p', { class: 'dim w-small' }, 'This is your own ride – spectators write here.')); return; }
   const f = watch.features, key = `${P.me.wallet}|${r.ranked ? 1 : 0}|${JSON.stringify(f)}`;
-  if (box.dataset.ready === key) return;   // built once per signed-in wallet and feature set (keeps what is being typed)
+  if (box.dataset.ready === key) return;
   box.dataset.ready = key;
   const parts = [];
-  if (f.chat) parts.push(el('div', { class: 'w-say' }, el('input', { id: 'w-text', maxlength: 140, placeholder: 'say something to the driver…', autocomplete: 'off', onkeydown: e => { if (e.key === 'Enter') send(); } }), el('button', { type: 'button', onclick: send }, 'SEND'), honkBtn()));
-  else parts.push(el('p', { class: 'dim w-small' }, 'Chat is off on this ride.'), el('div', { class: 'w-say' }, honkBtn()));
-  if (!r.ranked) parts.push(...timeControls());
+  if (f.chat) parts.push(el('div', { class: 'w-say' }, el('input', { id: 'w-text', maxlength: 140, placeholder: 'say something to the driver…', autocomplete: 'off', onkeydown: e => { if (e.key === 'Enter') actions.send(); } }), el('button', { type: 'button', onclick: actions.send }, 'SEND'), actions.honkBtn()));
+  else parts.push(el('p', { class: 'dim w-small' }, 'Chat is off on this ride.'), el('div', { class: 'w-say' }, actions.honkBtn()));
+  if (!r.ranked) parts.push(...actions.timeControls());
   if (f.donations) {
     const fx = Object.entries(EFFECT_INFO).filter(([id]) => f.effects || id === 'tip'), chain = f.payment === 'chain';
     parts.push(el('div', { class: 'w-k' }, chain ? 'DONATE · devnet SOL, sent from your wallet to the driver' : 'DONATE · mock SOL – nothing is charged', f.effects ? ' · one effect per 20 s on a ride' : ' · effects are off on this ride – tips only'),
-      el('div', { class: 'w-fx' }, ...fx.map(([id, e]) => el('button', { class: 'alt', title: `${e.says}${chain ? ' – paid to the driver in devnet SOL' : ''}`, onclick: () => donate(id) }, `${e.icon} ${e.label}`, el('small', {}, `${e.sol} SOL`)))),
+      el('div', { class: 'w-fx' }, ...fx.map(([id, e]) => el('button', { class: 'alt', title: `${e.says}${chain ? ' – paid to the driver in devnet SOL' : ''}`, onclick: () => actions.donate(id) }, `${e.icon} ${e.label}`, el('small', {}, `${e.sol} SOL`)))),
       el('input', { id: 'w-note-in', maxlength: 80, placeholder: 'note with a donation (optional)', autocomplete: 'off' }));
   } else parts.push(el('p', { class: 'dim w-small' }, 'Donations are off.'));
   const pf = pledgeForm(r, say, () => paintPledges($('w-pledges'), watch.ride, P.me));
   if (pf) parts.push(pf);
   box.replaceChildren(...parts, el('div', { id: 'w-msg', class: 'w-small' }), el('div', { class: 'dim w-small', title: P.me.wallet }, `signed in as ${formatDriver(P.me.wallet, P.me.sns)}`));
 }
-const say = (text, cls = 'dim') => { const m = $('w-msg'); if (m) { m.textContent = text; m.className = `w-small ${cls}`; } };
-async function connect() {
-  P.busy = true; paintMe();
-  try { await signIn(); await refreshMe(); } catch (e) { P.busy = false; paintMe(); say(e.message, 'bad'); return; }
-  P.busy = false;
-}
-async function send() {
-  const t = $('w-text'); if (!t || !t.value.trim()) return;
-  try { const e = await api(`watch/${encodeURIComponent(watch.id)}/messages`, { text: t.value }); t.value = ''; say(''); addOwn(e); }
-  catch (e) { say(e.message, 'bad'); if (e.status === 401) refreshMe(); }
-}
-/* Burns 1 TEN4 into the ride's chat (the server writes a normal message whose text is HONK). No effect on the truck.
-   The button stays down for the server's 10 s gap; a refusal (balance, rate, sign-in) is the API's own sentence. */
-const HONK_GAP_MS = 10_000, TIME_GAP_MS = 20_000;
-function honkBtn() {
-  const left = P.honkUntil - Date.now();
-  const b = el('button', { id: 'w-honk', type: 'button', disabled: left > 0, title: `Burn 1 ${TOKEN_SYMBOL} to HONK. It shows up in the chat. Nothing happens to the truck.`, onclick: sendHonk }, 'HONK');
-  if (left > 0) setTimeout(releaseHonk, left);
-  return b;
-}
-async function honkSignature(amount) {
-  const me = await api('honk', undefined, { report: false }).catch(() => null);
-  const programId = me?.chain?.programId;
-  if (!programId || !P.me?.wallet) return null;
-  const { signHonkBurn } = await import('../../site/honk-sign.js');
-  return signHonkBurn({ programId, owner: P.me.wallet, amount });
-}
-function releaseHonk() {
-  const b = $('w-honk'); if (b && Date.now() >= P.honkUntil) b.disabled = false;
-}
-async function sendHonk() {
-  const b = $('w-honk');
-  if (!b || b.disabled || Date.now() < P.honkUntil) return;
-  b.disabled = true;
-  try {
-    const signature = await honkSignature(1n * 1_000_000n);
-    await api(`watch/${encodeURIComponent(watch.id)}/honk`, signature ? { signature } : {}, { method: 'POST' });
-    P.honkUntil = Date.now() + HONK_GAP_MS;
-    say('Burn landed.', 'good');
-    setTimeout(releaseHonk, HONK_GAP_MS);
-  } catch (e) {
-    if (Date.now() >= P.honkUntil) b.disabled = false;
-    say(e.message, 'bad');
-    if (e.status === 401) refreshMe();
-  }
-}
-/* 10 TEN4 moves the driver's clock (day or night); 25 TEN4 sets snow or clear. All four share the 20s effect window. The donation effect switch does not hide these. */
-const FX_IDS = ['w-honk-day', 'w-honk-night', 'w-honk-snow', 'w-honk-clear'];
-function timeControls() {
-  const left = P.timeUntil - Date.now(), held = left > 0;
-  const title = on => `Burning 10 ${TOKEN_SYMBOL} turns the ride to ${on}. The driver's clock moves; spectators see it in the replay.`;
-  const btn = (phase, label) => el('button', { id: `w-honk-${phase}`, type: 'button', class: 'alt', disabled: held, title: title(phase), onclick: () => sendTime(phase) }, label, el('small', {}, `10 ${TOKEN_SYMBOL}`));
-  const wxTitle = on => `Burning 25 ${TOKEN_SYMBOL} ${on === 'snow' ? 'makes it snow' : 'clears the snow'}. Not a donation.`;
-  const wx = (weather, label) => el('button', { id: `w-honk-${weather}`, type: 'button', class: 'alt', disabled: held, title: wxTitle(weather), onclick: () => sendWeather(weather) }, label, el('small', {}, `25 ${TOKEN_SYMBOL}`));
-  if (held) setTimeout(releaseTime, left);
-  return [el('div', { class: 'w-fx' }, btn('day', 'DAY'), btn('night', 'NIGHT')), el('div', { class: 'w-fx' }, wx('snow', 'SNOW'), wx('clear', 'CLEAR'))];
-}
-function releaseTime() {
-  if (Date.now() < P.timeUntil) return;
-  for (const id of FX_IDS) { const b = $(id); if (b) b.disabled = false; }
-}
-function holdFx() {
-  const buttons = FX_IDS.map((id) => $(id));
-  if (buttons.some((b) => !b || b.disabled) || Date.now() < P.timeUntil) return false;
-  for (const b of buttons) b.disabled = true;
-  return true;
-}
-async function sendTime(phase) {
-  if (watch.ride?.ranked || !holdFx()) return;
-  try {
-    const signature = await honkSignature(10n * 1_000_000n);
-    await api(`watch/${encodeURIComponent(watch.id)}/honk/time`, { phase, ...(signature ? { signature } : {}) });
-    P.timeUntil = Date.now() + TIME_GAP_MS;
-    say(phase === 'night' ? 'Night burn landed.' : 'Day burn landed.', 'good');
-    setTimeout(releaseTime, TIME_GAP_MS);
-  } catch (e) {
-    if (Date.now() >= P.timeUntil) releaseTime();
-    say(e.message, 'bad');   // 409 honk_balance and 429 are the server's own sentence
-    if (e.status === 401) refreshMe();
-  }
-}
-async function sendWeather(weather) {
-  if (watch.ride?.ranked || !holdFx()) return;
-  try {
-    const signature = await honkSignature(25n * 1_000_000n);
-    await api(`watch/${encodeURIComponent(watch.id)}/honk/weather`, { weather, ...(signature ? { signature } : {}) });
-    P.timeUntil = Date.now() + TIME_GAP_MS;
-    say(weather === 'snow' ? 'Snow burn landed.' : 'Clear burn landed.', 'good');
-    setTimeout(releaseTime, TIME_GAP_MS);
-  } catch (e) {
-    if (Date.now() >= P.timeUntil) releaseTime();
-    say(e.message, 'bad');   // 409 honk_balance and 429 are the server's own sentence
-    if (e.status === 401) refreshMe();
-  }
-}
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-async function showDonationQr(url) {
-  if (!url) { $('w-qr')?.remove(); return; }
-  const { payQrBlock } = await import('../../site/qr.js');
-  const msg = $('w-msg'); if (!msg?.isConnected) return;
-  let box = $('w-qr');
-  if (!box) { box = el('div', { id: 'w-qr', class: 'pay-qr' }); msg.before(box); }
-  box.replaceChildren(...payQrBlock(url, 'dim w-small'));
-}
-const sent = (effect, how) => (effect === 'tip' ? `Tip sent (${how}).` : `${EFFECT_INFO[effect].label} sent (${how}) – it happens when the driver's game picks it up; you see it here ~${LIVE_LAG} s later.`);
-async function donate(effect) {
-  if (P.busy) return;
-  const n = $('w-note-in'), note = n?.value.trim() || null, id = encodeURIComponent(watch.id);
-  P.busy = true;
-  const stop = { done: false };   // set when this donation is settled either way: the phone poll must not outlive it
-  try {
-    if (watch.features.payment !== 'chain') {   // MOCK: nothing is charged
-      addOwn(await api(`watch/${id}/donations`, { effect, note })); say(sent(effect, 'mock'), 'good');
-    } else {   // PAID: the server builds the transfer to the driver, your wallet signs and sends it, the server sees it on chain
-      say('Preparing the transfer…');
-      const { order, transaction } = await api(`watch/${id}/donation-orders`, { effect, note });
-      rememberDonation(watch.id, order.id);
-      await showDonationQr(solanaPayUrl(API_BASE, location.origin, donationPayPath(order.id)));
-      const phone = async () => {
-        const end = Date.now() + 90000;
-        while (!stop.done && Date.now() < end) {
-          const r = await api(`watch/${id}/donation-orders/${order.id}/reconcile`, {}).catch(() => null);
-          if (r?.status === 'paid') return r;
-          await sleep(3000);
-        }
-        return null;
-      };
-      let signature;
-      try {
-        say(`Approve ${solText(order.lamports)} (devnet) to the driver in your wallet…`);
-        signature = await signAndSend(transaction.transaction);
-      } catch (e) {
-        say(e?.code === 'no_wallet' ? 'No browser wallet. Scan the code with the phone wallet that holds this account (devnet)…' : phoneStep(e));
-        const found = await phone();
-        if (found?.status === 'paid') { forgetDonation(watch.id); if (n) n.value = ''; addOwn(found.event); say(found.event.effect === effect ? sent(effect, 'paid') : `Paid – ${found.event.text ?? 'delivered as a tip'}.`, 'good'); return; }
-        throw e;
-      }
-      say('Sent – waiting for the network to confirm…');
-      const phonePaid = phone();
-      for (let i = 0; i < 60; i++) {
-        const r = await Promise.race([
-          api(`watch/${id}/donation-orders/${order.id}/confirm`, { signature }),
-          phonePaid.then(hit => hit ?? new Promise(() => {})),
-        ]);
-        if (r.status === 'paid') { forgetDonation(watch.id); if (n) n.value = ''; addOwn(r.event); say(r.event.effect === effect ? sent(effect, 'paid') : `Paid – ${r.event.text ?? 'delivered as a tip'}.`, 'good'); return; }
-        await sleep(1500);
-      }
-      const late = await phonePaid;
-      if (late?.status === 'paid') { forgetDonation(watch.id); if (n) n.value = ''; addOwn(late.event); say(late.event.effect === effect ? sent(effect, 'paid') : `Paid – ${late.event.text ?? 'delivered as a tip'}.`, 'good'); return; }
-      say('The network has not confirmed it yet – it appears in the feed once it does (reload to check).', 'dim');
-    }
-    if (n) n.value = '';
-  } catch (e) { say(e.message, 'bad'); if (e.status === 401) refreshMe(); }
-  finally { stop.done = true; P.busy = false; $('w-qr')?.remove(); }
-}
-const addOwn = e => addEvent(e);   // shown at once (onEvent paints it); the next poll knows the id

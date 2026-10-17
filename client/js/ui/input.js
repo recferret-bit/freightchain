@@ -29,38 +29,49 @@ const KEYS = {
 };
 const volumeMsg = d => { radio.volume(d); toast('Radio volume ' + Math.round(radio.vol * 100) + '%', 900); };
 const radioMsg = on => toast(!on ? 'Radio off' : st.mode === 'drive' && !powered() ? 'Radio: turn the key to ON' : 'FM ' + radio.station.freq.toFixed(1) + ' · ' + radio.station.name, 1600);
+const seekRadio = d => { radio.seek(d); radioMsg(true); };
+const toggleMute = () => { audio.muted = !audio.muted; toast(audio.muted ? 'Sound off' : 'Sound on', 1000); };
+const flipHeadlights = withToast => { dn.head = !dn.head; audio.play(dn.head ? 'switch' : 'switch-off'); if (withToast) toast(dn.head ? 'Headlights on' : 'Headlights off', 1000); };
+const driveOnly = fn => () => { if (st.mode === 'drive') fn(); };
+
+const KEY_ACTIONS = {
+  KeyE: () => tryShift(st.gear + 1),
+  KeyQ: () => tryShift(st.gear - 1),
+  KeyG: () => tryShift(-1),
+  KeyI: () => ignition(),
+  KeyO: () => engineOff(),
+  KeyB: driveOnly(toggleParkingBrake),
+  KeyH: driveOnly(toggleHeater),
+  KeyJ: driveOnly(toggleCooler),
+  KeyR: driveOnly(cycleWipers),
+  KeyP: () => setPaused(st.mode === 'drive'),
+  KeyL: () => flipHeadlights(true),
+  KeyC: () => toggleCab(),
+  KeyM: toggleMute,
+  KeyN: driveOnly(toggleMap),   // the phone map (ui/map.js) – not from the menu / pause / end panel
+  KeyT: () => radioMsg(radio.toggle()),
+  Period: () => seekRadio(1),
+  Comma: () => seekRadio(-1),
+  Minus: () => volumeMsg(-.1),
+  Equal: () => volumeMsg(.1),
+  Enter: () => { if (st.mode === 'menu' || st.mode === 'done') document.getElementById('go')?.click(); },
+};
+
 addEventListener('keydown', e => {
   if (!st.watch && isMobileDevice()) return;
-  if (e.code === 'F8' && !e.repeat && !e.target.closest?.('input, textarea')) { e.preventDefault(); toast(toggleFormShade() ? 'Form shade on' : 'Form shade off', 1200); return; }   // not recorded: a look switch, not a driving input
+  const inField = e.target?.closest?.('input, textarea');
+  if (e.code === 'F8' && !e.repeat && !inField) { e.preventDefault(); toast(toggleFormShade() ? 'Form shade on' : 'Form shade off', 1200); return; }   // not recorded: a look switch, not a driving input
   if (st.watch) {   // a spectator drives nothing: keys belong to the watch panel (chat box), only M mutes and N opens the map
-    if (e.code === 'KeyM' && !e.target.closest?.('input, textarea')) { audio.muted = !audio.muted; toast(audio.muted ? 'Sound off' : 'Sound on', 1000); }
-    if (e.code === 'KeyN' && !e.repeat && !e.target.closest?.('input, textarea')) toggleMap();
+    if (e.code === 'KeyM' && !inField) toggleMute();
+    if (e.code === 'KeyN' && !e.repeat && !inField) toggleMap();
     return;
   }
   if (!e.repeat) { recordInput(e.code, 1, e.timeStamp); if (st.mode === 'drive') answerPrompt(e.code); }   // online rides only (no-op otherwise): the server's human-likeness check reads the timing; a dispatch prompt is answered by its key
   if (KEYS[e.code]) { input[KEYS[e.code]] = 1; e.preventDefault(); return; }
   if (e.repeat) return;
-  if (e.code === 'KeyE') tryShift(st.gear + 1);
-  else if (e.code === 'KeyQ') tryShift(st.gear - 1);
-  else if (e.code === 'KeyG') tryShift(-1);
-  else if (/^Digit[0-7]$/.test(e.code)) tryShift(+e.code.slice(5));
-  else if (e.code === 'KeyI') ignition();
-  else if (e.code === 'KeyO') engineOff();
-  else if (e.code === 'KeyB') { if (st.mode === 'drive') toggleParkingBrake(); }
-  else if (e.code === 'KeyH') { if (st.mode === 'drive') toggleHeater(); }
-  else if (e.code === 'KeyJ') { if (st.mode === 'drive') toggleCooler(); }
-  else if (e.code === 'KeyR') { if (st.mode === 'drive') cycleWipers(); }
-  else if (e.code === 'KeyP') setPaused(st.mode === 'drive');
-  else if (e.code === 'KeyL') { dn.head = !dn.head; audio.play(dn.head ? 'switch' : 'switch-off'); toast(dn.head ? 'Headlights on' : 'Headlights off', 1000); }
-  else if (e.code === 'KeyC') toggleCab();
-  else if (e.code === 'KeyM') { audio.muted = !audio.muted; toast(audio.muted ? 'Sound off' : 'Sound on', 1000); }
-  else if (e.code === 'KeyN') { if (st.mode === 'drive') toggleMap(); }   // the phone map (ui/map.js) – not from the menu / pause / end panel
-  else if (e.code === 'KeyT') { radioMsg(radio.toggle()); }
-  else if (e.code === 'Period') { radio.seek(1); radioMsg(true); }
-  else if (e.code === 'Comma') { radio.seek(-1); radioMsg(true); }
-  else if (e.code === 'Minus') volumeMsg(-.1);
-  else if (e.code === 'Equal') volumeMsg(.1);
-  else if (e.code === 'Enter' && (st.mode === 'menu' || st.mode === 'done')) document.getElementById('go')?.click();
+  if (/^Digit[0-7]$/.test(e.code)) { tryShift(+e.code.slice(5)); return; }
+  if (e.code === 'KeyJ') { if (st.mode === 'drive') toggleCooler(); return; }
+  KEY_ACTIONS[e.code]?.();
 });
 addEventListener('keyup', e => { if (st.watch) return; recordInput(e.code, 0, e.timeStamp); if (KEYS[e.code]) { input[KEYS[e.code]] = 0; e.preventDefault(); } });
 addEventListener('blur', () => { for (const k in input) input[k] = 0; releaseInputs(); });
@@ -79,7 +90,30 @@ function shareRideProgress() {
   if (typeof window !== 'undefined' && window.open) window.open(xIntent(text, url), '_blank', 'noopener,noreferrer');
   toast('Opening 𝕏 to share ride progress...', 2000);
 }
-addEventListener('pointerdown', e => { if (st.watch && btnAt(e)?.id === 'map') { toggleMap(); return; } if (st.mode !== 'drive' || st.watch || isMobileDevice()) return; const b = btnAt(e); if (!b) return; recBtn = `btn:${b.id}`; recordInput(recBtn, 1, e.timeStamp); answerPrompt(recBtn); if (b.id === 'wiper') cycleWipers(); else if (b.id === 'wash') { input.wash = 1; heldBtn = 'wash'; } else if (b.id === 'key-off') keySwitch(false); else if (b.id === 'key-on') keySwitch(true); else if (b.id === 'key-start') { if (!st.engineOn) { ignition(true); heldBtn = 'key'; } } else if (b.id === 'park') toggleParkingBrake(); else if (b.id === 'share-x') shareRideProgress(); else if (b.id === 'head') { dn.head = !dn.head; audio.play(dn.head ? 'switch' : 'switch-off'); } else if (b.id === 'cab') toggleCab(); else if (b.id === 'heat') toggleHeater(); else if (b.id === 'cold') toggleCooler(); else if (b.id === 'r-pwr') radioMsg(radio.toggle()); else if (b.id === 'r-prev') { radio.seek(-1); radioMsg(true); } else if (b.id === 'r-next') { radio.seek(1); radioMsg(true); } else if (b.id === 'map') toggleMap(); });
+const BTN_ACTIONS = {
+  wiper: cycleWipers,
+  wash: () => { input.wash = 1; heldBtn = 'wash'; },
+  'key-off': () => keySwitch(false),
+  'key-on': () => keySwitch(true),
+  'key-start': () => { if (!st.engineOn) { ignition(true); heldBtn = 'key'; } },
+  park: toggleParkingBrake,
+  'share-x': shareRideProgress,
+  head: () => flipHeadlights(false),
+  cab: toggleCab,
+  heat: toggleHeater,
+  'r-pwr': () => radioMsg(radio.toggle()),
+  'r-prev': () => seekRadio(-1),
+  'r-next': () => seekRadio(1),
+  map: toggleMap,
+};
+addEventListener('pointerdown', e => {
+  if (st.watch && btnAt(e)?.id === 'map') { toggleMap(); return; }
+  if (st.mode !== 'drive' || st.watch || isMobileDevice()) return;
+  const b = btnAt(e); if (!b) return;
+  recBtn = `btn:${b.id}`; recordInput(recBtn, 1, e.timeStamp); answerPrompt(recBtn);
+  if (b.id === 'cold') toggleCooler();
+  else BTN_ACTIONS[b.id]?.();
+});
 const releaseHeld = e => { if (recBtn) { recordInput(recBtn, 0, e?.timeStamp); recBtn = null; } if (heldBtn === 'wash') input.wash = 0; else if (heldBtn === 'key') releaseKey(); heldBtn = null; };
 addEventListener('pointerup', releaseHeld); addEventListener('pointercancel', releaseHeld); addEventListener('blur', releaseHeld);
 addEventListener('pointermove', e => { const b = btnAt(e); document.body.style.cursor = st.mode === 'drive' && b && (!st.watch || b.id === 'map') ? 'pointer' : ''; });

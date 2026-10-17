@@ -190,39 +190,24 @@ export function showMobileToast(opts = {}) {
   const liveAction = opts.liveAction ?? `${SITE_BASE}/lobby.html#live`;
   const replaysAction = opts.replaysAction ?? `${SITE_BASE}/lobby.html#replays`;
 
-  const liveBtn = document.createElement(typeof liveAction === 'string' ? 'a' : 'button');
-  liveBtn.className = 'fc-toast-btn live';
-  liveBtn.textContent = '▶ WATCH LIVE';
-  if (typeof liveAction === 'string') {
-    liveBtn.setAttribute('href', liveAction);
-    liveBtn.addEventListener('click', () => {
+  const buildToastActionBtn = (cls, label, action) => {
+    const isLink = typeof action === 'string';
+    const btn = document.createElement(isLink ? 'a' : 'button');
+    btn.className = `fc-toast-btn ${cls}`;
+    btn.textContent = label;
+    if (isLink) btn.setAttribute('href', action);
+    else btn.setAttribute('type', 'button');
+    btn.addEventListener('click', () => {
       dismissMobileToast();
+      if (!isLink) action();
     });
-  } else {
-    liveBtn.setAttribute('type', 'button');
-    liveBtn.addEventListener('click', () => {
-      dismissMobileToast();
-      liveAction();
-    });
-  }
+    return btn;
+  };
 
-  const replaysBtn = document.createElement(typeof replaysAction === 'string' ? 'a' : 'button');
-  replaysBtn.className = 'fc-toast-btn replays';
-  replaysBtn.textContent = '▶ REPLAYS';
-  if (typeof replaysAction === 'string') {
-    replaysBtn.setAttribute('href', replaysAction);
-    replaysBtn.addEventListener('click', () => {
-      dismissMobileToast();
-    });
-  } else {
-    replaysBtn.setAttribute('type', 'button');
-    replaysBtn.addEventListener('click', () => {
-      dismissMobileToast();
-      replaysAction();
-    });
-  }
-
-  actions.append(liveBtn, replaysBtn);
+  actions.append(
+    buildToastActionBtn('live', '▶ WATCH LIVE', liveAction),
+    buildToastActionBtn('replays', '▶ REPLAYS', replaysAction),
+  );
   toast.append(topRow, msg, note, actions);
 
   requestAnimationFrame(() => {
