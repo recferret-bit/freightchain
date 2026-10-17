@@ -252,7 +252,8 @@ fn rent_rule_vault_never_left_between_zero_and_rent_min() {
         x.max_per_wallet = 100;
     }));
     let a = funded(&mut e.svm, 20 * SOL);
-    e.buy(id, &a, 10).unwrap(); // pot 1 SOL, prize share 0.6 SOL, Active
+    e.buy(id, &a, 10).unwrap();
+    e.cover_player_share(id); // the commit below needs a prize share; the sale is still open
     let auth = e.authority_kp();
     e.warp(PLAY);
     let w = funded(&mut e.svm, SOL);
@@ -358,6 +359,7 @@ fn pay_prize_cu_for_the_largest_root() {
     }));
     let c = funded(&mut e.svm, 20 * SOL);
     e.buy(id, &c, 10).unwrap();
+    e.cover_player_share(id);
     e.warp(PLAY);
     let auth = e.authority_kp();
     let list: Vec<(Pubkey, u64)> = (0..64).map(|i| (funded(&mut e.svm, SOL).pubkey(), 1_000_000 + i)).collect();

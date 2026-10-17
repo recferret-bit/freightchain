@@ -27,6 +27,8 @@ fn active_pool_with(e: &mut Env, n: usize, qty: u16, p: freightchain_pools::Crea
         v.push(b);
     }
     assert_eq!(e.pool(id).status, 1);
+    // the sale is still open: sponsor enough that these tickets sit inside the player-share cap (a ticket-only pot pays nothing)
+    e.cover_player_share(id);
     (id, v)
 }
 
@@ -162,37 +164,28 @@ fn commit_winners_refused_when_its_lock_ends_too_close_to_the_grace() {
 
 // ---- pay_prize ------------------------------------------------------------------------------------------
 
-/// Product split 6500/2000/1000/500: commit and pay may use prize + referral, and one lamport over that is refused. Close sweeps the unpaid part of that sum.
+/// v5: with no sponsorship the player cap counts none of the ticket lamports. The prize share is 0, and close carries every ticket lamport to the seed treasury.
 #[test]
-fn referral_share_raises_the_payout_cap_and_the_unclaimed_sweep() {
-    let params = freightchain_pools::CreatePoolParams {
-        price_lamports: 100_000_000,
-        prize_bps: 6500,
-        seed_bps: 2000,
-        fee_bps: 1000,
-        referral_bps: 500,
-        ..default_params().with_open()
-    };
-    let mut e = Env::new();
-    let (id, _) = active_pool_with(&mut e, 1, 4, params.clone());
-    let prize = 260_000_000u64;
-    let cap = prize + 20_000_000;
-    assert_eq!((e.pool(id).prize_share().unwrap(), e.pool(id).referral_share().unwrap(), e.pool(id).payout_cap().unwrap()), (prize, 20_000_000, cap));
+fn ticket_lamports_above_the_player_cap_are_carried_to_the_seed() {
+    let mut e = Env::uninitialized(0);
+    let upgrader = clone_kp(&e.authority);
+    e.initialize(&upgrader, e.authority.pubkey()).unwrap();
+    e.set_floors(&upgrader, Some(0), Some(0)).unwrap();
+    let c = e.config();
+    assert_eq!((c.paid_tickets_enabled, c.prize_bps, c.seed_bps, c.fee_bps, c.max_player_share_bps, c.max_tickets), (true, 8500, 500, 1000, 4740, 0));
+    let id = e.create_pool(default_params().with_open());
+    let b = funded(&mut e.svm, 20 * SOL);
+    e.buy(id, &b, 4).unwrap();
+    let tickets = 4 * PRICE;
+    assert_eq!((e.pool(id).prize_share().unwrap(), e.pool(id).ticket_excess().unwrap()), (0, tickets));
     let a = e.authority_kp();
-    let w = wallets(&mut e, 1);
     e.warp(PLAY);
-    assert_err!(e.commit_winners(id, &a, &[(w[0], cap + 1)]), PoolError::PrizeExceedsShare);
-    e.commit_and_pay(id, &a, &[(w[0], prize)]);
+    assert_err!(e.commit_winners(id, &a, &[(b.pubkey(), 1)]), PoolError::PrizeExceedsShare);
+    e.commit_winners(id, &a, &[]).unwrap();
+    let s0 = e.bal(&e.seed_t.pubkey());
     let ev = &events::<PoolClosed>(&e.close_pool(id, &a).unwrap().logs)[0];
-    assert_eq!((ev.unclaimed, ev.prize_paid), (20_000_000, prize));
-
-    let params2 = later(&e, params);
-    let (id2, _) = active_pool_with(&mut e, 1, 4, params2);
-    let w2 = wallets(&mut e, 1);
-    e.warp(e.pool(id2).play_deadline);
-    e.commit_and_pay(id2, &a, &[(w2[0], cap)]);
-    let ev2 = &events::<PoolClosed>(&e.close_pool(id2, &a).unwrap().logs)[0];
-    assert_eq!((ev2.unclaimed, ev2.prize_paid), (0, cap));
+    assert_eq!((ev.ticket_excess, ev.unclaimed, ev.fee, ev.prize_paid), (tickets, 0, 0, 0));
+    assert_eq!(e.bal(&e.seed_t.pubkey()) - s0, tickets);
 }
 
 /// The old v3 cap test: the committed total and the prize share both bound what is paid – even when the root's leaves add up to more than the
@@ -205,9 +198,11 @@ fn pay_prize_bounded_by_the_committed_total_and_the_prize_share() {
     let sp = funded(&mut e.svm, 10 * SOL);
     let i = e.sponsor_ix(id, &sp.pubkey(), 200_000_001);
     e.send(&[i], &sp, &[]).unwrap();
-    // pot = 10 * 0.1 SOL + 200_000_001 = 1_200_000_001 ; prize 60% = 720_000_000 (floor of 720_000_000.6)
-    let share = 720_000_000u64;
-    assert_eq!(e.pool(id).prize_share_for_test(), share);
+    // cover (inside active_pool) plus this top-up: the cap is the prize share of the counted pot, not a fixed 60% of the tickets
+    let share = e.pool(id).prize_share_for_test();
+    let (prize, _, _) = freightchain_pools::split(e.pool(id).counted_pot().unwrap(), e.pool(id).prize_bps, e.pool(id).seed_bps).unwrap();
+    assert_eq!(share, prize);
+    assert!(share > 200_000_001);
     let a = e.authority_kp();
     let w = wallets(&mut e, 3);
     e.warp(PLAY);
@@ -421,6 +416,13 @@ fn only_the_admin_vetoes_and_only_before_a_rank_is_paid() {
 
 // ---- close_pool ----------------------------------------------------------------------------------------
 
+/// prize, seed, fee-after-platform, platform – of the counted pot (the v5 base).
+fn legs(p: &freightchain_pools::Pool) -> (u64, u64, u64, u64) {
+    let (prize, seed, fee) = freightchain_pools::split(p.counted_pot().unwrap(), p.prize_bps, p.seed_bps).unwrap();
+    let plat = freightchain_pools::bps_of(fee, p.platform_fee_bps).unwrap();
+    (prize, seed, fee - plat, plat)
+}
+
 /// Independent re-computation of the split (u128, floors, remainder to fee).
 fn expected(total: u64, prize_bps: u64, seed_bps: u64, platform_bps: u64) -> (u64, u64, u64, u64) {
     let prize = (total as u128 * prize_bps as u128 / 10_000) as u64;
@@ -441,12 +443,11 @@ fn close_pool_splits_exactly_for_random_amounts() {
         let (pb, sb, fb) = splits[round % splits.len()];
         let plat_bps = platform[round % platform.len()];
         let mut e = Env::with_platform_fee(plat_bps);
+        let auth0 = e.authority_kp();
+        e.set_pool_rules(&auth0, true, pb, sb, fb, 4999, 0).unwrap();
         let price = rng.range(1_000_000, 9_999_999);
         let id = e.create_pool(freightchain_pools::CreatePoolParams {
             price_lamports: price,
-            prize_bps: pb,
-            seed_bps: sb,
-            fee_bps: fb,
             ..default_params().with_open()
         });
         let mut tickets = 0u64;
@@ -463,8 +464,12 @@ fn close_pool_splits_exactly_for_random_amounts() {
             e.send(&[i], &sp, &[]).unwrap();
         }
         let pot = tickets * price + sponsored;
-        let (prize, seed, fee_out, plat) = expected(pot, pb as u64, sb as u64, plat_bps as u64);
+        let room = (sponsored as u128 * 4_999 / (10_000 - 4_999)) as u64;
+        let counted = (tickets * price).min(room);
+        let excess = tickets * price - counted;
+        let (prize, seed, fee_out, plat) = expected(counted + sponsored, pb as u64, sb as u64, plat_bps as u64);
         assert_eq!(e.pool(id).prize_share_for_test(), prize);
+        assert_eq!(e.pool(id).ticket_excess().unwrap(), excess);
         assert_eq!(e.vault(id), e.rent_min() + pot);
 
         let auth = e.authority_kp();
@@ -504,7 +509,7 @@ fn close_pool_splits_exactly_for_random_amounts() {
             e.bal(&e.plat_t.pubkey()) - p0,
             e.bal(&auth.pubkey()) - a0,
         );
-        assert_eq!(ds, seed + unclaimed, "round {round}: seed treasury gets seed share + unclaimed prize");
+        assert_eq!(ds, seed + unclaimed + excess, "round {round}: seed treasury gets seed share + unclaimed prize + ticket excess");
         assert_eq!(df, fee_out, "round {round}: fee treasury");
         assert_eq!(dp, plat, "round {round}: platform cut");
         assert_eq!(da, e.rent_min(), "round {round}: vault rent back to the authority");
@@ -512,11 +517,11 @@ fn close_pool_splits_exactly_for_random_amounts() {
         assert_eq!(e.vault(id), 0, "round {round}: vault ends empty");
         assert_eq!(e.pool(id).status, 3);
         // pool-level conservation: prizes + seed + fees + platform = everything paid in
-        assert_eq!(paid + (ds - unclaimed) + unclaimed + df + dp, pot);
+        assert_eq!(paid + (ds - unclaimed - excess) + unclaimed + excess + df + dp, pot);
         let ev = events::<PoolClosed>(&r.logs);
         assert_eq!(
-            (ev[0].prize_paid, ev[0].seed, ev[0].fee, ev[0].platform_fee, ev[0].unclaimed),
-            (paid, seed + unclaimed, fee_out, plat, unclaimed)
+            (ev[0].prize_paid, ev[0].seed, ev[0].fee, ev[0].platform_fee, ev[0].unclaimed, ev[0].ticket_excess),
+            (paid, seed + unclaimed + excess, fee_out, plat, unclaimed, excess)
         );
         assert!(!ev[0].cancelled);
     }
@@ -590,7 +595,7 @@ fn the_payout_key_cannot_close_a_pool_with_unpaid_ranks() {
     assert_eq!(e.bal(&e.seed_t.pubkey()), s0);
     e.pay_rank(id, 1).unwrap();
     e.close_pool(id, &payout).unwrap();
-    assert_eq!(e.pool(id).prizes_paid, 600_000_000);
+    assert_eq!(e.pool(id).prizes_paid, 600_000_000); // 300m + 200m + 100m, inside the covered prize share
 }
 
 /// count = 0: the pool had no winner; once the lock is over the pool closes with its whole prize share unclaimed (to the seed treasury).
@@ -610,9 +615,10 @@ fn a_root_of_no_winner_lets_the_pool_close_after_the_lock() {
     assert_err!(e.close_pool(id, &payout), PoolError::TooEarly);
     e.warp(p.payout_at);
     assert_err!(e.pay_raw(id, 0, &payout.pubkey(), 1, vec![]), PoolError::InvalidParams);
+    let (prize, seed, _, _) = legs(&e.pool(id));
     let s0 = e.bal(&e.seed_t.pubkey());
     e.close_pool(id, &payout).unwrap();
-    assert_eq!(e.bal(&e.seed_t.pubkey()) - s0, 250_000_000 + 600_000_000);
+    assert_eq!(e.bal(&e.seed_t.pubkey()) - s0, seed + prize); // no winner: the whole prize share is unclaimed
 }
 
 #[test]
@@ -628,9 +634,10 @@ fn close_pool_unclaimed_prize_and_stray_lamports_go_to_seed() {
     let w = funded(&mut e.svm, SOL).pubkey();
     e.warp(PLAY);
     e.commit_and_pay(id, &auth, &[(w, 100_000_000)]);
+    let (prize, seed, _, _) = legs(&e.pool(id));
     let s0 = e.bal(&e.seed_t.pubkey());
     e.close_pool(id, &auth).unwrap();
-    assert_eq!(e.bal(&e.seed_t.pubkey()) - s0, 250_000_000 + 500_000_000 + 12_345);
+    assert_eq!(e.bal(&e.seed_t.pubkey()) - s0, seed + (prize - 100_000_000) + 12_345);
     assert_eq!(e.vault(id), 0);
 }
 
@@ -651,15 +658,18 @@ fn the_platform_cut_is_the_pools_snapshot() {
     e.warp(PLAY);
     e.commit_winners(id, &a, &[]).unwrap();
     e.commit_winners(id2, &a, &[]).unwrap();
+    let (_, _, fee_out, plat) = legs(&e.pool(id));
     let (p0, f0) = (e.bal(&e.plat_t.pubkey()), e.bal(&e.fee_t.pubkey()));
     let r = e.close_pool(id, &a).unwrap();
-    assert_eq!((e.bal(&e.plat_t.pubkey()) - p0, e.bal(&e.fee_t.pubkey()) - f0), (15_000_000, 135_000_000));
-    assert_eq!(events::<PoolClosed>(&r.logs)[0].platform_fee, 15_000_000);
+    assert_eq!((e.bal(&e.plat_t.pubkey()) - p0, e.bal(&e.fee_t.pubkey()) - f0), (plat, fee_out));
+    assert_eq!(events::<PoolClosed>(&r.logs)[0].platform_fee, plat);
     // a cut lowered after the sale does not shrink it either
     e.set_config(&a, None, None, Some(0)).unwrap();
+    let (_, _, fee_out2, plat2) = legs(&e.pool(id2));
     let (p0, f0) = (e.bal(&e.plat_t.pubkey()), e.bal(&e.fee_t.pubkey()));
     e.close_pool(id2, &a).unwrap();
-    assert_eq!((e.bal(&e.plat_t.pubkey()) - p0, e.bal(&e.fee_t.pubkey()) - f0), (75_000_000, 75_000_000));
+    assert_eq!((e.bal(&e.plat_t.pubkey()) - p0, e.bal(&e.fee_t.pubkey()) - f0), (plat2, fee_out2));
+    assert_eq!(e.pool(id2).platform_fee_bps, 5000);
 }
 
 // ---- pause ------------------------------------------------------------------------------------------------
@@ -721,10 +731,11 @@ fn after_the_grace_anyone_closes_a_partly_paid_pool() {
     e.warp(PAYOUT + SETTLE_GRACE_SECS - 1);
     assert_err!(e.close_pool(id, &stranger), PoolError::Unauthorized);
     e.warp(PAYOUT + SETTLE_GRACE_SECS);
+    let (prize, seed, _, _) = legs(&e.pool(id));
     let s0 = e.bal(&e.seed_t.pubkey());
     let r = e.close_pool(id, &stranger).unwrap();
-    assert_eq!(events::<PoolClosed>(&r.logs)[0].unclaimed, 600_000_000 - PRICE);
-    assert_eq!(e.bal(&e.seed_t.pubkey()) - s0, 250_000_000 + 600_000_000 - PRICE);
+    assert_eq!(events::<PoolClosed>(&r.logs)[0].unclaimed, prize - PRICE);
+    assert_eq!(e.bal(&e.seed_t.pubkey()) - s0, seed + prize - PRICE);
 }
 
 // ---- tickets and maths ------------------------------------------------------------------------------------
@@ -817,6 +828,7 @@ fn the_review_lock_is_snapshotted_when_the_pool_opens() {
     assert_eq!(e.pool(id).min_review_secs, 0);
     let b = funded(&mut e.svm, 10 * SOL);
     e.buy(id, &b, 3).unwrap();
+    e.cover_player_share(id);
     e.warp(PLAY);
     let w = funded(&mut e.svm, SOL).pubkey();
     e.commit_winners(id, &auth, &[(w, PRICE)]).unwrap();   // with the live floor this would be CommitTooLate (a 14-day lock)

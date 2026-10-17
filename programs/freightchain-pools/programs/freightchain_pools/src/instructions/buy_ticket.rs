@@ -46,6 +46,8 @@ pub fn handle_buy_ticket(ctx: Context<BuyTicket>, pool_id: u32, qty: u16, order_
         pool.status == STATUS_OPEN || pool.status == STATUS_ACTIVE,
         PoolError::PoolNotOpen
     );
+    // v5: the flag is the pool's snapshot, so turning tickets off does not stop a pool that opened with them on.
+    require!(pool.paid_tickets_enabled, PoolError::PaidTicketsDisabled);
     // The sale window closes for everyone at prep_deadline: an Active pool's rides are under way, an Open one under its minimum can only fail.
     require!(now < pool.prep_deadline, PoolError::TooLate);
 

@@ -5,7 +5,7 @@ import type { PaidTierId } from '../rides/ride-tier.js';
    (infrastructure/solana/program-chain.adapter.ts) decodes into these, its spec decodes real LiteSVM logs (server/test/fixtures/chain/).
    Types: u8/u16/u32 → number; u64 lamports → number, decoded exactly through BigInt – a value above Number.MAX_SAFE_INTEGER (≈ 9 million SOL, unreachable for a pool)
    makes the transaction `{ invalid }` instead of being rounded; i64 unix seconds → Date; Pubkey → base58; order_id [u8; 16] → the uuid string (lowercase, 8-4-4-4-12).
-   AuthorityProposed / AuthorityChanged / SeriesSet / PayoutAuthoritySet are program events too, but not POOL events: the decoder skips them (they still occupy their `index`). */
+   AuthorityProposed / AuthorityChanged / SeriesSet / PayoutAuthoritySet / PoolRulesSet are program events too, but not POOL events: the decoder skips them (they still occupy their `index`). */
 
 export const CHAIN_EVENT_KINDS = ['PoolCreated', 'TicketBought', 'PoolActivated', 'Sponsored', 'PoolFailed', 'PoolCancelled', 'PoolExpired', 'Refunded', 'PrizePaid', 'PoolClosed',
   // program v4 (audit WP5): the road sealed (L4), the winners committed / vetoed (H5-B), a pledged ride's attestation (H4), a sponsor refunded (M8)
@@ -44,8 +44,11 @@ export interface PoolCreatedFields {
   prizeBps?: number;
   seedBps?: number;
   feeBps?: number;
-  /** omitted on a hand-made event = 0 */
+  /** omitted on a hand-made event = 0. v5 events do not carry it. */
   referralBps?: number;
+  /** v5 snapshot */
+  paidTicketsEnabled?: boolean;
+  maxPlayerShareBps?: number;
   feeTreasury?: string;
   seedTreasury?: string;
   /** opened by `open_next_pool` from the tier's series (else `create_pool` by the admin) */
@@ -74,7 +77,7 @@ export type ChainEventRecord = EventBase & (
   | { kind: 'Refunded'; buyer: string; rentPayer: string; qty: number; lamports: number; refundedTotal: number }
   | { kind: 'PrizePaid'; to: string; lamports: number; rank: number; prizesPaidTotal: number }
   /** cancelled = a fully refunded pool was swept (→ cancelled), otherwise an active pool was split (→ settled) */
-  | { kind: 'PoolClosed'; prizePaid: number; seed: number; fee: number; platformFee: number; unclaimed: number; rentReturned: number; cancelled: boolean }
+  | { kind: 'PoolClosed'; prizePaid: number; seed: number; fee: number; platformFee: number; unclaimed: number; rentReturned: number; cancelled: boolean; ticketExcess?: number }
   /** v4: the road seed, fixed from the hash of `seedSlot` (a slot after the pool opened); seedCommitment / seedSlotHash base64 */
   | { kind: 'RoadSealed'; seedSlot: number; seedSlotHash: string; seedCommitment: string }
   /** v4: the winners root (base64), public until `payFrom` – nobody is paid before */
@@ -139,8 +142,11 @@ export interface PoolChainState {
   prizeBps: number;
   seedBps: number;
   feeBps: number;
-  /** omitted on an account read that predates the field = 0 */
+  /** omitted on an account read that predates the field = 0. v5 accounts do not carry it. */
   referralBps?: number;
+  /** v5 snapshot. Absent on a pre-v5 account. */
+  paidTicketsEnabled?: boolean;
+  maxPlayerShareBps?: number;
   feeTreasury: string;
   seedTreasury: string;
   createdAt: Date;

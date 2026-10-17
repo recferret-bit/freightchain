@@ -230,7 +230,8 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     const ranking = await this.rides.poolRanking(pool.id, TOP20_SIZE, true);
     if (!ranking.length) return [];
     const s = pool.snapshot();
-    const prize = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps, referralBps: s.referralBps ?? 0 });
+    // maxPlayerShareBps is not a column. Absent (a Postgres reload) counts every ticket; the chain still rejects a root above prize_share.
+    const prize = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps, referralBps: s.referralBps ?? 0, ...(s.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: s.maxPlayerShareBps } : {}) });
     // a 0-lamport rank could never be paid (the program refuses it) and would keep the pool from closing: the shares are floored, so they are the last ranks.
     // with the referral service the same root also carries one leaf per referrer (kind), which planDrift ignores
     const plan = this.referralPayout

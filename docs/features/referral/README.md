@@ -98,7 +98,7 @@ Of a sponsored rider's slice, the inviter takes 80%. The other 20%, and anything
 
 One inviter can take at most 1 SOL from one pool, filled from their best-placed friend first. Payments are one winners list: each finisher, then one payment per inviter. An inviter who also finished top 20 is paid twice, once as a finisher and once as an inviter. Ranks stay contiguous. A zero payment is dropped.
 
-**New pools** are 65% prizes, 5% referrals, 20% seeding the next pool, 10% fees. The five points come off the prize share only. Fees stay 10% because they are whatever is left after the other three legs are rounded down. Seed stays 20%. A pool created with the old three-number split (`7000/2000/1000`) has no referral leg. Pools already open are not rewritten.
+**New pools** (program v5) are 85% prizes, 5% carry, 10% final. There is no on-chain referral share, so this pot does not pay an inviter until a server-side pot exists. The allocator below still describes how a referral pot would be split if one is passed in.
 
 **Donation share.** Tips are not held by the server. The spectator signs a transfer, and the prices are unchanged: tip 0.01 SOL, night / day / potholes 0.02, trench 0.03, sinkhole 0.05.
 
@@ -130,7 +130,7 @@ The admin page lists each knob with the label in this table.
 
 The inviter's part cannot be set to half or less, so they stay the larger share of a sponsored slice. The weekly-cap hint on the admin page names the bonus window, not a fixed seven days.
 
-The pool split is chosen when the pool is created, not by these rows. `pool-admin` may offer `6500/2000/1000/500` (prizes / seed / fees / referrals). Leaving off the fourth number means 0.
+The pool split is chosen on chain (`set_pool_rules`, snapshotted when the pool opens), not by these rows. `pool-admin` defaults to `8500/500/1000` (prizes / carry / final).
 
 ## Refusals a player can hit
 

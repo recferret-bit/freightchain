@@ -46,7 +46,10 @@ export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountIn
     vaultLamports, escrowLamports: escrowOf(vaultLamports, rentMin), vault: c.vaultPda(poolId).toBase58(), authority: p['authority'] as string, tier: p['tier'] as number,
     priceLamports: p['priceLamports'] as number, minTickets: p['minTickets'] as number, maxTickets: p['maxTickets'] as number, maxPerWallet: p['maxPerWallet'] as number,
     prepDeadline: p['prepDeadline'] as Date, playDeadline: p['playDeadline'] as Date, payoutAt: p['payoutAt'] as Date, prizeBps: p['prizeBps'] as number, seedBps: p['seedBps'] as number,
-    feeBps: p['feeBps'] as number, referralBps: Number(p['referralBps'] ?? 0), feeTreasury: p['feeTreasury'] as string, seedTreasury: p['seedTreasury'] as string, createdAt: p['createdAt'] as Date,
+    feeBps: p['feeBps'] as number, ...('referralBps' in p ? { referralBps: Number(p['referralBps'] ?? 0) } : {}),
+    ...('paidTicketsEnabled' in p ? { paidTicketsEnabled: Boolean(p['paidTicketsEnabled']) } : {}),
+    ...('maxPlayerShareBps' in p ? { maxPlayerShareBps: Number(p['maxPlayerShareBps']) } : {}),
+    feeTreasury: p['feeTreasury'] as string, seedTreasury: p['seedTreasury'] as string, createdAt: p['createdAt'] as Date,
     seedCommitment, seedSlot: seedCommitment ? (p['seedSlot'] as number | undefined) : undefined,
     seedSlotHash: seedCommitment && p['seedSlotHash'] ? bs58.encode(Buffer.from(String(p['seedSlotHash']), 'base64')) : undefined,
     ...('sealSlot' in p ? {
@@ -81,7 +84,7 @@ export function seriesStateOf(c: PoolProgramCodec, info: AccountInfo<Buffer> | n
   return {
     address, tier: s['tier'] as number, enabled: s['enabled'] as boolean, priceLamports: s['priceLamports'] as number, minTickets: s['minTickets'] as number,
     maxTickets: s['maxTickets'] as number, maxPerWallet: s['maxPerWallet'] as number, saleSecs: secs('saleSecs'), playSecs: secs('playSecs'), verifySecs: secs('verifySecs'),
-    prizeBps: s['prizeBps'] as number, seedBps: s['seedBps'] as number, feeBps: s['feeBps'] as number, referralBps: Number(s['referralBps'] ?? 0), feeTreasury: s['feeTreasury'] as string,
+    prizeBps: s['prizeBps'] as number, seedBps: s['seedBps'] as number, feeBps: s['feeBps'] as number, ...('referralBps' in s ? { referralBps: Number(s['referralBps'] ?? 0) } : {}), feeTreasury: s['feeTreasury'] as string,
     seedTreasury: s['seedTreasury'] as string, nextOpenAt: s['nextOpenAt'] as Date, poolsOpened: s['poolsOpened'] as number, lastPoolId: (s['lastPoolId'] as number | null) ?? null,
   };
 }

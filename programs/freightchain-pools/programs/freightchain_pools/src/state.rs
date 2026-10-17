@@ -22,6 +22,16 @@ pub struct Config {
     pub min_review_secs: i64,
     /// v4: the play window every new pool keeps after its sale (no sale, no new ride after it – the shifts on the road finish) (DEFAULT_MIN_FINISH_SECS).
     pub min_finish_secs: i64,
+    /// v5: copied onto each new pool. `false` makes `buy_ticket` fail; `sponsor` still funds the pool. Open pools keep the value they opened with.
+    pub paid_tickets_enabled: bool,
+    /// v5: prize / carry (`seed_bps`) / final (`fee_bps`). Copied onto each new pool. Must sum to 10_000.
+    pub prize_bps: u16,
+    pub seed_bps: u16,
+    pub fee_bps: u16,
+    /// v5: ticket lamports may be at most this share of (counted tickets + sponsorship). Must be `< 5000`. Copied onto each new pool.
+    pub max_player_share_bps: u16,
+    /// v5: extra cap on a new pool's `max_tickets`. 0 = no extra cap (the create/series value stands, and 0 there is still unlimited).
+    pub max_tickets: u32,
 }
 
 /// One schedule per tier, written by the admin (`set_series`): every pool `open_next_pool` creates takes these rules. Pools tile time:
@@ -52,8 +62,6 @@ pub struct Series {
     pub pools_opened: u32,
     pub last_pool_id: Option<u32>,
     pub bump: u8,
-    /// Floored share of the pot for referral leaves. Appended after `bump` (0 reproduces the old three-way split).
-    pub referral_bps: u16,
 }
 
 #[account]
@@ -110,8 +118,10 @@ pub struct Pool {
     pub open_pledges: u32,
     /// v4: `Config.min_review_secs` when the pool opened – its review lock (a later change of the floor does not reach a running pool)
     pub min_review_secs: i64,
-    /// Floored share of the pot added to the prize cap (`commit_winners` / `pay_prize`). Appended after `min_review_secs` so `POOL_STATUS_OFFSET` stays frozen.
-    pub referral_bps: u16,
+    /// v5 snapshot of `Config.paid_tickets_enabled` (a later change does not reach an open pool).
+    pub paid_tickets_enabled: bool,
+    /// v5 snapshot of `Config.max_player_share_bps`. Ticket lamports above the room this allows are not in the prize base; `close_pool` carries them to the seed treasury.
+    pub max_player_share_bps: u16,
 }
 
 #[account]
@@ -191,21 +201,53 @@ pub fn bps_of(amount: u64, bps: u16) -> Result<u64> {
     u64::try_from(v).map_err(|_| PoolError::MathOverflow.into())
 }
 
-/// (prize, seed, referral, fee): the three named shares are floored; the fee takes the remainder. `referral_bps` 0 is the old split.
-pub fn split(total: u64, prize_bps: u16, seed_bps: u16, referral_bps: u16) -> Result<(u64, u64, u64, u64)> {
+/// (prize, carry, final): prize and carry are floored; the final leg takes the remainder (rounding dust included). The three bps sum to 10_000.
+pub fn split(total: u64, prize_bps: u16, seed_bps: u16) -> Result<(u64, u64, u64)> {
     let prize = bps_of(total, prize_bps)?;
     let seed = bps_of(total, seed_bps)?;
-    let referral = bps_of(total, referral_bps)?;
-    let fee = total
-        .checked_sub(prize)
-        .and_then(|v| v.checked_sub(seed))
-        .and_then(|v| v.checked_sub(referral))
-        .ok_or(PoolError::MathOverflow)?;
-    Ok((prize, seed, referral, fee))
+    let fee = total.checked_sub(prize).and_then(|v| v.checked_sub(seed)).ok_or(PoolError::MathOverflow)?;
+    Ok((prize, seed, fee))
 }
 
-/// The byte offset of `Pool.status` – the same in v3 and v4 (every field before it is fixed-size; the layout only grew at the end).
+/// Prize, carry and final shares must sum to 10_000.
+pub fn check_split(prize_bps: u16, seed_bps: u16, fee_bps: u16) -> Result<()> {
+    require!((prize_bps as u32) + (seed_bps as u32) + (fee_bps as u32) == BPS_DENOM as u32, PoolError::BpsSum);
+    Ok(())
+}
+
+/// `max_player_share_bps` must be strictly under 50% (the plan's player-money ceiling). 0 is allowed: no ticket lamports count toward prizes.
+pub fn check_player_share(max_player_share_bps: u16) -> Result<()> {
+    require!(max_player_share_bps <= MAX_PLAYER_SHARE_BPS, PoolError::PlayerShareCeiling);
+    Ok(())
+}
+
+/// The tighter of a requested per-pool max and the config cap. 0 on either side means "no cap from that side".
+pub fn cap_max_tickets(requested: u32, config_max: u32) -> u32 {
+    match (requested, config_max) {
+        (0, 0) => 0,
+        (0, cap) => cap,
+        (requested, 0) => requested,
+        (requested, cap) => requested.min(cap),
+    }
+}
+
+/// Largest ticket-lamport total that keeps player money at or under `max_player_share_bps` of (tickets + sponsorship).
+pub fn ticket_room(sponsored: u64, max_player_share_bps: u16) -> Result<u64> {
+    let bps = max_player_share_bps as u128;
+    let denom = (BPS_DENOM as u128).checked_sub(bps).ok_or(PoolError::MathOverflow)?;
+    let room = (sponsored as u128).checked_mul(bps).ok_or(PoolError::MathOverflow)? / denom;
+    u64::try_from(room).map_err(|_| PoolError::MathOverflow.into())
+}
+
+/// The byte offset of `Pool.status` – the same in v3, v4 and v5 (every field before it is fixed-size; the layout only grew at the end).
 pub const POOL_STATUS_OFFSET: usize = 8 + 4 + 32 + 1 + 8 + 4 + 4 + 2 + 8 + 8 + 8 + 2 + 2 + 2 + 32 + 32;
+
+// Anchor `InitSpace` for the v5 accounts. A mismatch here is a layout change the tests and the IDL must follow.
+const _: () = {
+    assert!(Series::INIT_SPACE == 132);
+    assert!(Pool::INIT_SPACE == 362);
+    assert!(Config::INIT_SPACE == 167);
+};
 
 /// A pool's status read from its raw bytes (owner and discriminator checked): a v3 pool no longer deserializes as a v4 `Pool`, but its buyers must still get
 /// their Ticket rent back and its attestations closed after the upgrade (red-team v4 M1).
@@ -251,24 +293,30 @@ impl Pool {
         u64::try_from(v).map_err(|_| PoolError::MathOverflow.into())
     }
 
-    /// Money the split is computed on: tickets + sponsorship.
+    /// Gross vault money: tickets + sponsorship. The prize split uses `counted_pot`, not this.
     pub fn pot(&self) -> Result<u64> {
         self.tickets_lamports()?
             .checked_add(self.sponsored)
             .ok_or_else(|| PoolError::MathOverflow.into())
     }
 
+    /// Ticket lamports that may sit in the prize base. The rest (`ticket_excess`) is carried to the next pool's seed at close.
+    pub fn counted_tickets(&self) -> Result<u64> {
+        Ok(self.tickets_lamports()?.min(ticket_room(self.sponsored, self.max_player_share_bps)?))
+    }
+
+    pub fn ticket_excess(&self) -> Result<u64> {
+        Ok(self.tickets_lamports()?.saturating_sub(self.counted_tickets()?))
+    }
+
+    /// What the split is computed on: counted tickets + sponsorship. Excess ticket lamports are not in it.
+    pub fn counted_pot(&self) -> Result<u64> {
+        self.counted_tickets()?.checked_add(self.sponsored).ok_or_else(|| PoolError::MathOverflow.into())
+    }
+
+    /// `commit_winners` / `pay_prize` cap. Ticket money above `max_player_share_bps` does not enlarge it.
     pub fn prize_share(&self) -> Result<u64> {
-        bps_of(self.pot()?, self.prize_bps)
-    }
-
-    pub fn referral_share(&self) -> Result<u64> {
-        bps_of(self.pot()?, self.referral_bps)
-    }
-
-    /// `commit_winners` / `pay_prize` cap. Referral 0 is the old prize-only cap.
-    pub fn payout_cap(&self) -> Result<u64> {
-        self.prize_share()?.checked_add(self.referral_share()?).ok_or(PoolError::MathOverflow.into())
+        bps_of(self.counted_pot()?, self.prize_bps)
     }
 
     /// After this anyone may close (prizes paid) or expire (none paid) an Active pool.
@@ -323,23 +371,37 @@ mod tests {
 
     #[test]
     fn split_is_exact() {
-        // referral_bps sits after status; a v3 raw read still lands on the same byte
+        // status is before the v4/v5 tail; a raw read of a grown account still lands on the same byte
         assert_eq!(POOL_STATUS_OFFSET, 157);
-        assert_eq!(Series::INIT_SPACE, 134);
-        assert_eq!(Pool::INIT_SPACE, 361);
+        assert_eq!(Series::INIT_SPACE, 132);
+        assert_eq!(Pool::INIT_SPACE, 362);
+        assert_eq!(Config::INIT_SPACE, 167);
         let mut x: u64 = 0x9E3779B97F4A7C15;
         for _ in 0..1000 {
             x ^= x << 13;
             x ^= x >> 7;
             x ^= x << 17;
             let total = x % 10_000_000_000_000;
-            let (p, s, r, f) = split(total, 6000, 2500, 0).unwrap();
-            assert_eq!(p + s + r + f, total);
-            assert_eq!(r, 0);
-            assert!(f <= total / 10_000 * 1500 + 2 * 10_000);
-            let (p, s, r, f) = split(total, 6500, 2000, 500).unwrap();
-            assert_eq!(p + s + r + f, total);
+            let (p, s, f) = split(total, 8500, 500).unwrap();
+            assert_eq!(p + s + f, total);
+            let (p, s, f) = split(total, 6000, 2500).unwrap();
+            assert_eq!(p + s + f, total);
         }
+    }
+
+    #[test]
+    fn ticket_room_keeps_player_money_under_the_ceiling() {
+        // no sponsorship: no ticket lamports may count
+        assert_eq!(ticket_room(0, 4_740).unwrap(), 0);
+        // 4740 / (10000-4740) = 4740/5260 of the sponsorship
+        assert_eq!(ticket_room(5_260, 4_740).unwrap(), 4_740);
+        assert_eq!(ticket_room(1, 4_999).unwrap(), 0); // floor
+        assert!(check_player_share(5_000).is_err());
+        assert!(check_player_share(4_999).is_ok());
+        assert_eq!(cap_max_tickets(0, 0), 0);
+        assert_eq!(cap_max_tickets(0, 8), 8);
+        assert_eq!(cap_max_tickets(3, 0), 3);
+        assert_eq!(cap_max_tickets(9, 4), 4);
     }
 
     fn tree(leaves: &[[u8; 32]]) -> Vec<Vec<[u8; 32]>> {

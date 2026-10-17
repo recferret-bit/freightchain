@@ -18,7 +18,7 @@ fn open_params() -> CreatePoolParams {
     CreatePoolParams { min_tickets: 2, max_tickets: 0, max_per_wallet: 100, ..default_params() }
 }
 
-/// Active pool with two buyers (2 + 3 tickets).
+/// Active pool with two buyers (2 + 3 tickets). Not sponsored: a refund test can close once the tickets are back.
 fn active(e: &mut Env) -> (u32, Vec<Keypair>) {
     let id = e.create_pool(open_params());
     let a = funded(&mut e.svm, 20 * SOL);
@@ -27,6 +27,13 @@ fn active(e: &mut Env) -> (u32, Vec<Keypair>) {
     e.buy(id, &b, 3).unwrap();
     assert_eq!(e.pool(id).status, 1);
     (id, vec![a, b])
+}
+
+/// `active`, then enough sponsorship that the tickets count toward the prize share. Call before the sale ends.
+fn covered(e: &mut Env) -> (u32, Vec<Keypair>) {
+    let (id, buyers) = active(e);
+    e.cover_player_share(id);
+    (id, buyers)
 }
 
 // ---- 1. sponsorship follows the buy rules ------------------------------------------------------
@@ -99,7 +106,7 @@ fn expire_before_and_after_grace_then_full_refunds_and_permissionless_close() {
 #[test]
 fn expire_refused_when_prizes_were_paid_or_pool_not_active() {
     let mut e = Env::new();
-    let (id, _) = active(&mut e);
+    let (id, _) = covered(&mut e);
     let auth = e.authority_kp();
     let w = funded(&mut e.svm, SOL);
     e.warp(PLAY);
@@ -121,7 +128,7 @@ fn expire_refused_when_prizes_were_paid_or_pool_not_active() {
 #[test]
 fn permissionless_close_only_after_grace_and_money_to_declared_treasuries() {
     let mut e = Env::new();
-    let (id, _) = active(&mut e); // pot 0.5 SOL: prize 0.3, seed 0.125, fee 0.075
+    let (id, _) = covered(&mut e);
     let (unpaid, _) = active(&mut e);
     let stranger = funded(&mut e.svm, SOL);
     let auth = e.authority_kp();
@@ -163,8 +170,10 @@ fn permissionless_close_only_after_grace_and_money_to_declared_treasuries() {
     let vault_before = e.vault(id);
     e.close_pool(id, &stranger).unwrap();
     let (ds, df, da) = (e.bal(&e.seed_t.pubkey()) - s0, e.bal(&e.fee_t.pubkey()) - f0, e.bal(&auth.pubkey()) - a0);
-    assert_eq!(ds, 125_000_000 + 200_000_000, "seed share + unclaimed prize");
-    assert_eq!(df, 75_000_000);
+    let pool = e.pool(id);
+    let (prize, seed, fee) = freightchain_pools::split(pool.counted_pot().unwrap(), pool.prize_bps, pool.seed_bps).unwrap();
+    assert_eq!(ds, seed + prize - 100_000_000, "seed share + unclaimed prize");
+    assert_eq!(df, fee);
     assert_eq!(da, e.rent_min());
     assert_eq!(ds + df + da + (e.bal(&e.plat_t.pubkey()) - e.plat_t_start), vault_before, "outputs sum to the vault");
     assert_eq!(e.bal(&stranger.pubkey()), x0, "the caller gets nothing");
@@ -199,14 +208,15 @@ fn unpaid_pool_after_grace_must_expire_then_refunds_end_to_end() {
 fn authority_closes_a_no_winner_pool_only_through_an_empty_root_before_the_grace() {
     // v4 (H5-B): before the grace the close needs a committed root – `count = 0` is "no winner" (the prize share goes to the seed treasury)
     let mut e = Env::new();
-    let (id, _) = active(&mut e);
+    let (id, _) = covered(&mut e);
     let auth = e.authority_kp();
     e.warp(PLAY);
     assert_err!(e.close_pool(id, &auth), PoolError::WinnersNotCommitted);
     e.commit_winners(id, &auth, &[]).unwrap();
+    let (prize, seed, _) = freightchain_pools::split(e.pool(id).counted_pot().unwrap(), e.pool(id).prize_bps, e.pool(id).seed_bps).unwrap();
     let s0 = e.bal(&e.seed_t.pubkey());
     e.close_pool(id, &auth).unwrap();
-    assert_eq!(e.bal(&e.seed_t.pubkey()) - s0, 125_000_000 + 300_000_000);
+    assert_eq!(e.bal(&e.seed_t.pubkey()) - s0, seed + prize);
     assert_eq!((e.vault(id), e.pool(id).status), (0, 3));
 
     // after the grace nothing was paid: not even the authority may sweep the prize share – the pool expires and refunds
@@ -245,10 +255,10 @@ fn pause_stops_settlement_before_the_grace_and_never_after() {
     let auth = e.authority_kp();
     let payout = funded(&mut e.svm, 10 * SOL);
     e.set_payout_authority(&auth, Some(payout.pubkey())).unwrap();
-    let (paid, _) = active(&mut e); // winners paid before the pause
-    let (stolen, _) = active(&mut e); // a root the (stolen) payout key committed, unpaid
-    let (unpaid, buyers) = active(&mut e); // nobody ever settled it
-    let (late, _) = active(&mut e); // committed, paid only after the grace
+    let (paid, _) = covered(&mut e); // winners paid before the pause
+    let (stolen, _) = covered(&mut e); // a root the (stolen) payout key committed, unpaid
+    let (unpaid, buyers) = active(&mut e); // nobody ever settled it – no cover sponsor to refund
+    let (late, _) = covered(&mut e); // committed, paid only after the grace
     let thief = funded(&mut e.svm, SOL);
     let w = funded(&mut e.svm, SOL);
     let stranger = funded(&mut e.svm, SOL);
@@ -331,7 +341,7 @@ fn accept_authority_clears_the_payout_key_and_the_new_admin_names_its_own() {
     let old = e.authority_kp();
     let old_payout = funded(&mut e.svm, 10 * SOL);
     e.set_payout_authority(&old, Some(old_payout.pubkey())).unwrap();
-    let (id, _) = active(&mut e);
+    let (id, _) = covered(&mut e);
     let new = funded(&mut e.svm, 10 * SOL);
     e.propose_authority(&old, new.pubkey()).unwrap();
     assert_eq!(e.config().payout_authority, Some(old_payout.pubkey()), "kept until the handover completes");
@@ -360,7 +370,7 @@ fn rotated_authority_takes_over_existing_pools() {
     let mut e = Env::new();
     let old = e.authority_kp();
     let cancel_me = e.create_pool(default_params());
-    let (id, _) = active(&mut e);
+    let (id, _) = covered(&mut e);
     let new = funded(&mut e.svm, 10 * SOL);
     e.propose_authority(&old, new.pubkey()).unwrap();
     e.accept_authority(&new).unwrap();

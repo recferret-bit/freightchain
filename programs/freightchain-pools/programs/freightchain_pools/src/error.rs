@@ -8,7 +8,7 @@ pub enum PoolError {
     Unauthorized,
     #[msg("Invalid pool parameters")]
     InvalidParams,
-    #[msg("Prize, seed, referral and fee shares must sum to 10000 bps")]
+    #[msg("Prize, carry and final shares must sum to 10000 bps")]
     BpsSum,
     #[msg("Ticket price is below the rent-exempt minimum")]
     PriceBelowRentMin,
@@ -34,7 +34,7 @@ pub enum PoolError {
     PoolNotActive,
     #[msg("Pool is not settled")]
     NotSettled,
-    #[msg("Prize payments would exceed the pool's prize and referral shares")]
+    #[msg("Prize payments would exceed the pool's prize share")]
     PrizeExceedsShare,
     #[msg("Transfer would leave an account below the rent-exempt minimum")]
     BelowRentMin,
@@ -99,4 +99,9 @@ pub enum PoolError {
     AlreadyMigrated,
     #[msg("The Config account is still in the v3 layout: run migrate_config_v4 first")]
     ConfigNotMigrated,
+    // ── v5 (appended: earlier codes keep their numbers) ──
+    #[msg("Paid tickets are switched off for this pool")]
+    PaidTicketsDisabled,
+    #[msg("Player share must be under 5000 bps")]
+    PlayerShareCeiling,
 }

@@ -2,9 +2,9 @@
   "address": "8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p",
   "metadata": {
     "name": "freightchain_pools",
-    "version": "0.1.0",
+    "version": "5",
     "spec": "0.1.0",
-    "description": "Escrowed prize pools: assurance-contract tickets, trustless refunds, public split"
+    "description": "Escrowed prize pools v5: no referral leg, admin pool rules snapshotted per pool"
   },
   "instructions": [
     {
@@ -1219,7 +1219,7 @@
     {
       "name": "migrate_config_v4",
       "docs": [
-        "v4: once, right after the upgrade – the v3 Config grows to the v4 layout (the floors at their defaults)"
+        "v4: once, right after the upgrade \u2013 the v3 Config grows to the v4 layout (the floors at their defaults)"
       ],
       "discriminator": [
         10,
@@ -1389,7 +1389,7 @@
         {
           "name": "caller",
           "docs": [
-            "anyone – the committed root decides who gets what"
+            "anyone \u2013 the committed root decides who gets what"
           ],
           "signer": true
         },
@@ -2212,6 +2212,76 @@
       ]
     },
     {
+      "name": "set_pool_rules",
+      "docs": [
+        "v5: admin rules snapshotted onto each new pool (paid tickets, the 85/5/10-style split, the player-share cap, an optional ticket cap)."
+      ],
+      "discriminator": [
+        142,
+        169,
+        73,
+        200,
+        64,
+        73,
+        217,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paid_tickets_enabled",
+          "type": "bool"
+        },
+        {
+          "name": "prize_bps",
+          "type": "u16"
+        },
+        {
+          "name": "seed_bps",
+          "type": "u16"
+        },
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "max_player_share_bps",
+          "type": "u16"
+        },
+        {
+          "name": "max_tickets",
+          "type": "u32"
+        }
+      ]
+    },
+    {
       "name": "set_series",
       "discriminator": [
         193,
@@ -2359,7 +2429,7 @@
         {
           "name": "ride_attestation",
           "docs": [
-            "v4 (H4): THIS ride's attestation – not the driver's best ride in the pool"
+            "v4 (H4): THIS ride's attestation \u2013 not the driver's best ride in the pool"
           ],
           "writable": true,
           "pda": {
@@ -2522,7 +2592,7 @@
         {
           "name": "receipt",
           "docs": [
-            "v4 (M8): what this sponsor put into this pool – it comes back if the pool fails"
+            "v4 (M8): what this sponsor put into this pool \u2013 it comes back if the pool fails"
           ],
           "writable": true,
           "pda": {
@@ -2590,7 +2660,7 @@
         {
           "name": "authority",
           "docs": [
-            "the cold admin only – never the payout key"
+            "the cold admin only \u2013 never the payout key"
           ],
           "signer": true,
           "relations": [
@@ -2961,6 +3031,19 @@
       ]
     },
     {
+      "name": "PoolRulesSet",
+      "discriminator": [
+        4,
+        125,
+        19,
+        225,
+        12,
+        247,
+        181,
+        180
+      ]
+    },
+    {
       "name": "PrizePaid",
       "discriminator": [
         6,
@@ -3123,7 +3206,7 @@
     {
       "code": 6003,
       "name": "BpsSum",
-      "msg": "Prize, seed, referral and fee shares must sum to 10000 bps"
+      "msg": "Prize, carry and final shares must sum to 10000 bps"
     },
     {
       "code": 6004,
@@ -3188,7 +3271,7 @@
     {
       "code": 6016,
       "name": "PrizeExceedsShare",
-      "msg": "Prize payments would exceed the pool's prize and referral shares"
+      "msg": "Prize payments would exceed the pool's prize share"
     },
     {
       "code": 6017,
@@ -3344,6 +3427,16 @@
       "code": 6047,
       "name": "ConfigNotMigrated",
       "msg": "The Config account is still in the v3 layout: run migrate_config_v4 first"
+    },
+    {
+      "code": 6048,
+      "name": "PaidTicketsDisabled",
+      "msg": "Paid tickets are switched off for this pool"
+    },
+    {
+      "code": 6049,
+      "name": "PlayerShareCeiling",
+      "msg": "Player share must be under 5000 bps"
     }
   ],
   "types": [
@@ -3528,7 +3621,7 @@
           {
             "name": "payout_authority",
             "docs": [
-              "Commits a pool's winners root, records ride attestations and closes a pool once its prizes are paid (the server's payout key) – nothing",
+              "Commits a pool's winners root, records ride attestations and closes a pool once its prizes are paid (the server's payout key) \u2013 nothing",
               "else; a root it commits is public for the whole review lock and the cold admin can veto it. None = only `authority`."
             ],
             "type": {
@@ -3546,9 +3639,45 @@
           {
             "name": "min_finish_secs",
             "docs": [
-              "v4: the play window every new pool keeps after its sale (no sale, no new ride after it – the shifts on the road finish) (DEFAULT_MIN_FINISH_SECS)."
+              "v4: the play window every new pool keeps after its sale (no sale, no new ride after it \u2013 the shifts on the road finish) (DEFAULT_MIN_FINISH_SECS)."
             ],
             "type": "i64"
+          },
+          {
+            "name": "paid_tickets_enabled",
+            "docs": [
+              "v5: copied onto each new pool. `false` makes `buy_ticket` fail; `sponsor` still funds the pool. Open pools keep the value they opened with."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "prize_bps",
+            "docs": [
+              "v5: prize / carry (`seed_bps`) / final (`fee_bps`). Copied onto each new pool. Must sum to 10_000."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "seed_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_player_share_bps",
+            "docs": [
+              "v5: ticket lamports may be at most this share of (counted tickets + sponsorship). Must be `< 5000`. Copied onto each new pool."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_tickets",
+            "docs": [
+              "v5: extra cap on a new pool's `max_tickets`. 0 = no extra cap (the create/series value stands, and 0 there is still unlimited)."
+            ],
+            "type": "u32"
           }
         ]
       }
@@ -3617,25 +3746,6 @@
               "end of the review window: prizes and the close only from here on"
             ],
             "type": "i64"
-          },
-          {
-            "name": "prize_bps",
-            "type": "u16"
-          },
-          {
-            "name": "seed_bps",
-            "type": "u16"
-          },
-          {
-            "name": "fee_bps",
-            "type": "u16"
-          },
-          {
-            "name": "referral_bps",
-            "docs": [
-              "0 = no referral leg (the old prize/seed/fee split)"
-            ],
-            "type": "u16"
           }
         ]
       }
@@ -4000,21 +4110,21 @@
           {
             "name": "seal_slot",
             "docs": [
-              "v4 (L4): the slot whose hash seals the road (`seal_road`); 0 once sealed – until then `seed_commitment` is all zero and no ride is served"
+              "v4 (L4): the slot whose hash seals the road (`seal_road`); 0 once sealed \u2013 until then `seed_commitment` is all zero and no ride is served"
             ],
             "type": "u64"
           },
           {
             "name": "platform_fee_bps",
             "docs": [
-              "v4 (L8): `Config.platform_fee_bps` when the pool opened – the cut at close is the one the buyers were shown"
+              "v4 (L8): `Config.platform_fee_bps` when the pool opened \u2013 the cut at close is the one the buyers were shown"
             ],
             "type": "u16"
           },
           {
             "name": "winners_root",
             "docs": [
-              "v4 (H5-B): the committed winners – a Merkle root over (rank, wallet, lamports), the sum, the count, when, and the first moment it pays"
+              "v4 (H5-B): the committed winners \u2013 a Merkle root over (rank, wallet, lamports), the sum, the count, when, and the first moment it pays"
             ],
             "type": {
               "array": [
@@ -4056,21 +4166,28 @@
           {
             "name": "open_pledges",
             "docs": [
-              "v4 (L7): pledges on this pool not yet settled or refunded – attestations close only at 0"
+              "v4 (L7): pledges on this pool not yet settled or refunded \u2013 attestations close only at 0"
             ],
             "type": "u32"
           },
           {
             "name": "min_review_secs",
             "docs": [
-              "v4: `Config.min_review_secs` when the pool opened – its review lock (a later change of the floor does not reach a running pool)"
+              "v4: `Config.min_review_secs` when the pool opened \u2013 its review lock (a later change of the floor does not reach a running pool)"
             ],
             "type": "i64"
           },
           {
-            "name": "referral_bps",
+            "name": "paid_tickets_enabled",
             "docs": [
-              "Floored share of the pot added to the prize cap (`commit_winners` / `pay_prize`). Appended after `min_review_secs` so `POOL_STATUS_OFFSET` stays frozen."
+              "v5 snapshot of `Config.paid_tickets_enabled` (a later change does not reach an open pool)."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "max_player_share_bps",
+            "docs": [
+              "v5 snapshot of `Config.max_player_share_bps`. Ticket lamports above the room this allows are not in the prize base; `close_pool` carries them to the seed treasury."
             ],
             "type": "u16"
           }
@@ -4132,7 +4249,7 @@
           {
             "name": "seed",
             "docs": [
-              "everything that went to seed_treasury (seed share + unclaimed prize and referral [+ stray lamports of a failed pool])"
+              "everything that went to seed_treasury (carry share + unclaimed prize + ticket excess + stray lamports)"
             ],
             "type": "u64"
           },
@@ -4161,6 +4278,13 @@
           {
             "name": "cancelled",
             "type": "bool"
+          },
+          {
+            "name": "ticket_excess",
+            "docs": [
+              "v5: ticket lamports excluded from the prize base and carried inside `seed` (0 when the pool was cancelled)"
+            ],
+            "type": "u64"
           }
         ]
       }
@@ -4268,7 +4392,14 @@
             }
           },
           {
-            "name": "referral_bps",
+            "name": "paid_tickets_enabled",
+            "docs": [
+              "v5 snapshot"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "max_player_share_bps",
             "type": "u16"
           }
         ]
@@ -4301,6 +4432,44 @@
           },
           {
             "name": "tickets_sold",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolRulesSet",
+      "docs": [
+        "v5: the admin changed the rules that the NEXT pool will snapshot."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paid_tickets_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "prize_bps",
+            "type": "u16"
+          },
+          {
+            "name": "seed_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_player_share_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_tickets",
+            "docs": [
+              "0 = no extra cap"
+            ],
             "type": "u32"
           }
         ]
@@ -4369,7 +4538,7 @@
     {
       "name": "RideAttestation",
       "docs": [
-        "v4 (audit H4): the server's verdict on ONE ride, written by the payout key – a pledge on that ride settles on it (`verified_km`), and only from",
+        "v4 (audit H4): the server's verdict on ONE ride, written by the payout key \u2013 a pledge on that ride settles on it (`verified_km`), and only from",
         "`settle_from` (the review lock: every RideAttestationRecorded is public that long first). Final once a pledge was settled on it."
       ],
       "type": {
@@ -4492,7 +4661,7 @@
     {
       "name": "RoadSealed",
       "docs": [
-        "v4 (L4): the pool's road seed, fixed from the hash of `seed_slot` – a slot after the pool opened, so nobody could pick it"
+        "v4 (L4): the pool's road seed, fixed from the hash of `seed_slot` \u2013 a slot after the pool opened, so nobody could pick it"
       ],
       "type": {
         "kind": "struct",
@@ -4642,13 +4811,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "referral_bps",
-            "docs": [
-              "Floored share of the pot for referral leaves. Appended after `bump` (0 reproduces the old three-way split)."
-            ],
-            "type": "u16"
           }
         ]
       }
@@ -4707,30 +4869,11 @@
             "type": "i64"
           },
           {
-            "name": "prize_bps",
-            "type": "u16"
-          },
-          {
-            "name": "seed_bps",
-            "type": "u16"
-          },
-          {
-            "name": "fee_bps",
-            "type": "u16"
-          },
-          {
             "name": "start_at",
             "docs": [
               "the first sale slot starts here; 0 = keep the series' current `next_open_at` (refused for a new series)"
             ],
             "type": "i64"
-          },
-          {
-            "name": "referral_bps",
-            "docs": [
-              "0 = no referral leg (the old prize/seed/fee split)"
-            ],
-            "type": "u16"
           }
         ]
       }
@@ -4799,10 +4942,6 @@
           {
             "name": "next_open_at",
             "type": "i64"
-          },
-          {
-            "name": "referral_bps",
-            "type": "u16"
           }
         ]
       }
@@ -4810,7 +4949,7 @@
     {
       "name": "SponsorReceipt",
       "docs": [
-        "v4 (audit M8): what `sponsor` put into a pool – `refund_sponsor` pays it back if the pool fails."
+        "v4 (audit M8): what `sponsor` put into a pool \u2013 `refund_sponsor` pays it back if the pool fails."
       ],
       "type": {
         "kind": "struct",

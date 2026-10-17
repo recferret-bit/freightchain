@@ -7,7 +7,7 @@ use crate::{
     constants::*,
     error::PoolError,
     events::PoolCreated,
-    state::{Config, Pool},
+    state::{cap_max_tickets, check_player_share, check_split, Config, Pool},
     vault::rent_min,
 };
 
@@ -25,11 +25,6 @@ pub struct CreatePoolParams {
     pub play_deadline: i64,
     /// end of the review window: prizes and the close only from here on
     pub payout_at: i64,
-    pub prize_bps: u16,
-    pub seed_bps: u16,
-    pub fee_bps: u16,
-    /// 0 = no referral leg (the old prize/seed/fee split)
-    pub referral_bps: u16,
 }
 
 #[derive(Accounts)]
@@ -59,14 +54,13 @@ pub struct CreatePool<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// The money rules every pool keeps, whoever creates it (`create_pool`, `set_series`).
-pub fn check_money_rules(price_lamports: u64, min_tickets: u32, max_tickets: u32, max_per_wallet: u16, bps: [u16; 4]) -> Result<()> {
+/// The money rules every pool keeps, whoever creates it (`create_pool`, `set_series`). The bps split lives on Config and is snapshotted in `init_pool`.
+pub fn check_money_rules(price_lamports: u64, min_tickets: u32, max_tickets: u32, max_per_wallet: u16) -> Result<()> {
     require!(price_lamports > 0 && min_tickets >= 1, PoolError::InvalidParams);
     // refunds must be able to land in an empty wallet: a price below the minimum would brick them
     require!(price_lamports >= rent_min()?, PoolError::PriceBelowRentMin);
     require!(max_tickets == 0 || max_tickets >= min_tickets, PoolError::InvalidParams);
     require!(max_per_wallet >= 1, PoolError::InvalidParams);
-    require!(bps.iter().map(|b| *b as u32).sum::<u32>() == BPS_DENOM as u32, PoolError::BpsSum);
     Ok(())
 }
 
@@ -91,7 +85,7 @@ pub fn handle_create_pool(ctx: Context<CreatePool>, p: CreatePoolParams) -> Resu
     let a = &ctx.accounts;
     require!(!a.config.paused, PoolError::Paused);
     let now = Clock::get()?.unix_timestamp;
-    check_money_rules(p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet, [p.prize_bps, p.seed_bps, p.fee_bps, p.referral_bps])?;
+    check_money_rules(p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet)?;
     require!(
         p.prep_deadline > now && p.play_deadline >= p.prep_deadline && p.payout_at >= p.play_deadline,
         PoolError::InvalidParams
@@ -110,10 +104,6 @@ pub fn handle_create_pool(ctx: Context<CreatePool>, p: CreatePoolParams) -> Resu
         prep_deadline: p.prep_deadline,
         play_deadline: p.play_deadline,
         payout_at: p.payout_at,
-        prize_bps: p.prize_bps,
-        seed_bps: p.seed_bps,
-        fee_bps: p.fee_bps,
-        referral_bps: p.referral_bps,
         fee_treasury: a.fee_treasury.key(),
         seed_treasury: a.seed_treasury.key(),
     };
@@ -133,10 +123,6 @@ pub struct PoolRules {
     pub prep_deadline: i64,
     pub play_deadline: i64,
     pub payout_at: i64,
-    pub prize_bps: u16,
-    pub seed_bps: u16,
-    pub fee_bps: u16,
-    pub referral_bps: u16,
     pub fee_treasury: Pubkey,
     pub seed_treasury: Pubkey,
 }
@@ -176,15 +162,21 @@ pub fn init_pool<'info>(
     pool.tier = r.tier;
     pool.price_lamports = r.price_lamports;
     pool.min_tickets = r.min_tickets;
-    pool.max_tickets = r.max_tickets;
     pool.max_per_wallet = r.max_per_wallet;
     pool.prep_deadline = r.prep_deadline;
     pool.play_deadline = r.play_deadline;
     pool.payout_at = r.payout_at;
-    pool.prize_bps = r.prize_bps;
-    pool.seed_bps = r.seed_bps;
-    pool.fee_bps = r.fee_bps;
-    pool.referral_bps = r.referral_bps;
+    // v5: the split, the paid-ticket switch and the player-share cap are Config's at this moment. A later `set_pool_rules` does not move them.
+    check_split(config.prize_bps, config.seed_bps, config.fee_bps)?;
+    check_player_share(config.max_player_share_bps)?;
+    let max_tickets = cap_max_tickets(r.max_tickets, config.max_tickets);
+    require!(max_tickets == 0 || max_tickets >= r.min_tickets, PoolError::InvalidParams);
+    pool.prize_bps = config.prize_bps;
+    pool.seed_bps = config.seed_bps;
+    pool.fee_bps = config.fee_bps;
+    pool.max_tickets = max_tickets;
+    pool.paid_tickets_enabled = config.paid_tickets_enabled;
+    pool.max_player_share_bps = config.max_player_share_bps;
     pool.fee_treasury = r.fee_treasury;
     pool.seed_treasury = r.seed_treasury;
     pool.status = STATUS_OPEN;
@@ -219,14 +211,14 @@ pub fn init_pool<'info>(
         tier: r.tier,
         price_lamports: r.price_lamports,
         min_tickets: r.min_tickets,
-        max_tickets: r.max_tickets,
+        max_tickets: pool.max_tickets,
         max_per_wallet: r.max_per_wallet,
         prep_deadline: r.prep_deadline,
         play_deadline: r.play_deadline,
         payout_at: r.payout_at,
-        prize_bps: r.prize_bps,
-        seed_bps: r.seed_bps,
-        fee_bps: r.fee_bps,
+        prize_bps: pool.prize_bps,
+        seed_bps: pool.seed_bps,
+        fee_bps: pool.fee_bps,
         fee_treasury: r.fee_treasury,
         seed_treasury: r.seed_treasury,
         from_series,
@@ -234,7 +226,8 @@ pub fn init_pool<'info>(
         seed_commitment: [0; 32],
         seed_slot: seal_slot,
         seed_slot_hash: [0; 32],
-        referral_bps: r.referral_bps,
+        paid_tickets_enabled: pool.paid_tickets_enabled,
+        max_player_share_bps: pool.max_player_share_bps,
     });
     Ok(pool_id)
 }
