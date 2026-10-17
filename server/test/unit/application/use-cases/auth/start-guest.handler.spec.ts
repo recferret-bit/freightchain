@@ -18,6 +18,6 @@ describe('StartGuestHandler', () => {
     expect(() => new PublicKey(result.profile.wallet)).not.toThrow();
     expect(result.session.token).toBe(`t:${result.profile.wallet}`);
     expect((await ctx.storedPlayer(result.profile.wallet)).guest).toBe(true);
-    expect(await ctx.weekly.offer(await ctx.storedPlayer(result.profile.wallet), { 'cf-ipcountry': 'CA' }, ctx.now())).toBeNull();
+    expect(await ctx.weekly.offer(await ctx.storedPlayer(result.profile.wallet), { 'cf-ipcountry': 'CA' }, ctx.now())).toEqual([]);
   });
 });
