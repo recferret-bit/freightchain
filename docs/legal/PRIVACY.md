@@ -1,18 +1,18 @@
 # FreightChain Privacy Policy — TEMPLATE
 
 > **DRAFT TEMPLATE — NOT LEGAL ADVICE. Must be reviewed and adapted by a qualified privacy lawyer before publication.**
-> Future repo path: `docs/legal/PRIVACY.md` (published at `[PLACEHOLDER: https://freightchain.fun/privacy]`).
-> Replace every `[PLACEHOLDER: …]`. Items marked **[DECIDE]** depend on an open product decision (see "Notes for the team" at the end).
-> Status: drafted 17.10.2026 from the plans and from the code at `main` 75ed4a06. Not committed.
+> Repo path: `docs/legal/PRIVACY.md` (published at `[PLACEHOLDER: https://freightchain.fun/privacy]`).
+> Replace every `[PLACEHOLDER: …]`. Items marked **[DECIDE]** or **[LAWYER]** are tracked in `docs/plan/OWNER_TASKS.md` §4.
+> Status: drafted 17.10.2026 from `docs/plan/MASTER_PLAN.md` and the codebase.
 
 ---
 
-**Effective date:** [PLACEHOLDER: Month DD, YYYY]
-**Last updated:** [PLACEHOLDER: Month DD, YYYY]
+**Effective date:** [PLACEHOLDER: January 11, 2027]
+**Last updated:** [PLACEHOLDER: January 11, 2027]
 
-This Privacy Policy explains how [PLACEHOLDER: Company legal name], a [PLACEHOLDER: entity type and jurisdiction, e.g. "Delaware corporation"] with its address at [PLACEHOLDER: registered address] ("**FreightChain**", "**we**", "**us**", "**our**") collects, uses, discloses and protects information about you when you use the FreightChain browser game, the websites at [PLACEHOLDER: freightchain.fun and subdomains], our Telegram, Discord and X presences where this Policy is linked, and related features such as ticket purchases, prize payouts, the TEN4 token airdrop and the referral ("Convoy") program (together, the "**Services**").
+This Privacy Policy explains how [PLACEHOLDER: Company legal name], a [PLACEHOLDER: entity type and jurisdiction, e.g. "Delaware LLC"] with its address at [PLACEHOLDER: registered address] ("**FreightChain**", "**we**", "**us**", "**our**") collects, uses, discloses and protects information about you when you use the FreightChain browser game, the websites at [PLACEHOLDER: freightchain.fun and subdomains], our Telegram, Discord and X presences where this Policy is linked, and related features such as ticket purchases, prize payouts, the TEN4 token airdrop and the referral ("Convoy") program (together, the "**Services**").
 
-Please read this Policy together with our [PLACEHOLDER: Terms of Service] and [PLACEHOLDER: Official Contest Rules]. If you do not agree with this Policy, do not use the Services.
+Please read this Policy together with our [Terms of Service](TERMS.md) and [Official Contest Rules](OFFICIAL_RULES.md). If you do not agree with this Policy, do not use the Services.
 
 ## Summary
 
@@ -254,12 +254,12 @@ Request form: [PLACEHOLDER: URL]
 
 ## Notes for the team (delete before publishing)
 
-**Scope (17.10.2026):** this Policy applies from Season 1 (mainnet, 11.01.2027) once the operator entity exists. The devnet Pre-season (November 2026) is run by an individual organizer under the short notice in `docs_drafts/legal/PRESEASON_RULES.md` (Part B).
+**Scope (17.10.2026):** this Policy applies from Season 1 (mainnet, 11.01.2027) once the operator entity exists. The devnet Pre-season (November 2026) is run by an individual organizer under the short notice in `docs/legal/PRESEASON_RULES.md` (Part B, EN) and `docs/legal/PRESEASON_RULES_RU.md` (Часть B, RU).
 
 
 ### Data practices found in code (`main` 75ed4a06) — decisions 17.10.2026
 
-Items 1–5 decided by the owner and planned in `pr3_update_plan.md` step 4f: (1) `SignIn` → keyed hash of IP prefix only, 90 days, admin shows hash; (2) API and nginx logs 30 days (time-based rotation); (3) PostHog kept with player opt-out, 12-month retention, DPA; (4) live chat purged after 90 days; (5) AI editor receives no player data (allowlist + outbound redaction + audit). X provider: **twitterapi.io**. Geo-blocking, Terms of Service draft and cookie/analytics notice are planned in step 4f. Original findings, for the record:
+Items 1–5 decided by the owner and planned in `MASTER_PLAN.md` §11: (1) `SignIn` → keyed hash of IP prefix only, 90 days, admin shows hash; (2) API and nginx logs 30 days (time-based rotation); (3) PostHog kept with player opt-out, 12-month retention, DPA; (4) live chat purged after 90 days; (5) AI editor receives no player data (allowlist + outbound redaction + audit). X provider: **twitterapi.io**. Geo-blocking, Terms of Service draft and cookie/analytics notice are in `MASTER_PLAN.md` §11. Original findings, for the record:
 
 1. **Raw IP and user-agent in `player.SignIn`** (`server/prisma/player/player.prisma:113`, `client-info.ts`), kept **180 days** (`SIGNIN_RETENTION_DAYS`) and shown in the admin panel (`admin-directory.js`: "ip", "browser"). The plans keep only the keyed, salted hash of the IP prefix for 90 days. Decide: hash-only or a short raw retention (e.g. 30 days).
 2. **Raw IP and wallet in every API request log line** (`request-log.middleware.ts`), stored in Docker json-file logs (rotation by size: 50 MB × 5), with no time limit. Decide on a time-based limit or IP truncation in logs. nginx access logs (default on) are similar.
@@ -270,10 +270,10 @@ Items 1–5 decided by the owner and planned in `pr3_update_plan.md` step 4f: (1
 7. **AI content-editor tool** (staff-only, `EDITOR_*`, Anthropic / OpenAI / Gemini / Z.ai keys): sends game entity sources to LLM providers. Confirm that no player data reaches them; if it does, add them to the processors list.
 8. **Achievement badges are minted on-chain** as soulbound cNFTs to the player's wallet: permanent, public. Disclosed in Section 4.
 9. **`convoyHidden`** exists in PR #3 plans: confirm whether players can hide themselves from the Convoy board.
-10. **No geo-blocking code** in `main` yet (only throttling). Decided 17.10.2026: the domain goes behind Cloudflare (`pr3_update_plan.md` step 4g); country from `CF-IPCountry`, region/state from `cf-region-code`, ipinfo fallback, KYC country at payout.
+10. **No geo-blocking code** in `main` yet (only throttling). Decided 17.10.2026: the domain goes behind Cloudflare (`MASTER_PLAN.md` §11.1); country from `CF-IPCountry`, region/state from `cf-region-code`, ipinfo fallback, KYC country at payout.
 11. **twitterapi.io** is the chosen X provider (decided 17.10.2026); counsel should review it against X's terms.
 12. No Twitch/stream integration in the code (only marketing mentions). Decided 17.10.2026: none for now; Section 13 states this.
-13. No privacy policy, Terms or cookie notice exists in the repo today; Terms drafted 17.10.2026 in `docs_drafts/legal/TERMS.md` (cross-check §3 geo, §6 social linking, §11 anti-cheat, §19 third parties with this Policy); first-visit notice and footer links planned in step 4f.
+13. Terms drafted 17.10.2026 in `docs/legal/TERMS.md` and Official Rules in `docs/legal/OFFICIAL_RULES.md` (cross-check §3 geo, §6 social linking, §11 anti-cheat, §19 third parties with this Policy); first-visit notice and footer links in `MASTER_PLAN.md` §11.2.
 
 ### Validation checklist
 

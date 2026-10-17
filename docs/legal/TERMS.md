@@ -1,21 +1,21 @@
 # FreightChain Terms of Service — TEMPLATE
 
 > **DRAFT TEMPLATE — NOT LEGAL ADVICE. Must be reviewed and adapted by a qualified lawyer (gaming/contest, consumer, crypto/securities, sanctions) before publication.**
-> Future repo path: `docs/legal/TERMS.md` (published at `[PLACEHOLDER: https://freightchain.fun/terms]`).
-> Replace every `[PLACEHOLDER: …]`. Every **[LAWYER]** marks a legal choice that is not decided yet (list in "Notes for the team" at the end).
-> Status: drafted 17.10.2026 from `MASTER_PLAN.md`, `docs_drafts/legal/PRIVACY.md` and the plan files. Numbers match the plans; if a plan changes, update this file. Not committed.
+> Repo path: `docs/legal/TERMS.md` (published at `[PLACEHOLDER: https://freightchain.fun/terms]`).
+> Replace every `[PLACEHOLDER: …]`. Every **[LAWYER]** marks a legal choice to be confirmed before Season 1 publication (list in "Notes for the team" at the end).
+> Status: drafted 17.10.2026 from `docs/plan/MASTER_PLAN.md`, `docs/legal/PRIVACY.md` and `docs/legal/OFFICIAL_RULES.md`. Numbers match the plans; if a plan changes, update this file.
 
 ---
 
-**Version:** [PLACEHOLDER: 1.0] (stored as `termsVersion` when you accept)
-**Effective date:** [PLACEHOLDER: Month DD, YYYY]
-**Last updated:** [PLACEHOLDER: Month DD, YYYY]
+**Version:** `1.0` (stored as `termsVersion` when you accept)
+**Effective date:** [PLACEHOLDER: January 11, 2027]
+**Last updated:** [PLACEHOLDER: January 11, 2027]
 
 These Terms of Service ("**Terms**") are a binding agreement between you and [PLACEHOLDER: Company legal name], a [PLACEHOLDER: entity type and jurisdiction] with its address at [PLACEHOLDER: registered address] ("**FreightChain**", "**we**", "**us**", "**our**"). They govern your use of the FreightChain game, websites (including [PLACEHOLDER: freightchain.fun]), APIs, smart-contract interfaces, prize contests, referral program, airdrops and related services (the "**Services**").
 
 **IMPORTANT — PLEASE READ.** Section 26 contains [LAWYER: a binding individual arbitration agreement and class-action waiver] that affects how disputes are resolved. Section 13 explains that the TEN4 token is an in-game utility token and **not an investment**. Section 5 explains that **you alone control your wallet**; we cannot recover lost keys or reverse blockchain transactions.
 
-By connecting a wallet, confirming that you are 18 or older and clicking "Accept", or by otherwise using the Services, you agree to these Terms, our [Privacy Policy](PRIVACY.md) and the [PLACEHOLDER: Official Contest Rules] (the "**Official Rules**"), which are part of these Terms. If you do not agree, do not use the Services.
+By connecting a wallet, confirming that you are 18 or older and clicking "Accept", or by otherwise using the Services, you agree to these Terms, our [Privacy Policy](PRIVACY.md) and the [Official Contest Rules](OFFICIAL_RULES.md) (the "**Official Rules**"), which are part of these Terms. If you do not agree, do not use the Services.
 
 ## Summary (not a substitute for the full Terms)
 
@@ -290,14 +290,14 @@ Support: [PLACEHOLDER: support email] · Legal notices and arbitration opt-out: 
 
 ## Notes for the team (delete before publishing)
 
-**Scope (17.10.2026):** these Terms apply from Season 1 (mainnet, 11.01.2027) once the operator entity exists. The devnet Pre-season (November 2026) is run by an individual organizer under separate short event rules — `docs_drafts/legal/PRESEASON_RULES.md`.
+**Scope (17.10.2026):** these Terms apply from Season 1 (mainnet, 11.01.2027) once the operator entity exists. The devnet Pre-season (November 2026) is run by an individual organizer under separate short event rules — `docs/legal/PRESEASON_RULES.md` (EN) and `docs/legal/PRESEASON_RULES_RU.md` (RU).
 
 
 **[LAWYER] items to decide:**
 1. Age: 18+ everywhere, or 19/21 where the age of majority is higher (prize features) — §2.1.
 2. Ineligible persons scope (employees, family, sponsor staff) — §2.3.
 3. Sanctions list: CU, IR, KP, SY + Crimea/Donetsk/Luhansk; add RU, BY, VE, others? — §3.1 (OPEN_QUESTIONS 2б).
-4. Seven US states: block only paid/prize features or all play; any additional states (Skillz lists AR, CT, DE, LA, SD; Triumph excludes AZ, CT, DE, LA, ME, MI, MT, NV, SD, TN) — §3.2 (OPEN_QUESTIONS 2а).
+4. Seven US states: paid/prize features blocked (`geo_block_us_states_paid`), free training/EASY allowed; confirm whether any additional state must be added (Skillz lists AR, CT, DE, LA, SD; Triumph excludes AZ, CT, DE, LA, ME, MI, MT, NV, SD, TN) — §3.2 (OPEN_QUESTIONS 2а).
 5. Refund of unused purchased tickets when a location becomes restricted or the Services end — §3.6, §23.2; consumer refund rights — §7.5.
 6. Free entry route and 30% free-ticket cap vs. state contest/sweepstakes laws — §8.3, §9.4.
 7. Non-resident withholding (30% / 1042-S) — §10.4 (tax adviser).
@@ -310,13 +310,13 @@ Support: [PLACEHOLDER: support email] · Legal notices and arbitration opt-out: 
 14. Arbitration vs. courts; provider; fees; mass-arbitration batching; 30-day opt-out; one-year limit; class waiver — §26.
 15. Unofficial X API (twitterapi.io) — terms risk (OPEN_QUESTIONS 1).
 
-**Product facts this draft relies on (keep in sync):** 18+ gate with `Player.termsAcceptedAt` / `termsVersion`; geo lists from `pr3_update_plan.md` 4f/4g; tickets via Solana Pay, weekly ticket `weekly_ticket_{1h,4h,8h}_*`, promo codes 1h/4h/8h, unlimited training, EASY; prize model `pool_unified_plan.md` (player share ≤ 47.4%, free-ticket cap 30%, min payout $5, boards ≥ 10); KYC Didit (free — any amount; purchased — $50/season), 72 h hold, sanctions every payout; tax W-9/W-8BEN first payout, 1099-MISC $2,000, gross; Convoy (`referral_plan.md`); TEN4 100M fixed, 2,000/day per wallet, airdrop cap 2,000 and 90-day claim; chat 90 days; donations 100% to driver; no streaming integration.
+**Product facts this draft relies on (keep in sync):** 18+ gate with `Player.termsAcceptedAt` / `termsVersion`; geo lists from `MASTER_PLAN.md` §11; tickets via Solana Pay, weekly ticket `weekly_ticket_{1h,4h,8h}_*`, promo codes 1h/4h/8h, unlimited training, EASY; prize model `MASTER_PLAN.md` §3 (player share ≤ 47.4%, free-ticket cap 30%, min payout $5, boards ≥ 10); KYC Didit (free — any amount; purchased — $50/season), 72 h hold, sanctions every payout; tax W-9/W-8BEN first payout, 1099-MISC $2,000, gross; Convoy (`MASTER_PLAN.md` §5); TEN4 100M fixed, 2,000/day per wallet, airdrop cap 2,000 and 90-day claim; chat 90 days; donations 100% to driver; no streaming integration.
 
-**Official Rules** (`docs/prize/OFFICIAL-RULES.md` exists in PR #3 as a draft on the old model) must be rewritten to the unified pool model (`pool_unified_plan.md`), seasons, free-ticket cap, KYC/tax and the Convoy section before launch.
+**Official Rules:** drafted in `docs/legal/OFFICIAL_RULES.md` under the unified pool model, seasons, 30% free-ticket cap, dynamic N-finalist table, KYC/tax and Convoy.
 
 ## Validation checklist (before publishing)
 
-- [ ] Every `[PLACEHOLDER: …]` replaced; every `[LAWYER: …]` decided and removed.
+- [ ] Every `[PLACEHOLDER: …]` replaced; every `[LAWYER: …]` decided and removed (tracked in `docs/plan/OWNER_TASKS.md` §4).
 - [ ] Geo lists match `geo_block_countries`, `geo_block_regions`, `geo_block_us_states_paid` and the Cloudflare WAF rule.
 - [ ] Numbers match current settings: weekly ticket tiers/intervals, free-ticket cap (`free_prize_board_cap_bps`), KYC threshold (`payout_kyc_paid_season_cents`), hold (`payout_hold_hours`), 1099 threshold (`tax_1099_threshold_usd`), referral caps (`referral_ten4_*`), airdrop cap and claim window, chat retention (`LIVE_CHAT_RETENTION_DAYS`).
 - [ ] Refund flow exists for our-outage case (ticket restored or refunded) and matches §7.5.
@@ -324,7 +324,7 @@ Support: [PLACEHOLDER: support email] · Legal notices and arbitration opt-out: 
 - [ ] Terms, Privacy Policy and Official Rules link to each other; footer links on all pages.
 - [ ] Third-party list in §19 matches Privacy Policy processors.
 - [ ] TEN4 wording reviewed against whitepaper, landing and pitch deck (no profit or price language anywhere).
-- [ ] Official Rules rewritten and published before Season 1.
+- [ ] `docs/legal/OFFICIAL_RULES.md` reviewed by counsel and published before Season 1.
 
 ## Sources (reviewed 17.10.2026)
 

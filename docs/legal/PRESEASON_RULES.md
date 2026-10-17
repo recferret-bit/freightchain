@@ -1,11 +1,11 @@
 # FreightChain Pre-season (devnet) — Event Rules and Privacy Notice — TEMPLATE
 
 > **DRAFT — NOT LEGAL ADVICE.** Short rules for one free promotional skill event run by an **individual organizer** (no company). Full `TERMS.md` / `PRIVACY.md` apply from Season 1, once an operator entity exists.
-> Replace every `[PLACEHOLDER: …]`. Research on individual-organizer risks, Didit availability, and residency/sanctions is recorded in `docs/plan/research/operator_entity_options.md` §6–7. **[LAWYER]** = legal choice to confirm (deferred by owner for Pre-season as an accepted risk; tracked in `docs/plan/OPEN_QUESTIONS.md`).
-> Russian translation (RU) to be prepared after review; if versions differ, [LAWYER: which language controls — proposed English].
+> Replace every `[PLACEHOLDER: …]` (see `docs/plan/OWNER_TASKS.md` §1.1). Research on individual-organizer risks, Didit availability, and residency/sanctions is recorded in `docs/plan/research/operator_entity_options.md` §6–7. **[LAWYER]** = legal choice to confirm (deferred by owner for Pre-season as an accepted risk; tracked in `docs/plan/OPEN_QUESTIONS.md`).
+> Russian translation (RU) is in `docs/legal/PRESEASON_RULES_RU.md`; if versions differ, the English version controls [LAWYER: confirm language priority].
 > Status: drafted 17.10.2026 from `docs/plan/DEVNET_PRESEASON.md` (D1–D13, Round 19).
 
-**Version:** [PLACEHOLDER: PS-1.0] · **Published:** [PLACEHOLDER: date]
+**Version:** `PS-1.0` · **Published:** [PLACEHOLDER: publication date, on or before 2 November 2026]
 
 ## Part A — Event Rules
 
@@ -41,9 +41,9 @@
 | 6–10 | $20 each |
 | 11–20 | $12 each |
 
-One prize per person. Prizes are paid to the wallet address you played with. Places that are not awarded (fewer than 20 eligible finishers, disqualifications, failed checks) are not paid out and are not reassigned except by moving eligible players up [PLACEHOLDER: confirm — moving up after disqualification is recommended].
+One prize per person. Prizes are paid to the wallet address you played with. If a player in the Top 20 is disqualified or fails verification, eligible verified finishers below move up. Places that remain unawarded (fewer than 20 eligible finishers after review) are not paid out and remain with the Organizer.
 
-**9. Verification before payout.** Winners must: confirm their country and age; pass the Organizer's manual review of their accounts and entry (linked Telegram and X accounts, network signals, ride replay); identity documents are not collected [optional: an identity check may be added if announced before 9 November]; pass a sanctions screening of their wallet (Chainalysis) and name; and keep their Telegram account linked. A winner who does not complete verification within [PLACEHOLDER: 14] days of notice forfeits the prize.
+**9. Verification before payout.** Winners must: confirm their country and age; pass the Organizer's manual review of their accounts and entry (linked Telegram and X accounts, network signals, ride replay); identity documents are not collected [optional: an identity check may be added if announced before 9 November]; pass a sanctions screening of their wallet (Chainalysis) and name; and keep their Telegram account linked. A winner who does not complete verification within **14 days** of notice forfeits the prize.
 
 **10. Taxes.** Winners are solely responsible for any taxes on their prizes in their country. The Organizer does not withhold tax or issue tax forms [LAWYER: Serbian tax resident individual payer — confirm Porez na dohodak građana treatment in `docs/plan/research/operator_entity_options.md` §7.5].
 
@@ -51,9 +51,9 @@ One prize per person. Prizes are paid to the wallet address you played with. Pla
 
 **12. Review, appeals and disqualification.** The Organizer reviews the top results (ride replays, telemetry, account links, network signals). Appeals: [PLACEHOLDER: form / email / Telegram] until Tuesday 17 November 12:00 UTC. The Organizer may disqualify entries that break these Rules and void results affected by cheating or technical failure.
 
-**13. Outages.** If a server outage on our side longer than [PLACEHOLDER: 30] minutes interrupts your ranked attempt, you may receive a replacement attempt or the prize week may be extended; this will be announced in the Telegram channel.
+**13. Outages.** If a server outage on our side longer than **30 minutes** interrupts your ranked attempt, you may receive a replacement attempt or the prize week may be extended; this will be announced in the Telegram channel.
 
-**14. Organizer's discretion.** The Organizer may modify, suspend, extend or cancel the Event for technical, security, fair-play or legal reasons, announced in the Telegram channel. If the Event is cancelled before results are final, [PLACEHOLDER: no prizes are paid / prizes are awarded on standings at cancellation]. The Organizer's decisions on eligibility, verification and disqualification are final, acting in good faith.
+**14. Organizer's discretion.** The Organizer may modify, suspend, extend or cancel the Event for technical, security, fair-play or legal reasons, announced in the Telegram channel. If the Event is cancelled before any ranked attempt is completed, no prizes are paid; if cancelled after ranked attempts have been completed for reasons outside players' control, prizes are awarded on verified standings at the time of cancellation (or the prize week is rescheduled). The Organizer's decisions on eligibility, verification and disqualification are final, acting in good faith.
 
 **15. Liability.** To the extent permitted by law, the Organizer is not liable for losses arising from participation, wallet or network issues, or third-party platforms, except for the duty to pay prizes validly won under these Rules.
 
@@ -63,18 +63,18 @@ One prize per person. Prizes are paid to the wallet address you played with. Pla
 
 ## Part B — Pre-season Privacy Notice
 
-**Who is responsible:** the Organizer named in Part A (an individual), contact [PLACEHOLDER].
+**Who is responsible:** the Organizer named in Part A (an individual), contact [PLACEHOLDER: organizer Telegram @handle / email].
 
 **What is collected and why:**
 
 | Data | Why | Kept |
 |---|---|---|
-| Wallet address, sign-in signature | Account, leaderboard, prize payout | Until [PLACEHOLDER: 12] months after the Event; on-chain data is permanent |
+| Wallet address, sign-in signature | Account, leaderboard, prize payout | Until **12 months** after the Event; on-chain data is permanent |
 | Telegram user ID, username, channel/chat membership | Mandatory tasks, one account per person | Same as above |
 | X handle and post link (mandatory task); Discord handle (optional task) | Mandatory X entry task; optional Discord airdrop points | Same as above |
-| Keyed hash of your IP address prefix (not the raw IP), country/region from Cloudflare | Eligibility by location, detecting multi-accounting | 90 days |
-| Gameplay telemetry and ride replays | Scoring, anti-cheat, review | [PLACEHOLDER: 12] months |
-| Manual verification & sanctions screening result for winners (no ID documents collected by default) | Age/country self-confirmation, anti-sybil review, sanctions compliance | Until [PLACEHOLDER: 12] months after the Event |
+| Keyed hash of your IP address prefix (not the raw IP), country/region from Cloudflare | Eligibility by location, detecting multi-accounting | **90 days** (web server logs 30 days) |
+| Gameplay telemetry and ride replays | Scoring, anti-cheat, review | **90 days** (up to **12 months** for prize/flagged rides) |
+| Manual verification & sanctions screening result for winners (no ID documents collected by default) | Age/country self-confirmation, anti-sybil review, sanctions compliance | Until **12 months** after the Event |
 | Messages in the Telegram chat | Community and moderation | Telegram's own rules |
 
 **Service providers:** Cloudflare (network security, location), Telegram, twitterapi.io (public X task verification), Chainalysis (sanctions screening), [PLACEHOLDER: hosting provider], PostHog (first-party analytics, opt-out available).
@@ -85,6 +85,6 @@ One prize per person. Prizes are paid to the wallet address you played with. Pla
 
 ## Notes for the team (delete before publishing)
 
-- Resolved in `docs/plan/research/operator_entity_options.md` §6–7 & Round 19: Organizer is a Serbian tax resident (temporary residence) and RF citizen; Didit is not used in Pre-season (Didit requires a legal entity); RU/BY remain play-only without prizes; Serbian lawyer / tax questions are tracked in `docs/plan/OPEN_QUESTIONS.md`. Fill `[PLACEHOLDER: …]` values before publishing.
-- Publish Rules and Notice in English and Russian on the Event page and pin them in the Telegram channel.
-- Full `TERMS.md` / `PRIVACY.md` apply from Season 1 when the operator entity exists.
+- Resolved in `docs/plan/research/operator_entity_options.md` §6–7 & Round 19: Organizer is a Serbian tax resident (temporary residence) and RF citizen; Didit is not used in Pre-season (Didit requires a legal entity); RU/BY remain play-only without prizes; Serbian lawyer / tax questions are tracked in `docs/plan/OPEN_QUESTIONS.md`. Fill external `[PLACEHOLDER: …]` values listed in `docs/plan/OWNER_TASKS.md` §1.1 before publishing.
+- Publish Rules and Notice in English (`docs/legal/PRESEASON_RULES.md`) and Russian (`docs/legal/PRESEASON_RULES_RU.md`) on the Event page and pin them in the Telegram channel.
+- Full `TERMS.md` / `PRIVACY.md` / `OFFICIAL_RULES.md` apply from Season 1 when the operator entity exists.
