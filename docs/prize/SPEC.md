@@ -63,11 +63,14 @@ On a ranked run, spectator obstacles, weather, and day/night must not change the
 
 ## Money
 
-Integer cents. Currency USDC. (See `docs/plan/MASTER_PLAN.md` §3 and `docs/legal/OFFICIAL_RULES.md` for the Season 1 unified operator + sponsor extension `F = B + S`, `P = min(0.40·R, $2,500, 0.90·F)`, `85/5/10` split, and 30% free-ticket prize cap.)
+Integer cents. Currency USDC. Unified operator + sponsor model (`unifiedWeekPool`, `capRolloverCents` in `server/src/domain/prize/prize-pool.ts`; see `docs/plan/MASTER_PLAN.md` §3 and `docs/legal/OFFICIAL_RULES.md`):
 
-- Base starts at $300. Steps are $300, $750, $1,500, $3,000. The base moves up one step when each of the last four weeks took in more than four times the current base.
-- Bonus is 40% of the previous week's ticket revenue, capped at $2,500. Because it uses the previous week, it can be announced before this week opens.
-- 10% of the capped bonus is reserved for the season final. The other 90% of the bonus, plus the whole base, is split across the three boards.
+- Fixed weekly pool `F = B + S`, where `B` is the operator base and `S` is verified sponsor funding.
+- Base `B` starts at $300. Steps are $300, $750, $1,500, $3,000 (`nextBaseCents`). The base moves up one step when each of the last four weeks took in more than four times the current base, and does not reset between seasons.
+- Performance bonus `P = min(0.40 * R, $2,500, 0.90 * F)` (`BONUS_MAX_OF_FIXED_BPS = 9_000`), where `R` is the previous week's ticket revenue (`cappedBonusCents`, `unifiedWeekPool`). Because it uses the previous week, it can be announced before this week opens.
+- Incoming rollover `C` is capped at `C <= 25% * F` (`ROLLOVER_CAP_OF_FIXED_BPS = 2_500`, `capRolloverCents`); any excess above `0.25 * F` is routed to the Season Final.
+- Total weekly pool `T = F + P + C` is split `85%` to the three weekly boards (`WEEK_BOARD_SHARE_BPS = 8_500`), `5%` to next-week rollover (`WEEK_ROLLOVER_SHARE_BPS = 500`), and `10%` to the Season Final (`FINAL_RESERVE_BPS = 1_000`). On the final week of a season (`isFinalWeek`), the `10%` goes to that same week's Season Final and the `5%` rolls into Week 1 of the next season (capped at `25% F`).
+- Legacy helper `weekPool(baseCents, prevWeekRevenueCents)` remains for pure operator-base callers (`F = B`, `90%` of `P` to boards, `10%` to final).
 - A board with fewer than 10 unique wallets pays its base share only. Its bonus share rolls one week. Last week's roll is not rolled again: it goes to the season final.
 - Unpaid place shares, an unused finisher pool, a payout under $5, and a winner who is not cleared for payout also roll one week. The next thin week sends that roll to the season final. Rolls do not compound into a jackpot.
 - TEN4 is not part of the pool.
@@ -77,6 +80,8 @@ Integer cents. Currency USDC. (See `docs/plan/MASTER_PLAN.md` §3 and `docs/lega
 Of each board's payable cents, 80% is places and 20% is the finisher pool.
 
 The top-10 shares are 25 / 15 / 10 / 7.5 / 7.5 / 3 / 3 / 3 / 3 / 3. Ranks 6–10 are 3% each. A tail of 5% each would total 90% and would not leave 20% for finishers, so that parenthetical was not used. Tied places combine their occupied place shares and split them equally (`Math.floor` to whole cents; odd cents roll).
+
+Free-ticket entries (`entryType: 'free'` on `BoardEntry`) are capped at `30%` of a board's payable pool (`FREE_PRIZE_BOARD_CAP_BPS = 3_000` in `settleBoard`). When total free-entry prizes exceed `floor(0.30 * boardCents)`, each free winner is scaled down proportionally and the excess cents cascade in rank order to the next ranked paid-ticket finishers who did not already win a top-10 place (capped at the 10th-place prize each), with any remainder rolling over.
 
 Above 100 participants the board pays the top 10% (`ceil(n / 10)` places) from the same 80%, on linear weights. The research did not publish that curve. This one is a draft stand-in.
 
@@ -97,7 +102,7 @@ The country is read at ranked start, and when the weekly ticket is granted, from
 
 ## Season
 
-Seven weeks (`SEASON_WEEKS = 7`) from `SEASON_EPOCH` (`2026-10-12`; Season 1 mainnet schedule starts `2027-01-11` per `docs/plan/MASTER_PLAN.md`). Week 7 is the live final (`LIVE_FINAL_WEEK = 7`, `seasonOf`). The final field on each board is the top 8 by the lowest sum of weekly places (`seasonQualifiers`), and all players tied on place-sum at the 8th-place cutoff advance (`N >= 8`). A missed week scores 1000, which is worse than any real place, so skipping a week cannot help. The final is one route, watchable, with spectator road effects off. The final ride itself is not built. The same Monday–Sunday window applies to it.
+Seven weeks (`SEASON_WEEKS = 7`) from `SEASON_EPOCH` (`2026-10-12`; Season 1 mainnet schedule starts `2027-01-11` per `docs/plan/MASTER_PLAN.md`). Week 7 is the live final (`LIVE_FINAL_WEEK = 7`, `seasonOf`). The final field on each board is the top 8 by the lowest sum of weekly places (`seasonQualifiers`), and all players tied on place-sum at the 8th-place cutoff advance (`N >= 8`). A missed week scores 1000, which is worse than any real place, so skipping a week cannot help. `settleSeasonFinal` distributes the Season Final pool (`SEASON_FINAL_BASE_CENTS = 100_000` plus weekly `10%` reserves and sponsor additions) across `N` finalists using weights `30, 20, 14, 10, 8, 7, 6, 5` for places 1–8 (`FINAL_PLACE_WEIGHTS`) and weight `5` (`FINAL_EXTRA_FINALIST_WEIGHT`) for each additional finalist `9..N`, with tied finalists sharing their occupied weights equally. The final is one route, watchable, with spectator road effects off. The final ride itself is not built. The same Monday–Sunday window applies to it.
 
 ## Wired
 

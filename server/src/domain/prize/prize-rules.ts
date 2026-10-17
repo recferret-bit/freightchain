@@ -40,7 +40,18 @@ export const MISSED_WEEK_PLACE = 1000;
 export const BASE_STEPS_CENTS = [30_000, 75_000, 150_000, 300_000] as const;
 export const BONUS_OF_REVENUE_BPS = 4_000;
 export const BONUS_CAP_CENTS = 250_000;
+/** `P <= 0.90 * F` so the player-derived bonus never exceeds 90/190 (47.37% < 47.4%) of `F + P`. */
+export const BONUS_MAX_OF_FIXED_BPS = 9_000;
+export const WEEK_BOARD_SHARE_BPS = 8_500;
+export const WEEK_ROLLOVER_SHARE_BPS = 500;
 export const SEASON_RESERVE_BPS = 1_000;
+/** `C <= 0.25 * F`; any rollover above 25% of fixed funding `F` goes to the season final. */
+export const ROLLOVER_CAP_OF_FIXED_BPS = 2_500;
+/** Free-ticket entries (weekly granted or promo) can take at most 30% of a board's prize pool. */
+export const FREE_PRIZE_BOARD_CAP_BPS = 3_000;
+export const SEASON_FINAL_BASE_CENTS = 100_000;
+export const FINAL_PLACE_WEIGHTS = [30, 20, 14, 10, 8, 7, 6, 5] as const;
+export const FINAL_EXTRA_FINALIST_WEIGHT = 5;
 export const REVENUE_STEP_MULTIPLE = 4;
 export const STEP_STREAK_WEEKS = 4;
 

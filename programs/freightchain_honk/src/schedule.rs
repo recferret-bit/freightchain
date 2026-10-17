@@ -109,6 +109,104 @@ pub fn take_room(quote: u64, emitted: u64, day_emitted: u64, wallet_emitted: u64
     Ok(quote.min(room_cap).min(room_era).min(room_day).min(room_wallet))
 }
 
+/// Era of `emitted` referral TEN4 (4M cap: 2M -> 1M -> 500k -> ...).
+pub fn referral_era_index(emitted: u64) -> u32 {
+    if emitted >= REFERRAL {
+        return 63;
+    }
+    let mut start = 0u64;
+    let mut size = REFERRAL_ERA_SIZE;
+    let mut era = 0u32;
+    while size > 0 {
+        let end = start.saturating_add(size);
+        if emitted < end {
+            return era;
+        }
+        start = end;
+        size /= 2;
+        era = era.saturating_add(1);
+        if era >= 63 {
+            return 63;
+        }
+    }
+    era
+}
+
+/// TEN4 still inside the current referral era.
+pub fn referral_era_remaining(emitted: u64) -> u64 {
+    if emitted >= REFERRAL {
+        return 0;
+    }
+    let mut start = 0u64;
+    let mut size = REFERRAL_ERA_SIZE;
+    let mut era = 0u32;
+    while size > 0 {
+        let end = start.saturating_add(size);
+        if emitted < end {
+            return end - emitted;
+        }
+        start = end;
+        size /= 2;
+        era = era.saturating_add(1);
+        if era >= 63 {
+            break;
+        }
+    }
+    REFERRAL.saturating_sub(emitted)
+}
+
+/// Global monthly referral cap: 30,000 TEN4/month for the first 3 months after `opened_at`, then 60,000 TEN4/month.
+pub fn referral_monthly_global_cap(month_index: i64) -> u64 {
+    if month_index < 0 {
+        return 0;
+    }
+    if month_index < REFERRAL_SOFT_START_MONTHS {
+        REFERRAL_SOFT_START_GLOBAL
+    } else {
+        REFERRAL_MONTHLY_GLOBAL
+    }
+}
+
+/// Referral payout shifts right by `max(era_ref, era_ride)`.
+pub fn referral_quote_units(base_amount: u64, referral_emitted: u64, ride_emitted: u64) -> Result<(u64, u32)> {
+    if base_amount == 0 {
+        return Err(HonkError::ZeroAmount.into());
+    }
+    let era = referral_era_index(referral_emitted).max(era_index(ride_emitted));
+    let quote = if era >= 63 { 0 } else { base_amount >> era };
+    if quote == 0 {
+        return Err(HonkError::ZeroAmount.into());
+    }
+    Ok((quote, era))
+}
+
+/// Clips a referral payout by the 4M vault cap, current referral era, monthly global cap, and 1,000/month wallet cap.
+pub fn take_referral_room(
+    quote: u64,
+    referral_emitted: u64,
+    month_index: i64,
+    month_emitted: u64,
+    wallet_month_emitted: u64,
+) -> Result<u64> {
+    let room_cap = REFERRAL.saturating_sub(referral_emitted);
+    let room_era = referral_era_remaining(referral_emitted);
+    let room_month = referral_monthly_global_cap(month_index).saturating_sub(month_emitted);
+    let room_wallet = REFERRAL_MONTHLY_WALLET.saturating_sub(wallet_month_emitted);
+    if quote == 0 {
+        return Err(HonkError::ZeroAmount.into());
+    }
+    if room_cap == 0 || room_era == 0 {
+        return Err(HonkError::EmissionCap.into());
+    }
+    if room_month == 0 {
+        return Err(HonkError::DailyCap.into());
+    }
+    if room_wallet == 0 {
+        return Err(HonkError::WalletCap.into());
+    }
+    Ok(quote.min(room_cap).min(room_era).min(room_month).min(room_wallet))
+}
+
 /// Linear vest. `cliff_months` of nothing, then `linear_months` of even unlock. A 30-day month.
 pub fn vested(total: u64, opened_at: i64, now: i64, cliff_months: u8, linear_months: u8) -> Result<u64> {
     if linear_months == 0 || total == 0 {
@@ -175,6 +273,25 @@ mod tests {
     }
 
     #[test]
+    fn referral_eras_soft_start_and_monthly_caps() {
+        assert_eq!(referral_era_index(0), 0);
+        assert_eq!(referral_era_index(REFERRAL_ERA_SIZE - 1), 0);
+        assert_eq!(referral_era_index(REFERRAL_ERA_SIZE), 1);
+        assert_eq!(referral_era_index(REFERRAL_ERA_SIZE + REFERRAL_ERA_SIZE / 2), 2);
+        assert_eq!(referral_era_index(REFERRAL - (REFERRAL_ERA_SIZE >> 7)), 8);
+        assert_eq!(referral_monthly_global_cap(0), 30_000 * UNIT);
+        assert_eq!(referral_monthly_global_cap(2), 30_000 * UNIT);
+        assert_eq!(referral_monthly_global_cap(3), 60_000 * UNIT);
+        assert_eq!(referral_quote_units(100 * UNIT, 0, 0).unwrap(), (100 * UNIT, 0));
+        assert_eq!(referral_quote_units(100 * UNIT, REFERRAL_ERA_SIZE, 0).unwrap(), (50 * UNIT, 1));
+        assert_eq!(referral_quote_units(100 * UNIT, 0, ERA_SIZE + ERA_SIZE / 2).unwrap(), (25 * UNIT, 2));
+        assert_eq!(take_referral_room(100 * UNIT, 0, 0, 0, 950 * UNIT).unwrap(), 50 * UNIT);
+        assert!(take_referral_room(100 * UNIT, 0, 0, 0, REFERRAL_MONTHLY_WALLET).is_err());
+        assert!(take_referral_room(100 * UNIT, 0, 0, REFERRAL_SOFT_START_GLOBAL, 0).is_err());
+        assert_eq!(take_referral_room(100 * UNIT, 0, 3, REFERRAL_SOFT_START_GLOBAL, 0).unwrap(), 100 * UNIT);
+    }
+
+    #[test]
     fn treasury_is_linear_and_the_team_waits_out_the_cliff() {
         let opened = 1_000_000i64;
         assert_eq!(vested(TREASURY, opened, opened, 0, 36).unwrap(), 0);
@@ -182,9 +299,8 @@ mod tests {
         assert_eq!(vested(TREASURY, opened, half, 0, 36).unwrap(), TREASURY / 2);
         assert_eq!(vested(TREASURY, opened, opened + 36 * MONTH_SECS, 0, 36).unwrap(), TREASURY);
         let cliff = opened + 12 * MONTH_SECS;
-        assert_eq!(vested(TEAM, opened, cliff - 1, 12, 36).unwrap(), 0);
-        assert_eq!(vested(TEAM, opened, cliff + 18 * MONTH_SECS, 12, 36).unwrap(), TEAM / 2);
-        assert_eq!(vested(TEAM, opened, cliff + 36 * MONTH_SECS, 12, 36).unwrap(), TEAM);
+        assert_eq!(vested(TEAM, opened, cliff - 1, 12, 24).unwrap(), 0);
         assert_eq!(vested(TEAM, opened, cliff + 12 * MONTH_SECS, 12, 24).unwrap(), TEAM / 2);
+        assert_eq!(vested(TEAM, opened, cliff + 24 * MONTH_SECS, 12, 24).unwrap(), TEAM);
     }
 }

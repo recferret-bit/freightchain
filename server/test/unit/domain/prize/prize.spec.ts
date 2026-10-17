@@ -1,11 +1,17 @@
-import { announcePool, bestByWallet, cleanBps, nextBaseCents, rankedAttemptScore, seasonQualifiers, settleBoard, splitBoardCents, weekBonus } from '../../../../src/domain/prize/prize-pool.js';
 import {
-  BASE_STEPS_CENTS, BLOCKED_US_STATES, BONUS_CAP_CENTS, MIN_PAYOUT_CENTS, PAID_RANKED_STARTS, PROMO_RANKED_STARTS,
-  PLACE_BPS, PRIZE_BLOCKED_COUNTRIES, SANCTIONED_COUNTRIES, TOKEN_IS_PRIZE, classifyStarts, openSettlement, prizeAccess, prizePhase, prizeWeek, rankedRoadEffects, rankedSpectatorBlocked, rankedStartFits, seasonOf,
+  announcePool, bestByWallet, capRolloverCents, cleanBps, nextBaseCents, rankedAttemptScore,
+  seasonQualifiers, settleBoard, settleSeasonFinal, splitBoardCents, unifiedWeekPool, weekBonus,
+} from '../../../../src/domain/prize/prize-pool.js';
+import {
+  BASE_STEPS_CENTS, BLOCKED_US_STATES, BONUS_CAP_CENTS, BONUS_MAX_OF_FIXED_BPS, FREE_PRIZE_BOARD_CAP_BPS,
+  MIN_PAYOUT_CENTS, PAID_RANKED_STARTS, PROMO_RANKED_STARTS, PLACE_BPS, PRIZE_BLOCKED_COUNTRIES,
+  ROLLOVER_CAP_OF_FIXED_BPS, SANCTIONED_COUNTRIES, SEASON_FINAL_BASE_CENTS, TOKEN_IS_PRIZE,
+  WEEK_BOARD_SHARE_BPS, WEEK_ROLLOVER_SHARE_BPS, classifyStarts, openSettlement, prizeAccess,
+  prizePhase, prizeWeek, rankedRoadEffects, rankedSpectatorBlocked, rankedStartFits, seasonOf,
 } from '../../../../src/domain/prize/prize-rules.js';
 
-const score = (wallet: string, metres: number, corrections = 0, submittedAt = 0, payout = true) => ({
-  wallet, bps: cleanBps(metres, 10_000), corrections, submittedAt, payout,
+const score = (wallet: string, metres: number, corrections = 0, submittedAt = 0, payout = true, free = false) => ({
+  wallet, bps: cleanBps(metres, 10_000), corrections, submittedAt, payout, free,
 });
 
 describe('prize week and eligibility', () => {
@@ -130,6 +136,28 @@ describe('pool announcement', () => {
     expect(splitBoardCents(100)['1h'] + splitBoardCents(100)['4h'] + splitBoardCents(100)['8h']).toBe(100);
   });
 
+  it('implements the unified weekly pool (F = B + S, P = min(0.40R, $2500, 0.90F), C <= 0.25F, 85/5/10 split)', () => {
+    expect(BONUS_MAX_OF_FIXED_BPS).toBe(9_000);
+    expect(WEEK_BOARD_SHARE_BPS).toBe(8_500);
+    expect(WEEK_ROLLOVER_SHARE_BPS).toBe(500);
+    expect(ROLLOVER_CAP_OF_FIXED_BPS).toBe(2_500);
+    expect(FREE_PRIZE_BOARD_CAP_BPS).toBe(3_000);
+    expect(SEASON_FINAL_BASE_CENTS).toBe(100_000);
+
+    expect(capRolloverCents(12_000, 40_000)).toEqual({ carryCents: 10_000, excessToSeasonCents: 2_000 });
+    const pool = unifiedWeekPool({ baseCents: 30_000, sponsorCents: 10_000, previousRevenueCents: 200_000, rawCarryCents: 15_000 });
+    expect(pool.fixedCents).toBe(40_000);
+    expect(pool.bonusCents).toBe(36_000); // min(80_000, 250_000, 0.90 * 40_000 = 36_000)
+    expect(pool.bonusCents / (pool.fixedCents + pool.bonusCents)).toBeLessThanOrEqual(0.474);
+    expect(pool.carryCents).toBe(10_000);
+    expect(pool.excessToSeasonCents).toBe(5_000);
+    expect(pool.totalCents).toBe(86_000);
+    expect(pool.boardCents).toBe(73_100);
+    expect(pool.rolloverSeedCents).toBe(4_300);
+    expect(pool.seasonReserveCents).toBe(8_600);
+    expect(pool.seasonCents).toBe(13_600);
+  });
+
   it('steps the base only after four weeks above 4×, one step at a time', () => {
     const hot = [120_001, 120_001, 120_001, 120_001];
     expect(nextBaseCents(BASE_STEPS_CENTS[0], hot)).toBe(75_000);
@@ -173,6 +201,22 @@ describe('board settlement', () => {
       { wallet: 'z', place: 1, placeCents: 1_500 },
       { wallet: 'm', place: 3, placeCents: 750 },
     ]);
+  });
+
+  it('caps free-ticket prizes at 30% of the board pool and passes excess to the next purchased-ticket finisher', () => {
+    const scores = [
+      score('free1', 9_900, 0, 1, true, true),
+      score('free2', 9_800, 0, 2, true, true),
+      ...Array.from({ length: 9 }, (_, i) => score(`paid${i + 1}`, 9_000 - i * 100, 0, 10 + i, true, false)),
+    ];
+    const board = settleBoard({ tier: '1h', baseCents: 10_000, bonusCents: 0, carryCents: 0, scores });
+    const f1 = board.lines.find((l) => l.wallet === 'free1')!;
+    const f2 = board.lines.find((l) => l.wallet === 'free2')!;
+    const p9 = board.lines.find((l) => l.wallet === 'paid9')!;
+    expect(f1.cents).toBe(2_500);
+    expect(f2.cents).toBe(500); // clipped from 1_500 so free1 + free2 = 3_000 (30% of 10_000)
+    expect(f1.cents + f2.cents).toBe(3_000);
+    expect(p9.cents).toBe(1_000); // 11th overall (purchased ticket) receives the 1_000 excess
   });
 
   it('a thin board pays base only, rolls this bonus, and sends last week’s roll to the season', () => {
@@ -223,5 +267,22 @@ describe('season final', () => {
       ],
     ];
     expect(seasonQualifiers(cutoffTie).map((r) => r.wallet)).toEqual(['w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9']);
+  });
+
+  it('settles the dynamic N-finalist table for 8, >8 (cutoff tie), and <8 completing finalists', () => {
+    const eight = Array.from({ length: 8 }, (_, i) => score(`f${i + 1}`, 10_000, i, i));
+    const settled8 = settleSeasonFinal(100_000, eight);
+    expect(settled8.lines.map((l) => l.cents)).toEqual([30_000, 20_000, 14_000, 10_000, 8_000, 7_000, 6_000, 5_000]);
+    expect(settled8.rollCents).toBe(0);
+
+    const nine = Array.from({ length: 9 }, (_, i) => score(`f${i + 1}`, 10_000, i, i));
+    const settled9 = settleSeasonFinal(105_000, nine);
+    expect(settled9.lines.map((l) => l.cents)).toEqual([30_000, 20_000, 14_000, 10_000, 8_000, 7_000, 6_000, 5_000, 5_000]);
+    expect(settled9.rollCents).toBe(0);
+
+    const three = Array.from({ length: 3 }, (_, i) => score(`f${i + 1}`, 10_000, i, i));
+    const settled3 = settleSeasonFinal(100_000, three);
+    expect(settled3.lines.map((l) => l.cents)).toEqual([30_000, 20_000, 14_000]);
+    expect(settled3.rollCents).toBe(36_000);
   });
 });

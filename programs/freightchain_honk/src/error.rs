@@ -30,6 +30,12 @@ pub enum HonkError {
     TeamDisabled,
     #[msg("Day index does not match the clock")]
     BadDay,
+    #[msg("Month index does not match the clock")]
+    BadMonth,
+    #[msg("Bad merkle root or proof")]
+    BadMerkleProof,
+    #[msg("Airdrop claim window is closed")]
+    AirdropClosed,
 }
 
 #[cfg(test)]
@@ -52,5 +58,8 @@ mod tests {
         assert_eq!(u32::from(HonkError::BadVest), 6011);
         assert_eq!(u32::from(HonkError::TeamDisabled), 6012);
         assert_eq!(u32::from(HonkError::BadDay), 6013);
+        assert_eq!(u32::from(HonkError::BadMonth), 6014);
+        assert_eq!(u32::from(HonkError::BadMerkleProof), 6015);
+        assert_eq!(u32::from(HonkError::AirdropClosed), 6016);
     }
 }

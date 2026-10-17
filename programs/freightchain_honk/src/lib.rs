@@ -14,7 +14,11 @@ pub use constants::*;
 pub use error::*;
 pub use instructions::*;
 pub use math::isqrt;
-pub use schedule::{era_index, finish_units, global_daily_cap, quote_units, vested};
+pub use schedule::{
+    era_index, finish_units, global_daily_cap, quote_units, referral_era_index,
+    referral_era_remaining, referral_monthly_global_cap, referral_quote_units, take_referral_room,
+    vested,
+};
 pub use state::*;
 
 declare_id!("GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx");
@@ -71,6 +75,41 @@ pub mod freightchain_honk {
         day_index: i64,
     ) -> Result<()> {
         instructions::mint_ride::handle_mint_ride(ctx, ride_id, tier, bands, day_index)
+    }
+
+    pub fn pay_referral(
+        ctx: Context<PayReferral>,
+        reward_id: [u8; 16],
+        base_amount: u64,
+        month_index: i64,
+    ) -> Result<()> {
+        instructions::referral::handle_pay_referral(ctx, reward_id, base_amount, month_index)
+    }
+
+    pub fn burn_referral_tail(ctx: Context<BurnReferralTail>) -> Result<()> {
+        instructions::referral::handle_burn_referral_tail(ctx)
+    }
+
+    pub fn set_airdrop_root(
+        ctx: Context<SetAirdropRoot>,
+        campaign: u8,
+        root: [u8; 32],
+        allocation: u64,
+    ) -> Result<()> {
+        instructions::airdrop::handle_set_airdrop_root(ctx, campaign, root, allocation)
+    }
+
+    pub fn claim_airdrop(
+        ctx: Context<ClaimAirdrop>,
+        campaign: u8,
+        amount: u64,
+        proof: Vec<[u8; 32]>,
+    ) -> Result<()> {
+        instructions::airdrop::handle_claim_airdrop(ctx, campaign, amount, proof)
+    }
+
+    pub fn burn_unclaimed(ctx: Context<BurnUnclaimed>, campaign: u8) -> Result<()> {
+        instructions::airdrop::handle_burn_unclaimed(ctx, campaign)
     }
 
     pub fn buy_part(ctx: Context<BuyPart>, slot: [u8; 16], item: [u8; 16]) -> Result<()> {

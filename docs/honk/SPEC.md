@@ -14,14 +14,15 @@ Until TGE the PostgreSQL ledger is the source of truth. The UI calls the balance
 
 | Bucket | TEN4 | Notes |
 |---|---:|---|
-| Max, team on | 100,000,000 | 6 decimals |
+| Max | 100,000,000 | 6 decimals |
 | Liquidity | 15,000,000 | paired with 50 SOL in the local pool |
 | Ride emission | 55,000,000 | pre-minted to the emission vault |
-| Season 0 airdrop | 12,000,000 | vault in the current local program (in TEN4 v2 `docs/plan/MASTER_PLAN.md` §2 split into 8,000,000 airdrop + 4,000,000 Convoy referral at the post-Pre-season contract step `G26`/`G27`) |
+| Airdrop | 8,000,000 | pre-minted to the airdrop vault (`set_airdrop_root`, `claim_airdrop`, `burn_unclaimed` after 90 days; Season 1 = 2M, max 2,000 per wallet) |
+| Referral (Convoy) | 4,000,000 | pre-minted to the referral vault (`pay_referral` with eras 2M/1M/…, `>> max(era_ref, era_ride)`, 30k/mo first 3m then 60k/mo, 1,000/mo per wallet; `burn_referral_tail` after era 8) |
 | Treasury | 10,000,000 | 36 months linear, cliff 0 |
-| Team | 8,000,000 | 12-month cliff, then 24 or 36 months linear (`team_enabled = true`, `team_linear_months = 24` locked for mainnet in `MASTER_PLAN.md` §2) |
+| Team | 8,000,000 | 12-month cliff, then 24 months linear (`team_enabled = true`, `team_linear_months = 24`) |
 
-`team_enabled` is an initialize argument. Off: those 8,000,000 are never minted (supply 92,000,000) and the team recipient is the default pubkey. On (locked for mainnet in `MASTER_PLAN.md` §2 with `team_linear_months = 24`): they sit in the team vault (`claim_team`, PDA `[b"team"]`, `TEAM_CLIFF_MONTHS = 12`). Vesting is in the program (non-cancelable, recipient immutable). A month is 30 days.
+`team_enabled` must be `true` with `team_linear_months = 24` and a non-default recipient at `initialize` (any other combination returns `BadVest`). The 8,000,000 sit in the team vault (`claim_team`, PDA `[b"team"]`, `TEAM_CLIFF_MONTHS = 12`, `TEAM_LINEAR_MONTHS = 24`). Vesting is in the program (non-cancelable, recipient immutable). A month is 30 days.
 
 Mint authority is set to none in `initialize`. Freeze authority on the fungible mint is omitted. There is no Metaplex account in this program (LiteSVM has no metadata program). Config stores the name and symbol bytes. At TGE the Metaplex metadata must copy those bytes with `is_mutable = false` and the update authority cleared.
 
@@ -98,11 +99,11 @@ Table names stay `Honk*`. Routes stay `/api/honk`. Env stays `HONK_PROGRAM_ID`. 
 
 ## Local program
 
-`freightchain_honk`, id `GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx`. Not deployed. `initialize` pre-mints the buckets, burns the LP (`isqrt(liquidity * 50 SOL)`), and revokes both mint authorities. Swap fee is 25 bps; the fee stays in the pool (output uses the net input, the reserve adds the full input). There is no `release_lp` and no `withdraw_lp`. `mint_ride` derives the amount from tier and band bits and transfers it from the emission vault. The real launch pool should be a standard Raydium CPMM (or Meteora DAMM v2) at 0.25–1% with the LP burned. The in-program AMM is the local mirror. A Meteora DBC fair launch is deferred and unverified.
+`freightchain_honk`, id `GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx`. Not deployed. `initialize` pre-mints the 6 buckets (15M liquidity, 55M emission, 8M airdrop, 4M referral, 10M treasury, 8M team = 100M TEN4), burns the LP (`isqrt(liquidity * 50 SOL)`), and revokes both mint authorities. Swap fee is 25 bps; the fee stays in the pool (output uses the net input, the reserve adds the full input). There is no `release_lp` and no `withdraw_lp`. `mint_ride` derives the amount from tier and band bits and transfers it from the emission vault. `pay_referral` pays milestone 1 (100 TEN4) or milestone 2 (50 TEN4) shifted by `max(era_ref, era_ride)` from the referral vault under global/wallet monthly caps, and `burn_referral_tail` burns remaining referral vault dust once `era_ref >= 8`. `set_airdrop_root`, `claim_airdrop`, and `burn_unclaimed` manage 90-day merkle airdrop campaigns (max 2,000 TEN4 per wallet across campaigns). The real launch pool should be a standard Raydium CPMM (or Meteora DAMM v2) at 0.25–1% with the LP burned. The in-program AMM is the local mirror. A Meteora DBC fair launch is deferred and unverified.
 
 ## Deferred
 
-Season 0 merkle claim (publish criteria before the snapshot; 90-day window; unclaimed burned; sublinear √ finishes). The airdrop vault has no drain. Weigh Station / Dune. Anti-sybil beyond the existing verified-paid verdict. Legal review. Devnet rehearsal. Audit and a verified build. Raydium or Meteora pool. Metaplex CPI. Squads creation. A 1.8B "18 wheels" supply. A charity convoy (needs Desert Bus permission). The new sinks above, as code.
+Server-side airdrop campaign snapshot + merkle tree generator (`G27`). Weigh Station / Dune. Anti-sybil beyond the existing verified-paid verdict (`G15`/`G26`). Legal review. Devnet rehearsal. Audit and a verified build. Raydium or Meteora pool. Metaplex CPI. Squads creation. A 1.8B "18 wheels" supply. A charity convoy (needs Desert Bus permission). The new sinks above, as code.
 
 ## Not a promise
 

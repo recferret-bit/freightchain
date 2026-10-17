@@ -21,9 +21,9 @@ pub struct Initialize<'info> {
     #[account(constraint = program.programdata_address()? == Some(program_data.key()) @ HonkError::BadAuthority)]
     pub program: Program<'info, FreightchainHonk>,
     #[account(constraint = program_data.upgrade_authority_address == Some(payer.key()) @ HonkError::BadAuthority)]
-    pub program_data: Account<'info, ProgramData>,
+    pub program_data: Box<Account<'info, ProgramData>>,
     #[account(init, payer = payer, space = 8 + Config::INIT_SPACE, seeds = [CONFIG_SEED], bump)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     #[account(
         init,
         payer = payer,
@@ -32,7 +32,7 @@ pub struct Initialize<'info> {
         mint::decimals = DECIMALS,
         mint::authority = authority,
     )]
-    pub honk_mint: Account<'info, Mint>,
+    pub honk_mint: Box<Account<'info, Mint>>,
     /// CHECK: PDA. Signs the genesis mints, then the mint authority is set to none. It keeps signing vault transfers.
     #[account(seeds = [AUTHORITY_SEED], bump)]
     pub authority: UncheckedAccount<'info>,
@@ -44,9 +44,9 @@ pub struct Initialize<'info> {
         token::mint = honk_mint,
         token::authority = pool,
     )]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: Box<Account<'info, TokenAccount>>,
     #[account(init, payer = payer, space = 8 + Pool::INIT_SPACE, seeds = [POOL_SEED], bump)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(
         init,
         payer = payer,
@@ -55,7 +55,7 @@ pub struct Initialize<'info> {
         mint::decimals = DECIMALS,
         mint::authority = authority,
     )]
-    pub lp_mint: Account<'info, Mint>,
+    pub lp_mint: Box<Account<'info, Mint>>,
     #[account(
         init,
         payer = payer,
@@ -64,7 +64,7 @@ pub struct Initialize<'info> {
         token::mint = lp_mint,
         token::authority = locker,
     )]
-    pub lp_locker: Account<'info, TokenAccount>,
+    pub lp_locker: Box<Account<'info, TokenAccount>>,
     /// CHECK: Signs the LP burn in this instruction. Nothing later can move LP.
     #[account(seeds = [LOCKER_SEED], bump)]
     pub locker: UncheckedAccount<'info>,
@@ -76,7 +76,7 @@ pub struct Initialize<'info> {
         token::mint = honk_mint,
         token::authority = authority,
     )]
-    pub emission_vault: Account<'info, TokenAccount>,
+    pub emission_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         init,
         payer = payer,
@@ -85,7 +85,16 @@ pub struct Initialize<'info> {
         token::mint = honk_mint,
         token::authority = authority,
     )]
-    pub airdrop_vault: Account<'info, TokenAccount>,
+    pub airdrop_vault: Box<Account<'info, TokenAccount>>,
+    #[account(
+        init,
+        payer = payer,
+        seeds = [REFERRAL_SEED],
+        bump,
+        token::mint = honk_mint,
+        token::authority = authority,
+    )]
+    pub referral_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         init,
         payer = payer,
@@ -94,7 +103,7 @@ pub struct Initialize<'info> {
         token::mint = honk_mint,
         token::authority = authority,
     )]
-    pub treasury_vault: Account<'info, TokenAccount>,
+    pub treasury_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         init,
         payer = payer,
@@ -103,7 +112,7 @@ pub struct Initialize<'info> {
         token::mint = honk_mint,
         token::authority = authority,
     )]
-    pub team_vault: Account<'info, TokenAccount>,
+    pub team_vault: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -120,23 +129,18 @@ pub fn handle_initialize(
     require!(sol_in == OPENING_LAMPORTS, HonkError::ZeroAmount);
     require!(emitter != Pubkey::default(), HonkError::BadAuthority);
     require!(treasury != Pubkey::default(), HonkError::BadAuthority);
-    if team_enabled {
-        require!(team_recipient != Pubkey::default(), HonkError::BadAuthority);
-        require!(team_linear_months == 24 || team_linear_months == 36, HonkError::BadVest);
-    } else {
-        require!(team_recipient == Pubkey::default(), HonkError::BadAuthority);
-        require!(team_linear_months == 0, HonkError::BadVest);
-    }
+    require!(team_enabled, HonkError::TeamDisabled);
+    require!(team_recipient != Pubkey::default(), HonkError::BadAuthority);
+    require!(team_linear_months == TEAM_LINEAR_MONTHS, HonkError::BadVest);
     let lp = lp_tokens(sol_in)?;
     let auth_bump = ctx.bumps.authority;
     let honk_mint = ctx.accounts.honk_mint.to_account_info();
     mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.vault.to_account_info(), LIQUIDITY, auth_bump)?;
     mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.emission_vault.to_account_info(), EMISSION_CAP, auth_bump)?;
     mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.airdrop_vault.to_account_info(), AIRDROP, auth_bump)?;
+    mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.referral_vault.to_account_info(), REFERRAL, auth_bump)?;
     mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.treasury_vault.to_account_info(), TREASURY, auth_bump)?;
-    if team_enabled {
-        mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.team_vault.to_account_info(), TEAM, auth_bump)?;
-    }
+    mint_to_signed(&ctx, honk_mint.clone(), ctx.accounts.team_vault.to_account_info(), TEAM, auth_bump)?;
     let lp_mint = ctx.accounts.lp_mint.to_account_info();
     mint_to_signed(&ctx, lp_mint.clone(), ctx.accounts.lp_locker.to_account_info(), lp, auth_bump)?;
     burn_lp(&ctx, lp)?;
@@ -163,22 +167,27 @@ pub fn handle_initialize(
     config.emitter = emitter;
     config.treasury = treasury;
     config.team_recipient = team_recipient;
-    config.team_enabled = team_enabled;
-    config.team_linear_months = team_linear_months;
+    config.team_enabled = true;
+    config.team_linear_months = TEAM_LINEAR_MONTHS;
     config.emitted = 0;
     config.day_index = now.div_euclid(DAY_SECS);
     config.day_emitted = 0;
+    config.referral_emitted = 0;
+    config.referral_month = 0;
+    config.referral_month_emitted = 0;
+    config.airdrop_allocated = 0;
+    config.airdrop_claimed = 0;
     config.treasury_claimed = 0;
     config.team_claimed = 0;
     config.opened_at = now;
     config.name = pad8(TOKEN_NAME);
     config.symbol = pad8(TOKEN_SYMBOL);
-    let supply = LIQUIDITY + EMISSION_CAP + AIRDROP + TREASURY + if team_enabled { TEAM } else { 0 };
+    let supply = LIQUIDITY + EMISSION_CAP + AIRDROP + REFERRAL + TREASURY + TEAM;
     emit!(HonkInitialized {
         supply,
         sol_in,
         lp_burned: lp,
-        team_enabled,
+        team_enabled: true,
         name: config.name,
         symbol: config.symbol,
     });

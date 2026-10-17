@@ -7,14 +7,26 @@ export const TOKEN_SYMBOL = 'TEN4';
 export const HONK_DECIMALS = 6;
 export const HONK_LIQUIDITY = 15_000_000n * UNIT;
 export const HONK_EMISSION_CAP = 55_000_000n * UNIT;
-export const HONK_AIRDROP = 12_000_000n * UNIT;
+export const HONK_AIRDROP = 8_000_000n * UNIT;
+export const HONK_REFERRAL = 4_000_000n * UNIT;
 export const HONK_TREASURY = 10_000_000n * UNIT;
 export const HONK_TEAM = 8_000_000n * UNIT;
-/** 100M with the team bucket on. Team off never mints these 8M (supply 92M). */
-export const HONK_MAX_SUPPLY = HONK_LIQUIDITY + HONK_EMISSION_CAP + HONK_AIRDROP + HONK_TREASURY + HONK_TEAM;
+/** Fixed 100M supply. Team allocation (8M) is always enabled (12m cliff + 24m linear vest). */
+export const HONK_MAX_SUPPLY = HONK_LIQUIDITY + HONK_EMISSION_CAP + HONK_AIRDROP + HONK_REFERRAL + HONK_TREASURY + HONK_TEAM;
 export const HONK_ERA_SIZE = HONK_EMISSION_CAP / 2n;
+export const HONK_REFERRAL_ERA_SIZE = HONK_REFERRAL / 2n;
+export const HONK_REFERRAL_TAIL_ERA = 8;
 export const HONK_DAILY_GLOBAL_ERA1 = 75_000n * UNIT;
 export const HONK_DAILY_WALLET = 2_000n * UNIT;
+export const HONK_REFERRAL_MONTHLY_GLOBAL = 60_000n * UNIT;
+export const HONK_REFERRAL_SOFT_START_GLOBAL = 30_000n * UNIT;
+export const HONK_REFERRAL_SOFT_START_MONTHS = 3;
+export const HONK_REFERRAL_MONTHLY_WALLET = 1_000n * UNIT;
+export const HONK_AIRDROP_WALLET_CAP = 2_000n * UNIT;
+export const HONK_AIRDROP_WINDOW_DAYS = 90;
+export const HONK_TREASURY_VEST_MONTHS = 36;
+export const HONK_TEAM_CLIFF_MONTHS = 12;
+export const HONK_TEAM_LINEAR_MONTHS = 24;
 export const HONK_HOLD_8H_MS = 48 * 60 * 60 * 1000;
 export const DAY_MS = 86_400_000;
 export const HONK_STREAM_BURN = 1n * UNIT;
@@ -105,6 +117,74 @@ export function eraRemaining(emitted: bigint): bigint {
     if (era >= 63) break;
   }
   return HONK_EMISSION_CAP - emitted;
+}
+
+/** Era of `emitted` referral TEN4 (4M cap: 2M -> 1M -> 500k -> ...). */
+export function referralEraIndex(emitted: bigint): number {
+  if (emitted >= HONK_REFERRAL) return 63;
+  let start = 0n;
+  let size = HONK_REFERRAL_ERA_SIZE;
+  let era = 0;
+  while (size > 0n) {
+    const end = start + size;
+    if (emitted < end) return era;
+    start = end;
+    size /= 2n;
+    era += 1;
+    if (era >= 63) return 63;
+  }
+  return era;
+}
+
+export function referralEraRemaining(emitted: bigint): bigint {
+  if (emitted >= HONK_REFERRAL) return 0n;
+  let start = 0n;
+  let size = HONK_REFERRAL_ERA_SIZE;
+  let era = 0;
+  while (size > 0n) {
+    const end = start + size;
+    if (emitted < end) return end - emitted;
+    start = end;
+    size /= 2n;
+    era += 1;
+    if (era >= 63) break;
+  }
+  return HONK_REFERRAL - emitted;
+}
+
+/** 30,000 TEN4/month for the first 3 months after TGE (`monthIndex < 3`), then 60,000 TEN4/month. */
+export function referralMonthlyGlobalCap(monthIndex: number): bigint {
+  if (monthIndex < 0) return 0n;
+  return monthIndex < HONK_REFERRAL_SOFT_START_MONTHS ? HONK_REFERRAL_SOFT_START_GLOBAL : HONK_REFERRAL_MONTHLY_GLOBAL;
+}
+
+/** Referral reward scaled by `>> max(era_ref, era_ride)`. */
+export function referralQuoteUnits(baseAmount: bigint, referralEmitted: bigint, rideEmitted = 0n): { quote: bigint; era: number } {
+  if (baseAmount <= 0n) return { quote: 0n, era: 0 };
+  const era = Math.max(referralEraIndex(referralEmitted), eraIndex(rideEmitted));
+  if (era >= 63) return { quote: 0n, era: 63 };
+  return { quote: baseAmount >> BigInt(era), era };
+}
+
+export function clipReferralPayout(
+  quote: bigint,
+  referralEmitted: bigint,
+  monthIndex: number,
+  monthGlobal: bigint,
+  monthWallet: bigint,
+): { amount: bigint; reason: CapReason } {
+  const roomCap = HONK_REFERRAL - referralEmitted;
+  const roomEra = referralEraRemaining(referralEmitted);
+  const roomMonth = referralMonthlyGlobalCap(monthIndex) - monthGlobal;
+  const roomWallet = HONK_REFERRAL_MONTHLY_WALLET - monthWallet;
+  if (quote <= 0n || roomCap <= 0n || roomEra <= 0n) return { amount: 0n, reason: 'emission' };
+  if (roomMonth <= 0n) return { amount: 0n, reason: 'daily' };
+  if (roomWallet <= 0n) return { amount: 0n, reason: 'wallet' };
+  let amount = quote < roomCap ? quote : roomCap;
+  if (roomEra < amount) amount = roomEra;
+  if (roomMonth < amount) amount = roomMonth;
+  if (roomWallet < amount) amount = roomWallet;
+  return { amount, reason: 'ok' };
 }
 
 export function globalDailyCap(era: number): bigint {

@@ -7,25 +7,26 @@ Program id: `GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx` (`programs/freightcha
 Numbers, from `server/src/domain/honk/tokenomics.ts` and `programs/freightchain_honk/src/constants.rs`. The coin is TEN4. HONK is only the in-game verb.
 
 - decimals 6, `UNIT = 1_000_000`, name and symbol `TEN4` copied onto Config at initialize
-- supply 100,000,000 with the team bucket on, else 92,000,000. Liquidity 15,000,000, ride emission 55,000,000, airdrop 12,000,000, treasury 10,000,000, optional team 8,000,000. All pre-minted. Mint authority is then none. Freeze authority stays omitted
+- supply 100,000,000 TEN4. Liquidity 15,000,000, ride emission 55,000,000, airdrop 8,000,000, referral 4,000,000, treasury 10,000,000, team 8,000,000 (`team_enabled = true`, 12-month cliff, then 24 months linear). All pre-minted. Mint authority is then none. Freeze authority stays omitted
 - ordinary part `65 * UNIT`, gold part `260 * UNIT`
 - opening deposit exactly 50 SOL. Swap fee 25 bps. The fee stays in the pool
 - era-1 finishes 100 / 500 / 1,200. Global day 75,000 in era 1, halving. Wallet day 2,000, not halved
+- referral eras halve from 2,000,000 (`REFERRAL_ERA_SIZE = 2_000_000 * UNIT`); quote shifts right by `max(era_ref, era_ride)` (M1 = 100, M2 = 50 in era 1); monthly global cap 30,000 for months 0–2 after `opened_at`, then 60,000; monthly wallet cap 1,000; tail burns after era 8
 
-Error codes, in order: `ZeroAmount` 6000, `ZeroOut` 6001, `TooEarly` 6002, `AlreadyBought` 6003, `Slippage` 6004, `NotForSale` 6005, `EmissionCap` 6006, `DailyCap` 6007, `WalletCap` 6008, `BadTier` 6009, `BadAuthority` 6010, `BadVest` 6011, `TeamDisabled` 6012, `BadDay` 6013.
+Error codes, in order: `ZeroAmount` 6000, `ZeroOut` 6001, `TooEarly` 6002, `AlreadyBought` 6003, `Slippage` 6004, `NotForSale` 6005, `EmissionCap` 6006, `DailyCap` 6007, `WalletCap` 6008, `BadTier` 6009, `BadAuthority` 6010, `BadVest` 6011, `TeamDisabled` 6012, `BadDay` 6013, `BadMonth` 6014, `BadMerkleProof` 6015, `AirdropClosed` 6016.
 
 ## Instructions
 
 Build with `anchor build --arch v0 -p freightchain_honk` from `programs/` (LiteSVM 0.10 needs SBF v0). Do not change `freightchain_pools`.
 
-PDA seeds: `config`, `authority`, `honk-mint`, `vault`, `pool`, `lp-mint`, `lp-locker`, `locker`, `emission`, `airdrop`, `treasury`, `team`, `wallet-day` + rider + day, `part` + buyer + slot + item, and `ride-mint` + ride id. The seeds keep the word honk. The token name on Config is TEN4.
+PDA seeds: `config`, `authority`, `honk-mint`, `vault`, `pool`, `lp-mint`, `lp-locker`, `locker`, `emission`, `airdrop`, `referral`, `treasury`, `team`, `wallet-day` + rider + day, `wallet-month` + referrer + month, `referral-mint` + referee + milestone, `airdrop-campaign` + campaign, `airdrop-receipt` + campaign + recipient, `wallet-airdrop` + recipient, `part` + buyer + slot + item, and `ride-mint` + ride id. The seeds keep the word honk. The token name on Config is TEN4.
 
 `initialize(sol_in, emitter, treasury, team_recipient, team_enabled, team_linear_months)`
 
-- Pre-mints liquidity, emission, airdrop, treasury, and team (only if enabled) into their vaults. Then sets the TEN4 mint authority to none. Freeze authority stays omitted. There is no Metaplex CPI.
+- Pre-mints liquidity, emission, airdrop, referral, treasury, and team into their vaults. Then sets the TEN4 mint authority to none. Freeze authority stays omitted. There is no Metaplex CPI.
 - Mints LP `isqrt(liquidity * sol_in)` into the locker, burns it, and sets the LP mint authority to none. No `release_lp`. No `withdraw_lp`.
-- Accepts only `sol_in == 50_000_000_000`. Anything else fails with `ZeroAmount`. `payer` must be the program's upgrade authority (`program_data.upgrade_authority_address`; an immutable program or non-upgrade-authority signer fails with `BadAuthority`). Team on requires 24 or 36 linear months and a non-default recipient. Team off requires months 0 and the default recipient.
-- Accounts, in order: payer, config, honk_mint, authority, vault, pool, lp_mint, lp_locker, locker, emission_vault, airdrop_vault, treasury_vault, team_vault, program, program_data, token_program, system_program.
+- Accepts only `sol_in == 50_000_000_000`. Anything else fails with `ZeroAmount`. `payer` must be the program's upgrade authority (`program_data.upgrade_authority_address`; an immutable program or non-upgrade-authority signer fails with `BadAuthority`). Requires `team_enabled == true`, `team_linear_months == 24`, and a non-default `team_recipient` (any other combination fails with `BadVest`).
+- Accounts, in order: payer, config, honk_mint, authority, vault, pool, lp_mint, lp_locker, locker, emission_vault, airdrop_vault, referral_vault, treasury_vault, team_vault, program, program_data, token_program, system_program.
 
 `swap_sol_for_honk(sol_in: u64, min_out: u64)`
 
@@ -50,6 +51,31 @@ PDA seeds: `config`, `authority`, `honk-mint`, `vault`, `pool`, `lp-mint`, `lp-l
 - Only `config.emitter` may call it. Tier is 1, 4, or 8. Bands are bit 0 = 20%, bit 1 = 50%, bit 2 = 100%. The amount is the era schedule, clipped to the emission cap, the era left, the global day, and the wallet day. It is transferred from the emission vault. Supply does not rise. The same ride id cannot pay twice. `day_index` must be the clock's unix day.
 - Accounts: emitter, config, honk_mint, authority, emission_vault, rider, rider_honk, ride_mint, wallet_day, token_program, system_program, associated_token_program.
 
+`pay_referral(referee: Pubkey, milestone: u8, month_index: i64)`
+
+- Only `config.emitter` may call it. `milestone` is 1 (100 TEN4 in era 1) or 2 (50 TEN4 in era 1), shifted right by `max(era_ref, era_ride)`. `month_index` must equal `(clock.unix_timestamp - config.opened_at) / (30 * 86_400)` or it fails with `BadMonth`. Clipped to referral vault cap, referral era remaining, monthly global cap (30,000 for months 0–2, then 60,000), and monthly wallet cap (1,000). One `ReferralMint` PDA per `(referee, milestone)`.
+- Accounts: emitter, config, honk_mint, authority, referral_vault, referrer, referrer_honk, referral_mint, wallet_month, token_program, system_program, associated_token_program.
+
+`burn_referral_tail()`
+
+- Only `config.emitter` may call it once `referral_era_index(config.referral_emitted) >= 8` (else `TooEarly`). Burns any remaining tokens in `referral_vault` and sets `config.referral_emitted = REFERRAL`.
+- Accounts: emitter, config, honk_mint, authority, referral_vault, token_program.
+
+`set_airdrop_root(campaign: u8, merkle_root: [u8; 32], allocation: u64)`
+
+- Only `config.emitter` may call it. Creates `airdrop_campaign` PDA `[b"airdrop-campaign", campaign]` with `opened_at = clock.unix_timestamp`, `expires_at = opened_at + 90 days`, and reserves `allocation` inside the 8,000,000 airdrop cap.
+- Accounts: emitter, config, campaign_state, system_program.
+
+`claim_airdrop(campaign: u8, amount: u64, proof: Vec<[u8; 32]>)`
+
+- Signed by `recipient`. Verifies `sha256(0x00 || campaign || recipient || amount_le)` against `campaign_state.merkle_root` before `expires_at`, enforces per-wallet lifetime airdrop cap (`2,000 * UNIT`) and campaign allocation, records `airdrop_receipt`, and transfers `amount` from `airdrop_vault`.
+- Accounts: recipient, config, campaign_state, honk_mint, authority, airdrop_vault, recipient_honk, receipt, wallet_airdrop, token_program, system_program, associated_token_program.
+
+`burn_unclaimed(campaign: u8)`
+
+- Only `config.emitter` may call it after `clock.unix_timestamp >= campaign_state.expires_at`. Burns `campaign_state.allocation - campaign_state.claimed` from `airdrop_vault` and marks `burned = true`.
+- Accounts: emitter, config, campaign_state, honk_mint, authority, airdrop_vault, token_program.
+
 `claim_treasury` / `claim_team` pay the vested delta to the recipient stored at initialize. Nothing vested is `TooEarly`. Team off is `TeamDisabled`. There is no cancel and no change of recipient.
 
 `buy_part(slot: [u8; 16], item: [u8; 16])`
@@ -66,13 +92,15 @@ PDA seeds: `config`, `authority`, `honk-mint`, `vault`, `pool`, `lp-mint`, `lp-l
 
 LiteSVM (`cargo test -p freightchain_honk`) and the validator suite (`bash .claude/skills/honk-localnet/run.sh`):
 
-- supply is 100,000,000 TEN4 with the team bucket on. The pool vault is 15,000,000. Mint authority and freeze authority are none. LP supply is 0
-- initialize accepts the 50 SOL opening deposit and refuses any other lamport count
+- supply is 100,000,000 TEN4 across the six vaults (15M pool, 55M emission, 8M airdrop, 4M referral, 10M treasury, 8M team). Mint authority and freeze authority are none. LP supply is 0
+- initialize accepts the 50 SOL opening deposit and refuses any other lamport count, and requires `team_enabled = true` with `team_linear_months = 24`
 - a swap pays the constant product on the net input (25 bps). The fee stays in the pool
 - a burn lowers the user's balance and the supply. The pool vault does not move
 - `buy_part` burns 65 or 260 TEN4. The new token is frozen, supply 1, decimals 0
 - `mint_ride` pays the schedule from the emission vault. Supply does not rise. A wallet stops at 2,000 a day
-- treasury pays nothing at open and half after 18 months. The team pays nothing before the 12-month cliff
+- `pay_referral` pays M1 (100) and M2 (50) under the soft-start (30k/mo) and regular (60k/mo) monthly caps and 1,000/mo wallet cap; `burn_referral_tail` burns remaining dust after era 8
+- `set_airdrop_root`, `claim_airdrop`, and `burn_unclaimed` verify merkle proofs, enforce the 2,000 TEN4 wallet cap and 90-day window, and burn unclaimed tokens after expiry
+- treasury pays nothing at open and half after 18 months. The team pays nothing before the 12-month cliff and vests linearly over 24 months
 - the ride session still posts the chat word HONK for a 1 TEN4 burn, and burns 25 TEN4 for snow and clear
 
 No devnet deploy. No AMM outside this program. No change to the prize-pool program.

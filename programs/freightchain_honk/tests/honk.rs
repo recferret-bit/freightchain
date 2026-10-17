@@ -9,7 +9,9 @@ use {
     common::*,
     anchor_lang::prelude::Pubkey,
     freightchain_honk::{
-        error::HonkError, events::HonkInitialized, isqrt, pad8, AIRDROP, EMISSION_CAP, LIQUIDITY, MAX_SUPPLY, MONTH_SECS, TEAM, TOKEN_SYMBOL, TREASURY, UNIT,
+        airdrop_leaf, error::HonkError, events::HonkInitialized, isqrt, merkle_root_from, pad8,
+        AIRDROP, AIRDROP_WALLET_CAP, AIRDROP_WINDOW_SECS, EMISSION_CAP, LIQUIDITY, MAX_SUPPLY,
+        MONTH_SECS, REFERRAL, REFERRAL_ERA_SIZE, TEAM, TOKEN_SYMBOL, TREASURY, UNIT,
     },
     solana_keypair::Keypair,
     solana_signer::Signer,
@@ -41,6 +43,10 @@ fn genesis_supply_is_preminted_and_the_mint_authority_is_none() {
     assert_eq!(lp.supply, 0);
     assert_eq!(e.amount(&vault_pda()), LIQUIDITY);
     assert_eq!(e.amount(&emission_pda()), EMISSION_CAP);
+    assert_eq!(e.amount(&airdrop_pda()), AIRDROP);
+    assert_eq!(e.amount(&referral_pda()), REFERRAL);
+    assert_eq!(e.amount(&treasury_pda()), TREASURY);
+    assert_eq!(e.amount(&team_pda()), TEAM);
     assert_eq!(e.amount(&lp_locker_pda()), 0);
     assert_eq!(e.config().symbol, pad8(TOKEN_SYMBOL));
     assert_eq!(e.config().name, pad8(b"TEN4"));
@@ -358,16 +364,21 @@ fn selling_the_honk_back_keeps_the_fee_in_the_pool() {
 }
 
 #[test]
-fn team_off_never_mints_the_eight_million() {
+fn initialize_requires_team_enabled_and_twenty_four_month_linear_vest() {
     let mut e = Env::bare();
     let payer = e.payer.pubkey();
-    unwrap_tx(e.initialize_opts(OPENING, payer, payer, Pubkey::default(), false, 0));
-    assert_eq!(e.mint(&honk_mint_pda()).supply, MAX_SUPPLY - TEAM);
-    assert_eq!(e.amount(&team_pda()), 0);
-    assert_eq!(e.amount(&airdrop_pda()), AIRDROP);
-    assert_eq!(e.amount(&treasury_pda()), TREASURY);
-    assert!(!e.config().team_enabled);
-    assert_err!(e.claim_team(), HonkError::TeamDisabled);
+    assert_err!(
+        e.initialize_opts(OPENING, payer, payer, Pubkey::default(), false, 0),
+        HonkError::TeamDisabled
+    );
+    assert_err!(
+        e.initialize_opts(OPENING, payer, payer, payer, true, 36),
+        HonkError::BadVest
+    );
+    assert_err!(
+        e.initialize_opts(OPENING, payer, payer, Pubkey::default(), true, 24),
+        HonkError::BadAuthority
+    );
 }
 
 #[test]
@@ -427,8 +438,109 @@ fn the_team_cannot_claim_before_the_cliff() {
     assert_err!(e.claim_team(), HonkError::TooEarly);
     e.warp(e.config().opened_at + 12 * MONTH_SECS - 1);
     assert_err!(e.claim_team(), HonkError::TooEarly);
-    e.warp(e.config().opened_at + 12 * MONTH_SECS + 18 * MONTH_SECS);
+    e.warp(e.config().opened_at + 12 * MONTH_SECS + 12 * MONTH_SECS);
     unwrap_tx(e.claim_team());
     assert_eq!(e.amount(&ata(&team, &honk_mint_pda())), TEAM / 2);
     assert_eq!(e.amount(&team_pda()), TEAM / 2);
+    e.warp(e.config().opened_at + 12 * MONTH_SECS + 24 * MONTH_SECS);
+    unwrap_tx(e.claim_team());
+    assert_eq!(e.amount(&ata(&team, &honk_mint_pda())), TEAM);
+    assert_eq!(e.amount(&team_pda()), 0);
+}
+
+#[test]
+fn pay_referral_pays_from_referral_vault_and_enforces_monthly_caps() {
+    let mut e = Env::new();
+    let referrer = Keypair::new().pubkey();
+    let ref_vault_before = e.amount(&referral_pda());
+    let reward_m1 = [11u8; 16];
+    let reward_m2 = [12u8; 16];
+    unwrap_tx(e.pay_referral(reward_m1, 100 * UNIT, &referrer));
+    assert_eq!(e.amount(&ata(&referrer, &honk_mint_pda())), 100 * UNIT);
+    assert_eq!(e.amount(&referral_pda()), ref_vault_before - 100 * UNIT);
+    assert!(e.pay_referral(reward_m1, 100 * UNIT, &referrer).is_err());
+
+    unwrap_tx(e.pay_referral(reward_m2, 950 * UNIT, &referrer));
+    assert_eq!(e.amount(&ata(&referrer, &honk_mint_pda())), 1_000 * UNIT);
+    assert_err!(
+        e.pay_referral([13u8; 16], 50 * UNIT, &referrer),
+        HonkError::WalletCap
+    );
+
+    let payer = e.payer();
+    assert_err!(
+        e.pay_referral_signed([14u8; 16], 50 * UNIT, &referrer, &payer, 1),
+        HonkError::BadMonth
+    );
+
+    e.warp(e.config().opened_at + MONTH_SECS);
+    unwrap_tx(e.pay_referral([15u8; 16], 100 * UNIT, &referrer));
+    assert_eq!(e.amount(&ata(&referrer, &honk_mint_pda())), 1_100 * UNIT);
+}
+
+#[test]
+fn burn_referral_tail_requires_era_eight_and_burns_remaining_vault() {
+    let mut e = Env::new();
+    assert_err!(e.burn_referral_tail(), HonkError::TooEarly);
+
+    let mut cfg = e.config();
+    cfg.referral_emitted = REFERRAL - (REFERRAL_ERA_SIZE >> 7);
+    let mut acc = e.svm.get_account(&config_pda()).unwrap();
+    let mut data = Vec::with_capacity(acc.data.len());
+    data.extend_from_slice(&acc.data[..8]);
+    anchor_lang::AnchorSerialize::serialize(&cfg, &mut data).unwrap();
+    acc.data = data;
+    e.svm.set_account(config_pda(), acc).unwrap();
+
+    let supply_before = e.mint(&honk_mint_pda()).supply;
+    let vault_before = e.amount(&referral_pda());
+    unwrap_tx(e.burn_referral_tail());
+    assert_eq!(e.amount(&referral_pda()), 0);
+    assert_eq!(e.mint(&honk_mint_pda()).supply, supply_before - vault_before);
+    assert_eq!(e.config().referral_emitted, REFERRAL);
+}
+
+#[test]
+fn merkle_airdrop_claims_receipt_enforces_wallet_cap_and_burns_unclaimed_after_90_days() {
+    let mut e = Env::new();
+    let w1 = Keypair::new().pubkey();
+    let w2 = Keypair::new().pubkey();
+    let a1 = 1_500 * UNIT;
+    let a2 = 500 * UNIT;
+    let l1 = airdrop_leaf(1, &w1, a1);
+    let l2 = airdrop_leaf(1, &w2, a2);
+    let root = merkle_root_from(l1, &[l2]);
+    let allocation = 2_000_000 * UNIT;
+
+    unwrap_tx(e.set_airdrop_root(1, root, allocation));
+    assert_err!(e.burn_unclaimed(1), HonkError::TooEarly);
+    assert_err!(
+        e.claim_airdrop(1, &w1, a1, vec![[9u8; 32]]),
+        HonkError::BadMerkleProof
+    );
+
+    let airdrop_before = e.amount(&airdrop_pda());
+    unwrap_tx(e.claim_airdrop(1, &w1, a1, vec![l2]));
+    assert_eq!(e.amount(&ata(&w1, &honk_mint_pda())), a1);
+    assert_eq!(e.amount(&airdrop_pda()), airdrop_before - a1);
+    assert!(e.claim_airdrop(1, &w1, a1, vec![l2]).is_err());
+
+    let l1_c2 = airdrop_leaf(2, &w1, 600 * UNIT);
+    let root_c2 = merkle_root_from(l1_c2, &[]);
+    unwrap_tx(e.set_airdrop_root(2, root_c2, 1_000_000 * UNIT));
+    assert_err!(
+        e.claim_airdrop(2, &w1, 600 * UNIT, vec![]),
+        HonkError::WalletCap
+    );
+    assert_eq!(AIRDROP_WALLET_CAP, 2_000 * UNIT);
+
+    let supply_before = e.mint(&honk_mint_pda()).supply;
+    e.warp(e.now() + AIRDROP_WINDOW_SECS);
+    assert_err!(
+        e.claim_airdrop(1, &w2, a2, vec![l1]),
+        HonkError::AirdropClosed
+    );
+    unwrap_tx(e.burn_unclaimed(1));
+    let unclaimed = allocation - a1;
+    assert_eq!(e.mint(&honk_mint_pda()).supply, supply_before - unclaimed);
 }

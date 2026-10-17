@@ -56,10 +56,10 @@
 
 | # | Пробел | Решение (⭐) |
 |---|---|---|
-| G27 | `claim_airdrop` и merkle (TGE в марте 2027) | Строить в январе–феврале 2027 |
+| G27 | `claim_airdrop` и merkle (TGE в марте 2027) | ✅ Ончейн-инструкции (`set_airdrop_root`, `claim_airdrop`, `burn_unclaimed`, `pay_referral`, `burn_referral_tail`) реализованы и покрыты LiteSVM-тестами в `programs/freightchain_honk`; серверный генератор снепшота/merkle-дерева — к TGE (январь–февраль 2027) |
 | G28 | Пороги телеметрии, World ID (Season 2), эскроу v6 | Калибровка после Pre-season и Season 1 |
 | G29 | Полный перевод `TERMS.md` / `PRIVACY.md` на русский (выжимка уже есть в `PRESEASON_RULES_RU.md` Часть C) | После финальной проверки английских шаблонов юристом к Season 1 |
-| G30 | Константы длительности сезона (`7` недель, финал в неделе 7) и равное деление ничьих без тай-брейка по адресу | ✅ Реализовано в `server/src/domain/prize/` (`SEASON_WEEKS = 7`, `LIVE_FINAL_WEEK = 7`, `settleBoard`, `seasonQualifiers`) и зафиксировано в `OFFICIAL_RULES.md` §2, §7.2–7.3 |
+| G30 | Константы длительности сезона (`7` недель, финал в неделе 7), единая модель пулов (`unifiedWeekPool`, `capRolloverCents`, потолок 30% бесплатных билетов, `settleSeasonFinal`) и равное деление ничьих без тай-брейка по адресу | ✅ Реализовано в `server/src/domain/prize/` (`SEASON_WEEKS = 7`, `LIVE_FINAL_WEEK = 7`, `unifiedWeekPool`, `capRolloverCents`, `settleBoard`, `seasonQualifiers`, `settleSeasonFinal`) и зафиксировано в `OFFICIAL_RULES.md` §2, §6, §7.2–7.3, §9.3 |
 
 ## Сводка: что закрыто в документации и что требует действий владельца
 

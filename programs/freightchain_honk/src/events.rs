@@ -50,3 +50,36 @@ pub struct Vested {
     pub amount: u64,
     pub team: bool,
 }
+
+#[event]
+pub struct ReferralPaid {
+    pub recipient: Pubkey,
+    pub amount: u64,
+    pub era: u8,
+}
+
+#[event]
+pub struct ReferralTailBurned {
+    pub amount: u64,
+}
+
+#[event]
+pub struct AirdropRootSet {
+    pub campaign: u8,
+    pub root: [u8; 32],
+    pub allocation: u64,
+    pub ends_at: i64,
+}
+
+#[event]
+pub struct AirdropClaimed {
+    pub campaign: u8,
+    pub wallet: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct AirdropUnclaimedBurned {
+    pub campaign: u8,
+    pub amount: u64,
+}

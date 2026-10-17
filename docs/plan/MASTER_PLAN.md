@@ -202,8 +202,8 @@
 |---|---|
 | 1 | ✅ Влить PR #3 в `main`, сохранить решения из раздела 5 и согласовать `SEASON_WEEKS = 7` + равное деление ничьих в `server/src/domain/prize/` |
 | 2 | Переделка рефералки (`referral_plan.md`) |
-| 3 | Корзина TEN4 4M в `freightchain_honk`; команда включена (`initialize` с `team_enabled = true`, 24 мес) |
-| 4 | Pool v5 = v4 без рефералки (+ аудит `d5678764`, `abd24db7`), единая модель пулов (**реализовано и протестировано в `programs/freightchain_pools` и `server/`**); Solana Pay |
+| 3 | ✅ Корзина TEN4 8M аирдроп + 4M рефералка в `freightchain_honk` (`pay_referral`, `burn_referral_tail`, `set_airdrop_root`, `claim_airdrop`, `burn_unclaimed`); команда включена (`initialize` с `team_enabled = true`, 24 мес; 40 Rust-тестов + unit-тесты `tokenomics.spec.ts`) |
+| 4 | ✅ Pool v5 = v4 без рефералки (+ аудит `d5678764`, `abd24db7`), единая модель пулов (`unifiedWeekPool`, `capRolloverCents`, потолок 30% бесплатных билетов в `settleBoard`, динамический финал `settleSeasonFinal` на `N` финалистов — **реализовано и протестировано в `programs/freightchain_pools` и `server/src/domain/prize/`**); Solana Pay (`G26`) |
 | 4b–4g | Рейтинг Convoy; сезоны; аирдроп; trust; приватность и гео; Cloudflare |
 | 5 | Тексты и документация |
 | 6 | Тесты — владелец локально |
@@ -226,7 +226,7 @@
 
 **Контракты:**
 - pool v5 (**реализован в репо**): убраны `referral_bps`, `referral_share`, `payout_cap`; добавлены `set_pool_rules`, `max_player_share_bps <= 4999`, `paid_tickets_enabled`; `split` из трёх долей (`8500/500/1000`); IDL `metadata.version = 0.5.0`; `Config 167 B`, `Series 132 B`, `Pool 362 B`; деплой на devnet с новым program id — по команде владельца.
-- honk: `AIRDROP = 8M`, `REFERRAL = 4M`, `pay_referral`, `burn_referral_tail`, `set_airdrop_root`, `claim_airdrop`, `burn_unclaimed`; `claim_team` и `claim_treasury` без изменений.
+- honk (**реализован в репо**): `AIRDROP = 8M`, `REFERRAL = 4M`, `TEAM_LINEAR_MONTHS = 24` (`team_enabled = true`), `pay_referral`, `burn_referral_tail`, `set_airdrop_root`, `claim_airdrop`, `burn_unclaimed`; `claim_team` и `claim_treasury` без изменений.
 
 ## 13. Документы для репозитория
 

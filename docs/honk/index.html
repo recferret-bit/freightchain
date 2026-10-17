@@ -55,14 +55,15 @@
   </div>
   <div class="scroll">
   <table class="wide">
-    <caption>Max supply is 100,000,000 TEN4 when the team bucket is on. Team off never mints the 8,000,000.</caption>
+    <caption>Max supply is 100,000,000 TEN4 across six pre-minted vaults.</caption>
     <thead><tr><th>Bucket</th><th class="num">TEN4</th><th>What it is</th></tr></thead>
     <tbody>
       <tr><td>Liquidity</td><td class="num">15,000,000</td><td>paired with 50 SOL; LP burned at initialize</td></tr>
       <tr><td>Ride emission</td><td class="num">55,000,000</td><td>eras of 27.5M, 13.75M, 6.875M…</td></tr>
-      <tr><td>Season 0 airdrop</td><td class="num">12,000,000</td><td>vault only; no claim instruction yet</td></tr>
+      <tr><td>Airdrop</td><td class="num">8,000,000</td><td>merkle campaigns (90-day claim window; unclaimed burned; 2,000 wallet cap)</td></tr>
+      <tr><td>Referral (Convoy)</td><td class="num">4,000,000</td><td>milestone rewards (M1 = 100, M2 = 50; own 2M/1M/… eras; tail burned after era 8)</td></tr>
       <tr><td>Treasury</td><td class="num">10,000,000</td><td>36 months linear</td></tr>
-      <tr><td>Team, optional</td><td class="num">8,000,000</td><td>12-month cliff, then 24 or 36 months</td></tr>
+      <tr><td>Team</td><td class="num">8,000,000</td><td>12-month cliff, then 24 months linear</td></tr>
     </tbody>
   </table>
   </div>
@@ -277,7 +278,7 @@
 <section id="pool">
   <h2><span>11</span>Liquidity pool</h2>
   <p>The local program pairs 15,000,000 TEN4 with 50 SOL. The fee is 0.25%. The LP is burned in the initialize transaction. There is no withdraw. 50 SOL is the opening deposit, not a dollar price.</p>
-  <p>The team bucket is optional and off by default in the sense that initialize must choose it. Emission, airdrop, and treasury are separate vaults. The airdrop vault has no claim yet. A real launch should use a standard Raydium CPMM or Meteora DAMM v2 at 0.25–1% with the LP burned. This program is the local mirror.</p>
+  <p>The team bucket is locked at 12-month cliff plus 24 months linear. Emission, airdrop, referral, treasury, and team are separate vaults. A real launch should use a standard Raydium CPMM or Meteora DAMM v2 at 0.25–1% with the LP burned. This program is the local mirror.</p>
   <p>That program is not deployed. There is no DEX listing. Until TGE the balance a player sees is ledger points.</p>
 </section>
 

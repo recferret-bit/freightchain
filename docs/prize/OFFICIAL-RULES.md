@@ -42,17 +42,17 @@ Declaring a start ranked after it has already started does not count and does no
 
 ## 5. The prize pool
 
-The pool is an operator prize. It is a base plus a bonus.
+The pool is an operator and sponsor skill-contest prize (`F = B + S`, where `B` is the operator base and `S` is verified sponsor funding).
 
-The base starts at 300 USDC a week. It can step to 750, then 1,500, then 3,000, and only after four weeks in a row in which ticket revenue was more than four times the base then in force. It steps one level at a time.
+The base `B` starts at 300 USDC a week. It can step to 750, then 1,500, then 3,000, and only after four weeks in a row in which ticket revenue was more than four times the base then in force. It steps one level at a time and does not reset between seasons.
 
-The bonus is 40% of the previous week's ticket revenue, and not more than 2,500 USDC. The amount is fixed before the week starts. It does not grow with tickets sold during the week. Ten percent of that bonus is held for the season final. The rest of the bonus, and the whole base, is split across the three boards.
+The performance bonus `P` is 40% of the previous week's ticket revenue `R`, capped at 2,500 USDC and at 90% of `F` (`P = min(0.40 * R, $2,500, 0.90 * F)`). The amount is fixed before the week starts. It does not grow with tickets sold during the week. Incoming rollover `C` from the prior week is capped at 25% of `F` (any excess goes to the season final). Total weekly pool `T = F + P + C` is split 85% across the three weekly boards, 5% to next-week rollover, and 10% to the season final.
 
 TEN4 is not added to the pool.
 
 ## 6. How a board is paid
 
-If a board has at least ten drivers, it pays its base and its bonus.
+If a board has at least ten drivers, it pays its full board share.
 
 Eighty percent of a board is paid to places. On a board of 100 drivers or fewer the shares are:
 
@@ -69,6 +69,8 @@ Tied drivers share the same place and split the combined prize of the places the
 
 Twenty percent is split equally among drivers who finish the route with no mistake. A driver in the top 10 can also take a finisher share. No finisher share is larger than the 10th-place prize. The rest of that 20% is not paid that week.
 
+Prizes won on free tickets (weekly granted tickets or promo rides) are capped at 30% of the board's pool (`free_prize_board_cap_bps = 3000`). Any excess above 30% cascades in rank order to the next ranked paid-ticket finishers who did not already win a top-10 place (up to the 10th-place prize each), and any remainder rolls over.
+
 If more than 100 drivers score, the places extend to the top 10% of the field. The 80% is then split on a straight declining slope. That slope is a draft. A lawyer and the owner can replace it before the contest opens.
 
 A prize under 5 USDC is not sent.
@@ -77,7 +79,7 @@ A board with fewer than ten drivers pays from its base only, and only to the pla
 
 ## 7. Season
 
-A season is seven weeks (`SEASON_WEEKS = 7`). Week 7 is the live final (`LIVE_FINAL_WEEK = 7`). On each board, the eight drivers with the best record of weekly places from the season go to that final, and all drivers tied at the 8th-place cutoff advance. Missing a week counts against that record. The final is one route, people can watch it, and spectator road effects stay off. The final ride is not built. Ten percent of each week's bonus (plus the $1,000 operator final base in Season 1) is what funds it.
+A season is seven weeks (`SEASON_WEEKS = 7`). Week 7 is the live final (`LIVE_FINAL_WEEK = 7`). On each board, the eight drivers with the best record of weekly places from the season go to that final, and all drivers tied at the 8th-place cutoff advance (`N >= 8`). Missing a week counts against that record. Finalists split that tier's Season Final pool by relative weights `30, 20, 14, 10, 8, 7, 6, 5` for places 1–8 and weight `5` for each additional finalist `9..N`, with tied finalists splitting their occupied weights equally. The final is one route, people can watch it, and spectator road effects stay off. The final ride is not built. Ten percent of each week's pool (plus the $1,000 operator final base in Season 1) is what funds it.
 
 ## 8. What is not live
 

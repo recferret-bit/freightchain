@@ -101,6 +101,9 @@ pub fn emission_pda() -> Pubkey {
 pub fn airdrop_pda() -> Pubkey {
     Pubkey::find_program_address(&[b"airdrop"], &pid()).0
 }
+pub fn referral_pda() -> Pubkey {
+    Pubkey::find_program_address(&[b"referral"], &pid()).0
+}
 pub fn treasury_pda() -> Pubkey {
     Pubkey::find_program_address(&[b"treasury"], &pid()).0
 }
@@ -110,11 +113,33 @@ pub fn team_pda() -> Pubkey {
 pub fn wallet_day_pda(rider: &Pubkey, day: i64) -> Pubkey {
     Pubkey::find_program_address(&[b"wallet-day", rider.as_ref(), &day.to_le_bytes()], &pid()).0
 }
+pub fn wallet_month_pda(recipient: &Pubkey, month: i64) -> Pubkey {
+    Pubkey::find_program_address(
+        &[b"wallet-month", recipient.as_ref(), &month.to_le_bytes()],
+        &pid(),
+    )
+    .0
+}
+pub fn wallet_airdrop_pda(wallet: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[b"wallet-airdrop", wallet.as_ref()], &pid()).0
+}
 pub fn day_index(ts: i64) -> i64 {
     ts.div_euclid(86_400)
 }
+pub fn month_index(opened_at: i64, ts: i64) -> i64 {
+    (ts - opened_at).div_euclid(freightchain_honk::MONTH_SECS)
+}
 pub fn ride_mint_pda(ride_id: &[u8; 16]) -> Pubkey {
     Pubkey::find_program_address(&[b"ride-mint", ride_id.as_ref()], &pid()).0
+}
+pub fn referral_mint_pda(reward_id: &[u8; 16]) -> Pubkey {
+    Pubkey::find_program_address(&[b"referral-mint", reward_id.as_ref()], &pid()).0
+}
+pub fn airdrop_campaign_pda(campaign: u8) -> Pubkey {
+    Pubkey::find_program_address(&[b"airdrop", &[campaign]], &pid()).0
+}
+pub fn airdrop_receipt_pda(campaign: u8, wallet: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[b"airdrop", &[campaign], wallet.as_ref()], &pid()).0
 }
 pub fn part_pda(buyer: &Pubkey, slot: &[u8; 16], item: &[u8; 16]) -> Pubkey {
     Pubkey::find_program_address(
@@ -244,7 +269,7 @@ impl Env {
 
     pub fn initialize(&mut self, sol_in: u64) -> Res {
         let payer = self.payer();
-        self.initialize_opts(sol_in, payer.pubkey(), payer.pubkey(), payer.pubkey(), true, 36)
+        self.initialize_opts(sol_in, payer.pubkey(), payer.pubkey(), payer.pubkey(), true, 24)
     }
 
     pub fn initialize_opts(
@@ -280,6 +305,7 @@ impl Env {
                 locker: locker_pda(),
                 emission_vault: emission_pda(),
                 airdrop_vault: airdrop_pda(),
+                referral_vault: referral_pda(),
                 treasury_vault: treasury_pda(),
                 team_vault: team_pda(),
                 token_program: token::ID,
@@ -446,6 +472,133 @@ impl Env {
         (nft_mint, res)
     }
 
+    pub fn pay_referral(
+        &mut self,
+        reward_id: [u8; 16],
+        base_amount: u64,
+        recipient: &Pubkey,
+    ) -> Res {
+        let emitter = self.payer();
+        let m = month_index(self.config().opened_at, self.now());
+        self.pay_referral_signed(reward_id, base_amount, recipient, &emitter, m)
+    }
+
+    pub fn pay_referral_signed(
+        &mut self,
+        reward_id: [u8; 16],
+        base_amount: u64,
+        recipient: &Pubkey,
+        emitter: &Keypair,
+        month_index: i64,
+    ) -> Res {
+        let i = ix(
+            instruction::PayReferral {
+                reward_id,
+                base_amount,
+                month_index,
+            },
+            accounts::PayReferral {
+                emitter: emitter.pubkey(),
+                config: config_pda(),
+                honk_mint: honk_mint_pda(),
+                authority: authority_pda(),
+                referral_vault: referral_pda(),
+                recipient: *recipient,
+                recipient_honk: ata(recipient, &honk_mint_pda()),
+                referral_mint: referral_mint_pda(&reward_id),
+                wallet_month: wallet_month_pda(recipient, month_index),
+                token_program: token::ID,
+                system_program: system_program::ID,
+                associated_token_program: associated_token::ID,
+            },
+        );
+        self.send(&[i], emitter, &[])
+    }
+
+    pub fn burn_referral_tail(&mut self) -> Res {
+        let payer = self.payer();
+        let i = ix(
+            instruction::BurnReferralTail {},
+            accounts::BurnReferralTail {
+                payer: payer.pubkey(),
+                config: config_pda(),
+                honk_mint: honk_mint_pda(),
+                authority: authority_pda(),
+                referral_vault: referral_pda(),
+                token_program: token::ID,
+            },
+        );
+        self.send(&[i], &payer, &[])
+    }
+
+    pub fn set_airdrop_root(&mut self, campaign: u8, root: [u8; 32], allocation: u64) -> Res {
+        let emitter = self.payer();
+        let i = ix(
+            instruction::SetAirdropRoot {
+                campaign,
+                root,
+                allocation,
+            },
+            accounts::SetAirdropRoot {
+                emitter: emitter.pubkey(),
+                config: config_pda(),
+                airdrop_campaign: airdrop_campaign_pda(campaign),
+                system_program: system_program::ID,
+            },
+        );
+        self.send(&[i], &emitter, &[])
+    }
+
+    pub fn claim_airdrop(
+        &mut self,
+        campaign: u8,
+        wallet: &Pubkey,
+        amount: u64,
+        proof: Vec<[u8; 32]>,
+    ) -> Res {
+        let payer = self.payer();
+        let i = ix(
+            instruction::ClaimAirdrop {
+                campaign,
+                amount,
+                proof,
+            },
+            accounts::ClaimAirdrop {
+                payer: payer.pubkey(),
+                config: config_pda(),
+                airdrop_campaign: airdrop_campaign_pda(campaign),
+                honk_mint: honk_mint_pda(),
+                authority: authority_pda(),
+                airdrop_vault: airdrop_pda(),
+                wallet: *wallet,
+                wallet_honk: ata(wallet, &honk_mint_pda()),
+                receipt: airdrop_receipt_pda(campaign, wallet),
+                wallet_airdrop: wallet_airdrop_pda(wallet),
+                token_program: token::ID,
+                associated_token_program: associated_token::ID,
+                system_program: system_program::ID,
+            },
+        );
+        self.send(&[i], &payer, &[])
+    }
+
+    pub fn burn_unclaimed(&mut self, campaign: u8) -> Res {
+        let payer = self.payer();
+        let i = ix(
+            instruction::BurnUnclaimed { campaign },
+            accounts::BurnUnclaimed {
+                payer: payer.pubkey(),
+                config: config_pda(),
+                airdrop_campaign: airdrop_campaign_pda(campaign),
+                honk_mint: honk_mint_pda(),
+                authority: authority_pda(),
+                airdrop_vault: airdrop_pda(),
+                token_program: token::ID,
+            },
+        );
+        self.send(&[i], &payer, &[])
+    }
+
     pub fn part(
         &self,
         buyer: &Pubkey,
@@ -458,7 +611,6 @@ impl Env {
             .expect("part");
         freightchain_honk::Part::try_deserialize(&mut &a.data[..]).unwrap()
     }
-
 }
 
 pub fn program_data(logs: &[String]) -> Vec<Vec<u8>> {

@@ -48,6 +48,7 @@ export function pdas() {
     locker: pda([Buffer.from('locker')]),
     emission: pda([Buffer.from('emission')]),
     airdrop: pda([Buffer.from('airdrop')]),
+    referral: pda([Buffer.from('referral')]),
     treasury: pda([Buffer.from('treasury')]),
     team: pda([Buffer.from('team')]),
   };
@@ -85,7 +86,7 @@ async function send(connection, tx, signers) {
   return sendAndConfirmTransaction(connection, tx, signers, CONFIRMED);
 }
 
-export async function initialize({ rpc, payer, solIn, emitter, treasury, teamRecipient, teamEnabled = true, teamLinearMonths = 36 }) {
+export async function initialize({ rpc, payer, solIn, emitter, treasury, teamRecipient, teamEnabled = true, teamLinearMonths = 24 }) {
   const p = pdas();
   const who = (k) => (k ? asPk(k) : payer.publicKey);
   const teamOn = !!teamEnabled;
@@ -93,7 +94,7 @@ export async function initialize({ rpc, payer, solIn, emitter, treasury, teamRec
   const months = teamOn ? teamLinearMonths : 0;
   const keys = [
     w(payer.publicKey, true), ro(PROGRAM_ID), ro(p.programData), w(p.config), w(p.honkMint), ro(p.authority), w(p.vault), w(p.pool),
-    w(p.lpMint), w(p.lpLocker), ro(p.locker), w(p.emission), w(p.airdrop), w(p.treasury), w(p.team),
+    w(p.lpMint), w(p.lpLocker), ro(p.locker), w(p.emission), w(p.airdrop), w(p.referral), w(p.treasury), w(p.team),
     ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId),
   ];
   const body = [u64(solIn), who(emitter).toBuffer(), who(treasury).toBuffer(), team.toBuffer(), Buffer.from([teamOn ? 1 : 0, months])];

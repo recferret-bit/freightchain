@@ -7,7 +7,7 @@ Run: `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token h
 ## Token (the program's classic SPL mint, 6 decimals)
 
 - Symbol TEN4. Base unit `1_000_000`. The numbers live in `server/src/domain/honk/tokenomics.ts` and the program constants.
-- `initialize(50 SOL)` pre-mints the buckets (100,000,000 with the team on). The pool vault holds 15,000,000. Mint authority is none. LP is burned in the same transaction. This is not an ICO.
+- `initialize(50 SOL)` pre-mints the 6 buckets (100,000,000 TEN4: 15M liquidity, 55M emission, 8M airdrop, 4M referral, 10M treasury, 8M team). The pool vault holds 15,000,000. Mint authority is none. LP is burned in the same transaction. This is not an ICO.
 - `swap_sol_for_honk` pays the constant-product out of the pool vault after a 25 bps fee. `burn` lowers the supply. The pool vault does not move on a burn or a ride payment. A ride payment leaves the emission vault.
 - Part NFTs are `buy_part`: a new classic SPL mint, decimals 0, supply 1, frozen. They are not this fungible mint.
 
