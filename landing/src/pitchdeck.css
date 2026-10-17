@@ -220,11 +220,10 @@ canvas.glyph{height:auto;aspect-ratio:240/124;background:none}
 .L-money .vis:has(canvas.glyph:is(:hover,.hot)) .vblock{opacity:1;translate:0 0;scale:1}
 @media (prefers-reduced-motion:reduce){.vblock,.fx canvas.glyph{transition:none}}
 
-/* the 65 / 5 / 20 / 10 bar: the small blocks keep a width their figure fits in (the % no longer touches the edge); hover / tap plays a chained tween – others fade out in turn (.s-out), the picked block slides left and grows (.s-grow), its % gives way to a description (.s-text) */
+/* the 85 / 5 / 10 bar: the small blocks keep a width their figure fits in (the % no longer touches the edge); hover / tap plays a chained tween – others fade out in turn (.s-out), the picked block slides left and grows (.s-grow), its % gives way to a description (.s-text) */
 .split div{position:relative;flex:var(--w) 1 0;min-width:0;display:flex;flex-direction:column;justify-content:space-between;padding:14px 16px;border-radius:12px;background:var(--accent);color:#1b1408;overflow:hidden;transform-origin:var(--ox,50%) 50%;transition:opacity .3s ease-out calc(var(--r,0)*.18s),transform .4s cubic-bezier(.3,0,.2,1) calc(var(--r,0)*.18s),flex-grow .7s cubic-bezier(.65,0,.2,1),min-width .7s cubic-bezier(.65,0,.2,1),padding .7s cubic-bezier(.65,0,.2,1),box-shadow .5s;cursor:pointer}   /* coming back: nearest first, out of the border */
-.split div:nth-child(2){min-width:108px;background:#9945ff;color:#fff}   /* 5% referrals */
-.split div:nth-child(3){min-width:132px;background:var(--accent2);color:#fff}
-.split div:nth-child(4){min-width:124px;background:#fff;color:#111}
+.split div:nth-child(2){min-width:118px;background:var(--accent2);color:#fff}   /* 5% next pool */
+.split div:nth-child(3){min-width:124px;background:#fff;color:#111}   /* 10% final / fee */
 .split .desc{position:absolute;left:16px;right:16px;top:14px;font:400 32px/1.08 var(--head);font-style:normal;text-transform:uppercase;white-space:nowrap;overflow:hidden;opacity:0;transform:translateY(10px);filter:blur(4px);pointer-events:none;transition:opacity .22s ease,transform .3s ease,filter .22s ease}   /* one line, no letter-spacing tween: nothing re-wraps while it appears */
 .split b{font:400 44px/1 var(--head);white-space:nowrap;transition:opacity .22s ease .22s,transform .3s ease .22s}   /* coming back: only after the description has gone, so the two never overlap */
 .split.s-out div:not(.pick){opacity:0;transform:translateX(var(--tx,0px)) scaleX(.1);transition:opacity .22s ease-in calc(var(--o,0)*.2s + .14s),transform .4s cubic-bezier(.55,0,.25,1) calc(var(--o,0)*.2s),flex-grow .7s cubic-bezier(.65,0,.2,1),min-width .7s cubic-bezier(.65,0,.2,1),padding .7s cubic-bezier(.65,0,.2,1),box-shadow .5s;pointer-events:none}   /* each block runs to the bar's border on its own side (--tx), squeezing into it as it fades; the farthest from the picked one goes first */

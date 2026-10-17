@@ -1,22 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="228" viewBox="0 0 720 228" role="img" aria-label="A pool splits 70 percent prizes, 20 percent next seed, 10 percent fee. Inside the prize share the top three take 25, 15 and 10 parts, and 20 parts are shared by ranks 1 to 20.">
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="228" viewBox="0 0 720 228" role="img" aria-label="A unified pool splits 85 percent weekly boards, 5 percent next-week rollover, 10 percent Season Final. Player-derived share is capped below 50 percent (max 47.4 percent). Inside each board, 80 percent goes to top 10 places and 20 percent is shared equally by all clean finishers.">
   <rect width="720" height="228" rx="12" fill="#14110e"/>
-  <text x="24" y="32" fill="#e8e2cf" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" font-weight="700">One pool, integer lamports, floors only</text>
-  <text x="24" y="52" fill="#9d957f" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Default the operator scripts pass: 7000 / 2000 / 1000. The program stores the bps on the pool. It does not hard-code the ranks.</text>
-  <rect x="24" y="72" width="470" height="36" rx="6" fill="#ffcf5a"/>
-  <rect x="494" y="72" width="134" height="36" rx="6" fill="#14f195"/>
-  <rect x="628" y="72" width="68" height="36" rx="6" fill="#9945ff"/>
-  <text x="259" y="95" text-anchor="middle" fill="#14110e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700">prizes 70%</text>
-  <text x="561" y="95" text-anchor="middle" fill="#14110e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">seed 20%</text>
-  <text x="662" y="95" text-anchor="middle" fill="#fff" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700">fee</text>
-  <text x="24" y="132" fill="#9d957f" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Inside the prize share, 70 parts. Top 3 also take a slice of the 20.</text>
-  <rect x="24" y="146" width="168" height="28" rx="4" fill="#ffcf5a"/>
-  <rect x="196" y="146" width="100" height="28" rx="4" fill="#e2b84a"/>
-  <rect x="300" y="146" width="68" height="28" rx="4" fill="#c9a24a"/>
-  <rect x="372" y="146" width="134" height="28" rx="4" fill="#3a342c"/>
-  <text x="108" y="165" text-anchor="middle" fill="#14110e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">1st · 25</text>
-  <text x="246" y="165" text-anchor="middle" fill="#14110e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">2nd · 15</text>
-  <text x="334" y="165" text-anchor="middle" fill="#14110e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">3rd · 10</text>
-  <text x="439" y="165" text-anchor="middle" fill="#e8e2cf" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">20 · ranks 1–20</text>
-  <text x="24" y="198" fill="#9d957f" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">A full 20-ticket hour at $5: 1st $26, 2nd $16, 3rd $11, places 4–20 $1. Unpaid lamports stay in the vault and go to the seed treasury at close.</text>
-  <text x="24" y="216" fill="#9d957f" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">The devnet series on the site is a short test schedule, so the pool you open may not be this $5 example.</text>
+  <text x="24" y="32" fill="#e8e2cf" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" font-weight="700">Unified weekly pool (Program v5): 85% boards · 5% rollover · 10% Season Final</text>
+  <text x="24" y="52" fill="#9d957f" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Default bps: 8500 / 500 / 1000. Player-derived bonus P ≤ 90% × F keeps player share &lt; 50% (≤ 47.4%, max_player_share_bps ≤ 4999).</text>
+  <rect x="24" y="72" width="566" height="36" rx="6" fill="#ffcf5a"/>
+  <rect x="594" y="72" width="34" height="36" rx="6" fill="#14f195"/>
+  <rect x="632" y="72" width="64" height="36" rx="6" fill="#9945ff"/>
+  <text x="307" y="95" text-anchor="middle" fill="#14110e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700">weekly boards 85% (1h 25% · 4h 30% · 8h 45%)</text>
+  <text x="611" y="95" text-anchor="middle" fill="#14110e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700">5%</text>
+  <text x="664" y="95" text-anchor="middle" fill="#fff" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700">final 10%</text>
+  <text x="24" y="132" fill="#9d957f" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Inside each board (1h / 4h / 8h): 80% top-10 places + 20% all clean finishers. Equal tie-splitting; 30% free-ticket cap.</text>
+  <rect x="24" y="146" width="134" height="28" rx="4" fill="#ffcf5a"/>
+  <rect x="162" y="146" width="80" height="28" rx="4" fill="#e2b84a"/>
+  <rect x="246" y="146" width="54" height="28" rx="4" fill="#c9a24a"/>
+  <rect x="304" y="146" width="160" height="28" rx="4" fill="#8b7338"/>
+  <rect x="468" y="146" width="122" height="28" rx="4" fill="#3a342c"/>
+  <text x="91" y="165" text-anchor="middle" fill="#14110e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">1st · 25%</text>
+  <text x="202" y="165" text-anchor="middle" fill="#14110e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">2nd · 15%</text>
+  <text x="273" y="165" text-anchor="middle" fill="#14110e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700">3rd · 10%</text>
+  <text x="384" y="165" text-anchor="middle" fill="#14110e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700">4–5th 7.5% · 6–10th 3%</text>
+  <text x="529" y="165" text-anchor="middle" fill="#e8e2cf" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">20% · finishers</text>
+  <text x="24" y="198" fill="#9d957f" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">7-week season: Weeks 1–6 feed the 10% Season Final reserve (+ $1,000 operator base) for Week 7's Live Final (top 8 + ties per board).</text>
+  <text x="24" y="216" fill="#9d957f" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Devnet Pre-season (Nov 2–17, 2026): $500 USDC organizer-funded 1h board (Top 20 fixed table) + 100,000 TEN4 airdrop points.</text>
 </svg>

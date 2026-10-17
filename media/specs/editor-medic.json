@@ -1,0 +1,34 @@
+{
+  "name": "editor-medic",
+  "fps": 24, "width": 1280, "height": 720, "maxSeconds": 15,
+  "gif": { "maxMB": 15, "width": 720, "fps": 12 },
+  "audio": { "ignition": { "at": 0, "dur": 0.7 }, "music": { "id": "road-rush", "gain": 0.48 }, "engine": false },
+  "ticker": "JSON MODELS ◆ MCP + GLM 5.3 ◆ DRAFT SAVED ◆ WALLET-SIGNED PUBLISH ◆ AUTHORIZED EDITORS ◆ ",
+  "scenes": [
+    { "id": "before", "dur": 3.8, "route": "route66", "time": "night", "speed": 16, "traffic": false,
+      "bg": "sol", "grade": "blur(10px) brightness(.22) saturate(1.45)",
+      "transition": { "type": "flash", "dur": 0.4 },
+      "shots": [
+        { "src": "editor-medic/medic1.jpg", "x": 230, "y": 70, "w": 820, "fx": "zoom", "zoom": [1, 1.04], "label": "BEFORE" }
+      ],
+      "captions": [ { "n": "01", "at": 0.3, "dur": 3.35, "head": "STRIPE ON THE CROSS", "sub": "The medic ambulance. The whole model is JSON." } ] },
+
+    { "id": "fix", "dur": 5.2, "route": "stuart", "time": "dusk", "speed": 14, "traffic": false,
+      "bg": "sol", "grade": "blur(10px) brightness(.2) saturate(1.5)",
+      "transition": { "type": "glitch", "dur": 0.45 },
+      "shots": [
+        { "src": "editor-medic/medic-fixed.jpg", "x": 20, "y": 76, "w": 760, "fx": "slide-l", "zoom": [1, 1.05], "frame": "amber", "label": "GAP FIXED" },
+        { "src": "editor-medic/medic-note.jpg", "x": 820, "y": 96, "w": 420, "fx": "slide-r", "at": 0.4, "label": "DRAFT #2" }
+      ],
+      "captions": [ { "n": "02", "at": 0.4, "dur": 4.65, "head": "GLM 5.3 FIXED THE GAP", "sub": "MCP writes the draft. The database keeps it." } ] },
+
+    { "id": "end-card", "dur": 3.2, "route": "brenner", "time": "night", "speed": 12, "traffic": false,
+      "transition": { "type": "flash", "dur": 0.4 },
+      "card": {
+        "title": ["SIGN TO PUBLISH.", "YOUR WALLET ONLY."],
+        "steps": ["CONNECT SOLANA", "SIGN THE PUBLISH", "EDITORS ONLY"],
+        "cta": "CONTENT TOOL ▸",
+        "foot": "JSON MODELS · MCP · GLM 5.3 · DEVNET"
+      } }
+  ]
+}
