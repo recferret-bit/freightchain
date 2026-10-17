@@ -1,5 +1,7 @@
 # Manual tests
 
+> **Source of truth:** [docs/spec](../spec/README.md). Wallet, phone and replay checks are specified in [e2e](../spec/e2e.md) and in [replays and streams §2.5](../spec/replays_streams.md) (M-RPL-01…06). This file keeps M-01…M-10.
+
 Flows this suite cannot drive without a real browser, a wallet extension, or a phone. Each row has a mock or a source check in `e2e/` where a local keypair can stand in. TODO: automate when the Puppeteer pass exists.
 
 ## M-01 Phantom or Solflare popup on CONNECT

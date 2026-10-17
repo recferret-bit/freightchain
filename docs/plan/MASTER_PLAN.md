@@ -55,6 +55,8 @@
 
 ## 3. Пулы и призы
 
+> See [docs/spec](../spec/README.md): this section is superseded for pools, donations and ranking ([pool.md](../spec/pool.md), [replays_streams.md](../spec/replays_streams.md)). The text below is kept.
+
 Детали: `pool_unified_plan.md`, `docs_drafts/prize/POOLS.md`.
 
 | Параметр | Значение |
@@ -85,6 +87,8 @@
 - Денежные параметры (B, потолки, доли) хранятся в Season.
 
 ## 5. Билеты и поездки
+
+> See [docs/spec/rides.md](../spec/rides.md): this section is superseded for ride types and tickets. The text below is kept.
 
 Уже сделано в PR #3, сохранить при мерже (`pr3_update_plan.md`, шаг 1):
 
@@ -246,6 +250,8 @@
 | `docs/plan/OWNER_TASKS.md` | ✅ Единый чек-лист внешних аккаунтов, ключей, настроек и действий владельца |
 
 ## 14. Открытые вопросы и задачи владельца
+
+> See [docs/spec/OPEN.md](../spec/OPEN.md): this section is superseded. The text below is kept.
 
 Полный список внешних задач владельца — **`docs/plan/OWNER_TASKS.md`**. Сводка по открытым вопросам — `docs/plan/OPEN_QUESTIONS.md`.
 

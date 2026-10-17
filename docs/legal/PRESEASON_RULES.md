@@ -59,6 +59,8 @@ One prize per person. Prizes are paid to the wallet address you played with. If 
 
 **16. Publicity.** Winners' wallet addresses (or chosen handles) and places may be published.
 
+**16a. Viewers, donations and replays.** **[NEW 2026-10-17]** Ranked attempts are **not watchable live**. Replays of ranked attempts become public only **after the review ends** ([PLACEHOLDER: Monday 16 November 12:00 UTC], i.e. the end of the pool's validation window). Donations, tips or any other viewer action **never affect any attempt** (no obstacles, holes, weather, day/night, damage, speed or anything else), are not an entry, give no prize advantage and are not linked to ranking. The Event has no paid entry (Section 2). Replay chat and donations are enabled during the Event for testing; on devnet they have no monetary value.
+
 **17. Contact.** [PLACEHOLDER: organizer Telegram @handle / email].
 
 ## Part B — Pre-season Privacy Notice
@@ -73,7 +75,7 @@ One prize per person. Prizes are paid to the wallet address you played with. If 
 | Telegram user ID, username, channel/chat membership | Mandatory tasks, one account per person | Same as above |
 | X handle and post link (mandatory task); Discord handle (optional task) | Mandatory X entry task; optional Discord airdrop points | Same as above |
 | Keyed hash of your IP address prefix (not the raw IP), country/region from Cloudflare | Eligibility by location, detecting multi-accounting | **90 days** (web server logs 30 days) |
-| Gameplay telemetry and ride replays | Scoring, anti-cheat, review | **90 days** (up to **12 months** for prize/flagged rides) |
+| Gameplay telemetry and ride replays **[CHANGED 2026-10-17]** (replays public only after the review, Section 16a) | Scoring, anti-cheat, review | **90 days** (up to **12 months** for prize/flagged rides) |
 | Manual verification & sanctions screening result for winners (no ID documents collected by default) | Age/country self-confirmation, anti-sybil review, sanctions compliance | Until **12 months** after the Event |
 | Messages in the Telegram chat | Community and moderation | Telegram's own rules |
 

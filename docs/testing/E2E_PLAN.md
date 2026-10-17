@@ -1,5 +1,7 @@
 # Local code end-to-end plan
 
+> **Source of truth:** [docs/spec](../spec/README.md) is the source of truth for how the product should work and how it is tested. This file is the checklist for the local code suite in this PR. Related sections: [e2e](../spec/e2e.md), [replays and streams](../spec/replays_streams.md).
+
 PR #3 (`cursor/ten4-tokenomics-6271`) was **not merged** when this branch was cut from `origin/main` (`3ab33d80`). Checks that need that branch are status `unmerged`: they assert the symbol is absent on this tree and leave a `test.todo` for the behaviour.
 
 This suite is code and Docker. It does not open Chrome. Page modules run under happy-dom with fetch mocked. API checks call a real server on the e2e compose database and skip unless `E2E_BASE` is set. `npm run test:e2e:block1` and `npm run test:e2e:block2` set `E2E_REQUIRE=1` so a missing server fails the run.
