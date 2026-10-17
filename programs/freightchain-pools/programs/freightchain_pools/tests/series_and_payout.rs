@@ -430,6 +430,7 @@ fn the_lock_is_the_longer_of_the_review_window_and_min_review_secs() {
     for id in [wide, tight, raised] {
         let b = funded(&mut e.svm, 10 * SOL);
         e.buy(id, &b, 1).unwrap();
+        e.cover_player_share(id);
     }
     let a = e.authority_kp();
     let w = funded(&mut e.svm, SOL).pubkey();
@@ -613,6 +614,7 @@ fn audit_close_and_expire_guards_hold_with_a_committed_root() {
         let id = e.create_pool(freightchain_pools::CreatePoolParams { min_tickets: 2, max_tickets: 0, max_per_wallet: 100, ..default_params() });
         let b = funded(&mut e.svm, 50 * SOL);
         e.buy(id, &b, 10).unwrap();
+        e.cover_player_share(id);
         id
     };
     let id = mk(&mut e);

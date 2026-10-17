@@ -36,8 +36,10 @@ describe('Pool – what can be bought', () => {
   it('refuses a non-positive or fractional quantity', () => {
     for (const qty of [0, -1, 1.5]) expect(pool().whyNotSellable(day, qty, 0)).toMatch(/whole number/);
   });
-  it('refuses pools that are not selling', () => {
+  it('refuses pools that are not selling or have paid tickets disabled', () => {
     for (const status of ['refunding', 'settled', 'cancelled'] as const) expect(pool({ status }).whyNotSellable(day, 1, 0)).toBe(`this pool is ${status}`);
+    expect(pool({ paidTicketsEnabled: false }).whyNotSellable(day, 1, 0)).toMatch(/paid tickets are disabled/);
+    expect(pool({ paidTicketsEnabled: true }).whyNotSellable(day, 1, 0)).toBeNull();
   });
   it('the sale window closes at its end for an open AND an active pool (the program refuses any later buy)', () => {
     const justBefore = new Date(PREP.getTime() - 1);

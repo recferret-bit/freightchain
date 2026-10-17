@@ -134,6 +134,7 @@ export class Pool {
   whyNotSellable(now: Date, qty: number, walletBought: number): string | null {
     if (!Number.isInteger(qty) || qty < 1) return 'quantity must be a whole number of at least 1';
     if (this.p.status !== 'open' && this.p.status !== 'active') return `this pool is ${this.p.status}`;
+    if (this.p.paidTicketsEnabled === false) return 'paid tickets are disabled for this pool';
     if (now.getTime() >= this.p.prepDeadline.getTime()) return 'ticket sales for this pool are closed';
     if (this.p.maxTickets > 0 && this.p.ticketsSold + qty > this.p.maxTickets) return 'this pool is sold out';
     if (walletBought + qty > this.p.maxPerWallet) return `at most ${this.p.maxPerWallet} tickets per wallet in this pool`;

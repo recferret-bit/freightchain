@@ -129,7 +129,7 @@ fn expire_refused_when_prizes_were_paid_or_pool_not_active() {
 fn permissionless_close_only_after_grace_and_money_to_declared_treasuries() {
     let mut e = Env::new();
     let (id, _) = covered(&mut e);
-    let (unpaid, _) = active(&mut e);
+    let (unpaid, _) = covered(&mut e);
     let stranger = funded(&mut e.svm, SOL);
     let auth = e.authority_kp();
     e.warp(PLAY);

@@ -323,6 +323,7 @@ fn compute_units_are_in_budget() {
     }));
     let c = funded(&mut e2.svm, 20 * SOL);
     e2.buy(id2, &c, 10).unwrap();
+    e2.cover_player_share(id2);
     e2.warp(PLAY);
     let auth = e2.authority_kp();
     let list: Vec<(Pubkey, u64)> = (0..20).map(|_| (funded(&mut e2.svm, SOL).pubkey(), 1_000_000)).collect();

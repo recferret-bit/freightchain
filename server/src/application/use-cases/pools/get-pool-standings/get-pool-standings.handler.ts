@@ -31,7 +31,7 @@ export class GetPoolStandingsHandler implements IQueryHandler<GetPoolStandingsQu
     const pool = await this.pools.findById(poolId);
     if (!pool) throw new NotFoundError('no such pool');
     const s = pool.snapshot();
-    const prizeLamports = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps });
+    const prizeLamports = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps, ...(s.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: s.maxPlayerShareBps } : {}) });
     const [ranking, plan, underReview] = await Promise.all([
       this.rides.poolRanking(poolId, TOP20_SIZE, true),
       this.payouts.listByPool(poolId),

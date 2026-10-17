@@ -5,7 +5,7 @@ import type { Idl } from './borsh.js';
 
 export const POOL_PROGRAM_IDL: Idl = {
   address: "8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p",
-  metadata: {"name":"freightchain_pools","version":"5","spec":"0.1.0","description":"Escrowed prize pools v5: no referral leg, admin pool rules snapshotted per pool"},
+  metadata: {"name":"freightchain_pools","version":"5.0.0","spec":"0.1.0","description":"Escrowed prize pools v5: no referral leg, admin pool rules snapshotted per pool"},
   instructions: [
     {"name":"accept_authority","discriminator":[107,86,198,91,33,12,107,160],"accounts":[{"name":"new_authority","signer":true},{"name":"config","writable":true,"pda":{"seeds":[{"kind":"const","value":[99,111,110,102,105,103]}]}}],"args":[]},
     {"name":"buy_ticket","discriminator":[11,24,17,193,168,116,164,169],"accounts":[{"name":"buyer","writable":true,"signer":true},{"name":"fee_payer","writable":true,"signer":true},{"name":"config","pda":{"seeds":[{"kind":"const","value":[99,111,110,102,105,103]}]}},{"name":"pool","writable":true,"pda":{"seeds":[{"kind":"const","value":[112,111,111,108]},{"kind":"arg","path":"pool_id"}]}},{"name":"vault","writable":true,"pda":{"seeds":[{"kind":"const","value":[118,97,117,108,116]},{"kind":"arg","path":"pool_id"}]}},{"name":"ticket","writable":true,"pda":{"seeds":[{"kind":"const","value":[116,105,99,107,101,116]},{"kind":"account","path":"pool"},{"kind":"account","path":"buyer"}]}},{"name":"system_program","address":"11111111111111111111111111111111"}],"args":[{"name":"pool_id","type":"u32"},{"name":"qty","type":"u16"},{"name":"order_id","type":{"array":["u8",16]}}]},

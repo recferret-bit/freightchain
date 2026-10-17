@@ -2,7 +2,7 @@
   "address": "8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p",
   "metadata": {
     "name": "freightchain_pools",
-    "version": "5",
+    "version": "5.0.0",
     "spec": "0.1.0",
     "description": "Escrowed prize pools v5: no referral leg, admin pool rules snapshotted per pool"
   },
@@ -1219,7 +1219,7 @@
     {
       "name": "migrate_config_v4",
       "docs": [
-        "v4: once, right after the upgrade \u2013 the v3 Config grows to the v4 layout (the floors at their defaults)"
+        "v4: once, right after the upgrade – the v3 Config grows to the v4 layout (the floors at their defaults)"
       ],
       "discriminator": [
         10,
@@ -1389,7 +1389,7 @@
         {
           "name": "caller",
           "docs": [
-            "anyone \u2013 the committed root decides who gets what"
+            "anyone – the committed root decides who gets what"
           ],
           "signer": true
         },
@@ -2429,7 +2429,7 @@
         {
           "name": "ride_attestation",
           "docs": [
-            "v4 (H4): THIS ride's attestation \u2013 not the driver's best ride in the pool"
+            "v4 (H4): THIS ride's attestation – not the driver's best ride in the pool"
           ],
           "writable": true,
           "pda": {
@@ -2592,7 +2592,7 @@
         {
           "name": "receipt",
           "docs": [
-            "v4 (M8): what this sponsor put into this pool \u2013 it comes back if the pool fails"
+            "v4 (M8): what this sponsor put into this pool – it comes back if the pool fails"
           ],
           "writable": true,
           "pda": {
@@ -2660,7 +2660,7 @@
         {
           "name": "authority",
           "docs": [
-            "the cold admin only \u2013 never the payout key"
+            "the cold admin only – never the payout key"
           ],
           "signer": true,
           "relations": [
@@ -3621,7 +3621,7 @@
           {
             "name": "payout_authority",
             "docs": [
-              "Commits a pool's winners root, records ride attestations and closes a pool once its prizes are paid (the server's payout key) \u2013 nothing",
+              "Commits a pool's winners root, records ride attestations and closes a pool once its prizes are paid (the server's payout key) – nothing",
               "else; a root it commits is public for the whole review lock and the cold admin can veto it. None = only `authority`."
             ],
             "type": {
@@ -3639,7 +3639,7 @@
           {
             "name": "min_finish_secs",
             "docs": [
-              "v4: the play window every new pool keeps after its sale (no sale, no new ride after it \u2013 the shifts on the road finish) (DEFAULT_MIN_FINISH_SECS)."
+              "v4: the play window every new pool keeps after its sale (no sale, no new ride after it – the shifts on the road finish) (DEFAULT_MIN_FINISH_SECS)."
             ],
             "type": "i64"
           },
@@ -4110,21 +4110,21 @@
           {
             "name": "seal_slot",
             "docs": [
-              "v4 (L4): the slot whose hash seals the road (`seal_road`); 0 once sealed \u2013 until then `seed_commitment` is all zero and no ride is served"
+              "v4 (L4): the slot whose hash seals the road (`seal_road`); 0 once sealed – until then `seed_commitment` is all zero and no ride is served"
             ],
             "type": "u64"
           },
           {
             "name": "platform_fee_bps",
             "docs": [
-              "v4 (L8): `Config.platform_fee_bps` when the pool opened \u2013 the cut at close is the one the buyers were shown"
+              "v4 (L8): `Config.platform_fee_bps` when the pool opened – the cut at close is the one the buyers were shown"
             ],
             "type": "u16"
           },
           {
             "name": "winners_root",
             "docs": [
-              "v4 (H5-B): the committed winners \u2013 a Merkle root over (rank, wallet, lamports), the sum, the count, when, and the first moment it pays"
+              "v4 (H5-B): the committed winners – a Merkle root over (rank, wallet, lamports), the sum, the count, when, and the first moment it pays"
             ],
             "type": {
               "array": [
@@ -4166,14 +4166,14 @@
           {
             "name": "open_pledges",
             "docs": [
-              "v4 (L7): pledges on this pool not yet settled or refunded \u2013 attestations close only at 0"
+              "v4 (L7): pledges on this pool not yet settled or refunded – attestations close only at 0"
             ],
             "type": "u32"
           },
           {
             "name": "min_review_secs",
             "docs": [
-              "v4: `Config.min_review_secs` when the pool opened \u2013 its review lock (a later change of the floor does not reach a running pool)"
+              "v4: `Config.min_review_secs` when the pool opened – its review lock (a later change of the floor does not reach a running pool)"
             ],
             "type": "i64"
           },
@@ -4538,7 +4538,7 @@
     {
       "name": "RideAttestation",
       "docs": [
-        "v4 (audit H4): the server's verdict on ONE ride, written by the payout key \u2013 a pledge on that ride settles on it (`verified_km`), and only from",
+        "v4 (audit H4): the server's verdict on ONE ride, written by the payout key – a pledge on that ride settles on it (`verified_km`), and only from",
         "`settle_from` (the review lock: every RideAttestationRecorded is public that long first). Final once a pledge was settled on it."
       ],
       "type": {
@@ -4661,7 +4661,7 @@
     {
       "name": "RoadSealed",
       "docs": [
-        "v4 (L4): the pool's road seed, fixed from the hash of `seed_slot` \u2013 a slot after the pool opened, so nobody could pick it"
+        "v4 (L4): the pool's road seed, fixed from the hash of `seed_slot` – a slot after the pool opened, so nobody could pick it"
       ],
       "type": {
         "kind": "struct",
@@ -4949,7 +4949,7 @@
     {
       "name": "SponsorReceipt",
       "docs": [
-        "v4 (audit M8): what `sponsor` put into a pool \u2013 `refund_sponsor` pays it back if the pool fails."
+        "v4 (audit M8): what `sponsor` put into a pool – `refund_sponsor` pays it back if the pool fails."
       ],
       "type": {
         "kind": "struct",

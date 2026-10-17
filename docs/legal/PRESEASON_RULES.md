@@ -1,9 +1,9 @@
 # FreightChain Pre-season (devnet) — Event Rules and Privacy Notice — TEMPLATE
 
 > **DRAFT — NOT LEGAL ADVICE.** Short rules for one free promotional skill event run by an **individual organizer** (no company). Full `TERMS.md` / `PRIVACY.md` apply from Season 1, once an operator entity exists.
-> Replace every `[PLACEHOLDER: …]`. Items marked **[RESEARCH]** depend on `operator_entity_options.md` (individual-organizer risks, Didit for individuals, sanctions by the organizer's residence). **[LAWYER]** = legal choice to confirm.
+> Replace every `[PLACEHOLDER: …]`. Research on individual-organizer risks, Didit availability, and residency/sanctions is recorded in `docs/plan/research/operator_entity_options.md` §6–7. **[LAWYER]** = legal choice to confirm (deferred by owner for Pre-season as an accepted risk; tracked in `docs/plan/OPEN_QUESTIONS.md`).
 > Russian translation (RU) to be prepared after review; if versions differ, [LAWYER: which language controls — proposed English].
-> Status: drafted 17.10.2026 from `devnet_mini_launch_plan.md` (D1–D12). Not committed.
+> Status: drafted 17.10.2026 from `docs/plan/DEVNET_PRESEASON.md` (D1–D13, Round 19).
 
 **Version:** [PLACEHOLDER: PS-1.0] · **Published:** [PLACEHOLDER: date]
 
@@ -17,7 +17,7 @@
 
 **4. Eligibility.** You must be **18 or older** (or the age of majority where you live, if higher) and a real person playing for yourself.
 - **Prize-eligible:** residents of and persons located in Kazakhstan, Uzbekistan, Kyrgyzstan, Armenia, Azerbaijan, Georgia, Moldova, Ukraine (except the occupied Crimea, Donetsk and Luhansk regions) and other locations not excluded below.
-- **May play but cannot win prizes:** residents of or persons located in Russia and Belarus [LAWYER / RESEARCH: depends on the Organizer's residence and sanctions rules].
+- **May play but cannot win prizes:** residents of or persons located in Russia and Belarus [LAWYER: Organizer is a Serbian tax resident and RF citizen; RU/BY remain excluded from prizes unless counsel confirms otherwise].
 - **Excluded:** the United Kingdom, the EU/EEA, Cuba, Iran, North Korea, Syria, the occupied regions of Ukraine, the US states of Arizona, Arkansas, Delaware, Louisiana, Montana, South Carolina and Tennessee, persons on sanctions lists, and the Organizer, moderators and their household members.
 - **No VPNs or proxies** during your ranked attempt or at payout.
 
@@ -28,7 +28,7 @@
 
 **6. One person, one attempt.** Each person may hold one wallet, one Telegram account and one attempt. Creating or using more than one wallet or Telegram account, sharing accounts, letting others play for you, bots, scripts, cheats or exploits are prohibited. **If one person is found behind more than one entry, all of that person's entries are disqualified.** Leaving the required channel or chat before the end of the prize week voids the attempt.
 
-**7. Contest of skill.** Every ranked attempt drives the same Event route. Rank depends on driving performance: the share of the route completed before the first mistake, then fewer corrections at a clean finish, then earlier submission. There are no random draws. Results that are fully equal **share the combined prize amounts of the places they occupy equally**. Unlimited free training rides are available.
+**7. Contest of skill.** Every ranked attempt drives the same Event route. Rank depends on driving performance: the share of the route completed before the first mistake, then fewer corrections at a clean finish. There are no random draws and no submission-time or wallet-address tie-breakers. Results that are fully equal **share the combined prize amounts of the places they occupy equally**. Unlimited free training rides are available.
 
 **8. Prizes.** Total **USD 500 in USDC** (Solana mainnet), funded by the Organizer:
 
@@ -45,7 +45,7 @@ One prize per person. Prizes are paid to the wallet address you played with. Pla
 
 **9. Verification before payout.** Winners must: confirm their country and age; pass the Organizer's manual review of their accounts and entry (linked Telegram and X accounts, network signals, ride replay); identity documents are not collected [optional: an identity check may be added if announced before 9 November]; pass a sanctions screening of their wallet (Chainalysis) and name; and keep their Telegram account linked. A winner who does not complete verification within [PLACEHOLDER: 14] days of notice forfeits the prize.
 
-**10. Taxes.** Winners are solely responsible for any taxes on their prizes in their country. The Organizer does not withhold tax or issue tax forms [RESEARCH: depends on the Organizer's residence].
+**10. Taxes.** Winners are solely responsible for any taxes on their prizes in their country. The Organizer does not withhold tax or issue tax forms [LAWYER: Serbian tax resident individual payer — confirm Porez na dohodak građana treatment in `docs/plan/research/operator_entity_options.md` §7.5].
 
 **11. Payout.** Prizes are sent from the Organizer's announced prize wallet [PLACEHOLDER: address]. Transaction links are published after payout. Blockchain transactions are final; the Organizer is not responsible for a wrong address you provided, lost keys or network fees.
 
@@ -71,13 +71,13 @@ One prize per person. Prizes are paid to the wallet address you played with. Pla
 |---|---|---|
 | Wallet address, sign-in signature | Account, leaderboard, prize payout | Until [PLACEHOLDER: 12] months after the Event; on-chain data is permanent |
 | Telegram user ID, username, channel/chat membership | Mandatory tasks, one account per person | Same as above |
-| X / Discord handle (optional tasks) | Optional tasks | Same as above |
+| X handle and post link (mandatory task); Discord handle (optional task) | Mandatory X entry task; optional Discord airdrop points | Same as above |
 | Keyed hash of your IP address prefix (not the raw IP), country/region from Cloudflare | Eligibility by location, detecting multi-accounting | 90 days |
 | Gameplay telemetry and ride replays | Scoring, anti-cheat, review | [PLACEHOLDER: 12] months |
-| Identity check result for winners | Age, country, one person one prize | [RESEARCH: by Didit's terms or method used] |
+| Manual verification & sanctions screening result for winners (no ID documents collected by default) | Age/country self-confirmation, anti-sybil review, sanctions compliance | Until [PLACEHOLDER: 12] months after the Event |
 | Messages in the Telegram chat | Community and moderation | Telegram's own rules |
 
-**Service providers:** Cloudflare (network security, location), Telegram, the identity-verification provider [RESEARCH], Chainalysis (sanctions screening), [PLACEHOLDER: hosting provider], PostHog (first-party analytics, opt-out available).
+**Service providers:** Cloudflare (network security, location), Telegram, twitterapi.io (public X task verification), Chainalysis (sanctions screening), [PLACEHOLDER: hosting provider], PostHog (first-party analytics, opt-out available).
 
 **Not done:** no sale of data, no advertising trackers, no browser fingerprinting.
 
@@ -85,6 +85,6 @@ One prize per person. Prizes are paid to the wallet address you played with. Pla
 
 ## Notes for the team (delete before publishing)
 
-- [RESEARCH] items: Didit for an individual; sanctions duties by the Organizer's residence (for example an EU-resident Organizer is subject to EU sanctions, which affects RU/BY); tax forms and reporting for an individual payer; personal liability.
+- Resolved in `docs/plan/research/operator_entity_options.md` §6–7 & Round 19: Organizer is a Serbian tax resident (temporary residence) and RF citizen; Didit is not used in Pre-season (Didit requires a legal entity); RU/BY remain play-only without prizes; Serbian lawyer / tax questions are tracked in `docs/plan/OPEN_QUESTIONS.md`. Fill `[PLACEHOLDER: …]` values before publishing.
 - Publish Rules and Notice in English and Russian on the Event page and pin them in the Telegram channel.
 - Full `TERMS.md` / `PRIVACY.md` apply from Season 1 when the operator entity exists.
