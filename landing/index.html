@@ -5,7 +5,7 @@
 <title>Freight Chain – Browser Truck Driving Game with Solana Prize Pools</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="Free browser truck-driving game in the spirit of Desert Bus: manual gearbox, endless road, real-time shifts, escrowed Solana prize pools (devnet). No download.">
-<!-- search + link previews: ONE public URL per page, absolute (crawlers and X / Discord / Telegram do not resolve relative og:image). The production apex on purpose – a staging copy must not compete with it. -->
+<!-- canonical + social preview -->
 <link rel="canonical" href="https://freightchain.fun/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Freight Chain">
@@ -37,7 +37,6 @@
 </head>
 <body>
 
-<!-- live ticker (Megapot-style): recent finishes, pot, totals – filled by landing.js, duplicated for the loop -->
 <div class="ticker" aria-hidden="true"><div class="tk" id="ticker"><span>Loading the dispatch…</span></div></div>
 
 <header class="top">
@@ -183,7 +182,7 @@
 
   <div class="ach rv" id="achievements">
     <header><span class="lbl">ACHIEVEMENTS · DEVNET</span>
-      <h3>TEN LADDERS, 38 SOULBOUND BADGES</h3>
+      <h3>TWELVE LADDERS, 44 SOULBOUND BADGES</h3>
       <p>Finish rides, stay clean, drive Siberia at night, build a Convoy. A badge you earn can be minted into your wallet as a compressed NFT. The collection is frozen on chain, so it cannot be transferred. You sign nothing, and you pay nothing.</p></header>
     <div class="ach-show">
       <figure><img src="/badges/first-mile.svg" width="200" height="200" loading="lazy" decoding="async" alt="First Mile badge, one of three stars lit"><figcaption><b>★☆☆ Road</b>Start your first ride</figcaption></figure>
@@ -192,13 +191,13 @@
       <figure><img src="/badges/cold-start-4.svg" width="200" height="200" loading="lazy" decoding="async" alt="Siberian Legend badge, holographic platinum"><figcaption><b>★★★ Siberia · Platinum</b>40 Trans-Siberian rides</figcaption></figure>
     </div>
     <ol class="ach-flow">
-      <li><b>DRIVE</b>Ten ladders, 38 soulbound badges: Road, Shifts, Night, Distance, Clean, Siberia, Solo, Licence, TEN4, Convoy (plus free-level and podium badges).</li>
+      <li><b>DRIVE</b>Twelve ladders, 44 soulbound badges: Road, Shifts, Night, Distance, Clean, Siberia, Solo, Licence, Medium, Hard, TEN4, Convoy (plus Top 20 podium).</li>
       <li><b>PROVEN</b>The server counts from the rides it judged. A ride whose recording is rejected counts for nothing. The Shifts ladder counts paid rides only.</li>
       <li><b>MINTED</b>An hour later, after a second check, a Bubblegum v2 compressed NFT lands in your wallet.</li>
       <li><b>LOCKED</b>The collection carries a permanent freeze: the transfer is refused on chain, by Solana, not by us.</li>
     </ol>
     <p class="ach-note">The lobby's ACHIEVEMENTS tab flips a card for the badge, Solscan, Orb, the mint transaction and a share to 𝕏. <a href="https://whitepaper.freightchain.fun/#achievements">How it works</a> · <a href="https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet" target="_blank" rel="noopener">collection ↗</a> · <a href="https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet" target="_blank" rel="noopener">Merkle tree ↗</a></p>
-    <div class="badges"><span>Road</span><span>Shifts · paid</span><span>Night</span><span>Distance</span><span>Clean</span><span>Siberia</span><span>Solo</span><span>Licence</span><span>TEN4</span><span>Convoy</span><span class="locked">Top 20 · after the first round closes</span></div>
+    <div class="badges"><span>Road</span><span>Shifts · paid</span><span>Night</span><span>Distance</span><span>Clean</span><span>Siberia</span><span>Solo</span><span>Licence</span><span>Medium</span><span>Hard</span><span>TEN4</span><span>Convoy</span><span class="locked">Top 20 · after the first round closes</span></div>
   </div>
 </section>
 
@@ -237,7 +236,6 @@
 
   <h3 class="sub rv">UNDER THE HOOD · ON SOLANA</h3>
   <p class="dim oc-kick rv">Hover or tap a card for its receipt. The figures on the receipts are examples.</p>
-  <!-- flip cards like the lobby's achievements: hover, a tap (main.js .flip) or Tab onto a link on the back (:focus-within); the drawings are public/media/chain/*.svg, animated by src/chain-scenes.js -->
   <div class="oc-grid rv">
     <article data-card="proof" class="oc w"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/proof.svg" width="240" height="124" loading="lazy" decoding="async" alt="Four 15-second batches hash up into one verified Merkle root"><i class="stk p tl">RFC 6962</i><i class="stk tr">PDA ✓</i><i class="stk a br">blockhash</i></div>
@@ -269,10 +267,10 @@
         <nav><a href="/blink.html">Try the blink →</a><a href="#achievements">Badges →</a><a href="https://whitepaper.freightchain.fun/#onchain">Whitepaper →</a></nav></div></div></article>
     <article data-card="siws" class="oc"><div class="oc-in">
       <div class="fr"><div class="stage"><img src="/media/chain/siws.svg" width="240" height="124" loading="lazy" decoding="async" alt="One wallet prompt: sign in to freightchain.fun with a one-time nonce"><i class="stk p tl">CAIP-122</i></div>
-        <footer><b>ONE-TAP SIGN-IN</b><span>One prompt on Phantom and Solflare. Older wallets sign a message.</span></footer></div>
-      <div class="bk"><div class="rcpt"><b class="t">SIGN-IN · EXAMPLE</b><p><span>domain</span><b>freightchain.fun</b></p><p><span>nonce</span><b>7c1e…a4 · once</b></p><p><span>wallets</span><b>Phantom · Solflare</b></p><p><span>older</span><b class="ok">signed message</b></p></div>
+        <footer><b>ONE-TAP SIGN-IN</b><span>One prompt on Phantom and Solflare, or scan a QR from a phone.</span></footer></div>
+      <div class="bk"><div class="rcpt"><b class="t">SIGN-IN · EXAMPLE</b><p><span>domain</span><b>freightchain.fun</b></p><p><span>nonce</span><b>7c1e…a4 · once</b></p><p><span>wallets</span><b>Phantom · Solflare · QR</b></p><p><span>older</span><b class="ok">signed message</b></p></div>
         <p>No password. The signature names this site and a one-time nonce.</p>
-        <ul><li>Sign In With Solana names our domain and a one-time nonce, so a copied signature is useless elsewhere.</li></ul>
+        <ul><li>Sign In With Solana names our domain and a one-time nonce, or pairs a desktop browser by phone QR.</li></ul>
         <nav><a href="/lobby.html">Lobby →</a></nav></div></div></article>
   </div>
 
@@ -289,7 +287,7 @@
         <tr><td>Unified v5 split</td><td>85% boards · 5% rollover · 10% Season Final</td></tr>
       </tbody>
     </table>
-    <p class="dim">At 10 tickets, 1st would win $13.50 for the hour, so the pool does not open. Places 4–20 get $1 back: the pool pays the podium. 1st’s $26 is the 25% place plus $1 from the shared slice. Ahead of Season 1 mainnet (Jan 11, 2027), the Nov 2–17, 2026 Devnet Pre-season pays a $500 USDC organizer prize pool on the 1 h board plus 100,000 TEN4 airdrop points.</p>
+    <p class="dim">At 10 tickets, 1st would win $13.50 for the hour, so the pool does not open. Places 4–20 get $1 back: the pool pays the podium. 1st’s $26 is the 25% place plus $1 from the shared slice. Verified paid shifts also mint capped <b>TEN4</b> (100M supply; 100 / 500 / 1,200 TEN4 at 20% / 50% / 100% checkpoints in Era 1), burned in the 9-slot Garage and on live streams. Ahead of Season 1 mainnet (Jan 11, 2027), the Nov 2–17, 2026 Devnet Pre-season pays $500 USDC on the 1 h board plus 100,000 TEN4 points.</p>
   </div>
 
   <div class="boards rv">
@@ -306,7 +304,7 @@
 
 <div class="road" aria-hidden="true"><i></i></div>
 
-<!-- ───────── 04 · ROADMAP (the driver's trip sheet) ───────── -->
+<!-- ───────── 04 · ROADMAP ───────── -->
 <section class="ch" id="roadmap">
   <header class="ch-h rv"><i>04</i><h2>ROADMAP</h2><p>Legs, stops, a tick when it is behind us, a stamp when it was cut.</p></header>
   <div class="clip rv">
@@ -327,7 +325,7 @@
           <tr class="done"><td class="box">☑</td><td>Program v3 on devnet; Program v4/v5 built (85 / 5 / 10 split, &lt; 50% player share cap, Merkle winners root, per-ride attestations, seal_road)</td><td class="note">Oct 12–17</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>Nine-slot Garage, TEN4 tokenomics (100M cap, localnet program), Convoy referrals (?ref=), QR phone-to-desktop pairing, 3D AI entity editor + MCP</td><td class="note">Oct 8–17</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>X, YouTube, playable 8-slide pitch deck, whitepaper v0.3, trailer with 8-bit soundtrack, Solana Actions blinks</td><td class="note">Oct 9–17</td><td></td></tr>
-          <tr class="done"><td class="box">☑</td><td>Achievements: 38 soulbound compressed NFTs across 10 ladders (including TEN4 &amp; Convoy) on devnet</td><td class="note">October</td><td></td></tr>
+          <tr class="done"><td class="box">☑</td><td>Achievements: 44 soulbound badges across 12 ladders (34 on devnet Arweave + Medium/Hard &amp; Convoy)</td><td class="note">October</td><td></td></tr>
           <tr class="done"><td class="box">☑</td><td>12-AI blind security audit across 6 surfaces: all 7 high and 9 medium findings fixed in source with regression tests</td><td class="note">Oct 13–15</td><td></td></tr>
 
           <tr class="leg"><th colspan="3">LEG 3 · DEVNET PRE-SEASON <small>Nov 2–30, 2026</small></th><td class="stamp"><span class="st now">ROLLING</span></td></tr>
@@ -360,7 +358,7 @@
 
 <div class="road" aria-hidden="true"><i></i></div>
 
-<!-- ───────── 05 · GO TO MARKET (the dispatch load board) ───────── -->
+<!-- ───────── 05 · GO TO MARKET ───────── -->
 <section class="ch" id="market">
   <header class="ch-h rv"><i>05</i><h2>GO TO MARKET</h2><p>Every lane is a way a driver finds the game. RATE is the cost. FILL is a live count when the server has one.</p></header>
   <div class="loadboard rv">
@@ -372,7 +370,8 @@
         <tr><td>PRE-SEASON</td><td>Nov 2–17, 2026 Devnet Pre-season on the 1 h board: $500 USDC organizer prize pool (Top 20 fixed table) + 100,000 TEN4 airdrop points.</td><td>$0 · tasks</td><td class="num" id="lb-tests">–</td><td><em class="bid">NOV 2</em></td></tr>
         <tr><td>TICKETS</td><td>A paid shift ($5 1 h · $15 4 h · $50 8 h) is a ranked entry (up to 5 paid + 1 promo/wk). Too few sold by the deadline: 100% refunded on chain.</td><td>SOL / USDC</td><td class="num" id="lb-entries">–</td><td><em class="bid" id="lb-tickets-st">SOON</em></td></tr>
         <tr><td>THE POOLS</td><td>Unified weekly pot (&lt; 50% player-derived share): 85% weekly boards (1 h 25% · 4 h 30% · 8 h 45%; 80% top 10 + 20% finishers), 5% rollover, 10% Season Final.</td><td>85/5/10</td><td class="num" id="lb-pot">–</td><td><em class="bid" id="lb-pools-st">SOON</em></td></tr>
-        <tr><td>CONVOY · ?REF=</td><td>Invite link gives a free ride on first verified finish, 3 referral paints, capped spectator-tip share, and 100 / 50 TEN4 milestones from the 4M vault.</td><td>4M TEN4</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
+        <tr><td>TEN4 COIN</td><td>100M fixed cap: 55M paid checkpoints (20% / 50% / 100%), 15M LP, 8M airdrop, 4M Convoy, 10M treasury, 8M team; burned for 9-slot Garage parts &amp; stream effects.</td><td>100M cap</td><td class="num">–</td><td><em class="bid">MAR 2027</em></td></tr>
+        <tr><td>CONVOY · ?REF=</td><td>Invite link gives free rides on first MEDIUM finish (2 to referrer, 3 to referee), 3 referral paints, capped tip share, and 100 / 50 TEN4 milestones.</td><td>4M TEN4</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
         <tr><td>WATCH</td><td>No wallet needed: who is driving, 25 s behind, every finish replayable. A spectator talks on the CB and tips the driver by Solana Pay QR.</td><td>$0</td><td class="num" id="lb-live">–</td><td><em class="rolling">ROLLING</em></td></tr>
         <tr><td>REPLAY LINKS</td><td>One URL per ride is the share page: the watch link, with the route, the distance and the verdict.</td><td>a link</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
         <tr><td><a href="https://x.com/FreightChainSol" target="_blank" rel="noopener">X</a></td><td>@FreightChainSol: clips, pool numbers, Pre-season tasks, finishes as they happen.</td><td>time</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>

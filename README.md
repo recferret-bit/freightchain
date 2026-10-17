@@ -333,20 +333,20 @@ The fifth route is the Pan-American through the Atacama, long sweepers. Same bui
 | --- | --- | --- | --- | --- |
 | Free · EASY | 180 s | 1512 m (`k` 0.3) | 0 | Four lanes, two crossroads, bends ×3, calm traffic. First natural hole is 4 km in, past the line. Ends itself |
 | Free · MEDIUM | 300 s | 3360 m (`k` 0.4) | 0 | Depot turn, three crossroads, a fork, bends ×1.35, traffic ×0.8, holes ×1.5 |
-| Free · HARD | 900 s | 10 080 m (`k` 0.4) | 0 | Six crossroads, two forks, a highway run, bends ×1.6, traffic ×1.4, holes ×2. No assist, no tutorial |
-| 1 hour | 3600 s | `k` 0.5 | $5 in SOL | Depot, stop line, right turn. On sale when a pool is registered. Planned minimum 20 tickets |
-| 4 hour | 4 h | `k` 0.5 | $15 planned | Bends ×1.2, traffic ×1.4. Off until a pool of that tier exists |
-| 8 hour | 8 h | `k` 0.5 | $50 planned | Bends ×1.4, traffic ×1.8. Same gate |
+| Free · HARD | 1800 s | 20 160 m (`k` 0.4) | 0 | Twelve crossroads, four forks, a highway run, bends ×1.6, traffic ×1.4, holes ×2. No assist, no tutorial |
+| 1 hour (Sprint · 25% board) | 3600 s | 50 400 m (`k` 0.5) | $5 in SOL / USDC | Depot, stop line, right turn. On sale when a pool is registered. Planned minimum 20 tickets (10 participants min on Season 1 boards) |
+| 4 hour (Haul · 30% board) | 4 h | 201 600 m (`k` 0.5) | $15 series / $12 Season 1 extra | Bends ×1.2, traffic ×1.4. Off until a pool of that tier exists |
+| 8 hour (Long Haul · 45% board) | 8 h | 403 200 m (`k` 0.5) | $50 series / $25 Season 1 extra | Bends ×1.4, traffic ×1.8. Same gate |
 
-A shift completes when distance reaches `k × 28 m/s × nominal length`. There is no minimum time. The governor is what makes the line take about that long. Paid tiers use `k = 0.5`. After a paid finish the road continues until the driver ends it. A free level ends itself.
+A shift completes when distance reaches `k × 28 m/s × nominal length`. There is no minimum time. The governor is what makes the line take about that long. Paid tiers use `k = 0.5` and mint capped `TEN4` at `20% / 50% / 100%` checkpoints (`100 / 500 / 1,200 TEN4` in Era 1). After a paid finish the road continues until the driver ends it. A free level ends itself.
 
-Training rides are unlimited. They count for statistics and achievements only. Every eligible wallet gets one granted paid ticket a week (default 1 hour). It can be ranked and watched, and it does not mint TEN4. `play.html` with no ride id starts the real EASY ride.
+Training rides are unlimited. They count for statistics and achievements only. Every eligible wallet gets one granted paid ticket a week (AMOE, default 1 hour; 30% free-ticket prize cap per board; up to 5 paid + 1 promo ranked starts per week in Season 1). It can be ranked and watched, and it does not mint TEN4. `play.html` with no ride id starts the real EASY ride.
 
 The lobby picks the free level (`POST /api/rides`, `level` 1–3). Each level has its own board. Assist, on EASY and MEDIUM only, halves hull damage and battery drain. While the verdict is enforced, a rejected recording earns no badge. It still counts as a ride that started.
 
-Prices are quoted in USD and charged in devnet SOL at the server's rate. The $5 price and the 20-ticket minimum are the planned 1 hour series. The landing says those shifts are soon until a pool is open. A devnet series can be a shorter, cheaper test when one is registered.
+Prices are quoted in USD and charged in devnet SOL at the server's rate (`ride-tier.ts`: $5 / $15 / $50; Season 1 extra tickets in `prize-rules.ts`: $5 / $12 / $25). The $5 price and the 20-ticket minimum are the planned 1 hour series. The landing says those shifts are soon until a pool is open. A devnet series can be a shorter, cheaper test when one is registered.
 
-Read: [`client/js/trips.js`](client/js/trips.js) · [`ride-tier.ts`](server/src/domain/rides/ride-tier.ts) · [`ride-rules.ts`](server/src/domain/rides/ride-rules.ts)
+Read: [`client/js/trips.js`](client/js/trips.js) · [`ride-tier.ts`](server/src/domain/rides/ride-tier.ts) · [`ride-rules.ts`](server/src/domain/rides/ride-rules.ts) · [`prize-rules.ts`](server/src/domain/prize/prize-rules.ts)
 
 ## How a finish is checked
 
@@ -384,7 +384,7 @@ flowchart LR
 
 Run the browser matrix with `bash .claude/skills/run-tests/e2e.sh traffic`. Shared-kernel parity also uses captured browser fixtures across five routes and three trips. See the [whitepaper source and diagrams](landing/whitepaper.html).
 
-Paid boards require verified verdicts only when `VERDICT_ENFORCE` is on; production defaults to shadow mode. Prize settlement still requires a verified verdict. Devnet program v3 gates prizes with per-driver attestations; source program v4 uses a reviewed winners root for prizes and per-ride attestations for pledges. The program enforces settlement, not driving physics.
+Paid boards require verified verdicts only when `VERDICT_ENFORCE` is on; production defaults to shadow mode. Prize settlement still requires a verified verdict. Devnet program v3 gates prizes with per-driver attestations; source program v4/v5 uses a reviewed winners root for prizes and per-ride attestations for pledges. The program enforces settlement, not driving physics.
 
 Codes and implementation: [anti-cheat explainer](docs/anti-cheat/index.html) · [verdict rules](server/src/domain/verdict/verdict-rules.ts) · [frame verifier](server/src/domain/verdict/traffic-proof.ts) · [replay engine](server/src/domain/verdict/replay-engine.ts). Recordings are kept for 90 days; flagged and never-judged completed rides are retained.
 
@@ -546,7 +546,7 @@ flowchart TB
 4. **On-Chain Escrow Mirror, Unified Skill Pools, Pledges & Solana Actions**: `ProgramWatcher`, webhook ingestion, and `FinalityService` mirror on-chain pool accounts and settle ticket purchases and per-km sponsor pledges with fork/drop safety. Exposes Solana Pay QR transactions and CORS-enabled Solana Actions / Blinks (`/actions.json`, `/api/actions/*`), automated cranking (`PoolCrankScheduler`), Merkle-root/attestation prize settlement (`PoolPayoutScheduler`), and unified 7-week season / weekly skill contest calculation (`85 / 5 / 10` split, `< 50%` player-derived share).
 5. **`TEN4` Tokenomics, Convoy Referrals, Garage & Promo Codes**: Credits capped `TEN4` checkpoints (`20% / 50% / 100%`) across halving eras on verified paid rides (`HonkMintService`), verifies on-chain `TEN4` burns for cab visuals and stream effects, manages `?ref=` Convoy referral links (ride gifts, gift paints, capped spectator-tip sharing, and `100 / 50 TEN4` milestones from the `4M` vault), persists all-or-nothing 9-slot Garage loadouts, and processes single-effect promo codes (ride grants or pool tickets).
 6. **Live Spectating, Replays, Donations & Cached Statistics**: Serves ~25 s delayed live streams and multi-speed replays (`1×`, `4×`, `16×`) from incremental batch cursors, rate-limited CB chat, driver mutes, Solana Pay tips, advisory-locked spectator road/weather/time effects (disabled on ranked runs), and 15 s cached global/player/daily statistics.
-7. **Soulbound Badge cNFTs & 3D Entity Editor**: Evaluates 45 achievement definitions (including 38 soulbound Metaplex Bubblegum v2 compressed NFTs across 10 ladders, including `TEN4` and `Convoy`) and mints them after a review delay (`AchievementMintScheduler`). Serves ETag-cached 3D entity bundles (`/api/entities/bundle`), append-only entity revisions, wallet-signed publishing, and PostgreSQL-queued AI generation jobs (`EditorJobRunnerService`).
+7. **Soulbound Badge cNFTs & 3D Entity Editor**: Evaluates 45 achievement definitions (44 earnable soulbound Metaplex Bubblegum v2 compressed NFTs across 12 ladders — 34 on devnet Arweave across 9 ladders + 6 Medium/Hard mastery + 4 Convoy referral — plus the Top-20 podium placeholder) and mints them after a review delay (`AchievementMintScheduler`). Serves ETag-cached 3D entity bundles (`/api/entities/bundle`), append-only entity revisions, wallet-signed publishing, and PostgreSQL-queued AI generation jobs (`EditorJobRunnerService`).
 
 ## Repository
 

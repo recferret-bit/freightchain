@@ -1,8 +1,8 @@
 # Freight Chain
 
-> Freight Chain is a browser truck-driving game in the spirit of Desert Bus, with server-timed shifts and escrowed prize pools on Solana. It is a devnet build: nothing on it is real money. SOL is the ticket and the prize. TEN4 is a separate capped coin minted by verified paid checkpoints. HONK is the in-game verb.
+> Freight Chain is a browser truck-driving game in the spirit of Desert Bus, with server-timed shifts and escrowed prize pools on Solana. It is a devnet build: nothing on it is real money. SOL / USDC funds the pools (85% weekly boards · 5% rollover · 10% Season Final, with player-derived funding capped < 50%). TEN4 is a separate capped coin (100,000,000 fixed supply) minted by verified paid checkpoints. HONK is the in-game verb.
 
-You drive a long-hood semi with a manual gearbox, a cold engine, traffic and nights down a road that never ends. A shift takes real time and cannot be skipped or sped up. The server keeps the clock, records the drive and judges the finish. Free rides need only a wallet sign-in (a signed message, not a transaction); paid shifts are tickets into an escrowed prize pool. Anyone can watch a ride live, about 25 seconds behind, or replay a finished one.
+You drive a long-hood semi with a manual gearbox, a cold engine, traffic and nights down a road that never ends. A shift takes real time and cannot be skipped or sped up. The server keeps the clock, records the drive and judges the finish. Training rides are free and unlimited, and every eligible wallet receives one weekly granted paid ticket (AMOE). Ahead of the 7-week Season 1 mainnet (Jan 11 – Feb 28, 2027), the Nov 2–17, 2026 Devnet Pre-season awards a $500 USDC organizer-funded prize pool on the 1 h board plus 100,000 TEN4 airdrop points. Anyone can watch a ride live, about 25 seconds behind, or replay a finished one.
 
 What is live, built or only planned changes week to week – the whitepaper's "Status at a glance" table is the current answer.
 
