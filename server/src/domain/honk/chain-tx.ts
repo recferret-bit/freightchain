@@ -1,4 +1,4 @@
-/** A confirmed HONK program transaction, reduced to the burns and part mints a confirm will accept. The adapter fills this; handlers do not parse bytes. */
+/** A confirmed TEN4 (`freightchain_honk`) program transaction, reduced to the burns and part mints a confirm will accept. The adapter fills this; handlers do not parse bytes. */
 
 export interface HonkChainBurn {
   amount: bigint;
@@ -10,7 +10,7 @@ export interface HonkChainPart {
   item: string;
   buyer: string;
   mint: string;
-  /** HONK this buy burned, base units. */
+  /** TEN4 this buy burned, base units. */
   burned: bigint;
   frozen: boolean;
   /** Whole supply of the new mint. */
@@ -26,7 +26,7 @@ export interface HonkChainTx {
   parts: readonly HonkChainPart[];
 }
 
-/** The wallet signed, and its program burns of HONK add up to exactly `amount`. */
+/** The wallet signed, and its program burns of TEN4 add up to exactly `amount`. */
 export function confirmsHonkBurn(tx: HonkChainTx, wallet: string, amount: bigint): boolean {
   if (!tx.signers.includes(wallet)) return false;
   const burned = tx.burns.filter((b) => b.authority === wallet).reduce((sum, b) => sum + b.amount, 0n);

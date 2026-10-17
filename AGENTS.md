@@ -27,7 +27,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | garage, promo codes | `garage-promo.md` |
 | money, escrowed pools, the program toolchain | `escrow.md` |
 | achievement tiers, the soulbound badge cNFTs, mint job + art | `achievements.md` |
-| HONK: capped mint, checkpoints, the burn, cab visuals | `honk.md` |
+| TEN4 (HONK verb): capped mint, checkpoints, the burn, cab visuals | `honk.md` |
 | product analytics (PostHog) | `analytics.md` |
 | promo videos + sound | `media.md` |
 | landing, whitepaper, app icon | `landing.md` |
@@ -83,7 +83,7 @@ AGY: use Argon (Pro) for heavy reasoning and planning (via `/boost` or subagents
 - Client (`client/`): `npm run check` (lint + bundle + headless test); refactor gate `npm run trace:save` / `trace:diff`; real Chrome `node tools/e2e-chrome.mjs` (`PORT=` if busy) – look at the screenshots.
 - Root: `npm run check` (client + landing + server unit + media) AND `npm run server:integration` for server changes; real-Chrome suites: `bash .claude/skills/run-tests/e2e.sh`.
 - Everything else (live server e2e, replays, lobby): `docs/agents/verifying.md`.
-- HONK on a local validator (mint, swap, burn, soulbound part, paid ride): `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token half). The full coin suite, including a verified ride: `bash .claude/skills/honk-suite/run.sh`.
+- TEN4 on a local validator (mint, swap, burn, soulbound part, paid ride): `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token half). The full coin suite, including a verified ride: `bash .claude/skills/honk-suite/run.sh`.
 
 ## Style
 

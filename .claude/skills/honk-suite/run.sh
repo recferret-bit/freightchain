@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full HONK coin suite on one local validator. Does not deploy.
+# Full TEN4 coin suite on one local validator. Does not deploy.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/server"

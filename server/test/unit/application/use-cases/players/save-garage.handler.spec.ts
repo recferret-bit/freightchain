@@ -32,7 +32,7 @@ describe('SaveGarageHandler', () => {
 
   it('all or nothing: one part that is not owned refuses the save (409) and none of the others is written', async () => {
     const { ctx, save } = await setup();
-    await expect(save({ wheel: 'gold', gearbox: 'racing' })).rejects.toMatchObject({ errorCode: 'not_owned', statusCode: 409 });
+    await expect(save({ wheel: 'gold', gearbox: 'racing' })).rejects.toMatchObject({ errorCode: 'not_owned', statusCode: 409, message: 'you do not own gearbox: racing – burn TEN4 in the garage to mint it' });
     expect(await ctx.cosmetics.listEquipped('w')).toEqual({});
     expect(ctx.analytics.named('garage_saved')).toEqual([]);
   });

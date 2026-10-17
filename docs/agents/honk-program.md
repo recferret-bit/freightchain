@@ -1,4 +1,4 @@
-# HONK program (local)
+# TEN4 program (`freightchain_honk`, local)
 
 A second Anchor program in `programs/`, crate `freightchain_honk`. It is not the prize-pool program and it is not deployed. Devnet and mainnet stay untouched. The game ledger is still the ride mint and the cab entitlement. This program is the coin: one mint, one pool, burns, and a soulbound part.
 
@@ -32,18 +32,18 @@ PDA seeds: `config`, `authority`, `honk-mint`, `vault`, `pool`, `lp-mint`, `lp-l
 
 - Fee 25 bps. `net = sol_in * 9975 / 10000`. `out = honk_reserve * net / (sol_reserve + net)`. The reserve adds the full input, so the fee stays in the pool. `sol_in == 0` fails with `ZeroAmount`. `out == 0` fails with `ZeroOut`.
 - `out < min_out` fails with `Slippage` (6004) and moves nothing. `min_out == 0` is allowed and means any positive out. `out == min_out` lands.
-- Moves SOL onto the pool and HONK out of the vault to the user's ATA.
+- Moves SOL onto the pool and TEN4 out of the vault to the user's ATA.
 - Accounts: user (signer, writable), pool, honk_mint, vault, user_honk (init if needed), token_program, system_program, associated_token_program.
 
 `swap_honk_for_sol(honk_in: u64, min_sol_out: u64)`
 
 - The other side, same fee: `net = honk_in * 9975 / 10000`, `sol_out = sol_reserve * net / (honk_reserve + net)`. `honk_in == 0` is `ZeroAmount`. `sol_out == 0` is `ZeroOut`. `sol_out < min_sol_out` is `Slippage` and moves nothing.
-- HONK moves into the vault. SOL moves off the pool account by debiting its lamports. The pool account is not a system account, so this is not a system transfer. Rent stays on the pool.
+- TEN4 moves into the vault. SOL moves off the pool account by debiting its lamports. The pool account is not a system account, so this is not a system transfer. Rent stays on the pool.
 - Accounts: user (signer, writable), pool, honk_mint, vault, user_honk, token_program.
 
 `burn(amount: u64)`
 
-- The user burns `amount` of their own HONK. `amount == 0` fails. Supply falls. The pool reserves do not move.
+- The user burns `amount` of their own TEN4. `amount == 0` fails. Supply falls. The pool reserves do not move.
 - Accounts: user (signer, writable), honk_mint, user_honk, token_program.
 
 `mint_ride(ride_id: [u8; 16], tier: u8, bands: u8, day_index: i64)`

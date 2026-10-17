@@ -47,7 +47,7 @@ export interface HonkCatalogEntry { slot: CosmeticSlot; item: string; name: stri
 const visualId = (hasher: HasherPort, wallet: string, slot: string, item: string): string => hasher.sha256Hex(`${wallet}|${slot}|${item}`).slice(0, 32);
 const visualName = (slot: string, item: string): string => `${slot} ${item}`;
 
-/** Burns 1 HONK and posts the chat line HONK. The line is inserted after the debit; a refused line is refunded. No effect on the truck. */
+/** Burns 1 TEN4 and posts the chat line HONK. The line is inserted after the debit; a refused line is refunded. No effect on the truck. */
 @CommandHandler(BurnHonkCommand)
 export class BurnHonkHandler implements ICommandHandler<BurnHonkCommand, HonkBurnResult> {
   private readonly logger = new Logger(BurnHonkHandler.name);
@@ -92,7 +92,7 @@ export class BurnHonkHandler implements ICommandHandler<BurnHonkCommand, HonkBur
   }
 }
 
-/** Burns HONK for one cab visual and unlocks it. When a program id is set, the wallet's buy_part must already be confirmed; a miss does not debit. */
+/** Burns TEN4 for one cab visual and unlocks it. When a program id is set, the wallet's buy_part must already be confirmed; a miss does not debit. */
 @CommandHandler(MintHonkVisualCommand)
 export class MintHonkVisualHandler implements ICommandHandler<MintHonkVisualCommand, HonkVisualResult> {
   constructor(

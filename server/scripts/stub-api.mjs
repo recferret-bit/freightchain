@@ -119,7 +119,7 @@ const R = [
     const r = { id: `stub-${rides.size + 1}`, tier, seed: 1, status: 'created', minSeconds: lv ? lv.seconds : 300, completeDist: lv ? lv.completeDist : 4200, trip: lv ? lv.trip : tier, level: lv?.level ?? null, route: lv?.route ?? 'route66', startHour: 12, tutorial: !!b.tutorial, assist: !!b.assist, timeScale: 1, priceUsd: 0, lamports: 0, quoteExpiresAt: null, roundId: 1, poolId: null, driveSeconds: 0, distance: 0, reason: null };
     rides.set(r.id, r); return { status: 201, body: r };
   }],
-  ['POST', /^promo\/redeem$/, (m, b) => {   // STUB = 2 tickets · RIDES = +3 free rides (above the cap). A colour code is refused – cab parts are HONK burns.
+  ['POST', /^promo\/redeem$/, (m, b) => {   // STUB = 2 tickets · RIDES = +3 free rides (above the cap). A colour code is refused – cab parts are TEN4 burns.
     const code = String(b.code).replace(/\s+/g, '').toUpperCase();
     if (code === 'RIDES') { freeRides += 3; redeemed.unshift({ code, label: '3 free rides', description: 'Three extra rides', kind: 'free_rides', at: NOW() }); return { body: { kind: 'free_rides', code, label: '3 free rides', added: 3, freeRides } }; }
     if (code === 'GOLD' || code === 'BLUE' || code === 'RACING') return problem(409, 'visuals_are_honk', 'cab visuals are minted by burning TEN4');
@@ -133,7 +133,7 @@ const R = [
   ['GET', /^wardrobe$/, () => ({ body: wardrobeDto() })],
   ['POST', /^wardrobe\/equip$/, (m, b) => {
     if (!owned[b.slot]) return problem(400, 'bad_request', 'no such slot');
-    if (!owned[b.slot].includes(b.item)) return problem(409, 'not_owned', 'you do not own this item – burn HONK in the garage to mint it');
+    if (!owned[b.slot].includes(b.item)) return problem(409, 'not_owned', 'you do not own this item – burn TEN4 in the garage to mint it');
     worn[b.slot] = b.item; return { body: wardrobeDto() };
   }],
   ['GET', /^garage$/, () => ({ body: garageDto() })],
@@ -141,7 +141,7 @@ const R = [
     const picks = Object.entries(b.loadout ?? {});
     if (!picks.length || picks.some(([slot]) => !CATALOG[slot])) return problem(400, 'bad_cosmetic', 'pick at least one known part');
     if (picks.some(([slot, item]) => !CATALOG[slot].includes(item))) return problem(400, 'bad_cosmetic', 'no such part');
-    if (picks.some(([slot, item]) => !owned[slot].includes(item))) return problem(409, 'not_owned', 'you do not own that part – burn HONK in the garage to mint it');
+    if (picks.some(([slot, item]) => !owned[slot].includes(item))) return problem(409, 'not_owned', 'you do not own that part – burn TEN4 in the garage to mint it');
     for (const [slot, item] of picks) worn[slot] = item;
     return { body: garageDto() };
   }],

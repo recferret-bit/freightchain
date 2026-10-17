@@ -1,7 +1,7 @@
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { COSMETIC_SLOTS, defaultCosmetic, isCosmeticItem } from '../../../../domain/economy/cosmetics.js';
 import { toGarageDto, type GarageDto } from '../../../../domain/economy/garage.dto.js';
-import { formatHonk } from '../../../../domain/honk/tokenomics.js';
+import { formatHonk, TOKEN_SYMBOL } from '../../../../domain/honk/tokenomics.js';
 import type { HonkPartSeed } from '../../../../domain/honk/parts-catalog.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../../../../domain/shared/errors.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
@@ -40,7 +40,7 @@ export class SaveGarageHandler implements ICommandHandler<SaveGarageCommand, Gar
       const unlocked = await this.cosmetics.listUnlocked(wallet, tx);
       for (const [slot, item] of picks) {
         if (!isCosmeticItem(slot, item)) throw new BadRequestError(`no such ${slot}: ${item}`, 'bad_cosmetic');
-        if (item !== defaultCosmetic(slot) && !unlocked.some((u) => u.slot === slot && u.item === item)) throw new ConflictError(`you do not own ${slot}: ${item} – burn HONK in the garage to mint it`, 'not_owned');
+        if (item !== defaultCosmetic(slot) && !unlocked.some((u) => u.slot === slot && u.item === item)) throw new ConflictError(`you do not own ${slot}: ${item} – burn ${TOKEN_SYMBOL} in the garage to mint it`, 'not_owned');
       }
       for (const [slot, item] of picks) await this.cosmetics.equip(wallet, slot, item, tx);
       return toGarageDto(unlocked, await this.cosmetics.listEquipped(wallet, tx), copy);

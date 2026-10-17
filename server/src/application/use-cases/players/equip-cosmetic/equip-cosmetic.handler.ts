@@ -1,6 +1,7 @@
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { defaultCosmetic, isCosmeticItem } from '../../../../domain/economy/cosmetics.js';
 import { toWardrobeDto, type WardrobeDto } from '../../../../domain/economy/wardrobe.dto.js';
+import { TOKEN_SYMBOL } from '../../../../domain/honk/tokenomics.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../../../../domain/shared/errors.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
@@ -25,7 +26,7 @@ export class EquipCosmeticHandler implements ICommandHandler<EquipCosmeticComman
     if (!isCosmeticItem(slot, item)) throw new BadRequestError(`no such ${slot}: ${item}`, 'bad_cosmetic');
     const dto = await this.transactions.run(async (tx) => {   // under the player row lock like every wallet change: a racing redemption (which also wears its item) cannot be silently undone
       if (!(await this.players.findByWalletForUpdate(wallet, tx))) throw new NotFoundError('player not found');
-      if (item !== defaultCosmetic(slot) && !(await this.cosmetics.has(wallet, slot, item, tx))) throw new ConflictError('you do not own this item – burn HONK in the garage to mint it', 'not_owned');
+      if (item !== defaultCosmetic(slot) && !(await this.cosmetics.has(wallet, slot, item, tx))) throw new ConflictError(`you do not own this item – burn ${TOKEN_SYMBOL} in the garage to mint it`, 'not_owned');
       await this.cosmetics.equip(wallet, slot, item, tx);
       return toWardrobeDto(await this.cosmetics.listUnlocked(wallet, tx), await this.cosmetics.listEquipped(wallet, tx));
     });

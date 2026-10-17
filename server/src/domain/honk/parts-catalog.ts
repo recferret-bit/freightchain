@@ -1,6 +1,6 @@
 import type { CosmeticSlot } from '../economy/cosmetics.js';
 
-/* Cab parts a HONK burn can buy. Seeded into economy.HonkPart; the mint charges that row. */
+/* Cab parts a TEN4 burn can buy. Seeded into economy.HonkPart; the mint charges that row. */
 
 export interface HonkPartSeed {
   slot: CosmeticSlot;
@@ -13,9 +13,9 @@ export interface HonkPartSeed {
 }
 
 const UNIT = 1_000_000n;
-/** 260 HONK. Same number as visualPrice('gold'); the catalog test keeps them equal. */
+/** 260 TEN4. Same number as visualPrice('gold'); the catalog test keeps them equal. */
 const GOLD = 260n * UNIT;
-/** 65 HONK. Every unlockable that is not gold. */
+/** 65 TEN4. Every unlockable that is not gold. */
 const PLAIN = 65n * UNIT;
 
 type Slot = HonkPartSeed['slot'];

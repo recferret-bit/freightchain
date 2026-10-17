@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# HONK on a LOCAL validator: program GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx (swap, burn, frozen part), then (unless SCENARIO=chain)
+# TEN4 on a LOCAL validator: program GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx (swap, burn, frozen part), then (unless SCENARIO=chain)
 # a paid ride on a throwaway database. The pool is that program's, on this validator only. No devnet, no ~/.config/solana/id.json.
 #   bash .claude/skills/honk-localnet/run.sh
 #   SCENARIO=chain   token half only (no PostgreSQL)
@@ -44,7 +44,7 @@ pub() { solana-keygen pubkey "$TMP/keys/$1.json"; }
 RPC_PORT="$(free_pair)"; FAUCET_PORT="$(free_port)"; GOSSIP_PORT="$(free_port)"
 DYN=$(( RPC_PORT < 40000 ? RPC_PORT + 2000 : RPC_PORT - 2000 ))
 RPC="http://127.0.0.1:$RPC_PORT"
-# --mint is the payer, not the HONK mint: that account is funded at genesis, so it cannot also be created as the SPL mint.
+# --mint is the payer, not the TEN4 mint: that account is funded at genesis, so it cannot also be created as the SPL mint.
 solana-test-validator --ledger "$TMP/ledger" --reset --quiet --bind-address 127.0.0.1 --rpc-port "$RPC_PORT" --faucet-port "$FAUCET_PORT" \
   --gossip-port "$GOSSIP_PORT" --dynamic-port-range "$DYN-$((DYN + 30))" --mint "$(pub payer)" \
   --upgradeable-program GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx "$SO" "$TMP/keys/payer.json" \

@@ -27,7 +27,7 @@ describe('EquipCosmeticHandler', () => {
     const ctx = unitContext(), h = new EquipCosmeticHandler(ctx.cosmetics, ctx.players, ctx.transactions, ctx.clock, ctx.analytics);
     await expect(h.execute(new EquipCosmeticCommand('ghost', 'wheel', 'classic'))).rejects.toMatchObject({ statusCode: 404 });
     await ctx.player('w');
-    await expect(h.execute(new EquipCosmeticCommand('w', 'wheel', 'gold'))).rejects.toMatchObject({ errorCode: 'not_owned', statusCode: 409 });
+    await expect(h.execute(new EquipCosmeticCommand('w', 'wheel', 'gold'))).rejects.toMatchObject({ errorCode: 'not_owned', statusCode: 409, message: 'you do not own this item – burn TEN4 in the garage to mint it' });
     await expect(h.execute(new EquipCosmeticCommand('w', 'wheel', 'racing'))).rejects.toMatchObject({ errorCode: 'bad_cosmetic', statusCode: 400 });
     expect(await ctx.cosmetics.listEquipped('w')).toEqual({});
   });

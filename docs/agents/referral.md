@@ -24,4 +24,4 @@ No second level. No referral token. No share of a promo ticket's SOL. No bind af
 
 ## Merge validation
 
-The merged catalogue has 38 badges across 10 ladders, preserving HONK alongside Convoy. The garage has nine slots and 48 non-default parts: 45 HONK parts and three referral gift paints. The merged source needs a new verifiable program build and pin before any deployment (`docs/escrow-open-items.md`).
+The merged catalogue has 38 badges across 10 ladders, preserving TEN4 alongside Convoy. The garage has nine slots and 48 non-default parts: 45 TEN4 parts and three referral gift paints. The merged source needs a new verifiable program build and pin before any deployment (`docs/escrow-open-items.md`).

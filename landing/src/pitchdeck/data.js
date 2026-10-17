@@ -8,7 +8,7 @@ const shot = (src, cls = '', alt = '') => `<figure class="shot ${cls}"><img data
 const clip = (src, cls = '') => `<figure class="shot clip ${cls}"><video data-src="${A}${src}" muted playsinline loop preload="none"></video></figure>`;   // promo-clip.mp4 = the promo's 16–24 s, cut once
 const pts = items => `<ul class="pts">${items.map(i => Array.isArray(i) ? `<li class="${i[1]}">${i[0]}</li>` : `<li>${i}</li>`).join('')}</ul>`;   // [html, class] for a bullet that does something
 
-/* slide 5 – the on-chain systems. `why` / `fit` show when a card is hovered or tapped; the statuses are honest (HONK is a spec, the pool is devnet). */
+/* slide 5 – the on-chain systems. `why` / `fit` show when a card is hovered or tapped; the statuses are honest (TEN4 is a spec, the pool is devnet). */
 const ACH_ICON = `<div class="ach"><div class="ach-stage"></div><div class="ach-cap"><em class="at"></em><b class="an"></b><span class="ad"></span></div></div>`;
 const CHAIN = [
   { c: '#14f195', st: 'LIVE LOOKUP', h: 'SNS', big: 'YOU.SOL', p: 'Your Solana Name Service name, when you have one, shows on your profile instead of a wallet string.', small: 'Chain read · 24 h cache',
