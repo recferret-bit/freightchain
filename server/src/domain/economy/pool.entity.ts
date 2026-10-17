@@ -39,7 +39,10 @@ export class Pool {
     return Pool.register({
       id: state.poolId, address: state.address, tier, label: existing?.p.label ?? `${tier.toUpperCase()} · pool ${state.poolId}`, priceLamports: state.priceLamports,
       minTickets: state.minTickets, maxTickets: state.maxTickets, maxPerWallet: state.maxPerWallet, prepDeadline: state.prepDeadline, playDeadline: state.playDeadline, payoutAt: state.payoutAt,
-      prizeBps: state.prizeBps, seedBps: state.seedBps, feeBps: state.feeBps, ...(state.referralBps !== undefined ? { referralBps: state.referralBps } : {}), feeTreasury: state.feeTreasury, seedTreasury: state.seedTreasury, status: state.status,
+      prizeBps: state.prizeBps, seedBps: state.seedBps, feeBps: state.feeBps, ...(state.referralBps !== undefined ? { referralBps: state.referralBps } : {}),
+      ...(state.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: state.maxPlayerShareBps } : {}),
+      ...(state.paidTicketsEnabled !== undefined ? { paidTicketsEnabled: state.paidTicketsEnabled } : {}),
+      feeTreasury: state.feeTreasury, seedTreasury: state.seedTreasury, status: state.status,
       ticketsSold: state.ticketsSold, buyers: state.buyers, vaultLamports: state.escrowLamports, sponsored: state.sponsored, roundId: existing?.p.roundId ?? null,
       rideSeed: resolvedRideSeed, createdAt: state.createdAt, syncedAt: now,
       payoutState: existing?.p.payoutState ?? 'pending', payoutNote: existing?.p.payoutNote ?? null, hold: existing?.p.hold ?? null,
@@ -58,6 +61,7 @@ export class Pool {
     const bad = (why: string) => { throw new BadRequestError(`pool ${props.id}: ${why}`, 'bad_pool'); };
     if (!Number.isInteger(props.id) || props.id < 0 || props.id > 0xffff_ffff) bad('the id is a u32');
     if (props.prizeBps + props.seedBps + props.feeBps + (props.referralBps ?? 0) !== 10_000) bad('the split must add up to 10 000 bps');
+    if (props.maxPlayerShareBps !== undefined && (!Number.isInteger(props.maxPlayerShareBps) || props.maxPlayerShareBps < 0 || props.maxPlayerShareBps > 4999)) bad('player share must be under 5000 bps');
     if (!Number.isInteger(props.minTickets) || props.minTickets < 1) bad('the minimum is at least 1 ticket');
     if (!Number.isInteger(props.maxPerWallet) || props.maxPerWallet < 1) bad('at least 1 ticket per wallet');
     if (props.maxTickets !== 0 && props.maxTickets < props.minTickets) bad('the maximum is below the minimum');
@@ -130,6 +134,7 @@ export class Pool {
   whyNotSellable(now: Date, qty: number, walletBought: number): string | null {
     if (!Number.isInteger(qty) || qty < 1) return 'quantity must be a whole number of at least 1';
     if (this.p.status !== 'open' && this.p.status !== 'active') return `this pool is ${this.p.status}`;
+    if (this.p.paidTicketsEnabled === false) return 'paid tickets are disabled for this pool';
     if (now.getTime() >= this.p.prepDeadline.getTime()) return 'ticket sales for this pool are closed';
     if (this.p.maxTickets > 0 && this.p.ticketsSold + qty > this.p.maxTickets) return 'this pool is sold out';
     if (walletBought + qty > this.p.maxPerWallet) return `at most ${this.p.maxPerWallet} tickets per wallet in this pool`;

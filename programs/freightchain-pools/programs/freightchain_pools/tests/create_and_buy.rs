@@ -38,8 +38,11 @@ fn create_pool_ok_funds_vault_and_emits() {
 #[test]
 fn create_pool_validation() {
     let mut e = Env::new();
-    assert_err!(e.try_create_pool(p(|x| x.prize_bps = 6001)), PoolError::BpsSum);
-    assert_err!(e.try_create_pool(p(|x| x.fee_bps = 1499)), PoolError::BpsSum);
+    let a = e.authority_kp();
+    // the split is Config's, snapshotted at create – a bad sum never reaches a pool
+    assert_err!(e.set_pool_rules(&a, true, 6001, 2500, 1500, 4999, 0), PoolError::BpsSum);
+    assert_err!(e.set_pool_rules(&a, true, 6000, 2500, 1499, 4999, 0), PoolError::BpsSum);
+    assert_err!(e.set_pool_rules(&a, true, 6000, 2500, 1500, 5000, 0), PoolError::PlayerShareCeiling);
     assert_err!(e.try_create_pool(p(|x| x.prep_deadline = T0)), PoolError::InvalidParams);
     assert_err!(e.try_create_pool(p(|x| x.play_deadline = PREP - 1)), PoolError::InvalidParams);
     // the review window cannot end before the rides do
@@ -304,4 +307,35 @@ fn a_skipped_target_still_inside_the_window_waits_instead_of_re_arming() {
     e.set_slot_hashes(&[(target - 1, [3; 32]), (target - 2, [4; 32])]);
     assert_err!(e.seal_road(id), PoolError::TooEarly);
     assert_eq!(e.pool(id).seal_slot, target, "not re-armed");
+}
+
+/// v5: initialize stores the plan defaults. `set_pool_rules` changes only the NEXT pool. Paid tickets off rejects `buy_ticket`; `sponsor` still funds.
+#[test]
+fn pool_rules_are_snapshotted_and_paid_tickets_can_be_switched_off() {
+    let mut e = Env::uninitialized(0);
+    let upgrader = clone_kp(&e.authority);
+    e.initialize(&upgrader, e.authority.pubkey()).unwrap();
+    e.set_floors(&upgrader, Some(0), Some(0)).unwrap();
+    let c = e.config();
+    assert_eq!((c.paid_tickets_enabled, c.prize_bps, c.seed_bps, c.fee_bps, c.max_player_share_bps, c.max_tickets), (true, 8_500, 500, 1_000, 4_740, 0));
+    let id = e.create_pool(default_params());
+    assert_eq!((e.pool(id).prize_bps, e.pool(id).seed_bps, e.pool(id).fee_bps, e.pool(id).max_player_share_bps), (8_500, 500, 1_000, 4_740));
+    assert!(e.pool(id).paid_tickets_enabled);
+    let a = e.authority_kp();
+    e.set_pool_rules(&a, false, 7_000, 2_000, 1_000, 4_999, 2).unwrap();
+    assert_err!(e.try_create_pool(later(&e, default_params())), PoolError::InvalidParams); // tightened max 2 < min_tickets 3
+    e.set_pool_rules(&a, false, 7_000, 2_000, 1_000, 4_999, 4).unwrap();
+    assert_eq!(e.pool(id).prize_bps, 8_500, "an open pool keeps the rules it opened with");
+    assert!(e.pool(id).paid_tickets_enabled);
+    let b = funded(&mut e.svm, 10 * SOL);
+    e.buy(id, &b, 1).unwrap();
+    let id2 = e.create_pool(later(&e, default_params()));
+    let p2 = e.pool(id2);
+    assert_eq!((p2.paid_tickets_enabled, p2.prize_bps, p2.seed_bps, p2.fee_bps, p2.max_player_share_bps, p2.max_tickets), (false, 7_000, 2_000, 1_000, 4_999, 4));
+    let b2 = funded(&mut e.svm, 10 * SOL);
+    assert_err!(e.buy(id2, &b2, 1), PoolError::PaidTicketsDisabled);
+    let sp = funded(&mut e.svm, 10 * SOL);
+    let i = e.sponsor_ix(id2, &sp.pubkey(), PRICE);
+    e.send(&[i], &sp, &[]).unwrap();
+    assert_eq!(e.pool(id2).sponsored, PRICE);
 }

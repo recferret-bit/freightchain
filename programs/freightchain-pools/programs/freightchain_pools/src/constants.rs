@@ -49,6 +49,17 @@ pub const DEFAULT_MIN_REVIEW_SECS: i64 = 3_600;
 /// the play window after the sale: no sale and no new ride after the sale end, so the shifts on the road need this long to finish (the last call).
 pub const DEFAULT_MIN_FINISH_SECS: i64 = 10_800;
 
+/// v5 defaults of the pool rules (`initialize` / `set_pool_rules`). The plan's weekly contest is 85% prizes / 5% carry / 10% final.
+/// `fee_bps` is that 10% leg: it is paid to `fee_treasury` (minus the snapshotted platform cut). Point `fee_treasury` at the final
+/// accumulator and set `platform_fee_bps` to 0 if the 10% must not be skimmed. Board shares 25/30/45 stay off chain.
+pub const DEFAULT_PRIZE_BPS: u16 = 8_500;
+pub const DEFAULT_SEED_BPS: u16 = 500;
+pub const DEFAULT_FEE_BPS: u16 = 1_000;
+/// Plan figure: player-derived money is at most 47.4% of any pool. The program refuses a setting of 5_000 or more.
+pub const DEFAULT_MAX_PLAYER_SHARE_BPS: u16 = 4_740;
+/// Highest `max_player_share_bps` the program will store. 5_000 and above are rejected.
+pub const MAX_PLAYER_SHARE_BPS: u16 = 4_999;
+
 /// A pool's winners root covers at most this many ranks (`Pool.paid_mask` is a u64).
 pub const MAX_WINNERS: u8 = 64;
 /// The leaf of a winners root: SHA-256(0x00 || WINNER_LEAF_TAG || pool_id LE u32 || rank u8 || wallet || lamports LE u64); nodes SHA-256(0x01 || l || r).

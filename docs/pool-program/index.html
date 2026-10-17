@@ -56,14 +56,15 @@
     <h2>Eight account types and a vault</h2>
     <p class="col"><b>v2 – the pool day.</b> Each pool has a sale window (to <code>prep_deadline</code>, closed for Open and Active pools alike), a play window (to <code>play_deadline</code>) and a review window (to <code>payout_at</code>): no prize is paid and no Active pool closed before <code>payout_at</code>, by anyone. The admin writes one <code>Series</code> per tier and anyone opens the next pool from it on a fixed grid – the 1 h tier opens one a day (24 h sale, 2 h more rides, 48 h review). A payout key named by the admin may only <code>pay_prize</code> and <code>close_pool</code>. v2 accounts are larger, so v2 deploys under a fresh program id.</p>
     <p class="col"><b>v3 and v4.</b> v3 added per-km pledges and the road seed on chain (in-place upgrade). v4, the security review's fixes (in place again, settle-first), replaces "the payout key pays" with a <b>winners list</b>: the payout key or the admin commits a Merkle root of (rank, wallet, lamports) at or after the play deadline (<code>commit_winners</code>); it is public for the review lock, <code>pay_from = max(payout_at, committed_at + max(payout_at − play_deadline, min_review_secs))</code>; the admin can <code>veto_winners</code> before any rank is paid; then <b>anyone</b> pays each rank once with its proof. A pledge settles on the attestation of its own ride; a failed pool refunds every sponsor; the road seed is sealed from a slot after the pool opened (<code>seal_road</code>); <code>Config</code> carries two floors, <code>min_review_secs</code> (1 h) and <code>min_finish_secs</code> (3 h), which <code>create_pool</code> / <code>set_series</code> enforce and each pool snapshots with the platform fee. After the upgrade <code>migrate_config_v4</code> grows the Config once.</p>
+    <p class="col"><b>v5, not deployed.</b> The referral leg is gone. <code>set_pool_rules</code> (the admin) sets paid tickets on or off, the split (default 8500 / 500 / 1000), a player-share cap under 5000 bps (default 4740) and an optional ticket ceiling (0 = none). <code>create_pool</code> and <code>open_next_pool</code> snapshot those onto the pool, so a later change does not move an open pool. Ticket lamports above the cap are not in the prize base; at close they go to the seed treasury (<code>ticket_excess</code>). This is a fresh program id: Config 8+167, Series 8+132, Pool 8+362.</p>
     <p class="col">Every account is a PDA of this program, so its address follows from its seeds and nobody holds a private key for it. Pool fields other than <code>status</code> and the counters never change after <code>create_pool</code>. The vault's address is never stored; clients derive it.</p>
     <div class="tablewrap wide">
       <table>
         <thead><tr><th>Account</th><th>Seeds</th><th class="num">Size</th><th>Holds</th></tr></thead>
         <tbody>
-          <tr><th scope="row">Config</th><td><code>["config"]</code></td><td class="num">8 + 154</td><td><code>authority</code>, <code>platform_treasury</code>, <code>platform_fee_bps</code> u16, <code>pool_count</code> u32, <code>paused</code>, <code>bump</code>, <code>pending_authority</code> Option&lt;Pubkey&gt;, <code>payout_authority</code> Option&lt;Pubkey&gt; (the payout key), <code>min_review_secs</code> i64, <code>min_finish_secs</code> i64 (the floors, v4)</td></tr>
-          <tr><th scope="row">Series</th><td><code>["series", tier u8]</code></td><td class="num">8 + 134</td><td>One per tier: the rules every pool <code>open_next_pool</code> creates takes (<code>price_lamports</code>, min / max, <code>max_per_wallet</code>, the split, the treasuries), <code>sale_secs</code> (= cadence), <code>play_secs</code>, <code>verify_secs</code>, <code>enabled</code>, <code>next_open_at</code>, <code>pools_opened</code>, <code>last_pool_id</code>, <code>referral_bps</code> u16 (appended; 0 = no referral leg).</td></tr>
-          <tr><th scope="row">Pool</th><td><code>["pool", pool_id u32 LE]</code></td><td class="num">8 + 361</td><td>Rules: <code>tier</code>, <code>price_lamports</code>, <code>min_tickets</code>, <code>max_tickets</code> (0 = no cap), <code>max_per_wallet</code>, <code>prep_deadline</code>, <code>play_deadline</code>, <code>payout_at</code>, <code>prize_bps</code> / <code>seed_bps</code> / <code>fee_bps</code>, <code>fee_treasury</code>, <code>seed_treasury</code>, <code>authority</code> (creator record). Counters: <code>status</code>, <code>tickets_sold</code>, <code>buyers</code>, <code>sponsored</code>, <code>prizes_paid</code>, <code>refunded</code>. Plus <code>created_at</code>, <code>bump</code>, <code>vault_bump</code>. v3: <code>seed_commitment</code>, <code>seed_slot</code>, <code>seed_slot_hash</code>. v4: <code>seal_slot</code>, snapshots <code>platform_fee_bps</code> / <code>min_review_secs</code>, the winners (<code>winners_root</code>, <code>winners_total</code>, <code>winners_count</code>, <code>committed_at</code>, <code>pay_from</code>, <code>paid_mask</code>), <code>sponsor_refunded</code>, <code>open_pledges</code>, <code>referral_bps</code> u16 (appended after <code>min_review_secs</code>, so the status byte offset is unchanged; 0 = no referral leg).</td></tr>
+          <tr><th scope="row">Config</th><td><code>["config"]</code></td><td class="num">8 + 167</td><td><code>authority</code>, <code>platform_treasury</code>, <code>platform_fee_bps</code> u16, <code>pool_count</code> u32, <code>paused</code>, <code>bump</code>, <code>pending_authority</code> Option&lt;Pubkey&gt;, <code>payout_authority</code> Option&lt;Pubkey&gt; (the payout key), <code>min_review_secs</code> i64, <code>min_finish_secs</code> i64 (the floors, v4), v5: <code>paid_tickets_enabled</code>, <code>prize_bps</code> / <code>seed_bps</code> / <code>fee_bps</code>, <code>max_player_share_bps</code> u16, <code>max_tickets</code> u32 (0 = no extra cap)</td></tr>
+          <tr><th scope="row">Series</th><td><code>["series", tier u8]</code></td><td class="num">8 + 132</td><td>One per tier: schedule and price (<code>price_lamports</code>, min / max, <code>max_per_wallet</code>, the treasuries), <code>sale_secs</code> (= cadence), <code>play_secs</code>, <code>verify_secs</code>, <code>enabled</code>, <code>next_open_at</code>, <code>pools_opened</code>, <code>last_pool_id</code>. The bps copied at <code>set_series</code> are for inspection; <code>open_next_pool</code> snapshots live Config. No referral leg.</td></tr>
+          <tr><th scope="row">Pool</th><td><code>["pool", pool_id u32 LE]</code></td><td class="num">8 + 362</td><td>Rules: <code>tier</code>, <code>price_lamports</code>, <code>min_tickets</code>, <code>max_tickets</code> (0 = no cap), <code>max_per_wallet</code>, <code>prep_deadline</code>, <code>play_deadline</code>, <code>payout_at</code>, <code>prize_bps</code> / <code>seed_bps</code> / <code>fee_bps</code>, <code>fee_treasury</code>, <code>seed_treasury</code>, <code>authority</code> (creator record). Counters: <code>status</code>, <code>tickets_sold</code>, <code>buyers</code>, <code>sponsored</code>, <code>prizes_paid</code>, <code>refunded</code>. Plus <code>created_at</code>, <code>bump</code>, <code>vault_bump</code>. v3: <code>seed_commitment</code>, <code>seed_slot</code>, <code>seed_slot_hash</code>. v4: <code>seal_slot</code>, snapshots <code>platform_fee_bps</code> / <code>min_review_secs</code>, the winners (<code>winners_root</code>, <code>winners_total</code>, <code>winners_count</code>, <code>committed_at</code>, <code>pay_from</code>, <code>paid_mask</code>), <code>sponsor_refunded</code>, <code>open_pledges</code>, v5: <code>paid_tickets_enabled</code> and <code>max_player_share_bps</code> u16 appended after <code>min_review_secs</code> (the status byte offset is unchanged). No referral leg.</td></tr>
           <tr><th scope="row">Ticket</th><td><code>["ticket", pool, buyer]</code></td><td class="num">8 + 79</td><td><code>buyer</code>, <code>rent_payer</code>, <code>pool_id</code>, <code>qty</code> u16, <code>lamports</code> u64, <code>bump</code>. One per wallet per pool. A refunded ticket is a closed account, so there is no refunded flag.</td></tr>
           <tr><th scope="row">Pledge</th><td><code>["pledge", ride_id, sponsor]</code></td><td class="num">8 + 174</td><td>A spectator's per-km offer for one ticket ride: <code>ride_id</code>, <code>sponsor</code>, <code>driver</code>, <code>pool</code>, <code>max_lamports</code>, <code>lamports_per_km</code>, <code>target_km</code>, <code>settled</code>, <code>earned_lamports</code>, <code>refunded_lamports</code>, <code>created_at</code>, <code>bump</code>. The cap sits in the account itself.</td></tr>
           <tr><th scope="row">RideAttestation</th><td><code>["ride_attestation", pool, ride_id]</code></td><td class="num">8 + 186</td><td>v4: the server's verdict on one ride, for the pledges on it: <code>driver</code>, <code>telemetry_root</code>, <code>verified_km</code>, <code>status</code> (0 unverified · 1 verified · 2 flagged), <code>recorded_at</code>, <code>settle_from</code>, <code>settled_pledges</code>, <code>rent_payer</code>. Final once a pledge settled on it.</td></tr>
@@ -146,7 +147,7 @@
         <span><i class="l-teal"></i>anyone may call</span>
         <span><i class="l-admin"></i>admin (<code>config.authority</code>)</span>
       </div>
-      <figcaption><b>Active → Settled has a second door.</b> After <code>payout_at + 14 days</code>, anyone may <code>close_pool</code> an Active pool if at least one prize was paid. With no prize paid, a permissionless close is refused with <code>MustExpire</code>, because it would sweep the unpaid prize and referral shares to the operator's seed treasury. That pool has to go through <code>expire_pool</code> and refund everyone.</figcaption>
+      <figcaption><b>Active → Settled has a second door.</b> After <code>payout_at + 14 days</code>, anyone may <code>close_pool</code> an Active pool if at least one prize was paid. With no prize paid, a permissionless close is refused with <code>MustExpire</code>, because it would sweep the unpaid prize share to the operator's seed treasury. That pool has to go through <code>expire_pool</code> and refund everyone.</figcaption>
     </figure>
   </section>
 
@@ -159,7 +160,7 @@
         <thead><tr><th>Instruction</th><th>Signer</th><th>Allowed when</th><th>Effect</th></tr></thead>
         <tbody>
           <tr class="group"><td colspan="4">Money in</td></tr>
-          <tr><th scope="row">buy_ticket<span class="args">(pool_id, qty, order_id[16])</span></th><td><span class="tag ply">buyer</span> + fee_payer</td><td>Not paused; Open or Active, before <code>prep_deadline</code> (the sale window); within <code>max_tickets</code> and <code>max_per_wallet</code></td><td>Buyer pays <code>price × qty</code> into the vault. Fee payer pays the Ticket rent, recorded as <code>rent_payer</code> on the first buy only. Reaching <code>min_tickets</code> makes the pool Active.</td></tr>
+          <tr><th scope="row">buy_ticket<span class="args">(pool_id, qty, order_id[16])</span></th><td><span class="tag ply">buyer</span> + fee_payer</td><td>Not paused; the pool's snapshotted <code>paid_tickets_enabled</code> (<code>PaidTicketsDisabled</code> when off; sponsor is not gated); Open or Active, before <code>prep_deadline</code> (the sale window); within <code>max_tickets</code> and <code>max_per_wallet</code></td><td>Buyer pays <code>price × qty</code> into the vault. Fee payer pays the Ticket rent, recorded as <code>rent_payer</code> on the first buy only. Reaching <code>min_tickets</code> makes the pool Active.</td></tr>
           <tr><th scope="row">sponsor<span class="args">(pool_id, lamports)</span></th><td><span class="tag any">anyone</span></td><td>Same windows as buying; <code>lamports &gt; 0</code></td><td>Adds to <code>sponsored</code>, which is split like ticket money, and to the sponsor's <code>SponsorReceipt</code> (the sponsor pays its rent).</td></tr>
           <tr><th scope="row">create_pledge<span class="args">(ride_id, driver, max, per_km, target_km)</span></th><td><span class="tag ply">sponsor</span></td><td>Not paused; Open or Active, before <code>play_deadline</code>; sponsor ≠ driver; <code>max = per_km × target_km</code></td><td>Locks the cap in a <code>Pledge</code> account; <code>open_pledges + 1</code>.</td></tr>
           <tr class="group"><td colspan="4">Cranks: anyone, rules fixed – the server's crank (<code>CRANK_SECRET</code>, <code>pool:crank</code>) sends these by the chain clock</td></tr>
@@ -169,16 +170,17 @@
           <tr><th scope="row">refund_sponsor<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Refunding; the receipt still exists</td><td>The sponsorship and the receipt's rent go back to the sponsor; the receipt is closed.</td></tr>
           <tr><th scope="row">open_next_pool<span class="args">(tier)</span></th><td><span class="tag any">anyone</span></td><td>Not paused; the series enabled; <code>now ≥ next_open_at</code></td><td>Opens the pool of the current slot on the grid <code>next_open_at + k × sale_secs</code> from the series' rules (a missed slot is skipped, never shifted). The caller pays the rents and becomes the creator record. <code>next_open_at</code> moves to this pool's sale end. Arms <code>seal_slot</code> = this slot + 8.</td></tr>
           <tr><th scope="row">seal_road<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Open or Active, not sealed, past <code>seal_slot</code></td><td>Takes the SlotHashes entry of the first slot ≥ <code>seal_slot</code> (the same entry whenever it is called) and writes <code>seed_commitment = SHA-256(pool_id ‖ hash ‖ slot)</code>. Re-armed only if the target left the 512-slot window. The server serves no ride of an unsealed pool.</td></tr>
-          <tr><th scope="row">pay_prize<span class="args">(pool_id, rank, lamports, proof)</span></th><td><span class="tag any">anyone</span></td><td>Active; a list committed; <code>now ≥ pay_from</code>; the rank not paid yet; the proof leads to the root; within <code>winners_total</code> and <code>prize_share + referral_share</code>; the receiver ends rent-exempt</td><td>Vault → the wallet in the proven leaf, exactly its amount, once (<code>paid_mask</code>).</td></tr>
+          <tr><th scope="row">pay_prize<span class="args">(pool_id, rank, lamports, proof)</span></th><td><span class="tag any">anyone</span></td><td>Active; a list committed; <code>now ≥ pay_from</code>; the rank not paid yet; the proof leads to the root; within <code>winners_total</code> and <code>prize_share</code> of the counted pot; the receiver ends rent-exempt</td><td>Vault → the wallet in the proven leaf, exactly its amount, once (<code>paid_mask</code>).</td></tr>
           <tr><th scope="row">settle_pledge · refund_pledge<span class="args">(ride_id)</span></th><td><span class="tag any">anyone</span></td><td>Settle: the ride's attestation decided, <code>now ≥ settle_from</code> and <code>≥ payout_at</code>. Refund: the pool is over and this ride has no decided attestation of the pledge's driver</td><td>Settle pays <code>max × min(km, target) / target</code> to the driver (0 if flagged; a driver wallet under the rent minimum waits until the grace, then the sponsor gets it all), the rest and the rent to the sponsor. Refund returns everything.</td></tr>
           <tr><th scope="row">close_ticket<span class="args">(pool_id)</span></th><td><span class="tag any">anyone</span></td><td>Pool Settled (a v3 pool's status read raw)</td><td>Ticket rent goes back to <code>rent_payer</code>.</td></tr>
           <tr><th scope="row">close_ride_attestation · close_attestation · close_sponsor_receipt</th><td><span class="tag any">anyone</span></td><td>Pool Settled or Cancelled (attestations: no open pledge; receipts: Settled)</td><td>The account's rent goes back to whoever paid it.</td></tr>
           <tr><th scope="row">close_pool<span class="args">(pool_id)</span></th><td><span class="tag adm">admin</span> payout key <span class="tag any">anyone</span></td><td>Active: admin or payout key, not paused, once the list is out of its lock and every listed rank is paid; anyone after +14 d if <code>prizes_paid &gt; 0</code>. Refunding: anyone, once every ticket and every sponsor is refunded</td><td>Sweeps the vault to exactly 0 across the declared treasuries and the creator. The pool becomes Settled, or Cancelled if it was refunding.</td></tr>
           <tr class="group"><td colspan="4">Payout key or admin</td></tr>
-          <tr><th scope="row">commit_winners<span class="args">(pool_id, root, total, count)</span></th><td><span class="tag adm">admin</span> payout key</td><td>Active; <code>now ≥ play_deadline</code>; no list yet; <code>count ≤ 64</code>; <code>total ≤ prize_share + referral_share</code>; its lock ends at least a day before <code>payout_at + 14 d</code></td><td>Writes the winners root and <code>pay_from</code>. <code>count = 0</code> = no winner: the pool may close after the lock, the unpaid prize and referral shares to the seed treasury.</td></tr>
+          <tr><th scope="row">commit_winners<span class="args">(pool_id, root, total, count)</span></th><td><span class="tag adm">admin</span> payout key</td><td>Active; <code>now ≥ play_deadline</code>; no list yet; <code>count ≤ 64</code>; <code>total ≤ prize_share</code> of the counted pot; its lock ends at least a day before <code>payout_at + 14 d</code></td><td>Writes the winners root and <code>pay_from</code>. <code>count = 0</code> = no winner: the pool may close after the lock, the unpaid prize share and any ticket excess to the seed treasury.</td></tr>
           <tr><th scope="row">record_ride_attestation<span class="args">(pool_id, ride_id, driver, root, km, status)</span></th><td><span class="tag adm">admin</span> payout key</td><td>Active; its lock ends at least a day before the grace; not yet settled on</td><td>The verdict on one pledged ride; rewritable (the lock restarts) until a pledge settled on it.</td></tr>
           <tr class="group"><td colspan="4">Admin</td></tr>
-          <tr><th scope="row">create_pool<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>Not paused; <code>price ≥ rent_min</code>; <code>min ≥ 1</code>; <code>max_per_wallet ≥ 1</code>; <code>max == 0</code> or <code>max ≥ min</code>; <code>prep_deadline &gt; now</code>; <code>play_deadline ≥ prep_deadline</code>; <code>payout_at ≥ play_deadline</code> and at most 365 days out (<code>MAX_POOL_SECS</code>); play window ≥ <code>min_finish_secs</code>, review ≥ <code>min_review_secs</code>; the four bps values (prize, seed, fee, referral) sum to 10 000; treasuries rent-exempt</td><td>New Pool with id <code>config.pool_count</code>. The admin funds the vault with exactly <code>rent_min</code>. Arms <code>seal_slot</code>.</td></tr>
+          <tr><th scope="row">set_pool_rules<span class="args">(paid_tickets_enabled, prize_bps, seed_bps, fee_bps, max_player_share_bps, max_tickets)</span></th><td><span class="tag adm">admin</span></td><td>The three shares sum to 10 000; <code>max_player_share_bps ≤ 4999</code>; <code>max_tickets</code> 0 = no extra cap</td><td>Writes Config. The next pool snapshots it. Emits <code>PoolRulesSet</code>. Open pools keep their copy.</td></tr>
+          <tr><th scope="row">create_pool<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>Not paused; <code>price ≥ rent_min</code>; <code>min ≥ 1</code>; <code>max_per_wallet ≥ 1</code>; <code>max == 0</code> or <code>max ≥ min</code>; <code>prep_deadline &gt; now</code>; <code>play_deadline ≥ prep_deadline</code>; <code>payout_at ≥ play_deadline</code> and at most 365 days out (<code>MAX_POOL_SECS</code>); play window ≥ <code>min_finish_secs</code>, review ≥ <code>min_review_secs</code>; the split is Config's (already summing to 10 000), snapshotted with the paid-ticket flag, the player cap and the tighter ticket ceiling; treasuries rent-exempt</td><td>New Pool with id <code>config.pool_count</code>. The admin funds the vault with exactly <code>rent_min</code>. Arms <code>seal_slot</code>.</td></tr>
           <tr><th scope="row">set_series<span class="args">(params)</span></th><td><span class="tag adm">admin</span></td><td>The <code>create_pool</code> money rules; 1 h ≤ <code>sale_secs</code> ≤ 30 d; play ≥ <code>min_finish_secs</code>, verify ≥ <code>min_review_secs</code>; the whole span ≤ 365 d; <code>start_at</code> for a new series</td><td>Writes (or rewrites) a tier's schedule. Pools already open keep their rules.</td></tr>
           <tr><th scope="row">set_payout_authority<span class="args">(key?)</span></th><td><span class="tag adm">admin</span></td><td>Not the default key</td><td>Names or clears the payout key.</td></tr>
           <tr><th scope="row">veto_winners<span class="args">(pool_id)</span></th><td><span class="tag adm">admin</span></td><td>Active; a list committed and no rank paid; works while paused</td><td>Clears the list; the payout key commits again and the lock starts over.</td></tr>
@@ -214,45 +216,47 @@
     <h2>Floored shares, the fee takes the dust</h2>
     <p class="col">Ticket money is derived, not stored: the price never changes, so <code>tickets = price_lamports × tickets_sold</code>. All products are computed in u128 and cast back with a check. Release builds keep <code>overflow-checks</code> on.</p>
     <div class="pair">
-<pre><code>pot            = price × tickets_sold + sponsored
-prize_share    = ⌊pot × prize_bps / 10 000⌋
-seed_share     = ⌊pot × seed_bps  / 10 000⌋
-referral_share = ⌊pot × referral_bps / 10 000⌋
-fee_share      = pot − prize_share − seed_share − referral_share
-platform       = ⌊fee_share × pool.platform_fee_bps / 10 000⌋
-fee_out        = fee_share − platform
+<pre><code>pot             = price × tickets_sold + sponsored
+room            = ⌊sponsored × max_player_share_bps / (10 000 − bps)⌋
+counted_tickets = min(price × tickets_sold, room)
+ticket_excess   = tickets − counted_tickets
+counted_pot     = counted_tickets + sponsored
+prize_share     = ⌊counted_pot × prize_bps / 10 000⌋
+seed_share      = ⌊counted_pot × seed_bps  / 10 000⌋
+fee_share       = counted_pot − prize_share − seed_share
+platform        = ⌊fee_share × pool.platform_fee_bps / 10 000⌋
+fee_out         = fee_share − platform
 
 close_pool (Active) pays, vault ends at 0:
   fee_treasury      ← fee_out
   platform_treasury ← platform
   seed_treasury     ← vault − rent_min − fee_out − platform
-                      (seed share + unclaimed prize and referral + stray lamports)
+                      (seed share + unclaimed prize + ticket excess + stray)
   pool.authority    ← rent_min</code></pre>
       <div class="receipt" aria-label="Worked example of close_pool">
         <span class="head">Example · close_pool receipt</span>
-        <div class="row"><span>40 tickets × 0.05 SOL</span><span>2 000 000 000</span></div>
-        <div class="row"><span>sponsored</span><span>500 000 000</span></div>
-        <div class="row total"><span>pot</span><span>2 500 000 000</span></div>
+        <div class="row"><span>tickets (at the 4740 cap)</span><span>474 000 000</span></div>
+        <div class="row"><span>sponsored</span><span>526 000 000</span></div>
+        <div class="row total"><span>counted pot</span><span>1 000 000 000</span></div>
         <div class="rule"></div>
-        <div class="row"><span>prize 65 %</span><span>1 625 000 000</span></div>
-        <div class="row"><span>referral 5 %</span><span>125 000 000</span></div>
-        <div class="row"><span class="in">paid (2 prizes)</span><span>−1 500 000 000</span></div>
-        <div class="row"><span class="in">unclaimed</span><span>250 000 000</span></div>
-        <div class="row"><span>seed 20 %</span><span>500 000 000</span></div>
-        <div class="row"><span>fee 10 % (platform 0 bps)</span><span>250 000 000</span></div>
+        <div class="row"><span>prize 85 %</span><span>850 000 000</span></div>
+        <div class="row"><span class="in">paid</span><span>−800 000 000</span></div>
+        <div class="row"><span class="in">unclaimed</span><span>50 000 000</span></div>
+        <div class="row"><span>carry 5 %</span><span>50 000 000</span></div>
+        <div class="row"><span>final 10 % (platform 0)</span><span>100 000 000</span></div>
         <div class="rule"></div>
-        <div class="row"><span>vault before close</span><span>1 000 890 880</span></div>
-        <div class="row"><span>→ fee_treasury</span><span>250 000 000</span></div>
-        <div class="row"><span>→ seed_treasury</span><span>750 000 000</span></div>
+        <div class="row"><span>vault before close</span><span>200 890 880</span></div>
+        <div class="row"><span>→ fee_treasury</span><span>100 000 000</span></div>
+        <div class="row"><span>→ seed_treasury</span><span>100 000 000</span></div>
         <div class="row"><span>→ creator (rent_min)</span><span>890 880</span></div>
         <div class="row total"><span>vault after</span><span>0</span></div>
       </div>
     </div>
     <ul class="col">
-      <li>The payout cap is the prize share plus the referral share, recomputed from the current pot. More sponsorship raises it, and it can never exceed what the pool took in. <code>referral_bps</code> 0 is the old prize cap.</li>
+      <li>The payout cap is the prize share of the counted pot. Sponsorship raises the room for tickets. Ticket lamports above <code>max_player_share_bps</code> (under 5000; default 4740) are not in the prize or the fee; <code>close_pool</code> carries them to the seed treasury and reports <code>ticket_excess</code>.</li>
       <li>The platform cut is a share of the fee share, the value the pool opened with (copied from <code>Config</code> at creation, so the cut is the one the buyers were shown). It is 0 for the hackathon.</li>
       <li>A refunded pool gives every sponsor its sponsorship back (<code>refund_sponsor</code>) before it can close. At the close fee and platform get nothing; what is left (stray lamports) goes to the seed treasury.</li>
-      <li>Amounts are in lamports. The example uses the proposed 65 / 5 / 20 / 10 split (prize / referral / seed / fee, bps 6500 / 500 / 2000 / 1000). Fee stays 10%. Each pool fixes its own.</li>
+      <li>Amounts are in lamports. The example is the v5 default 85 / 5 / 10 (prize / carry / final) with the player cap exactly full, so excess is 0. <code>platform_fee_bps</code> still skims the final leg; set it to 0 when that leg should be the whole 10%. Each new pool snapshots Config.</li>
     </ul>
   </section>
 
@@ -284,17 +288,18 @@ close_pool (Active) pays, vault ends at 0:
       <table>
         <thead><tr><th>Event</th><th>Fields</th></tr></thead>
         <tbody>
-          <tr><th scope="row">PoolCreated</th><td class="mono">pool_id, pool, vault, authority, tier, price_lamports, min_tickets, max_tickets, max_per_wallet, prep_deadline, play_deadline, payout_at, prize_bps, seed_bps, fee_bps, fee_treasury, seed_treasury, from_series, seed_commitment, seed_slot, seed_slot_hash, referral_bps (v4 seed fields: all zero / the seal target – RoadSealed has the seed)</td></tr>
+          <tr><th scope="row">PoolCreated</th><td class="mono">pool_id, pool, vault, authority, tier, price_lamports, min_tickets, max_tickets, max_per_wallet, prep_deadline, play_deadline, payout_at, prize_bps, seed_bps, fee_bps, fee_treasury, seed_treasury, from_series, seed_commitment, seed_slot, seed_slot_hash, paid_tickets_enabled, max_player_share_bps (v4 seed fields: all zero / the seal target – RoadSealed has the seed)</td></tr>
           <tr><th scope="row">TicketBought</th><td class="mono">pool_id, buyer, qty, lamports, order_id[16], tickets_sold, activated</td></tr>
           <tr><th scope="row">PoolActivated</th><td class="mono">pool_id, tickets_sold, at</td></tr>
           <tr><th scope="row">Sponsored</th><td class="mono">pool_id, sponsor, lamports, sponsored_total</td></tr>
           <tr><th scope="row">PoolFailed · PoolCancelled · PoolExpired</th><td class="mono">pool_id, tickets_sold</td></tr>
           <tr><th scope="row">Refunded</th><td class="mono">pool_id, buyer, rent_payer, qty, lamports, refunded_total</td></tr>
           <tr><th scope="row">PrizePaid</th><td class="mono">pool_id, to, lamports, rank, prizes_paid_total</td></tr>
-          <tr><th scope="row">PoolClosed</th><td class="mono">pool_id, prize_paid, seed, fee, platform_fee, unclaimed, rent_returned, cancelled</td></tr>
+          <tr><th scope="row">PoolClosed</th><td class="mono">pool_id, prize_paid, seed, fee, platform_fee, unclaimed, rent_returned, cancelled, ticket_excess</td></tr>
           <tr><th scope="row">AuthorityProposed</th><td class="mono">authority, pending_authority</td></tr>
           <tr><th scope="row">AuthorityChanged</th><td class="mono">old_authority, new_authority</td></tr>
-          <tr><th scope="row">SeriesSet</th><td class="mono">tier, enabled, price_lamports, min_tickets, max_tickets, max_per_wallet, sale_secs, play_secs, verify_secs, prize_bps, seed_bps, fee_bps, fee_treasury, seed_treasury, next_open_at, referral_bps</td></tr>
+          <tr><th scope="row">PoolRulesSet</th><td class="mono">paid_tickets_enabled, prize_bps, seed_bps, fee_bps, max_player_share_bps, max_tickets</td></tr>
+          <tr><th scope="row">SeriesSet</th><td class="mono">tier, enabled, price_lamports, min_tickets, max_tickets, max_per_wallet, sale_secs, play_secs, verify_secs, prize_bps, seed_bps, fee_bps, fee_treasury, seed_treasury, next_open_at</td></tr>
           <tr><th scope="row">PayoutAuthoritySet</th><td class="mono">authority, payout_authority (Option)</td></tr>
           <tr><th scope="row">RoadSealed</th><td class="mono">pool_id, seed_slot, seed_slot_hash, seed_commitment</td></tr>
           <tr><th scope="row">SealRearmed</th><td class="mono">pool_id, seal_slot</td></tr>
@@ -329,7 +334,7 @@ close_pool (Active) pays, vault ends at 0:
       <div><b>6033</b><span>WinnersCommitted</span></div><div><b>6034</b><span>WinnersNotCommitted</span></div><div><b>6035</b><span>TooManyWinners</span></div><div><b>6036</b><span>CommitTooLate</span></div>
       <div><b>6037</b><span>InvalidProof</span></div><div><b>6038</b><span>RankAlreadyPaid</span></div><div><b>6039</b><span>WinnersPartlyPaid</span></div><div><b>6040</b><span>PrizesUnpaid</span></div>
       <div><b>6041</b><span>DriverBelowRentMin</span></div><div><b>6042</b><span>AttestationFinal</span></div><div><b>6043</b><span>PledgesOpen</span></div><div><b>6044</b><span>SponsorRefundsPending</span></div>
-      <div><b>6045</b><span>RoadAlreadySealed</span></div><div><b>6046</b><span>AlreadyMigrated</span></div><div><b>6047</b><span>ConfigNotMigrated</span></div>
+      <div><b>6045</b><span>RoadAlreadySealed</span></div><div><b>6046</b><span>AlreadyMigrated</span></div><div><b>6047</b><span>ConfigNotMigrated</span></div><div><b>6048</b><span>PaidTicketsDisabled</span></div><div><b>6049</b><span>PlayerShareCeiling</span></div>
     </div>
     <div class="tablewrap mid">
       <table>
@@ -371,7 +376,7 @@ PROGRAM_ID=&lt;id&gt; bash .claude/skills/program-check/check.sh onchain   # rea
     <h2>What this program does not do yet</h2>
     <ul class="col">
       <li><b>Not audited</b>, devnet only: v3 runs there, v4 is built and tested but not deployed. The id in <code>declare_id!</code> is the devnet one.</li>
-      <li>The program pays exactly the committed winners list, capped, after it was public for the review lock – it cannot tell a rightful winner from any other wallet. The admin or the payout key decides the list, and a list with no winner lets the pool close with the unpaid prize and referral shares going to the seed treasury. A stolen payout key is contained by the public lock and the admin's veto; a dishonest admin is not. The escape hatches protect against an absent admin.</li>
+      <li>The program pays exactly the committed winners list, capped, after it was public for the review lock – it cannot tell a rightful winner from any other wallet. The admin or the payout key decides the list, and a list with no winner lets the pool close with the unpaid prize share and any ticket excess going to the seed treasury. A stolen payout key is contained by the public lock and the admin's veto; a dishonest admin is not. The escape hatches protect against an absent admin.</li>
       <li>An attestation is the server's verdict that the payout key signs; the program checks the signer, not the drive.</li>
       <li>The Pool account is never closed, so explorers and the server can still read it after settlement.</li>
       <li>Session keys, deposits and <code>buy_ticket_with_session</code> (phase 2) are not built.</li>

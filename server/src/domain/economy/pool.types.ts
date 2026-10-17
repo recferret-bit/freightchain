@@ -45,8 +45,15 @@ export interface PoolProps {
   prizeBps: number;
   seedBps: number;
   feeBps: number;
-  /** omitted = 0. The Pool table does not store it yet; a chain read keeps it on the in-memory mirror only. */
+  /** omitted = 0. The Pool table does not store it yet; a chain read keeps it on the in-memory mirror only. v5 pools have no referral leg. */
   referralBps?: number;
+  /**
+   * v5: the pool's snapshotted player-share cap. Absent on a Postgres reload (no column): `prizeBound` then counts every ticket.
+   * The chain still rejects a winners root above `prize_share`. Present only until the next save, from a chain read in this process.
+   */
+  maxPlayerShareBps?: number;
+  /** v5 snapshot. Absent on a Postgres reload. `buy_ticket` is enforced on chain, not by the mirror. */
+  paidTicketsEnabled?: boolean;
   feeTreasury: string;
   seedTreasury: string;
   status: PoolStatus;

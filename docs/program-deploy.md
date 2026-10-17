@@ -78,6 +78,10 @@ bash $D admin migrate-config -k $PWD/$K/admin.json
 bash $D admin set-series -k $PWD/$K/admin.json --tier 1h … --enabled true
 ```
 
+## v5 (no referral leg, admin pool rules) – a fresh program id, not deployed
+
+v5 removes `referral_bps` / `referral_share` / `payout_cap` and adds `set_pool_rules` (paid tickets on/off, the 8500/500/1000 split, `max_player_share_bps` under 5000, an optional ticket ceiling). Config / Series / Pool change size, so this is a **new program id**, not an upgrade of `8No42h…` and not the v4 in-place runbook above. Devnet still runs v3. Nothing here is deployed: the owner builds, pins (`UPDATE_PIN=1 npm run program:verify`), regenerates `server/test/fixtures/chain/pool-program.json`, and deploys only on an explicit request. IDL `metadata.version` is `"5"`.
+
 ## Devnet first (the program on devnet, the server on your machine)
 
 Run it in the **main checkout** (keys live in its gitignored `deploy/secrets/devnet/`; a worktree's `target/` goes away with it). Everything goes through

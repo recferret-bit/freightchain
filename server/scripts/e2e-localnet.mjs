@@ -22,8 +22,8 @@ if (!BASE || !RPC || !KEYS) { console.error('run it through .claude/skills/local
 const CDP = +(process.env.CHROME_PORT || 9371);
 const PREP_A = +(process.env.PREP_A || 170), PLAY_A = +(process.env.PLAY_A || 240), PREP_B = +(process.env.PREP_B || 60), PREP_C = +(process.env.PREP_C || 65);   // PREP_A: pool A's rides (step 6) must start inside its sale – no new rides after it
 // amounts: localnet defaults; TARGET=devnet passes small ones (devnet SOL is scarce) – a price must stay ≥ the 890 880-lamport rent minimum
-const SPONSOR_A = +(process.env.SPONSOR_A || 30_000_000), SPONSOR_C = +(process.env.SPONSOR_C || 20_000_000);
 const PRICE_A = +(process.env.PRICE_A || 100_000_000), PRICE_B = +(process.env.PRICE_B || 50_000_000);   // 0.1 / 0.05 SOL
+const SPONSOR_A = +(process.env.SPONSOR_A || Math.ceil(3 * PRICE_A * 5260 / 4740)), SPONSOR_C = +(process.env.SPONSOR_C || 20_000_000);
 const solTxt = l => `${(l / 1e9).toFixed(l >= 1e9 ? 2 : 3)} SOL`;   // the lobby's format
 const ON_DEVNET = !!process.env.FUND_FROM;   // devnet: other pools may exist, players are funded by transfer and swept back
 BigInt.prototype.toJSON ??= function () { return String(this); };   // the codec decodes Pool.paid_mask (u64 bit mask) as a BigInt
@@ -307,7 +307,7 @@ try {
   if (FX) {
     check('the baked pool that paid a prize cannot be expired (the refund maths assumes nothing left the vault)', refuses(['expire-pool', '--pool', String(FX.gracePool), '-k', Z.keyfile], /PrizesAlreadyPaid|0x1785/, 'expire_pool on a pool that paid a prize'));
     const gy = await poolAcc(FX.gracePool), gyVault = await bal(codec.vaultPda(FX.gracePool));
-    const gLegs = closeSplit({ priceLamports: gy.priceLamports, ticketsSold: gy.ticketsSold, sponsored: gy.sponsored, prizeBps: gy.prizeBps, seedBps: gy.seedBps, platformFeeBps: PLAT_BPS, prizesPaid: gy.prizesPaid, vaultLamports: gyVault, cancelled: false, rentMin: RENT0 });
+    const gLegs = closeSplit({ priceLamports: gy.priceLamports, ticketsSold: gy.ticketsSold, sponsored: gy.sponsored, prizeBps: gy.prizeBps, seedBps: gy.seedBps, platformFeeBps: PLAT_BPS, ...(gy.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: gy.maxPlayerShareBps } : {}), prizesPaid: gy.prizesPaid, vaultLamports: gyVault, cancelled: false, rentMin: RENT0 });
     const v3 = FX.v3Attestation, v3Args = ['close-attestation', '--pool', String(v3.pool), '--driver', v3.driver, '-k', Z.keyfile];
     check('a v3 Attestation of a pool still live cannot be closed (NotSettled)', refuses(v3Args, /NotSettled|0x177f/, 'close_attestation of a live pool\'s v3 attestation'));
     before = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin'), stranger: Z.wallet });
@@ -336,7 +336,7 @@ try {
   // is paid with its Merkle proof (anyone may send it), then the pool closes. No attestation stands in front of a prize any more.
   let po = await api(`pools/${A}/payout`, { cookie: ADM.cookie });
   const chainA = await poolAcc(A);
-  const bound = prizeBound({ priceLamports: PRICE_A, ticketsSold: 3, sponsored: SPONSOR_A, prizeBps: 7000, seedBps: 2000 });
+  const bound = prizeBound({ priceLamports: PRICE_A, ticketsSold: 3, sponsored: SPONSOR_A, prizeBps: 7000, seedBps: 2000, ...(chainA.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: chainA.maxPlayerShareBps } : {}) });
   const want = poolPayouts(bound, [P1.wallet, P2.wallet]);
   check('ranking: P1 (2 rides) first, P2 second; the prize cap includes the sponsorship; amounts = the payout table; nothing committed yet → commit_winners offered', po.ok && po.j.ranks.map(r => r.wallet).join() === [P1.wallet, P2.wallet].join() && po.j.ranks.map(r => r.lamports).join() === want.map(w => w.lamports).join() && po.j.prizeLamports === bound
     && !!po.j.commit && po.j.committedRoot === null && po.j.transactions.length === 0 && po.j.close === null, JSON.stringify(po.j.ranks ?? po.j).slice(0, 300));
@@ -360,7 +360,7 @@ try {
   const po2 = await api(`pools/${A}/payout`, { cookie: ADM.cookie });
   check('every rank paid → close_pool offered', po2.j.close && po2.j.transactions.length === 0 && po2.j.ranks.every(r => r.paid));
   const vaultBefore = await bal(vA), paidOnChain = (await poolAcc(A)).prizesPaid;
-  const legs = closeSplit({ priceLamports: PRICE_A, ticketsSold: chainA.ticketsSold, sponsored: chainA.sponsored, prizeBps: 7000, seedBps: 2000, platformFeeBps: PLAT_BPS, prizesPaid: paidOnChain, vaultLamports: vaultBefore, cancelled: false, rentMin: RENT0 });
+  const legs = closeSplit({ priceLamports: PRICE_A, ticketsSold: chainA.ticketsSold, sponsored: chainA.sponsored, prizeBps: 7000, seedBps: 2000, platformFeeBps: PLAT_BPS, ...(chainA.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: chainA.maxPlayerShareBps } : {}), prizesPaid: paidOnChain, vaultLamports: vaultBefore, cancelled: false, rentMin: RENT0 });
   before = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin') });
   const sigC = await sendSigned(signedB64(po2.j.close.transaction, admin)); await settle(sigC, ADM.cookie);
   after = await bals({ fee: addr('fee'), plat: addr('plat'), seed: addr('seed'), admin: addr('admin') });

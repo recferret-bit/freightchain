@@ -26,10 +26,11 @@ function idlArgs(name: string, a: Record<string, unknown>): Record<string, unkno
     case 'set_config': return { paused: null, platform_treasury: null, platform_fee_bps: null, min_review_secs: BigInt(Number(a['minReviewSecs'])), min_finish_secs: BigInt(Number(a['minFinishSecs'])) };
     case 'migrate_config_v4': return {};
     case 'create_pool': return { params: { tier: a['tier'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'], max_per_wallet: a['maxPerWallet'],
-      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])), prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'], referral_bps: a['referralBps'] ?? 0 } };
+      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])) } };
     case 'set_series': return { params: { tier: a['tier'], enabled: a['enabled'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'],
       max_per_wallet: a['maxPerWallet'], sale_secs: BigInt(Number(a['saleSecs'])), play_secs: BigInt(Number(a['playSecs'])), verify_secs: BigInt(Number(a['verifySecs'])),
-      prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'], start_at: BigInt(Number(a['startAt'])), referral_bps: a['referralBps'] ?? 0 } };
+      start_at: BigInt(Number(a['startAt'])) } };
+    case 'set_pool_rules': return { paid_tickets_enabled: a['paidTicketsEnabled'], prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'], max_player_share_bps: a['maxPlayerShareBps'], max_tickets: a['maxTickets'] };
     case 'open_next_pool': return { tier: a['tier'] }; // the seed commitment is the program's own (SlotHashes), not an argument
     case 'create_pledge': return { ride_id: b64(String(a['rideId'])), driver: a['driver'], max_lamports: BigInt(String(a['maxLamports'])), lamports_per_km: BigInt(String(a['lamportsPerKm'])), target_km: a['targetKm'] };
     case 'settle_pledge': case 'refund_pledge': return { ride_id: b64(String(a['rideId'])) };
@@ -54,7 +55,7 @@ describe('PoolProgramCodec – events from real logs', () => {
     it(`${tx.name}: decodes what the program says it emitted`, () => {
       const records = codec.poolEvents(tx.logs, tx.signature, tx.slot);
       if (records === 'truncated') throw new Error('unexpected truncation');
-      const isPool = (k: string) => (CHAIN_EVENT_KINDS as readonly string[]).includes(k); // Authority* / SeriesSet / PayoutAuthoritySet are program events, not pool events
+      const isPool = (k: string) => (CHAIN_EVENT_KINDS as readonly string[]).includes(k); // Authority* / SeriesSet / PayoutAuthoritySet / PoolRulesSet are program events, not pool events
       const pool = tx.events.filter((e) => isPool(e.kind));
       expect(records.map((r) => r.kind)).toEqual(pool.map((e) => e.kind));
       records.forEach((r, i) => {

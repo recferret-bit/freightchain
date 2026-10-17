@@ -318,9 +318,11 @@ try {
   await h1.shot('day-1-lobby-bought');
   const buys = await Promise.all([R2, R3, R4, R5, R6, R7, R8].map(async p => { const b = await bal(p.wallet), x = await buySelf(p, P); return { p, ok: x.paid && b - (await bal(p.wallet)) === PRICE + (await txInfo(x.sig)).fee + ticketRent }; }));
   check('R2–R8 buy 1 each from Node (/confirm): each −(price + fee + Ticket rent) exactly', buys.every(b => b.ok), buys.filter(b => !b.ok).map(b => b.p.name).join());
+  const SPONSOR_P = 900_000_000;   // v5: covers 8 × 0.1 SOL tickets under the 47.4 % player-share cap
+  admintool(['sponsor', '--pool', String(P), '--lamports', String(SPONSOR_P), '-k', S.keyfile]);
   let pc = await poolAcc(P);
   check(`chain: 8 tickets, pool ${P} ACTIVE (min ${D.minTickets}), still inside its sale window`, pc.ticketsSold === 8 && pc.status === 1 && (await chainNow()) < secs(pc.prepDeadline), JSON.stringify({ sold: pc.ticketsSold, status: pc.status }));
-  check('server mirror: active, 8 sold', !!(await until(async () => { const s = await serverPool(P); return s.status === 'active' && s.sold === 8; }, 20000)));
+  check('server mirror: active, 8 sold', !!(await until(async () => { const s = await serverPool(P); return s.status === 'active' && s.sold === 8 && s.sponsoredLamports === SPONSOR_P; }, 20000)));
   console.log('     … 7 rides over the player API, each past the 1 050 m line (≈ 55 s): R1–R5 honest, R6 an unhashed batch, R7 a teleport; R8 takes its ride but never drives it; the sponsor pledges to R1, R7, R8');
   const pledges = {};
   const plan = { r1: { speed: 20, extra: 50, onStart: async id => { pledges.r1 = await pledgeTo(S, id); } }, r2: { speed: 21, extra: 100 }, r3: { speed: 22, extra: 150 }, r4: { speed: 23, extra: 200 },
@@ -409,7 +411,7 @@ try {
   // ── 7. the payout job: first pass = the pledged rides' attestations + the COMMIT (no prize yet); second pass after pay_from = the prizes + close
   const want = [R1, R2, R3, R4, R5, R6].sort((a, b) => (rides[b.name].end?.distance ?? 0) - (rides[a.name].end?.distance ?? 0));
   pc = await poolAcc(P);
-  const bound = prizeBound({ priceLamports: PRICE, ticketsSold: 8, sponsored: 0, prizeBps: PRIZE_BPS, seedBps: SEED_BPS });
+  const bound = prizeBound({ priceLamports: PRICE, ticketsSold: 8, sponsored: SPONSOR_P, prizeBps: PRIZE_BPS, seedBps: SEED_BPS, ...(pc.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: pc.maxPlayerShareBps } : {}) });
   const payouts = poolPayouts(bound, want.map(p => p.wallet));
   const winnersArg = payouts.map(x => `${x.wallet}:${x.lamports}`).join(',');
   const pass1 = cli('pool:payout', '--pool', String(P));
@@ -448,7 +450,7 @@ try {
     && t.blockTime >= secs(pc.payFrom) && t.slot > commitTx.slot), JSON.stringify(prizeTx.map(t => [t.feePayer.slice(0, 6), t.ixs, t.events.find(e => e.name === 'PrizePaid')?.fields.rank, t.blockTime - secs(pc.payFrom)])));
   if (!res.closed) throw new Error('the payout pass did not close the pool – nothing more to check');
   const closeTx = await txInfo(res.closed);
-  const legs = closeSplit({ priceLamports: PRICE, ticketsSold: 8, sponsored: 0, prizeBps: PRIZE_BPS, seedBps: SEED_BPS, platformFeeBps: PLAT_BPS, prizesPaid: paid, vaultLamports: before.vault - paid, cancelled: false, rentMin: RENT0 });
+  const legs = closeSplit({ priceLamports: PRICE, ticketsSold: 8, sponsored: SPONSOR_P, prizeBps: PRIZE_BPS, seedBps: SEED_BPS, platformFeeBps: PLAT_BPS, ...(pc.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: pc.maxPlayerShareBps } : {}), prizesPaid: paid, vaultLamports: before.vault - paid, cancelled: false, rentMin: RENT0 });
   pc = await poolAcc(P);
   check('prizes on chain = the plan, ≤ the prize share, every committed rank paid', pc.prizesPaid === paid && paid <= bound && legs.unclaimed === bound - paid && Number(pc.paidMask) === 63, `${pc.prizesPaid} / ${paid} / ${bound} mask ${pc.paidMask}`);
   check('close_pool by the payout key: fee / platform / seed legs = closeSplit, the creator (the crank) + the vault rent minimum', closeTx.feePayer === PAYOUT && closeTx.ixs.join() === 'close_pool' && closeTx.change(addr('fee')) === legs.fee && closeTx.change(addr('plat')) === legs.platformFee
@@ -456,7 +458,7 @@ try {
   const payoutFees = passTx.reduce((a, t) => a + t.fee, 0);
   check(`the payout key paid only the fees of its ${passTx.length} transactions + the rent of the ${attTx.length} ride attestations`, d.payout === -(payoutFees + attTx.length * attRent) && passTx.length === 2 + 1 + 6 + 1, `${d.payout} vs −${payoutFees + attTx.length * attRent} (${passTx.length} tx)`);
   check(`vault ${P} = 0, settled on chain and on the server`, after.vault === 0 && pc.status === 3 && !!(await until(async () => (await serverPool(P)).status === 'settled', 20000)));
-  check('conservation: 8 tickets = prizes + fee + platform + seed', 8 * PRICE === paid + legs.fee + legs.platformFee + legs.seed, `${8 * PRICE} vs ${paid + legs.fee + legs.platformFee + legs.seed}`);
+  check('conservation: 8 tickets + sponsorship = prizes + fee + platform + seed', 8 * PRICE + SPONSOR_P === paid + legs.fee + legs.platformFee + legs.seed, `${8 * PRICE + SPONSOR_P} vs ${paid + legs.fee + legs.platformFee + legs.seed}`);
   st = await standings(P);
   check('standings: final, every rank paid with its pay_prize signature, state paid', st.final === true && st.payout?.state === 'paid' && st.ranks.length === 6 && st.ranks.every((x, i) => x.wallet === want[i].wallet && x.lamports === payouts[i].lamports && x.paid === true && x.signature === res.paid.find(y => y.wallet === x.wallet)?.signature),
     JSON.stringify(st.ranks?.map(x => [x.rank, x.wallet.slice(0, 6), x.lamports, x.paid, !!x.signature])));

@@ -24,7 +24,8 @@ export class PoolMapper {
   }
 
   static toData(pool: Pool): Prisma.PoolUncheckedCreateInput {
-    const { hold, ...s } = pool.snapshot();
+    // v5 caps are not columns. Drop them before the Prisma spread; a reload counts every ticket until a migration stores the snapshot.
+    const { hold, maxPlayerShareBps: _playerShare, paidTicketsEnabled: _paidTickets, ...s } = pool.snapshot();
     return {
       ...s,
       holdBy: hold?.by ?? null,

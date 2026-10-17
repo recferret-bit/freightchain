@@ -97,6 +97,7 @@ const X = mk('8h', 2), Y = mk('8h', 1);
 admin(['buy', '-k', e1, '--pool', String(X)]);                                            // pays its own Ticket rent
 admin(['buy', '-k', e2, '--pool', String(X)]);                                            // pays its own Ticket rent too
 admin(['buy', '-k', g1, '--pool', String(Y)]);
+admin(['sponsor', '-k', g1, '--pool', String(Y), '--lamports', '60000000']);              // v5: covers Y's ticket under the 47.4 % player-share cap
 // v4 (L4): both roads sealed from a slot after the pools opened (the crank's job on a server) – an unsealed baked pool would make phase 2's crank seal it first
 const codecConn = { conn, codec, admintool: admin, keyfile: stranger };
 for (const id of [X, Y]) await sealRoad({ ...codecConn, id });

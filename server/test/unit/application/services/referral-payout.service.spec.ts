@@ -26,7 +26,7 @@ const bought = async (ctx: UnitContext, wallet: string) => {
 describe('ReferralPayoutService', () => {
   const leaves = (ctx: UnitContext) => new ReferralPayoutService(ctx.rideQuery, new MemoryReferralRepository(ctx.db), ctx.tickets, ctx.settings, ctx.clock).leaves(aPool(money));
 
-  it('puts the referrer after the rider, and the leftover of a single winner returns to that rider', async () => {
+  it('v5 has no on-chain referral leg, so a qualified referrer is not a leaf', async () => {
     const ctx = unitContext();
     await ctx.pools.upsert(aPool(money));
     await poolRide(ctx, 'A', 9_000);
@@ -34,11 +34,9 @@ describe('ReferralPayoutService', () => {
     await bought(ctx, 'A');
     const rows = await leaves(ctx);
     const prize = poolPayouts(prizeBound(money), ['A'])[0]!.lamports;
-    const slice = poolPayouts(referralBound(money), ['A'])[0]!.lamports;
-    const toR = Math.floor((slice * 8000) / 10_000);
-    expect(rows.map((r) => r.kind)).toEqual(['rider', 'referrer']);
-    expect(rows[0]).toMatchObject({ rank: 1, wallet: 'A', lamports: prize + (slice - toR) });
-    expect(rows[1]).toMatchObject({ rank: 2, wallet: 'R', lamports: toR });
+    expect(referralBound(money)).toBe(0);
+    expect(rows.map((r) => r.kind)).toEqual(['rider']);
+    expect(rows[0]).toMatchObject({ rank: 1, wallet: 'A', lamports: prize });
   });
 
   it('a promo ticket, a missing referrer, and a zero referral leg add nothing for a referrer', async () => {
@@ -47,9 +45,8 @@ describe('ReferralPayoutService', () => {
     refer(ctx, 'A', 'R'); // no on-chain purchase
     const promo = await leaves(ctx);
     const prize = poolPayouts(prizeBound(money), ['A'])[0]!.lamports;
-    const slice = poolPayouts(referralBound(money), ['A'])[0]!.lamports;
     expect(promo.every((r) => r.kind !== 'referrer')).toBe(true);
-    expect(promo[0]!.lamports).toBe(prize + slice);
+    expect(promo[0]!.lamports).toBe(prize);
 
     const plain = unitContext();
     await poolRide(plain, 'A', 9_000);
@@ -59,12 +56,12 @@ describe('ReferralPayoutService', () => {
     expect(solo[0]).toMatchObject({ wallet: 'A', kind: 'rider', rank: 1 });
   });
 
-  it('a pending friend who finished in this pool is sponsored; an expired row and a self-referral are not', async () => {
+  it('a pending, expired or self referral adds no leaf: the on-chain referral pot is 0', async () => {
     const ctx = unitContext();
     await poolRide(ctx, 'A', 9_000);
     refer(ctx, 'A', 'R', 'pending');
     await bought(ctx, 'A');
-    expect((await leaves(ctx)).some((r) => r.wallet === 'R' && r.kind === 'referrer')).toBe(true);
+    expect((await leaves(ctx)).some((r) => r.kind === 'referrer')).toBe(false);
 
     const expired = unitContext();
     await poolRide(expired, 'A', 9_000);

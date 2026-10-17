@@ -1,5 +1,6 @@
 import { Optional } from '@nestjs/common';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
+import { Pool } from '../../../../domain/economy/pool.entity.js';
 import { poolPayouts, TOP20_SIZE } from '../../../../domain/economy/pool-payouts.js';
 import { prizeBound } from '../../../../domain/economy/vault-split.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../../../domain/shared/errors.js';
@@ -41,15 +42,16 @@ export class GetPayoutTransactionsHandler implements IQueryHandler<GetPayoutTran
     if (now < pool.playDeadline.getTime()) throw new ConflictError('the winners are committed once the rides are over (the play deadline)', 'too_early');
     if (pool.hold) throw new ConflictError(`the payout of this pool is on hold (${pool.hold.note ?? pool.hold.by})`, 'held');   // the same gates as the payout job (WP2 review)
     if ((await this.rides.poolUnreviewed(poolId, 1)).length) throw new ConflictError('a ride of this pool waits for an admin\'s decision', 'waiting_review');
-    const s = pool.snapshot();
-    const prizeLamports = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps });
-    const ranking = await this.rides.poolRanking(poolId, TOP20_SIZE, true); // verified recordings only – money never follows shadow mode
-    const plan = this.referralPayout
-      ? await this.referralPayout.leaves(pool)
-      : poolPayouts(prizeLamports, ranking.map((r) => r.wallet)).filter((p) => p.lamports > 0).map((p) => ({ ...p, kind: 'rider' as const }));
-    const tree = winnersTree(poolId, plan.map((p) => ({ wallet: p.wallet, lamports: p.lamports })), (d) => this.hasher.sha256(d));
     const chain = await this.chain.readPool(poolId);
     if (!chain) throw new NotFoundError(`pool ${poolId} is not on chain`);
+    const s = pool.snapshot();
+    const maxPlayerShareBps = s.maxPlayerShareBps ?? chain.maxPlayerShareBps;
+    const prizeLamports = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps, ...(maxPlayerShareBps !== undefined ? { maxPlayerShareBps } : {}) });
+    const ranking = await this.rides.poolRanking(poolId, TOP20_SIZE, true); // verified recordings only – money never follows shadow mode
+    const plan = this.referralPayout
+      ? await this.referralPayout.leaves(Pool.restore({ ...s, ...(maxPlayerShareBps !== undefined ? { maxPlayerShareBps } : {}) }))
+      : poolPayouts(prizeLamports, ranking.map((r) => r.wallet)).filter((p) => p.lamports > 0).map((p) => ({ ...p, kind: 'rider' as const }));
+    const tree = winnersTree(poolId, plan.map((p) => ({ wallet: p.wallet, lamports: p.lamports })), (d) => this.hasher.sha256(d));
     const paidBit = (rank: number) => chain.paidMask !== undefined && ((chain.paidMask >> BigInt(rank - 1)) & 1n) === 1n;
     const riderLeaves = plan.filter((p) => (p.kind ?? 'rider') === 'rider');
     const ranks = riderLeaves.map((p) => {

@@ -2,7 +2,14 @@ use anchor_lang::prelude::*;
 
 use anchor_lang::prelude::ProgramData;
 
-use crate::{constants::*, error::PoolError, program::FreightchainPools, state::Config, vault::rent_min};
+use crate::{
+    constants::*,
+    error::PoolError,
+    events::PoolRulesSet,
+    program::FreightchainPools,
+    state::{check_player_share, check_split, Config},
+    vault::rent_min,
+};
 
 use anchor_lang::system_program::{transfer, Transfer};
 
@@ -52,6 +59,12 @@ pub fn handle_initialize(ctx: Context<Initialize>, authority: Pubkey, platform_t
     c.payout_authority = None;
     c.min_review_secs = DEFAULT_MIN_REVIEW_SECS;
     c.min_finish_secs = DEFAULT_MIN_FINISH_SECS;
+    c.paid_tickets_enabled = true;
+    c.prize_bps = DEFAULT_PRIZE_BPS;
+    c.seed_bps = DEFAULT_SEED_BPS;
+    c.fee_bps = DEFAULT_FEE_BPS;
+    c.max_player_share_bps = DEFAULT_MAX_PLAYER_SHARE_BPS;
+    c.max_tickets = 0;
     Ok(())
 }
 
@@ -100,6 +113,38 @@ pub fn handle_set_config(
         require!(b <= BPS_DENOM as u16, PoolError::InvalidParams);
         c.platform_fee_bps = b;
     }
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct SetPoolRules<'info> {
+    pub authority: Signer<'info>,
+    #[account(mut, seeds = [CONFIG_SEED], bump = config.bump, has_one = authority @ PoolError::Unauthorized)]
+    pub config: Account<'info, Config>,
+}
+
+/// Admin: the rules the NEXT pool snapshots (`create_pool` / `open_next_pool`). An open pool keeps the copy it was created with.
+/// `max_tickets` 0 = no extra cap. `max_player_share_bps` must be under 5_000. The three shares must sum to 10_000.
+pub fn handle_set_pool_rules(
+    ctx: Context<SetPoolRules>,
+    paid_tickets_enabled: bool,
+    prize_bps: u16,
+    seed_bps: u16,
+    fee_bps: u16,
+    max_player_share_bps: u16,
+    max_tickets: u32,
+) -> Result<()> {
+    crate::state::require_migrated(&ctx.accounts.config)?;
+    check_split(prize_bps, seed_bps, fee_bps)?;
+    check_player_share(max_player_share_bps)?;
+    let c = &mut ctx.accounts.config;
+    c.paid_tickets_enabled = paid_tickets_enabled;
+    c.prize_bps = prize_bps;
+    c.seed_bps = seed_bps;
+    c.fee_bps = fee_bps;
+    c.max_player_share_bps = max_player_share_bps;
+    c.max_tickets = max_tickets;
+    emit!(PoolRulesSet { paid_tickets_enabled, prize_bps, seed_bps, fee_bps, max_player_share_bps, max_tickets });
     Ok(())
 }
 
@@ -216,6 +261,12 @@ pub fn handle_migrate_config_v4(ctx: Context<MigrateConfigV4>) -> Result<()> {
         payout_authority: old.payout_authority,
         min_review_secs: DEFAULT_MIN_REVIEW_SECS,
         min_finish_secs: DEFAULT_MIN_FINISH_SECS,
+        paid_tickets_enabled: true,
+        prize_bps: DEFAULT_PRIZE_BPS,
+        seed_bps: DEFAULT_SEED_BPS,
+        fee_bps: DEFAULT_FEE_BPS,
+        max_player_share_bps: DEFAULT_MAX_PLAYER_SHARE_BPS,
+        max_tickets: 0,
     };
     let mut data = info.try_borrow_mut_data()?;
     data.fill(0);

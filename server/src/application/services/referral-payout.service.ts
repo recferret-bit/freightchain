@@ -29,7 +29,8 @@ export class ReferralPayoutService {
     const ranking = await this.rides.poolRanking(pool.id, TOP20_SIZE, true);
     if (!ranking.length) return [];
     const s = pool.snapshot();
-    const money = { priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps, referralBps: s.referralBps ?? 0 };
+    // v5 has no on-chain referral leg (referralBound is 0). The player cap counts only when the in-memory snapshot still has it.
+    const money = { priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps, referralBps: s.referralBps ?? 0, ...(s.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: s.maxPlayerShareBps } : {}) };
     const knobs = await this.settings.current();
     const ranked = ranking.map((r) => r.wallet);
     const inBoard = new Set(ranked);

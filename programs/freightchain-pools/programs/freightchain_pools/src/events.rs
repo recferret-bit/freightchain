@@ -24,7 +24,9 @@ pub struct PoolCreated {
     pub seed_commitment: [u8; 32],
     pub seed_slot: u64,
     pub seed_slot_hash: [u8; 32],
-    pub referral_bps: u16,
+    /// v5 snapshot
+    pub paid_tickets_enabled: bool,
+    pub max_player_share_bps: u16,
 }
 
 #[event]
@@ -44,7 +46,6 @@ pub struct SeriesSet {
     pub fee_treasury: Pubkey,
     pub seed_treasury: Pubkey,
     pub next_open_at: i64,
-    pub referral_bps: u16,
 }
 
 #[event]
@@ -133,7 +134,7 @@ pub struct PoolClosed {
     pub pool_id: u32,
     /// prizes paid out over the pool's life
     pub prize_paid: u64,
-    /// everything that went to seed_treasury (seed share + unclaimed prize and referral [+ stray lamports of a failed pool])
+    /// everything that went to seed_treasury (carry share + unclaimed prize + ticket excess + stray lamports)
     pub seed: u64,
     /// fee share that went to fee_treasury (after the platform cut)
     pub fee: u64,
@@ -142,6 +143,20 @@ pub struct PoolClosed {
     /// vault rent minimum returned to the authority
     pub rent_returned: u64,
     pub cancelled: bool,
+    /// v5: ticket lamports excluded from the prize base and carried inside `seed` (0 when the pool was cancelled)
+    pub ticket_excess: u64,
+}
+
+/// v5: the admin changed the rules that the NEXT pool will snapshot.
+#[event]
+pub struct PoolRulesSet {
+    pub paid_tickets_enabled: bool,
+    pub prize_bps: u16,
+    pub seed_bps: u16,
+    pub fee_bps: u16,
+    pub max_player_share_bps: u16,
+    /// 0 = no extra cap
+    pub max_tickets: u32,
 }
 
 #[event]

@@ -49,6 +49,19 @@ pub mod freightchain_pools {
         instructions::admin::handle_set_payout_authority(ctx, payout_authority)
     }
 
+    /// v5: admin rules snapshotted onto each new pool (paid tickets, the 85/5/10-style split, the player-share cap, an optional ticket cap).
+    pub fn set_pool_rules(
+        ctx: Context<SetPoolRules>,
+        paid_tickets_enabled: bool,
+        prize_bps: u16,
+        seed_bps: u16,
+        fee_bps: u16,
+        max_player_share_bps: u16,
+        max_tickets: u32,
+    ) -> Result<()> {
+        instructions::admin::handle_set_pool_rules(ctx, paid_tickets_enabled, prize_bps, seed_bps, fee_bps, max_player_share_bps, max_tickets)
+    }
+
     pub fn set_series(ctx: Context<SetSeries>, params: SeriesParams) -> Result<()> {
         instructions::series::handle_set_series(ctx, params)
     }

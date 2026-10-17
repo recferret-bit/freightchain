@@ -1346,7 +1346,7 @@ dependencies = [
 
 [[package]]
 name = "freightchain_pools"
-version = "0.1.0"
+version = "5.0.0"
 dependencies = [
  "anchor-lang",
  "base64 0.22.1",

@@ -36,8 +36,10 @@ describe('Pool – what can be bought', () => {
   it('refuses a non-positive or fractional quantity', () => {
     for (const qty of [0, -1, 1.5]) expect(pool().whyNotSellable(day, qty, 0)).toMatch(/whole number/);
   });
-  it('refuses pools that are not selling', () => {
+  it('refuses pools that are not selling or have paid tickets disabled', () => {
     for (const status of ['refunding', 'settled', 'cancelled'] as const) expect(pool({ status }).whyNotSellable(day, 1, 0)).toBe(`this pool is ${status}`);
+    expect(pool({ paidTicketsEnabled: false }).whyNotSellable(day, 1, 0)).toMatch(/paid tickets are disabled/);
+    expect(pool({ paidTicketsEnabled: true }).whyNotSellable(day, 1, 0)).toBeNull();
   });
   it('the sale window closes at its end for an open AND an active pool (the program refuses any later buy)', () => {
     const justBefore = new Date(PREP.getTime() - 1);
@@ -236,8 +238,9 @@ describe('Pool.register – the create_pool rules, checked again when a pool ent
     expect(Pool.register(props()).id).toBe(7);
     expect(Pool.register(props()).snapshot()).not.toHaveProperty('referralBps');
     expect(Pool.register(props({ prizeBps: 6500, referralBps: 500 })).snapshot().referralBps).toBe(500);
+    expect(Pool.register(props({ maxPlayerShareBps: 4740, paidTicketsEnabled: false })).snapshot()).toMatchObject({ maxPlayerShareBps: 4740, paidTicketsEnabled: false });
     expect(() => Pool.register(props({ prizeBps: 6500 }))).toThrow(BadRequestError);
-    for (const over of [{ id: -1 }, { id: 2 ** 32 }, { prizeBps: 6000 }, { minTickets: 0 }, { maxPerWallet: 0 }, { maxTickets: 1, minTickets: 2 }, { priceLamports: 0 }, { prepDeadline: new Date(PLAY.getTime() + 1) }, { rideSeed: -1 }, { rideSeed: 2 ** 31 }, { rideSeed: 1.5 }]) {
+    for (const over of [{ id: -1 }, { id: 2 ** 32 }, { prizeBps: 6000 }, { minTickets: 0 }, { maxPerWallet: 0 }, { maxTickets: 1, minTickets: 2 }, { priceLamports: 0 }, { prepDeadline: new Date(PLAY.getTime() + 1) }, { rideSeed: -1 }, { rideSeed: 2 ** 31 }, { rideSeed: 1.5 }, { maxPlayerShareBps: 5000 }, { maxPlayerShareBps: -1 }]) {
       expect(() => Pool.register(props(over)), JSON.stringify(over)).toThrow(BadRequestError);
     }
   });

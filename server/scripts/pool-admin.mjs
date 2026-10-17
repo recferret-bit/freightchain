@@ -4,8 +4,11 @@
 //   node scripts/pool-admin.mjs initialize  --url <rpc> -k <upgrade-authority.json> --admin <pubkey> --platform-treasury <pubkey> [--platform-fee-bps 0]
 //   node scripts/pool-admin.mjs create-pool --url <rpc> -k <admin.json> --tier 1h|4h|8h --price <lamports> [--min N] [--max 0] [--per-wallet 1]
 //                                           1h omits --min → 20 (ride-tier.ts). A smaller --min is a short test pool. 4h and 8h still require --min.
-//                                           --prep <unix|+secs> --play <unix|+secs> [--payout <unix|+secs> (default = --play)] [--split 6500/2000/1000/500] --fee-treasury <pubkey> --seed-treasury <pubkey>
-//   node scripts/pool-admin.mjs set-series  --url <rpc> -k <admin.json> --tier 1h|4h|8h --price <lamports> [--min N] [--max 0] [--per-wallet 1] [--split 6500/2000/1000/500]
+//                                           --prep <unix|+secs> --play <unix|+secs> [--payout <unix|+secs> (default = --play)] [--split 8500/500/1000] --fee-treasury <pubkey> --seed-treasury <pubkey>
+//                                           --split rewrites Config via set_pool_rules first (create_pool no longer takes bps). It also resets paid tickets on, player cap 4740, rules max 0 unless those flags are set.
+//   node scripts/pool-admin.mjs set-pool-rules --url <rpc> -k <admin.json> [--paid true|false] [--split 8500/500/1000] [--max-player-share 4740] [--rules-max 0]
+//                                           (authority only; snapshotted onto the NEXT pool. 0 rules-max = no extra ticket cap. Player share must be under 5000.)
+//   node scripts/pool-admin.mjs set-series  --url <rpc> -k <admin.json> --tier 1h|4h|8h --price <lamports> [--min N] [--max 0] [--per-wallet 1] [--split 8500/500/1000]
 //                                           [--sale-hours H --play-hours H --review-hours H] (1h default: the tier table's schedule, 24 / 2 / 48; --sale-secs / --play-secs / --review-secs
 //                                           give seconds instead – the program still wants a sale window of at least an hour) --fee-treasury <pubkey> --seed-treasury <pubkey>
 //                                           [--start <unix|+secs>] (required for a new series; omitted = keep its schedule) [--enabled true|false]
@@ -51,14 +54,14 @@ for (let i = 0; i < rest.length; i++) {
   opt[k === 'k' ? 'keypair' : k] = v; i++;
 }
 const die = msg => { console.error(`pool-admin: ${msg}`); process.exit(1); };
-const DEFAULT_SPLIT = '6500/2000/1000/500'; // prize/seed/fee/referral. A 3-part string is referral 0 (7000/2000/1000 still means that).
+const DEFAULT_SPLIT = '8500/500/1000'; // prize / carry (seed) / final (fee). v5 has no referral leg.
 const splitOf = (raw) => {
   const parts = String(raw ?? DEFAULT_SPLIT).split('/');
-  if ((parts.length !== 3 && parts.length !== 4) || parts.some((p) => !/^\d+$/.test(p))) die('--split is prize/seed/fee or prize/seed/fee/referral (whole bps)');
-  const [prize, seed, fee, referral = 0] = parts.map(Number);
-  return { prize, seed, fee, referral };
+  if (parts.length !== 3 || parts.some((p) => !/^\d+$/.test(p))) die('--split is prize/seed/fee (whole bps, summing to 10000)');
+  const [prize, seed, fee] = parts.map(Number);
+  return { prize, seed, fee };
 };
-if (!cmd || cmd === 'help') die('commands: show | initialize | create-pool | set-series | open-next-pool | set-payout-authority | set-config | migrate-config | seal-road | close-pool | sponsor | buy | commit-winners | veto-winners | pay-prize | record-ride-attestation | close-ride-attestation | close-attestation | create-pledge | settle-pledge | refund-pledge | refund-sponsor | close-sponsor-receipt | fail-pool | expire-pool | refund | close-ticket | cancel-pool | propose-authority | accept-authority (see the header of scripts/pool-admin.mjs)');
+if (!cmd || cmd === 'help') die('commands: show | initialize | set-pool-rules | create-pool | set-series | open-next-pool | set-payout-authority | set-config | migrate-config | seal-road | close-pool | sponsor | buy | commit-winners | veto-winners | pay-prize | record-ride-attestation | close-ride-attestation | close-attestation | create-pledge | settle-pledge | refund-pledge | refund-sponsor | close-sponsor-receipt | fail-pool | expire-pool | refund | close-ticket | cancel-pool | propose-authority | accept-authority (see the header of scripts/pool-admin.mjs)');
 if (!opt.url) die('--url <rpc> is required (never the global config)');
 if (/mainnet/i.test(opt.url)) die('refusing a mainnet RPC – the program is devnet only, not audited');
 
@@ -108,6 +111,14 @@ async function send(signer, ix, more = []) {
 }
 const file = path => Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(path, 'utf8'))));
 const out = o => console.log(JSON.stringify(o, (_, v) => (v instanceof PublicKey ? v.toBase58() : typeof v === 'bigint' ? Number(v) : v)));
+/** v5: the split lives on Config. create_pool / open_next_pool snapshot it. `--split` on create or set-series rewrites Config first. */
+const sendPoolRules = (admin) => {
+  const split = splitOf(opt.split);
+  return send(admin, codec.instruction('set_pool_rules', {
+    authority: admin.publicKey, config: codec.configPda(),
+  }, { paid_tickets_enabled: opt.paid === undefined ? true : opt.paid === 'true', prize_bps: split.prize, seed_bps: split.seed, fee_bps: split.fee,
+    max_player_share_bps: int('max-player-share', 4740), max_tickets: int('rules-max', 0) }));
+};
 
 try {
   if (cmd === 'show') {
@@ -126,34 +137,39 @@ try {
       upgrade_authority: upgrader.publicKey, program: codec.programId, program_data: programData, config: codec.configPda(), platform_treasury_account: pk('platform-treasury'),
     }, { authority: pk('admin'), platform_treasury: pk('platform-treasury'), platform_fee_bps: int('platform-fee-bps', 0) }));
     out({ signature: sig, config: await config() });
+  } else if (cmd === 'set-pool-rules') {
+    const admin = keypair();
+    const c = await config(); if (!c) die('no Config – run initialize first');
+    const sig = await sendPoolRules(admin);
+    out({ signature: sig, config: await config() });
   } else if (cmd === 'create-pool') {
     const admin = keypair();
     const c = await config(); if (!c) die('no Config – run initialize first');
+    if (opt.split !== undefined) await sendPoolRules(admin); // create_pool snapshots Config; it no longer takes bps
     const tier = TIERS[opt.tier]; if (!tier) die('--tier must be 1h, 4h or 8h');
-    const split = splitOf(opt.split);
     const id = c.poolCount;
     const prep = await when('prep'), play = await when('play');   // read once: a default payout_at = this exact play deadline (a second `+secs` read could land a second later)
     const sig = await send(admin, codec.instruction('create_pool', {
       authority: admin.publicKey, config: codec.configPda(), pool: codec.poolPda(id), vault: codec.vaultPda(id),
       fee_treasury: pk('fee-treasury'), seed_treasury: pk('seed-treasury'), platform_treasury: c.platformTreasury,
     }, { params: { tier, price_lamports: int('price'), min_tickets: int('min', opt.tier === '1h' ? rideTier('1h', 0).minTickets : undefined), max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1),
-      prep_deadline: prep, play_deadline: play, payout_at: opt.payout ? await when('payout') : play, prize_bps: split.prize, seed_bps: split.seed, fee_bps: split.fee, referral_bps: split.referral } }));
+      prep_deadline: prep, play_deadline: play, payout_at: opt.payout ? await when('payout') : play } }));
     out({ signature: sig, poolId: id, pool: await account('Pool', codec.poolPda(id)) });
   } else if (cmd === 'set-series') {
     const admin = keypair();
     const c = await config(); if (!c) die('no Config – run initialize first');
+    if (opt.split !== undefined) await sendPoolRules(admin);
     const tier = TIERS[opt.tier]; if (!tier) die('--tier must be 1h, 4h or 8h');
     const def = rideTier(opt.tier, 0);
     const sched = def.schedule ?? {};
     const secs = (name, d) => (opt[name.replace('hours', 'secs')] !== undefined ? int(name.replace('hours', 'secs')) : int(name, d) * 3600);   // --sale-secs etc. win over --sale-hours
-    const split = splitOf(opt.split);
     const existing = await account('Series', codec.seriesPda(tier));
     if (!existing && !opt.start) die('a new series needs --start <unix|+secs> (the first sale slot)');
     const sig = await send(admin, codec.instruction('set_series', {
       authority: admin.publicKey, config: codec.configPda(), series: codec.seriesPda(tier), fee_treasury: pk('fee-treasury'), seed_treasury: pk('seed-treasury'), platform_treasury: c.platformTreasury,
     }, { params: { tier, enabled: opt.enabled === undefined ? true : opt.enabled === 'true', price_lamports: int('price'), min_tickets: int('min', def.minTickets ?? undefined),
       max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1), sale_secs: secs('sale-hours', sched.saleHours), play_secs: secs('play-hours', sched.playHours),
-      verify_secs: secs('review-hours', sched.reviewHours), prize_bps: split.prize, seed_bps: split.seed, fee_bps: split.fee, start_at: opt.start ? await when('start') : 0, referral_bps: split.referral } }));
+      verify_secs: secs('review-hours', sched.reviewHours), start_at: opt.start ? await when('start') : 0 } }));
     out({ signature: sig, series: await account('Series', codec.seriesPda(tier)) });
   } else if (cmd === 'open-next-pool') {
     const caller = keypair();

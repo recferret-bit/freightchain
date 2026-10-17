@@ -168,10 +168,6 @@ pub fn daily_series(start_at: i64) -> SeriesParams {
         sale_secs: DAY,
         play_secs: 2 * HOUR,
         verify_secs: 2 * DAY,
-        prize_bps: 7000,
-        seed_bps: 2000,
-        fee_bps: 1000,
-        referral_bps: 0,
         start_at,
     }
 }
@@ -194,10 +190,6 @@ pub fn default_params() -> CreatePoolParams {
         prep_deadline: PREP,
         play_deadline: PLAY,
         payout_at: PAYOUT,
-        prize_bps: 6000,
-        seed_bps: 2500,
-        fee_bps: 1500,
-        referral_bps: 0,
     }
 }
 
@@ -220,6 +212,9 @@ impl Env {
         e.initialize(&upgrader, admin).unwrap();
         // most tests use short windows (no review: payout_at = play_deadline); the floors have their own tests (Env::with_floors)
         e.set_floors(&upgrader, Some(0), Some(0)).unwrap();
+        // v5 initialize is 8500/500/1000 and a 4740 player cap. The suites below were written against 6000/2500/1500 and a
+        // cap that still lets a covered ticket-only pot pay. A test that wants the plan defaults uses Env::uninitialized.
+        e.historical_rules();
         e
     }
 
@@ -229,6 +224,7 @@ impl Env {
         let upgrader = clone_kp(&e.authority);
         let admin = e.authority.pubkey();
         e.initialize(&upgrader, admin).unwrap();
+        e.historical_rules();
         e
     }
 
@@ -603,6 +599,58 @@ impl Env {
             },
         );
         self.send(&[i], &c, &[who])
+    }
+
+    /// The split the pre-v5 tests assumed (6000/2500/1500) and a player cap of 4999 (the highest the program stores).
+    fn historical_rules(&mut self) {
+        let a = self.authority_kp();
+        self.set_pool_rules(&a, true, 6000, 2500, 1500, 4999, 0).unwrap();
+    }
+
+    /// Admin: rules the NEXT pool snapshots. An open pool keeps its own copy.
+    pub fn set_pool_rules(
+        &mut self,
+        who: &Keypair,
+        paid_tickets_enabled: bool,
+        prize_bps: u16,
+        seed_bps: u16,
+        fee_bps: u16,
+        max_player_share_bps: u16,
+        max_tickets: u32,
+    ) -> Res {
+        let c = clone_kp(&self.cranker);
+        let i = ix(
+            instruction::SetPoolRules {
+                paid_tickets_enabled,
+                prize_bps,
+                seed_bps,
+                fee_bps,
+                max_player_share_bps,
+                max_tickets,
+            },
+            accounts::SetPoolRules { authority: who.pubkey(), config: config_pda() },
+        );
+        self.send(&[i], &c, &[who])
+    }
+
+    /// Sponsor enough, while the sale is still open, that every ticket lamport already sold fits under the pool's player-share cap.
+    /// No-op when the cap is 0 (nothing can count) or the room is already large enough. Does not run from `buy` – a buy test asserts the vault is exactly the ticket price.
+    pub fn cover_player_share(&mut self, id: u32) {
+        let p = self.pool(id);
+        let tickets = p.tickets_lamports().unwrap();
+        let bps = p.max_player_share_bps as u128;
+        if bps == 0 || tickets == 0 {
+            return;
+        }
+        let room = freightchain_pools::ticket_room(p.sponsored, p.max_player_share_bps).unwrap();
+        if tickets <= room {
+            return;
+        }
+        let need = (tickets as u128).saturating_mul(10_000 - bps).div_ceil(bps);
+        let add = (need - p.sponsored as u128) as u64;
+        let sp = funded(&mut self.svm, add.saturating_add(SOL));
+        let i = self.sponsor_ix(id, &sp.pubkey(), add);
+        self.send(&[i], &sp, &[]).unwrap();
     }
 
     pub fn set_series(&mut self, p: SeriesParams) -> Res {

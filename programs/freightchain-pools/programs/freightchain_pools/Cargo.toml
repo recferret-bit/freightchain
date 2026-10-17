@@ -1,7 +1,7 @@
 [package]
 name = "freightchain_pools"
-version = "0.1.0"
-description = "Escrowed prize pools: assurance-contract tickets, trustless refunds, public split"
+version = "5.0.0"
+description = "Escrowed prize pools v5: no referral leg, admin pool rules snapshotted per pool"
 edition.workspace = true
 rust-version.workspace = true
 

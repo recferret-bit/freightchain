@@ -23,7 +23,6 @@ fn set_series_is_the_admins_and_checks_the_rules() {
     let stranger = funded(&mut e.svm, SOL);
     let (f, s) = (e.fee_t.pubkey(), e.seed_t.pubkey());
     assert_err!(e.set_series_as(&stranger, daily_series(START), f, s), PoolError::Unauthorized);
-    assert_err!(e.set_series(with(|p| p.prize_bps = 7001)), PoolError::BpsSum);
     assert_err!(e.set_series(with(|p| p.price_lamports = 1_000)), PoolError::PriceBelowRentMin);
     assert_err!(e.set_series(with(|p| p.min_tickets = 0)), PoolError::InvalidParams);
     assert_err!(e.set_series(with(|p| p.max_tickets = 2)), PoolError::InvalidParams);
@@ -80,7 +79,8 @@ fn open_next_pool_opens_the_current_slot_from_the_series() {
     let p = e.pool(id);
     assert_eq!((p.status, p.tier, p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet), (0, 1, PRICE, 3, 0, 4));
     assert_eq!((p.prep_deadline, p.play_deadline, p.payout_at), (START + DAY, START + DAY + 2 * HOUR, START + 3 * DAY + 2 * HOUR));
-    assert_eq!((p.prize_bps, p.seed_bps, p.fee_bps, p.referral_bps), (7000, 2000, 1000, 0));
+    // the pool snapshots the live Config (the test env's 6000/2500/1500), not a split stored on the series instruction
+    assert_eq!((p.prize_bps, p.seed_bps, p.fee_bps, p.paid_tickets_enabled, p.max_player_share_bps), (6000, 2500, 1500, true, 4999));
     // the caller is the creator record (gets the vault rent minimum back at close) and paid both rents
     assert_eq!(p.authority, anyone.pubkey());
     assert_eq!(e.vault(id), e.rent_min());
@@ -175,6 +175,7 @@ fn sold_pool(e: &mut Env) -> (u32, Keypair) {
     let b = funded(&mut e.svm, 10 * SOL);
     e.buy(id, &b, 4).unwrap();
     assert_eq!(e.pool(id).status, 1);
+    e.cover_player_share(id);
     let payout = Keypair::new();
     let a = e.authority_kp();
     let r = e.set_payout_authority(&a, Some(payout.pubkey())).unwrap();
@@ -209,8 +210,9 @@ fn nobody_pays_a_prize_before_the_review_window_ends() {
     e.warp(p.play_deadline - 1);
     assert_err!(e.commit_winners(id, &payout, &[(w0, PRICE), (w1, PRICE)]), PoolError::TooEarly);
     e.warp(p.play_deadline);
-    // capped at the prize share (70 % of 4 tickets = 2.8 tickets' worth)
-    assert_err!(e.commit_winners(id, &payout, &[(w0, PRICE), (w1, PRICE), (w0, PRICE)]), PoolError::PrizeExceedsShare);
+    // one lamport over the snapshotted prize share (cover enlarged the pot, so 3×PRICE may now fit)
+    let over = e.pool(id).prize_share().unwrap() + 1;
+    assert_err!(e.commit_winners(id, &payout, &[(w0, over)]), PoolError::PrizeExceedsShare);
     e.commit_winners(id, &payout, &[(w0, PRICE), (w1, PRICE)]).unwrap();
     assert_eq!(e.pool(id).pay_from, p.payout_at);
     // the play deadline is over, the review window is not: nobody pays, neither the payout key nor the admin closes
@@ -428,6 +430,7 @@ fn the_lock_is_the_longer_of_the_review_window_and_min_review_secs() {
     for id in [wide, tight, raised] {
         let b = funded(&mut e.svm, 10 * SOL);
         e.buy(id, &b, 1).unwrap();
+        e.cover_player_share(id);
     }
     let a = e.authority_kp();
     let w = funded(&mut e.svm, SOL).pubkey();
@@ -472,6 +475,7 @@ fn floored_pool(e: &mut Env, tickets: u16) -> u32 {
     });
     let b = funded(&mut e.svm, 50 * SOL);
     e.buy(id, &b, tickets).unwrap();
+    e.cover_player_share(id);
     id
 }
 
@@ -610,6 +614,7 @@ fn audit_close_and_expire_guards_hold_with_a_committed_root() {
         let id = e.create_pool(freightchain_pools::CreatePoolParams { min_tickets: 2, max_tickets: 0, max_per_wallet: 100, ..default_params() });
         let b = funded(&mut e.svm, 50 * SOL);
         e.buy(id, &b, 10).unwrap();
+        e.cover_player_share(id);
         id
     };
     let id = mk(&mut e);

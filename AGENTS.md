@@ -23,7 +23,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | admin page, observing production | `admin-ops.md` |
 | 3D model editor: entity storage + revisions, the bundle API, editor sign-in, signed publish | `editor.md` |
 | free levels, tutorial + assist, free rides, trips | `free-rides.md` |
-| referrals: invites, the 5% pot leg, donation share | `referral.md` |
+| referrals: invites, free-ride gifts, donation share (v5 drops on-chain pot leg) | `referral.md` |
 | garage, promo codes | `garage-promo.md` |
 | money, escrowed pools, the program toolchain | `escrow.md` |
 | achievement tiers, the soulbound badge cNFTs, mint job + art | `achievements.md` |
@@ -65,7 +65,7 @@ Client:
 - User-tuned, leave alone unless asked: `SHAKE_START 0.45`, `SHAKE_MOVING 0.09`, `SHAKE_RPM 0.315`, `START_ENGINE_OFF = true`. Numeric tuning requests are relative to the current value ("lower it twice" = halve it).
 - Serve over http (`npm run infra:local` → `http://freightchain.localhost`, or `client/serve.sh` / `npm run server:dev` on :3000); `file://` can't load the modules. Driving is desktop-only; spectating streams/replays works on mobile.
 
-Escrow: the money is in the program; the server only mirrors pools and credits tickets from program events; every wallet signs and sends its own transaction; the server holds two keys – the crank (permissionless steps + opening each day's pool from the admin's `Series`) and the payout key (`PAYOUT_SECRET`: commits a pool's winners root once every ride is decided, records pledged rides' attestations, closes a paid pool – `pool:payout`; prizes are paid with Merkle proofs after the review lock, the cold admin may veto a root). Program v4 (winners root, per-ride attestations, sponsor refunds, `seal_road`, the Config floors) is in `docs/agents/escrow.md`. Never touch the global Solana config or `~/.config/solana/id.json`; always an explicit `--url devnet`; no program deploy or pool creation without the user. Keep `docs/escrow-open-items.md` current.
+Escrow: the money is in the program; the server only mirrors pools and credits tickets from program events; every wallet signs and sends its own transaction; the server holds two keys – the crank (permissionless steps + opening each day's pool from the admin's `Series`) and the payout key (`PAYOUT_SECRET`: commits a pool's winners root once every ride is decided, records pledged rides' attestations, closes a paid pool – `pool:payout`; prizes are paid with Merkle proofs after the review lock, the cold admin may veto a root). Program v4/v5 (winners root, per-ride attestations, sponsor refunds, `seal_road`, the Config floors; v5: `8500/500/1000` split, `set_pool_rules`, `max_player_share_bps < 5000`, `paid_tickets_enabled`, no on-chain referral leg) is in `docs/agents/escrow.md`. Never touch the global Solana config or `~/.config/solana/id.json`; always an explicit `--url devnet`; no program deploy or pool creation without the user. Keep `docs/escrow-open-items.md` current.
 
 Achievements: ids are FROZEN (add a tier, never retune one); unlock rows are append-only, the NFT mint is its own outbox; badge cNFTs are minted by their own key (`ACHIEVEMENT_MINT_SECRET`) only after the delay and a re-check that skips rejected rides – detail in `docs/agents/achievements.md`.
 

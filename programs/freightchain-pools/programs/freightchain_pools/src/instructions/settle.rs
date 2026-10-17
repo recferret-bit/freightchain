@@ -32,7 +32,7 @@ pub fn handle_commit_winners(mut ctx: Context<CommitWinners>, pool_id: u32, root
     require!(now >= a.pool.play_deadline, PoolError::TooEarly);
     require!(!a.pool.has_winners(), PoolError::WinnersCommitted);
     require!(count <= MAX_WINNERS, PoolError::TooManyWinners);
-    require!(total <= a.pool.payout_cap()?, PoolError::PrizeExceedsShare);
+    require!(total <= a.pool.prize_share()?, PoolError::PrizeExceedsShare);
     if count == 0 {
         require!(total == 0 && root == [0u8; 32], PoolError::InvalidParams);
     } else {
@@ -115,7 +115,7 @@ pub fn handle_pay_prize(mut ctx: Context<PayPrize>, pool_id: u32, rank: u8, lamp
     require!(root == a.pool.winners_root, PoolError::InvalidProof);
 
     let paid = a.pool.prizes_paid.checked_add(lamports).ok_or(PoolError::MathOverflow)?;
-    require!(paid <= a.pool.winners_total && paid <= a.pool.payout_cap()?, PoolError::PrizeExceedsShare);
+    require!(paid <= a.pool.winners_total && paid <= a.pool.prize_share()?, PoolError::PrizeExceedsShare);
     // the winner's wallet must end rent-exempt (a transfer into a near-empty account below the minimum fails)
     require!(
         a.to.lamports().checked_add(lamports).ok_or(PoolError::MathOverflow)? >= rent_min()?,
@@ -200,11 +200,12 @@ pub fn handle_close_pool(mut ctx: Context<ClosePool>, pool_id: u32) -> Result<()
     let (fee_out, platform_out, unclaimed) = if cancelled {
         (0, 0, 0)
     } else {
-        let (prize, _seed, referral, fee) = split(a.pool.pot()?, a.pool.prize_bps, a.pool.seed_bps, a.pool.referral_bps)?;
+        // v5: the split is on counted tickets + sponsorship. Excess ticket lamports stay in the vault and fall into seed_out (the next pool).
+        let (prize, _seed, fee) = split(a.pool.counted_pot()?, a.pool.prize_bps, a.pool.seed_bps)?;
         let platform = bps_of(fee, a.pool.platform_fee_bps)?;   // v4 (L8): the cut the pool opened with
-        let cap = prize.checked_add(referral).ok_or(PoolError::MathOverflow)?;
-        (fee - platform, platform, cap.checked_sub(a.pool.prizes_paid).ok_or(PoolError::MathOverflow)?)
+        (fee - platform, platform, prize.checked_sub(a.pool.prizes_paid).ok_or(PoolError::MathOverflow)?)
     };
+    let ticket_excess = if cancelled { 0 } else { a.pool.ticket_excess()? };
     // Everything that is not fee, platform cut or the rent minimum goes to the seed treasury:
     // its share, the unclaimed prize and referral, and any stray lamports someone sent straight to the vault.
     let seed_out = distributable
@@ -231,6 +232,7 @@ pub fn handle_close_pool(mut ctx: Context<ClosePool>, pool_id: u32) -> Result<()
         unclaimed,
         rent_returned: min,
         cancelled,
+        ticket_excess,
     });
     Ok(())
 }

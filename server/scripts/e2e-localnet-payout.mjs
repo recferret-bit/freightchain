@@ -32,7 +32,7 @@ const { BASE, RPC, KEYS } = process.env;
 if (!BASE || !RPC || !KEYS) { console.error('run it through .claude/skills/localnet-e2e/run.sh (needs BASE, RPC, KEYS)'); process.exit(2); }
 const CDP = +(process.env.CHROME_PORT || 9391);
 const PREP_D = +(process.env.PREP_D || 150), PLAY_D = +(process.env.PLAY_D || 270), REVIEW_D = +(process.env.REVIEW_D || 20);   // v2: payout_at = play + REVIEW_D
-const PRICE = 100_000_000, SPONSOR = 50_000_000, SPLIT = [7000, 2000, 1000];   // 0.1 SOL a ticket, 0.05 SOL sponsored
+const PRICE = 100_000_000, SPONSOR = 1_250_000_000, SPLIT = [7000, 2000, 1000];   // 0.1 SOL a ticket, 1.25 SOL sponsored (covers 11 tickets under v5 47.4 % cap)
 const cov = coverage(process.env.COVERAGE || `${KEYS}/../coverage.json`);
 BigInt.prototype.toJSON ??= function () { return String(this); };   // the codec decodes Pool.paid_mask (u64 bit mask) as a BigInt
 const T0 = Date.now(), fails = [];
@@ -470,14 +470,15 @@ try {
   check('G closed by a stranger: cancelled, vault 0', (await poolAcc(G)).status === 4 && (await bal(codec.vaultPda(G))) === 0);
   refuse('close_sponsor_receipt of a cancelled pool (refunded, the receipt is gone)', ['close-sponsor-receipt', '--pool', String(G), '--sponsor', S.wallet, '-k', Z.keyfile], 'AccountNotInitialized');
   await untilChain(Number((await poolAcc(F)).playDeadline.getTime() / 1000), 'pool F play deadline');
-  const fv = await bal(codec.vaultPda(F)), fLegs = closeSplit({ priceLamports: PRICE, ticketsSold: 1, sponsored: 0, prizeBps: SPLIT[0], seedBps: SPLIT[1], platformFeeBps: PLAT_BPS, prizesPaid: 0, vaultLamports: fv, cancelled: false, rentMin: RENT0 });
+  const pf0 = await poolAcc(F), fv = await bal(codec.vaultPda(F));
+  const fLegs = closeSplit({ priceLamports: PRICE, ticketsSold: 1, sponsored: 0, prizeBps: SPLIT[0], seedBps: SPLIT[1], platformFeeBps: PLAT_BPS, ...(pf0.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: pf0.maxPlayerShareBps } : {}), prizesPaid: 0, vaultLamports: fv, cancelled: false, rentMin: RENT0 });
   refuse('close_pool of an active pool with no winners root', ['close-pool', '--pool', String(F), ...adm], 'WinnersNotCommitted');
   const fc = admintool(['commit-winners', '--pool', String(F), '--winners', 'none', ...adm]).pool;
   check('commit_winners with no winner (count 0): the pool may close, its prize share unclaimed', fc.winnersCount === 0 && ms(fc.committedAt) > 0 && fc.winnersTotal === 0, JSON.stringify({ count: fc.winnersCount, at: fc.committedAt }));
   before = await bals({ seed: addr('seed'), fee: addr('fee') });
   admintool(['close-pool', '--pool', String(F), ...adm]);
   after = await bals({ seed: addr('seed'), fee: addr('fee') });
-  check('the admin closes F without paying a prize: the whole prize share goes to the seed as unclaimed', (await poolAcc(F)).status === 3 && after.seed - before.seed === fLegs.seed && fLegs.unclaimed === Math.floor(PRICE * SPLIT[0] / 10_000) && after.fee - before.fee === fLegs.fee);
+  check('the admin closes F without paying a prize: the whole pot goes to the seed (unclaimed + ticket excess above the sponsorship cap)', (await poolAcc(F)).status === 3 && after.seed - before.seed === fLegs.seed && fLegs.seed === PRICE && after.fee - before.fee === fLegs.fee);
   // v4 (L4): a pool nobody sealed in time – phase 1's REARM pool (never sealed; the crank leaves it alone, see localnet-fixtures.mjs): its seal slot has left
   // the SlotHashes window, so the first seal_road can only re-arm it a few slots ahead; the next one seals it
   const FX = process.env.FIXTURES ? JSON.parse(readFileSync(process.env.FIXTURES, 'utf8')) : null;
