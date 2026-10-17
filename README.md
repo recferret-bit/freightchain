@@ -10,16 +10,16 @@ Paid entries are SOL on Solana devnet. The program holds the money. SOL is the t
 
 <!-- traction:start -->
 
-Public numbers for a reviewer, read 2026-10-16 18:56 UTC. PostHog and the public stats endpoint were each read more than once. A count the second read did not support is not in a headline.
+Public numbers for a reviewer, read 2026-10-17 20:27 UTC. PostHog and the public stats endpoint were each read more than once. A count the second read did not support is not in a headline.
 
 <table><tr>
 <td align="center" width="50%"><h2>32</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
 <td align="center" width="50%"><h2>27.9 km</h2><b>driven</b><br>2 drivers · 5 crashes</td>
 </tr>
 <tr>
-<td align="center" width="20%"><h2>208</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-16 UTC</td>
+<td align="center" width="20%"><h2>230</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-17 UTC</td>
 <td align="center" width="20%"><h2>22</h2><b>whitepaper readers</b><br>PostHog · same window</td>
-<td align="center" width="20%"><h2>73</h2><b>wallet sign-ins</b><br>real wallets · demo excluded</td>
+<td align="center" width="20%"><h2>75</h2><b>wallet sign-ins</b><br>real wallets · demo excluded</td>
 <td align="center" width="20%"><h2>3</h2><b>real shifts started</b><br>29 demo starts</td>
 <td align="center" width="20%"><h2>6</h2><b>shifts finished</b><br>6 demo · 0 real</td>
 </tr></table>
@@ -54,7 +54,7 @@ Waiting: FC · Promo from an invite view; FC · Promo from a submitted code.
 | Window | Landing people | Real finishes | Demo finishes | Real sign-ins |
 | --- | ---: | ---: | ---: | ---: |
 | 8–12 Oct 2026 (judge board) | 106 | 0 | 6 | 54 |
-| 8 Oct 2026 through 2026-10-16 UTC | 208 | 0 | 6 | 73 |
+| 8 Oct 2026 through 2026-10-17 UTC | 230 | 0 | 6 | 75 |
 
 Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/traction/latest.json`.
 

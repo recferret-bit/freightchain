@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-16T18:56:43.686Z",
+  "fetchedAt": "2026-10-17T20:27:17.957Z",
   "stats": {
     "rides": 32,
     "ridesFree": 29,
@@ -40,15 +40,15 @@
         "signinsReal": 54
       },
       {
-        "label": "8 Oct 2026 through 2026-10-16 UTC",
-        "landingPeople": 208,
-        "landingEvents": 447,
+        "label": "8 Oct 2026 through 2026-10-17 UTC",
+        "landingPeople": 230,
+        "landingEvents": 475,
         "whitepaperPeople": 22,
         "startsReal": 3,
         "completesReal": 0,
         "startsDemo": 29,
         "completesDemo": 6,
-        "signinsReal": 73
+        "signinsReal": 75
       }
     ],
     "error": null,
