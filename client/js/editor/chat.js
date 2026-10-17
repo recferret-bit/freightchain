@@ -7,24 +7,21 @@ import { putEntity } from '../world/entities.js';
    Earlier requests of the entity are listed under the box: a click replays their log and previews their result. */
 export function mountChat(st) {
   const log = el('div', { class: 'ed-log' });
-  const prov = el('select', { class: 'ed-sel', onchange: () => fillModels() }), model = el('select', { class: 'ed-sel' });
   const scope = el('select', { class: 'ed-sel', title: 'what the request is about' }, el('option', { value: 'this' }, 'this entity'), el('option', { value: 'new' }, 'a new entity'));
   const box = el('textarea', { class: 'ed-prompt', rows: 3, maxlength: 4000, placeholder: 'e.g. give the police car a longer light bar · make a water tower landmark with a ladder' });
   const send = el('button', { class: 'ed-btn', onclick: () => ask() }, 'SEND'), cancel = el('button', { class: 'ed-btn ed-dim', hidden: true, onclick: () => job && post(`jobs/${job}/cancel`).catch(e => line('err', e.message)) }, 'CANCEL');
   const past = el('div', { class: 'ed-past' });
   box.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) ask(); e.stopPropagation(); });   // the viewer's own keys (WASD, arrows) stay out of the box
-  const node = el('div', { class: 'ed-chat' }, el('div', { class: 'ed-row' }, scope, prov, model), log, box, el('div', { class: 'ed-row' }, send, cancel), el('div', { class: 'ed-sub', text: 'EARLIER REQUESTS' }), past);
+  const node = el('div', { class: 'ed-chat' }, el('div', { class: 'ed-row' }, scope), log, box, el('div', { class: 'ed-row' }, send, cancel), el('div', { class: 'ed-sub', text: 'EARLIER REQUESTS' }), past);
   let job = null, after = 0, timer = null, generation = 0, pending = false;
 
-  /* The scripted test provider stays available to the browser e2e when it is the only one. A real provider hides it. */
-  const providers = () => { const ps = st.me?.providers ?? [], real = ps.filter(p => p.id !== 'fake'); return real.length ? real : ps; };
+  /* The model is the one configured on the server. The chat does not ask you to pick one. */
+  const configured = () => (st.me?.providers ?? []).length > 0;
   function fillProviders() {
-    const ps = providers(); prov.textContent = '';
-    for (const p of ps) prov.append(el('option', { value: p.id, selected: p.id === st.me.defaultProvider }, p.label ?? p.id));
-    fillModels();
-    send.disabled = pending || !!job || !ps.length; if (!ps.length) line('sys', 'No AI provider is configured on the server (XAI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY or ZAI_API_KEY). SOURCE still edits by hand.');
+    const on = configured();
+    send.disabled = pending || !!job || !on;
+    if (!on) line('sys', 'No model key is configured (ZAI_API_KEY). SOURCE still edits by hand.');
   }
-  function fillModels() { const p = providers().find(x => x.id === prov.value); model.textContent = ''; for (const m of p?.models ?? []) model.append(el('option', { value: m, selected: m === p.default }, m)); }
   const line = (kind, text) => { log.append(el('div', { class: `ed-l ed-${kind}`, text })); log.scrollTop = log.scrollHeight; };
 
   async function ask() {
@@ -33,11 +30,11 @@ export function mountChat(st) {
     pending = true; send.disabled = true;
     log.textContent = ''; line('you', prompt);
     try {
-      const r = await post('jobs', { prompt, entityId: fresh ? undefined : st.entityId ?? undefined, baseRevisionId: fresh ? undefined : st.head?.row?.headRevisionId ?? null, provider: prov.value || undefined, model: model.value || undefined });
+      const r = await post('jobs', { prompt, entityId: fresh ? undefined : st.entityId ?? undefined, baseRevisionId: fresh ? undefined : st.head?.row?.headRevisionId ?? null });
       if (my !== generation || wallet !== st.me?.wallet) return;
       box.value = ''; follow(r.jobId, 0, target);
     } catch (e) { if (my === generation) { line('err', e.message); for (const x of e.errors ?? []) line('err', '· ' + x); } }
-    finally { pending = false; send.disabled = !!job || !providers().length; }
+    finally { pending = false; send.disabled = !!job || !configured(); }
   }
   function follow(id, from = 0, target = st.entityId) {
     job = id; after = from; cancel.hidden = false; send.disabled = true; clearTimeout(timer);
@@ -89,7 +86,7 @@ export function mountChat(st) {
     } catch { /* the bridge may not be there yet */ }
   }
   async function replayJob(j) {
-    clearTimeout(timer); job = null; cancel.hidden = true; send.disabled = !providers().length;
+    clearTimeout(timer); job = null; cancel.hidden = true; send.disabled = !configured();
     const my = ++generation, wallet = st.me?.wallet, selected = st.entityId, current = () => my === generation && wallet === st.me?.wallet && selected === st.entityId;
     log.textContent = ''; line('you', j.prompt);
     let last = 0;

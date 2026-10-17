@@ -99,13 +99,13 @@ await E.shot('04-published');
 
 // CHAT: a job with the server's fake model through the real MCP; the draft it saves is previewed
 await tab('CHAT');
-await until(() => probe(E, `[...document.querySelectorAll('#editor .ed-sel option')].some(o => o.value === 'fake')`));
+await until(() => probe(E, `(() => { const b = [...document.querySelectorAll('#editor button')].find(x => x.textContent === 'SEND'); return !!b && !b.disabled; })()`));
 const selectedBeforeKeys = await E.ev('__viewer.current.id');
 await E.ev(`document.querySelector('#editor select').focus()`);
 await E.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
 await E.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
 check('typing in chat selectors does not change the viewer selection', await E.ev('__viewer.current.id') === selectedBeforeKeys);
-await E.ev(`(() => { const s = [...document.querySelectorAll('#editor .ed-sel')].find(x => [...x.options].some(o => o.value === 'fake')); s.value = 'fake'; s.dispatchEvent(new Event('change')); document.querySelector('#editor .ed-prompt').value = 'make the bush look drier'; })()`);
+await E.ev(`document.querySelector('#editor .ed-prompt').value = 'make the bush look drier'`);
 await click('SEND');
 const done = await until(() => probe(E, `(() => { const t = document.querySelector('#editor .ed-log')?.textContent || ''; return /done – the result is a DRAFT/.test(t) ? t : /failed|cancelled/.test(t) && 'FAILED ' + t; })()`), 60000);
 check('a chat job runs through the MCP and saves a draft', !!done && !String(done).startsWith('FAILED'), String(done).slice(0, 300));

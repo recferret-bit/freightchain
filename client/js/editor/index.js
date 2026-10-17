@@ -21,7 +21,7 @@ export function mountEditor(viewer) {
   st.loadHead = async () => {
     if (!st.me || !st.entityId) return;
     const generation = ++headGeneration, id = st.entityId, wallet = st.me.wallet;
-    try { const head = await get(`entities/${encodeURIComponent(id)}`); if (generation !== headGeneration || id !== st.entityId || wallet !== st.me?.wallet) return; st.head = head; }
+    try { const head = await get(`entities/${encodeURIComponent(id)}`); if (generation !== headGeneration || id !== st.entityId || wallet !== st.me?.wallet) return; st.head = head; if (head?.config) st.preview(head.config); }
     catch (e) { if (generation !== headGeneration || id !== st.entityId || wallet !== st.me?.wallet) return; st.head = null; if (e.status !== 404) status(e.message, true); }
     emit();
   };
