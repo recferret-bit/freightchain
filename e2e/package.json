@@ -1,0 +1,16 @@
+{
+  "name": "freightchain-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Local code-level end-to-end suite. No browser. Block 1 is off-chain; block 2 adds a local validator.",
+  "scripts": {
+    "test:pages": "node --test --test-concurrency=1 --test-force-exit $(find block1-offchain block2-chain -name '*.test.mjs') catalog.test.mjs",
+    "test:block1": "node --test --test-concurrency=1 --test-force-exit $(find block1-offchain -name '*.test.mjs') catalog.test.mjs",
+    "test:block2": "node --test --test-concurrency=1 --test-force-exit $(find block2-chain -name '*.test.mjs') catalog.test.mjs"
+  },
+  "dependencies": {
+    "bs58": "6.0.0",
+    "happy-dom": "15.11.7",
+    "tweetnacl": "1.0.3"
+  }
+}

@@ -1,0 +1,42 @@
+# Code-level e2e stack. Separate project, ports and volume from docker-compose.yml
+# (dev Postgres stays on 15433, this one on 15434). No Solana image: block 2 uses the
+# host solana-test-validator (Agave), the same binary as .claude/skills/localnet-e2e.
+name: freightchain-e2e
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: freightchain-e2e-postgres
+    environment:
+      POSTGRES_USER: freight
+      POSTGRES_PASSWORD: freight_dev_password
+      POSTGRES_DB: freightchain_e2e
+    ports:
+      - "127.0.0.1:15434:5432"
+    volumes:
+      - freightchain_e2e_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U freight -d freightchain_e2e"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+
+  redis:
+    image: redis:7-alpine
+    container_name: freightchain-e2e-redis
+    environment:
+      REDIS_PASSWORD: freight_dev_redis
+      REDISCLI_AUTH: freight_dev_redis
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD" --save "" --appendonly no']
+    ports:
+      - "127.0.0.1:16381:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  freightchain_e2e_pg:
+    name: freightchain_e2e_pg

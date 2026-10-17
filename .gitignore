@@ -33,6 +33,10 @@ media/out/audio/*
 !media/out/audio/_store/
 media/out/audio/_store/**/*.png
 
+# code-level e2e ledger and the API pid (docker-compose.e2e.yml / e2e/scripts/run.sh)
+e2e/.ledger/
+e2e/.server.pid
+
 # Test artifacts (tools/e2e-chrome.mjs writes to the OS temp dir by default; these catch local overrides)
 shots/
 screenshots/
