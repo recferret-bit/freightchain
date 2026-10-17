@@ -7,7 +7,7 @@ import { PlayerSessionService } from '../../../services/player-session.service.j
 import { WeeklyTicketService } from '../../../services/weekly-ticket.service.js';
 import { GetMeQuery } from './get-me.query.js';
 
-/** Who am I. A prize-eligible wallet is issued this week's granted ticket here (lazy, not a midnight job).
+/** Who am I. A prize-eligible wallet is issued each due granted ticket here (lazy, not a midnight job).
     `readyFreeRide`: the free ride ordered but not started (read only – a stale running ride is left to the sweeper / the next order). */
 @QueryHandler(GetMeQuery)
 export class GetMeHandler implements IQueryHandler<GetMeQuery, MeDto> {
@@ -21,7 +21,7 @@ export class GetMeHandler implements IQueryHandler<GetMeQuery, MeDto> {
   async execute(query: GetMeQuery): Promise<MeDto> {
     const now = this.clock.now();
     const player = await this.sessions.touch(query.wallet, now);
-    const ticket = this.weekly ? await this.weekly.offer(player, query.headers, now) : null;
-    return this.profile.of(player, now, ticket);
+    const grants = this.weekly ? await this.weekly.offer(player, query.headers, now) : [];
+    return this.profile.of(player, now, grants);
   }
 }

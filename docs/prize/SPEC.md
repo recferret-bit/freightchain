@@ -1,6 +1,6 @@
 # Weekly prize contest — spec
 
-**Draft. Needs legal review.** Not legal advice. The owner chose variant B of the 2026-10-16 prize-pool research. Variant B is a skill contest. Training rides are not an entry. The free path onto a board is one granted paid ticket per wallet per week (AMOE), plus a separate promo-code slot. Flag for counsel: 18+ is a checkbox, country comes from edge headers, and a wallet is free, so this is closer to an equal-chance entry than a promo code and it is not a finished one-person method of entry.
+**Draft. Needs legal review.** Not legal advice. The owner chose variant B of the 2026-10-16 prize-pool research. Variant B is a skill contest. Training rides are not an entry. The free path onto a board is a granted paid ticket on each enabled tier (AMOE; default one 1h ticket every 7 days), plus a separate promo-code slot. Flag for counsel: 18+ is a checkbox, country comes from edge headers, and a wallet is free, so this is closer to an equal-chance entry than a promo code and it is not a finished one-person method of entry.
 
 This contest is not the on-chain ticket vault (`programs/freightchain_pools`). That program still sells tickets and pays its own winners root. This contest is funded by the operator: a published base plus a capped share of the previous week's ticket revenue, paid in USDC after KYC. The program was not changed. TEN4 is never a prize, an entry, or a score boost.
 
@@ -28,15 +28,30 @@ Per wallet per week the counted starts are the first 5 paid declarations and the
 
 ### Weekly granted ticket (AMOE)
 
-One row in `player.WeeklyTicket` per wallet per prize week (`weekId` is that Monday). It is granted, not purchased. The tier is `GameSetting` `weekly_ticket_tier`: 1, 4, or 8 hours, default 1. The tier is fixed when the row is inserted (`ON CONFLICT DO NOTHING`). It expires at Sunday 12:00 UTC (`week.end`) and does not stack. The next week is a new row. Nothing is issued between Sunday 12:00 and Monday 00:00.
+Each enabled tier has its own row in `player.WeeklyTicket`. The row is granted, not purchased. Six `GameSetting` keys, two per tier:
 
-Issued lazily on `GET /api/me` and when ordering that tier, only when all of these hold: the wallet is not a guest, `age18At` is set, and `prizeAccess.ranked` is true from the edge geo headers. Unknown country fails closed. The loss stamp is not required. A guest never receives one.
+| Key | Default | Meaning |
+|---|---:|---|
+| `weekly_ticket_1h_enabled` | 1 | 0 off, 1 on |
+| `weekly_ticket_1h_days` | 7 | days between 1h grants |
+| `weekly_ticket_4h_enabled` | 0 | 0 off, 1 on |
+| `weekly_ticket_4h_days` | 7 | days between 4h grants, stored even while the flag is off |
+| `weekly_ticket_8h_enabled` | 0 | 0 off, 1 on |
+| `weekly_ticket_8h_days` | 7 | days between 8h grants, stored even while the flag is off |
 
-Ordering the configured tier spends it (`Ride.weeklyGrant`, price 0, status created). It can be watched, because it is not a free ride. Declaring it ranked uses a paid slot and re-checks 18+ and geo. It is preferred over a purchased pool ticket so it is not left to expire.
+An enabled flag is only 0 or 1. An interval is an integer of at least 1 day. The old key `weekly_ticket_tier` is gone and is not mapped onto a tier. A missing row uses the code default.
+
+Slots are calendar intervals of that many UTC days, anchored at `SEASON_EPOCH` (Monday 2026-10-12). An interval of 7 therefore starts on a prize-week Monday. The primary key is `(wallet, tier, periodStart)`. A second insert in the same slot does nothing.
+
+**Expiry.** An unused grant expires at the start of the next slot of that tier, or at Sunday 12:00 UTC (`week.end`), whichever is earlier. That is the ranked close, not a rolling timer from the moment the wallet asked. Nothing is issued between Sunday 12:00 and Monday 00:00. One unspent grant per tier: a still-live grant is not replaced, so shortening the interval does not stack a second ticket on top of it. Turning a flag off stops the next grant of that tier. A grant already issued stays until it expires. A spent or expired row for the current slot blocks another until the next slot. 1h and 4h can both be live when both flags are on. They do not stack with each other; each is its own tier.
+
+Issued lazily on `GET /api/me` and when ordering a paid tier, only when all of these hold: the wallet is not a guest, `age18At` is set, and `prizeAccess.ranked` is true from the edge geo headers. Unknown country fails closed. The loss stamp is not required. A guest never receives one. `/api/me` returns `weeklyTickets`: `{ tier, expiresAt, rideId }[]`.
+
+Ordering that tier spends it (`Ride.weeklyGrant`, price 0, status created). It can be watched, because it is not a free ride. Declaring it ranked uses one of the five paid slots and re-checks 18+ and geo. The ranked-start deadlines still apply: an 8h start by Sunday 04:00 UTC, a 4h start by 08:00, a 1h start by 11:00. The grant is preferred over a purchased pool ticket so it is not left to expire.
 
 **TEN4: no.** Wallets are free, 18+ is a checkbox, and a client can spoof geo if the edge does not strip those headers. An automatic weekly mint would be an emission faucet. Purchased rides and admin ticket-promo rides still mint TEN4. Ride-promo codes do not. The USDC board is the free prize path.
 
-Anti-sybil, as built: one grant per wallet per week, not cumulative, guests excluded, 18+ and prize geo required to receive it and to start it ranked. A person can still open many wallets and enter the USDC board once per wallet per week. The layered plan (fingerprint, telemetry clusters, on-chain funding, proof of personhood on the grant, KYC only before payout) is `docs/roadmap/anti-sybil.md`. It is not built. Board attention marks, the 10-participant floor, and KYC before a payout stay. Counsel should say whether the grant is an acceptable free method of entry until that plan exists.
+Anti-sybil, as built: one unspent grant per wallet per tier per interval, not cumulative, guests excluded, 18+ and prize geo required to receive it and to start it ranked. A person can still open many wallets and enter the USDC board once per wallet per tier per interval. The layered plan (fingerprint, telemetry clusters, on-chain funding, proof of personhood on the grant, KYC only before payout) is `docs/roadmap/anti-sybil.md`. It is not built. Board attention marks, the 10-participant floor, and KYC before a payout stay. Counsel should say whether the grant is an acceptable free method of entry until that plan exists.
 
 ## Score
 

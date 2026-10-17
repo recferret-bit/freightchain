@@ -2,7 +2,7 @@
 
 **Planned. Not built.** This is a development note, not a shipped control and not a legal opinion. Nothing in this file is wired, configured, or enforced.
 
-Today a person can open many wallets. The weekly granted ticket is one per wallet per week. Guests are excluded. 18+ is a checkbox. Country comes from edge headers. Board attention marks, the ten-participant floor, and KYC before a USDC payout are the other brakes that exist or are already specified. They do not prove one person.
+Today a person can open many wallets. Each enabled tier grants one ticket per wallet per interval (default: 1h every 7 days; 4h and 8h off). Guests are excluded. 18+ is a checkbox. Country comes from edge headers. Board attention marks, the ten-participant floor, and KYC before a USDC payout are the other brakes that exist or are already specified. They do not prove one person.
 
 ## Recommended combo
 

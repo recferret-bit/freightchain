@@ -28,17 +28,19 @@ model Player {
   @@schema("player")
 }
 
-// One granted paid ticket per prize week. Not a purchase. Expires at Sunday 12:00 UTC. A second week is a new row, not a balance.
+// One granted paid ticket per tier per interval. Not a purchase. Does not mint TEN4.
+// An unused row expires at the next interval of that tier, or Sunday 12:00 UTC, whichever is earlier.
 model WeeklyTicket {
-  wallet    String
-  player    Player   @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
-  weekId    String // prize week id (the Monday, YYYY-MM-DD)
-  tier      String // 1h | 4h | 8h
-  expiresAt DateTime
-  rideId    String?  @unique
-  createdAt DateTime
+  wallet      String
+  player      Player   @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  weekId      String // prize week the row was issued in (the Monday, YYYY-MM-DD)
+  tier        String // 1h | 4h | 8h
+  periodStart DateTime // start of this tier's grant interval
+  expiresAt   DateTime
+  rideId      String?  @unique
+  createdAt   DateTime
 
-  @@id([wallet, weekId])
+  @@id([wallet, tier, periodStart])
   @@schema("player")
 }
 

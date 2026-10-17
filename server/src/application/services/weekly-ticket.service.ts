@@ -1,19 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import type { Player } from '../../domain/players/player.entity.js';
-import { prizeAccess, prizeWeek } from '../../domain/prize/prize-rules.js';
+import { grantSlot } from '../../domain/prize/grant-schedule.js';
+import { PRIZE_TIERS, prizeAccess, prizeWeek, type PrizeWeek } from '../../domain/prize/prize-rules.js';
 import type { PaidTierId } from '../../domain/rides/ride-tier.js';
+import { tierGrant } from '../../domain/settings/game-settings.js';
 import { WeeklyTicketRepositoryPort, type WeeklyTicketRecord } from '../ports/prize/weekly-ticket.repository.port.js';
 import { GeoLocatorPort, type GeoHeaders } from '../ports/prize/geo-locator.port.js';
 import { PrizeGeoPort } from '../ports/prize/prize-geo.port.js';
 import type { TransactionHandle } from '../ports/shared/transaction.port.js';
 import { GameSettingsService } from './game-settings.service.js';
 
-const tierOf = (hours: number): PaidTierId => (hours === 4 ? '4h' : hours === 8 ? '8h' : '1h');
-
 /**
- * One granted paid ticket per wallet per prize week. Not purchased. It expires at Sunday 12:00 UTC and does not stack.
- * Issued only to a signed-in wallet that is 18+ and prize-geo eligible. A guest session never receives one.
- * Ordering the configured tier spends it. Ranked use takes a paid slot. The ride does not mint TEN4.
+ * One granted paid ticket per enabled tier per interval. Not purchased. Does not mint TEN4.
+ * An unused grant expires at the next interval of that tier, or at Sunday 12:00 UTC, whichever is earlier.
+ * A still-unspent grant blocks the next one, so a shorter interval cannot stack on top of it.
+ * Issued only inside the ranked window, to a signed-in wallet that is 18+ and prize-geo eligible. A guest never receives one.
+ * Ordering that tier spends it. Ranked use takes a paid slot. The ranked-start deadlines per tier are unchanged.
  */
 @Injectable()
 export class WeeklyTicketService {
@@ -24,25 +26,33 @@ export class WeeklyTicketService {
     private readonly lists: PrizeGeoPort,
   ) {}
 
-  async configuredTier(): Promise<PaidTierId> {
-    return tierOf((await this.settings.current()).weeklyTicketHours);
-  }
-
-  /** The live unspent ticket, after issuing this week's row when the wallet is eligible. */
-  async offer(player: Player, headers: GeoHeaders, now: Date, tx?: TransactionHandle): Promise<WeeklyTicketRecord | null> {
-    if (!this.eligible(player, headers)) return null;
+  /** Live unspent grants, after issuing every enabled tier whose interval is due. */
+  async offer(player: Player, headers: GeoHeaders, now: Date, tx?: TransactionHandle): Promise<WeeklyTicketRecord[]> {
+    if (!this.eligible(player, headers)) return [];
     const week = prizeWeek(now);
-    if (now.getTime() < week.end.getTime()) {
-      const tier = tierOf((await this.settings.current()).weeklyTicketHours);
-      await this.tickets.ensure({ wallet: player.wallet, weekId: week.id, tier, expiresAt: week.end, now }, tx);
-    }
-    return this.tickets.current(player.wallet, now, tx);
+    if (now.getTime() >= week.start.getTime() && now.getTime() < week.end.getTime()) await this.issue(player.wallet, week, now, tx);
+    return this.tickets.live(player.wallet, now, tx);
   }
 
-  /** Spend this week's ticket on `rideId` when the ordered tier matches. False when there is no ticket to take. */
+  /** Spend the live grant of `tier` on `rideId`. False when that tier has nothing to take. */
   async claim(player: Player, headers: GeoHeaders, tier: PaidTierId, rideId: string, now: Date, tx: TransactionHandle): Promise<boolean> {
-    if (!(await this.offer(player, headers, now, tx))) return false;
+    const live = await this.offer(player, headers, now, tx);
+    if (!live.some((row) => row.tier === tier)) return false;
     return this.tickets.claim(player.wallet, tier, rideId, now, tx);
+  }
+
+  private async issue(wallet: string, week: PrizeWeek, now: Date, tx?: TransactionHandle): Promise<void> {
+    const settings = await this.settings.current();
+    const open = await this.tickets.live(wallet, now, tx);
+    for (const tier of PRIZE_TIERS) {
+      const spec = tierGrant(settings, tier);
+      if (!spec.enabled || open.some((row) => row.tier === tier)) continue; // one unspent grant per tier
+      const slot = grantSlot(now, spec.days);
+      const expiresAt = new Date(Math.min(slot.end.getTime(), week.end.getTime()));
+      if (expiresAt.getTime() <= now.getTime()) continue;
+      if (await this.tickets.hasPeriod(wallet, tier, slot.start, tx)) continue;
+      await this.tickets.ensure({ wallet, weekId: week.id, tier, periodStart: slot.start, expiresAt, now }, tx);
+    }
   }
 
   private eligible(player: Player, headers: GeoHeaders): boolean {

@@ -46,14 +46,20 @@ A runtime knob (how many free rides a new wallet gets, the daily cap) is **not**
 
 ## Runtime settings
 
-Table `player.GameSetting` (`key` text, `value` integer). The migration seeds the rows. A missing row, or a stored value outside 0..100_000, falls back to the code default in `server/src/domain/settings/game-settings.ts`. Truncating the table does not change the defaults.
+Table `player.GameSetting` (`key` text, `value` integer). The migration seeds the rows. A missing row, or a stored value outside its range, falls back to the code default in `server/src/domain/settings/game-settings.ts`. Truncating the table does not change the defaults.
 
 | Key | Default | What it does |
 |---|---|---|
 | `free_on_signup` | 10 | Free rides a **new** wallet starts with. Wallets that already exist are not topped up. |
 | `free_rides_daily_max` | 5 | The +1 at 00:00 UTC stops here. A balance already above it (signup, a promo, an admin grant) stays. |
+| `weekly_ticket_1h_enabled` | 1 | Granted 1h ticket. 0 off, 1 on. Not a purchase. Does not mint TEN4. |
+| `weekly_ticket_1h_days` | 7 | Days between 1h grants. Integer, at least 1. 7 starts on a prize-week Monday. |
+| `weekly_ticket_4h_enabled` | 0 | Granted 4h ticket. 0 off, 1 on. |
+| `weekly_ticket_4h_days` | 7 | Days between 4h grants. Integer, at least 1. Stored while the flag is off. |
+| `weekly_ticket_8h_enabled` | 0 | Granted 8h ticket. 0 off, 1 on. |
+| `weekly_ticket_8h_days` | 7 | Days between 8h grants. Integer, at least 1. Stored while the flag is off. |
 
-Change one with the signed admin API (`GET /api/admin/settings`, then the challenge and `POST /api/admin/settings`). Bounds are 0..100_000. The same session can add or remove one signed-in wallet's free rides (`POST /api/admin/players/free-rides`). A result below 0 or above 100_000 is refused.
+Change one with the signed admin API (`GET /api/admin/settings`, then the challenge and `POST /api/admin/settings`). Bounds are 0..100_000. A grant flag is only 0 or 1. A grant interval is at least 1 day. The same session can add or remove one signed-in wallet's free rides (`POST /api/admin/players/free-rides`). A result below 0 or above 100_000 is refused. The retired key `weekly_ticket_tier` is ignored.
 
 ## Server settings (`env.schema.ts`)
 

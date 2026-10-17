@@ -93,8 +93,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     const holdingReady = held?.isInStatus(RideStatus.Created) && !held.isFree && held.tier === tier;
     const playerRow = await this.sessions.touch(wallet);
     if (playerRow.guest && (paid || level !== DEFAULT_FREE_LEVEL)) throw new ConflictError('a guest session can only play the EASY run', 'guest_easy_only');
-    const grantTier = paid ? await this.weekly.configuredTier() : null;
-    const grantPossible = paid && grantTier === tier && (await this.weekly.offer(playerRow, geo, this.clock.now()))?.tier === tier;
+    const grantPossible = paid && (await this.weekly.offer(playerRow, geo, this.clock.now())).some((t) => t.tier === tier);
     // A soon-tier request must not expire the order in hand. A waiting ride promo, a ready ride already in hand, or this week's grant is not a sale.
     if (paid && !promoWaiting && !holdingReady && !grantPossible && !isTierOnSale(tier) && !livePool) throw new ConflictError(`the ${tierShiftName(tier as PaidTierId)} shift is not on sale yet`, 'tier_not_on_sale');
     // program mode sells paid rides ONLY as pool tickets (a tier whose pools all failed has none to ride, never a fallback order); transfer mode keeps the legacy order where no pool is registered
@@ -127,8 +126,8 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
       // A ride promo is claimed before a ticket or a payment. The grant is the ride; it is not a purchase.
       const promoId = this.entropy.uuid();
       const promoCode = paid ? await this.promos.claimUnspent(wallet, tier as PaidTierId, promoId, tx) : null;
-      const grant = paid && !promoCode ? await this.weekly.offer(player, geo, now, tx) : null;
-      const takingGrant = grant?.tier === tier;
+      const grant = paid && !promoCode ? await this.weekly.offer(player, geo, now, tx) : [];
+      const takingGrant = grant.some((t) => t.tier === tier);
       if (paid && !promoCode && !takingGrant && !isTierOnSale(tier) && !livePool) throw new ConflictError(`the ${tierShiftName(tier as PaidTierId)} shift is not on sale yet`, 'tier_not_on_sale');
       if (paid && !promoCode && !takingGrant) player.requirePaidPlay();
       const ticketed = !promoCode && !takingGrant && selling ? await this.ticketRide(wallet, tier as PaidTierId, round as Round, now, tx) : null;
@@ -159,7 +158,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     return facts.dto;
   }
 
-  /** This week's granted ticket, claimed in this transaction. Ready, price 0, its own seed. Not a purchase and not TEN4. */
+  /** This tier's granted ticket, claimed in this transaction. Ready, price 0, its own seed. Not a purchase and not TEN4. */
   private async grantedRide(wallet: string, tier: PaidTierId, now: Date, tx: TransactionHandle, player: Player, geo: GeoHeaders): Promise<Ride> {
     const rules = this.rules.get();
     const id = this.entropy.uuid();

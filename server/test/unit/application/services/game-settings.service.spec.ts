@@ -5,7 +5,7 @@ describe('GameSettingsService', () => {
   it('an empty table resolves to the code defaults, and the next read sees an upsert', async () => {
     const ctx = unitContext();
     const svc = new GameSettingsService(ctx.settingsRepo);
-    expect(await svc.current()).toEqual({ freeOnSignup: 10, freeRidesDailyMax: 5, weeklyTicketHours: 1, editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 32000, editorMaxInputKTokens: 500, editorJobsParallel: 5 });
+    expect(await svc.current()).toEqual({ freeOnSignup: 10, freeRidesDailyMax: 5, weeklyTicket1hEnabled: 1, weeklyTicket1hDays: 7, weeklyTicket4hEnabled: 0, weeklyTicket4hDays: 7, weeklyTicket8hEnabled: 0, weeklyTicket8hDays: 7, editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 32000, editorMaxInputKTokens: 500, editorJobsParallel: 5 });
     await ctx.settingsRepo.upsert('free_rides_daily_max', 2);
     expect((await svc.current()).freeRidesDailyMax).toBe(2);
   });

@@ -3,7 +3,12 @@
    Server text goes in with textContent only – ctx.el never touches innerHTML. */
 
 const KNOBS = [
-  ['weekly_ticket_tier', 'weeklyTicketHours', 'Weekly granted ticket (hours)', '1, 4 or 8. One free paid ticket per wallet per week. Expires Sunday 12:00 UTC. Does not stack'],
+  ['weekly_ticket_1h_enabled', 'weeklyTicket1hEnabled', '1h granted ticket', '0 off, 1 on. Default on. Not a purchase. Does not mint TEN4'],
+  ['weekly_ticket_1h_days', 'weeklyTicket1hDays', '1h grant interval (days)', 'how often one 1h ticket is granted. At least 1. Default 7'],
+  ['weekly_ticket_4h_enabled', 'weeklyTicket4hEnabled', '4h granted ticket', '0 off, 1 on. Default off'],
+  ['weekly_ticket_4h_days', 'weeklyTicket4hDays', '4h grant interval (days)', 'how often one 4h ticket is granted. At least 1. Default 7, and the flag is off'],
+  ['weekly_ticket_8h_enabled', 'weeklyTicket8hEnabled', '8h granted ticket', '0 off, 1 on. Default off'],
+  ['weekly_ticket_8h_days', 'weeklyTicket8hDays', '8h grant interval (days)', 'how often one 8h ticket is granted. At least 1. Default 7, and the flag is off'],
   ['free_on_signup', 'freeOnSignup', 'Free rides on sign-up (retired)', 'stored only. Training rides are unlimited and do not spend this'],
   ['free_rides_daily_max', 'freeRidesDailyMax', 'Daily refill cap (retired)', 'the midnight refill no longer runs. The column stays'],
   ['editor_jobs_per_day', 'editorJobsPerDay', 'AI editor: jobs per day', 'model-editor requests per editor wallet per UTC day (storybook)'],
@@ -30,11 +35,14 @@ export async function settingsTab(ctx, wallet0 = '') {
   const reload = async text => { await settingsTab(ctx, wallet0); const n = document.getElementById('set-note'); if (n && text) { n.textContent = text; n.className = 'msg good'; } };
 
   const rows = KNOBS.map(([key, prop, label, hint]) => {
-    const input = el('input', { type: 'number', min: 0, max: MAX, value: s[prop], 'aria-label': label, 'data-key': key });
+    const enabled = key.startsWith('weekly_ticket_') && key.endsWith('_enabled');
+    const days = key.startsWith('weekly_ticket_') && key.endsWith('_days');
+    const input = el('input', { type: 'number', min: days ? 1 : 0, max: enabled ? 1 : MAX, value: s[prop], 'aria-label': label, 'data-key': key });
     const save = el('button', { type: 'button', 'data-key': key, onclick: async () => {
       const value = Number(input.value);
       if (input.value === '' || !Number.isInteger(value) || value < 0 || value > MAX) { tell(`${label}: a whole number from 0 to ${MAX}.`, 'bad'); return; }
-      if (key === 'weekly_ticket_tier' && value !== 1 && value !== 4 && value !== 8) { tell('Weekly ticket: 1, 4 or 8 hours.', 'bad'); return; }
+      if (enabled && value !== 0 && value !== 1) { tell(`${label}: 0 or 1.`, 'bad'); return; }
+      if (days && value < 1) { tell(`${label}: a whole number of days, at least 1.`, 'bad'); return; }
       if (value === s[prop]) { tell(`${label} is already ${value}.`); return; }
       save.disabled = true;   // one click = one signature
       try {

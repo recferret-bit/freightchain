@@ -1,8 +1,8 @@
 import { DAY_MS } from '../shared/time.js';
 
-/* Weekly skill contest (docs/prize/SPEC.md). The free path onto a board is one granted paid ticket per wallet per week
-   (AMOE: not purchased, uses a paid ranked slot, does not mint TEN4). A training ride is not an entry.
-   The on-chain ticket vault is a different pot. TEN4 is never a prize. Draft geo lists need legal review. */
+/* Weekly skill contest (docs/prize/SPEC.md). The free path onto a board is a granted paid ticket per enabled tier
+   (AMOE: not purchased, uses a paid ranked slot, does not mint TEN4). Default is 1h every 7 days; 4h and 8h are off.
+   A training ride is not an entry. The on-chain ticket vault is a different pot. TEN4 is never a prize. Draft geo lists need legal review. */
 
 export const PRIZE_CURRENCY = 'USDC' as const;
 export const TOKEN_IS_PRIZE = false;

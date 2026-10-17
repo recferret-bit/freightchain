@@ -47,10 +47,10 @@ const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, s
 let seq = 0;   // one number per tab render: an answer that comes back after the player moved on (or re-asked) is dropped, not painted over the new tab
 const now = () => Date.now() + S.skew;   // server clock (skew learned from /api/live)
 const freeLeft = () => 'training · unlimited';   // no counted balance. Statistics and achievements still count; the ride is not ranked and not a prize entry
-const weeklyChip = m => {   // the granted paid ticket (AMOE). Unspent until ordered. Gone at Sunday 12:00 UTC; it does not stack
-  const t = m.weeklyTicket;
-  if (!t || t.rideId || t.expiresAt <= now()) return '';
-  return ` · weekly ${t.tier}`;
+const weeklyChip = m => {   // granted paid tickets (AMOE). Unspent until ordered. Each dies at its next interval or Sunday 12:00 UTC
+  const live = (m.weeklyTickets ?? []).filter(t => !t.rideId && t.expiresAt > now());
+  if (!live.length) return '';
+  return ` · weekly ${live.map(t => t.tier).join(' ')}`;
 };
 
 const paintPaid = m => { $('chip-paid').textContent = paidChip(m.tickets); };
@@ -342,7 +342,7 @@ function paintRules() {
     el('li', {}, 'Pool tickets: your entry sits in the pool’s vault on chain, not with us. A pool that misses its goal refunds every ticket in full; in a live pool the finished shifts rank for its prize share. ', el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'How the escrow works →')),
     el('li', {}, 'The game records your inputs while you drive. After the shift the server checks that recording – complete, consistent with your ride, human-timed – and verified shifts rank for prizes (the leaderboard says when that check is switched on). Flagged shifts wait for a review.'),
     el('li', {}, 'Training rides: unlimited, no fee, no prize, not ranked, no live stream. Statistics and achievements still count.'),
-    el('li', {}, 'One granted paid ticket a week (default 1 hour) for a wallet that is 18+ and in an eligible country. It is not a purchase. It can be ranked like a paid start and it can be watched. It expires Sunday 12:00 UTC and does not stack. It does not mint TEN4.')));
+    el('li', {}, 'Granted paid tickets, one per enabled tier (default: 1 hour every 7 days; 4 hour and 8 hour off), for a wallet that is 18+ and in an eligible country. Not a purchase. Each can be ranked like a paid start, using one of the five paid slots, and can be watched. An unused grant expires when the next one of that tier is due, or Sunday 12:00 UTC, whichever is earlier. It does not stack. It does not mint TEN4.')));
 }
 /* per-card message lines (msg-<key>); kept in S.msgs so a repaint (poll, +/−) does not wipe them */
 function setPayQr(key, url) { S.payQr = url ? { key, url } : null; mountPayQr(); }

@@ -423,7 +423,8 @@ function paintSession(me) {
   S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.classList.remove('ghost'); btn.onclick = onConnect; playTop.textContent = 'LOBBY';
   const playFree = $('play-free'); if (playFree) playFree.hidden = true;
   chip.textContent = short(me.wallet); chip.title = `signed in: ${me.wallet}`; chip.hidden = false;
-  const weekly = me.weeklyTicket && !me.weeklyTicket.rideId ? ` · weekly ${me.weeklyTicket.tier}` : '';
+  const live = (me.weeklyTickets ?? []).filter(t => !t.rideId && t.expiresAt > Date.now());
+  const weekly = live.length ? ` · weekly ${live.map(t => t.tier).join(' ')}` : '';
   chipRides.textContent = `training${weekly} · ${plural(heldTickets(me.tickets), 'paid ride')}`; chipRides.hidden = false;
   msg.textContent = ''; msg.className = 'msg';
   paintBoards();
