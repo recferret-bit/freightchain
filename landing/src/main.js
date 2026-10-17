@@ -1,5 +1,5 @@
 import '../../client/js/crash-boot.js';   // before the rest of this page: a throw while it loads is still reported
-import { api, signIn, walletName } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
+import { api, prepareSignIn, signIn, walletName } from '../../client/site/wallet.js';   // one sign-in implementation for landing + lobby (Vite bundles it; fs.allow in vite.config.js for dev)
 import { API_BASE, GAME_BASE, PITCHDECK_BASE, SITE_BASE, STORYBOOK_BASE, WHITEPAPER_BASE } from '../../client/js/hosts.js';   // '' on localhost; in production the game is on ride.<apex>, NOT the landing's host, and SITE_BASE is the apex
 import { track, flushSoon } from '../../client/js/analytics.js';
 import { reportWebVitals } from '../../client/js/web-vitals.js';
@@ -422,11 +422,17 @@ const toLobby = async () => {
   flushSoon(); location.href = `${SITE_BASE}/lobby.html${code ? `?promo=${encodeURIComponent(code)}#promo` : ''}`;
 };
 /* Both click assignments: signed-out runs signIn, signed-in (paintSession) opens the lobby. Classification stays inside signIn. */
+const pairCode = new URLSearchParams(location.search).get('pair');
+const pairOk = /^[0-9a-f]{32}$/.test(pairCode ?? '');
 const onConnect = async () => {
-  if (S.me) { track('lobby_open_clicked', { surface: 'landing' }); toLobby(); return; }
+  if (S.me && !pairOk) { track('lobby_open_clicked', { surface: 'landing' }); toLobby(); return; }
   track('wallet_connect_clicked', { surface: 'landing', wallet_name: walletName() });
   btn.disabled = true; msg.textContent = 'Approve the sign-in message in your wallet…'; msg.className = 'msg';
-  try { await signIn(); msg.textContent = 'Signed in – opening the lobby…'; toLobby(); } catch (e) { msg.textContent = e.message; msg.className = 'msg bad'; btn.disabled = false; }
+  try {
+    await signIn();
+    if (pairOk) { await api(`auth/pair/${pairCode}/claim`, {}); msg.textContent = 'This computer is signed in. You can put the phone down.'; btn.disabled = false; return; }
+    msg.textContent = 'Signed in – opening the lobby…'; toLobby();
+  } catch (e) { msg.textContent = e.message; msg.className = 'msg bad'; btn.disabled = false; }
 };
 function paintSession(me) {
   S.me = me; btn.textContent = 'OPEN THE LOBBY →'; btn.classList.remove('ghost'); btn.onclick = onConnect; playTop.textContent = 'LOBBY';
@@ -447,6 +453,9 @@ $('invite').onsubmit = e => {
   btn.scrollIntoView({ block: 'center' }); btn.focus();   // the code goes with the sign-in below
 };
 btn.onclick = onConnect;
+btn.addEventListener('pointerdown', () => { if (!S.me || pairOk) prepareSignIn(); });   // the nonce is in hand before the click, so Phantom opens in that click
+prepareSignIn();
+if (pairOk) { msg.textContent = 'Sign in here to approve the computer that showed this code.'; msg.className = 'msg'; }
 playTop.onclick = async () => {
   track('play_top_clicked', { signed_in: !!S.me });
   if (S.me) toLobby();

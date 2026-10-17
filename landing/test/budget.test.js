@@ -18,8 +18,8 @@ test('JS: the eager bundle is small, nothing in dist/assets is large', { skip: !
   assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 66 * KB, 'all JS together ≤ 66 kB gzipped (incl. the lazy live-dash chunks)');   // 64 → 66 on Oct 17: referral helpers + shared wallet handlers; 62 → 64 on Oct 16: the unhandled-crash reporter (client/js/crash.js, ~1.3 kB gz) shares the web-vitals chunk; 61 → 62 on Oct 15: the footer's pitch deck link (PITCHDECK_BASE in hosts.js); 59 → 61 on Oct 13: mobile play restriction & spectator toast; 55 → 59 on Oct 13: Wallet Standard discovery + the wallet picker; 50 → 55 on Oct 12: UNDER THE HOOD canvas scenes; 40 → 44 on Oct 11: the cab radio's eleven stations
 });
 
-test('CSS ≤ 14 kB gzipped (landing + whitepaper), HTML ≤ 15 kB gzipped (landing) / ≤ 34 kB (the whitepaper, a long read)', { skip: !has }, () => {
-  assert.ok(files.filter(f => f.endsWith('.css') && !/\/pitchdeck-/.test(f)).reduce((a, f) => a + gz(f), 0) <= 14 * KB);
+test('CSS ≤ 15 kB gzipped (landing + whitepaper), HTML ≤ 15 kB gzipped (landing) / ≤ 34 kB (the whitepaper, a long read)', { skip: !has }, () => {
+  assert.ok(files.filter(f => f.endsWith('.css') && !/\/pitchdeck-/.test(f)).reduce((a, f) => a + gz(f), 0) <= 15 * KB);   // 14 → 15 on Oct 17: one shared amber hover/press halo, inlined into both stylesheets
   assert.ok(gz(join(dist, 'index.html')) <= 15 * KB);
   assert.ok(gz(join(dist, 'whitepaper.html')) <= 34 * KB);   // 33 → 34 on Oct 14 (chapter 08, the security check & contracts audit); 26 → 27 on Oct 10 (the free levels, forks and the phone map); 27 → 28 on Oct 11 (the soulbound cNFT badges); 28 → 29 on Oct 12 (Native SIWS & SNS identity); 29 → 31 (the achievements chapter); 31 → 33 (the 31 badge cards with descriptions and art)
 });

@@ -1,3 +1,5 @@
+@import "../../client/site/selection.css";
+@import "../../client/site/amber-glow.css";
 /* Landing – palette lifted from the cab: dash blacks, amber gear digit, needle orange, cream gauge numerals, LCD-green trip computer. All mono, like the dash. */
 :root{
   --bg:#0b0a09;--bg2:#120f0c;--panel:#17130f;--dash:#26221d;--line:#4a453b55;--line2:#ffcf5a33;
@@ -15,6 +17,7 @@ h1,h2,h3{margin:0;font-weight:700;letter-spacing:1px}
 .lcd{color:var(--lcd);text-shadow:0 0 8px #7cff7c66}
 button{font:inherit;cursor:pointer}
 button:focus-visible,a:focus-visible,.card3d:focus-visible,.fq button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.fq button:not(:disabled):is(:hover, :focus-visible, :active){box-shadow:none}   /* the amber halo is for yellow controls only */
 
 /* ── ticker ── */
 .ticker{position:sticky;top:0;z-index:40;height:26px;overflow:hidden;width:100%;background:var(--lcd-bg);border-bottom:1px solid #1e4a22;font-size:12px;color:var(--lcd);letter-spacing:.5px} /* contain:paint freezes this on iOS */
@@ -40,7 +43,7 @@ button:focus-visible,a:focus-visible,.card3d:focus-visible,.fq button:focus-visi
 
 /* ── CTA ── */
 .cta{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:2px solid var(--amber);background:var(--amber);color:#1b1408;font-weight:700;letter-spacing:1px;border-radius:6px;height:48px;padding:0 22px;box-shadow:0 0 28px #ffb02e33;transition:transform .15s,box-shadow .15s}
-.cta:hover{transform:translateY(-1px);box-shadow:0 0 36px #ffb02e66}
+.cta:hover{transform:translateY(-1px)}   /* the halo is client/site/amber-glow.css */
 .cta.ghost{background:#0008;color:var(--amber);box-shadow:none}
 .cta.sm{padding:0 16px;font-size:12px;border-radius:4px;box-shadow:none}
 .cta:disabled{opacity:.45;cursor:not-allowed;transform:none}

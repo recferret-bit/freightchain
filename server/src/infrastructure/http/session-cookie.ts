@@ -7,6 +7,10 @@ export const SESSION_COOKIE = 'fc_session';
 /** …and in production this one (audit H7-B): `__Host-` = Secure, Path=/ and NO Domain, so the browser keeps it to the API host alone – a sibling
     subdomain (storybook.*, whitepaper.*) neither receives it nor can plant one in its place (cookie tossing / session fixation). EnvService.sessionCookie. */
 export const HOST_SESSION_COOKIE = '__Host-fc_session';
+/** The desktop half of a phone sign-in. The code in the QR is not this secret. Production is host-only, same rule as the session cookie. */
+export const PAIR_COOKIE = 'fc_pair';
+export const HOST_PAIR_COOKIE = '__Host-fc_pair';
+export const pairCookieName = (production: boolean): string => (production ? HOST_PAIR_COOKIE : PAIR_COOKIE);
 /** The admin session: its own cookie – host-only (admin.<apex>), path /api/admin, SameSite=Strict, short (admin-cookie.interceptor.ts). */
 export const ADMIN_COOKIE = 'fc_admin';
 export const ADMIN_COOKIE_PATH = '/api/admin';

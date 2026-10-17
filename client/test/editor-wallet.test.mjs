@@ -64,3 +64,20 @@ test('the editor opens the wallet with the same sign-in handler as the landing p
   assert.deepEqual(opened, [], 'sign-in goes through solana:signIn, not window.phantom.solana');
   delete window.phantom;
 });
+
+test('a nonce that is already in hand starts solana:signIn inside arm(), before the caller awaits', async () => {
+  const { warmChallenge } = await import('../js/wallet/handlers.js');
+  const opened = [];
+  const p = { isPhantom: true, async signIn() { opened.push('signin'); return { account: { address: addr }, signature: new Uint8Array(64).fill(2), signedMessage: new TextEncoder().encode(challenge.message) }; } };
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const warm = warmChallenge(() => gate);
+  assert.equal(warm.arm(p).mode, 'wait', 'no nonce yet: do not call signIn, Phantom would show nothing');
+  assert.deepEqual(opened, []);
+  release(challenge);
+  await warm.promise();
+  const job = warm.arm(p);
+  assert.equal(job.mode, 'signin');
+  assert.deepEqual(opened, ['signin'], 'signIn ran before arm() returned');
+  assert.equal((await job.pending).wallet, addr);
+});

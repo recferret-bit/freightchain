@@ -115,18 +115,26 @@ const legacyName = p => (p.isPhantom ? 'Phantom' : p.isSolflare ? 'Solflare' : p
 function legacy() {
   if (typeof window === 'undefined') return [];
   const out = [];
-  for (const p of [window.phantom?.solana, window.solflare, window.solana]) if (p && !out.includes(p)) out.push(p);
+  for (const p of [window.phantom?.solana, window.solflare, window.backpack, window.solana]) if (p && !out.includes(p)) out.push(p);
   return out;
 }
 const nameOf = p => (p.standard ? p.name : legacyName(p));
-/** MetaMask registers a Solana wallet and also overwrites window.solana. It is not a Freight Chain wallet: listing it is what opened its dialog instead of Phantom. */
-const notMetaMask = p => !/metamask/i.test(nameOf(p)) && !(p.isMetaMask && !p.isPhantom && !p.isSolflare);
+/** Phantom, Solflare, Backpack first. MetaMask last: it registers a Solana wallet and must not be the one a click opens by default. */
+export const walletOrder = (name, provider) => {
+  if (provider?.isMetaMask && !provider?.isPhantom && !provider?.isSolflare && !provider?.isBackpack) return 90;
+  const n = String(name ?? '').toLowerCase();
+  if (n === 'phantom') return 0;
+  if (n === 'solflare') return 1;
+  if (n === 'backpack') return 2;
+  if (n.includes('metamask')) return 90;
+  return 50;
+};
 
-/** Every wallet this page can use: the standard ones first, then legacy globals whose name no standard wallet has. MetaMask is left out. */
+/** Every wallet this page can use: the standard ones, then legacy globals whose name no standard wallet has, in walletOrder. */
 export function wallets() {
   const std = registered.map(adapt);
   const names = new Set(std.map(p => p.name.toLowerCase()));
   const old = legacy().filter(p => { const n = legacyName(p).toLowerCase(); if (names.has(n)) return false; names.add(n); return true; });
-  return [...std, ...old].filter(notMetaMask);
+  return [...std, ...old].sort((a, b) => walletOrder(nameOf(a), a) - walletOrder(nameOf(b), b));
 }
 export const walletLabel = nameOf;

@@ -29,7 +29,7 @@ test('Wallet Standard discovery: app-ready reaches a wallet that loaded first, r
   assert.ok(early?.register, 'the module announced app-ready with { register }');
   early.register(fakeWallet('Early'), fakeWallet('MetaMask'));
   window.dispatchEvent(Object.assign(new Event('wallet-standard:register-wallet'), { detail: api => api.register(fakeWallet('Late'), fakeWallet('EthOnly', { chains: ['eip155:1'] })) }));
-  assert.deepEqual(wallets().map(p => p.name), ['Early', 'Late']);
+  assert.deepEqual(wallets().map(p => p.name), ['Early', 'Late', 'MetaMask']);
   assert.equal(CHAIN, 'solana:devnet');
   assert.equal(isSolanaWallet({ chains: ['solana:devnet'], features: { 'standard:connect': {} } }), false, 'a wallet that signs nothing is not listed');
 });
@@ -55,7 +55,10 @@ test('a wallet found both ways is listed once (the standard one); a legacy-only 
   assert.equal(walletName(window.solflare), 'solflare');
   delete window.phantom; delete window.solana; delete window.solflare;
   window.solana = { isMetaMask: true };
-  assert.equal(wallets().some(p => p.isMetaMask), false, 'an injected MetaMask is not offered');
+  const offered = wallets();
+  const phantomAt = offered.findIndex(p => p.name === 'Phantom');
+  const metaAt = offered.findIndex(p => p.isMetaMask || /metamask/i.test(p.name ?? ''));
+  assert.ok(phantomAt >= 0 && metaAt > phantomAt, 'MetaMask stays behind Phantom');
   delete window.solana;
   assert.ok(provider(), 'provider() is synchronous and finds a wallet');
 });

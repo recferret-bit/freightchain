@@ -1,3 +1,5 @@
+@import "selection.css";
+@import "amber-glow.css";
 :root{--bg:#0e0b08;--panel:#17130f;--line:#ffcf5a33;--amber:#ffcf5a;--text:#efe6cf;--dim:#b9ad8d;--bad:#ff6b5a;--good:#7be07b;--blue:#6aa8ff;color-scheme:dark}
 *{box-sizing:border-box}
 html{scrollbar-gutter:stable}   /* a short tab has no scrollbar, a long one has: without the gutter the whole page shifts sideways between tabs */
@@ -8,6 +10,7 @@ button{font:inherit;cursor:pointer;border-radius:6px;border:2px solid var(--ambe
 button:disabled{opacity:.4;cursor:not-allowed}
 button.ghost{background:transparent;color:var(--amber);padding:6px 10px;font-size:12px}
 button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
+:is(th button, .seg button:not(.on), .pager button:not(.on), #ticket-dialog button):is(:hover, :focus-visible, :active){box-shadow:none}   /* the amber halo is client/site/amber-glow.css */
 
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
 .brand{color:var(--amber);font-weight:bold;letter-spacing:2px;text-decoration:none}

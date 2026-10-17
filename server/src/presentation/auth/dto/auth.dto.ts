@@ -28,4 +28,7 @@ export const verifyBodySchema = z.object({
 });
 export type VerifyBody = z.infer<typeof verifyBodySchema>;
 
+export const pairParamsSchema = z.object({ id: z.string().regex(/^[0-9a-f]{32}$/, 'pair id') });
+export type PairParams = z.infer<typeof pairParamsSchema>;
+
 export type { ChallengeDto };

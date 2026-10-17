@@ -1,0 +1,2 @@
+/* Highlighted text on the public pages. Solana purple: ::selection cannot paint the purple→green gradient. */
+::selection{background:#9945ff;color:#fff}

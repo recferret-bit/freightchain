@@ -75,23 +75,50 @@ function pageOwns(c) {
 /** Call from the click that chose `p`, before any await. Returns `{ mode, pending }`.
  *  `signin` — solana:signIn already started (one sheet), and the challenge names this page.
  *  `wait` — the wallet can sign in, but the challenge is not this page's yet (calling it would open nothing).
- *  `connect` — the wallet has no sign-in. */
+ *  `connect` — the wallet has no sign-in. connect() is already started, so the window opens in this click. */
 export function beginWallet(p, challenge) {
   if (!getSignInMethod(p)) return { mode: 'connect', pending: connectAddress(p) };
   if (challenge && pageOwns(challenge)) return { mode: 'signin', pending: signInWith(p, challenge) };
   return { mode: 'wait', pending: null };
 }
 
-/** None → the install list, then an error. One wallet → it. Several → the shared list (`remembered` is that label).
- *  `onPick` runs inside the click, before this function awaits anything else. */
-export async function chooseWallet(remembered = null, onPick = null) {
+const FRESH_MS = 4 * 60 * 1000;   // the server's nonce lives 5 minutes; leave a minute so a click does not sign an expired one
+/** Start `load()` now. `arm(p)` inside the click that chose `p` calls solana:signIn before any await — Phantom draws no window after one.
+ *  Call it when the button is shown (and again on pointerdown). A click that arrives before the nonce is the `wait` path. */
+export function warmChallenge(load) {
+  let value = null, error = null, settled = false, at = 0, promise = null;
+  const run = () => {
+    settled = false; error = null; value = null;
+    promise = Promise.resolve().then(load).then(v => { value = v; settled = true; at = Date.now(); return v; }, e => { error = e; settled = true; throw e; });
+    return promise;
+  };
+  run();
+  const api = {
+    ready() { return settled && !error && value && Date.now() - at <= FRESH_MS && pageOwns(value) ? value : null; },
+    promise() { return promise; },
+    keep() { if (settled && !api.ready()) run(); },
+    arm(p) { return beginWallet(p, api.ready()); },
+  };
+  return api;
+}
+
+/** The list, even when only one wallet is installed, so CONNECT does not skip the choice. No document (unit tests): the single wallet is used.
+ *  `onPick` runs inside the row click. `opts.phone` adds the desktop QR that signs this browser in from a phone. */
+export async function chooseWallet(remembered = null, onPick = null, opts = null) {
   if (typeof window !== 'undefined' && window.__fcDevWallet) { onPick?.(window.__fcDevWallet); return window.__fcDevWallet; }
   const all = wallets();
-  if (all.length === 1) { onPick?.(all[0]); return all[0]; }
+  const ui = typeof document !== 'undefined' && document.body;
+  if (!ui) {
+    if (all.length === 1) { onPick?.(all[0]); return all[0]; }
+    const e = new Error(all.length ? 'No wallet chosen.' : 'No Solana wallet found – install Phantom, Solflare, or Backpack');
+    e.stage = all.length ? 'connect_rejected' : 'no_provider';
+    throw e;
+  }
   const { pickWallet } = await import('./picker.js');
-  const p = await pickWallet(all, walletLabel, remembered, onPick);
+  const p = await pickWallet(all, walletLabel, remembered, onPick, opts);
+  if (p?.phone) return p;
   if (!p) {
-    const e = new Error(all.length ? 'No wallet chosen.' : 'No Solana wallet found – install Phantom or Solflare');
+    const e = new Error(all.length ? 'No wallet chosen.' : 'No Solana wallet found – install Phantom, Solflare, or Backpack');
     e.stage = all.length ? 'connect_rejected' : 'no_provider';
     throw e;
   }

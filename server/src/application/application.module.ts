@@ -21,6 +21,7 @@ import { RecordTelemetryHandler } from './use-cases/telemetry/record-telemetry/r
 import { ReportClientErrorHandler } from './use-cases/telemetry/report-client-error/report-client-error.handler.js';
 import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
 import { LogoutHandler } from './use-cases/auth/logout/logout.handler.js';
+import { ClaimPhonePairHandler, OpenPhonePairHandler, PollPhonePairHandler } from './use-cases/auth/phone-pair/phone-pair.handler.js';
 import { RequestChallengeHandler } from './use-cases/auth/request-challenge/request-challenge.handler.js';
 import { VerifySignInHandler } from './use-cases/auth/verify-signin/verify-signin.handler.js';
 import { GetChainFeesHandler } from './use-cases/chain/get-chain-fees/get-chain-fees.handler.js';
@@ -178,7 +179,7 @@ const handlers: Provider[] = [
   CreateEditorJobHandler, CancelEditorJobHandler, ListEditorJobsHandler, GetEditorJobHandler, GetEditorJobEventsHandler, McpConfigsHandler, McpSaveDraftHandler,
   GetEntityBundleHandler, ListEntitiesHandler, GetEntityHandler, ListRevisionsHandler, GetRevisionHandler, SaveDraftHandler, RestoreRevisionHandler, RequestPublishChallengeHandler, PublishRevisionHandler, RequestEditorChallengeHandler, VerifyEditorSignInHandler, GetEditorMeHandler,
   GetStatsHandler, GetDailyStatsHandler, ReconcileStatsHandler,
-  RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler,
+  RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler, OpenPhonePairHandler, ClaimPhonePairHandler, PollPhonePairHandler,
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, GetPublicRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler, SweepSignInsHandler, RejudgeRidesHandler, GetRideReplaysHandler, ProcessReplayQueueHandler,

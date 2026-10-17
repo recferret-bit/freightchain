@@ -1,18 +1,22 @@
-import { Controller, Get, HttpCode, Post, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Headers, HttpCode, Post, UseGuards, UseInterceptors } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { MeDto } from '../../domain/players/player.dto.js';
 import { GetMeQuery } from '../../application/use-cases/auth/get-me/get-me.query.js';
 import { LogoutCommand, type LogoutResultDto } from '../../application/use-cases/auth/logout/logout.command.js';
+import { ClaimPhonePairCommand, OpenPhonePairCommand, PollPhonePairCommand, type OpenPhonePairDto, type PollPhonePairDto } from '../../application/use-cases/auth/phone-pair/phone-pair.command.js';
 import { RequestChallengeCommand, type ChallengeDto } from '../../application/use-cases/auth/request-challenge/request-challenge.command.js';
 import { VerifySignInCommand, type SignInResultDto } from '../../application/use-cases/auth/verify-signin/verify-signin.command.js';
 import { CurrentClient, CurrentOrigin } from '../../infrastructure/http/decorators/client-info.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import type { ClientInfo } from '../../domain/auth/sign-in.js';
-import { ZodBody } from '../../infrastructure/http/decorators/zod.js';
+import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { AdoptPairSessionInterceptor, SetPairCookieInterceptor } from '../../infrastructure/http/interceptors/phone-pair.interceptor.js';
 import { ClearSessionCookieInterceptor, SetSessionCookieInterceptor } from '../../infrastructure/http/interceptors/session-cookie.interceptor.js';
+import { EnvService } from '../../infrastructure/config/env.service.js';
+import { pairCookieName, readCookie } from '../../infrastructure/http/session-cookie.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
-import { requestChallengeBodySchema, verifyBodySchema, type RequestChallengeBody, type VerifyBody } from './dto/auth.dto.js';
+import { pairParamsSchema, requestChallengeBodySchema, verifyBodySchema, type PairParams, type RequestChallengeBody, type VerifyBody } from './dto/auth.dto.js';
 
 /** Sign-In With Solana: nonce → the wallet signs → verify (sets the httpOnly session cookie). /api/auth/* has its own stricter rate limit (THROTTLE_AUTH_LIMIT). */
 @Controller('api')
@@ -20,11 +24,30 @@ export class AuthHttpController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
+    private readonly env: EnvService,
   ) {}
 
   @Post('auth/nonce') @HttpCode(200)
   nonce(@ZodBody(requestChallengeBodySchema) body: RequestChallengeBody, @CurrentOrigin() origin: string | null): Promise<ChallengeDto> {
     return this.commandBus.execute<RequestChallengeCommand, ChallengeDto>(new RequestChallengeCommand(body.wallet, origin));
+  }
+
+  /** Desktop: a code for the QR, and an httpOnly secret cookie that is not in the picture. */
+  @Post('auth/pair') @HttpCode(200) @UseInterceptors(SetPairCookieInterceptor)
+  openPair(): Promise<OpenPhonePairDto> {
+    return this.commandBus.execute<OpenPhonePairCommand, OpenPhonePairDto>(new OpenPhonePairCommand());
+  }
+
+  /** Desktop: pending, or the phone's session moved onto this browser. */
+  @Get('auth/pair/:id') @UseInterceptors(AdoptPairSessionInterceptor)
+  pollPair(@ZodParams(pairParamsSchema) params: PairParams, @Headers('cookie') cookie?: string): Promise<PollPhonePairDto> {
+    return this.commandBus.execute<PollPhonePairCommand, PollPhonePairDto>(new PollPhonePairCommand(params.id, readCookie(cookie, pairCookieName(this.env.isProduction)) ?? null));
+  }
+
+  /** Phone: the session just created here is the one the computer adopts. */
+  @Post('auth/pair/:id/claim') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  claimPair(@ZodParams(pairParamsSchema) params: PairParams, @Headers('cookie') cookie?: string): Promise<{ ok: true }> {
+    return this.commandBus.execute<ClaimPhonePairCommand, { ok: true }>(new ClaimPhonePairCommand(params.id, readCookie(cookie, this.env.sessionCookie) ?? null));
   }
 
   /** The wire body is the rider's profile (MeDto): SetSessionCookieInterceptor moves the session token into the cookie and unwraps `profile`. */

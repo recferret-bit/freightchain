@@ -2,19 +2,19 @@
    The first challenge has no address (the wallet fills that in). A wallet with no sign-in connects, then signs the
    wallet-bound text. Storybook does not serve /site/, so this file never imports it. */
 import { post } from './api.js';
-import { beginWallet, chooseWallet, connectAddress, signBytes, signInWith, refused } from '../wallet/handlers.js';
+import { chooseWallet, connectAddress, signBytes, signInWith, refused, warmChallenge } from '../wallet/handlers.js';
 
 let chosen = null;
+let warmed = null;
+/** The nonce fetch starts when the editor opens, so CONNECT can call solana:signIn inside the click. */
+export function prepareEditorSignIn() {
+  if (!warmed) warmed = warmChallenge(() => post('auth/nonce', {}));
+  else warmed.keep();
+  return warmed;
+}
 const storybook = () => location.hostname.startsWith('storybook.');
 const ours = message => !storybook() || String(message ?? '').startsWith(`${location.host} wants you to sign in`);
 const HOST_ERR = 'the sign-in text names another site – not signed';
-
-/** The nonce request starts at the click. `ready()` is the challenge once it has arrived, so a later wallet click can open it immediately. */
-function prefetch(load) {
-  let value = null, error = null, settled = false;
-  const promise = Promise.resolve().then(load).then(v => { value = v; settled = true; return v; }, e => { error = e; settled = true; throw e; });
-  return { ready: () => (settled && !error ? value : null), promise: () => promise };
-}
 
 async function verifySigned(signed) {
   if (!ours(signed.message)) throw new Error(HOST_ERR);
@@ -24,11 +24,11 @@ async function verifySigned(signed) {
 
 /** CONNECT WALLET: open the wallet, sign the editor challenge, set the editor cookie. Returns the address. */
 export async function editorSignIn() {
-  const prep = prefetch(() => post('auth/nonce', {}));
+  const prep = prepareEditorSignIn();
   let job = null;
-  const p = await chooseWallet(undefined, wallet => { job = beginWallet(wallet, prep.ready()); });
+  const p = await chooseWallet(undefined, wallet => { job = prep.arm(wallet); });
   chosen = p;
-  if (!job) job = beginWallet(p, prep.ready());
+  if (!job) job = prep.arm(p);
   if (job.mode === 'signin') {
     try {
       const signed = await job.pending;

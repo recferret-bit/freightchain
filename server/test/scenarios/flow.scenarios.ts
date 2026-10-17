@@ -39,6 +39,23 @@ export function flowScenarios(h: () => Harness): void {
       await anon().post('/api/auth/nonce').send({ wallet: 'hello' }).expect(400);
     });
 
+    it('a phone sign-in lands on the computer that showed the code', async () => {
+      const desk = request.agent(server());
+      const opened = await desk.post('/api/auth/pair').send({}).expect(200);
+      expect(opened.body.id).toMatch(/^[0-9a-f]{32}$/);
+      expect(opened.body.secret).toBeUndefined();
+      expect(opened.headers['set-cookie'].join(';')).toMatch(/fc_pair=/);
+      await desk.get(`/api/auth/pair/${opened.body.id}`).expect(200).expect({ status: 'pending' });
+      await anon().get(`/api/auth/pair/${opened.body.id}`).expect(404);
+      const phone = await login(wallet(), { offer: false });
+      await phone.agent.post(`/api/auth/pair/${opened.body.id}/claim`).send({}).expect(200);
+      const ready = await desk.get(`/api/auth/pair/${opened.body.id}`).expect(200);
+      expect(ready.body).toEqual({ status: 'ready', wallet: phone.address });
+      expect(ready.headers['set-cookie'].join(';')).toMatch(/fc_session=/);
+      await desk.get('/api/me').expect(200);
+      await desk.get(`/api/auth/pair/${opened.body.id}`).expect(404);
+    });
+
     it('cannot sign a message the server did not issue', async () => {
       const a = wallet(), agent = request.agent(server());
       await agent.post('/api/auth/nonce').send({ wallet: a.address });

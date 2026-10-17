@@ -1,3 +1,4 @@
+@import "../../client/site/selection.css";
 /* The deck's two faces, self-hosted (latin subset of Google Fonts' Anton and JetBrains Mono) – the page makes no third-party request. */
 @font-face{font-family:"Anton";font-style:normal;font-weight:400;font-display:swap;src:url(./fonts/anton-latin.woff2) format("woff2")}
 @font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:500 800;font-display:swap;src:url(./fonts/jetbrains-mono-latin.woff2) format("woff2")}
@@ -6,7 +7,6 @@
   --head:"Anton",Impact,"Arial Narrow Bold",sans-serif;--body:"JetBrains Mono",ui-monospace,monospace;--sol:linear-gradient(90deg,#9945ff,#14f195);--radius:16px}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--ink);-webkit-tap-highlight-color:transparent}
-::selection{background:#9945ff;color:#fff}   /* text selection: Solana purple (::selection can't take a gradient) */
 .tap{position:absolute;z-index:12;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,#14f19577 0%,#9945ff66 40%,#9945ff00 70%);box-shadow:inset 0 0 0 2px #14f19566;animation:tapring .55s cubic-bezier(.2,.8,.2,1) forwards}   /* the touch highlight (script: pop('tap')) */
 @keyframes tapring{from{scale:.25;opacity:1}to{scale:1.35;opacity:0}}
 #stage{--ex:0px;--pl:112px;--pr:112px;--pt:96px;--pb:96px;position:fixed;left:50%;top:0;width:1920px;height:1080px;transform-origin:50% 0;overflow:hidden;font-family:var(--body);

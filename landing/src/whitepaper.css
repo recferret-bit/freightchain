@@ -1,3 +1,5 @@
+@import "../../client/site/selection.css";
+@import "../../client/site/amber-glow.css";
 /* Whitepaper – the landing's cab palette (dash blacks, amber, needle orange, cream numerals, LCD green, all mono), laid out as a long read: sticky contents + one reading column. Tokens mirror style.css. */
 :root{
   --bg:#0b0a09;--bg2:#120f0c;--panel:#17130f;--dash:#26221d;--line:#4a453b55;--line2:#ffcf5a33;
@@ -30,9 +32,8 @@ a:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .chip{border:1px solid var(--line2);border-radius:999px;padding:3px 10px;font-size:11px;letter-spacing:1px;white-space:nowrap;background:#0006}
 .chip.warn{color:var(--gear);border-color:var(--gear)}
 .cta{border:2px solid var(--amber);background:var(--amber);color:#1b1408;font-weight:700;letter-spacing:1px;border-radius:4px;padding:7px 16px;font-size:12px;text-decoration:none;display:inline-block;white-space:nowrap}
-.cta:hover{box-shadow:0 0 24px #ffb02e66}
 .cta.ghost{background:transparent;color:var(--amber)}
-.cta.ghost:hover{background:#ffcf5a18;box-shadow:none}
+.cta.ghost:hover{background:#ffcf5a18}   /* the halo is client/site/amber-glow.css */
 .link{color:var(--amber);font-size:13px}
 
 /* ── layout: contents rail + reading column ── */

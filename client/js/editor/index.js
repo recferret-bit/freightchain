@@ -1,5 +1,5 @@
 import { get, post } from './api.js';
-import { editorSignIn, sign } from './wallet.js';
+import { editorSignIn, prepareEditorSignIn, sign } from './wallet.js';
 import { mountChat } from './chat.js';
 import { mountHistory } from './history.js';
 import { mountSource } from './source.js';
@@ -43,7 +43,7 @@ export function mountEditor(viewer) {
   st.status = status;
   const signin = el('div', { class: 'ed-signin' },
     el('p', { text: 'Connect a wallet that is on the editor list to create and change models. Everyone else can look around.' }),
-    el('button', { class: 'ed-btn', onclick: () => signIn().catch(e => status(e.status === 404 ? 'this wallet is not on the editor list' : e.message, true)) }, 'CONNECT WALLET'));
+    el('button', { class: 'ed-btn', onpointerdown: () => prepareEditorSignIn(), onclick: () => signIn().catch(e => status(e.status === 404 ? 'this wallet is not on the editor list' : e.message, true)) }, 'CONNECT WALLET'));
   const tabs = el('div', { class: 'ed-tabs' }), body = el('div', { class: 'ed-body' }), entity = el('div', { class: 'ed-entity' });
   const panel = el('div', { id: 'editor' },
     el('div', { class: 'ed-head' }, el('b', { text: 'EDITOR' }), who, el('button', { class: 'ed-x', title: 'close', onclick: () => setOpen(false) }, '×')),
@@ -55,7 +55,7 @@ export function mountEditor(viewer) {
   const showTab = t => { tab = t; for (const b of tabs.children) b.classList.toggle('on', b.dataset.t === t); body.textContent = ''; body.append(views[t].node); views[t].shown?.(); };
   for (const t of Object.keys(views)) tabs.append(el('button', { class: 'ed-tab', 'data-t': t, onclick: () => showTab(t) }, t));
 
-  function setOpen(open) { document.body.classList.toggle('editing', open); if (open && !st.me) refreshMe(); }
+  function setOpen(open) { document.body.classList.toggle('editing', open); if (open && !st.me) { prepareEditorSignIn(); refreshMe(); } }
   function paintAuth() {
     signin.hidden = !!st.me; tabs.hidden = body.hidden = entity.hidden = !st.me;
     who.textContent = st.me ? short(st.me.wallet) : '';

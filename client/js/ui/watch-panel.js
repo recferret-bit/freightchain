@@ -6,7 +6,7 @@ import { SITE_BASE } from '../hosts.js';
 import { watch, seek, goLive, addEvent, roadCheck, replayEnd, LIVE_LAG } from '../watch.js';
 import { EFFECT_INFO, solText } from '../live-effects.js';
 import { el } from '../../site/dom.js';
-import { api, signIn } from '../../site/wallet.js';
+import { api, prepareSignIn, signIn } from '../../site/wallet.js';
 import { phoneStep, signAndSend } from '../../site/pay.js';
 import { solanaPayUrl, donationPayPath } from '../../site/solana-pay.js';
 import { API_BASE } from '../hosts.js';
@@ -178,7 +178,8 @@ function paintMe() {
   if (!r.live) { box.replaceChildren(el('p', { class: 'dim w-small' }, 'This ride is over – the feed is read-only. Chat and donations go to rides on the road.')); return; }
   if (!P.me) {
     box.replaceChildren(el('p', { class: 'w-small' }, 'Sign in with your Solana wallet to write to the driver and send donations that change their ride.'),
-      el('button', { onclick: connect, disabled: P.busy }, 'CONNECT WALLET'), el('div', { id: 'w-msg', class: 'w-small' }));
+      el('button', { onclick: connect, onpointerdown: () => prepareSignIn(), disabled: P.busy }, 'CONNECT WALLET'), el('div', { id: 'w-msg', class: 'w-small' }));
+    prepareSignIn();
     return;
   }
   if (P.me.wallet === r.wallet) { box.replaceChildren(el('p', { class: 'dim w-small' }, 'This is your own ride – spectators write here.')); return; }

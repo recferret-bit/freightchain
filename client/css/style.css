@@ -1,3 +1,4 @@
+@import "../site/amber-glow.css";
 html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:ui-monospace,Menlo,Consolas,monospace;color:#efe6cf}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #cockpit{pointer-events:none}
@@ -40,6 +41,7 @@ button.share-x-btn:hover{border-color:#14F195;box-shadow:0 0 10px rgba(153,69,25
 button.stay{flex:1.35;border:0;background:linear-gradient(105deg,#9945FF 0%,#8752ff 58%,#14F195 100%);color:#fff;text-shadow:0 1px 2px #14081ccc;letter-spacing:.08em;box-shadow:0 0 18px #9945FF66}
 button.stay:hover{filter:brightness(1.08)}
 button:disabled{opacity:.4;cursor:not-allowed}
+#tutorial button:is(:hover, :focus-visible, :active){box-shadow:none}   /* green tutorial keys, not the amber halo */
 .bad{color:#ff6b5a}.good{color:#7be07b}#verdict.warn{color:#ffcf5a}
 .dim{color:#b9ad8d}
 #roadwrap{white-space:nowrap}

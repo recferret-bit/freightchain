@@ -1,6 +1,6 @@
-/* Shared CONNECT list (landing, lobby, watch, admin, blink, the model editor): several wallets → pick one (the last one used on top); none → install
-   links on a desktop, "open this page in the wallet's browser" links on a phone (Phantom / Solflare browse universal links – the in-app browser injects
-   the wallet; a phone's own Safari / Chrome never has one). An in-page overlay shared by the landing and the editor.
+/* Shared CONNECT list (landing, lobby, watch, admin, blink, the model editor). Always shown, even for one wallet (the last one used on top).
+   None on a phone → open this page in Phantom, Solflare, or Backpack. None on a desktop → install those three, plus a QR that signs THIS browser in from the phone.
+   An in-page overlay, not a browser dialog: a top-layer dialog swallows the click and the wallet draws nothing.
    Styles live on the overlay: the pages do not share a stylesheet. Text via textContent, icons only data: URIs. */
 import { isMobileDevice } from '../mobile.js';
 
@@ -8,33 +8,157 @@ import { isMobileDevice } from '../mobile.js';
 export const browseLinks = (href, origin) => [
   { name: 'Phantom', href: `https://phantom.com/ul/browse/${encodeURIComponent(href)}?ref=${encodeURIComponent(origin)}` },
   { name: 'Solflare', href: `https://solflare.com/ul/v1/browse/${encodeURIComponent(href)}?ref=${encodeURIComponent(origin)}` },
+  { name: 'Backpack', href: `https://backpack.app/ul/v1/browse/${encodeURIComponent(href)}?ref=${encodeURIComponent(origin)}` },
 ];
-export const INSTALL = [{ name: 'Phantom', href: 'https://phantom.com/download' }, { name: 'Solflare', href: 'https://solflare.com/download' }];
+export const INSTALL = [
+  { name: 'Phantom', href: 'https://phantom.com/download' },
+  { name: 'Solflare', href: 'https://solflare.com/download' },
+  { name: 'Backpack', href: 'https://backpack.app/download' },
+];
+
+/** Replace the list with the QR. Resolves the overlay when the phone has signed this browser in. */
+async function runPhone(panel, finish, api) {
+  let stopped = false;
+  const sheet = panel.querySelector('[data-fc-sheet]') ?? panel;
+  sheet.replaceChildren(title('SIGN IN WITH YOUR PHONE'));
+  sheet.append(h('p', { margin: '0 0 8px' }, 'Scan with the phone camera. Approve in Phantom, Solflare, or Backpack. This computer signs in.'));
+  const status = h('p', { margin: '8px 0', opacity: '.75' }, 'Preparing a code…');
+  const cancel = press(h('button', { ...BTN, justifyContent: 'center', background: 'transparent' }, 'CANCEL'), () => { stopped = true; finish(null); }); cancel.type = 'button';
+  sheet.append(status, cancel);
+  try {
+    const { startPhonePair, watchPhonePair } = await import('./phone.js');
+    const opened = await startPhonePair(api);
+    try {
+      const { qrNode } = await import('../../site/qr.js');
+      const code = qrNode(opened.url);
+      code.style.width = '200px'; code.style.height = '200px'; code.style.display = 'block'; code.style.margin = '0 auto';
+      status.before(code);
+    } catch { status.textContent = opened.url; }
+    if (stopped) return;
+    status.textContent = 'Waiting for the phone…';
+    const ready = await watchPhonePair(api, opened.id, () => stopped);
+    if (ready) finish({ phone: true });
+  } catch (e) {
+    if (!stopped) status.textContent = e?.message || 'Phone sign-in did not start.';
+  }
+}
 
 const css = (node, style) => { Object.assign(node.style, style); return node; };
 const h = (tag, style, text) => { const n = css(document.createElement(tag), style ?? {}); if (text) n.textContent = text; return n; };
-const BTN = { display: 'flex', alignItems: 'center', gap: '10px', width: '100%', margin: '6px 0', padding: '10px 12px', background: '#1b1b1b', color: '#f2f2f2', border: '1px solid #444', borderRadius: '6px', font: 'inherit', cursor: 'pointer', textDecoration: 'none', boxSizing: 'border-box' };
+const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const title = text => h('b', { display: 'block', marginBottom: '8px', color: '#d98a14', letterSpacing: '.06em', userSelect: 'none' }, text);
 
-/** Resolves the chosen wallet, or null when the list is closed. `label(p)` names a wallet; `last` = the label used last time.
- *  `onPick` runs in the click, while the button is still on the page, before the overlay closes. */
-export function pickWallet(list, label, last = null, onPick = null) {
+/** Pitch-deck motion: the box hovers (the card float), a purple/green glow breathes, and a small rotate shake plays every few seconds.
+ *  Drag lives on a frame around the box, so its `translate` does not fight the hover. The grab pad sticks out past the rounded corners. Follow is the pitch card trail: a little behind the pointer, then home on release. */
+function liveDialog(panel) {
+  const frame = h('div');
+  panel.replaceWith(frame);
+  frame.append(panel);
+  panel.style.position = 'relative';
+  panel.style.isolation = 'isolate';   // the glow sits at z-index -1 and must not fall behind the page scrim
+  const glow = h('i', { position: 'absolute', inset: '-8px', borderRadius: '12px', pointerEvents: 'none', zIndex: '-1', boxShadow: '0 0 18px 2px #9945ff88, 0 0 28px 4px #14f19544' });
+  const pad = h('div', { position: 'absolute', inset: '-14px', borderRadius: '20px', cursor: 'grab', touchAction: 'none', zIndex: '0' });
+  pad.dataset.fcDrag = '';
+  panel.prepend(glow, pad);
+  let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0, tx = 0, ty = 0, x = 0, y = 0, raf = 0;
+  const step = reduced() ? 1 : 0.12;   // pitch cards chase at .06; a dialog should trail, not swim
+  const paint = () => {
+    x += (tx - x) * step; y += (ty - y) * step;
+    if (Math.abs(tx - x) < 0.4 && Math.abs(ty - y) < 0.4) { x = tx; y = ty; }
+    frame.style.translate = (x || y) ? `${x.toFixed(1)}px ${y.toFixed(1)}px` : '';
+    raf = (dragging || x !== tx || y !== ty) ? requestAnimationFrame(paint) : 0;
+  };
+  const kick = () => { raf ||= requestAnimationFrame(paint); };
+  const onDown = e => {
+    if (e.button !== 0 || e.target.closest('button, a, input, textarea, select')) return;
+    dragging = true; sx = e.clientX; sy = e.clientY; ox = x; oy = y;   // grab it where it is, even mid-return
+    pad.style.cursor = 'grabbing';
+    panel.setPointerCapture?.(e.pointerId);
+    kick();
+  };
+  const onMove = e => {
+    if (!dragging) return;
+    const box = frame.getBoundingClientRect();
+    const left0 = box.left - x, top0 = box.top - y;
+    tx = Math.max(24 - box.width - left0, Math.min(innerWidth - 24 - left0, ox + e.clientX - sx));
+    ty = Math.max(24 - box.height - top0, Math.min(innerHeight - 24 - top0, oy + e.clientY - sy));
+    kick();
+  };
+  const onUp = () => { if (!dragging) return; dragging = false; tx = 0; ty = 0; pad.style.cursor = 'grab'; kick(); };
+  panel.addEventListener('pointerdown', onDown);
+  panel.addEventListener('pointermove', onMove);
+  panel.addEventListener('pointerup', onUp);
+  panel.addEventListener('pointercancel', onUp);
+  if (!reduced()) {
+    glow.animate({ opacity: [1, 0.4, 1] }, { duration: 2400, easing: 'ease-in-out', iterations: Infinity });
+    panel.animate({ translate: ['0 0', '0 -16px', '0 0'] }, { duration: 6000, easing: 'ease-in-out', iterations: Infinity });   // the pitch cards' float
+  }
+  let next = performance.now() + 800;   // the first shake comes quickly, then every 2.2–8 s, the pitch deck's "touch me" clock
+  const timer = reduced() ? 0 : setInterval(() => {
+    if (document.hidden || dragging || Math.hypot(x, y) > 1 || performance.now() < next) return;
+    next = performance.now() + 2200 + Math.random() * 5800;
+    const a = (0.9 + Math.random() * 0.9) * (Math.random() < 0.5 ? -1 : 1);
+    panel.animate({ rotate: ['0deg', `${a}deg`, `${-a * 0.75}deg`, `${a * 0.5}deg`, `${-a * 0.25}deg`, '0deg'] }, { duration: 520 + Math.random() * 200, easing: 'ease-out' });
+  }, 200);
+  return () => { clearInterval(timer); cancelAnimationFrame(raf); };
+}
+const BTN = { display: 'flex', alignItems: 'center', gap: '10px', width: '100%', margin: '6px 0', padding: '10px 12px', background: '#1b1b1b', color: '#f2f2f2', border: '1px solid #444', borderRadius: '6px', font: 'inherit', cursor: 'pointer', textDecoration: 'none', boxSizing: 'border-box', pointerEvents: 'auto', position: 'relative', overflow: 'hidden' };
+
+const AFTER = 40;   // the ring has just finished; the dialog closes on its heels
+/** A press ring in Solana green bleeding into purple. Returns the animation, or null when motion is reduced. */
+function ripple(e) {
+  if (reduced()) return null;
+  const host = e.currentTarget, box = host.getBoundingClientRect();
+  const d = Math.hypot(box.width, box.height);
+  const x = e.clientX || box.left + box.width / 2, y = e.clientY || box.top + box.height / 2;
+  const ring = h('i', { position: 'absolute', left: `${x - box.left - d / 2}px`, top: `${y - box.top - d / 2}px`, width: `${d}px`, height: `${d}px`, borderRadius: '50%', pointerEvents: 'none', background: 'radial-gradient(circle, #14f195ee 0%, #9945ffaa 42%, transparent 70%)', zIndex: '2' });
+  host.append(ring);
+  const anim = ring.animate({ transform: ['scale(.12)', 'scale(1.15)'], opacity: [.95, 0] }, { duration: 620, easing: 'ease-out' });
+  anim.onfinish = () => ring.remove();
+  return anim;
+}
+/** The ring plays out, then a short pause, then `run`. A second click during that wait does nothing. */
+function press(node, run) {
+  let pending = null, gone = false;
+  node.addEventListener('pointerdown', e => { if (e.button === 0) pending = ripple(e); });
+  node.addEventListener('click', e => {
+    e.preventDefault();
+    if (gone) return;
+    gone = true;
+    const anim = pending || ripple(e);
+    pending = null;
+    const go = () => run();
+    if (!anim) { go(); return; }
+    const later = () => setTimeout(go, AFTER);
+    if (anim.playState === 'finished') later(); else anim.addEventListener('finish', later);
+  });
+  return node;
+}
+
+/** Resolves the chosen wallet, `{ phone: true }` when the desktop QR finished, or null when closed. `label(p)` names a wallet; `last` = the label used last time.
+ *  `onPick` runs after that row's ripple and a short pause. `opts.phone` is the desktop QR (never on a phone). */
+export function pickWallet(list, label, last = null, onPick = null, opts = null) {
   return new Promise(resolve => {
     const root = css(document.createElement('div'), { position: 'fixed', inset: '0', zIndex: '2147483000', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.55)' });
     root.setAttribute('data-fc-wallets', '');
-    const panel = css(document.createElement('div'), { maxWidth: '340px', width: 'calc(100% - 32px)', padding: '16px 18px', background: '#101010', color: '#f2f2f2', border: '1px solid #d98a14', borderRadius: '8px', font: '14px/1.4 ui-monospace,Menlo,monospace' });
+    const panel = css(document.createElement('div'), { width: 'min(340px, calc(100vw - 32px))', padding: '16px 18px', background: '#101010', color: '#f2f2f2', border: '1px solid #d98a14', borderRadius: '8px', font: '14px/1.4 ui-monospace,Menlo,monospace' });
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-label', 'Connect a Solana wallet');
-    let settled = false;
+    let settled = false, stopMotion = () => {};
     const finish = p => {
       if (settled) return;
       settled = true;
+      stopMotion();
       if (p) onPick?.(p);
-      root.remove();
       document.removeEventListener('keydown', onKey);
-      resolve(p ?? null);
+      const done = () => { root.remove(); resolve(p ?? null); };
+      if (reduced()) { done(); return; }
+      panel.getAnimations().forEach(a => a.cancel());   // hover and the entrance must not hold the box in place while it leaves
+      root.animate({ opacity: [1, 0] }, { duration: 220, easing: 'ease-in', fill: 'forwards' });
+      panel.animate({ opacity: [1, 0], scale: [1, 0.96] }, { duration: 220, easing: 'ease-in', fill: 'forwards' }).onfinish = done;
     };
     const onKey = e => { if (e.key === 'Escape') finish(null); };
-    const body = [h('b', { display: 'block', marginBottom: '8px', color: '#d98a14', letterSpacing: '.06em' }, list.length ? 'CONNECT A WALLET' : 'NO SOLANA WALLET HERE')];
+    const body = [title(list.length ? 'CONNECT A WALLET' : 'NO SOLANA WALLET HERE')];
     if (list.length) {
       const sorted = [...list].sort((a, b) => (label(b) === last) - (label(a) === last));
       for (const p of sorted) {
@@ -42,23 +166,35 @@ export function pickWallet(list, label, last = null, onPick = null) {
         if (p.icon) { const img = h('img', { width: '24px', height: '24px', flex: '0 0 24px', objectFit: 'contain' }); img.alt = ''; img.src = p.icon; b.append(img); }
         b.append(h('span', {}, label(p)));
         if (label(p) === last) b.append(h('span', { marginLeft: 'auto', opacity: '.6', fontSize: '12px' }, 'last used'));
-        b.onclick = () => finish(p);
-        body.push(b);
+        body.push(press(b, () => finish(p)));
       }
       body.push(h('p', { margin: '8px 0 0', opacity: '.65', fontSize: '12px' }, 'Set the wallet to Devnet – Freight Chain runs on Solana devnet.'));
     } else if (isMobileDevice()) {
       body.push(h('p', { margin: '0 0 6px' }, 'A phone browser has no wallet. Open this page inside your wallet app:'));
-      for (const l of browseLinks(location.href, location.origin)) { const a = h('a', BTN, `Open in ${l.name}`); a.href = l.href; a.rel = 'noopener'; body.push(a); }
+      for (const l of browseLinks(location.href, location.origin)) { const a = h('a', BTN, `Open in ${l.name}`); a.href = l.href; a.rel = 'noopener'; body.push(press(a, () => { location.href = a.href; })); }
     } else {
       body.push(h('p', { margin: '0 0 6px' }, 'Install a Solana wallet extension, then reload this page:'));
-      for (const l of INSTALL) { const a = h('a', BTN, `Get ${l.name}`); a.href = l.href; a.target = '_blank'; a.rel = 'noopener'; body.push(a); }
+      for (const l of INSTALL) { const a = h('a', BTN, `Get ${l.name}`); a.href = l.href; a.target = '_blank'; a.rel = 'noopener'; body.push(press(a, () => { const w = window.open(a.href, '_blank', 'noopener'); if (!w) location.href = a.href; })); }
     }
-    const close = h('button', { ...BTN, justifyContent: 'center', background: 'transparent', marginTop: '10px' }, 'CANCEL'); close.type = 'button'; close.onclick = () => finish(null);
-    panel.append(...body, close);
+    if (opts?.phone && !isMobileDevice()) {
+      const phone = press(h('button', { ...BTN, justifyContent: 'center' }, 'Sign in with your phone'), () => runPhone(panel, finish, opts.api)); phone.type = 'button';
+      body.push(phone);
+    }
+    const close = press(h('button', { ...BTN, justifyContent: 'center', background: 'transparent', marginTop: '10px' }, 'CANCEL'), () => finish(null)); close.type = 'button';
+    const sheet = h('div', { position: 'relative', zIndex: '1', pointerEvents: 'none' }); sheet.dataset.fcSheet = ''; sheet.append(...body, close); panel.append(sheet);
+    root.style.opacity = '0';
+    panel.style.opacity = '0';
+    panel.style.scale = '.96';
     root.append(panel);
     root.addEventListener('click', e => { if (e.target === root) finish(null); });
     document.addEventListener('keydown', onKey);
     document.body.append(root);
+    stopMotion = liveDialog(panel);
+    if (reduced()) { root.style.opacity = '1'; panel.style.opacity = '1'; panel.style.scale = '1'; }
+    else {
+      root.animate({ opacity: [0, 1] }, { duration: 280, easing: 'ease-out', fill: 'forwards' });
+      panel.animate({ opacity: [0, 1], scale: [0.96, 1] }, { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' });
+    }
     panel.querySelector('button')?.focus();
   });
 }

@@ -7,6 +7,9 @@ import { requestChallengeBodySchema, challengeBodySchema, verifyBodySchema } fro
 import { Keypair } from '@solana/web3.js';
 import { busMock } from '../../support/bus.js';
 
+const env = { isProduction: false, sessionCookie: 'fc_session' } as never;
+const controller = (commands: { bus: never }, queries: { bus: never }) => new AuthHttpController(commands.bus, queries.bus, env);
+
 describe('AuthHttpController', () => {
   const wallet = Keypair.generate().publicKey.toBase58();
   const mockChallenge = {
@@ -23,14 +26,14 @@ describe('AuthHttpController', () => {
 
   it('POST auth/nonce (legacy) → RequestChallengeCommand(wallet, Origin)', async () => {
     const commands = busMock(mockChallenge), queries = busMock();
-    const res = await new AuthHttpController(commands.bus, queries.bus).nonce({ wallet }, 'https://ride.freight.test');
+    const res = await controller(commands, queries).nonce({ wallet }, 'https://ride.freight.test');
     expect(res).toEqual(mockChallenge);
     expect(commands.last()).toEqual(new RequestChallengeCommand(wallet, 'https://ride.freight.test'));
   });
 
   it('POST auth/nonce (1-click SIWS anonymous) → RequestChallengeCommand(undefined, Origin)', async () => {
     const commands = busMock(mockChallenge), queries = busMock();
-    const res = await new AuthHttpController(commands.bus, queries.bus).nonce({}, 'https://freight.test');
+    const res = await controller(commands, queries).nonce({}, 'https://freight.test');
     expect(res).toEqual(mockChallenge);
     expect(commands.last()).toEqual(new RequestChallengeCommand(undefined, 'https://freight.test'));
   });
@@ -38,14 +41,14 @@ describe('AuthHttpController', () => {
   it('POST auth/verify (legacy) → VerifySignInCommand(wallet, signature, client)', async () => {
     const commands = busMock({ profile: {}, session: {} }), queries = busMock();
     const client = { ip: '1.2.3.4', userAgent: 'Firefox' };
-    await new AuthHttpController(commands.bus, queries.bus).verify({ wallet, signature: 'sig' }, client);
+    await controller(commands, queries).verify({ wallet, signature: 'sig' }, client);
     expect(commands.last()).toEqual(new VerifySignInCommand(wallet, 'sig', client));
   });
 
   it('POST auth/verify (1-click SIWS) → VerifySignInCommand(wallet, signature, client, message, nonce)', async () => {
     const commands = busMock({ profile: {}, session: {} }), queries = busMock();
     const client = { ip: '1.2.3.4', userAgent: 'Firefox' };
-    await new AuthHttpController(commands.bus, queries.bus).verify(
+    await controller(commands, queries).verify(
       { wallet, signature: 'sig', message: 'canonical-msg', nonce: 'nonce-12345' },
       client,
     );
@@ -54,10 +57,10 @@ describe('AuthHttpController', () => {
 
   it('POST auth/logout → LogoutCommand; GET me → GetMeQuery(wallet)', async () => {
     const commands = busMock({ ok: true }), queries = busMock({ wallet });
-    const controller = new AuthHttpController(commands.bus, queries.bus);
-    expect(await controller.logout()).toEqual({ ok: true });
+    const http = controller(commands, queries);
+    expect(await http.logout()).toEqual({ ok: true });
     expect(commands.last()).toBeInstanceOf(LogoutCommand);
-    expect(await controller.me({ wallet })).toEqual({ wallet });
+    expect(await http.me({ wallet })).toEqual({ wallet });
     expect(queries.last()).toEqual(new GetMeQuery(wallet));
   });
 

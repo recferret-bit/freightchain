@@ -4,7 +4,7 @@ import { API_BASE } from '../js/hosts.js';
 import { track } from '../js/analytics.js';
 import { store } from '../js/util.js';
 import { b58 } from '../js/wallet/b58.js';
-import { chooseWallet as chooseShared, getSignInMethod, signInWith } from '../js/wallet/handlers.js';
+import { chooseWallet as chooseShared, getSignInMethod, signInWith, warmChallenge } from '../js/wallet/handlers.js';
 import { wallets, walletLabel } from '../js/wallet/standard.js';
 
 export { b58, getSignInMethod };
@@ -59,10 +59,9 @@ export function walletName(p = provider()) {
   return p.standard ? 'standard' : 'injected';
 }
 
-/** Which wallet signs in: none → the install / open-in-wallet panel (then throws no_provider); one → it; several → the picker.
- *  `onPick` runs in the click that chose the wallet. */
+/** Which wallet signs in. The list always opens in the browser, including when only one wallet is installed. `onPick` runs in the row click. */
 export async function chooseWallet(onPick) {
-  try { return await chooseShared(store.get(PICKED), onPick); }
+  try { return await chooseShared(store.get(PICKED), onPick, { phone: true, api }); }
   catch (e) { throw stamp(e, e?.stage ?? 'unknown'); }
 }
 
@@ -137,14 +136,61 @@ export async function signInOrFallback(p = provider()) {
   }
 }
 
-/** CONNECT: the wallet the visitor picks, then the same one-prompt sign-in production uses (Wallet Standard solana:signIn). */
+let warmed = null;
+/** Start the nonce now. CONNECT calls solana:signIn inside the click only when this has already returned — Phantom draws no window after an await. */
+export function prepareSignIn() {
+  if (!warmed) warmed = warmChallenge(() => api('auth/nonce', {}, { report: false }));
+  else warmed.keep();
+  return warmed;
+}
+
+/** The signature that `job` already started, or null when this wallet cannot sign that way. A rejection throws. */
+async function finishArmed(p, job, wallet_name) {
+  if (job.mode === 'connect') {
+    try { await job.pending; } catch (e) { throw stamp(e, refused(e) ? 'connect_rejected' : 'unknown'); }
+    return legacyAfterConnect(p, wallet_name);
+  }
+  if (job.mode === 'wait') {
+    let challenge;
+    try { challenge = await job.prep.promise(); } catch { return null; }
+    if (!challenge) return null;
+    track('wallet_signature_requested', { wallet_name });
+    let signed;
+    try { signed = await signInWith(p, challenge); }
+    catch (e) { if (refused(e)) throw stamp(e, 'sign_rejected'); return null; }
+    if (!signed) return null;
+    try { return await api('auth/verify', { wallet: signed.wallet, signature: signed.signature, message: signed.message, nonce: signed.nonce }, { report: false }); }
+    catch (e) { if (e?.status === 401) return null; throw stamp(e, 'verify_failed'); }
+  }
+  track('wallet_signature_requested', { wallet_name });
+  let signed;
+  try { signed = await job.pending; }
+  catch (e) { if (refused(e)) throw stamp(e, 'sign_rejected'); return null; }
+  if (!signed) return null;
+  try { return await api('auth/verify', { wallet: signed.wallet, signature: signed.signature, message: signed.message, nonce: signed.nonce }, { report: false }); }
+  catch (e) { if (e?.status === 401) return null; throw stamp(e, 'verify_failed'); }
+}
+
+/** CONNECT: the wallet the visitor picks. solana:signIn is started inside that click when the nonce is already here. */
 export async function signIn() {
+  const prep = prepareSignIn();
+  let job = null;
   let p;
-  try { p = await chooseWallet(); }
+  try { p = await chooseWallet(w => { job = prep.arm(w); }); }   // the site wrapper already supplies the remembered label; the function runs inside the click
   catch (e) { track('sign_in_failed', { stage: e?.stage ?? 'unknown', http_status: null, code: null, wallet_name: 'none' }); throw e; }
-  const session = await signInOrFallback(p);
-  rememberWallet(p);
-  return session;
+  if (p?.phone) return api('me');   // the QR poll already set this browser's session cookie
+  if (!job) job = prep.arm(p);
+  job.prep = prep;
+  const wallet_name = walletName(p);
+  try {
+    const session = await finishArmed(p, job, wallet_name) ?? await legacySignIn(p, wallet_name);
+    rememberWallet(p);
+    return session;
+  } catch (e) {
+    const stage = e?.stage || 'unknown';
+    track('sign_in_failed', { stage, http_status: typeof e?.status === 'number' ? e.status : null, code: typeof e?.code === 'string' ? e.code : null, wallet_name });
+    throw e;
+  }
 }
 /** The wallet the payments on this origin use from now on (provider() looks it up by label). */
 export const rememberWallet = p => { if (p && !p.isDevWallet) store.set(PICKED, walletLabel(p)); };
