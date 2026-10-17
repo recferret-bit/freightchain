@@ -114,6 +114,7 @@ These controls constrain hostile instructions in model output, entity notes and 
 | `anthropic` | `anthropic.llm.adapter.ts` | `messages.stream(…).finalMessage()` per turn, adaptive thinking, effort high, `tool_choice` auto. Cached system block and last tool. Thinking blocks go back unchanged; tool results go back in one user message; `pause_turn` continues. On the official API, claude-opus-5-5 / claude-sonnet-5-5 / claude-fable-5-1 use the beta stream with `server-side-fallback-2026-07-01` and `fallbacks: 'default'`. Default `claude-opus-5-5` |
 | `openai` | `openai-responses.llm.adapter.ts` | Responses API, function tools, `store: false` with encrypted reasoning; output items go back as input, results as `function_call_output`. Default `gpt-6` (an env default; verify against OpenAI's model list) |
 | `gemini` | `gemini-chat.llm.adapter.ts` (`ChatCompletionsSession`) | the openai SDK's Chat Completions against Google's OpenAI-compatible endpoint. The assistant message (thought signatures) goes back unchanged; results are role `tool`. Default `gemini-3.1-pro-preview` |
+| `xai` | `openai-responses.llm.adapter.ts` | the same Responses session as OpenAI, at `XAI_BASE_URL` (default `https://api.x.ai/v1`). Default `grok-4.7` |
 | `zai` | the same class | Chat Completions at `ZAI_BASE_URL` (default the pay-as-you-go `https://api.z.ai/api/paas/v4`; a GLM Coding Plan key: `https://api.z.ai/api/coding/paas/v4`). The assistant message (with GLM's `reasoning_content`) goes back unchanged. Default `glm-5.2` (checked against z.ai's model list 2026-10-15) |
 | `fake` | `fake.llm.adapter.ts` | TEST ONLY: `NODE_ENV=test`, or `EDITOR_FAKE_LLM=1` outside production (the schema refuses it in production). A scripted get_entity → check_entity (a `note: 'fake edit: …'` line) → save_draft → "done (fake)", so a browser e2e can drive a real job through the real MCP |
 
@@ -155,7 +156,7 @@ For a mean job duration of `D` seconds, five fully utilized slots have a nominal
 - `release.sh` builds and starts it only when `deploy/.env` has `EDITOR_MCP_TOKEN` (`npm run deploy:init` generates one). The app gets `EDITOR_MCP_URL=http://mcp:3100`.
 
 **Local recipe:**
-1. In `server/.env`, set `EDITOR_WALLETS=<your wallet>`, `EDITOR_MCP_TOKEN=<24+ chars>`, and one AI key, or `EDITOR_FAKE_LLM=1`; set an explicit `JWT_SECRET` of at least 32 characters shared by API and worker.
+1. In `server/.env`, set `EDITOR_WALLETS=<your wallet>`, `EDITOR_MCP_TOKEN=<24+ chars>`, and one AI key (`XAI_API_KEY` or another), or `EDITOR_FAKE_LLM=1` for the scripted test model; set an explicit `JWT_SECRET` of at least 32 characters shared by API and worker.
 2. Run `npm run server:dev` (:3000), `npm run editor:mcp` (:3100; `FC_APP_URL` defaults to `http://127.0.0.1:3000`), and `npm run server:build && npm run editor:worker` in separate terminals. All read the same `server/.env`. Restart the worker after rebuilding; the dev API watcher does not restart it.
 3. Open `http://storybook.freightchain.localhost/` (`npm run infra:local`) and sign in with the wallet. The editor API answers only on that host once `deploy/local/dev.env` sets `COOKIE_DOMAIN`.
 

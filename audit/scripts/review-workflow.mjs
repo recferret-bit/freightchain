@@ -46,7 +46,7 @@ export function selectExistingTest(catalog, id, sourceDigest) {
 
 // Fixed trusted program. No model-provided executable, arguments, code, env or URL.
 export const EXISTING_TEST_RUNNER = `
-const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),{spawn}=require('node:child_process');
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),{spawn,spawnSync}=require('node:child_process');
 (async()=>{
  let input='';for await(const chunk of process.stdin)input+=chunk;
  const entry=JSON.parse(input),root='/work/src';
@@ -70,6 +70,37 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
   if(fs.realpathSync(path.dirname(target))!==path.dirname(target))throw Error('Test artifact destination changed');
   const fd=fs.openSync(target,fs.constants.O_WRONLY|fs.constants.O_CREAT|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK,0o644);
   try{const stat=fs.fstatSync(fd);if(!stat.isFile()||stat.nlink!==1)throw Error('Test artifact destination changed');fs.ftruncateSync(fd,0);fs.writeFileSync(fd,bytes)}finally{fs.closeSync(fd)}
+ }
+ if(!(entry.artifacts&&entry.artifacts.length)&&['cargo','bash'].includes(entry.command)&&fs.existsSync('/opt/platform-tools/rust/bin/cargo')){
+  const manifests=[],skip=new Set(['.git','node_modules','target','dist','.cargo']);
+  (function walk(dir,depth){
+   if(depth>4)return;
+   let ents=[];try{ents=fs.readdirSync(dir,{withFileTypes:true})}catch{return}
+   for(const e of ents){
+    if(e.isSymbolicLink()||skip.has(e.name))continue;
+    const p=path.join(dir,e.name);
+    if(e.isDirectory())walk(p,depth+1);
+    else if(e.isFile()&&e.name==='Cargo.toml')manifests.push(p);
+   }
+  })(root,0);
+  for(const manifest of manifests){
+   const toml=fs.readFileSync(manifest,'utf8');
+   if(!/\\bcrate-type\\s*=\\s*\\[[^\\]]*"cdylib"/.test(toml))continue;
+   const dir=path.dirname(manifest);
+   const hasAnchor=[dir,path.dirname(dir),path.dirname(path.dirname(dir))].some(d=>d.startsWith(root)&&fs.existsSync(path.join(d,'Anchor.toml')));
+   if(!hasAnchor&&!/(?:anchor-lang|solana-program|solana-cpi|solana-sdk|solana-zk|pinocchio|target_os\\s*=\\s*"solana")/.test(toml))continue;
+   const lib=(toml.match(/\\[lib\\][\\s\\S]*?\\bname\\s*=\\s*"([^"]+)"/)?.[1]||toml.match(/\\[package\\][\\s\\S]*?\\bname\\s*=\\s*"([^"]+)"/)?.[1]||'').replace(/-/g,'_');
+   if(lib&&fs.existsSync(path.join('/work/target/deploy',lib+'.so')))continue;
+   const sbfEnv={...process.env,CI:'1',CARGO_NET_OFFLINE:'true',CARGO_TARGET_DIR:'/work/target',RUSTC:'/opt/platform-tools/rust/bin/rustc',RUSTFLAGS:'-C strip=debuginfo',PATH:'/opt/platform-tools/rust/bin:/opt/platform-tools/llvm/bin:'+(process.env.PATH||'/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin')};
+   delete sbfEnv.RUSTUP_TOOLCHAIN;
+   const sbf=spawnSync('/opt/platform-tools/rust/bin/cargo',['build','--locked','--offline','--release','--target','sbpf-solana-solana','--manifest-path',manifest],{cwd:dir,env:sbfEnv,stdio:['ignore','pipe','pipe'],timeout:Math.max(30000,timeoutMs-30000)});
+   if(sbf.status!==0){process.stderr.write(sbf.stderr||sbf.stdout||'');throw Error('Failed to build Solana SBF program artifact for '+manifest)}
+   const relDir='/work/target/sbpf-solana-solana/release',depDir='/work/target/deploy';
+   if(fs.existsSync(relDir)){
+    fs.mkdirSync(depDir,{recursive:true});
+    for(const f of fs.readdirSync(relDir))if(f.endsWith('.so'))fs.copyFileSync(path.join(relDir,f),path.join(depDir,f));
+   }
+  }
  }
  const child=spawn(entry.command,entry.args,{cwd,env:{...process.env,CI:'1',CARGO_NET_OFFLINE:'true',GOPROXY:'off',GOSUMDB:'off',npm_config_offline:'true',npm_config_ignore_scripts:'true'},detached:true,stdio:['ignore','pipe','pipe']});
  const kill=()=>{try{process.kill(-child.pid,'SIGKILL')}catch{}};

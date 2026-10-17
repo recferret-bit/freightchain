@@ -121,11 +121,14 @@ export const envSchema = z
     GEMINI_API_KEY: optional(z.string().min(8)),
     ZAI_API_KEY: optional(z.string().min(8)),
     ZAI_BASE_URL: z.string().url().default('https://api.z.ai/api/paas/v4'), // z.ai's OpenAI-compatible endpoint (pay as you go); the GLM Coding Plan: https://api.z.ai/api/coding/paas/v4
-    EDITOR_DEFAULT_PROVIDER: optional(z.enum(['anthropic', 'openai', 'gemini', 'zai', 'fake'])), // unset / not enabled = the first enabled one
+    XAI_API_KEY: optional(z.string().min(8)),
+    XAI_BASE_URL: z.string().url().default('https://api.x.ai/v1'), // xAI's OpenAI-compatible Responses API
+    EDITOR_DEFAULT_PROVIDER: optional(z.enum(['xai', 'anthropic', 'openai', 'gemini', 'zai', 'fake'])), // unset / not enabled = the first enabled one
     EDITOR_MODEL_ANTHROPIC: optional(z.string().min(1).max(100)), // default claude-opus-5-5
     EDITOR_MODEL_OPENAI: optional(z.string().min(1).max(100)), // default gpt-6
     EDITOR_MODEL_GEMINI: optional(z.string().min(1).max(100)), // default gemini-3.1-pro-preview
     EDITOR_MODEL_ZAI: optional(z.string().min(1).max(100)), // default glm-5.2
+    EDITOR_MODEL_XAI: optional(z.string().min(1).max(100)), // default grok-4.7
     EDITOR_MCP_URL: z.string().url().default('http://127.0.0.1:3100'), // the entity MCP (mcp/; prod compose: http://mcp:3100)
     EDITOR_MCP_TOKEN: optional(z.string().min(24, 'EDITOR_MCP_TOKEN must be at least 24 characters')), // shared with the mcp service; unset = no AI editor
     EDITOR_JOB_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(3_600_000).default(600_000), // a job longer than this is aborted (and one left running past it by a restart is failed)

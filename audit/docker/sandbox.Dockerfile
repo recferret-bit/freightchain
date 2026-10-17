@@ -6,7 +6,7 @@ FROM node:22-bookworm-slim AS nodebin
 FROM rust:1.89-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl git python3 pkg-config libssl-dev build-essential \
+      ca-certificates curl git python3 pkg-config libssl-dev build-essential bzip2 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=nodebin /usr/local/bin/node /usr/local/bin/node
@@ -25,6 +25,22 @@ RUN cargo install cargo-audit --version 0.22.2 --locked
 RUN rustup toolchain install 1.89.0 --profile minimal --component rustfmt --component clippy \
     && rustup run 1.89.0 rustc --version
 ENV RUSTUP_TOOLCHAIN=1.89.0
+
+ARG SOLANA_PLATFORM_TOOLS_VERSION=v1.54
+RUN arch="$(dpkg --print-architecture)" \
+    && case "$arch" in \
+      amd64) a=x86_64; sha=fcc41631c7f77561bf5412218bf297501dccf0305ea280f338f0ace2aab9f31e ;; \
+      arm64) a=aarch64; sha=f62812dd96b6b1c8e0e2cf677146912c58c83e95d762c30e89230d669f9c2e6a ;; \
+      *) echo "unsupported arch $arch" >&2; exit 1 ;; \
+    esac \
+    && mkdir -p /opt/platform-tools \
+    && curl -fsSL -o /tmp/platform-tools.tar.bz2 "https://github.com/anza-xyz/platform-tools/releases/download/${SOLANA_PLATFORM_TOOLS_VERSION}/platform-tools-linux-${a}.tar.bz2" \
+    && printf '%s  /tmp/platform-tools.tar.bz2\n' "$sha" | sha256sum -c - \
+    && tar -xjf /tmp/platform-tools.tar.bz2 -C /opt/platform-tools \
+    && chmod -R a+rX /opt/platform-tools \
+    && rm -f /tmp/platform-tools.tar.bz2 \
+    && /opt/platform-tools/rust/bin/rustc --version \
+    && /opt/platform-tools/rust/bin/cargo --version
 
 ARG GITLEAKS_VERSION=8.24.3
 ARG SEMGREP_VERSION=1.181.0

@@ -158,10 +158,11 @@ The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `D
 
 | `EDITOR_MCP_TOKEN` | empty | ≥ 24 chars, **secret**, shared with the `mcp` service (`npm run deploy:init` generates it). Empty = no AI editor (`/me` offers no provider, a job is a 503, release.sh does not start `mcp` or `editor-worker`) |
 | `EDITOR_MCP_URL` | `http://127.0.0.1:3100` | the entity MCP (prod compose: `http://mcp:3100`); `npm run editor:mcp` runs it locally |
-| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` / `ZAI_API_KEY` | empty | **Secrets.** A provider is offered when its key is set |
+| `XAI_API_KEY` / `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` / `ZAI_API_KEY` | empty | **Secrets.** A provider is offered when its key is set |
+| `XAI_BASE_URL` | `https://api.x.ai/v1` | xAI's OpenAI-compatible Responses API |
 | `ZAI_BASE_URL` | `https://api.z.ai/api/paas/v4` | z.ai's OpenAI-compatible endpoint (pay as you go); a GLM Coding Plan key uses `https://api.z.ai/api/coding/paas/v4` |
-| `EDITOR_DEFAULT_PROVIDER` | empty | `anthropic` / `openai` / `gemini` / `zai` / `fake`; empty or not enabled = the first enabled |
-| `EDITOR_MODEL_ANTHROPIC` / `_OPENAI` / `_GEMINI` / `_ZAI` | `claude-opus-5-5` / `gpt-6` / `gemini-3.1-pro-preview` / `glm-5.2` | model id defaults – check them when a provider renames a model |
+| `EDITOR_DEFAULT_PROVIDER` | empty | `xai` / `anthropic` / `openai` / `gemini` / `zai` / `fake`; empty or not enabled = the first enabled |
+| `EDITOR_MODEL_XAI` / `_ANTHROPIC` / `_OPENAI` / `_GEMINI` / `_ZAI` | `grok-4.7` / `claude-opus-5-5` / `gpt-6` / `gemini-3.1-pro-preview` / `glm-5.2` | model id defaults – check them when a provider renames a model |
 | `EDITOR_JOB_TIMEOUT_MS` | `600000` | 10 s – 1 h; a longer job is aborted, one left by a restart is failed |
 | `EDITOR_FAKE_LLM` | `0` | **Test only**: `1` offers the scripted fake model (browser e2e of the editor). Refused in production |
 

@@ -154,11 +154,14 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       ZAI_API_KEY: ${ZAI_API_KEY:-}
       ZAI_BASE_URL: ${ZAI_BASE_URL:-https://api.z.ai/api/paas/v4}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      XAI_BASE_URL: ${XAI_BASE_URL:-https://api.x.ai/v1}
       EDITOR_DEFAULT_PROVIDER: ${EDITOR_DEFAULT_PROVIDER:-}
       EDITOR_MODEL_ANTHROPIC: ${EDITOR_MODEL_ANTHROPIC:-}
       EDITOR_MODEL_OPENAI: ${EDITOR_MODEL_OPENAI:-}
       EDITOR_MODEL_GEMINI: ${EDITOR_MODEL_GEMINI:-}
       EDITOR_MODEL_ZAI: ${EDITOR_MODEL_ZAI:-}
+      EDITOR_MODEL_XAI: ${EDITOR_MODEL_XAI:-}
       EDITOR_MCP_URL: http://mcp:3100   # the mcp service below, on the internal `editor` network
       EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}   # shared with the mcp service; empty = no AI editor
       EDITOR_JOB_TIMEOUT_MS: ${EDITOR_JOB_TIMEOUT_MS:-600000}
@@ -272,11 +275,14 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       ZAI_API_KEY: ${ZAI_API_KEY:-}
       ZAI_BASE_URL: ${ZAI_BASE_URL:-https://api.z.ai/api/paas/v4}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      XAI_BASE_URL: ${XAI_BASE_URL:-https://api.x.ai/v1}
       EDITOR_DEFAULT_PROVIDER: ${EDITOR_DEFAULT_PROVIDER:-}
       EDITOR_MODEL_ANTHROPIC: ${EDITOR_MODEL_ANTHROPIC:-}
       EDITOR_MODEL_OPENAI: ${EDITOR_MODEL_OPENAI:-}
       EDITOR_MODEL_GEMINI: ${EDITOR_MODEL_GEMINI:-}
       EDITOR_MODEL_ZAI: ${EDITOR_MODEL_ZAI:-}
+      EDITOR_MODEL_XAI: ${EDITOR_MODEL_XAI:-}
       EDITOR_MCP_URL: http://mcp:3100   # the mcp service below, on the internal `editor` network
       EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}   # shared with the mcp service; empty = no AI editor
       EDITOR_JOB_TIMEOUT_MS: ${EDITOR_JOB_TIMEOUT_MS:-600000}

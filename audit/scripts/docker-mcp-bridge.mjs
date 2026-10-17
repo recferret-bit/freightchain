@@ -159,7 +159,7 @@ export function execInContainer(dockerBin, container, args, { cwd = '/work/src',
     let stdout = '';
     let stderr = '';
     const maxBytes = 64 * 1024;
-    const timer = setTimeout(() => { child.kill('SIGKILL'); }, Math.min(Math.max(1000, timeoutMs), 120_000));
+    const timer = setTimeout(() => { child.kill('SIGKILL'); }, Math.min(Math.max(1000, timeoutMs), 910_000));
     child.stdout.on('data', (c) => { if (stdout.length < maxBytes) stdout += c.toString('utf8').slice(0, maxBytes - stdout.length); });
     child.stderr.on('data', (c) => { if (stderr.length < maxBytes) stderr += c.toString('utf8').slice(0, maxBytes - stderr.length); });
     child.on('error', (err) => { clearTimeout(timer); resolve({ code: 127, stdout, stderr: err.message }); });

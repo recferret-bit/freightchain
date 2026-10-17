@@ -102,7 +102,7 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
 
   it('the AI editor: keys are optional, the MCP token ≥ 24 chars, a known default provider, the job timeout bounded, the fake never in production', () => {
     const base = { DATABASE_URL: 'postgresql://x/y' };
-    expect(validateEnv(base)).toMatchObject({ EDITOR_MCP_URL: 'http://127.0.0.1:3100', EDITOR_JOB_TIMEOUT_MS: 600_000, ZAI_BASE_URL: 'https://api.z.ai/api/paas/v4', EDITOR_FAKE_LLM: '0' });
+    expect(validateEnv(base)).toMatchObject({ EDITOR_MCP_URL: 'http://127.0.0.1:3100', EDITOR_JOB_TIMEOUT_MS: 600_000, ZAI_BASE_URL: 'https://api.z.ai/api/paas/v4', XAI_BASE_URL: 'https://api.x.ai/v1', EDITOR_FAKE_LLM: '0' });
     expect(validateEnv({ ...base, ANTHROPIC_API_KEY: '' }).ANTHROPIC_API_KEY).toBeUndefined();
     expect(() => validateEnv({ ...base, EDITOR_MCP_TOKEN: 'short' })).toThrow(/EDITOR_MCP_TOKEN/);
     expect(() => validateEnv({ ...base, EDITOR_DEFAULT_PROVIDER: 'mistral' })).toThrow(/EDITOR_DEFAULT_PROVIDER/);

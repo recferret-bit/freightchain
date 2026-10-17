@@ -16,13 +16,15 @@ export function mountChat(st) {
   const node = el('div', { class: 'ed-chat' }, el('div', { class: 'ed-row' }, scope, prov, model), log, box, el('div', { class: 'ed-row' }, send, cancel), el('div', { class: 'ed-sub', text: 'EARLIER REQUESTS' }), past);
   let job = null, after = 0, timer = null, generation = 0, pending = false;
 
+  /* The scripted test provider stays available to the browser e2e when it is the only one. A real provider hides it. */
+  const providers = () => { const ps = st.me?.providers ?? [], real = ps.filter(p => p.id !== 'fake'); return real.length ? real : ps; };
   function fillProviders() {
-    const ps = st.me?.providers ?? []; prov.textContent = '';
+    const ps = providers(); prov.textContent = '';
     for (const p of ps) prov.append(el('option', { value: p.id, selected: p.id === st.me.defaultProvider }, p.label ?? p.id));
     fillModels();
-    send.disabled = pending || !!job || !ps.length; if (!ps.length) line('sys', 'No AI provider is configured on the server (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY or ZAI_API_KEY). SOURCE still edits by hand.');
+    send.disabled = pending || !!job || !ps.length; if (!ps.length) line('sys', 'No AI provider is configured on the server (XAI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY or ZAI_API_KEY). SOURCE still edits by hand.');
   }
-  function fillModels() { const p = (st.me?.providers ?? []).find(x => x.id === prov.value); model.textContent = ''; for (const m of p?.models ?? []) model.append(el('option', { value: m, selected: m === p.default }, m)); }
+  function fillModels() { const p = providers().find(x => x.id === prov.value); model.textContent = ''; for (const m of p?.models ?? []) model.append(el('option', { value: m, selected: m === p.default }, m)); }
   const line = (kind, text) => { log.append(el('div', { class: `ed-l ed-${kind}`, text })); log.scrollTop = log.scrollHeight; };
 
   async function ask() {
@@ -35,7 +37,7 @@ export function mountChat(st) {
       if (my !== generation || wallet !== st.me?.wallet) return;
       box.value = ''; follow(r.jobId, 0, target);
     } catch (e) { if (my === generation) { line('err', e.message); for (const x of e.errors ?? []) line('err', '· ' + x); } }
-    finally { pending = false; send.disabled = !!job || !(st.me?.providers ?? []).length; }
+    finally { pending = false; send.disabled = !!job || !providers().length; }
   }
   function follow(id, from = 0, target = st.entityId) {
     job = id; after = from; cancel.hidden = false; send.disabled = true; clearTimeout(timer);
@@ -87,7 +89,7 @@ export function mountChat(st) {
     } catch { /* the bridge may not be there yet */ }
   }
   async function replayJob(j) {
-    clearTimeout(timer); job = null; cancel.hidden = true; send.disabled = !(st.me?.providers ?? []).length;
+    clearTimeout(timer); job = null; cancel.hidden = true; send.disabled = !providers().length;
     const my = ++generation, wallet = st.me?.wallet, selected = st.entityId, current = () => my === generation && wallet === st.me?.wallet && selected === st.entityId;
     log.textContent = ''; line('you', j.prompt);
     let last = 0;

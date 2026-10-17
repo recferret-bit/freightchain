@@ -7,12 +7,12 @@ import { FakeLlmSession } from './fake.llm.adapter.js';
 import { GEMINI_BASE_URL, ChatCompletionsSession, type ChatClientLike } from './gemini-chat.llm.adapter.js';
 import { OpenAiResponsesSession, openAiClient, type OpenAiResponsesClientLike } from './openai-responses.llm.adapter.js';
 
-/* Which AI providers the model editor offers: those whose key is set (ANTHROPIC / OPENAI / GEMINI / ZAI_API_KEY), plus the scripted fake in tests.
+/* Which AI providers the model editor offers: those whose key is set (XAI / ANTHROPIC / OPENAI / GEMINI / ZAI_API_KEY), plus the scripted fake in tests.
    Model ids are env defaults (EDITOR_MODEL_<P>) – check them against the provider's model list when a provider renames one. Clients are built once,
    lazily; the keys never leave this file. */
-export const DEFAULT_MODELS: Record<Exclude<ProviderId, 'fake'>, string> = { anthropic: 'claude-opus-5-5', openai: 'gpt-6', gemini: 'gemini-3.1-pro-preview', zai: 'glm-5.2' };
+export const DEFAULT_MODELS: Record<Exclude<ProviderId, 'fake'>, string> = { xai: 'grok-4.7', anthropic: 'claude-opus-5-5', openai: 'gpt-6', gemini: 'gemini-3.1-pro-preview', zai: 'glm-5.2' };
 const ANTHROPIC_MODELS = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-fable-5-1'];
-const LABELS: Record<ProviderId, string> = { anthropic: 'Anthropic (Claude)', openai: 'OpenAI', gemini: 'Google Gemini', zai: 'z.ai (GLM)', fake: 'Fake (tests)' };
+const LABELS: Record<ProviderId, string> = { xai: 'xAI (Grok)', anthropic: 'Anthropic (Claude)', openai: 'OpenAI', gemini: 'Google Gemini', zai: 'z.ai (GLM)', fake: 'Fake (tests)' };
 
 @Injectable()
 export class LlmRegistryAdapter extends LlmProviderPort {
@@ -46,6 +46,7 @@ export class LlmRegistryAdapter extends LlmProviderPort {
       case 'openai': return new OpenAiResponsesSession(this.client('openai', () => openAiClient(this.env.llmKeys.openai!)) as OpenAiResponsesClientLike, o);
       case 'gemini': return new ChatCompletionsSession(this.client('gemini', () => openAiClient(this.env.llmKeys.gemini!, GEMINI_BASE_URL)) as ChatClientLike, o);
       case 'zai': return new ChatCompletionsSession(this.client('zai', () => openAiClient(this.env.llmKeys.zai!, this.env.zaiBaseUrl)) as ChatClientLike, o);
+      case 'xai': return new OpenAiResponsesSession(this.client('xai', () => openAiClient(this.env.llmKeys.xai!, this.env.xaiBaseUrl)) as OpenAiResponsesClientLike, o);
       case 'fake': return new FakeLlmSession(o);
     }
   }

@@ -1,6 +1,6 @@
 /* The AI providers the model editor can use. Which ones are ON is the infrastructure's business (a key is set); this is the catalogue and the choice. */
 
-export type ProviderId = 'anthropic' | 'openai' | 'gemini' | 'zai' | 'fake';
+export type ProviderId = 'anthropic' | 'openai' | 'gemini' | 'zai' | 'xai' | 'fake';
 
 export interface ProviderInfo {
   id: ProviderId;
@@ -9,7 +9,7 @@ export interface ProviderInfo {
   default: string;
 }
 
-export const PROVIDER_ORDER: readonly ProviderId[] = ['anthropic', 'openai', 'gemini', 'zai', 'fake'];
+export const PROVIDER_ORDER: readonly ProviderId[] = ['xai', 'anthropic', 'openai', 'gemini', 'zai', 'fake'];
 
 /** the provider + model a job runs on: the asked ones when enabled (else a 422 via the caller), defaults otherwise */
 export function chooseProvider(enabled: readonly ProviderInfo[], preferred: string | null, provider?: string, model?: string): { info: ProviderInfo; model: string } | { error: string } {

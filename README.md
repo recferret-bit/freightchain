@@ -665,8 +665,8 @@ Configure `server/.env`; keep it out of Git. API and worker must use the same da
 | `JWT_SECRET` | A generated secret of at least 32 characters shared by API and worker; the API's random development fallback cannot work across processes |
 | `EDITOR_MCP_TOKEN` | A generated secret of at least 24 characters shared by API, worker and MCP; empty disables AI editing |
 | `EDITOR_MCP_URL` | `http://127.0.0.1:3100` locally |
-| Provider key | One or more of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZAI_API_KEY`; a configured key makes that provider available |
-| Provider selection | Optional `EDITOR_DEFAULT_PROVIDER` and `EDITOR_MODEL_ANTHROPIC`, `EDITOR_MODEL_OPENAI`, `EDITOR_MODEL_GEMINI`, `EDITOR_MODEL_ZAI`; see [configuration](docs/configuration.md) for defaults and z.ai endpoint selection |
+| Provider key | One or more of `XAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZAI_API_KEY`; a configured key makes that provider available |
+| Provider selection | Optional `EDITOR_DEFAULT_PROVIDER` and `EDITOR_MODEL_XAI`, `EDITOR_MODEL_ANTHROPIC`, `EDITOR_MODEL_OPENAI`, `EDITOR_MODEL_GEMINI`, `EDITOR_MODEL_ZAI`; see [configuration](docs/configuration.md) for defaults and the xAI / z.ai endpoints |
 | `EDITOR_FAKE_LLM` | `1` for a scripted local provider with no paid model calls; production refuses this setting |
 | `REDIS_URL` | Optional locally; required for production AI editing and shared rate limits |
 
