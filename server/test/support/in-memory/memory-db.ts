@@ -94,6 +94,7 @@ export class MemoryDb {
   editorJobPrompts = new Map<string, string>();
   editorJobs = new Map<string, import('../../../src/domain/editor/editor-job.js').EditorJobRecord>();
   editorJobEvents = new Map<string, import('../../../src/domain/editor/editor-job.js').JobEventRecord[]>();
+  editorMcpCalls = new Map<string, import('../../../src/domain/editor/editor-job.js').EditorMcpCallRecord[]>();
 
   reset(): void {
     this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear(); this.replays.clear();
@@ -104,7 +105,7 @@ export class MemoryDb {
     this.rideEvents = []; this.rideMutes.clear(); this.donationOrders.clear(); this.playerStats.clear(); this.globalStats = null; this.dailyStats.clear();
     this.settings.clear(); this.dailySeeds.clear(); this.pledges.clear();
     this.honkMints.clear(); this.honkAccounts.clear(); this.honkBurns.clear(); this.honkVisuals.clear(); this.honkEmission = 0n;
-    this.entities.clear(); this.entityRevisions = []; this.editorJobPrompts.clear(); this.editorJobs.clear(); this.editorJobEvents.clear();
+    this.entities.clear(); this.entityRevisions = []; this.editorJobPrompts.clear(); this.editorJobs.clear(); this.editorJobEvents.clear(); this.editorMcpCalls.clear();
     this.referralCodes.clear(); this.referrals.clear();
   }
 }

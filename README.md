@@ -710,7 +710,7 @@ The fallback is **five running jobs globally plus queued overflow**, not five pe
 | `editor_jobs_parallel` | 5 | Global running claims; 0 pauses new claims |
 | `editor_jobs_per_day` | 40 | Jobs admitted per editor wallet per UTC day |
 | `editor_max_steps` | 24 | Agent turns per job |
-| `editor_max_output_tokens` | 32000 | Cumulative output token budget |
+| `editor_max_output_tokens` | 100000 | Cumulative output token budget |
 | `editor_max_input_ktokens` | 500 | Cumulative input budget, in thousands of tokens, including repeated history |
 
 These are signed admin **GameSetting** values, not environment variables. A stored value overrides the fallback: on an existing installation, open admin → Settings → **AI editor: parallel jobs** → `5` → **SIGN & SAVE**. Lowering concurrency leaves current claims running and blocks new starts until the count falls below the new value.

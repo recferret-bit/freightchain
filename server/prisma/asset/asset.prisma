@@ -58,6 +58,7 @@ model EditorJob {
   finishedAt       DateTime?
 
   events EditorJobEvent[]
+  mcpCalls EditorMcpCall[]
 
   @@index([wallet, createdAt])
   @@index([entityId, createdAt])
@@ -76,5 +77,24 @@ model EditorJobEvent {
   job EditorJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@id([jobId, seq])
+  @@schema("asset")
+}
+
+// One MCP round-trip the job actually sent. The chat does not show it. `wallet` is the editor who asked.
+model EditorMcpCall {
+  id        String   @id @db.Uuid
+  jobId     String   @db.Uuid
+  wallet    String
+  seq       Int // 1, 2, … per job
+  tool      String
+  args      Json
+  result    String
+  ok        Boolean
+  createdAt DateTime
+
+  job EditorJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, seq])
+  @@index([wallet, createdAt])
   @@schema("asset")
 }

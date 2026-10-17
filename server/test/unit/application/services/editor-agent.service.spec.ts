@@ -9,7 +9,7 @@ describe('EditorAgentService', () => {
     const { agent, jobs } = jobContext(undefined, llm, mcp);
     const job = aJob({ status: 'running' }); await jobs.insert(job);
     expect(await agent.run(job, new AbortController().signal)).toEqual({ status: 'done', text: 'saved' });
-    expect(llm.opened[0]).toMatchObject({ provider: 'fake', model: 'scripted', system: expect.stringMatching(/^Security rules[\s\S]*DATA[\s\S]*data-only entity modules/), maxOutputTokens: 32000, job: { prompt: 'taller', entityId: 'cactus' } });
+    expect(llm.opened[0]).toMatchObject({ provider: 'fake', model: 'scripted', system: expect.stringMatching(/^Security rules[\s\S]*DATA[\s\S]*data-only entity modules/), maxOutputTokens: 100000, job: { prompt: 'taller', entityId: 'cactus' } });
     expect(llm.sent[1]).toEqual([{ id: 'c1', content: '<tool_output tool="check_entity">\n{"ok":true,"id":"cactus"}\n</tool_output>', isError: false }]);
     expect(mcp.tokens).toEqual([`token:${job.id}`]);
     expect(mcp.closed).toBe(1);
@@ -25,7 +25,34 @@ describe('EditorAgentService', () => {
     const job = aJob({ status: 'running' }); await jobs.insert(job);
     await agent.run(job, new AbortController().signal);
     expect(mcp.calls).toEqual([]);
+    expect(await jobs.mcpCalls(job.id)).toEqual([]);
     expect((await jobs.events(job.id, 0, 10)).find((e) => e.type === 'tool_result')!.payload).toMatchObject({ ok: false, summary: expect.stringContaining('check this exact') });
+  });
+
+  it('stores each MCP call in full with the editor wallet; the chat event stays a short summary', async () => {
+    const big = 'y'.repeat(500);
+    const llm = new ScriptedLlm([turn({ stop: 'tool', toolCalls: [{ id: 'c1', name: 'get_entity', input: { id: 'cactus' } }] }), turn({ text: 'ok' })]);
+    const mcp = new ScriptedMcp({ get_entity: { text: big, isError: false } });
+    const { agent, jobs } = jobContext(undefined, llm, mcp);
+    const job = aJob({ status: 'running', wallet: 'WalletAaa' }); await jobs.insert(job);
+    expect(await agent.run(job, new AbortController().signal)).toMatchObject({ status: 'done', text: 'ok' });
+    expect(await jobs.mcpCalls(job.id)).toMatchObject([{ wallet: 'WalletAaa', seq: 1, tool: 'get_entity', args: { id: 'cactus' }, result: big, ok: true }]);
+    const summary = (await jobs.events(job.id, 0, 20)).find((e) => e.type === 'tool_result')!.payload['summary'];
+    expect(summary).not.toBe(big);
+    expect(String(summary).length).toBeLessThanOrEqual(300);
+  });
+
+  it('a failed MCP call is still stored against the editor wallet, without the transport error', async () => {
+    const llm = new ScriptedLlm([turn({ stop: 'tool', toolCalls: [{ id: 'c1', name: 'get_entity', input: { id: 'cactus' } }] })]);
+    const mcp = new ScriptedMcp();
+    const connect = mcp.connect.bind(mcp);
+    mcp.connect = async (token) => { const session = await connect(token); session.callTool = async () => { throw new Error('socket reset secret=nope'); }; return session; };
+    const { agent, jobs } = jobContext(undefined, llm, mcp);
+    const job = aJob({ status: 'running', wallet: 'WalletAaa' }); await jobs.insert(job);
+    await expect(agent.run(job, new AbortController().signal)).rejects.toThrow(/socket reset/);
+    const rows = await jobs.mcpCalls(job.id);
+    expect(rows).toMatchObject([{ wallet: 'WalletAaa', tool: 'get_entity', args: { id: 'cactus' }, ok: false, result: 'the entity MCP call failed' }]);
+    expect(JSON.stringify(rows)).not.toMatch(/secret/);
   });
 
   it('refusal, provider error, output limit and the step limit fail the job; an abort is thrown to the runner', async () => {
@@ -72,7 +99,7 @@ describe('EditorAgentService', () => {
   });
 
   it('the output budget is cumulative across turns and cannot be exceeded by a final answer or another tool call', async () => {
-    const llm = new ScriptedLlm([turn({ stop: 'tool', usage: { in: 1, out: 20000 }, toolCalls: [{ id: 'a', name: 'get_entity', input: { id: 'cactus' } }] }), turn({ stop: 'tool', usage: { in: 1, out: 12000 }, toolCalls: [{ id: 'b', name: 'save_draft', input: {} }] })]);
+    const llm = new ScriptedLlm([turn({ stop: 'tool', usage: { in: 1, out: 60_000 }, toolCalls: [{ id: 'a', name: 'get_entity', input: { id: 'cactus' } }] }), turn({ stop: 'tool', usage: { in: 1, out: 50_000 }, toolCalls: [{ id: 'b', name: 'save_draft', input: {} }] })]);
     const c = jobContext(undefined, llm), job = aJob({ status: 'running' }); await c.jobs.insert(job);
     expect(await c.agent.run(job, new AbortController().signal)).toMatchObject({ status: 'failed', error: expect.stringMatching(/output limit/) });
     expect(c.mcp.calls.map(x => x.name)).toEqual(['get_entity']);

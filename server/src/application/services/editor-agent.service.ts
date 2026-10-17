@@ -5,7 +5,7 @@ import type { ProviderId } from '../../domain/editor/llm-providers.js';
 import { EditorJobRepositoryPort } from '../ports/editor/editor-job.repository.port.js';
 import { JobTokenPort } from '../ports/editor/job-token.port.js';
 import { LlmProviderPort, type LlmTool, type LlmToolResult, type LlmTurn } from '../ports/editor/llm-provider.port.js';
-import { McpClientPort } from '../ports/editor/mcp-client.port.js';
+import { McpClientPort, type McpSession, type McpToolResult } from '../ports/editor/mcp-client.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
 import { GameSettingsService } from './game-settings.service.js';
 
@@ -72,7 +72,7 @@ export class EditorAgentService {
           await this.requireRunning(job.id);
           await this.event(job.id, 'tool_call', { name: call.name, summary: summarize(input), ok: true });
           if (call.name === 'save_draft' && source !== null) checked.delete(source);
-          const r = await session.callTool(call.name, input, signal);
+          const r = await this.callMcp(job, session, call.name, input, signal);
           if (call.name === 'check_entity' && source !== null) {
             checked.delete(source);
             const id = checkedId(r.text);
@@ -105,6 +105,18 @@ export class EditorAgentService {
 
   private event(jobId: string, type: JobEventType, payload: Record<string, unknown>) {
     return this.jobs.appendEvent(jobId, type, payload, this.clock.now());
+  }
+
+  /** The chat event stays a short summary. This row keeps the call that reached the MCP, and the wallet of the editor who asked. */
+  private async callMcp(job: EditorJobRecord, session: McpSession, tool: string, args: Record<string, unknown>, signal: AbortSignal): Promise<McpToolResult> {
+    let result: McpToolResult;
+    try { result = await session.callTool(tool, args, signal); }
+    catch (err) {
+      await this.jobs.recordMcpCall({ jobId: job.id, wallet: job.wallet, tool, args, result: 'the entity MCP call failed', ok: false, createdAt: this.clock.now() });
+      throw err;
+    }
+    await this.jobs.recordMcpCall({ jobId: job.id, wallet: job.wallet, tool, args, result: clip(result.text, MAX_TOOL_RESULT), ok: !result.isError, createdAt: this.clock.now() });
+    return result;
   }
 }
 

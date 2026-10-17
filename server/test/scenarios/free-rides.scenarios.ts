@@ -34,7 +34,7 @@ export function freeRideScenarios(h: () => Harness): void {
     const admin = await loginAdmin(FREE_RIDES_ADMIN);
     expect((await admin.agent.get('/api/admin/settings').expect(200)).body).toMatchObject({
       freeOnSignup: 10, freeRidesDailyMax: 5, weeklyTicket1hEnabled: 1, weeklyTicket1hDays: 7, weeklyTicket4hEnabled: 0, weeklyTicket4hDays: 7, weeklyTicket8hEnabled: 0, weeklyTicket8hDays: 7,
-      editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 32000, editorMaxInputKTokens: 500, editorJobsParallel: 5,
+      editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 100000, editorMaxInputKTokens: 500, editorJobsParallel: 5,
       referralMax: 30, referralReferrerPartBps: 8000,
     });
   });

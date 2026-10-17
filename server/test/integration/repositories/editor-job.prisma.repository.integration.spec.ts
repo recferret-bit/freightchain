@@ -79,6 +79,24 @@ describe('EditorJobPrismaRepository (PostgreSQL)', () => {
     } finally { await secondDb.$disconnect(); }
   });
 
+  it('records MCP calls in order under the job lock, with the editor wallet and the full result', async () => {
+    const j = aJob({ wallet: 'WalletAaa' }); await repo.insert(j);
+    const big = 'z'.repeat(800);
+    const [a, b] = await Promise.all([
+      repo.recordMcpCall({ jobId: j.id, wallet: j.wallet, tool: 'get_entity', args: { id: 'freighter' }, result: big, ok: true, createdAt: T(1) }),
+      repo.recordMcpCall({ jobId: j.id, wallet: j.wallet, tool: 'get_format', args: {}, result: '# format', ok: true, createdAt: T(2) }),
+    ]);
+    expect(new Set([a.seq, b.seq])).toEqual(new Set([1, 2]));
+    const rows = await repo.mcpCalls(j.id);
+    expect(rows.map((r) => r.seq)).toEqual([1, 2]);
+    expect(rows.every((r) => r.wallet === 'WalletAaa')).toBe(true);
+    expect(rows.find((r) => r.tool === 'get_entity')).toMatchObject({ args: { id: 'freighter' }, result: big, ok: true });
+    const other = aJob({ wallet: 'WalletBbb' }); await repo.insert(other);
+    await repo.recordMcpCall({ jobId: other.id, wallet: other.wallet, tool: 'list_entities', args: { kind: 'part' }, result: '[]', ok: false, createdAt: T(3) });
+    expect(await repo.mcpCalls(j.id)).toHaveLength(2);
+    expect(await repo.mcpCalls(other.id)).toMatchObject([{ wallet: 'WalletBbb', tool: 'list_entities', ok: false }]);
+  });
+
   it('a dead owner expires without replay; racing expiry and claim cannot start an expired queue item', async () => {
     const secondDb = await testPrisma(), other = new EditorJobPrismaRepository(secondDb);
     try {

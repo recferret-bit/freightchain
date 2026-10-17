@@ -25,7 +25,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, number> = {
   weekly_ticket_8h_days: 7,
   editor_jobs_per_day: 40,   // AI model-editor jobs per editor wallet per UTC day
   editor_max_steps: 24,   // model turns per job (each may call tools)
-  editor_max_output_tokens: 32_000,   // cumulative output tokens per job
+  editor_max_output_tokens: 100_000,   // cumulative output tokens per job (GLM thinks on every turn)
   editor_max_input_ktokens: 500,   // input tokens per job, in thousands (every turn re-sends the history: the cost cap)
   editor_jobs_parallel: 5,   // jobs running at once across all app replicas (0 = the AI editor paused)
   referral_max: 30,

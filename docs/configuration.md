@@ -182,7 +182,7 @@ The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `D
 | `EDITOR_JOB_TIMEOUT_MS` | `600000` | 10 s – 1 h; a longer job is aborted, one left by a restart is failed |
 | `EDITOR_FAKE_LLM` | `0` | **Test only**: `1` offers the scripted fake model (browser e2e of the editor). Refused in production |
 
-Runtime knobs of the AI editor are `player.GameSetting` rows (signed admin settings API): `editor_jobs_per_day` (40), `editor_max_steps` (24), `editor_max_output_tokens` (32000), `editor_max_input_ktokens` (500: input tokens per job, thousands), `editor_jobs_parallel` (5; 0 pauses the AI editor).
+Runtime knobs of the AI editor are `player.GameSetting` rows (signed admin settings API): `editor_jobs_per_day` (40), `editor_max_steps` (24), `editor_max_output_tokens` (100000), `editor_max_input_ktokens` (500: input tokens per job, thousands), `editor_jobs_parallel` (5; 0 pauses the AI editor).
 
 Run the AI worker separately with `npm run server:build && npm run editor:worker`. API and worker must share their database, timeout, provider configuration and explicit `JWT_SECRET` (including in local development). API, worker and MCP must share the MCP token. Generation is not started by the HTTP API. The API retains provider keys for provider discovery; model sessions execute only in the worker. Production starts and health-checks `editor-worker` alongside MCP.
 

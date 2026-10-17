@@ -16,8 +16,14 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #25282c; color: #d8d4c8; font: 13px/1.35 ui-monospace, Menlo, Consolas, monospace; }
   #world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
   #world:active { cursor: grabbing; }
-  #side { position: fixed; top: 0; left: 0; bottom: 0; width: 230px; overflow-y: auto; background: rgba(20,22,25,.88); border-right: 1px solid #3a3e44; padding: 8px 0 24px; }
-  #side h1 { font-size: 13px; margin: 0 12px 6px; color: #ffcf5a; letter-spacing: .08em; }
+  #side { position: fixed; top: 0; left: 0; bottom: 0; width: 230px; z-index: 14; overflow-y: auto; background: rgba(20,22,25,.88); border-right: 1px solid #3a3e44; padding: 8px 0 24px; transition: transform .2s ease-out; }
+  html.side-closed #side { transform: translateX(-100%); pointer-events: none; }
+  #side h1 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; margin: 0 12px 6px; color: #ffcf5a; letter-spacing: .08em; }
+  #side h1 span { margin-right: auto; }
+  .pane-tab { display: none; position: fixed; top: 50%; z-index: 16; transform: translateY(-50%); font: inherit; font-size: 11px; letter-spacing: .08em; background: rgba(20,22,25,.92); color: #ffcf5a; border: 1px solid #ffcf5a; padding: 10px 6px; cursor: pointer; }
+  #side-show { left: 0; border-left: 0; border-radius: 0 3px 3px 0; }
+  #editor-show { right: 0; border-right: 0; border-radius: 3px 0 0 3px; }
+  html.side-closed #side-show { display: block; }
   details { margin-top: 4px; } summary { cursor: pointer; padding: 4px 12px; color: #ffcf5a; text-transform: uppercase; font-size: 11px; letter-spacing: .08em; }
   .item { display: block; padding: 3px 12px 3px 22px; cursor: pointer; color: #d8d4c8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .item:hover { background: #30343a; } .item.on { background: #3d4c60; color: #fff; }
@@ -40,20 +46,17 @@
   .ed-badge { font-size: 10px; padding: 0 4px; margin-left: 4px; border-radius: 2px; background: #3a3e44; color: #d8d4c8; } .ed-badge.ed-b-head { background: #2f4a7a; } .ed-live, .ed-done { background: #2e6b2e !important; } .ed-failed, .ed-cancelled { background: #7a2f2f !important; } .ed-running, .ed-queued { background: #7a5a14 !important; }
   .ed-dim { color: #7d8187; font-size: 11px; } .ed-sub { color: #ffcf5a; font-size: 10px; letter-spacing: .08em; } .ed-msg { min-height: 1.3em; color: #8fdc7a; font-size: 11px; } .ed-msg.bad { color: #ff8070; } .ed-entity { color: #d8d4c8; }
   .ed-diff { max-height: 30vh; overflow: auto; margin: 0; font-size: 11px; background: #1b1d20; border: 1px solid #3a3e44; padding: 4px; } .ed-out { max-height: 18vh; overflow: auto; font-size: 11px; } .ed-signin p { color: #b9ad8d; }
-  #side-toggle { display: none; }
+  .ed-work { display: flex; align-items: center; gap: 8px; min-height: 16px; }
+  .ed-work-label { color: #b9ad8d; font-size: 11px; letter-spacing: .08em; }
+  .ed-work-track { position: relative; flex: 1; height: 2px; background: #2a2d31; overflow: hidden; border-radius: 1px; }
+  .ed-work-bar { position: absolute; left: 0; top: 0; height: 100%; width: 35%; background: #ffcf5a; animation: ed-work 1.15s ease-in-out infinite; }
+  @keyframes ed-work { from { transform: translateX(-120%); } to { transform: translateX(340%); } }
+  @media (prefers-reduced-motion: reduce) { .ed-work-bar { animation: none; width: 100%; opacity: .55; } }
+  @media (min-width: 701px) { html.editor-ready body:not(.editing) #editor-show { display: block; } }
   @media (max-width: 700px) {
-    #side-toggle {
-      display: block; position: fixed; left: 10px; top: 10px; z-index: 20;
-      background: rgba(20,22,25,.92); border: 1px solid #ffcf5a; color: #ffcf5a;
-      font: inherit; font-size: 11px; font-weight: bold; padding: 6px 10px; border-radius: 4px; cursor: pointer;
-    }
-    #side {
-      width: 220px; max-width: 80vw; z-index: 15;
-      transform: translateX(-100%); transition: transform .25s ease-out;
-      box-shadow: 4px 0 20px rgba(0,0,0,.6);
-      padding-top: 44px;
-    }
-    #side.open { transform: translateX(0); }
+    #side { width: 220px; max-width: 80vw; z-index: 15; box-shadow: 4px 0 20px rgba(0,0,0,.6); }
+    html.side-closed #side { box-shadow: none; }
+    #editor-show { display: none !important; }
     #help { display: none; }
     #info { top: 10px; right: 10px; max-width: 170px; font-size: 11px; padding: 6px 8px; z-index: 5; }
     #info b { font-size: 12px; }
@@ -61,11 +64,13 @@
     #ed-toggle, body.editing #editor { display: none; }   /* the editor is a desktop tool */
   }
 </style>
+<script>if (matchMedia('(max-width:700px)').matches) document.documentElement.classList.add('side-closed');</script>
 </head>
 <body>
 <canvas id="world"></canvas>
-<button id="side-toggle" aria-label="Toggle models list">☰ MODELS</button>
-<div id="side"><h1>MODEL VIEWER</h1><div id="list"></div></div>
+<button id="side-show" type="button" class="pane-tab" aria-controls="side" aria-expanded="false" aria-label="Show the model list">SHOW</button>
+<button id="editor-show" type="button" class="pane-tab" aria-controls="editor" aria-expanded="false" aria-label="Show the editor">SHOW</button>
+<div id="side"><h1><span>MODEL VIEWER</span><button id="side-hide" type="button" class="ed-btn" aria-controls="side" aria-expanded="true" aria-label="Hide the model list">HIDE</button></h1><div id="list"></div></div>
 <div id="info"></div>
 <div id="opts"></div>
 <div id="help">right-drag = orbit · left-drag = pan · wheel / pinch = zoom · WASD = strafe · ←/→ = prev/next · F = re-frame · Space = auto-rotate · E edges · G grid · X box · V wireframe</div>
@@ -73,11 +78,17 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module" src="js/viewer.js"></script>
 <script>
-  document.getElementById('side-toggle')?.addEventListener('click', () => {
-    document.getElementById('side')?.classList.toggle('open');
-  });
+  const setSide = open => {
+    document.documentElement.classList.toggle('side-closed', !open);
+    document.getElementById('side')?.setAttribute('aria-hidden', open ? 'false' : 'true');
+    document.getElementById('side-show')?.setAttribute('aria-expanded', String(open));
+    document.getElementById('side-hide')?.setAttribute('aria-expanded', String(open));
+  };
+  setSide(!document.documentElement.classList.contains('side-closed'));
+  document.getElementById('side-hide')?.addEventListener('click', () => setSide(false));
+  document.getElementById('side-show')?.addEventListener('click', () => setSide(true));
   document.getElementById('list')?.addEventListener('click', e => {
-    if (e.target.classList.contains('item')) document.getElementById('side')?.classList.remove('open');
+    if (e.target.classList.contains('item') && matchMedia('(max-width: 700px)').matches) setSide(false);
   });
   setTimeout(() => { if (!window.__viewer) document.getElementById('info').innerHTML = '<b>COULD NOT START</b><br>Serve this folder over http (<b>./serve.sh</b>, then open <b>/viewer.html</b>) – ES modules do not load from file://. Needs internet for three.js.'; }, 8000);
 </script>
