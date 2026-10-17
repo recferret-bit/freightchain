@@ -19,7 +19,7 @@ Related: [deploy + operate](program-deploy.md) · [escrow detail](agents/escrow.
 
 ## Not done
 
-**Program v5 (Oct 17, 2026)**: source drops the on-chain referral leg and adds `set_pool_rules` (paid-ticket flag, 8500/500/1000, player-share cap under 5000, optional ticket ceiling), snapshotted per pool. Account sizes changed (Config 167, Series 132, Pool 362), so v5 is a **fresh program id**, built, **not deployed**. Devnet still runs v3. The owner regenerates the codec fixture (`tests/export_fixtures.rs`) and the verifiable pin before any deploy. The invite system stays off chain; `ReferralPayoutService`'s referral pot is 0 because the program no longer has that share. The Postgres `referralBps` column is unchanged (no migration).
+**Program v5 (Oct 17, 2026)**: source drops the on-chain referral leg and adds `set_pool_rules` (paid-ticket flag, 8500/500/1000, player-share cap under 5000, optional ticket ceiling), snapshotted per pool. Account sizes changed (Config 167, Series 132, Pool 362), so v5 is a **fresh program id**, built, **not deployed**. Devnet still runs v3. The vendored IDL (`pool-program.idl.ts`) and codec fixture (`tests/export_fixtures.rs` → `server/test/fixtures/chain/pool-program.json`) are regenerated for v5; regenerate the verifiable pin (`npm run program:verify`) once the fresh v5 program id is chosen before any deploy. The invite system stays off chain; `ReferralPayoutService`'s referral pot is 0 because the program no longer has that share. The Postgres `referralBps` column is unchanged (no migration).
 
 **Referral merge (Oct 17, 2026)**: source includes the off-chain invite system and migration `20261029000000_referrals`. The 5% on-chain referral pot described below that merge is removed by v5. Devnet still runs v3.
 
