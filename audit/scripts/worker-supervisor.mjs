@@ -9,7 +9,7 @@ import { writeReportFile } from './report-contract.mjs';
 import { validateReviewRequest, validateResult, encodeFrame, readJsonLine } from './terminal-review-contract.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const RUNTIME_FILES = ['worker-runtime.mjs', 'worker-isolation.mjs', 'report-contract.mjs', 'audit-process.mjs', 'audit-submission.mjs', 'review-workflow.mjs', 'terminal-review-contract.mjs'];
+const RUNTIME_FILES = ['worker-runtime.mjs', 'worker-isolation.mjs', 'report-contract.mjs', 'verification-health.mjs', 'scanner-evidence.mjs', 'audit-process.mjs', 'audit-submission.mjs', 'review-workflow.mjs', 'terminal-review-contract.mjs'];
 const IMAGE = /^(?:[a-z0-9][a-z0-9./:_-]*@)?sha256:[a-f0-9]{64}$/;
 const OWNED_RECORDS = new Map();
 export function createRecordDirectory() {

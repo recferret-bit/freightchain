@@ -39,7 +39,7 @@ readline.createInterface({input:process.stdin}).on('line', line => {
      return;
    }
    if(mode==='silent')return;
-   send({method:'session/update',params:{sessionId:sid,update:{sessionUpdate:'agent_message_chunk',content:{type:'text',text:'Acknowledged'}}}});
+   send({method:'session/update',params:{sessionId:sid,update:{sessionUpdate:'agent_message_chunk',content:{type:'text',text:mode==='quoted-quota'?'Historical incident: You have hit your session limit; RESOURCE_EXHAUSTED. Remediation is documented.':'Acknowledged'}}}});
    reply(msg.id,{stopReason:'end_turn'});
    if(mode==='exit-error')process.exitCode=7;
  } else if(msg.id===1000)fs.writeFileSync('filesystem-denied.json',JSON.stringify(msg));
@@ -72,6 +72,15 @@ test('ACP session records completion and can load the exact saved conversation',
   const second = await runReviewSession({ ...f.options, resume: true }, f.support);
   assert.equal(second.code, 0);
   assert.match(fs.readFileSync(path.join(f.workspace, 'methods.txt'), 'utf8'), /session\/load/);
+});
+
+test('successful turns cannot be reclassified by quoted historical quota or refusal text', async t => {
+  const f = fixture(t, 'quoted-quota');
+  const first = await runReviewSession(f.options, f.support);
+  assert.equal(first.code, 0);
+  const second = await runReviewSession({ ...f.options, resume: true }, f.support);
+  assert.equal(second.code, 0);
+  assert.equal(f.state().phase, 'completed');
 });
 
 test('silent reasoning survives repeated heartbeats and explicit cancellation retains the session', async t => {

@@ -212,6 +212,9 @@ const browserScript = fs.readFileSync(path.join(scriptsDir, 'report-browser.js')
 const accepted = health.accepted?.length || 0;
 const expected = health.expected?.length || 0;
 const complete = health.state === 'validated_outputs';
+const reviewComplete = health.reviewState ? health.reviewState === 'validated_outputs' : complete;
+const statusLabel = complete ? 'Outputs validated' : reviewComplete ? 'Verification incomplete' : 'Incomplete review';
+const incompleteLabel = reviewComplete ? 'INCOMPLETE VERIFICATION' : 'INCOMPLETE REVIEW';
 const toneOf = (level) => ({ critical: 'red', high: 'red', medium: 'orange', low: 'blue', info: 'blue' })[level] || 'blue';
 const shortSurface = { S1: 'Identity & access', S2: 'Input & injection', S3: 'Logic & value', S4: 'Secrets & config', S5: 'Dependencies', S6: 'Client & web' };
 
@@ -279,12 +282,12 @@ function page(body, modelPage = false) {
 }
 function hero(modelPage = false) {
   return `<header class="hero"><div><div class="eyebrow">${modelPage ? 'Reviewer output / 03' : 'Source assessment / 01'}</div><h1>${modelPage ? 'MODEL <span>REPORT.</span>' : 'AUDIT <span>REPORT.</span>'}</h1><p class="target">${esc(targetName)}</p><div class="source">${esc([meta.mode === 'remote' ? 'GITHUB' : 'SOURCE', meta.commit && `REF ${meta.commit}`, meta.surface && `SCOPE ${meta.surface}`].filter(Boolean).join(' / '))}</div></div>
-    <div class="hero-status"><span class="eyebrow">${complete ? 'Outputs validated' : 'Incomplete review'}</span><strong>${accepted} / ${expected} assignments</strong><p>${complete ? 'Review outputs accepted. Claims remain unverified.' : 'Coverage gaps remain. See evidence & scope.'}</p><div class="progress" aria-hidden="true">${Array.from({ length: expected }, (_, i) => `<i${i < accepted ? ' class="done"' : ''}></i>`).join('')}</div></div></header>`;
+    <div class="hero-status"><span class="eyebrow">${statusLabel}</span><strong>${accepted} / ${expected} assignments</strong><p>${reviewComplete ? 'Review outputs accepted. Claims remain unverified.' : 'Review coverage gaps remain. See evidence & scope.'}</p><div class="progress" aria-hidden="true">${Array.from({ length: expected }, (_, i) => `<i${i < accepted ? ' class="done"' : ''}></i>`).join('')}</div></div></header>`;
 }
-const notice = `<div class="notice"><b>${complete ? 'UNVERIFIED CLAIMS' : 'INCOMPLETE REVIEW'}</b><span>Model assertions, not a safety certificate. ${complete ? 'Zero findings does not prove safety.' : 'Missing reviews are not passes.'}</span><a href="report.html#validation">View limitations ↗</a></div>`;
+const notice = `<div class="notice"><b>${complete ? 'UNVERIFIED CLAIMS' : incompleteLabel}</b><span>Model assertions, not a safety certificate. ${complete ? 'Zero findings does not prove safety.' : reviewComplete ? 'Review outputs are complete; required execution coverage still has gaps.' : 'Missing reviews are not passes.'}</span><a href="report.html#validation">View limitations ↗</a></div>`;
 const sectionTitle = (id, title, side = '') => `<div class="section-heading"><h2><span class="section-num">${id}</span>${title}</h2>${side ? `<span class="meta-label">${esc(side)}</span>` : ''}</div>`;
 const requestedModels = modelRows.map(row => `<tr><td><strong>${esc(row.key)}</strong></td><td>${esc(row.label)}</td><td>${row.available ? 'Valid outputs available' : 'no valid outputs'}</td></tr>`).join('');
-const validationDetails = `<p class="note"><strong>${complete ? 'OUTPUTS VALIDATED — NOT A CLEAN-AUDIT CERTIFICATE' : 'INCOMPLETE REVIEW'}</strong>. These are unverified model assertions. No authenticated execution evidence or served-model/provider attestation was collected. Zero findings is not proof of safety.</p>
+const validationDetails = `<p class="note"><strong>${complete ? 'OUTPUTS VALIDATED — NOT A CLEAN-AUDIT CERTIFICATE' : incompleteLabel}</strong>. These are unverified model assertions. No authenticated execution evidence or served-model/provider attestation was collected. Zero findings is not proof of safety.</p>
   ${(health.errors || []).length ? `<ul class="validation-errors">${health.errors.map(error => `<li>${esc(error)}</li>`).join('')}</ul>` : ''}
   <p class="note">Agreement means matching titles and citations across asserted adapters. First-pass independence and served-provider identity are not enforced. Peer verdicts are model statements; priority scores are heuristic.</p>
   <div class="table-scroll"><table><caption class="meta-label">Requested models · served identity unverified</caption><thead><tr><th>Adapter</th><th>Requested model</th><th>Output</th></tr></thead><tbody>${requestedModels}</tbody></table></div>

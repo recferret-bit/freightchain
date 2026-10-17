@@ -53,7 +53,6 @@ export async function runReviewSession(options, { launch = buildSessionLaunch, p
   let lastProcess = null;
   let phase = 'starting';
   let currentRpc = null;
-  let textTail = '';
   let activeModel;
   let sessionId = store.state.sessionId;
   let totalRecoveries = 0;
@@ -100,7 +99,6 @@ export async function runReviewSession(options, { launch = buildSessionLaunch, p
           if (sessionId && params?.sessionId !== sessionId) throw new SessionError('session_identity_rejected');
           lastAgent = Date.now();
           const update = params?.update;
-          if (update?.sessionUpdate === 'agent_message_chunk' && update.content?.type === 'text') textTail = (textTail + update.content.text).slice(-16_000);
           if (update?.sessionUpdate === 'config_option_update') {
             const value = modelValue(update.configOptions);
             if (value && activeModel && value !== activeModel) throw new SessionError('model_changed');
@@ -133,8 +131,8 @@ export async function runReviewSession(options, { launch = buildSessionLaunch, p
         if (signal?.aborted) throw new SessionError('cancelled');
         const continuation = attempt || options.resume ? '\n\nContinue the saved review for this exact source and assignment. Retain supported work and disclose remaining coverage. Use the current audit MCP bridge. If the report was already submitted successfully, finish without resubmitting it.' : '';
         const result = await currentRpc.request('session/prompt', { sessionId, prompt: [{ type: 'text', text: prompt + continuation }] }, null);
-        const failure = classifyAuditFailure({ code: 0, stdout: textTail, stderr: currentRpc.stderr });
-        if (['provider_policy', 'usage_limit', 'auth_required', 'mcp_unavailable'].includes(failure.reason)) throw new SessionError(failure.reason);
+        // A loaded conversation can replay old errors, and a review can quote them.
+        // Only the current RPC failure/stop status controls whether this turn succeeded.
         if (result.stopReason === 'cancelled' || signal?.aborted) throw new SessionError('cancelled');
         if (result.stopReason !== 'end_turn') throw new SessionError('turn_incomplete');
         if (init.agentCapabilities?.sessionCapabilities?.close) await currentRpc.request('session/close', { sessionId });
@@ -144,8 +142,8 @@ export async function runReviewSession(options, { launch = buildSessionLaunch, p
         store.save(phase, { stopReason: result.stopReason, completedAt: new Date().toISOString() });
         return { code: 0, observedExitCode: exit.code, processSignal: exit.signal, elapsedMs: Date.now() - started, sessionId, directory, transport: spec.transport, stopReason: result.stopReason, recoveryAttempts: totalRecoveries };
       } catch (error) {
-        const failure = classifyAuditFailure({ code: 1, stdout: textTail, stderr: `${currentRpc.stderr}\n${error.message}` });
-        const reason = ['provider_policy', 'usage_limit', 'auth_required', 'mcp_unavailable'].includes(failure.reason) ? failure.reason : signal?.aborted ? 'cancelled' : error.reason || 'process_error';
+        const failure = classifyAuditFailure({ code: 1, stderr: error.message });
+        const reason = signal?.aborted ? 'cancelled' : error.reason === 'provider_error' && ['provider_policy', 'usage_limit', 'auth_required', 'mcp_unavailable'].includes(failure.reason) ? failure.reason : error.reason || 'process_error';
         if (reason === 'transport_lost' && resumeCapable && sessionId && totalRecoveries < maxRecoveries && !signal?.aborted) {
           totalRecoveries++;
           store.save('interrupted', { reason, recoveryAttempts: (store.state.recoveryAttempts || 0) + 1 });

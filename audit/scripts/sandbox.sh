@@ -331,6 +331,7 @@ if ! docker run -d --name "$SBX" \
   -e SANDBOX_FAST="${SANDBOX_FAST:-0}" \
   -e HTTP_PROXY -e HTTPS_PROXY -e http_proxy -e https_proxy -e NO_PROXY -e no_proxy \
   -e CARGO_HOME=/work/cargo \
+  -e CARGO_TARGET_DIR=/work/target \
   -e CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse \
   -e XDG_CACHE_HOME=/opt/osv-cache \
   -e npm_config_registry=https://registry.npmjs.org \
@@ -343,6 +344,7 @@ if ! docker run -d --name "$SBX" \
   -v "$SCRIPT_DIR/sandbox-lib.mjs:/opt/audit/sandbox-lib.mjs:ro" \
   -v "$SCRIPT_DIR/harness.mjs:/opt/audit/harness.mjs:ro" \
   -v "$SCRIPT_DIR/audit-plans.mjs:/opt/audit/audit-plans.mjs:ro" \
+  -v "$SCRIPT_DIR/scanner-evidence.mjs:/opt/audit/scanner-evidence.mjs:ro" \
   ${OSV_MOUNTS[@]+"${OSV_MOUNTS[@]}"} \
   ${TOOLS_DIR:+-v "$TOOLS_DIR/.cache/solana:/opt/platform-tools:ro"} \
   ${POCS:+-v "$POCS:/pocs:ro"} \

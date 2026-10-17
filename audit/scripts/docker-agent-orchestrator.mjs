@@ -23,11 +23,12 @@ import { fileURLToPath } from 'node:url';
 import { renderReviewPlansMarkdown, renderSurfaceSkillGuidance } from './audit-plans.mjs';
 import { loadAuditorFindings } from './crosscheck.mjs';
 import {
+  callBridgeTool,
   normalizeCrosscheckPayload,
   renderMarkdownFromFindings,
   resolveDockerBin,
 } from './docker-mcp-bridge.mjs';
-import { readReportJson, writeReportFile } from './report-contract.mjs';
+import { readReportJson, readReportText, writeReportFile } from './report-contract.mjs';
 import { createSnapshot, disposeSnapshot } from './worker-isolation.mjs';
 import { classifyAuditFailure, FAILURE_MESSAGES } from './audit-process.mjs';
 import { runReviewSession } from './agent-session.mjs';
@@ -89,6 +90,24 @@ function previousSessionDirectory(root, name) {
   const saved = readReportJson(root, pointer);
   if (typeof saved.directory !== 'string' || !path.isAbsolute(saved.directory)) throw new Error('Invalid saved session directory');
   return saved.directory;
+}
+
+// Repair only the historical classifier bug: a committed turn ended normally,
+// but replayed prose was mistaken for a provider error. Actual RPC errors stay failed.
+export function savedTurnCompleted(root, name, directory) {
+  try {
+    const state = readReportJson(directory, 'state.json');
+    if (state.observedExitCode !== 0 || !['usage_limit', 'provider_policy', 'auth_required', 'mcp_unavailable'].includes(state.failureReason)) return false;
+    const log = readReportText(root, `harness/sandbox-run/${name.startsWith('crosscheck-') ? name : `agent-${name}`}.log`, 8 * 1024 * 1024);
+    let complete = false;
+    for (const line of log.split('\n')) {
+      let frame; try { frame = JSON.parse(line); } catch { continue; }
+      if (frame?.jsonrpc !== '2.0' || frame.id == null) continue;
+      if (frame.error) return false;
+      if (frame.result?.stopReason) complete = frame.result.stopReason === 'end_turn';
+    }
+    return complete;
+  } catch { return false; }
 }
 
 function readHarnessContext(reportDir, surfaceCode) {
@@ -165,7 +184,7 @@ function buildCrosscheckPrompt({ targetName, agent, claims }) {
   ].join('\n');
 }
 
-async function startOneShotDocker({ target, out }) {
+export async function startOneShotDocker({ target, out }) {
   const holdDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-hold-'));
   const holdFile = path.join(holdDir, 'hold.lock');
   const readyFile = path.join(holdDir, 'ready.json');
@@ -241,6 +260,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
 
 
   const stageFailures = [];
+  const providerFailures = {};
   const workerExits = Object.fromEntries(jobs.map((j) => [j.name, null]));
   const crosscheckExits = {};
   const dockerBin = resolveDockerBin();
@@ -297,7 +317,15 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
       if (role === 'auditor' && !resuming && !neverStarted.has(name)) throw new Error(`No matching saved session for ${name}`);
       if (resuming && fs.existsSync(path.join(resumeRoot, 'submissions', `${name}.json`))) {
         const previous = readCanonicalSubmission(resumeRoot, name, identity);
-        commitSubmission(output, name, identity, previous.report.payload, previous.report.summary);
+        const priorMeta = readReportJson(resumeRoot, 'meta.json');
+        const priorExit = role === 'auditor' ? priorMeta.workerExits?.[name] : priorMeta.crosscheckExits?.[agent];
+        const recoveredCompletion = priorExit !== 0 && savedTurnCompleted(resumeRoot, name, directory);
+        if (priorExit === 0 || recoveredCompletion) {
+          commitSubmission(output, name, identity, previous.report.payload, previous.report.summary);
+          writeReportFile(output, `harness/session-${name}.json`, JSON.stringify({ directory, identity }));
+          const saved = readReportJson(directory, 'state.json');
+          return { code: 0, observedExitCode: 0, elapsedMs: 0, sessionId: saved.sessionId, directory, transport: recoveredCompletion ? 'recovered_protocol_completion' : 'reused_committed_submission', stopReason: 'reused', identity, reusedFrom: resumeRoot, recoveredCompletion };
+        }
       }
     }
     const bridgeArgs = ['--docker-bin', dockerBin, '--container', session.container, '--report-dir', output, '--role', role, '--agent', agent, '--identity-file', identityFile];
@@ -323,9 +351,24 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
     } finally { disposeSnapshot(sealed); }
     console.log(`      Container ${session.container} is ready and airgapped (network disconnected).`);
 
+    const catalog = readReportJson(output, 'harness/existing-tests.json');
+    for (const entry of catalog.tests) {
+      if (cancellation.signal.aborted) break;
+      console.log(`      Verifying existing suite: ${entry.description}`);
+      await callBridgeTool({ dockerBin, container: session.container, reportDir: output, auditor: 'verification' }, 'run_existing_tests', { test_id: entry.id });
+    }
+
     console.log(`[2/4] Running ${jobs.length} surface audit job(s) in parallel across [${request.agents.join(', ')}] via MCP bridge (one active job per provider)...`);
     await runProviderQueues(request.agents, jobs, async job => {
       if (cancellation.signal.aborted) { job.state = 'cancelled'; workerExits[job.name] = 130; stageFailures.push(`auditor_cancelled:${job.name}`); saveWorkers(); return; }
+      if (providerFailures[job.adapter]) {
+        job.state = 'pending';
+        job.failure = { reason: providerFailures[job.adapter], message: FAILURE_MESSAGES[providerFailures[job.adapter]] };
+        workerExits[job.name] = 1;
+        stageFailures.push(`auditor_deferred:${job.name}`);
+        saveWorkers();
+        return;
+      }
       const logFile = path.join(output, 'harness', 'sandbox-run', `agent-${job.name}.log`);
       try {
         job.state = 'running';
@@ -342,6 +385,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
         job.turnCode = res.code;
         job.elapsedMs = res.elapsedMs;
         job.logFile = path.relative(output, logFile);
+        if (res.reusedFrom) job.reusedFrom = res.reusedFrom;
         if (res.code !== 0) {
           job.failure = res.failure || classifyAuditFailure(res);
           throw new Error(job.failure.message);
@@ -370,6 +414,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
         workerExits[job.name] = job.turnCode || 1;
         job.state = 'failed';
         job.failure ||= classifyAuditFailure({ code: 0 }, job.observedExitCode == null ? 'setup_error' : 'invalid_report');
+        if (['usage_limit', 'auth_required', 'provider_policy'].includes(job.failure.reason)) providerFailures[job.adapter] = job.failure.reason;
         stageFailures.push(`auditor_error:${job.name}`);
         console.error(`  <- [${job.name}] ${job.failure.message} See ${path.relative(output, logFile)}.`);
       } finally { saveWorkers(); }
@@ -391,6 +436,11 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
     console.log('[3/4] Running peer cross-checks in parallel via MCP bridge...');
     await runProviderQueues(request.agents, request.agents.map(adapter => ({ adapter })), async ({ adapter: agent }) => {
       if (cancellation.signal.aborted) return;
+      if (providerFailures[agent]) {
+        crosscheckExits[agent] = 1;
+        stageFailures.push(`crosscheck_deferred:${agent}`);
+        return;
+      }
       const peerClaims = allClaims.filter((c) => c.model && c.model !== agent);
       if (!peerClaims.length) return;
       const claimsJson = `${JSON.stringify(peerClaims, null, 2)}\n`;
@@ -439,6 +489,7 @@ export async function runOrchestratedAudit(request, { review = runReviewSession,
     source: request.source || request.target, ref: request.ref || null, commit: request.commit || null,
     date: new Date().toISOString(), surface: surfaceArg, agents: request.agents, models: request.models,
     auditors: jobs.map((j) => j.name), workerExits, crosscheckExits, stageFailures, finalized: true,
+    providerFailures,
     ...(resumeRoot ? { resumedFrom: resumeRoot } : {}),
     workflow: REVIEW_WORKFLOW, agentTransport: 'acp_v1', submissionAuthority: 'mcp_commit',
     isolation: { policy: 'docker_mcp_bridge', sourceDigest, liveTransport: 'docker_mcp_stdio', privateOutputs: 'validated', workerManifest: 'workers.json' },

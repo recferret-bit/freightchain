@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import crypto from 'node:crypto';
+import { testCounts } from './scanner-evidence.mjs';
 /**
  * docker-mcp-bridge.mjs
  *
@@ -447,7 +449,13 @@ export async function callBridgeTool(ctx, name, args = {}) {
       if (key) {
         const file = `harness/existing-test-results-${key}.json`;
         let prior = []; try { prior = readReportJson(reportDir, file); } catch { /* first test */ }
-        writeReportFile(reportDir, file, JSON.stringify([...prior, { testId: entry.id, sourceDigest: catalog.sourceDigest, kind: entry.kind, cwd: entry.cwd, exitCode: result.code, at: new Date().toISOString(), scope: 'existing_offline_test_only' }].slice(-200)));
+        const counts = testCounts(result.stdout);
+        const sequence = Math.max(-1, ...prior.map(row => Number(row.evidenceFile?.match(/-(\d+)\.json$/)?.[1] ?? -1))) + 1;
+        if (!Number.isSafeInteger(sequence)) throw new Error('Invalid existing test evidence sequence');
+        const evidenceFile = `harness/existing-test-output-${key}-${sequence}.json`;
+        const evidence = JSON.stringify({ stdout: result.stdout, stderr: result.stderr });
+        writeReportFile(reportDir, evidenceFile, evidence);
+        writeReportFile(reportDir, file, JSON.stringify([...prior, { testId: entry.id, sourceDigest: catalog.sourceDigest, kind: entry.kind, cwd: entry.cwd, exitCode: result.code, counts, evidenceFile, evidenceHash: crypto.createHash('sha256').update(evidence).digest('hex'), at: new Date().toISOString(), scope: 'existing_offline_test_only' }].slice(-200)));
       }
       return `Existing test ${entry.id}; exit code: ${result.code}\nSTDOUT:\n${result.stdout || '(empty)'}\nSTDERR:\n${result.stderr || '(empty)'}`;
     });

@@ -49,6 +49,7 @@ const SEVERITY_WEIGHT = {
 };
 
 const { reports, health, assignments } = loadAuditors(reportDir);
+const initialErrorCount = health.errors.length;
 const jsonFiles = reports.map((r) => `${r.name}.json`);
 const allFindings = [];
 const allVerifiedSafe = [];
@@ -218,6 +219,8 @@ const outputJsonPath = path.join(reportDir, 'findings-and-scores.json');
 writeReportFile(reportDir, 'findings-and-scores.json', JSON.stringify(scoredFindings, null, 2));
 // controls the auditors attacked that held, for the HTML report
 writeReportFile(reportDir, 'verified-safe.json', JSON.stringify(allVerifiedSafe, null, 2));
+health.security = { state: scoredFindings.some(row => row.status !== 'REFUTED_REVIEW') ? 'review_required' : 'not_certified', unresolvedClaims: scoredFindings.filter(row => row.status !== 'REFUTED_REVIEW').length, note: 'Valid reports and passing tests do not certify security or accept residual risks.' };
+if (health.errors.length > initialErrorCount) health.reviewState = 'incomplete';
 health.state = health.errors.length ? 'incomplete' : 'validated_outputs';
 writeReportFile(reportDir, 'report-health.json', `${JSON.stringify(health, null, 2)}\n`);
 
@@ -246,7 +249,9 @@ for (const f of scoredFindings) {
   );
 }
 if (health.state === 'incomplete') {
-  console.error('INCOMPLETE: missing, failed or invalid review outputs; zero findings is not a clean audit.');
+  console.error(health.reviewState === 'validated_outputs'
+    ? 'INCOMPLETE VERIFICATION: review outputs validated, but required execution coverage has gaps; this is not a security pass.'
+    : 'INCOMPLETE: missing, failed or invalid review outputs; zero findings is not a clean audit.');
   for (const error of health.errors) console.error(`  - ${error}`);
   process.exitCode = 2;
 }

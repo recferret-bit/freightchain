@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { classifyAuditFailure, FAILURE_MESSAGES } from './audit-process.mjs';
+import { verificationHealth } from './verification-health.mjs';
 import { REVIEW_WORKFLOW } from './review-workflow.mjs';
 import { readCanonicalSubmission } from './audit-submission.mjs';
 
@@ -181,7 +182,7 @@ export function loadAuditors(root) {
     let log = '';
     let hasLog = false;
     try { log = readReportText(root, rel, 8 * 1024 * 1024); hasLog = true; } catch { /* older runs may have no log */ }
-    const recorded = crosscheck ? null : jobs.find(job => job?.name === name)?.failure?.reason;
+    const recorded = crosscheck ? meta.providerFailures?.[name] : jobs.find(job => job?.name === name)?.failure?.reason;
     const message = Object.hasOwn(FAILURE_MESSAGES, recorded) ? FAILURE_MESSAGES[recorded] : classifyAuditFailure({ code, stdout: log }).message;
     return `${message}${hasLog ? ` Log: ${rel}.` : ''}`;
   };
@@ -224,8 +225,11 @@ export function loadAuditors(root) {
   for (const adapter of Object.keys(record(meta.crosscheckExits) ? meta.crosscheckExits : {})) {
     if (!assignments[adapter]) errors.push('Unexpected cross-check worker was excluded.');
   }
+  const verification = meta.workflow === REVIEW_WORKFLOW ? verificationHealth(root, rel => readReportJson(root, rel, 40 * 1024 * 1024)) : null;
+  const reviewState = errors.length ? 'incomplete' : 'validated_outputs';
+  if (verification) errors.push(...verification.gaps);
   return {
     meta, reports, assignments,
-    health: { state: errors.length ? 'incomplete' : 'validated_outputs', expected, accepted: reports.map((r) => r.name), errors, provenance: 'unverified', executionEvidence: 'not_collected' },
+    health: { state: errors.length ? 'incomplete' : 'validated_outputs', reviewState, verification, expected, accepted: reports.map((r) => r.name), errors, provenance: 'unverified', executionEvidence: 'not_collected' },
   };
 }

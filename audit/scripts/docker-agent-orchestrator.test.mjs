@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
-import { runOrchestratedAudit } from './docker-agent-orchestrator.mjs';
+import { runOrchestratedAudit, savedTurnCompleted } from './docker-agent-orchestrator.mjs';
 import { commitSubmission } from './audit-submission.mjs';
 import { readReportJson } from './report-contract.mjs';
 
@@ -92,7 +92,7 @@ test('providers overlap, their own surfaces queue, and peer reviews start togeth
 test('a failed reviewer stays incomplete while other providers and its remaining surfaces finish', { timeout: 10_000 }, async t => {
   const f = fixture(t, ['claude', 'grok']);
   await f.waitFor(() => f.started.size === 2);
-  f.started.get('claude-s1-auth').release({ code: 1, observedExitCode: 7, failureReason: 'usage_limit' });
+  f.started.get('claude-s1-auth').release({ code: 1, observedExitCode: 7, failureReason: 'invalid_report' });
   await f.waitFor(() => f.started.has('claude-s3-logic'));
   assert.equal(f.completed.includes('grok-s2-input'), false);
   for (const name of ['claude-s3-logic', 'claude-s5-deps', 'grok-s2-input', 'grok-s4-config', 'grok-s6-client', 'crosscheck-claude', 'crosscheck-grok']) {
@@ -103,7 +103,7 @@ test('a failed reviewer stays incomplete while other providers and its remaining
   assert.deepEqual(result.stageFailures, ['auditor_error:claude-s1-auth']);
   const failed = readReportJson(f.out, 'workers.json').jobs.find(job => job.name === 'claude-s1-auth');
   assert.equal(failed.state, 'failed');
-  assert.equal(failed.failure.reason, 'usage_limit');
+  assert.equal(failed.failure.reason, 'invalid_report');
   assert.equal(failed.observedExitCode, 7);
   assert.equal(f.started.size, 8, 'no retry or provider substitution');
   assert.equal(f.stopped, true);
@@ -123,4 +123,76 @@ test('cancellation reaches all active providers, skips queued surfaces and waits
   const queued = readReportJson(f.out, 'workers.json').jobs.filter(job => ['s5', 's6'].includes(job.surface.id));
   assert.ok(queued.every(job => job.state === 'cancelled'));
   assert.equal(f.stopped, true);
+});
+
+test('quota failures defer that provider’s queued work while other providers finish', async t => {
+  const f = fixture(t, ['claude', 'grok']);
+  await f.waitFor(() => f.started.size === 2);
+  f.started.get('claude-s1-auth').release({ code: 1, failureReason: 'usage_limit' });
+  for (const name of ['grok-s2-input', 'grok-s4-config', 'grok-s6-client']) {
+    await f.waitFor(() => f.started.has(name));
+    f.started.get(name).release();
+  }
+  const result = await f.run;
+  assert.ok(result.stageFailures.includes('crosscheck_deferred:claude'));
+  assert.deepEqual([...f.started.keys()], ['claude-s1-auth', 'grok-s2-input', 'grok-s4-config', 'grok-s6-client']);
+  const jobs = readReportJson(f.out, 'workers.json').jobs;
+  assert.ok(jobs.filter(job => ['claude-s3-logic', 'claude-s5-deps'].includes(job.name)).every(job => job.state === 'pending' && !job.sessionId));
+  assert.equal(readReportJson(f.out, 'meta.json').providerFailures.claude, 'usage_limit');
+});
+
+test('resume reuses successful immutable reports and reruns peer checks when claims change', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-selective-resume-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const target = path.join(root, 'source');
+  fs.mkdirSync(target);
+  fs.writeFileSync(path.join(target, 'source.js'), 'export const inert = true;');
+  let phase = 0;
+  const calls = [];
+  const review = async options => {
+    const { identity, directory, bridgeArgs } = options;
+    calls.push(identity.name);
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, 'state.json'), JSON.stringify({ identity, sessionId: identity.name }));
+    const out = bridgeArgs[bridgeArgs.indexOf('--report-dir') + 1];
+    const failed = phase === 0 && ['claude-s5-deps', 'crosscheck-claude'].includes(identity.name);
+    if (!failed) {
+      const payload = identity.role === 'auditor' ? [{ title: identity.name, surface: identity.surface, severity: 'info', confidence: 'probable', location: ['source.js:1'], impact: 'Inert', preconditions: '', analysis: 'Source read', validation: 'Fixture', attack: [], poc: '', fix: 'Fixture' }, { verified_safe: [] }] : readReportJson(out, `crosscheck/${identity.agent}.json`).map(row => ({ id: row.id, verdict: 'upheld', reason: 'Inert source', evidence: ['source.js:1'] }));
+      commitSubmission(out, identity.name, identity, payload);
+    }
+    return { code: failed ? 1 : 0, failureReason: failed ? 'usage_limit' : null, sessionId: identity.name, directory, elapsedMs: 1, observedExitCode: 0 };
+  };
+  const startSandbox = async ({ out }) => ({ container: 'inert', hostRunDir: out, stop: async () => {} });
+  const request = { target, out: path.join(root, 'initial'), surface: 'all', agents: ['claude', 'grok'], models: { claude: 'fixture', grok: 'fixture' } };
+  await runOrchestratedAudit(request, { review, startSandbox });
+  phase = 1; calls.length = 0;
+  const recovered = path.join(root, 'recovered');
+  const result = await runOrchestratedAudit({ ...request, out: recovered, resumeFrom: request.out }, { review, startSandbox });
+  assert.deepEqual(result.stageFailures, []);
+  assert.deepEqual(calls.sort(), ['claude-s5-deps', 'crosscheck-claude', 'crosscheck-grok']);
+  assert.equal(readReportJson(recovered, 'workers.json').jobs.filter(row => row.reusedFrom).length, 5);
+  calls.length = 0;
+  await runOrchestratedAudit({ ...request, out: path.join(root, 'again'), resumeFrom: recovered }, { review, startSandbox });
+  assert.deepEqual(calls, []);
+});
+
+
+test('saved completion repair requires a normal turn, clean process exit and no RPC error', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-completion-repair-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root,'harness/sandbox-run'),{recursive:true});
+  const directory=path.join(root,'session'); fs.mkdirSync(directory);
+  const state={failureReason:'usage_limit',observedExitCode:0};
+  const writeState=()=>fs.writeFileSync(path.join(directory,'state.json'),JSON.stringify(state));
+  writeState();
+  const file=path.join(root,'harness/sandbox-run/agent-claude-s1-auth.log');
+  const end=JSON.stringify({jsonrpc:'2.0',id:3,result:{stopReason:'end_turn'}})+'\n';
+  fs.writeFileSync(file,end);
+  assert.equal(savedTurnCompleted(root,'claude-s1-auth',directory),true);
+  fs.writeFileSync(file,JSON.stringify({jsonrpc:'2.0',id:3,error:{message:'RESOURCE_EXHAUSTED'}})+'\n'+end);
+  assert.equal(savedTurnCompleted(root,'claude-s1-auth',directory),false);
+  fs.writeFileSync(file,end);state.observedExitCode=1;writeState();
+  assert.equal(savedTurnCompleted(root,'claude-s1-auth',directory),false);
+  state.observedExitCode=0;state.failureReason='protocol_error';writeState();
+  assert.equal(savedTurnCompleted(root,'claude-s1-auth',directory),false);
 });

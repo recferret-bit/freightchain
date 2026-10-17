@@ -43,7 +43,7 @@ Named credentials, `.env*`, symlinks, hardlinks, binary/generated output and rev
 
 The removed `run_container_check`, `write_poc` and `get_attack_plan` methods fail even when called directly. ACP permission checks and AGY hooks use the same fixed tool set as the bridge.
 
-The test catalog recognizes `package.json` with a test script (`npm --offline --ignore-scripts run test`), Cargo packages/workspaces (`cargo test --locked --offline`) and `test.sh` (`bash --noprofile --norc ./test.sh`). No flags, executable, directory, environment, URL or test code can be supplied by the model. Manifest hashes are checked before execution; test processes and their descendants have a 90-second limit. Dependencies must already be available in the container. Missing dependencies, unsupported runners, failing tests and timeouts remain coverage gaps; no replacement test or package installation is attempted. Existing tests execute repository code and their output does not independently prove vulnerability reproduction.
+The test catalog recognizes `package.json` with a test script (`npm --offline --ignore-scripts run test`), Cargo packages/workspaces (`cargo test --locked --offline`) and `test.sh` (`bash --noprofile --norc ./test.sh`). No flags, executable, directory, environment, URL or test code can be supplied by the model. Manifest hashes are checked before execution; test processes and their descendants have a 90-second limit. Before the network is disconnected, a trusted manifest-only preparer may fetch locked crates.io dependencies into the container cache; it excludes target Cargo configuration, custom registries and Git dependencies and executes no target code. Dependencies must be available before tests start. Missing dependencies, unsupported runners, failing tests and timeouts remain coverage gaps; no replacement test or package installation is attempted. Existing tests execute repository code and their output does not independently prove vulnerability reproduction.
 
 Existing-test executions share one lock across the report's MCP bridge processes so tests cannot overlap in the sandbox. Waiting for that lock is bounded to five minutes, separate from the 90-second execution limit. A crashed bridge's lock is never stolen because its Docker test may still be running; a blocked request reports the gap and a new review or `--resume-from` into a new output directory uses a fresh sandbox and lock.
 
@@ -53,7 +53,9 @@ Codex uses maintained `codex-acp` 2.2.2 over its native app-server; Claude uses 
 
 Reviews have no reasoning deadline. A 30-second heartbeat distinguishes agent, transport and process activity. The preparation budget ends when checks finish and does not terminate a held review container. Setup/control operations and individual test runs retain bounded waits. Heartbeats cannot extend provider quotas, server-side limits or account permissions.
 
-Private session state binds workflow, source digest, requested model, reviewer, role and assignment. Unexpected transport loss permits one exact-session reconnect when supported. Provider refusal, quota, authentication or malformed protocol errors never trigger automatic retries.
+Successful committed submissions are reused on resume without invoking the provider again. Failed assignments resume their original sessions; changed peer-claim assignments require new cross-checks. Test and scanner evidence is collected again for the new runtime.
+
+Private session state binds workflow, source digest, requested model, reviewer, role and assignment. Unexpected transport loss permits one exact-session reconnect when supported. Provider refusal, quota, authentication or malformed protocol errors never trigger automatic retries. A provider-wide refusal, quota or login error defers its remaining queued work while other providers finish. Successful RPC turns are never reclassified from quoted/replayed error prose. Resume can repair that historical classifier error only when a committed report, normal end-turn response, clean process exit and absence of RPC errors all agree.
 
 ```sh
 ./audit/bin/audit run --repo /path/to/repo --agents claude,codex --surface s4 \
@@ -74,6 +76,8 @@ A cybersecurity provider rejection does not identify its exact trigger. Correctl
 - `submissions/`: authoritative identity-bound MCP commits; identical resubmission is idempotent and conflicting reports fail.
 - `auditors/`: derived structured findings and markdown, plus peer verdicts.
 - `report-health.json`, `findings-and-scores.json`, `verified-safe.json`, `report.html`, `findings-by-model.html`: validation and presentation.
+
+For source-review reports, `report-health.json` separates `reviewState`, `verification` and `security`. Failed/missing scans, missing test evidence, zero executed tests or skipped tests keep the overall report incomplete even when every reviewer submitted. Scanner output, versions and rule hashes are retained; advisories remain leads requiring triage. Test summaries are tool-reported evidence, not proof of vulnerability reproduction. Deployment checks and unavailable private source remain outside the captured-source scope.
 
 Findings carry `analysis` and `validation`; reviewed controls carry `evidence`. For historical report compatibility, stored findings retain empty `attack`/`poc` fields and controls mirror evidence into `how_attacked`. Terminal prose and JSON fences never supply findings. Model agreement is not proof; incomplete or refused reviews are not zero-finding passes.
 

@@ -11,6 +11,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { scannerEvidence } from './scanner-evidence.mjs';
 import { analyzeStackAndPlans, renderReviewPlansMarkdown } from './audit-plans.mjs';
 
 const SKIP_DIRS = new Set([
@@ -20,6 +21,19 @@ const SKIP_DIRS = new Set([
 const MAX_FILE = 512 * 1024;
 const PER_PATTERN = 40;
 const MAX_LOCKS = 4;
+const scannerChecks = [];
+let scannerOutputDir;
+const missingScanner = (tool, detail, state = 'blocked') => scannerChecks.push({ tool, state, detail });
+function recordScanner(tool, result, scope = '.') {
+  const evidenceFile = `scanner-output-${tool}-${scannerChecks.length}.json`;
+  fs.writeFileSync(path.join(scannerOutputDir, evidenceFile), JSON.stringify(result));
+  const version = spawnSync(tool === 'npm-audit' ? 'npm' : tool, [tool === 'gitleaks' ? 'version' : '--version'], { encoding: 'utf8', timeout: 5000 });
+  let reportedVersion = (version.stdout || version.stderr || '').trim().slice(0, 200);
+  if (tool === 'semgrep') { try { reportedVersion = JSON.parse(result.stdout).version || reportedVersion; } catch { /* invalid output remains a failed scan */ } }
+  const row = { ...scannerEvidence(tool, result), version: reportedVersion, scope, evidenceFile: `harness/${evidenceFile}` };
+  scannerChecks.push(row);
+  return row.state !== 'failed';
+}
 
 const SOLANA_PATTERNS = [
   { id: 'unchecked-account', cls: 'sealevel 2/5 opt-out', re: /\bUncheckedAccount\b/g,
@@ -235,8 +249,8 @@ function runCmd(bin, args, cwd, timeoutMs, env) {
       resolve({ code: 127, stdout: '', stderr: String(err) });
       return;
     }
-    child.stdout?.on('data', (b) => { if (stdout.length < 200_000) stdout += b; });
-    child.stderr?.on('data', (b) => { if (stderr.length < 50_000) stderr += b; });
+    child.stdout?.on('data', (b) => { if (stdout.length < 32 * 1024 * 1024) stdout += b; });
+    child.stderr?.on('data', (b) => { if (stderr.length < 1024 * 1024) stderr += b; });
     child.on('error', (err) => resolve({ code: 127, stdout, stderr: `${stderr}${err.message}` }));
     child.on('close', (code) => resolve({ code: code ?? 1, stdout, stderr }));
   });
@@ -259,18 +273,19 @@ async function depScan(root) {
     if (findLocks(root, name).length) other.push(name);
   }
   const cargoHome = process.env.CARGO_HOME || path.join(process.env.HOME || '', '.cargo');
-  if (!cargo.length) lines.push('cargo-audit: no Cargo.lock');
-  else if (!fs.existsSync(path.join(cargoHome, 'advisory-db')) && !fs.existsSync(path.join(process.env.HOME || '', '.cargo/advisory-db'))) {
+  if (!cargo.length) { lines.push('cargo-audit: no Cargo.lock'); missingScanner('cargo-audit', 'No Cargo.lock', 'not_applicable'); }
+  else if (!fs.existsSync('/opt/audit-scanners/advisory-db') && !fs.existsSync(path.join(cargoHome, 'advisory-db')) && !fs.existsSync(path.join(process.env.HOME || '', '.cargo/advisory-db'))) {
+    missingScanner('cargo-audit', 'RustSec database unavailable');
     lines.push('cargo-audit: RustSec DB not cached at ~/.cargo/advisory-db (no fetch on an untrusted tree). Run `cargo audit` once in a trusted repo, then re-run.');
   } else {
     for (const lock of cargo) {
-      const r = await runCmd('cargo-audit', ['audit', '--file', lock, '--no-fetch', '--stale', '--format', 'json'], '/tmp', 60_000, cleanEnv());
+      const r = await runCmd('cargo-audit', ['audit', '--file', lock, '--no-fetch', '--format', 'json', ...(fs.existsSync('/opt/audit-scanners/advisory-db') ? ['--db', '/opt/audit-scanners/advisory-db'] : [])], '/tmp', 60_000, cleanEnv());
       lines.push(`## cargo-audit ${rel(root, lock)} (exit ${r.code})`);
-      lines.push(summariseCargo(r.stdout, r.stderr));
+      lines.push(recordScanner('cargo-audit', r, rel(root, lock)) ? summariseCargo(r.stdout, r.stderr) : 'FAILED: scanner did not produce a valid advisory result.');
       lines.push('');
     }
   }
-  if (!npm.length) lines.push('npm audit: no package-lock.json');
+  if (!npm.length) { lines.push('npm audit: no package-lock.json'); missingScanner('npm-audit', 'No package-lock.json', 'not_applicable'); }
   else {
     for (const lock of npm) {
       const dir = path.dirname(lock);
@@ -279,7 +294,7 @@ async function depScan(root) {
         '--userconfig', '/dev/null', '--globalconfig', '/dev/null',
       ], dir, 60_000, cleanEnv({ npm_config_ignore_scripts: 'true' }));
       lines.push(`## npm audit ${rel(root, lock)} (exit ${r.code})`);
-      lines.push(summariseNpm(r.stdout, r.stderr));
+      lines.push(recordScanner('npm-audit', r, rel(root, lock)) ? summariseNpm(r.stdout, r.stderr) : 'FAILED: scanner did not produce a valid advisory result.');
       lines.push('');
     }
   }
@@ -368,7 +383,7 @@ function summariseSemgrep(stdout, root) {
   try {
     const json = JSON.parse(stdout);
     const rows = json.results || [];
-    if (!rows.length) return 'no result from p/owasp-top-ten.';
+    if (!rows.length) return 'no result from the pinned upstream OWASP rule bundle.';
     const prefix = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
     return rows.slice(0, 40).map((row) => {
       const file = (row.path || '').startsWith(prefix) ? row.path.slice(prefix.length) : (row.path || '');
@@ -400,6 +415,7 @@ function summariseOsv(stdout) {
 }
 
 async function gitleaksConfig() {
+  if (fs.existsSync('/opt/audit-scanners/gitleaks.toml')) return '/opt/audit-scanners/gitleaks.toml';
   const ver = (spawnSync('gitleaks', ['version'], { encoding: 'utf8' }).stdout || '').trim();
   if (!/^\d+\.\d+\.\d+$/.test(ver)) return '';
   const dir = path.join(process.env.HOME || '/tmp', '.cache', 'freightchain-audit');
@@ -423,10 +439,11 @@ async function writeTools(root, outDir) {
     '',
   ];
   const report = path.join(outDir, 'gitleaks.json');
-  if (!which('gitleaks')) lines.push('gitleaks: not on PATH. Secret scan fell back to the regex in web.md.');
+  if (!which('gitleaks')) { lines.push('gitleaks: not on PATH. Secret scan fell back to the regex in web.md.'); missingScanner('gitleaks', 'Executable unavailable'); }
   else {
     const config = await gitleaksConfig();
     if (!config) {
+      missingScanner('gitleaks', 'Trusted rules unavailable');
       lines.push('gitleaks: not started — trusted upstream rules unavailable. Target configuration is not a fallback.');
     } else {
       const args = ['detect', '--source', root, '--no-git', '--redact=100', '--no-banner', '--ignore-gitleaks-allow', '--report-format', 'json', '--report-path', report, '--exit-code', '0', '--config', config];
@@ -434,30 +451,30 @@ async function writeTools(root, outDir) {
       lines.push(`## gitleaks (exit ${r.code})`);
       lines.push(`Rules: upstream gitleaks default for the installed version (${path.basename(config)}). A .gitleaks.toml in the tree is not used.`);
       const raw = fs.existsSync(report) ? fs.readFileSync(report, 'utf8') : r.stdout;
-      lines.push(summariseGitleaks(raw));
+      lines.push(recordScanner('gitleaks', { ...r, stdout: raw }) ? summariseGitleaks(raw) : 'FAILED: scanner did not produce a valid secret scan result.');
       lines.push('');
     }
   }
-  if (!which('semgrep')) lines.push('semgrep: not on PATH. SAST fell back to the regex in web.md.');
+  if (!which('semgrep')) { lines.push('semgrep: not on PATH. SAST fell back to the regex in web.md.'); missingScanner('semgrep', 'Executable unavailable'); }
   else {
     const r = await runCmd('semgrep', [
       'scan', '--metrics=off', '--disable-version-check', '--json', '--timeout=30',
-      '--config=p/owasp-top-ten',
+      '--config=/opt/audit-scanners/semgrep-rules', '--disable-nosem', '--no-git-ignore',
       '--exclude=node_modules', '--exclude=target', '--exclude=dist', '--exclude=harness-fixtures',
       root,
     ], '/tmp', 180_000, cleanEnv({ SEMGREP_SEND_METRICS: 'off' }));
-    lines.push(`## semgrep p/owasp-top-ten (exit ${r.code})`);
-    lines.push(summariseSemgrep(r.stdout, root));
+    lines.push(`## semgrep pinned upstream OWASP rules (exit ${r.code})`);
+    lines.push(recordScanner('semgrep', r) ? summariseSemgrep(r.stdout, root) : 'FAILED: scanner did not produce a complete SAST result.');
     lines.push('');
   }
-  if (!which('osv-scanner')) lines.push('osv-scanner: not on PATH. Dependency scan is cargo-audit and npm audit only.');
+  if (!which('osv-scanner')) { lines.push('osv-scanner: not on PATH.'); missingScanner('osv-scanner', 'Executable unavailable'); }
   else {
     const r = await runCmd('osv-scanner', [
-      'scan', 'source', '--recursive', '--no-resolve', '--allow-no-lockfiles', '--format', 'json', root,
+      'scan', 'source', '--recursive', '--no-resolve', '--allow-no-lockfiles', '--offline-vulnerabilities', '--format', 'json', root,
     ], '/tmp', 120_000, cleanEnv());
     lines.push(`## osv-scanner (exit ${r.code})`);
     lines.push('Lockfiles only (`--no-resolve`). Call analysis is off in this lead scan. The sandbox runs it when a Cargo.lock is present; see sandbox.md.');
-    lines.push(summariseOsv(r.stdout || r.stderr));
+    lines.push(recordScanner('osv-scanner', r) ? summariseOsv(r.stdout) : 'FAILED: scanner did not produce a valid advisory result.');
     lines.push('');
   }
   return lines.join('\n') + '\n';
@@ -509,6 +526,7 @@ async function scan(target, outDir, noDeps) {
   const root = path.resolve(target);
   if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) throw new Error(`harness: not a directory: ${target}`);
   fs.mkdirSync(outDir, { recursive: true });
+  scannerOutputDir = outDir;
   const marks = solanaStack(root);
   const solana = writeSolana(root, marks);
   const web = writeWeb(root);
@@ -516,7 +534,9 @@ async function scan(target, outDir, noDeps) {
   const stackProfile = analyzeStackAndPlans(root);
   const attackPlansMd = renderReviewPlansMarkdown(stackProfile);
   const deps = noDeps ? '# Dependency leads\n\nSkipped (--no-deps).\n' : await depScan(root);
+  if (noDeps) for (const tool of ['gitleaks', 'semgrep', 'osv-scanner', 'cargo-audit', 'npm-audit']) missingScanner(tool, 'Skipped (--no-deps)');
   const tools = noDeps ? '# Scanner leads\n\nSkipped (--no-deps).\n' : await writeTools(root, outDir);
+  fs.writeFileSync(path.join(outDir, 'scanner-results.json'), JSON.stringify({ version: 1, rustsecRevision: fs.existsSync('/opt/audit-scanners/rustsec-revision.txt') ? fs.readFileSync('/opt/audit-scanners/rustsec-revision.txt', 'utf8').trim() : null, databases: fs.existsSync('/opt/audit-scanners/databases.sha256') ? fs.readFileSync('/opt/audit-scanners/databases.sha256', 'utf8') : null, preparedAt: fs.existsSync('/opt/audit-scanners/prepared-at.txt') ? fs.readFileSync('/opt/audit-scanners/prepared-at.txt', 'utf8').trim() : null, rules: fs.existsSync('/opt/audit-scanners/rules.sha256') ? fs.readFileSync('/opt/audit-scanners/rules.sha256', 'utf8') : null, checks: scannerChecks }, null, 2));
   fs.writeFileSync(path.join(outDir, 'solana.md'), solana.body);
   fs.writeFileSync(path.join(outDir, 'web.md'), web.body);
   fs.writeFileSync(path.join(outDir, 'config.md'), config.body);

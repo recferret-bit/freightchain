@@ -119,6 +119,17 @@ test('a pinned Anchor program and a yarn lock are pending', () => {
   fs.rmSync(src, { recursive: true, force: true });
 });
 
+test('Anchor dependency discovery includes workspace program manifests', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-anchor-workspace-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, 'program/programs/fixture'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'program/Anchor.toml'), '[toolchain]\n');
+  fs.writeFileSync(path.join(root, 'program/Cargo.toml'), '[workspace]\nmembers=["programs/*"]\n');
+  fs.writeFileSync(path.join(root, 'program/programs/fixture/Cargo.toml'), '[dependencies]\nanchor-lang={version="1.2.0",features=["init-if-needed"]}\n');
+  assert.equal(plan(root).anchors[0].anchorVersion, '1.2.0');
+  assert.equal(plan(root).anchors[0].solanaVersion, null);
+});
+
 test('extra ecosystems and an rpc url are classified without contacting them', () => {
   const src = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-eco-'));
   fs.writeFileSync(path.join(src, 'requirements.txt'), 'requests==2.31.0\n');

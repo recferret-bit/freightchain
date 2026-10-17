@@ -487,10 +487,11 @@ process.exitCode=result.stageFailures.length||html.status!==0?2:0;
     env: { ...process.env, SANDBOX_FAST: '1', PATH: `${binDir}${path.delimiter}${process.env.PATH}` },
   });
 
-  assert.equal(run.status, 0, `orchestrate failed:\nSTDOUT:\n${run.stdout}\nSTDERR:\n${run.stderr}`);
+  assert.equal(run.status, 2, `orchestrate failed:\nSTDOUT:\n${run.stdout}\nSTDERR:\n${run.stderr}`);
   const health = JSON.parse(fs.readFileSync(path.join(outDir, 'report-health.json'), 'utf8'));
-  assert.equal(health.state, 'validated_outputs', JSON.stringify(health));
-  assert.deepEqual(health.errors, []);
+  assert.equal(health.reviewState, 'validated_outputs', JSON.stringify(health));
+  assert.equal(health.state, 'incomplete');
+  assert.ok(health.verification.gaps.some(gap => gap.includes('scanner')));
 
   const findings = JSON.parse(fs.readFileSync(path.join(outDir, 'findings-and-scores.json'), 'utf8'));
   assert.equal(findings.length, 1);
@@ -504,24 +505,24 @@ process.exitCode=result.stageFailures.length||html.status!==0?2:0;
   assert.match(fs.readFileSync(path.join(outDir, 'harness', 'review-plans.md'), 'utf8'), /Cryptography, Web3 Signatures & On-Chain Custody/);
   assert.equal(fs.existsSync(path.join(outDir, 'pocs', 'claude-s1-auth')), false);
   assert.equal(readReportJson(outDir, 'harness/existing-test-results-claude-s1-auth.json')[0].exitCode, 0);
-  assert.match(fs.readFileSync(path.join(outDir, 'report.html'), 'utf8'), /OUTPUTS VALIDATED/);
+  assert.match(fs.readFileSync(path.join(outDir, 'report.html'), 'utf8'), /INCOMPLETE VERIFICATION/);
 
   const resumedOut = path.join(root, 'resumed-report');
   const resumed = spawnSync(process.execPath, [runnerFile, targetDir, resumedOut, 'claude,grok', outDir], {
     encoding: 'utf8', timeout: 90_000,
     env: { ...process.env, SANDBOX_FAST: '1', PATH: `${binDir}${path.delimiter}${process.env.PATH}` },
   });
-  assert.equal(resumed.status, 0, `Saved assignment resume failed: ${resumed.stderr}`);
+  assert.equal(resumed.status, 2, `Saved assignment resume failed: ${resumed.stderr}`);
   assert.equal(readReportJson(resumedOut, 'meta.json').resumedFrom, fs.realpathSync(outDir));
-  assert.equal(readReportJson(resumedOut, 'report-health.json').state, 'validated_outputs');
+  assert.equal(readReportJson(resumedOut, 'report-health.json').reviewState, 'validated_outputs');
   for (const job of readReportJson(resumedOut, 'workers.json').jobs) assert.equal(fs.realpathSync(job.sessionDirectory), fs.realpathSync(path.join(outDir, 'sessions', job.name)));
   const continuedOut = path.join(root, 'continued-report');
   const continued = spawnSync(process.execPath, [runnerFile, targetDir, continuedOut, 'claude,grok', resumedOut], {
     encoding: 'utf8', timeout: 90_000,
     env: { ...process.env, SANDBOX_FAST: '1', PATH: `${binDir}${path.delimiter}${process.env.PATH}` },
   });
-  assert.equal(continued.status, 0, `Chained resume must retain the original native session: ${continued.stderr}`);
-  assert.equal(readReportJson(continuedOut, 'report-health.json').state, 'validated_outputs');
+  assert.equal(continued.status, 2, `Chained resume must retain the original native session: ${continued.stderr}`);
+  assert.equal(readReportJson(continuedOut, 'report-health.json').reviewState, 'validated_outputs');
   assert.equal(readReportJson(continuedOut, 'harness/session-claude-s1-auth.json').directory, readReportJson(resumedOut, 'harness/session-claude-s1-auth.json').directory);
 
   const failedOut = path.join(root, 'failed-report');

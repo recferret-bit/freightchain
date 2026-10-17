@@ -21,6 +21,44 @@ RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 
 RUN cargo install cargo-audit --version 0.22.2 --locked
 
+# Provision the declared toolchain completely: reviewer tests run with a read-only root.
+RUN rustup toolchain install 1.89.0 --profile minimal --component rustfmt --component clippy \
+    && rustup run 1.89.0 rustc --version
+ENV RUSTUP_TOOLCHAIN=1.89.0
+
+ARG GITLEAKS_VERSION=8.24.3
+ARG SEMGREP_VERSION=1.181.0
+ARG SEMGREP_RULES_REV=17e31e11ebac99fb7dfe1cd288f7a32151b6f3f9
+RUN apt-get update && apt-get install -y --no-install-recommends python3-venv \
+    && rm -rf /var/lib/apt/lists/* \
+    && python3 -m venv /opt/semgrep \
+    && /opt/semgrep/bin/pip install --no-cache-dir "semgrep==${SEMGREP_VERSION}" \
+    && ln -s /opt/semgrep/bin/semgrep /usr/local/bin/semgrep
+
+COPY prepare-scanner-rules.py /opt/prepare-scanner-rules.py
+COPY prepare-cargo-cache.py /opt/prepare-cargo-cache.py
+RUN arch="$(dpkg --print-architecture)" \
+    && case "$arch" in amd64) a=x64 ;; arm64) a=arm64 ;; *) exit 1 ;; esac \
+    && mkdir -p /tmp/gitleaks /opt/audit-scanners \
+    && curl -fsSL -o /tmp/gitleaks/tool.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_${a}.tar.gz" \
+    && curl -fsSL -o /tmp/gitleaks/checksums.txt "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt" \
+    && cd /tmp/gitleaks \
+    && mv tool.tar.gz "gitleaks_${GITLEAKS_VERSION}_linux_${a}.tar.gz" \
+    && grep " gitleaks_${GITLEAKS_VERSION}_linux_${a}.tar.gz$" checksums.txt | sha256sum -c - \
+    && tar -xzf "gitleaks_${GITLEAKS_VERSION}_linux_${a}.tar.gz" -C /usr/local/bin gitleaks \
+    && curl -fsSL -o /opt/audit-scanners/gitleaks.toml "https://raw.githubusercontent.com/gitleaks/gitleaks/v${GITLEAKS_VERSION}/config/gitleaks.toml" \
+    && curl -fsSL -o /tmp/rules.tar.gz "https://codeload.github.com/semgrep/semgrep-rules/tar.gz/${SEMGREP_RULES_REV}" \
+    && mkdir /tmp/semgrep-rules \
+    && tar -xzf /tmp/rules.tar.gz --strip-components=1 -C /tmp/semgrep-rules \
+    && /opt/semgrep/bin/python /opt/prepare-scanner-rules.py \
+    && semgrep scan --validate --config /opt/audit-scanners/semgrep-rules --metrics=off --disable-version-check \
+    && git clone --depth=1 https://github.com/RustSec/advisory-db /opt/audit-scanners/advisory-db \
+    && git -C /opt/audit-scanners/advisory-db rev-parse HEAD > /opt/audit-scanners/rustsec-revision.txt \
+    && printf '%s\n' "gitleaks=${GITLEAKS_VERSION}" "semgrep=${SEMGREP_VERSION}" "rules=${SEMGREP_RULES_REV}" > /opt/audit-scanners/versions.txt \
+    && date -u +%FT%TZ > /opt/audit-scanners/prepared-at.txt \
+    && sha256sum /opt/audit-scanners/semgrep-rules /opt/audit-scanners/gitleaks.toml > /opt/audit-scanners/rules.sha256 \
+    && rm -rf /tmp/gitleaks /tmp/rules.tar.gz /tmp/semgrep-rules
+
 ARG TARGETARCH
 ARG OSV_VERSION=2.7.0
 RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
@@ -66,6 +104,7 @@ RUN mkdir -p /tmp/osv-seed /opt/osv-cache \
     && test -s /opt/osv-cache/osv-scalibr/crates.io/all.zip \
     && test -s /opt/osv-cache/osv-scalibr/npm/all.zip \
     && chmod -R a+rX /opt/osv-cache \
+    && sha256sum /opt/osv-cache/osv-scalibr/crates.io/all.zip /opt/osv-cache/osv-scalibr/npm/all.zip > /opt/audit-scanners/databases.sha256 \
     && rm -rf /tmp/osv-seed
 
 # Classic Yarn for a frozen install. A Berry lockfile activates Yarn 4 at

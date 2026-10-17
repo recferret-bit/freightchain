@@ -255,6 +255,17 @@ test('renderer discloses unavailable outputs and sandbox coverage', (t) => {
   assert.doesNotMatch(html, /Quorum Security Review/);
 });
 
+test('complete reviewer outputs with execution gaps render incomplete verification', t => {
+  const f = fixture(t);
+  f.meta.workflow = 'source_security_review_v1';
+  f.save('claude', [controls]);
+  assert.equal(run('generate-html-report.mjs', f.dir).status, 2);
+  const html = fs.readFileSync(path.join(f.dir, 'report.html'), 'utf8');
+  assert.match(html, /INCOMPLETE VERIFICATION/);
+  assert.match(html, /Review outputs are complete/);
+  assert.doesNotMatch(html, /Missing reviews are not passes/);
+});
+
 test('renderer displays benign SVG source inertly and remains offline', (t) => {
   const f = fixture(t);
   f.save('claude');

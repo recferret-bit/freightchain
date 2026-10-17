@@ -57,7 +57,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
  }
  const cwd=path.resolve(root,entry.cwd);
  if(cwd!==root&&!cwd.startsWith(root+'/')||fs.realpathSync(cwd)!==cwd)throw Error('Existing test directory changed');
- const child=spawn(entry.command,entry.args,{cwd,env:{...process.env,CI:'1',GOPROXY:'off',GOSUMDB:'off',npm_config_offline:'true',npm_config_ignore_scripts:'true'},detached:true,stdio:['ignore','pipe','pipe']});
+ const child=spawn(entry.command,entry.args,{cwd,env:{...process.env,CI:'1',CARGO_NET_OFFLINE:'true',GOPROXY:'off',GOSUMDB:'off',npm_config_offline:'true',npm_config_ignore_scripts:'true'},detached:true,stdio:['ignore','pipe','pipe']});
  const kill=()=>{try{process.kill(-child.pid,'SIGKILL')}catch{}};
  const timer=setTimeout(()=>{process.exitCode=124;kill()},90000);
  child.stdout.pipe(process.stdout);child.stderr.pipe(process.stderr);

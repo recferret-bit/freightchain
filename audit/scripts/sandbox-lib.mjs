@@ -226,11 +226,12 @@ export function plan(root) {
     const anchorText = readText(f.abs);
     const cargoText = readText(path.join(root, cargoRel));
     const rootText = rootCargo ? readText(rootCargo.abs) : '';
+    const childVersions = [...new Set(files.filter(item => item.rel.startsWith(dir === '.' ? 'programs/' : `${dir}/programs/`) && item.rel.endsWith('/Cargo.toml')).map(item => anchorLang(readText(item.abs))).filter(Boolean))];
     const rel = safeRel(dir);
     if (!rel) continue;
     anchors.push({
       rel,
-      anchorVersion: quoted(anchorText, 'anchor_version') || anchorLang(cargoText) || anchorLang(rootText),
+      anchorVersion: quoted(anchorText, 'anchor_version') || anchorLang(cargoText) || anchorLang(rootText) || (childVersions.length === 1 ? childVersions[0] : null),
       solanaVersion: quoted(anchorText, 'solana_version') || cliSolana(cargoText) || cliSolana(rootText),
     });
   }

@@ -484,6 +484,11 @@ async function main() {
   try {
   fs.mkdirSync('/work/src', { recursive: true });
   fs.cpSync('/src', '/work/src', { recursive: true, force: true });
+  if (reviewOnly) {
+    process.env.CARGO_TARGET_DIR = '/work/target';
+    process.env.CARGO_HOME = '/work/cargo';
+    process.env.CARGO_NET_OFFLINE = 'true';
+  }
   if (reviewOnly && process.env.SANDBOX_POCS === '1') throw new Error('Source review excludes PoCs');
   if (process.env.SANDBOX_POCS === '1') {
     await runPocs();
@@ -491,6 +496,12 @@ async function main() {
     return;
   }
   const tree = plan('/work/src');
+  if (reviewOnly && tree.cargoLocks.items.length && process.env.SANDBOX_FAST !== '1') {
+    // Only the trusted manifest/lockfile preparer has network access. It cannot run target code.
+    const prepared = await run('python3', ['/opt/prepare-cargo-cache.py'], { cwd: '/tmp', timeoutMs: 12 * 60 * 1000 });
+    log('cargo-cache', prepared);
+    put('cargo-cache', prepared.code === 0 ? 'ran' : 'failed', `Manifest-only locked dependency preparation: ${brief(prepared)}`);
+  }
   for (const row of assess(tree)) {
     if (row.result === 'impossible') put(row.id, 'impossible', row.detail);
   }
@@ -531,6 +542,16 @@ async function main() {
     if (process.env.SANDBOX_FAST === '1') hArgs.push('--no-deps');
     const hRes = await run('node', hArgs, { cwd: '/work/src', timeoutMs: Math.min(240_000, Math.max(15_000, timeLeft())), env: CARGO_ENV });
     log('harness', hRes);
+    if (reviewOnly) {
+      try {
+        const record = JSON.parse(fs.readFileSync(path.join(outDir, 'harness-leads/scanner-results.json'), 'utf8'));
+        for (const [tool, id] of [['cargo-audit', 'cargo-audit'], ['osv-scanner', 'osv-lock'], ['semgrep', 'semgrep'], ['gitleaks', 'gitleaks']]) {
+          const rows = record.checks.filter(row => row.tool === tool);
+          const ran = rows.length && rows.every(row => ['passed', 'findings'].includes(row.state));
+          put(id, ran ? 'ran' : rows.some(row => row.state === 'failed') ? 'failed' : 'impossible', `${tool}: ${rows.map(row => row.state).join(', ') || 'no scanner evidence'}. See scanner-results.json and scanner-output files. Static scan only; target code was not executed.`);
+        }
+      } catch { put('static-scanners', 'failed', 'Structured scanner evidence was not produced. See harness.log.'); }
+    }
   }
   save();
   publish('checks.done', { ready: true, timestamp: new Date().toISOString() });
