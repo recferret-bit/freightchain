@@ -232,7 +232,7 @@ test('ticket sales: on when the server sells through the program (tiers.paymentM
 
 test('the lobby and the landing never call a bare /api path or render with innerHTML', () => {
   const site = join(new URL('..', import.meta.url).pathname, '..', 'client', 'site');
-  for (const f of ['lobby.js', 'lobby-pools.js', 'admin-pools.js', 'lobby-promo.js', 'lobby-garage.js', 'garage-cab.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js', 'admin.js', 'admin-promos.js', 'ticket-dialog.js']) {
+  for (const f of ['lobby.js', 'lobby-new.js', 'lobby-live.js', 'lobby-profile.js', 'lobby-replays.js', 'lobby-board.js', 'lobby-achievements.js', 'lobby-pools.js', 'admin-pools.js', 'lobby-promo.js', 'lobby-garage.js', 'garage-cab.js', 'pools.js', 'tickets-api.js', 'pay.js', 'dom.js', 'ui.js', 'effects.js', 'admin.js', 'admin-promos.js', 'ticket-dialog.js']) {
     const src = readFileSync(join(site, f), 'utf8');
     assert.doesNotMatch(src, /\.(innerHTML|outerHTML)\s*[+]?=|insertAdjacentHTML\(|document\.write\(/, f);
     assert.doesNotMatch(src, /['"`]\/api\//, `${f}: API calls go through wallet.js (API_BASE)`);
@@ -245,7 +245,7 @@ test('the escrow explainer is the whitepaper chapter, and the standalone copy is
   assert.equal(escrowExplainer(), '/whitepaper.html#onchain');
   assert.equal(existsSync(join(root, 'client/escrow')), false);
   assert.equal(existsSync(join(root, 'docs/pool-escrow')), false);
-  for (const f of ['client/site/lobby.js', 'client/site/lobby-pools.js', 'landing/src/main.js', 'landing/vite.config.js']) {
+  for (const f of ['client/site/lobby.js', 'client/site/lobby-new.js', 'client/site/lobby-pools.js', 'landing/src/main.js', 'landing/src/boards.js', 'landing/vite.config.js']) {
     assert.doesNotMatch(readFileSync(join(root, f), 'utf8'), /\/escrow\//, f);
   }
 });

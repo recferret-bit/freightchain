@@ -93,7 +93,7 @@ On 13 Oct twelve AI auditors from four vendors reviewed six surfaces in blind pa
 
 ### What changed
 
-| Date | Change after submission | Product effect | Release state as of 16 Oct |
+| Date | Change after submission | Product effect | Release state as of 17 Oct |
 | --- | --- | --- | --- |
 | 13 Oct | Wallet Standard discovery, wallet picker, one-prompt sign-in and phone-pay fixes | More wallets can sign in and pay with fewer steps | Shipped in the Oct 15 app release |
 | 13–14 Oct | Desktop-only driving, current cab imagery, clearer landing and README copy | Phone visitors can watch; the product pages show the actual game | Shipped in the Oct 15 app release |
@@ -106,8 +106,33 @@ On 13 Oct twelve AI auditors from four vendors reviewed six surfaces in blind pa
 | 16 Oct | Landing pitch-deck preview and phone motion controls for the deck's SOL coins | The deck is easier to discover and its coin toy responds to phone tilt | Committed; next app release |
 | 16 Oct | Reusable audit targets, Docker/MCP isolation and native review profiles | Review tooling can inspect local or GitHub repositories; each adapter still reports its own readiness and limits | Repository tooling; no new external audit claimed |
 | 16 Oct | Whitepaper v0.2: evidence-flow and browser-outcome charts, protocol and release limits | Readers can distinguish recorded evidence, server checks and settlement trust | This documentation revision; next app release |
+| 16–17 Oct | Data-only 3D entity engine, append-only revision history, wallet-signed publishing, dedicated `editor:worker` and isolated `mcp/` server | Every 3D model is pure data; allowlisted editors can inspect, AI-generate and sign-publish models without exposing keys or blocking the API | Committed in `main`; next app release |
+| 16–17 Oct | HONK checkpoint minting, local two-way pool / LP redeem, cab burns and nine-slot Garage | Verified paid checkpoints credit HONK; localnet suites exercise mint, swap, burn and soulbound parts | Built and tested on localnet; token remains devnet / local |
+| 16–17 Oct | Referral system (`65 / 5 / 20 / 10` pool split), invite codes, free-ride gifts and spectator-tip sharing | Inviters earn a 5% pool leg on referred tickets and a capped share of stream donations | Committed in `main`; next app release |
+| 16–17 Oct | Stateless horizontal server scaling, Redis Lua presence/ops logs, distributed scheduler leases, bounded LRU caches and universal crash telemetry | Multiple `app` and `worker` replicas share locks, presence and logs safely; unhandled client errors report from every page | Committed in `main`; next app release |
+| 17 Oct | Full wallet catalog + QR phone-to-desktop browser pairing (`/api/auth/pair`), and 3-pass modular refactoring of Landing, Whitepaper, Pitch Deck and Lobby | Desktop browsers can sign in via a phone wallet QR scan; all site pages share zero-duplication UI, effect and CSS components with no god files | Committed in `main`; next app release |
+
+### Post-hackathon engineering deep dive (13–17 Oct)
+
+Since the **12 Oct 2026** Colosseum submission snapshot, development focused on seven areas across the simulation kernel, on-chain settlement, 3D asset pipeline, economy, infrastructure scaling, and site architecture:
+
+1. **Shared Simulation Kernel & Frame-Level Traffic Proof (`@freightchain/shared`, rules v7)**:
+   Road geometry, route curvature integration, longitudinal truck physics, and the seeded traffic AI were unified in [`client/shared/`](client/shared) and consumed directly by both the browser game and the server's `ReplayEngine`. Newly started rides (`trafficVersion=1`) record lossless per-frame traffic evidence inside SHA-256 hash-chained batches (sealed every 2 game seconds or 500 frames) and verify cab/trailer contacts, hull damage response, and 10 Hz sample binding.
+2. **Quorum Security Review & Escrow Program v4**:
+   Following the 12-auditor blind review across 6 surfaces, all 7 high and 9 medium findings were resolved in source with regression tests. Program v4 adds a committed Merkle winners root with a public review window and cold-admin veto, per-ride pledge attestations, sponsor refunds on failed pools, and `seal_road` from a later slot hash. The multi-agent suite (`./audit/bin/audit`) was generalized into an airgapped one-shot Docker sandbox with an MCP stdio bridge and native/Docker review profiles.
+3. **Data-Only 3D Entities & Isolated AI Model Editor (`client/shared/entity/`, `mcp/`, `editor:worker`)**:
+   Every 3D vehicle, prop, landmark, gantry, and part was converted into a declarative, executable-code-free entity specification validated by shared analytic geometry checks. The model viewer (`storybook.<apex>`) gained `SOURCE`, `CHAT`, and `HISTORY` tabs backed by append-only PostgreSQL revisions (`HEAD` vs `PUBLISHED`) and wallet-signed publication. AI generation runs exclusively in a dedicated 5-slot `editor:worker` polling PostgreSQL and calling an isolated Streamable HTTP `mcp/` server with short-lived per-job capability tokens and counter-only Redis ACL rate limits.
+4. **Referral Economy (`65 / 5 / 20 / 10`) & HONK Tokenomics**:
+   Each wallet receives a referral link (`?ref=`) granting free-ride rewards on first verified completion, a 5% pool leg on referred ticket purchases (updating the escrowed pool split to **65% prizes · 5% referrals · 20% next seed · 10% platform**), and a capped share of spectator tips. In parallel, the capped 100M HONK coin, checkpoint emission (20% / 50% / 100%), two-way liquidity pool, and on-chain cab-visual burns were built and verified end-to-end on localnet alongside expanding the Garage to nine cosmetic slots.
+5. **Stateless Horizontal Scaling, Hot-Path Caching & Crash Reporting**:
+   The NestJS backend was hardened for multi-replica operation: single-roundtrip Redis Lua scripts track live site visitors and stream spectators with circuit-breaker fallbacks, background schedulers and `AttestationService` coordinate via atomic Redis locks (`SET NX PX`), `replay:worker` deduplicates in-flight jobs, and bounded LRU caches keep `RoadPlan` chunks, decompressed `RideBatch` payloads, and `.sol` SNS lookups off the CPU. Every client surface boots [`crash-boot.js`](client/js/crash-boot.js) first to report unhandled errors.
+6. **Universal Wallet Picker & Phone-to-Desktop Pairing**:
+   The sign-in flow now lists the full Solana wallet catalog (highlighting detected Wallet Standard extensions), opens deep links on mobile, and lets a desktop browser without a wallet extension sign in by scanning a single-use QR pairing code (`/api/auth/pair`) with a phone wallet.
+7. **Modular Component Architecture Across Landing, Whitepaper, Pitch Deck & Lobby**:
+   All public and player site surfaces were refactored across three passes to eliminate god files and copy-pasted UI logic. Shared design tokens, 3D tilt cards, and flip cards live in [`client/css/tokens.css`](client/css/tokens.css), [`client/css/card3d.css`](client/css/card3d.css), and [`client/css/flip-card.css`](client/css/flip-card.css); shared DOM builders, formatters, and interactive behaviors (`bindCard3d`, `bindFlipCards`, `bindReveal`, `bindScrollSpy`, `observeOnce`, `guardMobilePlay`, `avatar`, `driverEl`, `progressBarEl`, `pillGroupEl`, `extLink`, `splitBarEl`) live in [`client/site/dom.js`](client/site/dom.js), [`client/site/ui.js`](client/site/ui.js), and [`client/site/effects.js`](client/site/effects.js); and the Lobby and Landing controllers are cleanly split into focused modules ([`boards.js`](landing/src/boards.js), [`lobby-new.js`](client/site/lobby-new.js), [`lobby-live.js`](client/site/lobby-live.js), [`lobby-profile.js`](client/site/lobby-profile.js), and [`pitchdeck/slides.css`](landing/src/pitchdeck/slides.css)).
 
 The production replay worker was restarting at the read-only check. Its explicit `TRUST_PROXY=0` startup fix is included with the pending simulation release; a deployment must verify that the worker becomes healthy. The app's health endpoint was ready. No deployment is implied by this recap.
+
 
 ## Contents
 

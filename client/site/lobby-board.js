@@ -1,5 +1,6 @@
 import { api } from './wallet.js';
-import { el } from './dom.js';
+import { $, el } from './dom.js';
+import { pillGroupEl } from './ui.js';
 import { left, sol } from './pools.js';
 import { store } from '../js/util.js';
 import { formatDriver, seedSns, seedSnsBatch } from './sns.js';
@@ -19,7 +20,7 @@ let C = null;
 const key = () => `${C.S.board}|${C.S.board === 'free' ? C.S.boardLevel : C.S.boardTier}|${B.sort}|${B.page}`;
 const levels = () => C.S.tiers?.tiers.find((t) => t.id === 'free')?.levels ?? [];
 const levelName = (n) => levels().find((l) => l.level === n)?.name ?? FALLBACK[n] ?? '';
-const setBusy = (on) => document.getElementById('board-table')?.setAttribute('aria-busy', on ? 'true' : 'false');
+const setBusy = (on) => $('board-table')?.setAttribute('aria-busy', on ? 'true' : 'false');
 
 export function renderBoard(view, ctx) {
   C = ctx;
@@ -60,33 +61,34 @@ function goPage(page) {
 
 function refresh() {
   syncHead();
-  if (!paintCached()) { setBusy(true); if (!document.getElementById('board-body')?.children.length) placeholder(); }
+  if (!paintCached()) { setBusy(true); if (!$('board-body')?.children.length) placeholder(); }
   void load();
 }
 
 function syncHead() {
-  const head = document.getElementById('board-head'); if (!head) return;
+  const head = $('board-head'); if (!head) return;
   head.querySelector(':scope > .seg')?.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.board === C.S.board));
   const paid = C.S.board === 'round' || C.S.board === 'all';
-  let lv = document.getElementById('board-levels');
-  let tiers = document.getElementById('board-tiers');
+  let lv = $('board-levels');
+  let tiers = $('board-tiers');
   if (!paid) tiers?.remove();
   if (C.S.board !== 'free') lv?.remove();
   if (C.S.board === 'free' && !lv && levels().length) {
-    lv = el('div', { class: 'seg', id: 'board-levels', role: 'group', 'aria-label': 'Level' }, ...levels().map(({ level, name }) => el('button', { type: 'button', 'data-level': String(level), onclick: () => pickLevel(level) }, name)));
+    lv = pillGroupEl(levels().map(({ level, name }) => [level, name]), C.S.boardLevel, pickLevel, { id: 'board-levels', 'aria-label': 'Level' });
+    lv.querySelectorAll('button').forEach((b, i) => { b.dataset.level = String(levels()[i].level); });
     head.append(lv);
   }
-  if (paid && !document.getElementById('board-tiers')) {
+  if (paid && !$('board-tiers')) {
     tiers = el('div', { class: 'seg', id: 'board-tiers', role: 'group', 'aria-label': 'Shift' }, ...TIERS.map(([id, label, title]) => el('button', { type: 'button', 'data-tier': id, title, onclick: () => pickTier(id) }, label)));
     head.append(tiers);
   }
   lv?.querySelectorAll('button').forEach((b) => { const on = Number(b.dataset.level) === C.S.boardLevel; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
-  document.getElementById('board-tiers')?.querySelectorAll('button').forEach((b) => { const on = b.dataset.tier === C.S.boardTier; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+  $('board-tiers')?.querySelectorAll('button').forEach((b) => { const on = b.dataset.tier === C.S.boardTier; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
   paintBlurb();
 }
 
 function paintBlurb() {
-  const p = document.getElementById('board-blurb'); if (!p) return;
+  const p = $('board-blurb'); if (!p) return;
   const v = B.verifiedOnly ? ', verified' : '';
   const shadow = B.verifiedOnly === false ? ' (recording checks are shown in your profile, not enforced yet)' : '';
   const note = B.sort === 'distance' ? '' : ` Sorted by ${SORT_NOTE[B.sort]}. YOUR PLACE stays the distance rank.`;
@@ -103,7 +105,7 @@ function paintBlurb() {
 
 function placeholder() {
   setBusy(true);
-  document.getElementById('board-body')?.replaceChildren(el('tr', {}, el('td', { colspan: '6', class: 'empty' }, 'Loading the board…')));
+  $('board-body')?.replaceChildren(el('tr', {}, el('td', { colspan: '6', class: 'empty' }, 'Loading the board…')));
 }
 
 function paintCached() {
@@ -116,7 +118,7 @@ async function load() {
   if (C.S.board === 'free' && !C.S.tiers) { try { C.S.tiers = await api('tiers', undefined, { report: false }); } catch { /* the level buttons stay hidden; the board still loads */ } if (req !== B.req || C.S.tab !== 'board') return; syncHead(); }
   const q = new URLSearchParams({ board: C.S.board, sort: B.sort, page: String(B.page), me: '1' });
   if (C.S.board === 'free') q.set('level', String(C.S.boardLevel)); else q.set('tier', C.S.boardTier);
-  let j; try { j = await api(`leaderboard?${q}`, undefined, { report: false }); } catch (e) { if (req !== B.req || C.S.tab !== 'board') return; B.failed = true; setBusy(false); if (!cache.has(k)) document.getElementById('board-body')?.replaceChildren(el('tr', {}, el('td', { colspan: '6', class: 'bad' }, e.message))); return; }
+  let j; try { j = await api(`leaderboard?${q}`, undefined, { report: false }); } catch (e) { if (req !== B.req || C.S.tab !== 'board') return; B.failed = true; setBusy(false); if (!cache.has(k)) $('board-body')?.replaceChildren(el('tr', {}, el('td', { colspan: '6', class: 'bad' }, e.message))); return; }
   if (req !== B.req || C.S.tab !== 'board') return;
   cache.set(k, j); apply(j); C.track('leaderboard_filtered', { board: C.S.board });
 }
@@ -127,13 +129,13 @@ function apply(j) {
   if (j.rows) seedSnsBatch(j.rows);
   if (j.me) seedSns(j.me.wallet, j.me.sns);
   const sig = JSON.stringify([j.board, j.level, j.sort, j.page, j.total, j.rows, j.me, j.standing, j.verifiedOnly]);
-  if (B.shown === sig && document.getElementById('board-body')?.children.length) { setBusy(false); return; }
+  if (B.shown === sig && $('board-body')?.children.length) { setBusy(false); return; }
   B.shown = sig;
   paintStanding(j); paintTable(j); paintPager(j); setBusy(false);
 }
 
 function paintStanding(j) {
-  const box = document.getElementById('board-standing'); if (!box) return;
+  const box = $('board-standing'); if (!box) return;
   if (!j.standing) { box.hidden = true; box.replaceChildren(); return; }
   box.hidden = false;
   const rows = j.standing.filter((s) => s.board !== 'all');   // all-time places stay out while that board is off; this round's 1H / 4H / 8H stay
@@ -148,7 +150,7 @@ function paintStanding(j) {
 }
 
 function paintTable(j) {
-  const cols = document.getElementById('board-cols'), body = document.getElementById('board-body'); if (!cols || !body) return;
+  const cols = $('board-cols'), body = $('board-body'); if (!cols || !body) return;
   const prize = j.board === 'round' && j.sort === 'distance';   // the amber bar is the prize cut, and only the distance order is that cut
   const you = C.S.me.wallet;
   cols.replaceChildren(el('tr', {}, el('th', {}, '#'), el('th', {}, 'RIDER'), ...COLS.map(([id, label, title]) => el('th', { class: 'r', 'aria-sort': j.sort === id ? 'descending' : 'none' },
@@ -169,7 +171,7 @@ function line(r, you, prize, pin) {
 }
 
 function paintPager(j) {
-  const box = document.getElementById('board-pager'); if (!box) return;
+  const box = $('board-pager'); if (!box) return;
   const pages = Math.ceil(j.total / j.pageSize);
   if (pages <= 1) { box.hidden = true; box.replaceChildren(); return; }
   const from = (j.page - 1) * j.pageSize + 1, to = Math.min(j.page * j.pageSize, j.total);
@@ -177,3 +179,4 @@ function paintPager(j) {
   box.hidden = false;
   box.replaceChildren(btn('PREV', j.page - 1, false, j.page <= 1), ...Array.from({ length: pages }, (_, i) => btn(String(i + 1), i + 1, i + 1 === j.page, false)), btn('NEXT', j.page + 1, false, j.page >= pages), el('span', { class: 'dim' }, `${from}–${to} of ${j.total}`));
 }
+

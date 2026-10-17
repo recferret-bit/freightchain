@@ -80,6 +80,9 @@ test('validation refuses gameplay keys, broken parts and out-of-contract edits',
   bad({ ...rock, parts: [{ ...rock.parts[0], note: 'x'.repeat(201) }] }, /at most 200/);
   const loop = { id: 'loop-a', kind: 'part', v: 1, parts: [{ use: 'loop-a' }] };
   assert.throws(() => compileEntity(loop, { lookup: () => loop }), PlanError);
+  const ordered = { id: 'ord', kind: 'part', v: 1, vars: { zc: 'cabL / 2', cabL: 4 }, parts: [{ geo: 'box', mat: { color: 1 }, s: [1, 1, 'zc'], at: [0, 0.5, 0] }] };
+  assert.equal(toParts(compileEntity(ordered), {})[0].s[2], 2, 'a var may name one declared later in the object');
+  assert.throws(() => compileEntity({ id: 'cyc', kind: 'part', v: 1, vars: { a: 'b', b: 'a' }, parts: [] }), /unknown name|cycle/);
 });
 
 test('a huge but finite model is refused, and two params are checked together', () => {

@@ -1,3 +1,0 @@
-/* One yellow halo for every amber control. Hover is soft; the press is hotter. Beats .cta.ghost and .cta.sm. */
-:is(.cta, button:not(.share-x-btn, .stay, .reject, .x), a.watch):not(:disabled):is(:hover, :focus-visible){box-shadow:0 0 36px #ffb02eaa}
-:is(.cta, button:not(.share-x-btn, .stay, .reject, .x), a.watch):not(:disabled):active{box-shadow:0 0 12px #fff6, 0 0 48px #ffcf5aee}

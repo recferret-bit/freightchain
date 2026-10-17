@@ -119,6 +119,7 @@ function ripple(e) {
 }
 /** The ring plays out, then a short pause, then `run`. A second click during that wait does nothing. */
 function press(node, run) {
+  node.classList.add('amber');   /* the shared halo in css/amber-glow.css, on every host including the viewer */
   let pending = null, gone = false;
   node.addEventListener('pointerdown', e => { if (e.button === 0) pending = ripple(e); });
   node.addEventListener('click', e => {

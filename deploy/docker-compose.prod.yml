@@ -163,7 +163,7 @@ services:
       EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}   # shared with the mcp service; empty = no AI editor
       EDITOR_JOB_TIMEOUT_MS: ${EDITOR_JOB_TIMEOUT_MS:-600000}
       EDITOR_FAKE_LLM: "0"   # test switch – the server refuses 1 in production
-      # PostHog (docs/analytics/index.html). Production deploy/.env sets POSTHOG_ENABLED=1.
+      EDITOR_OPEN: "0"   # local switch – storybook without a wallet; the server refuses 1 in production
       # Empty or 0 stays off; POSTHOG_DISABLED=1 still wins. Local compose and server/.env pin 0.
       # main's schema strips these keys, so a deploy of main does not send. Listing them keeps a later merge from dropping the token.
       POSTHOG_KEY: ${POSTHOG_KEY:-}
@@ -281,6 +281,7 @@ services:
       EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}   # shared with the mcp service; empty = no AI editor
       EDITOR_JOB_TIMEOUT_MS: ${EDITOR_JOB_TIMEOUT_MS:-600000}
       EDITOR_FAKE_LLM: "0"   # test switch – the server refuses 1 in production
+      EDITOR_OPEN: "0"   # local switch – the server refuses 1 in production
 
   # The entity MCP (mcp/, docs/agents/editor.md): the 3d-assets skill as tools for the AI model editor. Internal network only, no published port,
   # no AI or wallet key – only the shared EDITOR_MCP_TOKEN. Started by release.sh only when EDITOR_MCP_TOKEN is set (without it the process refuses to run).

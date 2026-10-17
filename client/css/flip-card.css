@@ -1,0 +1,26 @@
+/* Shared 3D flip card (.oc on landing, .ac in lobby achievements) with Solana purple → green sweep. */
+:is(.oc,.ac){--sol1:#9945ff;--sol2:#14f195;display:flex;perspective:1000px;cursor:pointer}
+:is(.oc-in,.ac .in){flex:1;display:grid;transform-style:preserve-3d;transition:transform .75s cubic-bezier(.2,.8,.2,1)}
+:is(.oc,.ac) :is(.fr,.bk){grid-area:1/1;position:relative;overflow:hidden;min-width:0;border:1px solid transparent;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+:is(.oc,.ac) :is(.fr,.bk)::after{content:"";position:absolute;inset:-20% -60%;background:linear-gradient(105deg,transparent 38%,#9945ff66 44%,#00c2ff55 50%,#14f19566 56%,transparent 62%);transform:translateX(-100%);pointer-events:none;opacity:0}
+:is(.oc:is(.flip,:focus-within),.ac:is(.flip,:focus-visible,:has(a:focus-visible))) :is(.oc-in,.in){transform:rotateY(180deg)}
+:is(.oc:is(.flip,:focus-within),.ac:is(.flip,:focus-visible,:has(a:focus-visible))) .fr{visibility:hidden;transition:visibility 0s .38s}
+:is(.oc:is(.flip,:focus-within),.ac:is(.flip,:focus-visible)) :is(.fr,.bk)::after{animation:solsweep .85s ease-out}
+@media (hover:hover){
+  :is(.oc,.ac):hover :is(.oc-in,.in){transform:rotateY(180deg)}
+  :is(.oc,.ac):hover .fr{visibility:hidden;transition:visibility 0s .38s}
+  :is(.oc,.ac):hover :is(.fr,.bk)::after{animation:solsweep .85s ease-out}
+}
+@keyframes solsweep{0%{transform:translateX(-100%);opacity:1}100%{transform:translateX(100%);opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  :is(.oc-in,.ac .in){transition:none;transform:none!important}
+  :is(.oc,.ac) .bk{transform:none;opacity:0;transition:opacity .2s}
+  :is(.oc,.ac) .fr{transition:opacity .2s}
+  :is(.oc:is(.flip,:focus-within),.ac:is(.flip,:focus-visible,:has(a:focus-visible))) .bk{opacity:1}
+  :is(.oc:is(.flip,:focus-within),.ac:is(.flip,:focus-visible,:has(a:focus-visible))) .fr{opacity:0}
+  :is(.oc,.ac) :is(.fr,.bk)::after{display:none}
+}
+@media (prefers-reduced-motion:reduce) and (hover:hover){
+  :is(.oc,.ac):hover .bk{opacity:1}
+  :is(.oc,.ac):hover .fr{opacity:0}
+}

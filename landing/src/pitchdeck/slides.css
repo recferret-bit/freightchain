@@ -1,0 +1,231 @@
+/* Pitch deck slides 03–07 interactive components: chain cards & badge carousel, coin/bill drops, Gantt plan & sneak peek, secret tier ladder, GTM highway exit signs, truck, honks & obstacles. */
+
+/* 05 · the chain: six on-chain systems as cards (colour = --c per card). Hover / tap: the figure and text step aside for WHY it is needed and HOW it fits (.more). */
+.L-chain{grid-template-rows:auto 1fr;gap:34px}
+.L-chain h1{margin:0;font-size:116px}
+.L-chain h1::after{display:none}
+.cards5{display:grid;grid-template-columns:repeat(6,1fr);gap:18px;min-height:0}
+.cc{position:relative;display:flex;flex-direction:column;gap:14px;padding:24px 20px 20px;border-radius:16px;background:#0e0e0e;border:2px solid #232323;overflow:hidden;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .35s}
+.cc::before{content:"";position:absolute;left:0;top:0;right:0;height:6px;background:var(--c)}
+.cc:is(:hover,.hot){transform:translateY(-8px) scale(1.03);border-color:var(--c);box-shadow:0 0 44px color-mix(in srgb,var(--c) 30%,transparent)}
+.cc .st{align-self:flex-start;margin-top:6px;font:700 12px/1 var(--body);letter-spacing:1.5px;padding:7px 10px;border-radius:999px;border:1.5px solid var(--c);color:var(--c);white-space:nowrap}
+.cc h3{margin:0;font:400 48px/.98 var(--head);text-transform:uppercase;color:var(--c);min-height:2em}
+.cc .big{font:400 42px/.98 var(--head);text-transform:uppercase;color:var(--ink);min-height:2em}
+.cc>p{margin:0;font:500 21px/1.38 var(--body);color:#d6d6d6}
+.cc small{margin-top:auto;font:500 15px/1.3 var(--body);color:var(--muted)}
+.cc .big,.cc>p,.cc small,.cc .ach{transition:opacity .25s ease}
+.cc:is(:hover,.hot) .big,.cc:is(:hover,.hot)>p,.cc:is(:hover,.hot) small,.cc:is(:hover,.hot) .ach{opacity:0}
+.cc .more{position:absolute;left:0;right:0;top:172px;bottom:0;padding:0 20px 20px;display:flex;flex-direction:column;gap:8px;opacity:0;translate:0 26px;pointer-events:none;
+  transition:opacity .25s ease,translate .5s cubic-bezier(.2,.9,.3,1)}
+.cc .more h4{margin:10px 0 0;font:700 13px/1 var(--body);letter-spacing:3px;text-transform:uppercase;color:var(--c)}
+.cc .more p{margin:0;font:500 17px/1.4 var(--body);color:#eee}
+.cc:is(:hover,.hot) .more{opacity:1;translate:0 0;transition-delay:.08s}
+/* the soulbound badges: a carousel – the middle one big, its neighbours small and dim; each step the row slides one place */
+.ach{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.ach-stage{position:relative;width:calc(100% + 40px);margin:0 -20px;height:128px}
+.ci{position:absolute;left:50%;top:4px;width:120px;height:120px;margin-left:-60px;--s:.3;--op:0;
+  transform:translateX(calc(var(--o,0)*98px)) scale(var(--s));opacity:var(--op);
+  transition:transform .65s cubic-bezier(.45,0,.15,1),opacity .65s ease,filter .65s ease;filter:grayscale(.6) brightness(.8)}
+.ci[data-o="0"]{--s:1;--op:1;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--c) 50%,transparent))}
+.ci[data-o="-1"],.ci[data-o="1"]{--s:.52;--op:.42}
+.ach-ring{z-index:3;position:absolute;left:50%;top:4px;width:120px;height:120px;margin-left:-60px;border-radius:50%;border:3px solid var(--c);opacity:0;pointer-events:none}
+.ach-ring.go{animation:achring .95s ease-out both}
+.ach-ring.go:nth-of-type(2){animation-delay:.16s}
+@keyframes achring{0%{transform:scale(.2);opacity:.95}70%{opacity:.5}100%{transform:scale(1.6);opacity:0}}
+.ci.pop{animation:achpop .55s ease-out}
+@keyframes achpop{0%{scale:1}35%{scale:1.07}100%{scale:1}}
+.ach-cap{display:grid;gap:3px;min-height:72px;align-content:start}
+.ach-cap em{font:700 12px/1 var(--body);letter-spacing:3px;font-style:normal;color:var(--c)}
+.ach-cap b{font:400 26px/1 var(--head);text-transform:uppercase;color:#fff}
+.ach-cap span{font:500 14px/1.25 var(--body);color:var(--muted)}
+.ach-cap.swap{animation:achcap .55s ease-out both}
+@keyframes achcap{0%{opacity:0;translate:26px 0}100%{opacity:1;translate:0 0}}
+@media (prefers-reduced-motion:reduce){.cc,.cc .more,.ci,.ach-cap,.ach-ring{transition:none!important;animation:none!important}}
+
+/* slide 3's DONATIONS and WEB3 ADOPTION bullets are buttons: it shakes now and then like the cards; a click drops SOL coins onto the stage (#coins, script) and pops a donation toast */
+.pts li:is(.don,.adopt){width:fit-content;cursor:pointer;transform-origin:30% 50%;transition:scale .3s cubic-bezier(.2,.8,.2,1),text-shadow .3s}
+@media (hover:hover){.pts li:is(.don,.adopt):hover{scale:1.05;text-shadow:0 0 18px #14f19566}}   /* not on a phone: iOS Safari takes a tap on an element whose :hover changes as the hover itself and swallows the click */
+.pts li:is(.don,.adopt):active{scale:.97}
+#coins{position:absolute;left:0;top:0;width:100%;height:100%;z-index:9;pointer-events:none}   /* over the slides, under the page counter and the bar */
+.sol-toast{position:absolute;z-index:11;translate:-50% -50%;display:grid;gap:6px;justify-items:center;padding:16px 26px;border-radius:16px;background:#050505e6;border:2px solid #14f195;
+  box-shadow:0 0 34px #14f19555,0 0 60px #9945ff44;pointer-events:none;animation:soltoast 2.4s cubic-bezier(.2,.8,.2,1) both}
+.sol-toast b{font:400 54px/1 var(--head);background:var(--sol);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sol-toast span{font:700 15px/1 var(--body);letter-spacing:3px;color:#fff}
+@keyframes soltoast{0%{opacity:0;transform:translateY(24px) scale(.5)}14%{opacity:1;transform:translateY(0) scale(1.12)}24%{transform:scale(1)}75%{opacity:1;transform:translateY(-34px)}100%{opacity:0;transform:translateY(-70px)}}
+@media (prefers-reduced-motion:reduce){.sol-toast,.usd,.bill{animation:none}.pts li:is(.don,.adopt){transition:none}}
+/* a coin under the pointer can be grabbed (script toggles these on the stage) */
+#stage.coin-over,#stage.coin-over *{cursor:grab!important}
+#stage.coin-drag,#stage.coin-drag *{cursor:grabbing!important;user-select:none;-webkit-user-select:none}
+
+/* 06 · the plan: a four-month Gantt – month ruler, one lane per workstream, bars that draw in left to right when the slide shows; hover / tap swaps a bar's label for what it means */
+.L-plan{grid-template-rows:auto 1fr;gap:26px}
+.L-plan h1{margin:0;font-size:104px}
+.L-plan h1::after{display:none}
+.plan{position:relative;display:grid;grid-template-columns:270px repeat(4,1fr);grid-auto-rows:minmax(0,1fr);row-gap:10px;min-height:0}
+.plan::before{content:"";position:absolute;left:270px;right:0;top:0;bottom:0;pointer-events:none;background:repeating-linear-gradient(90deg,#ffffff1c 0 2px,transparent 2px 25%)}
+.plan .pr{grid-row:1;display:flex;align-items:flex-end;justify-content:center;gap:12px;padding-bottom:8px;border-bottom:2px solid #2a2a2a}
+.plan .pr.mo b{font:400 44px/1 var(--head);color:var(--ink);letter-spacing:2px}
+.plan .pr.mo small{font:600 15px var(--body);letter-spacing:2px;color:var(--muted);padding-bottom:5px}
+.plan .pr.today{grid-column:1;justify-content:flex-start}
+.plan .pin{display:inline-flex;align-items:center;gap:12px;font:700 15px var(--body);letter-spacing:3px;color:var(--good)}
+.plan .pin i{position:relative;width:12px;height:12px;border-radius:50%;background:var(--good)}
+.plan .pin i::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--good);animation:pinpulse 2s ease-out infinite}
+@keyframes pinpulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.8);opacity:0}}
+.plan .pl{grid-column:1;display:flex;flex-direction:column;justify-content:flex-start;gap:4px;padding:5px 18px 0 0;margin:5px 0 0}   /* the label hangs from the same top line as its bar (the bar's 5 px margin + its border) */
+.plan .pl b{font:400 31px/1 var(--head);margin-top:-5px;text-transform:uppercase;color:var(--c);letter-spacing:.5px}
+.plan .pl small{font:500 16px var(--body);color:var(--muted)}
+.plan .bar{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:0 24px 0 26px;margin:5px 0;border-radius:14px;overflow:hidden;cursor:pointer;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 34%,#0b0b0b),color-mix(in srgb,var(--c) 14%,#0b0b0b));border:2px solid color-mix(in srgb,var(--c) 70%,#0b0b0b);border-left:8px solid var(--c);
+  clip-path:inset(-30px 100% -30px -30px);transition:clip-path .2s ease,scale .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}   /* leaving: every bar wipes out at once, quickly – a staggered wipe-out left the later bars drawn when the slide came back within a second, so only the first ones animated */
+.plan .bar::after{content:"◆";position:absolute;right:16px;top:50%;translate:0 -50%;font-size:22px;color:var(--c)}
+.slide.on .plan .bar{clip-path:inset(-30px -30px -30px -30px);transition:clip-path .9s cubic-bezier(.2,.8,.2,1) calc(var(--i)*.11s + .25s),scale .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}   /* opening: they draw in one after another */
+.plan .bar:is(:hover,.hot){scale:1.025;box-shadow:0 0 34px color-mix(in srgb,var(--c) 40%,transparent)}
+.plan .bar b{font:700 21px/1.15 var(--body);color:#fff;letter-spacing:.5px;text-transform:uppercase;padding-right:36px}
+.plan .bar small{font:500 16px/1.2 var(--body);color:color-mix(in srgb,var(--c) 75%,#fff)}
+.plan .bar p{position:absolute;left:26px;right:48px;top:50%;translate:0 -42%;margin:0;font:500 17px/1.3 var(--body);color:#fff;opacity:0;transition:opacity .25s ease,translate .4s cubic-bezier(.2,.9,.3,1)}
+.plan .bar.n1 p{font-size:15px;line-height:1.22}   /* a one-month bar is narrow: its three lines must fit the 7-lane height */
+.plan .bar b,.plan .bar small{transition:opacity .25s ease}
+.plan .bar:is(:hover,.hot) b,.plan .bar:is(:hover,.hot) small{opacity:0}
+.plan .bar:is(:hover,.hot) p{opacity:1;translate:0 -50%;transition-delay:.1s}
+@media (prefers-reduced-motion:reduce){.plan .bar,.plan .bar p,.plan .bar b,.plan .bar small,.plan .pin i::after{transition:none!important;animation:none!important}.plan .bar{clip-path:none}}
+/* WEB3 ADOPTION pays out: a "+$" rises and fades, a bill is thrown up and falls away spinning (--dx / --dy / --rot set per pop) */
+.usd{position:absolute;z-index:11;translate:-50% -50%;pointer-events:none;font:400 40px/1 var(--head);color:#7cff7c;text-shadow:0 0 16px #14f19599,0 2px 0 #050505;white-space:nowrap;animation:usdup 1.3s cubic-bezier(.2,.8,.2,1) both}
+.bill{position:absolute;z-index:11;translate:-50% -50%;pointer-events:none;font-size:44px;line-height:1;animation:billout 1.1s cubic-bezier(.25,.6,.4,1) both}
+@keyframes usdup{0%{opacity:0;transform:translateY(8px) scale(.6)}18%{opacity:1;transform:translateY(-6px) scale(1.15)}100%{opacity:0;transform:translate(var(--dx,0px),-90px) scale(1)}}
+@keyframes billout{0%{opacity:0;transform:scale(.3)}15%{opacity:1}60%{opacity:1;transform:translate(var(--dx),var(--dy)) rotate(calc(var(--rot) * .6)) scale(1)}100%{opacity:0;transform:translate(calc(var(--dx) * 1.25),calc(var(--dy) + 260px)) rotate(var(--rot)) scale(.8)}}
+
+/* plan slide: the storybook sneak peek floats top right, beside the headline */
+.L-plan .peek{position:absolute;right:var(--pr);top:calc(var(--pt) - 26px);width:470px;height:218px;z-index:4}
+.L-plan .peek-card{width:470px;height:218px;right:0;top:0;--r:2.5deg;--k:30;--dl:-1.2s}
+.L-plan .peek-card img{object-position:50% 50%}
+.L-plan .peekb{position:absolute;left:-44px;bottom:-14px;font-size:13px;letter-spacing:2px;padding:9px 16px;background:#9945ff;color:#fff}
+.L-plan .peekb .dot{background:#fff}
+
+/* slide 4: the tiers are buttons; a click hangs the SECRET tier under that one (.open) – it drops in on its own chain link with an overshoot and goes back up on the next click */
+.ladders{position:relative}
+.ladder li{position:relative;padding:16px 14px;border-radius:var(--radius);border:2px dashed var(--line);color:var(--muted);cursor:pointer;user-select:none;-webkit-user-select:none;transition:translate .3s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .3s}
+@media (hover:hover){.ladder li:hover{translate:0 -4px;box-shadow:0 0 22px #14f19544}}
+.ladder.secret{position:absolute;left:0;right:0;top:100%;margin:16px 0 0;pointer-events:none}
+.ladder.secret li{border:2px dashed #9945ff;background:repeating-linear-gradient(135deg,#9945ff1c 0 10px,#0000 10px 20px);color:#c9a6ff;opacity:0;transform:translateY(-34px) rotateX(85deg) scale(.8);transform-origin:50% 0;
+  transition:opacity .25s ease .35s,transform .6s cubic-bezier(.6,0,.8,-.6),translate .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s}
+.ladder.secret li b{color:#b98cff;font-variant-numeric:tabular-nums}
+.ladder.secret li::before{content:"";position:absolute;left:50%;top:-18px;width:6px;height:14px;margin-left:-3px;border:2px solid #9945ff;border-radius:4px;opacity:.85}
+.ladder.secret li:hover{box-shadow:0 0 22px #9945ff66}
+.ladder.secret li.open{opacity:1;transform:none;pointer-events:auto;transition:opacity .25s ease,transform .6s cubic-bezier(.2,1.6,.4,1),translate .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s}
+@media (prefers-reduced-motion:reduce){.ladder li,.ladder.secret li{transition:none!important}}
+#s-play .copy{transition:translate .6s cubic-bezier(.2,.8,.2,1) .35s}
+#s-play .copy:has(.secret li.open){translate:0 -70px;transition-delay:0s}
+@media (prefers-reduced-motion:reduce){#s-play .copy{transition:none}}
+
+/* the sneak peek steps through its screenshots: stacked, one visible, a crossfade + slow settle */
+.L-plan .peek-card .pk-imgs{position:absolute;inset:0;display:block}
+.L-plan .peek-card .pk-imgs img{position:absolute;inset:0;opacity:0;transition:none!important;filter:none!important}
+.L-plan .peek-card .pk-imgs img.on{opacity:1}
+.L-plan .peek-card .pk-flash{position:absolute;inset:0;z-index:1;background:linear-gradient(115deg,#9945ff,#14f195);mix-blend-mode:screen;opacity:0;pointer-events:none}
+.L-plan .peek-card .pk-flash.go{animation:pkflash .38s ease-out}
+@keyframes pkflash{0%{opacity:.95}100%{opacity:0}}
+.L-plan .peek-card .pk-name{position:absolute;right:14px;bottom:12px;z-index:2;font:700 14px/1 var(--body);font-style:normal;letter-spacing:2px;text-transform:uppercase;padding:7px 12px;border-radius:999px;background:#000b;color:#14f195;border:1px solid #14f19566}
+.L-plan .peek-card .pk-name.flip{animation:pkname .5s ease-out}
+@keyframes pkname{from{opacity:0;translate:0 10px}to{opacity:1;translate:0 0}}
+@media (prefers-reduced-motion:reduce){.L-plan .peek-card .pk-flash{display:none}}
+
+.fx .peekb:is(:hover,.hot){background:#fff;color:#9945ff;box-shadow:0 0 28px 4px #9945ff88}
+.fx .peekb.pop{animation:float 5s ease-in-out -1.5s infinite,badgepop .5s ease-out 1}
+
+/* opening the plan slide: everything starts invisible and tweens in */
+.L-plan .plan::before{opacity:0;clip-path:inset(0 0 100% 0);transition:opacity .2s,clip-path .2s}
+.L-plan .pr.mo,.L-plan .pr.today{opacity:0;translate:0 -22px;transition:opacity .2s,translate .2s}
+.L-plan .pl{opacity:0;translate:-34px 0;transition:opacity .2s,translate .2s}
+.L-plan .peek{opacity:0;scale:.82;translate:40px -20px;transition:opacity .2s,scale .2s,translate .2s}
+.L-plan.on .plan::before{opacity:1;clip-path:inset(0 0 0 0);transition:opacity .5s .3s,clip-path 1s cubic-bezier(.3,.7,.2,1) .3s}
+.L-plan.on .pr.mo,.L-plan.on .pr.today{opacity:1;translate:0 0;transition:opacity .45s ease calc(.15s + var(--m,0)*.12s),translate .65s cubic-bezier(.2,1.2,.3,1) calc(.15s + var(--m,0)*.12s)}
+.L-plan.on .pl{opacity:1;translate:0 0;transition:opacity .45s ease calc(.4s + var(--i)*.11s),translate .6s cubic-bezier(.2,.9,.3,1) calc(.4s + var(--i)*.11s)}
+.L-plan.on .peek{opacity:1;scale:1;translate:0 0;transition:opacity .5s ease .9s,scale .8s cubic-bezier(.2,1.3,.3,1) .9s,translate .8s cubic-bezier(.2,1.1,.3,1) .9s}
+@media (prefers-reduced-motion:reduce){.L-plan .plan::before,.L-plan .pr,.L-plan .pl,.L-plan .peek{opacity:1!important;translate:0 0!important;scale:1!important;clip-path:none!important;transition:none!important}}
+
+#s-insight .pts li.don{transition:scale .3s cubic-bezier(.2,.8,.2,1),text-shadow .3s,translate 1.4s cubic-bezier(.45,0,.25,1)}
+#s-insight .shot.clip{margin-top:var(--wy,0px)}
+
+/* 07 · go to market: six highway exit signs on posts over a road; hover / tap flips a sign to its back and the truck drives under it */
+.L-gtm{grid-template-rows:auto 1fr;gap:30px}
+.L-gtm .copy{display:flex;align-items:flex-end;justify-content:space-between;gap:40px;align-self:start}
+.L-gtm h1{margin:0;font-size:104px}
+.L-gtm h1::after{display:none}
+.gfine{margin:0 0 8px;text-align:right;font:700 15px/1.7 var(--body);letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)}
+.exits{position:relative;display:flex;flex-direction:column;min-height:0}
+.exits .row{flex:1;display:grid;grid-template-columns:repeat(6,1fr);gap:22px;min-height:0}
+.exit{--g:#0b6b3a;--sh:370px;position:relative;perspective:1200px;cursor:pointer;user-select:none;-webkit-user-select:none}
+.exit.sol{--g:#5b2bb0}
+.exit .sign{position:relative;z-index:1;height:var(--sh);margin-top:22px;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.3,1.3,.4,1)}
+.exit:is(:hover,.hot) .sign{transform:rotateY(180deg)}
+.exit .f,.exit .bk{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;padding:30px 20px 20px;border-radius:14px;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  background:var(--g);box-shadow:inset 0 0 0 5px var(--g),inset 0 0 0 8px #fff,0 18px 40px #000a}
+.exit.sol .f,.exit.sol .bk{background:linear-gradient(135deg,#9945ff,#14c98a)}
+.exit .bk{transform:rotateY(180deg);background:color-mix(in srgb,var(--g) 70%,#050505);justify-content:center}
+.exit.sol .bk{background:linear-gradient(135deg,#4a1f8f,#0d6e4f)}
+.exit .f,.exit .bk{transition:opacity 0s .09s}
+.exit .bk{opacity:0}
+.exit:is(:hover,.hot) .bk{opacity:1}
+.exit:is(:hover,.hot) .f{opacity:0}
+.exit .tab{position:absolute;right:18px;top:-20px;padding:6px 12px;border-radius:7px 7px 0 0;background:var(--accent);color:#050505;font:700 14px/1 var(--body);letter-spacing:2px}
+.exit .f b{font:400 48px/.95 var(--head);text-transform:uppercase;color:#fff}
+.exit .f small{font:600 17px/1.4 var(--body);color:#dff5e8}
+.exit .f em{margin-top:auto;display:flex;align-items:center;gap:12px;font:400 34px/1 var(--head);font-style:normal;color:#fff;letter-spacing:1px}
+.exit .f em i{font-style:normal;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;border:3px solid #fff;font:700 24px/1 var(--body)}
+.exit .bk p{margin:0;font:500 19px/1.45 var(--body);color:#fff}
+.exit .post{position:absolute;top:calc(var(--sh) + 22px);bottom:0;width:10px;margin-left:-5px;border-radius:3px;background:linear-gradient(90deg,#9a9a9a,#5c5c5c)}
+.exit .post:nth-of-type(1){left:28%}
+.exit .post:nth-of-type(2){left:72%}
+.hwy{position:relative;height:150px;flex:none;border-radius:10px;overflow:hidden;background:linear-gradient(#1b1b1b,#101010);border-top:4px solid #e8e8e8;border-bottom:4px solid #e8e8e8}
+.hwy .lane{position:absolute;left:0;right:0;top:calc(50% - 3px);height:6px;background:repeating-linear-gradient(90deg,var(--accent) 0 46px,transparent 46px 86px)}
+.hwy .warp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.truck{position:absolute;left:0;bottom:8px;z-index:4;width:236px;transform:translateX(var(--tx,0px));transition:transform 1.1s cubic-bezier(.45,0,.2,1),translate .45s cubic-bezier(.3,1.3,.5,1),width .45s cubic-bezier(.3,1.3,.5,1),margin .45s cubic-bezier(.3,1.3,.5,1)}
+.truck.up{z-index:2;translate:0 -40px;width:203px;margin-left:16.5px}
+.truck svg{display:block;width:100%;transform-origin:50% 100%;cursor:pointer;transition:scale .3s ease;animation:rumble .14s linear infinite alternate}
+.truck.swerve svg{animation:swerve .48s ease-in-out}
+@keyframes rumble{from{rotate:-.3deg}to{rotate:.3deg}}
+@keyframes swerve{30%{rotate:-5deg}70%{rotate:3deg}}
+.truck.back svg{scale:-1 1}
+.truck .wh{transform-box:fill-box;transform-origin:center}
+.truck .wh{animation:spin calc(.5s / var(--f,1)) linear infinite}
+.truck:is(.go,.swerve) .wh{animation-duration:calc(.22s / var(--f,1))}
+.truck{filter:drop-shadow(-16px 0 calc(var(--k,0) * 18px) rgb(20 241 149 / calc(var(--k,0) * 85%)))}
+@keyframes spin{to{rotate:360deg}}
+.L-gtm .exit{opacity:0;translate:0 -60px;transition:opacity .15s,translate .15s}
+.L-gtm.on .exit{opacity:1;translate:0 0;transition:opacity .4s ease calc(.25s + var(--i) * .13s),translate .75s cubic-bezier(.2,1.4,.3,1) calc(.25s + var(--i) * .13s)}
+.L-gtm .truck svg{translate:-560px 0;transition:translate .15s,scale .3s ease}
+.L-gtm.on .truck svg{translate:0 0;transition:translate 1.6s cubic-bezier(.2,.8,.2,1) .3s,scale .3s ease}
+@media (prefers-reduced-motion:reduce){.exit .sign,.L-gtm .exit,.L-gtm .truck,.L-gtm .truck svg{transition:none!important}.hwy .lane,.truck .wh{animation:none!important}}
+
+/* the truck honks (hover / tap): a comic HONK!, three sound rings off the cab front, three exhaust puffs off the stack; a counter on the road */
+.honk{position:absolute;z-index:6;width:0;height:0;pointer-events:none}
+.honk b{position:absolute;left:0;bottom:24px;font:400 66px/1 var(--head);color:var(--accent);-webkit-text-stroke:3px #050505;paint-order:stroke fill;text-shadow:0 6px 0 #050505;white-space:nowrap;rotate:-8deg;animation:honkpop 1.15s cubic-bezier(.2,1.4,.3,1) both}
+.honk i{position:absolute;left:-26px;top:-26px;width:52px;height:52px;border-radius:50%;border:5px solid transparent;border-right-color:#fff;animation:honkring .75s ease-out both}
+.honk em{position:absolute;left:-58px;top:-58px;width:26px;height:26px;border-radius:50%;background:#b8b8b8;animation:puff .9s ease-out both}
+@keyframes honkpop{0%{opacity:0;scale:.3;translate:0 20px}20%{opacity:1;scale:1.15;translate:0 0}35%{scale:1}75%{opacity:1}100%{opacity:0;translate:14px -46px}}
+@keyframes honkring{0%{opacity:.95;scale:.4}100%{opacity:0;scale:2.8}}
+@keyframes puff{0%{opacity:.85;scale:.4}100%{opacity:0;scale:2.4;translate:-70px -80px}}
+.honks{position:absolute;right:18px;top:10px;font:700 14px/1 var(--body);letter-spacing:2px;color:var(--muted);opacity:0;transition:opacity .4s}
+.honks.on{opacity:1}
+.honks b{color:var(--accent);font-size:18px}
+.ob{position:absolute;left:0;top:75%;z-index:3;pointer-events:none}
+.ob.far{top:25%;z-index:1;scale:.86}
+.ob.hole{width:84px;height:22px;border-radius:50%;background:radial-gradient(#000 45%,#2a1d12 75%);box-shadow:0 0 0 3px #ff7a2e88}
+.ob.cone{width:34px;height:46px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(#ff7a2e 30%,#fff 30% 45%,#ff7a2e 45% 70%,#fff 70% 82%,#ff7a2e 82%)}
+.ob.barrier{width:76px;height:30px;border-radius:4px;background:repeating-linear-gradient(135deg,#ff3b2f 0 12px,#fff 12px 24px);box-shadow:0 3px 0 #000}
+.ob.hit{animation:obhit .6s ease-out forwards}
+.ob.gone{opacity:0;transition:opacity .45s}
+@keyframes obhit{to{opacity:0;rotate:-40deg;margin-top:-70px}}
+.lanes-ctl{position:absolute;right:-96px;bottom:0;height:150px;display:flex;flex-direction:column;justify-content:center;gap:12px}
+.lanes-ctl[hidden]{display:none!important}
+.touch .lanes-ctl{position:fixed;z-index:32;right:12px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 86px);height:auto;gap:8px}
+.touch .ln{width:88px;height:72px;font-size:36px}
+@media (max-width:700px),(max-height:500px){.touch .lanes-ctl{right:8px;bottom:62px}.touch .ln{width:60px;height:52px;font-size:30px}}
+.ln{width:70px;height:58px;border-radius:12px;border:2px solid #2a2a2a;background:#0e0e0e;color:#9a9a9a;font:700 24px var(--body);cursor:pointer;transition:background-color .2s,color .2s,border-color .2s,scale .25s cubic-bezier(.2,1.4,.3,1)}
+.ln:hover{border-color:#fff;color:#fff}
+.lanes-ctl.warn .ln{border-color:var(--accent);color:var(--accent);animation:lnwarn .45s ease-in-out infinite alternate}
+.lanes-ctl.to-up .ln.up,.lanes-ctl.to-dn .ln.dn{background:var(--accent);color:#050505;scale:1.12}
+@keyframes lnwarn{to{box-shadow:0 0 22px 4px #ffcf5a88}}
+@media (prefers-reduced-motion:reduce){.truck svg{animation:none!important}}
+.mint{position:absolute;left:-16px;top:-16px;z-index:7;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#050505;font:400 19px/1 var(--head);box-shadow:0 0 0 3px #050505,0 0 18px #ffcf5a99;pointer-events:none}

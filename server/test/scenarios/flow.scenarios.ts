@@ -44,14 +44,14 @@ export function flowScenarios(h: () => Harness): void {
       const opened = await desk.post('/api/auth/pair').send({}).expect(200);
       expect(opened.body.id).toMatch(/^[0-9a-f]{32}$/);
       expect(opened.body.secret).toBeUndefined();
-      expect(opened.headers['set-cookie'].join(';')).toMatch(/fc_pair=/);
+      expect(String(opened.headers['set-cookie'])).toMatch(/fc_pair=/);
       await desk.get(`/api/auth/pair/${opened.body.id}`).expect(200).expect({ status: 'pending' });
       await anon().get(`/api/auth/pair/${opened.body.id}`).expect(404);
       const phone = await login(wallet(), { offer: false });
       await phone.agent.post(`/api/auth/pair/${opened.body.id}/claim`).send({}).expect(200);
       const ready = await desk.get(`/api/auth/pair/${opened.body.id}`).expect(200);
       expect(ready.body).toEqual({ status: 'ready', wallet: phone.address });
-      expect(ready.headers['set-cookie'].join(';')).toMatch(/fc_session=/);
+      expect(String(ready.headers['set-cookie'])).toMatch(/fc_session=/);
       await desk.get('/api/me').expect(200);
       await desk.get(`/api/auth/pair/${opened.body.id}`).expect(404);
     });

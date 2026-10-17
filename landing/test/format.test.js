@@ -34,15 +34,19 @@ test('hue: stable and inside the colour wheel', () => {
 test('driven: seconds below a minute, minutes below an hour, then hours with one decimal', () => { assert.equal(driven(0), '0 s'); assert.equal(driven(19.4), '19 s'); assert.equal(driven(630), '11 min'); assert.equal(driven(3600), '1.0 h'); assert.equal(driven(37_800), '10.5 h'); });
 test('hours: minutes below an hour, whole hours above', () => { assert.equal(hours(300), '5 min'); assert.equal(hours(1800), '30 min'); assert.equal(hours(3600), '1 h'); assert.equal(hours(28_800), '8 h'); });
 
-test('ago: coarse relative time', () => {
+test('ago: coarse relative time (standard and compact)', () => {
   assert.equal(ago(0), 'just now'); assert.equal(ago(59_000), 'just now'); assert.equal(ago(120_000), '2 min ago'); assert.equal(ago(7_200_000), '2 h ago'); assert.equal(ago(172_800_000), '2 d ago'); assert.equal(ago(-1000), 'just now');
+  assert.equal(ago(120_000, true), '2m ago'); assert.equal(ago(7_200_000, true), '2h ago'); assert.equal(ago(172_800_000, true), '2d ago');
 });
 
 test('plural: one vs many, irregular plurals', () => {
   assert.equal(plural(1, 'ride'), '1 ride'); assert.equal(plural(0, 'ride'), '0 rides'); assert.equal(plural(2, 'paid entry', 'paid entries'), '2 paid entries'); assert.equal(plural(1, 'paid entry', 'paid entries'), '1 paid entry');
 });
 
-test('label tables cover every tier and route the server can send', () => {
-  for (const t of ['free', '1h', '4h', '8h']) { assert.ok(TIER[t]); assert.ok(TIER_LONG[t]); }
+test('label tables cover every tier and route the server can send', async () => {
+  const { km1, TIER_NAME } = await import('../../client/site/ui.js');
+  assert.equal(km1(0), '0.0'); assert.equal(km1(12_340), '12.3'); assert.equal(km1(-50), '0.0');
+  for (const t of ['free', '1h', '4h', '8h']) { assert.ok(TIER[t]); assert.ok(TIER_LONG[t]); assert.ok(TIER_NAME[t]); }
   for (const r of ['route66', 'stuart', 'siberia', 'brenner', 'panamerican']) assert.ok(ROUTE[r]);
 });
+

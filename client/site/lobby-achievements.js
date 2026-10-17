@@ -1,6 +1,8 @@
 /* The profile's ACHIEVEMENTS: one ladder per family (3-4 tiers, easy → hard), each tier an earned or a locked card. An earned card shows its badge art and the state of
    its soulbound compressed NFT (docs/agents/achievements.md); a locked one shows the badge in steel and how far along the rider is. Server text only through textContent. */
 import { el } from './dom.js';
+import { bindFlipCards } from './effects.js';
+import { extLink } from './ui.js';
 import { CLUSTER, explorerTx, explorerUrl, shortAddr, xIntent } from './pools.js';
 
 /** the art: /site/img/achievements/<id>.svg (earned) and <id>-locked.svg, drawn by design/achievements/generate.mjs. Resolved from this module so a split-host lobby finds it. */
@@ -24,7 +26,7 @@ const fmtDate = t => new Date(t).toLocaleDateString(undefined, { day: 'numeric',
 function nftLinksRow(a, track) {
   const n = a.nft, click = link => () => track('achievement_nft_clicked', { achievement_id: a.id, tier: a.tier, link });
   if (n && n.status === 'minted' && n.assetId) {
-    const links = nftLinks(n.assetId, n.signature), ln = (k, label, href, extra = {}) => el('a', { href, target: '_blank', rel: 'noopener', onclick: click(k), ...extra }, label);
+    const links = nftLinks(n.assetId, n.signature), ln = (k, label, href, extra = {}) => extLink(href, { onclick: click(k), ...extra }, label);
     return el('span', { class: 'lk' },
       ln('explorer', 'cNFT', links[0][2], { title: `soulbound compressed NFT ${n.assetId} (Solana Explorer)` }),
       links.slice(1).map(([k, label, href]) => ln(k, label, href)),
@@ -49,9 +51,7 @@ function card(a, track, next, i) {
     el('span', { class: 'ds' }, a.desc),
     earned ? [el('span', { class: 'when' }, `unlocked ${fmtDate(a.earnedAt)}`), nftLinksRow(a, track)] : [prog(), el('span', { class: 'when dim' }, 'earn it to get a soulbound cNFT')]);
   const c = el('div', { class: `ac t${a.tier}${earned ? ' got' : ' lock'}${next ? ' next' : ''}`, 'data-id': a.id, 'data-tier': a.tier, tabindex: 0, role: 'button', 'aria-label': `${a.name} – details`, 'aria-expanded': 'false', style: `--i:${i}`, title: 'Hover or tap for details' }, el('div', { class: 'in' }, front, back));
-  const flip = () => { const on = c.classList.toggle('flip'); c.setAttribute('aria-expanded', String(on)); };
-  c.addEventListener('click', e => { if (!e.target.closest('a')) flip(); });
-  c.addEventListener('keydown', e => { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); flip(); } });
+  bindFlipCards([c]);
   return c;
 }
 
@@ -65,9 +65,10 @@ export function achievementsSection(achievements, track = () => {}, badgeChain =
       el('h3', {}, FAMILY_TITLE[f] ?? f.toUpperCase()),
       el('div', { class: 'ladder' }, (list => { const nextId = list.find(a => !a.earnedAt)?.id; return list.map((a, i) => card(a, track, a.id === nextId, i)); })(mintable.filter(a => a.family === f).sort((x, y) => x.tier - y.tier)))))),
     ...achievements.filter(a => a.awardedAtRoundClose).map(a => el('div', { class: 'a lock soon' }, el('span', { class: 'ic' }, a.icon), el('span', { class: 'nm' }, a.name), el('span', { class: 'ds' }, a.desc), el('span', { class: 'when' }, 'awarded when the round closes'))),
-    ...(badgeChain ? [el('p', { class: 'dim ach-chain' }, 'The badge collection ', el('a', { href: explorerUrl(badgeChain.collection), target: '_blank', rel: 'noopener', onclick: () => track('achievement_nft_clicked', { link: 'collection' }) }, `${shortAddr(badgeChain.collection)} ↗`),
-      ' · Merkle tree ', el('a', { href: explorerUrl(badgeChain.tree), target: '_blank', rel: 'noopener', onclick: () => track('achievement_nft_clicked', { link: 'tree' }) }, `${shortAddr(badgeChain.tree)} ↗`),
+    ...(badgeChain ? [el('p', { class: 'dim ach-chain' }, 'The badge collection ', extLink(explorerUrl(badgeChain.collection), { onclick: () => track('achievement_nft_clicked', { link: 'collection' }) }, `${shortAddr(badgeChain.collection)} ↗`),
+      ' · Merkle tree ', extLink(explorerUrl(badgeChain.tree), { onclick: () => track('achievement_nft_clicked', { link: 'tree' }) }, `${shortAddr(badgeChain.tree)} ↗`),
       ' · Phantom, Solflare and Backpack list them under your collectibles; if a wallet or marketplace does not show them yet, the links on the back of each badge always do.')] : []),
     el('p', { class: 'dim' }, 'Every achievement is minted as a soulbound compressed NFT to your wallet (Solana) a little after you earn it – it can’t be sold or moved, and it can’t be lost.'),
   ];
 }
+

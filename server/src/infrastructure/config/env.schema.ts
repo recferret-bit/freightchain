@@ -107,6 +107,8 @@ export const envSchema = z
     ADMIN_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(120),
     /** wallets that may use the 3D model editor on storybook.<apex> (/api/editor/*), comma-separated; empty = no editor (every editor route is a 404) */
     EDITOR_WALLETS: z.string().default(''),
+    /** LOCAL ONLY: storybook skips the wallet sign-in and acts as the first EDITOR_WALLETS address. Refused in production. */
+    EDITOR_OPEN: z.enum(['0', '1']).default('0'),
     /** the editor session's own signing key; unset = derived from JWT_SECRET (never the player's or the admin's bytes) */
     EDITOR_JWT_SECRET: optional(z.string().min(32, 'EDITOR_JWT_SECRET must be at least 32 characters')),
     /** how long an editor sign-in lasts (minutes); the wallet signs again after it */
@@ -162,6 +164,7 @@ export const envSchema = z
     if (env.PAYMENT_MODE === 'program' && !env.TICKET_PROGRAM_ID) ctx.addIssue({ code: 'custom', path: ['TICKET_PROGRAM_ID'], message: 'TICKET_PROGRAM_ID must be set when PAYMENT_MODE=program' });
     if (env.NODE_ENV === 'production') {
       if (env.EDITOR_FAKE_LLM === '1') ctx.addIssue({ code: 'custom', path: ['EDITOR_FAKE_LLM'], message: 'EDITOR_FAKE_LLM is a test switch – never in production' });
+      if (env.EDITOR_OPEN === '1') ctx.addIssue({ code: 'custom', path: ['EDITOR_OPEN'], message: 'EDITOR_OPEN is a local switch – never in production' });
       // without it the admin / storybook host walls switch off (they answer on any host, like localhost) – never with wallets that may sign in there
       if (!env.COOKIE_DOMAIN && (env.EDITOR_WALLETS.trim() || env.ADMIN_WALLETS.trim())) ctx.addIssue({ code: 'custom', path: ['COOKIE_DOMAIN'], message: 'COOKIE_DOMAIN must be set in production when ADMIN_WALLETS or EDITOR_WALLETS is (the admin and storybook host checks need it)' });
       if (!env.JWT_SECRET) ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'JWT_SECRET must be set in production' });

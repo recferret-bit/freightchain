@@ -41,7 +41,10 @@ export class EditorGuard implements CanActivate {
     if (editorHost && hostOf(request) !== editorHost) throw new NotFoundError('not found');
     if (!this.ipAllowed(request.ip)) throw new NotFoundError('not found');
     const isPublic = this.reflector.getAllAndOverride<boolean>(EDITOR_PUBLIC, [context.getHandler(), context.getClass()]) === true;
-    const wallet = isPublic ? null : await editorWallet(request, this.tokens, this.env.editorCookie || EDITOR_COOKIE);
+    // EDITOR_OPEN (local only): a missing session is the first listed editor, so storybook can drive the MCP without a wallet popup.
+    const listed = [...this.env.editorWallets];
+    const session = isPublic ? null : await editorWallet(request, this.tokens, this.env.editorCookie || EDITOR_COOKIE);
+    const wallet = session ?? (isPublic || !this.env.editorOpen ? null : listed[0] ?? null);
     if (!isPublic && (!wallet || !this.env.editorWallets.has(wallet))) throw new NotFoundError('not found');
     if (!SAFE_METHODS.has(request.method) && request.headers[EDITOR_HEADER] !== '1') throw new ForbiddenError(`editor changes need the ${EDITOR_HEADER} header`);
     if (wallet) request.player = { wallet };

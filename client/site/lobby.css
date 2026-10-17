@@ -1,25 +1,21 @@
 @import "selection.css";
-@import "amber-glow.css";
-:root{--bg:#0e0b08;--panel:#17130f;--line:#ffcf5a33;--amber:#ffcf5a;--text:#efe6cf;--dim:#b9ad8d;--bad:#ff6b5a;--good:#7be07b;--blue:#6aa8ff;color-scheme:dark}
-*{box-sizing:border-box}
+@import "../css/tokens.css";
+@import "../css/amber-glow.css";
+@import "../css/flip-card.css";
+:root{--bg:#0e0b08;--line:#ffcf5a33;--dim:#b9ad8d;--blue:#6aa8ff}
 html{scrollbar-gutter:stable}   /* a short tab has no scrollbar, a long one has: without the gutter the whole page shifts sideways between tabs */
-body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -10%,#2a1f10,var(--bg) 60%) fixed;color:var(--text);font:15px/1.45 ui-monospace,Menlo,Consolas,monospace}
-a{color:var(--amber)}
-.dim{color:var(--dim);font-size:13px}.bad{color:var(--bad)}.good{color:var(--good)}.warn{color:var(--amber)}
-button{font:inherit;cursor:pointer;border-radius:6px;border:2px solid var(--amber);background:var(--amber);color:#1b1408;font-weight:bold;padding:12px 18px}
+body{min-height:100vh;background:radial-gradient(ellipse at 50% -10%,#2a1f10,var(--bg) 60%) fixed;color:var(--text);line-height:1.45}
+.warn{color:var(--amber)}
+button{border-radius:6px;border:2px solid var(--amber);background:var(--amber);color:#1b1408;font-weight:bold;padding:12px 18px}
 button:disabled{opacity:.4;cursor:not-allowed}
 button.ghost{background:transparent;color:var(--amber);padding:6px 10px;font-size:12px}
-button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
-:is(th button, .seg button:not(.on), .pager button:not(.on), #ticket-dialog button):is(:hover, :focus-visible, :active){box-shadow:none}   /* the amber halo is client/site/amber-glow.css */
 
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
-.brand{color:var(--amber);font-weight:bold;letter-spacing:2px;text-decoration:none}
 .chips{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.chip{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;background:#0006;white-space:nowrap}
+.chip{border-color:var(--line);font-size:12px}
 .chip .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
 .chip.live::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-right:6px;animation:pulse 1.6s infinite}
 .chip.demo{border-color:var(--bad);color:var(--bad)}
-@keyframes pulse{50%{opacity:.25}}
 
 .tabs{display:flex;gap:4px;padding:0 12px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
 .tabs a{padding:12px 14px;text-decoration:none;color:var(--dim);letter-spacing:1px;font-size:13px;border-bottom:3px solid transparent;white-space:nowrap}
@@ -29,20 +25,16 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
 main{max-width:980px;margin:0 auto;padding:18px 16px 40px;min-height:70vh}
 footer{max-width:980px;margin:0 auto;padding:0 16px 30px;color:var(--dim);font-size:12px}
 h2{margin:22px 0 10px;font-size:13px;letter-spacing:2px;color:var(--amber);font-weight:normal}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
-
-.card[hidden], .pool[hidden], #poolbox[hidden]{display:none!important}
+.card{padding:16px 18px}
 
 /* pool */
 .pool{display:grid;gap:6px;border-color:var(--amber);box-shadow:0 0 36px #ffb02e22}
-.pool .lbl{font-size:12px;letter-spacing:2px;color:var(--dim)}
+.pool .lbl{font-size:12px}
 .pool .big{font-size:clamp(30px,7vw,52px);font-weight:bold;color:var(--amber);line-height:1.05}
 .pool .usd{color:var(--dim)}
-.split{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:8px 0 4px}
-.s-grand{--c:var(--amber)}.s-top{--c:#e07b39}.s-seed{--c:#6aa8ff}.s-fees{--c:#8a8a8a}   /* one variable per slice: the bar AND its legend swatch */
-.split i{display:block;background:var(--c)}
+.split{height:12px;border-radius:6px;margin:8px 0 4px}
+.s-top{--c:#e07b39}
 .legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12px;color:var(--dim)}
-.legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;background:var(--c)}
 .legend b{color:var(--text);font-weight:normal}
 
 /* tiers: one card per shift (article – the actions are buttons INSIDE it) */
@@ -188,22 +180,15 @@ th button.on{color:var(--amber)}
 /* one row per family that scrolls sideways (snapping to a card) – bigger cards instead of a squeezed wrap; the padding keeps the glow / hover from being clipped */
 .ladder{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x proximity;scroll-padding:0 6px;padding:6px 6px 14px;margin:0 -6px;overscroll-behavior-x:contain;scrollbar-width:thin}
 .ladder>.ac{flex:0 0 clamp(240px,calc((100% - 42px)/4),320px);scroll-snap-align:start}
-/* a card flips (hover, keyboard focus or a tap) from the badge to its details; the transition is a Solana-coloured sweep (purple → green) */
-.ac{--sol1:#9945ff;--sol2:#14f195;--sol3:#00c2ff;--tier:#c8844a;perspective:900px;cursor:pointer;outline:none;animation:acin .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*70ms)}
+/* a card flips (base mechanics in client/css/flip-card.css) from the badge to its details */
+.ac{--sol3:#00c2ff;--tier:#c8844a;perspective:900px;outline:none;animation:acin .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*70ms)}
 .ac.t2{--tier:#c9ced6}.ac.t3{--tier:var(--amber)}.ac.t4{--tier:#b9a6ff}
-.ac{display:flex}.ac .in{flex:1;display:grid;transform-style:preserve-3d;transition:transform .75s cubic-bezier(.2,.8,.2,1)}
-.ac .fr,.ac .bk{grid-area:1/1;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:10px 8px 12px;border:1px solid transparent;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.ac .fr,.ac .bk{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:10px 8px 12px}
 .ac .fr{background:linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(135deg,var(--line),var(--line)) border-box}
 .ac.got .fr{background:linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(135deg,var(--sol1),var(--sol2)) border-box;box-shadow:0 0 14px #9945ff22}
 .ac .bk{transform:rotateY(180deg);justify-content:center;visibility:hidden;transition:visibility 0s .38s;background:linear-gradient(160deg,#9945ff26,#0b0a0900 45%,#14f19520) padding-box,linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(135deg,var(--sol1),var(--sol2)) border-box}
-.ac:is(.flip,:focus-visible,:has(a:focus-visible)) .in{transform:rotateY(180deg)}
 .ac:is(.flip,:focus-visible,:has(a:focus-visible)) .bk{visibility:visible;transition-delay:0s}
-@media (hover:hover){.ac:hover .in{transform:rotateY(180deg)}.ac:hover .bk{visibility:visible;transition-delay:0s}}
-/* the sweep: one band of Solana colour crosses both faces as the card turns */
-.ac .fr::after,.ac .bk::after{content:"";position:absolute;inset:-20% -60%;background:linear-gradient(105deg,transparent 38%,#9945ff66 44%,#00c2ff55 50%,#14f19566 56%,transparent 62%);transform:translateX(-100%);pointer-events:none;opacity:0}
-.ac:is(.flip,:focus-visible) :is(.fr,.bk)::after{animation:solsweep .85s ease-out}
-@media (hover:hover){.ac:hover :is(.fr,.bk)::after{animation:solsweep .85s ease-out}}
-@keyframes solsweep{0%{transform:translateX(-100%);opacity:1}100%{transform:translateX(100%);opacity:1}}
+@media (hover:hover){.ac:hover .bk{visibility:visible;transition-delay:0s}}
 @keyframes acin{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
 .ac img{width:100%;max-width:188px;aspect-ratio:1;height:auto;border-radius:14px}
 .ac .nm{font-weight:bold;font-size:16px}.ac .ds{font-size:14px;color:var(--text)}
@@ -215,13 +200,9 @@ th button.on{color:var(--amber)}
 .ac .lk a:hover,.ac .lk a:focus-visible{background:linear-gradient(90deg,var(--sol1),var(--sol2));background-origin:border-box;border-color:transparent;color:#0b0a09}
 .ac .lk a.x{border-color:var(--amber);color:var(--amber)}.ac .lk a.x:hover,.ac .lk a.x:focus-visible{color:#0b0a09;background:var(--amber)}
 .ac:focus-visible .bk{outline:2px solid #fff;outline-offset:1px}
-/* the turned-away front face is hidden outright: backface-visibility alone leaves its square outline / edge pixels peeking out at the back's rounded corners */
-.ac:is(.flip,:focus-visible,:has(a:focus-visible)) .fr{visibility:hidden;transition:visibility 0s .38s}
-@media (hover:hover){.ac:hover .fr{visibility:hidden;transition:visibility 0s .38s}}
 .ach-chain{font-size:12px}
 .ac .pg{position:relative;display:block;width:100%;height:26px;line-height:24px;margin-top:2px;background:#0008;border:1px solid var(--line);border-radius:9px;overflow:hidden}.ac .pg i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#9945ff88,#14f19588)}.ac .pg em{position:relative;font-style:normal;font-size:13px;font-weight:bold;color:var(--text);text-shadow:0 1px 2px #000c}
-@media (prefers-reduced-motion:reduce){.ac{animation:none}.ac .in{transition:none;transform:none!important}.ac .bk{transform:none;opacity:0;transition:opacity .2s}.ac .fr{transition:opacity .2s}.ac:is(.flip,:focus-visible,:has(a:focus-visible)) .bk{opacity:1}.ac:is(.flip,:focus-visible,:has(a:focus-visible)) .fr{opacity:0}.ac .fr::after,.ac .bk::after{display:none}}
-@media (prefers-reduced-motion:reduce) and (hover:hover){.ac:hover .bk{opacity:1}.ac:hover .fr{opacity:0}}
+@media (prefers-reduced-motion:reduce){.ac{animation:none}}
 .hist{display:grid;gap:6px}.hrow .rnote{flex-basis:100%;font-size:12px}.hrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid #ffffff12;border-radius:6px;padding:8px 12px;font-size:13px}
 
 /* promo tab: the wardrobe */

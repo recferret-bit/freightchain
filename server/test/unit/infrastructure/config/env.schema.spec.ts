@@ -108,6 +108,8 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
     expect(() => validateEnv({ ...base, EDITOR_DEFAULT_PROVIDER: 'mistral' })).toThrow(/EDITOR_DEFAULT_PROVIDER/);
     expect(() => validateEnv({ ...base, EDITOR_JOB_TIMEOUT_MS: '500' })).toThrow(/EDITOR_JOB_TIMEOUT_MS/);
     expect(validateEnv({ ...base, EDITOR_FAKE_LLM: '1' }).EDITOR_FAKE_LLM).toBe('1');
+    expect(validateEnv({ ...base, EDITOR_OPEN: '1' }).EDITOR_OPEN).toBe('1');
+    expect(() => validateEnv({ ...prod, EDITOR_OPEN: '1' })).toThrow(/EDITOR_OPEN/);
   });
 
   it('production with editor or admin wallets needs COOKIE_DOMAIN (the host walls); without wallets it may be unset', () => {

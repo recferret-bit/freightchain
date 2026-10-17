@@ -43,7 +43,8 @@ function measureBounds(root) {
 }
 const selectHooks = [];
 function select(item, keepCam) {
-  clearStage(); cur = item; item.obj = obj = item.make(); stage.add(obj);
+  const made = item.make();   // build first: a draft that will not compile must not wipe the model already on stage
+  clearStage(); cur = item; item.obj = obj = made; stage.add(obj);
   bounds = measureBounds(obj);   // measured before the helper lines are added
   obj.traverse(c => { if (!c.isMesh) return; for (const m of [].concat(c.material)) if (!wireMats.includes(m)) wireMats.push(m);
     let g = edgeCache.get(c.geometry); if (!g) edgeCache.set(c.geometry, g = new THREE.EdgesGeometry(c.geometry, 25));

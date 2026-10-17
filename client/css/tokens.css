@@ -1,0 +1,40 @@
+/* Shared cab palette, reset, header brand/chips, cards, chapter headers and pool split bars across Landing, Whitepaper and Lobby. */
+:root{
+  --bg:#0b0a09;--bg2:#120f0c;--panel:#17130f;--dash:#26221d;--line:#4a453b55;--line2:#ffcf5a33;
+  --amber:#ffcf5a;--gear:#ffb03a;--needle:#ff7a2e;--cream:#e8e2cf;--text:#efe6cf;--dim:#9d957f;
+  --lcd:#7cff7c;--lcd-bg:#0d2410;--red:#d22;--bad:#ff6b5a;--good:#7be07b;--blue:#4a8fd8;--sand:#e6c9a0;--asphalt:#34322f;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--cream);font:15px/1.5 var(--mono)}
+a{color:var(--amber)}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:1px}
+h3{font-size:12px;letter-spacing:2px;color:var(--sand)}
+.dim{color:var(--dim);font-size:13px}.bad{color:var(--bad)}.good{color:var(--good)}
+.lbl{font-size:11px;letter-spacing:2px;color:var(--dim)}
+.lcd{color:var(--lcd);text-shadow:0 0 8px #7cff7c66}
+button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible,.card3d:focus-visible{outline:2px solid #fff;outline-offset:2px}
+[hidden]{display:none!important}
+.brand{color:var(--amber);font-weight:700;letter-spacing:2px;text-decoration:none;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.brand .mark{font-size:20px;color:var(--gear)}.brand small{font-size:10px;letter-spacing:3px;color:var(--dim);font-weight:400}
+.right{display:flex;gap:10px;align-items:center}
+.chip{border:1px solid var(--line2);border-radius:999px;padding:3px 10px;font-size:11px;letter-spacing:1px;white-space:nowrap;background:#0006}
+.link{color:var(--amber);font-size:13px}
+.eyebrow{font-size:12px;letter-spacing:2px;color:var(--sand);margin:0 0 14px}
+.ch-h{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:baseline;margin-bottom:34px}
+.ch-h i{font-style:normal;color:var(--needle);font-size:40px;font-weight:700;line-height:1;grid-row:span 2}
+.ch-h h2{font-size:clamp(20px,2.6vw,30px);color:var(--amber)}
+.ch-h p{margin:0;color:var(--dim);max-width:720px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;transition:border-color .2s}
+.flow{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.flow li{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:8px;align-content:start;transition:border-color .2s,transform .2s}
+.flow li i{font-style:normal;color:var(--gear);font-size:32px;line-height:1;font-weight:700;text-shadow:0 0 14px #ffb03a66}
+.flow li b{font-size:12px;letter-spacing:2px;color:var(--amber)}
+.flow li span{font-size:15px;color:var(--dim)}
+.flow li:not(:last-child)::after{content:"→";position:absolute;right:-13px;top:22px;color:var(--needle);font-size:18px;z-index:1}
+.split{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:10px 0 4px;background:var(--dash)}
+.s-grand{--c:var(--amber)}.s-top{--c:var(--needle)}.s-seed{--c:var(--blue)}.s-fees{--c:#8a8a8a}
+.split i{display:block;background:var(--c);transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:var(--c)}
+@keyframes pulse{50%{opacity:.25}}

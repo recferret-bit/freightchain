@@ -1,6 +1,7 @@
 import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 import { USER_AGENT_MAX_LENGTH, type ClientInfo } from '../../../domain/auth/sign-in.js';
+import { HOST_PAIR_COOKIE, HOST_SESSION_COOKIE, PAIR_COOKIE, readCookie, SESSION_COOKIE } from '../session-cookie.js';
 import { getRequestId } from '../types/http-request.js';
 
 /** Where the request came from: the client IP (as Express resolves it with TRUST_PROXY) and the browser's User-Agent, trimmed. */
@@ -15,3 +16,16 @@ export const CurrentOrigin = createParamDecorator((_data: unknown, ctx: Executio
 
 /** The request's id (X-Request-Id) – for audit rows that must be findable in the log. */
 export const CurrentRequestId = createParamDecorator((_data: unknown, ctx: ExecutionContext): string => getRequestId(ctx.switchToHttp().getRequest<Request>()));
+
+/** The desktop pairing secret cookie (__Host-fc_pair in production, fc_pair in dev/test). */
+export const CurrentPairSecret = createParamDecorator((_data: unknown, ctx: ExecutionContext): string | null => {
+  const c = ctx.switchToHttp().getRequest<Request>().headers?.cookie;
+  return readCookie(c, HOST_PAIR_COOKIE) ?? readCookie(c, PAIR_COOKIE) ?? null;
+});
+
+/** The player session token cookie (__Host-fc_session in production, fc_session in dev/test). */
+export const CurrentSessionToken = createParamDecorator((_data: unknown, ctx: ExecutionContext): string | null => {
+  const c = ctx.switchToHttp().getRequest<Request>().headers?.cookie;
+  return readCookie(c, HOST_SESSION_COOKIE) ?? readCookie(c, SESSION_COOKIE) ?? null;
+});
+

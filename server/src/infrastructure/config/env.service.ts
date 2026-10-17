@@ -42,6 +42,8 @@ export class EnvService {
   get editorWallets(): ReadonlySet<string> {
     return new Set(this.env.EDITOR_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));
   }
+  /** Local storybook only: no wallet sign-in. The editor acts as the first EDITOR_WALLETS address. Never true in production. */
+  get editorOpen(): boolean { return this.env.EDITOR_OPEN === '1' && !this.isProduction; }
   /** EDITOR_IP_ALLOWLIST as written ('' = any IP); infrastructure/config/ip-rules.ts matches it */
   get editorIpAllowlist(): string { return this.env.EDITOR_IP_ALLOWLIST; }
   /** split deployment: the only host the editor API answers on (storybook.<COOKIE_DOMAIN>, nginx proxies /api/editor/ there); null = single origin, any host */

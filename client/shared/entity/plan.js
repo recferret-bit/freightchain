@@ -30,7 +30,7 @@ export function compileEntity(entity, { lookup = () => null, cache = new Map(), 
   for (const [k, v] of Object.entries(entity.consts ?? {})) { const i = scope.declare(k); init.push(f => { f[i] = v; }); }
   const params = [];
   for (const [k, p] of Object.entries(entity.params ?? {})) { const i = scope.declare(k), def = p.default; params.push({ name: k, i, def }); }
-  for (const [k, v] of Object.entries(entity.vars ?? {})) { const e = wrap(`vars.${k}`, () => compileExpr(v, scope)), i = scope.declare(k); init.push(f => { f[i] = e(f); }); }
+  compileVars(entity.vars ?? {}, scope, init);
   const slots = Object.keys(entity.slots ?? {});
   const body = compileParts(entity.parts ?? [], scope, 'parts', sub);
   const debris = entity.debris == null ? null : (Array.isArray(entity.debris) ? entity.debris : [entity.debris]).map(slot => ({ slot }));
@@ -52,6 +52,28 @@ export function compileEntity(entity, { lookup = () => null, cache = new Map(), 
 }
 
 const wrap = (path, f) => { try { return f(); } catch (e) { throw at(path, e); } };
+
+/* Vars may name each other. JSON does not keep the order they were written in, so compile a var once every var it names is already declared. */
+function compileVars(vars, scope, init) {
+  const pending = Object.entries(vars);
+  let stuck = null;
+  while (pending.length) {
+    let moved = false;
+    for (let i = 0; i < pending.length;) {
+      const [k, v] = pending[i];
+      try {
+        const e = wrap(`vars.${k}`, () => compileExpr(v, scope)), slot = scope.declare(k);
+        init.push(f => { f[slot] = e(f); }); pending.splice(i, 1); moved = true;
+      } catch (e) {
+        const name = /unknown name '([^']+)'/.exec(e.message)?.[1];
+        if (name && pending.some(([n]) => n === name)) { stuck ??= e; i++; continue; }
+        throw e;
+      }
+    }
+    if (!moved) throw stuck ?? new PlanError(`vars: ${pending.map(([k]) => k).join(', ')} refer to each other in a cycle`);
+    stuck = null;
+  }
+}
 const num3 = (v, scope, path) => {
   if (!Array.isArray(v) || v.length !== 3) throw new PlanError(`${path}: needs [x, y, z]`);
   const [a, b, c] = v.map((x, i) => wrap(`${path}[${i}]`, () => compileExpr(x, scope)));

@@ -1,0 +1,4 @@
+/* One yellow halo for every amber control, including the shared wallet dialog (.amber). Hover is soft; the press is hotter. */
+:is(.cta, .amber, button:not(.share-x-btn, .stay, .reject, .x), a.watch):not(:disabled):is(:hover, :focus-visible){box-shadow:0 0 36px #ffb02eaa}
+:is(.cta, .amber, button:not(.share-x-btn, .stay, .reject, .x), a.watch):not(:disabled):active{box-shadow:0 0 12px #fff6, 0 0 48px #ffcf5aee}
+:is(.fq button, th button, .seg button:not(.on), .pager button:not(.on), #tutorial button, #ticket-dialog button, button:is(.reject, .share-x-btn, .stay, .x)):not(:disabled):is(:hover, :focus-visible, :active){box-shadow:none}

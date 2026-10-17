@@ -1,9 +1,10 @@
 import { el } from './dom.js';
+import { extLink, splitBarEl } from './ui.js';
 import { escrowExplainer, explorerUrl, explorerTx, shortAddr, sol, usd, pct, plural, day, left, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, canRide, hhmm, buyRoom, cardAction, GRANT_SOURCE, STATUS_CLS, phaseLine, payoutText, poolSchedule, scheduleText, span } from './pools.js';
 
 /* The lobby's escrowed-pool views (DOM; the decisions are the pure functions of pools.js). Countdowns are `.pcd[data-at]` – lobby.js ticks them every second. */
 
-const addr = (a, label) => el('a', { href: explorerUrl(a), target: '_blank', rel: 'noopener', title: `${label}: ${a} (Solana explorer)` }, shortAddr(a), ' ↗');
+const addr = (a, label) => extLink(explorerUrl(a), { title: `${label}: ${a} (Solana explorer)` }, shortAddr(a), ' ↗');
 const countdown = at => el('b', { class: 'pcd', 'data-at': at }, '');   // filled by lobby.js's 1 s tick
 const chip = (p, now) => { const c = statusChip(p, now); return el('span', { class: `st ${c.cls}` }, c.text); };
 /** "ON SALE · 14 h left" – the countdown is a `.phcd[data-at]` (lobby.js ticks it in the coarse format). */
@@ -49,10 +50,9 @@ export function poolCard(t, info, ctx) {
       el('span', { class: 'sub' }, `${p.label} · pool #${p.id} · ${plural(p.buyers, 'buyer')}`, p.sponsoredLamports ? ` · sponsored ${sol(p.sponsoredLamports)}` : ''),
       schedule(p, t.schedule),
       p.status === 'open' && dl.label ? el('span', { class: 'sub' }, dl.label, dl.at ? countdown(dl.at) : '') : '',
-      el('div', { class: 'split' }, ...splitParts(p).map(s => el('i', { class: s.cls, style: `width:${s.bps / 100}%` }))),
-      el('div', { class: 'legend' }, ...splitParts(p).map(s => el('span', { class: s.cls }, `${pct(s.bps)} ${s.label}`))),
+      ...splitBarEl(splitParts(p).map(s => ({ cls: s.cls, pct: s.bps / 100, label: [`${pct(s.bps)} ${s.label}`] }))),
       el('span', { class: 'sub addrs' }, 'pool ', addr(p.address, 'pool account'), ' · seed ', addr(p.treasuries.seed, 'seed treasury'), ' · fees ', addr(p.treasuries.fee, 'fee treasury')),
-      el('p', {}, rulesText(p), ' On top of the price: the network fee (≈ 0.0001 SOL) and a Ticket account deposit (≈ 0.0015 SOL, returned when the ticket is refunded or closed). ', el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'How the escrow works →'))),
+      el('p', {}, rulesText(p), ' On top of the price: the network fee (≈ 0.0001 SOL) and a Ticket account deposit (≈ 0.0015 SOL, returned when the ticket is refunded or closed). ', extLink(escrowExplainer(), {}, 'How the escrow works →'))),
     el('p', { class: 'msg dim', id: `msg-${t.id}` }));
 }
 
@@ -76,7 +76,7 @@ export function winners(st, me, now) {
   const row = r => el('li', { class: r.wallet === me ? 'me' : '' },
     el('span', { class: 'rk' }, `#${r.rank}`), el('span', { class: 'wl', title: r.wallet }, r.wallet === me ? 'YOU' : shortAddr(r.wallet)),
     el('span', { class: 'km' }, `${(r.distance / 1000).toFixed(1)} km`), el('span', { class: 'amt' }, sol(r.lamports)),
-    el('span', { class: 'pd' }, r.paid && r.signature ? el('a', { href: explorerTx(r.signature), target: '_blank', rel: 'noopener', title: `pay_prize ${r.signature} (Solana explorer)` }, '✓ PAID ↗') : r.paid ? '✓ PAID' : ''));
+    el('span', { class: 'pd' }, r.paid && r.signature ? extLink(explorerTx(r.signature), { title: `pay_prize ${r.signature} (Solana explorer)` }, '✓ PAID ↗') : r.paid ? '✓ PAID' : ''));
   return el('div', { class: 'winners' },
     el('div', { class: 'whd' }, el('b', {}, head), el('span', { class: `st ${st.final ? 'live' : 'open'}` }, st.final ? 'FINAL' : 'PROVISIONAL'), el('small', {}, `prizes ${sol(st.prizeLamports)}`)),
     note ? el('span', { class: `sub wnote${st.payout.held || st.payout.state === 'error' ? ' bad' : ''}` }, note) : '',
@@ -93,7 +93,7 @@ export function escrowSummary(pool, now, ticketOnly = false) {
   return [
     el('div', { class: 'lbl' }, `PRIZE POOLS · IN ESCROW ON CHAIN`),
     el('div', { class: 'big' }, sol(esc)), el('div', { class: 'usd' }, pool.solUsd ? `${usd(esc, pool.solUsd)} at the current price` : ''),
-    el('div', { class: 'dim' }, `${plural(pools.length, 'pool')} on sale · ${plural(pools.reduce((a, p) => a + p.sold, 0), 'ticket')} committed · held by the program, not by us · `, el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'how the escrow works →')),
+    el('div', { class: 'dim' }, `${plural(pools.length, 'pool')} on sale · ${plural(pools.reduce((a, p) => a + p.sold, 0), 'ticket')} committed · held by the program, not by us · `, extLink(escrowExplainer(), {}, 'how the escrow works →')),
     ticketOnly && !pool.entries ? '' : el('div', { class: 'dim' }, `Weekly round (pay-per-ride tiers): ${sol(pool.split.grand)} grand prize accrued · ${plural(pool.entries, 'paid entry', 'paid entries')} · closes in `, el('b', { id: 'cd', class: 'cd' }, left(pool.round.endsAt - now))),
   ];
 }

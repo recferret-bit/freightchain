@@ -7,7 +7,7 @@ Agent reference for the server half of the entity editor. The HTTP contract is `
 - Every 3D model is an entity: a data-only JS module, shipped in code as a seed (`client/shared/entity/seed/`).
 - The database (`asset` schema) keeps the editor's history on top: append-only revisions, a **HEAD** (what the editor works on) and a **PUBLISHED** revision (what players draw).
 - `GET /api/entities/bundle` is the seed with every published revision on top. It is public, cached, and the only thing the game reads.
-- Editors are the wallets in `EDITOR_WALLETS`. They sign in on `storybook.<apex>`, save drafts, restore and publish. A publish is wallet-signed and audited.
+- Editors are the wallets in `EDITOR_WALLETS`. They sign in on `storybook.<apex>`, save drafts, restore and publish. A publish is wallet-signed and audited. `EDITOR_OPEN=1` (local only, refused in production) skips that sign-in and acts as the first listed editor, so the MCP can be used without a wallet popup.
 - The AI chat is a **job**: the API checks the request, runs the 3d-assets skill's spec gate and admits it to the queue. The bridge in the dedicated worker then drives a model (Anthropic by default; OpenAI, Gemini, z.ai when their key is set) whose only tools are the **entity MCP's** (`mcp/`). The MCP writes back through `/api/editor/mcp/*` as that job, so every AI change is an ordinary draft revision. Nothing an AI does is published.
 
 ## Tables (`server/prisma/asset/asset.prisma`, migration `20261029000000_entities`)

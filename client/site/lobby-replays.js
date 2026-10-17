@@ -1,4 +1,5 @@
-import { el } from './dom.js';
+import { $, el } from './dom.js';
+import { ago, progressBarEl } from './ui.js';
 import { api } from './wallet.js';
 import { shortAddr } from './pools.js';
 import { GAME_BASE } from '../js/hosts.js';
@@ -8,7 +9,6 @@ import { GAME_BASE } from '../js/hosts.js';
 const STATUS = { completed: 'COMPLETED', abandoned: 'ABANDONED', failed: 'FAILED' };
 const FAIL = { heartbeat_lost: 'signal lost', crash: 'crash', off_road: 'off the road', hull: 'wrecked', engine_blown: 'engine blown', cold_engine: 'cold engine', brakes: 'brakes', implausible_progress: 'implausible progress', other: 'failed' };
 const R = { who: 'all', status: '', rows: [], next: null, loading: false, error: '', req: 0 };   // req: only the newest request's answer is painted
-const ago = ms => { const s = Math.max(0, Math.round(ms / 1000)); return s < 90 ? `${s} s ago` : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129_600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86_400)} d ago`; };
 
 export function renderReplays(view, ctx) {
   const filter = (label, key, value) => el('button', { type: 'button', class: `alt f${R[key] === value ? ' on' : ''}`, 'aria-pressed': R[key] === value, onclick: () => { if (R[key] === value) return; R[key] = value; syncFilters(view); load(ctx, true); } }, label);
@@ -45,8 +45,8 @@ async function load(ctx, fresh) {
 }
 
 function paint(ctx) {
-  const box = document.getElementById('replays'); if (!box) return;
-  const more = document.getElementById('replays-more');
+  const box = $('replays'); if (!box) return;
+  const more = $('replays-more');
   box.style.opacity = R.loading && R.rows.length ? '.55' : '';   // the old rows stay (dimmed) while a filter's answer is on its way
   if (more) { more.hidden = !R.next; more.disabled = R.loading; }
   if (R.error) { box.replaceChildren(el('div', { class: 'card empty' }, `Could not load the replays: ${R.error}`)); return; }
@@ -61,8 +61,9 @@ function paint(ctx) {
           el('span', { class: 'when dim' }, ago(Date.now() - r.endedAt))),
         el('div', { class: 'row2' }, el('span', { class: 'big' }, ctx.km(r.distance), el('small', {}, ' km')),
           el('span', { class: `badge st ${r.status}` }, STATUS[r.status] ?? r.status, r.failCode ? ` · ${FAIL[r.failCode] ?? r.failCode}` : '')),
-        el('div', { class: 'rp-prog dim' }, el('span', {}, `${ctx.dur(r.driveSeconds)} / ${ctx.dur(r.minSeconds)}`), el('div', { class: `rp-bar ${r.status}` }, el('i', { style: `width:${pct}%` })))),
+        el('div', { class: 'rp-prog dim' }, el('span', {}, `${ctx.dur(r.driveSeconds)} / ${ctx.dur(r.minSeconds)}`), progressBarEl(pct, 'div', `rp-bar ${r.status}`))),
       r.replay ? el('a', { class: 'watch', href: `${GAME_BASE}/play.html?watch=${encodeURIComponent(r.id)}`, title: 'replay this ride on the watch page' }, el('span', {}, '▶'), 'REPLAY')
         : el('span', { class: 'dim norec', title: 'its recording is gone (or was never uploaded)' }, 'no recording'));
   }));
 }
+

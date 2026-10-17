@@ -2,13 +2,13 @@ import { AuthHttpController } from '../../../src/presentation/auth/auth.http.con
 import { RequestChallengeCommand } from '../../../src/application/use-cases/auth/request-challenge/request-challenge.command.js';
 import { VerifySignInCommand } from '../../../src/application/use-cases/auth/verify-signin/verify-signin.command.js';
 import { LogoutCommand } from '../../../src/application/use-cases/auth/logout/logout.command.js';
+import { ClaimPhonePairCommand, OpenPhonePairCommand, PollPhonePairCommand } from '../../../src/application/use-cases/auth/phone-pair/phone-pair.command.js';
 import { GetMeQuery } from '../../../src/application/use-cases/auth/get-me/get-me.query.js';
 import { requestChallengeBodySchema, challengeBodySchema, verifyBodySchema } from '../../../src/presentation/auth/dto/auth.dto.js';
 import { Keypair } from '@solana/web3.js';
 import { busMock } from '../../support/bus.js';
 
-const env = { isProduction: false, sessionCookie: 'fc_session' } as never;
-const controller = (commands: { bus: never }, queries: { bus: never }) => new AuthHttpController(commands.bus, queries.bus, env);
+const controller = (commands: { bus: never }, queries: { bus: never }) => new AuthHttpController(commands.bus, queries.bus);
 
 describe('AuthHttpController', () => {
   const wallet = Keypair.generate().publicKey.toBase58();
@@ -62,6 +62,17 @@ describe('AuthHttpController', () => {
     expect(commands.last()).toBeInstanceOf(LogoutCommand);
     expect(await http.me({ wallet })).toEqual({ wallet });
     expect(queries.last()).toEqual(new GetMeQuery(wallet));
+  });
+
+  it('POST auth/pair, GET auth/pair/:id, POST auth/pair/:id/claim → phone pairing commands', async () => {
+    const commands = busMock({ ok: true }), queries = busMock();
+    const http = controller(commands, queries);
+    await http.openPair();
+    expect(commands.last()).toEqual(new OpenPhonePairCommand());
+    await http.pollPair({ id: '0123456789abcdef0123456789abcdef' }, 'sec-1');
+    expect(commands.last()).toEqual(new PollPhonePairCommand('0123456789abcdef0123456789abcdef', 'sec-1'));
+    await http.claimPair({ id: '0123456789abcdef0123456789abcdef' }, 'tok-1');
+    expect(commands.last()).toEqual(new ClaimPhonePairCommand('0123456789abcdef0123456789abcdef', 'tok-1'));
   });
 
   describe('Zod DTO Schemas', () => {

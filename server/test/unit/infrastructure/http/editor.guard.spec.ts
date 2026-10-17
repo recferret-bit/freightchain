@@ -18,7 +18,7 @@ const ctxFor = (cookie: string | undefined, method = 'GET', headers: Record<stri
   const request: { method: string; ip: string; headers: Record<string, string | undefined>; player?: { wallet: string } } = { method, ip, headers: { cookie, ...headers } };
   return { request, ctx: { switchToHttp: () => ({ getRequest: () => request }), getHandler: () => Routes.prototype[route], getClass: () => Routes } as unknown as ExecutionContext };
 };
-const guard = (editors: string[], editorHost: string | null = null, editorIpAllowlist = '') => new EditorGuard(new Tokens(), { editorWallets: new Set(editors), editorHost, editorIpAllowlist } as unknown as EnvService, new Reflector());
+const guard = (editors: string[], editorHost: string | null = null, editorIpAllowlist = '', editorOpen = false) => new EditorGuard(new Tokens(), { editorWallets: new Set(editors), editorHost, editorIpAllowlist, editorOpen } as unknown as EnvService, new Reflector());
 
 describe('EditorGuard', () => {
   it('an editor session of a listed wallet passes and the wallet goes on the request', async () => {
@@ -38,6 +38,14 @@ describe('EditorGuard', () => {
     expect(await guard(['ED']).canActivate(ctxFor('fc_editor=ed', 'POST', { 'x-fc-editor': '1' }).ctx)).toBe(true);
     expect(await guard(['ED']).canActivate(ctxFor(undefined, 'POST', { 'x-fc-editor': '1' }, 'signIn').ctx)).toBe(true);
     await expect(guard(['ED'], 'storybook.freightchain.fun').canActivate(ctxFor(undefined, 'POST', { host: 'api.freightchain.fun', 'x-fc-editor': '1' }, 'signIn').ctx)).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('EDITOR_OPEN (local) lets storybook in as the first listed wallet, with no cookie', async () => {
+    const { request, ctx } = ctxFor(undefined);
+    expect(await guard(['ED', 'OTHER'], null, '', true).canActivate(ctx)).toBe(true);
+    expect(request.player).toEqual({ wallet: 'ED' });
+    await expect(guard([], null, '', true).canActivate(ctxFor(undefined).ctx)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(guard(['ED'], null, '', true).canActivate(ctxFor(undefined, 'POST').ctx)).rejects.toBeInstanceOf(ForbiddenError);
   });
 
   it('split deployment: only through storybook.<apex> (Host, not X-Forwarded-Host); EDITOR_IP_ALLOWLIST when set', async () => {
