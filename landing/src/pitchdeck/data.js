@@ -161,7 +161,7 @@ export const SLIDES = [
         ${shot('wp-diagram.webp', 'v-main diagram', 'Where the money goes')}
         ${shot('escrow-flow.webp', 'v-sub', 'How the escrow works')}
         <canvas class="glyph g1" data-scene="proof" role="img" aria-label="Four 15-second batches hash up into one Merkle root, which turns verified"></canvas>
-        <div class="vblock" aria-hidden="true">✓ Attestation<small>PDA gated · pays only verified rides</small></div>
+        <div class="vblock" aria-hidden="true">✓ Merkle root<small>PDA gated · pays only verified rides</small></div>
       </div>` },
 
   { layout: 'chain', id: 'chain',
