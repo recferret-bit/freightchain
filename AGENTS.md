@@ -6,7 +6,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 
 ## Repo
 
-`client/` the game (`play.html`, `js/`, `shared/`) + site pages (lobby, admin, viewer, `r.html`, `blink.html`, `site/`) · `shared/` workspace package (`@freightchain/shared`) re-exporting `client/shared/` · `landing/` the `/` page + whitepaper + pitch deck (Vite) · `server/` the API + `replay:worker` + dedicated AI worker (`npm run editor:worker`; Clean Architecture, `prisma/`, `test/`) · `programs/freightchain-pools` the escrow program · `mcp/` the entity MCP (the 3d-assets skill as tools for the AI model editor; `npm run editor:mcp`, `npm run mcp:check`) · `media/` promo clips + sound · `audit/` multi-agent security check suite for any repo (`--repo <path>` or `--github <url>`) · `deploy/` production deploy; local edge `npm run infra:local` (`http://freightchain.localhost`) · `design/` icons, banners · `docs/` architecture + explainers · `.claude/skills/` project skills · `docker-compose.yml` local PostgreSQL (:15433) + optional Redis & worker.
+`client/` the game (`play.html`, `js/`, `shared/`) + site pages (lobby, admin, viewer, `r.html`, `blink.html`, `site/`) · `shared/` workspace package (`@freightchain/shared`) re-exporting `client/shared/` · `landing/` the `/` page + whitepaper + pitch deck (Vite) · `server/` the API + `replay:worker` + dedicated AI worker (`npm run editor:worker`; Clean Architecture, `prisma/`, `test/`) · `programs/freightchain-pools` the escrow program · `mcp/` the entity MCP (the 3d-assets skill as tools for the AI model editor; `npm run editor:mcp`, `npm run mcp:check`) · `media/` promo clips + sound · `audit/` multi-agent security check suite for any repo (`--repo <path>` or `--github <url>`) · `deploy/` production deploy; local edge `npm run infra:local` (`http://freightchain.localhost`) · `design/` icons, banners · `docs/` architecture + explainers · `.claude/skills/` project skills · `docker-compose.yml` local PostgreSQL (:15433) + optional Redis & worker · `e2e/` code-level end-to-end (happy-dom + `docker-compose.e2e.yml`; `npm run test:e2e:block1`, `npm run test:e2e:block2`).
 
 ## Where the detail is (`docs/agents/`)
 
@@ -83,6 +83,7 @@ AGY: use Argon (Pro) for heavy reasoning and planning (via `/boost` or subagents
 - Client (`client/`): `npm run check` (lint + bundle + headless test); refactor gate `npm run trace:save` / `trace:diff`; real Chrome `node tools/e2e-chrome.mjs` (`PORT=` if busy) – look at the screenshots.
 - Root: `npm run check` (client + landing + server unit + media) AND `npm run server:integration` for server changes; real-Chrome suites: `bash .claude/skills/run-tests/e2e.sh`.
 - Everything else (live server e2e, replays, lobby): `docs/agents/verifying.md`.
+- Local code e2e, no browser: `npm run test:e2e:block1` (chain off) and `npm run test:e2e:block2` (host validator). Plan: `docs/testing/E2E_PLAN.md`.
 - HONK on a local validator (mint, swap, burn, soulbound part, paid ride): `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token half). The full coin suite, including a verified ride: `bash .claude/skills/honk-suite/run.sh`.
 
 ## Style
