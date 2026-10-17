@@ -1,4 +1,4 @@
-/* The pool program's money maths, exactly as programs/freightchain-pools computes it (state.rs `bps_of` / `split` / `Pool::pot`, settle.rs `handle_close_pool`):
+/* The pool program's money maths, exactly as programs/freightchain_pools computes it (state.rs `bps_of` / `split` / `Pool::pot`, settle.rs `handle_close_pool`):
      pot         = price × tickets_sold + sponsored                 (u64; more is MathOverflow)
      prize_share = floor(pot × prize_bps / 10 000)                  – also the bound of every pay_prize together
      seed_share  = floor(pot × seed_bps  / 10 000)

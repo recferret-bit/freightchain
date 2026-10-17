@@ -1,8 +1,8 @@
 # HONK program (local)
 
-A second Anchor program in `programs/freightchain-pools`, crate `freightchain_honk`. It is not the prize-pool program and it is not deployed. Devnet and mainnet stay untouched. The game ledger is still the ride mint and the cab entitlement. This program is the coin: one mint, one pool, burns, and a soulbound part.
+A second Anchor program in `programs/`, crate `freightchain_honk`. It is not the prize-pool program and it is not deployed. Devnet and mainnet stay untouched. The game ledger is still the ride mint and the cab entitlement. This program is the coin: one mint, one pool, burns, and a soulbound part.
 
-Program id: `GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx` (`programs/freightchain-pools/programs/freightchain_honk/program-keypair.json`). Do not print that file. Do not use `~/.config/solana/id.json`.
+Program id: `GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx` (`programs/freightchain_honk/program-keypair.json`). Do not print that file. Do not use `~/.config/solana/id.json`.
 
 Numbers, from `server/src/domain/honk/tokenomics.ts` and `programs/freightchain_honk/src/constants.rs`. The coin is TEN4. HONK is only the in-game verb.
 
@@ -16,7 +16,7 @@ Error codes, in order: `ZeroAmount` 6000, `ZeroOut` 6001, `TooEarly` 6002, `Alre
 
 ## Instructions
 
-Build with `anchor build --arch v0 -p freightchain_honk` from `programs/freightchain-pools` (LiteSVM 0.10 needs SBF v0). Do not change `freightchain_pools`.
+Build with `anchor build --arch v0 -p freightchain_honk` from `programs/` (LiteSVM 0.10 needs SBF v0). Do not change `freightchain_pools`.
 
 PDA seeds: `config`, `authority`, `honk-mint`, `vault`, `pool`, `lp-mint`, `lp-locker`, `locker`, `emission`, `airdrop`, `treasury`, `team`, `wallet-day` + rider + day, `part` + buyer + slot + item, and `ride-mint` + ride id. The seeds keep the word honk. The token name on Config is TEN4.
 
@@ -24,8 +24,8 @@ PDA seeds: `config`, `authority`, `honk-mint`, `vault`, `pool`, `lp-mint`, `lp-l
 
 - Pre-mints liquidity, emission, airdrop, treasury, and team (only if enabled) into their vaults. Then sets the TEN4 mint authority to none. Freeze authority stays omitted. There is no Metaplex CPI.
 - Mints LP `isqrt(liquidity * sol_in)` into the locker, burns it, and sets the LP mint authority to none. No `release_lp`. No `withdraw_lp`.
-- Accepts only `sol_in == 50_000_000_000`. Anything else fails with `ZeroAmount`. Team on requires 24 or 36 linear months and a non-default recipient. Team off requires months 0 and the default recipient.
-- Accounts, in order: payer, config, honk_mint, authority, vault, pool, lp_mint, lp_locker, locker, emission_vault, airdrop_vault, treasury_vault, team_vault, token_program, system_program.
+- Accepts only `sol_in == 50_000_000_000`. Anything else fails with `ZeroAmount`. `payer` must be the program's upgrade authority (`program_data.upgrade_authority_address`; an immutable program or non-upgrade-authority signer fails with `BadAuthority`). Team on requires 24 or 36 linear months and a non-default recipient. Team off requires months 0 and the default recipient.
+- Accounts, in order: payer, config, honk_mint, authority, vault, pool, lp_mint, lp_locker, locker, emission_vault, airdrop_vault, treasury_vault, team_vault, program, program_data, token_program, system_program.
 
 `swap_sol_for_honk(sol_in: u64, min_out: u64)`
 

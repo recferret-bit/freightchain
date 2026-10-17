@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "programs/*"
+    "freightchain_pools",
+    "freightchain_honk",
 ]
 resolver = "2"
 

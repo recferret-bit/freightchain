@@ -139,7 +139,7 @@ export function lobbyScenarios(h: () => Harness): void {
     it('a fresh wallet has stats of zero and every achievement locked', async () => {
       const w = await login(), p = (await w.agent.get('/api/profile').expect(200)).body;
       expect(p).toMatchObject({ wallet: w.address, freeRides: 10, freeRidesMax: 5, demo: false, stats: { rides: 0, completed: 0, metres: 0 } });
-      expect(p.achievements).toHaveLength(35); // 9 ladders of 3-4 tiers + the legacy top-20
+      expect(p.achievements).toHaveLength(41); // 11 ladders of 3-4 tiers + the legacy top-20
       expect(p.achievements.find((a: { id: string }) => a.id === 'century-3')).toMatchObject({ family: 'distance', tier: 3, tierName: 'Gold', progress: { value: 0, target: 2000 }, nft: null, earnedAt: null });
       expect(p.badgeChain).toBeNull();                      // minting is not configured here
       expect(p.achievements.every((a: { earnedAt: number | null }) => a.earnedAt === null)).toBe(true);
@@ -192,7 +192,7 @@ export function lobbyScenarios(h: () => Harness): void {
 
     it('cancels the free ride, gives the credit back, and orders the paid one', async () => {
       const w = await login(), free = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-      expect((await w.agent.get('/api/me')).body.freeRides).toBe(9);
+      expect((await w.agent.get('/api/me')).body.freeRides).toBe(10);
       const order = (await w.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
       expect(order).toMatchObject({ tier: '1h', status: 'awaiting_payment' });
       expect((await w.agent.get('/api/me')).body.freeRides).toBe(10);                              // credit refunded exactly once (9 is not the cap)

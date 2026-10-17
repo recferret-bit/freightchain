@@ -6,7 +6,7 @@ import { CLUSTER, explorerTx, explorerUrl, shortAddr, xIntent } from './pools.js
 /** the art: /site/img/achievements/<id>.svg (earned) and <id>-locked.svg, drawn by design/achievements/generate.mjs. Resolved from this module so a split-host lobby finds it. */
 const art = (id, locked) => new URL(`./img/achievements/${id}${locked ? '-locked' : ''}.svg`, import.meta.url).href;
 
-const FAMILY_TITLE = { road: 'ROAD', shift: 'SHIFTS', night: 'NIGHT', distance: 'DISTANCE', clean: 'CLEAN', siberia: 'SIBERIA', solo: 'SOLO', licence: 'LICENCE' };
+const FAMILY_TITLE = { road: 'ROAD', shift: 'SHIFTS', night: 'NIGHT', distance: 'DISTANCE', clean: 'CLEAN', siberia: 'SIBERIA', solo: 'SOLO', licence: 'LICENCE', medium: 'MEDIUM', hard: 'HARD', honk: 'TEN4' };
 
 const q = cluster => (cluster ? `?cluster=${cluster}` : '');
 /** where to look at a compressed NFT: Solana Explorer, Solscan and Orb all index cNFTs through DAS; the mint transaction is the receipt that never depends on an indexer */

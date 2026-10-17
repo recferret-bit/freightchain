@@ -5,6 +5,7 @@ import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SystemProgram, Tr
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, TokenAccountNotFoundError, getAccount, getAssociatedTokenAddressSync, getMint } from '@solana/spl-token';
 
 export const PROGRAM_ID = new PublicKey('GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx');
+const BPF_LOADER_UPGRADEABLE_ID = new PublicKey('BPFLoaderUpgradeab1e11111111111111111111111');
 const CONFIRMED = { commitment: 'confirmed' };
 
 const disc = (name) => createHash('sha256').update(`global:${name}`).digest().subarray(0, 8);
@@ -36,6 +37,7 @@ function pda(seeds) {
 
 export function pdas() {
   return {
+    programData: PublicKey.findProgramAddressSync([PROGRAM_ID.toBuffer()], BPF_LOADER_UPGRADEABLE_ID)[0],
     config: pda([Buffer.from('config')]),
     authority: pda([Buffer.from('authority')]),
     honkMint: pda([Buffer.from('honk-mint')]),
@@ -90,7 +92,7 @@ export async function initialize({ rpc, payer, solIn, emitter, treasury, teamRec
   const team = teamOn ? who(teamRecipient) : PublicKey.default;
   const months = teamOn ? teamLinearMonths : 0;
   const keys = [
-    w(payer.publicKey, true), w(p.config), w(p.honkMint), ro(p.authority), w(p.vault), w(p.pool),
+    w(payer.publicKey, true), ro(PROGRAM_ID), ro(p.programData), w(p.config), w(p.honkMint), ro(p.authority), w(p.vault), w(p.pool),
     w(p.lpMint), w(p.lpLocker), ro(p.locker), w(p.emission), w(p.airdrop), w(p.treasury), w(p.team),
     ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId),
   ];

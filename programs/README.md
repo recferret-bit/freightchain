@@ -26,10 +26,10 @@ npm run program:idl        # copies target/idl/freightchain_pools.json -> idl/
 - **Deploy only that `.so`.** `anchor build --arch v0` on the host gives different bytes (a89fa844… vs 055e337c… for the same source on 2026-10-08, before the initialize fix) and would never verify.
 - A changed program, `Cargo.lock`, pinned Solana version or program id (`anchor keys sync`) changes the hash: rerun with `UPDATE_PIN=1` and commit the new pin with the change.
 - Deploying and operating it (keys, `initialize` by the upgrade authority naming the admin, upgrades, pause, authority rotation): `docs/program-deploy.md`.
-- Public verification (`solana-verify verify-from-repo … --mount-path programs/freightchain-pools --library-name freightchain_pools --commit-hash <sha>`) writes a PDA on chain signed by the upgrade authority and needs the repo public – the owner's step, after the deploy.
+- Public verification (`solana-verify verify-from-repo … --mount-path programs --library-name freightchain_pools --commit-hash <sha>`) writes a PDA on chain signed by the upgrade authority and needs the repo public – the owner's step, after the deploy.
 
 **`--arch v0` is required.** `anchor build` 1.2.1 defaults to SBPF **v3**, which LiteSVM 0.10 (the newest version that compiles on Rust 1.89) refuses to load (`InvalidAccountData` from `add_program`; the plan's `anchor init` probe fails the same way). The tests assert the ELF flags and say so. v0 is accepted by every cluster; if the final deploy should be v3, build that artifact separately for the deploy only.
-`Anchor.toml`: `cluster = "localnet"`, `wallet = "../../deploy/secrets/program-deploy.json"` (gitignored, not needed for build or test). Nothing here talks to a cluster.
+`Anchor.toml`: `cluster = "localnet"`, `wallet = "../deploy/secrets/program-deploy.json"` (gitignored, not needed for build or test). Nothing here talks to a cluster.
 
 ## Accounts
 

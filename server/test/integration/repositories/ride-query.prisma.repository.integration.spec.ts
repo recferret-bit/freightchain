@@ -231,7 +231,7 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
     await ride('alice', { level: 1, metres: 9000, outcome: 'failed', start: 400 }); // not completed
     expect(await top('free', null, 20, true, 'free-1c')).toEqual([{ rank: 1, wallet: 'bob', distance: 850, seconds: 20, hull: 100, rides: 2 }]);
     expect(await top('free', null, 20, true, 'free-2c')).toEqual([{ rank: 1, wallet: 'carol', distance: 1500, seconds: 10, hull: 100, rides: 1 }]);
-    expect(await top('free', null, 20, true, 'free-3b')).toEqual([{ rank: 1, wallet: 'alice', distance: 6700, seconds: 10, hull: 100, rides: 1 }]);
+    expect(await top('free', null, 20, true, 'free-3c')).toEqual([{ rank: 1, wallet: 'alice', distance: 6700, seconds: 10, hull: 100, rides: 1 }]);
     expect(await top('free', null, 20, true, null)).toEqual([]);
   });
 

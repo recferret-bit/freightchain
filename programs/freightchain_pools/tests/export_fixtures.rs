@@ -6,7 +6,7 @@
 //! The server's specs (test/unit/infrastructure/solana/*.spec.ts) decode those logs / accounts and rebuild those instructions, so TS and Rust must agree byte for byte.
 //!
 //! Always runs the scenario (asserting every step); WRITES only when asked (keys are random per run):
-//!   FC_FIXTURES_OUT=$PWD/../../server/test/fixtures/chain cargo test --test export_fixtures      (from programs/freightchain-pools)
+//!   FC_FIXTURES_OUT=$PWD/../server/test/fixtures/chain cargo test --test export_fixtures      (from programs)
 #[macro_use]
 mod common;
 

@@ -16,7 +16,7 @@ Everything in Freight Chain that can be configured, where it lives, and what to 
 | Hosts / URLs | `client/js/hosts.js` | yes | derives API / game / site / admin URLs from the page's hostname |
 | Verdict thresholds | `server/src/domain/verdict/verdict-rules.ts` (`RULES_VERSION`) | yes | verified-play rules |
 | Ride rules mirrored from client | `server/src/domain/rides/ride-rules.ts` | yes | `MAX_SPEED`, `COMPLETE_DIST_K`, route ids – keep equal to the client |
-| Solana program | `programs/freightchain-pools/Anchor.toml` | yes | program id, deploy wallet path |
+| Solana program | `programs/Anchor.toml` | yes | program id, deploy wallet path |
 | Landing build | `landing/vite.config.js` | yes | dev proxy to Nest, build output |
 | nginx | `deploy/nginx/*.conf.template` | yes | the six hosts in production |
 | Claude Code skills | `.claude/skills/*` | yes | read-only prod tooling + the test runner |
@@ -239,7 +239,7 @@ npm run server:dev                   # :3000 – site, game and API on one origi
 - **Landing** (`landing/`): dev proxy in `vite.config.js`; `LANDING_DIR` on the server; size budget enforced by `landing/test`. The whitepaper (`whitepaper.html`) is the second Vite input of the same build, served by the same `LANDING_DIR`; host `whitepaper.<apex>` comes from `DEPLOY_DOMAIN`, no env key of its own.
 - **App icon**: generated – edit `design/icons/build-app-icons.mjs` and rerun, never the PNGs.
 - **nginx / certificates**: `deploy/nginx/*.conf.template`, applied by `npm run deploy:setup` (a new host = new template + `setup.sh` + smoke check + `hosts.js` prefix).
-- **Anchor program**: `programs/freightchain-pools/Anchor.toml` (program id, `wallet` → `deploy/secrets/program-deploy.json`, gitignored). Building: `npm run program:build`, `program:test`, `program:idl`.
+- **Anchor program**: `programs/Anchor.toml` (program id, `wallet` → `deploy/secrets/program-deploy.json`, gitignored). Building: `npm run program:build`, `program:test`, `program:idl`.
 - **Logging**: JSON lines in production, ring buffer of 5000 in memory for the admin page; read with `npm run ops -- logs`.
 - **Scheduled jobs** (no env): free-ride refill 00:00 UTC, the retention sweeps (recordings, sign-ins) 00:30 UTC. By hand: `node dist/cli/index.js retention:sweep`; after a verdict-rules change `verdict:rejudge [--status …] [--since DATE] [--dry-run]` judges completed shifts again.
 

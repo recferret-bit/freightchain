@@ -91,9 +91,17 @@ export class RidePrismaRepository extends RideRepositoryPort {
     return { free, paid, promo };
   }
 
-  async listRankedEnded(tier: string, from: Date, to: Date, tx?: TransactionHandle): Promise<Ride[]> {
+  async listRankedEnded(tier: string, from: Date, to: Date, tx?: TransactionHandle, opts?: { verifiedOnly?: boolean }): Promise<Ride[]> {
     const rows = await clientFor(this.prisma, tx).ride.findMany({
-      where: { tier, ranked: true, status: { in: ['completed', 'abandoned', 'failed'] }, startedAt: { gte: from, lt: to } },
+      where: {
+        tier,
+        ranked: true,
+        status: { in: ['completed', 'abandoned', 'failed'] },
+        startedAt: { gte: from, lt: to },
+        ...(opts?.verifiedOnly
+          ? { verdict: { is: { status: 'verified' } } }
+          : { OR: [{ verdict: { is: null } }, { verdict: { is: { status: 'verified' } } }] }),
+      },
       orderBy: [{ startedAt: 'asc' }, { seq: 'asc' }],
     });
     return rows.map((row) => RideMapper.toDomain(row));

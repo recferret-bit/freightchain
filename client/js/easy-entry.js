@@ -27,9 +27,13 @@ export async function beginEasyEntry() {
       const guest = await call('auth/guest', {});
       if (!guest.ok) return 'fail';
     } else if (!me.ok) return 'fail';
-    const ride = await call('rides', { tier: 'free', level: 1, tutorial: true, assist: true });
-    const id = ride.body?.id;
-    if (!ride.ok || typeof id !== 'string' || !id) return 'fail';
+    let id = me.ok ? me.body?.readyFreeRide?.id : null;
+    if (typeof id !== 'string' || !id) {
+      const tutorial = me.ok ? !me.body?.tutorialPassed : true;
+      const ride = await call('rides', { tier: 'free', level: 1, tutorial, assist: true });
+      id = ride.body?.id;
+      if (!ride.ok || typeof id !== 'string' || !id) return 'fail';
+    }
     const next = new URL(location.href);
     next.searchParams.delete('offline');
     next.searchParams.delete('sim');

@@ -1,6 +1,6 @@
 # freightchain_pools – review checklist
 
-Invariants specific to this program (`programs/freightchain-pools/programs/freightchain_pools/src`). The generic Solana classes (signer, owner, PDA, CPI target)
+Invariants specific to this program (`programs/freightchain_pools/src`). The generic Solana classes (signer, owner, PDA, CPI target)
 are the Trail of Bits scanner's job; these are the ones only someone who knows the design can check. For each item: ✓ / ✗ + file:line, and the test that pins it.
 
 ## Money conservation

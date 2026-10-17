@@ -163,15 +163,15 @@ describe('StartRideHandler', () => {
 
   it('a ranked start stores the flag and the country; a refusal leaves the ride created so it can start unranked', async () => {
     const { ctx, start, startRanked } = setup();
-    const ride = await ctx.freeRide('w');
-    const player = await ctx.storedPlayer('w');
-    player.setAgreements({ age18: true, loss: false }, ctx.now());
-    await ctx.players.save(player);
+    const training = await ctx.freeRide('w');
+    await expect(startRanked(training.id, 'w', { 'cf-ipcountry': 'CA' })).rejects.toMatchObject({ errorCode: 'ranked_training' });
+    expect((await ctx.reload(training.id)).status).toBe(RideStatus.Created);
+    const ride = await ctx.paidRide('w', false);
     await expect(startRanked(ride.id, 'w', {})).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
     expect((await ctx.reload(ride.id)).status).toBe(RideStatus.Created);
     expect(await startRanked(ride.id, 'w', { 'cf-ipcountry': 'CA' })).toMatchObject({ status: 'running', ranked: true });
     expect((await ctx.reload(ride.id)).snapshot()).toMatchObject({ ranked: true, prizeCountry: 'CA', prizeRegion: null });
-    const blocked = await ctx.freeRide('w');
+    const blocked = await ctx.paidRide('w', false);
     const running = await ctx.reload(ride.id); running.finish('failed', null, ctx.now()); await ctx.rides.save(running);
     await expect(startRanked(blocked.id, 'w', { 'cf-ipcountry': 'US', 'cf-region-code': 'DE' })).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
     expect(await start(blocked.id)).toMatchObject({ status: 'running', ranked: false });

@@ -6,13 +6,16 @@ skip_local_validator = true
 resolution = true
 skip-lint = false
 
+[workspace]
+members = ["freightchain_pools", "freightchain_honk"]
+
 [programs.localnet]
 freightchain_pools = "8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p"
 freightchain_honk = "GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx"
 
 [provider]
 cluster = "localnet"
-wallet = "~/work/freightchain/.claude/worktrees/localnet-e2e/programs/freightchain-pools/../../deploy/secrets/program-deploy.json"
+wallet = "../deploy/secrets/program-deploy.json"
 
 [scripts]
 test = "cargo test"

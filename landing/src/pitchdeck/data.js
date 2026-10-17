@@ -56,7 +56,7 @@ const PLAN = [
   { k: 'COMMUNITY', sub: 'players and streamers', c: '#b98cff', from: 1, to: 4, t: 'Streamers · Discord · weekly challenges', n: 'build in public, every week',
     more: 'People before money: streamer partnerships, a Discord and weekly challenges, so the first pools already have an audience.' },
   { k: 'TOKEN LAUNCH', sub: 'TEN4', c: '#ffffff', from: 4, to: 4, t: 'TEN4 on chain', n: 'liquidity → pool',
-    more: 'An SPL mint: 100M cap, 2M to the pool, 98M earned by rides.' },
+    more: 'An SPL mint: 100M cap, 15M to the pool, 55M earned by rides.' },
   { k: 'PAID EVENTS', sub: 'backed by us', c: '#ff5a4d', from: 2, to: 4, t: 'Funded prize pools · streamer cups', n: 'we seed the pool',
     more: 'We fund the prizes: marketing rides and streamer cups, so a pool never opens empty and the stream has a reason to exist.' },
   { k: 'AI MODS', sub: 'community-made content', c: '#ff9ad5', from: 3, to: 4, t: 'AI-built mods via MCP · storybook', n: 'vehicles, props, landmarks',

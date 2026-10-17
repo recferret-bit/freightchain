@@ -1,7 +1,7 @@
 import type { PaidTierId } from '../rides/ride-tier.js';
 
 /* What the pool program tells the world, decoded (docs/agents/escrow.md). Field names are the camelCase of the program's events in
-   programs/freightchain-pools/programs/freightchain_pools/src/events.rs – that file (and the committed IDL) is the final word; the chain adapter
+   programs/freightchain_pools/src/events.rs – that file (and the committed IDL) is the final word; the chain adapter
    (infrastructure/solana/program-chain.adapter.ts) decodes into these, its spec decodes real LiteSVM logs (server/test/fixtures/chain/).
    Types: u8/u16/u32 → number; u64 lamports → number, decoded exactly through BigInt – a value above Number.MAX_SAFE_INTEGER (≈ 9 million SOL, unreachable for a pool)
    makes the transaction `{ invalid }` instead of being rounded; i64 unix seconds → Date; Pubkey → base58; order_id [u8; 16] → the uuid string (lowercase, 8-4-4-4-12).

@@ -1,5 +1,6 @@
 use anchor_lang::{
     prelude::*,
+    prelude::ProgramData,
     system_program::{transfer, Transfer},
 };
 use anchor_spl::token::{self, spl_token, Mint, Token, TokenAccount};
@@ -9,6 +10,7 @@ use crate::{
     error::HonkError,
     events::HonkInitialized,
     math::lp_tokens,
+    program::FreightchainHonk,
     state::{Config, Pool},
 };
 
@@ -16,6 +18,10 @@ use crate::{
 pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
+    #[account(constraint = program.programdata_address()? == Some(program_data.key()) @ HonkError::BadAuthority)]
+    pub program: Program<'info, FreightchainHonk>,
+    #[account(constraint = program_data.upgrade_authority_address == Some(payer.key()) @ HonkError::BadAuthority)]
+    pub program_data: Account<'info, ProgramData>,
     #[account(init, payer = payer, space = 8 + Config::INIT_SPACE, seeds = [CONFIG_SEED], bump)]
     pub config: Account<'info, Config>,
     #[account(

@@ -13,7 +13,7 @@ const KB = 1024;
 
 test('JS: the eager bundle is small, nothing in dist/assets is large', { skip: !has }, () => {
   const js = files.filter(f => f.endsWith('.js') && !/\/pitchdeck-/.test(f));   // the pitch deck's own script is on its own line below
-  for (const f of js) assert.ok(statSync(f).size <= 34 * KB, `${f} ${statSync(f).size} B > 34 kB`);
+  for (const f of js) assert.ok(statSync(f).size <= 36 * KB, `${f} ${statSync(f).size} B > 36 kB`);   // 34 → 36 on Oct 17: weekly granted ticket & ranked competition UI in lobby.js / pools.js
   assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 64 * KB, 'all JS together ≤ 64 kB gzipped (incl. the lazy live-dash chunks)');   // 62 → 64 on Oct 16: the unhandled-crash reporter (client/js/crash.js, ~1.3 kB gz) shares the web-vitals chunk; 61 → 62 on Oct 15: the footer's pitch deck link (PITCHDECK_BASE in hosts.js); 59 → 61 on Oct 13: mobile play restriction & spectator toast; 55 → 59 on Oct 13: Wallet Standard discovery + the wallet picker; 50 → 55 on Oct 12: UNDER THE HOOD canvas scenes; 40 → 44 on Oct 11: the cab radio's eleven stations
 });
 

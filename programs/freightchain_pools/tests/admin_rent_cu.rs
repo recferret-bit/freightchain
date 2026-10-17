@@ -382,7 +382,7 @@ impl Tap for freightchain_pools::CreatePoolParams {
 // ---- events ---------------------------------------------------------------------------------
 
 fn idl_discriminator(name: &str) -> Vec<u8> {
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/idl/freightchain_pools.json");
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../target/idl/freightchain_pools.json");
     let idl: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).expect("run `anchor build` first")).unwrap();
     let ev = idl["events"].as_array().unwrap().iter().find(|e| e["name"] == name).unwrap_or_else(|| panic!("event {name} not in IDL"));
     ev["discriminator"].as_array().unwrap().iter().map(|b| b.as_u64().unwrap() as u8).collect()

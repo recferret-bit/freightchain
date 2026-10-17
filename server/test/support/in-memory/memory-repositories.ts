@@ -173,10 +173,14 @@ export class MemoryRideRepository extends RideRepositoryPort {
     return { free, promo, paid: rows.length - free - promo };
   }
 
-  async listRankedEnded(tier: string, from: Date, to: Date): Promise<Ride[]> {
+  async listRankedEnded(tier: string, from: Date, to: Date, _tx?: unknown, opts?: { verifiedOnly?: boolean }): Promise<Ride[]> {
     const ended = new Set<RideStatus>([RideStatus.Completed, RideStatus.Abandoned, RideStatus.Failed]);
     return [...this.db.rides.values()]
       .filter((r) => r.props.tier === tier && r.props.ranked === true && ended.has(r.props.status) && inRange(r.props.startedAt, from, to))
+      .filter((r) => {
+        const v = this.db.verdicts.get(r.props.id);
+        return opts?.verifiedOnly ? v?.status === 'verified' : (!v || v.status === 'verified');
+      })
       .sort((a, b) => (a.props.startedAt?.getTime() ?? 0) - (b.props.startedAt?.getTime() ?? 0) || a.seq - b.seq)
       .map((r) => Ride.restore(r.props));
   }

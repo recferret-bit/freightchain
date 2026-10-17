@@ -16,7 +16,7 @@ use freightchain_pools::{
 use serde_json::Value;
 use solana_signer::Signer;
 
-const TABLE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../server/test/fixtures/chain/vault-split-cases.json"));
+const TABLE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../server/test/fixtures/chain/vault-split-cases.json"));
 
 fn rows() -> Vec<Value> {
     let v: Value = serde_json::from_str(TABLE).unwrap();

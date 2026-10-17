@@ -1,4 +1,4 @@
-/* The pool program's IDL (programs/freightchain-pools/idl/freightchain_pools.json, Anchor 1.2.1, spec 0.1.0) without its doc comments – vendored as code because
+/* The pool program's IDL (programs/idl/freightchain_pools.json, Anchor 1.2.1, spec 0.1.0) without its doc comments – vendored as code because
    `nest build` ships no JSON and the deploy image has no programs/ folder. Its spec deep-equals it with the committed file: regenerate it after
    `npm run program:idl` with `node scripts/vendor-idl.mjs` (from server/). */
 import type { Idl } from './borsh.js';

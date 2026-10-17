@@ -89,12 +89,12 @@ export function showMenu(title, sub, extra = '') {
 /* online ride (play.html?ride=…): the server issued it, so no mock wallet here – START begins the server-timed ride, afterwards the only way on is the lobby.
    No key chart: tutorial and assist are chosen before the drive (the lobby, or the guest menu), and the tutorial dialog teaches the truck. */
 function showOnlineMenu(title, sub, extra) {
-  const over = online.done, bad = !!online.error;
+  const over = online.done, bad = !!online.error, canRank = !!(online.ride && (online.ride.tier !== 'free' || online.ride.promo));
   panel.innerHTML = `<h1>${title}</h1><h2>${sub}</h2>${extra}
     ${bad ? `<div class="row"><span>Ride</span><span class="bad">${online.error}</span></div>` : `<div class="row"><span>Finish line</span><b>${(CFG.COMPLETE_DIST / 1000).toFixed(1)} km</b></div>
     <div class="row"><span>Route (set by the server)</span><b>${env.theme.name} · starts ${clockText()}</b></div>
     ${online.ride?.poolId != null ? '<div class="row"><span>Road</span><b class="seal">checking the seal…</b></div>' : ''}`}
-    ${over || bad ? '' : `<label class="row" style="cursor:pointer"><span>RANKED – this start counts for the weekly board (5 paid, including the weekly ticket, plus 1 promo ride). Spectator weather, day and night, and road obstacles are refused. Chat HONK stays.</span><input type="checkbox" id="ranked-toggle" ${store.get('freightchain.ranked') === '1' ? 'checked' : ''}></label>`}
+    ${over || bad || !canRank ? '' : `<label class="row" style="cursor:pointer"><span>RANKED – this start counts for the weekly board (5 paid, including the weekly ticket, plus 1 promo ride). Spectator weather, day and night, and road obstacles are refused. Chat HONK stays.</span><input type="checkbox" id="ranked-toggle" ${store.get('freightchain.ranked') === '1' ? 'checked' : ''}></label>`}
     <div class="btns">${over || bad ? `${over && online.ride ? '<button type="button" class="alt share-x-btn" id="share-x-end" title="Share your ride on 𝕏"><b>POST ON 𝕏</b><small>share progress & receipt</small></button>' : ''}<button class="alt bail-link" id="lobby" title="lobby" style="margin-left:auto"><b>${lastOutcome?.ok ? 'BACK TO THE LOBBY' : 'I MISS THE YARD'}</b><small>lobby</small></button>` : '<button id="go">START RIDE</button>'}</div>`;
   overlay.classList.remove('hide');
   const rankedBox = document.getElementById('ranked-toggle');
@@ -140,11 +140,16 @@ export async function startRide() {   // only an online ride awaits the server
   audio.start();   // inside this click, before the server round-trip: WebKit will not resume a context created after the await, and `start` has to begin decoding
   if (online.ride) {
     track('ride_start_clicked', { ride_id: online.ride.id, route_id: env.theme.id, phase: dn.phase });
-    try { await beginOnline({ ranked: store.get('freightchain.ranked') === '1' }); } catch (e) {
-      online.error = e.message;
+    const canRank = !!(online.ride.tier !== 'free' || online.ride.promo);
+    try { await beginOnline({ ranked: canRank && store.get('freightchain.ranked') === '1' }); } catch (e) {
       track('ride_start_failed', { ride_id: online.ride.id, http_status: typeof e.status === 'number' ? e.status : null, code: typeof e.code === 'string' ? e.code : null });
+      if (e.code === 'ranked_ineligible' || e.code === 'ranked_training' || e.code === 'guest_easy_only' || e.code === 'ranked_window' || e.code === 'ranked_promo_cap' || e.code === 'ranked_paid_cap') {
+        store.set('freightchain.ranked', '0');
+        showMenu('RANKED REFUSED', e.message || 'Uncheck RANKED to drive this run unranked.');
+        return;
+      }
+      online.error = e.message;
       if (e.code === 'rides_closed') { online.done = true; showMenu('RIDES CLOSED', 'This pool counts only shifts that end by its play deadline – one started now could not reach the line in time. Your ticket stays in the pool.'); }   // the server closed the ride: nothing to end
-      else if (e.code === 'ranked_ineligible' || e.code === 'ranked_training' || e.code === 'guest_easy_only' || e.code === 'ranked_window' || e.code === 'ranked_promo_cap' || e.code === 'ranked_paid_cap') showMenu('RANKED REFUSED', 'Uncheck RANKED to drive this run unranked.');
       else showMenu('RIDE REFUSED', 'The server did not accept this ride.');
       return;
     }

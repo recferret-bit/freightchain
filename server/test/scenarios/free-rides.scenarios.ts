@@ -82,7 +82,8 @@ export function freeRideScenarios(h: () => Harness): void {
     expect((await me(await login())).freeRides).toBe(7);
 
     expect((await setSetting(admin, 'free_rides_daily_max', 2)).body.settings.freeRidesDailyMax).toBe(2);
-    expect(await me(existing)).toMatchObject({ freeRides: 10, freeRidesMax: 2, nextFreeRideAt: null });
+    expect(await me(existing)).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });
+    expect(await me(await login())).toMatchObject({ freeRides: 7, freeRidesMax: 2, nextFreeRideAt: null });
   });
 
   it('an unknown or out-of-range setting is refused before a signature is issued', async () => {

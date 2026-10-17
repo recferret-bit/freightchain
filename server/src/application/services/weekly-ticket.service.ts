@@ -30,19 +30,18 @@ export class WeeklyTicketService {
 
   /** The live unspent ticket, after issuing this week's row when the wallet is eligible. */
   async offer(player: Player, headers: GeoHeaders, now: Date, tx?: TransactionHandle): Promise<WeeklyTicketRecord | null> {
-    if (this.eligible(player, headers)) {
-      const week = prizeWeek(now);
-      if (now.getTime() < week.end.getTime()) {
-        const tier = tierOf((await this.settings.current()).weeklyTicketHours);
-        await this.tickets.ensure({ wallet: player.wallet, weekId: week.id, tier, expiresAt: week.end, now }, tx);
-      }
+    if (!this.eligible(player, headers)) return null;
+    const week = prizeWeek(now);
+    if (now.getTime() < week.end.getTime()) {
+      const tier = tierOf((await this.settings.current()).weeklyTicketHours);
+      await this.tickets.ensure({ wallet: player.wallet, weekId: week.id, tier, expiresAt: week.end, now }, tx);
     }
     return this.tickets.current(player.wallet, now, tx);
   }
 
   /** Spend this week's ticket on `rideId` when the ordered tier matches. False when there is no ticket to take. */
   async claim(player: Player, headers: GeoHeaders, tier: PaidTierId, rideId: string, now: Date, tx: TransactionHandle): Promise<boolean> {
-    await this.offer(player, headers, now, tx);
+    if (!(await this.offer(player, headers, now, tx))) return false;
     return this.tickets.claim(player.wallet, tier, rideId, now, tx);
   }
 

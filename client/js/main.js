@@ -81,8 +81,10 @@ if (online.ride) {
   const stage = online.error.startsWith('not signed in') ? 'not_signed_in' : online.error.startsWith('this ride is') ? 'bad_status' : typeof online.status === 'number' ? 'http' : 'unknown';
   track('ride_load_failed', { stage, http_status: typeof online.status === 'number' ? online.status : null, code: typeof online.code === 'string' ? online.code : null });
 }
-const isWatching = await initWatch();
-if (isWatching) {   // only with ?watch=<id> (see watch.js): the watched ride's route + seed, no menu, the watch panel instead
+const isWatching = easy === 'go' ? false : await initWatch();
+if (easy === 'go') {
+  // redirecting to ?ride=<id>
+} else if (isWatching) {   // only with ?watch=<id> (see watch.js): the watched ride's route + seed, no menu, the watch panel instead
   CFG.TRAFFIC = false;   // no traffic SIM in a replay: watch.js draws the traffic the driver's game RECORDED (an empty road for recordings from before that)
   if (watch.ride) followRoadPlan(watch.ride.id);   // a replay draws the server's holes, never a copy of what the driver's game had
   if (watch.ride) { setTrip(tripOf(watch.ride)); selectTheme(THEMES.some(t => t.id === watch.ride.route) ? watch.ride.route : THEMES[0].id, true); resize(); resetRide(watch.ride.seed); st.mode = 'drive'; startWatch(); }
@@ -91,7 +93,7 @@ if (isWatching) {   // only with ?watch=<id> (see watch.js): the watched ride's 
 } else if (isMobileDevice()) {
   showMobileBlocker();
 } else { if (wantOffline) offlineRide.on = true; resize(); resetRide(); showMenu('FREIGHT CHAIN', 'Long-haul truck simulator'); }
-let looping = isWatching || !isMobileDevice(); if (looping) requestAnimationFrame(frame);
+let looping = easy !== 'go' && (isWatching || !isMobileDevice()); if (looping) requestAnimationFrame(frame);
 /* a real ride (online, a failed load of one, a watched ride): the route and the clock are fixed – no function to change them stays reachable from the page */
 const pageQuery = typeof location === 'undefined' ? null : new URL(location.href).searchParams;
 const realRide = !!(online.ride || online.error || watch.ride || (pageQuery && (pageQuery.get('ride') || pageQuery.get('watch'))));

@@ -74,17 +74,17 @@ pub fn quote_units(tier: u8, bands: u8, era: u32) -> Result<u64> {
         return Err(HonkError::BadTier.into());
     }
     let full = finish_units(tier, era)?;
-    let mut bps = 0u64;
+    let mut sum = 0u64;
     if bands & BAND_20 != 0 {
-        bps += 1_500;
+        sum = sum.saturating_add(full.saturating_mul(1_500) / 10_000);
     }
     if bands & BAND_50 != 0 {
-        bps += 2_500;
+        sum = sum.saturating_add(full.saturating_mul(2_500) / 10_000);
     }
     if bands & BAND_100 != 0 {
-        bps += 6_000;
+        sum = sum.saturating_add(full.saturating_mul(6_000) / 10_000);
     }
-    Ok(full.saturating_mul(bps) / 10_000)
+    Ok(sum)
 }
 
 /// The most this ride can pay. A zero room is the error of the room that closed it.
@@ -154,6 +154,10 @@ mod tests {
         assert_eq!(quote_units(1, BAND_20 | BAND_50, 0).unwrap(), 40 * UNIT);
         assert_eq!(quote_units(8, BAND_20, 0).unwrap(), 180 * UNIT);
         assert_eq!(quote_units(8, BAND_20 | BAND_50, 0).unwrap(), 480 * UNIT);
+        let b20 = quote_units(1, BAND_20, 7).unwrap();
+        let b50 = quote_units(1, BAND_50, 7).unwrap();
+        let b100 = quote_units(1, BAND_100, 7).unwrap();
+        assert_eq!(quote_units(1, 0b111, 7).unwrap(), b20 + b50 + b100);
         assert!(quote_units(2, 0b111, 0).is_err());
         assert!(quote_units(1, 0, 0).is_err());
         assert!(quote_units(1, 0b1000, 0).is_err());

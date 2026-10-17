@@ -62,7 +62,13 @@ export class HonkPrismaRepository extends HonkRepositoryPort {
   }
 
   async listDue(now: Date, limit: number): Promise<HonkMintRow[]> {
-    const rows = await this.prisma.honkMint.findMany({ where: { released: false, releaseAt: { lte: now } }, orderBy: { releaseAt: 'asc' }, take: limit });
+    const rows = await this.prisma.$queryRaw<HonkMintRow[]>`
+      SELECT m."rideId", m."wallet", m."tier", m."amount", m."band20", m."band50", m."band100", m."createdAt", m."releaseAt", m."released"
+      FROM "economy"."HonkMint" m
+      INNER JOIN "player"."Player" p ON p."wallet" = m."wallet"
+      WHERE m."released" = false AND m."releaseAt" <= ${now}
+      ORDER BY m."releaseAt" ASC
+      LIMIT ${limit}`;
     return rows.map((row) => ({ ...row, tier: row.tier }));
   }
 

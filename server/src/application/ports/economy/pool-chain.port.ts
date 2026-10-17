@@ -2,7 +2,7 @@ import type { UnsignedPaymentTx } from '../../../domain/economy/chain-transactio
 import type { ChainEventRecord, PoolChainState } from '../../../domain/economy/chain-events.js';
 import type { PledgeChainEvent } from '../../../domain/economy/pledge.types.js';
 
-/** The transactions the server builds – each has its own compute-unit budget (programs/freightchain-pools/README.md "Compute units"). */
+/** The transactions the server builds – each has its own compute-unit budget (programs/README.md "Compute units"). */
 export type ChainTxKind = 'buy' | 'refund' | 'pay_prize' | 'close_pool' | 'commit_winners';
 
 /** What a built transaction costs on the network (docs/agents/escrow.md). */

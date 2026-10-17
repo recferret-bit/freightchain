@@ -183,13 +183,13 @@ function paintMe() {
     return;
   }
   if (P.me.wallet === r.wallet) { box.replaceChildren(el('p', { class: 'dim w-small' }, 'This is your own ride – spectators write here.')); return; }
-  const f = watch.features, key = `${P.me.wallet}|${JSON.stringify(f)}`;
+  const f = watch.features, key = `${P.me.wallet}|${r.ranked ? 1 : 0}|${JSON.stringify(f)}`;
   if (box.dataset.ready === key) return;   // built once per signed-in wallet and feature set (keeps what is being typed)
   box.dataset.ready = key;
   const parts = [];
   if (f.chat) parts.push(el('div', { class: 'w-say' }, el('input', { id: 'w-text', maxlength: 140, placeholder: 'say something to the driver…', autocomplete: 'off', onkeydown: e => { if (e.key === 'Enter') send(); } }), el('button', { type: 'button', onclick: send }, 'SEND'), honkBtn()));
   else parts.push(el('p', { class: 'dim w-small' }, 'Chat is off on this ride.'), el('div', { class: 'w-say' }, honkBtn()));
-  parts.push(...timeControls());
+  if (!r.ranked) parts.push(...timeControls());
   if (f.donations) {
     const fx = Object.entries(EFFECT_INFO).filter(([id]) => f.effects || id === 'tip'), chain = f.payment === 'chain';
     parts.push(el('div', { class: 'w-k' }, chain ? 'DONATE · devnet SOL, sent from your wallet to the driver' : 'DONATE · mock SOL – nothing is charged', f.effects ? ' · one effect per 20 s on a ride' : ' · effects are off on this ride – tips only'),
@@ -268,7 +268,7 @@ function holdFx() {
   return true;
 }
 async function sendTime(phase) {
-  if (!holdFx()) return;
+  if (watch.ride?.ranked || !holdFx()) return;
   try {
     const signature = await honkSignature(10n * 1_000_000n);
     await api(`watch/${encodeURIComponent(watch.id)}/honk/time`, { phase, ...(signature ? { signature } : {}) });
@@ -282,7 +282,7 @@ async function sendTime(phase) {
   }
 }
 async function sendWeather(weather) {
-  if (!holdFx()) return;
+  if (watch.ride?.ranked || !holdFx()) return;
   try {
     const signature = await honkSignature(25n * 1_000_000n);
     await api(`watch/${encodeURIComponent(watch.id)}/honk/weather`, { weather, ...(signature ? { signature } : {}) });

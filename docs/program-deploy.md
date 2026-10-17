@@ -1,6 +1,6 @@
 # Escrow program – deploy and operate (short guide)
 
-The program is `programs/freightchain-pools` (spec sheet: [`docs/pool-program/index.html`](pool-program/index.html)). Devnet only, not audited.
+The program is `programs` (spec sheet: [`docs/pool-program/index.html`](pool-program/index.html)). Devnet only, not audited.
 Rules that apply to every step: never use the global Solana config or `~/.config/solana/id.json` (pass `--url devnet` and `--keypair` explicitly);
 keys live in `deploy/secrets/` (gitignored); **deploy only the `solana-verify build` output**, never an `anchor build` one.
 
@@ -91,17 +91,17 @@ bash $D keys && bash $D balances
 # 1. the profile: your QuickNode devnet endpoint (HTTPS + WSS) → server/.env.devnet (600, gitignored), then check the endpoint
 RPC='https://…solana-devnet.quiknode.pro/…/' WS='wss://…solana-devnet.quiknode.pro/…/' bash $D env && bash $D check-rpc && bash $D db
 # 2. the program id into the code: anchor keys sync, IDL, its server copy
-mkdir -p programs/freightchain-pools/target/deploy && cp $K/program-id.json programs/freightchain-pools/target/deploy/freightchain_pools-keypair.json
-(cd programs/freightchain-pools && anchor keys sync)
+mkdir -p programs/target/deploy && cp $K/program-id.json programs/target/deploy/freightchain_pools-keypair.json
+(cd programs && anchor keys sync)
 npm run program:build && npm run program:idl && (cd server && node scripts/vendor-idl.mjs)
 # 3. the deployable binary + its new pin (Docker), THEN the codec fixture from that binary, then all suites; commit
 UPDATE_PIN=1 npm run program:verify
-(cd programs/freightchain-pools && FC_FIXTURES_OUT=$PWD/../../server/test/fixtures/chain cargo test --test export_fixtures)
+(cd programs && FC_FIXTURES_OUT=$PWD/../../server/test/fixtures/chain cargo test --test export_fixtures)
 npm run check && npm run server:integration && npm run test:localnet
 git add -A programs server/test/fixtures/chain server/src && git commit -m "Program: devnet program id"   # id, IDL, fixture, verifiable-build.hash
 # 4. guard: the file about to be deployed IS the pinned build, then deploy it (the deploy wallet pays ~3 SOL rent and is the upgrade authority)
-SO=programs/freightchain-pools/target/deploy/freightchain_pools.so
-[ "$(solana-verify get-executable-hash $SO)" = "$(cut -c1-64 programs/freightchain-pools/verifiable-build.hash)" ] && echo "pinned build ✓ – deploy it" || echo "STOP: not the pinned build"
+SO=programs/target/deploy/freightchain_pools.so
+[ "$(solana-verify get-executable-hash $SO)" = "$(cut -c1-64 programs/verifiable-build.hash)" ] && echo "pinned build ✓ – deploy it" || echo "STOP: not the pinned build"
 solana program deploy --url "$(grep -E '^SOLANA_RPC=' server/.env.devnet | cut -d= -f2-)" \
   --keypair $K/deploy.json --upgrade-authority $K/deploy.json --program-id $K/program-id.json $SO
 # 5. initialize: the deploy wallet (upgrade authority) signs, names the admin key, platform cut 0 – then read Config.authority back
@@ -126,7 +126,7 @@ bash $D rehearse
   cloudflared / ngrok – to reach localhost). To test one path alone: `bash $D admin buy -k <wallet.json> --pool N` (no order – only the watcher / webhook can
   credit it), or restart with `WATCH_INTERVAL_MS=0` to leave it to the webhook.
 - **Optional, public "verified" badge** (writes a PDA, signed by the upgrade authority; repo must be public):
-  `solana-verify -u <devnet rpc> verify-from-repo --program-id <id> --mount-path programs/freightchain-pools --library-name freightchain_pools --commit-hash <sha> -k deploy/secrets/devnet/deploy.json <https repo url>`, then `solana-verify -u <devnet rpc> remote submit-job --program-id <id> --uploader <deploy wallet pubkey>`.
+  `solana-verify -u <devnet rpc> verify-from-repo --program-id <id> --mount-path programs --library-name freightchain_pools --commit-hash <sha> -k deploy/secrets/devnet/deploy.json <https repo url>`, then `solana-verify -u <devnet rpc> remote submit-job --program-id <id> --uploader <deploy wallet pubkey>`.
 
 ## Production (only after the Colosseum results and the devnet exit list – `escrow-open-items.md` Phase 3)
 

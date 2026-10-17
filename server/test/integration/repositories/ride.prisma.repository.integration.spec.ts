@@ -118,5 +118,10 @@ describe('RidePrismaRepository (PostgreSQL)', () => {
     expect(ended.map((r) => r.id)).toEqual([ranked.id]);
     expect(ended[0]?.cleanMetres).toBe(0);
     expect(ended[0]?.prizeCountry).toBe('CA');
+    expect(await repo.listRankedEnded('free', T0, at(100), undefined, { verifiedOnly: true })).toEqual([]);
+    await prisma.rideVerdict.create({ data: { rideId: ranked.id, status: 'flagged', rulesVersion: 1, reasons: [], scores: {}, judgedAt: at(5) } });
+    expect(await repo.listRankedEnded('free', T0, at(100), undefined, { verifiedOnly: false })).toEqual([]);
+    await prisma.rideVerdict.update({ where: { rideId: ranked.id }, data: { status: 'verified' } });
+    expect((await repo.listRankedEnded('free', T0, at(100), undefined, { verifiedOnly: true })).map((r) => r.id)).toEqual([ranked.id]);
   });
 });

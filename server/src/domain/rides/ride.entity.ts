@@ -389,6 +389,15 @@ export class Ride {
     }
   }
 
+  /** Clamps a ranked ride's cleanMetres to what its verified recording or simulation actually achieved cleanly. */
+  clampCleanMetres(maxCleanMetres: number): boolean {
+    if (!this.p.ranked || !Number.isFinite(maxCleanMetres)) return false;
+    const clamped = Math.max(0, maxCleanMetres);
+    if (this.p.cleanMetres !== null && this.p.cleanMetres !== undefined && this.p.cleanMetres <= clamped) return false;
+    this.p.cleanMetres = clamped;
+    return true;
+  }
+
   snapshot(): RideProps {
     return { ...this.p };
   }

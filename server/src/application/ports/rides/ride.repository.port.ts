@@ -19,5 +19,5 @@ export abstract class RideRepositoryPort {
   /** Ranked starts in `[from, to)`, split free, promo, and paid. The current start is not saved yet, so it is not in the count. */
   abstract countRankedStarts(wallet: string, from: Date, to: Date, tx?: TransactionHandle): Promise<{ free: number; paid: number; promo: number }>;
   /** Ended ranked rides of one tier whose start fell in `[from, to)`. */
-  abstract listRankedEnded(tier: string, from: Date, to: Date, tx?: TransactionHandle): Promise<Ride[]>;
+  abstract listRankedEnded(tier: string, from: Date, to: Date, tx?: TransactionHandle, opts?: { verifiedOnly?: boolean }): Promise<Ride[]>;
 }

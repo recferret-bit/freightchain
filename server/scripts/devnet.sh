@@ -106,11 +106,11 @@ case "${1:-help}" in
     done
     ;;
   deploy)
-    SO="$SERVER/../programs/freightchain-pools/target/deploy/freightchain_pools.so"; PIN="$SERVER/../programs/freightchain-pools/verifiable-build.hash"
+    SO="$SERVER/../programs/target/deploy/freightchain_pools.so"; PIN="$SERVER/../programs/verifiable-build.hash"
     export PATH="$HOME/.cargo/bin:$PATH"
     [ -f "$SO" ] || fail "no $SO – npm run program:verify"
     [ "$(solana-verify get-executable-hash "$SO" | tail -1)" = "$(cut -c1-64 "$PIN")" ] || fail "the .so is not the pinned verifiable build – npm run program:verify (never deploy an anchor build)"
-    [ "$(node -p 'require(process.argv[1]).address' "$SERVER/../programs/freightchain-pools/idl/freightchain_pools.json")" = "$(pub program-id)" ] || fail "the code is not built for $(pub program-id) – anchor keys sync + rebuild"
+    [ "$(node -p 'require(process.argv[1]).address' "$SERVER/../programs/idl/freightchain_pools.json")" = "$(pub program-id)" ] || fail "the code is not built for $(pub program-id) – anchor keys sync + rebuild"
     echo "▸ deploy (or upgrade) $(pub program-id) – the deploy wallet pays the rent and is the upgrade authority"
     # the upload goes through the public devnet RPC: QuickNode answers the CLI's large write batches with 413 (DEPLOY_RPC overrides; devnet only)
     DEPLOY_RPC="${DEPLOY_RPC:-https://api.devnet.solana.com}"

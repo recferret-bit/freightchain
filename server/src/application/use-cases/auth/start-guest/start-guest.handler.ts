@@ -1,11 +1,11 @@
 import { Logger } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
-import { Keypair } from '@solana/web3.js';
 import { SignInRepositoryPort } from '../../../ports/auth/sign-in.repository.port.js';
 import { TokenSignerPort } from '../../../ports/auth/token-signer.port.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { EntropyPort } from '../../../ports/shared/entropy.port.js';
 import { playerSignedIn } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { demoScaleOf, isDemoWallet } from '../../../services/demo.js';
@@ -15,7 +15,7 @@ import type { SignInResultDto } from '../verify-signin/verify-signin.command.js'
 import { StartGuestCommand } from './start-guest.command.js';
 
 /**
- * Anonymous EASY. A new keypair's public key is the wallet; the secret is never stored, so the session cannot sign a transaction.
+ * Anonymous EASY. A random 32-byte base58 address is the wallet; no secret key exists, so the session cannot sign a transaction.
  * Achievements and stats stay on this wallet and do not merge into a later sign-in. Guests cannot order a paid tier, MEDIUM, HARD, a promo, or a ranked start.
  */
 @CommandHandler(StartGuestCommand)
@@ -30,10 +30,11 @@ export class StartGuestHandler implements ICommandHandler<StartGuestCommand, Sig
     private readonly signIns: SignInRepositoryPort,
     private readonly analytics: AnalyticsPort,
     private readonly profile: MeProfileService,
+    private readonly entropy: EntropyPort,
   ) {}
 
   async execute(command: StartGuestCommand): Promise<SignInResultDto> {
-    const wallet = Keypair.generate().publicKey.toBase58();
+    const wallet = this.entropy.referenceKey();
     const now = this.clock.now();
     const rules = this.rules.get();
     const session = await this.tokens.sign(wallet);

@@ -7,6 +7,7 @@ describe('live features (LIVE_* flags resolved per ride)', () => {
 
   it('all / off per paid ride; free rides have all features disabled; no donations = no effects; free donations off = paid on chain', () => {
     expect(liveFeatures(flags(), paid)).toEqual({ chat: true, donations: true, payment: 'mock', effects: true });
+    expect(liveFeatures(flags(), { isFree: false, ranked: true })).toEqual({ chat: true, donations: true, payment: 'mock', effects: false });
     expect(liveFeatures(flags(), free)).toEqual({ chat: false, donations: false, payment: 'mock', effects: false });
     expect(liveFeatures(flags({ chat: 'free', effects: 'free' }), paid)).toMatchObject({ chat: false, effects: false });
     expect(liveFeatures(flags({ chat: 'off', effects: 'off' }), paid)).toMatchObject({ chat: false, effects: false });

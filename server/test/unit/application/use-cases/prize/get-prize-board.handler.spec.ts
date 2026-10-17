@@ -24,10 +24,25 @@ describe('GetPrizeBoardHandler', () => {
     await put('free', 'f', 'free', true, null, 1000);
     await put('plain', 'p', '1h', false, null, 1000);
     await put('dead', 'd', '1h', true, 50, 50, RideStatus.Failed);
+    await put('cheater', 'x', '1h', true, null, 1000);
+    ctx.db.verdicts.set('x', {
+      rideId: 'x', status: 'rejected' as never, reasons: [], scores: {} as never,
+      rulesVersion: 1, judgedAt: ctx.now(), overriddenBy: null, overriddenAt: null, note: null, version: 1,
+    });
     const board = await handler.execute(new GetPrizeBoardQuery('1h', null));
     expect(board.board.map((row) => [row.wallet, row.bps, row.payout])).toEqual([['clean', 10_000, false], ['slow', 2000, false], ['dead', 500, false]]);
     expect(board.tier).toBe('1h');
     expect(board.board[0]?.place).toBe(1);
+    expect(board.settlement).toBeNull();
+    const mondayBoard = await handler.execute(new GetPrizeBoardQuery('1h', new Date('2036-10-06T06:00:00.000Z')));
+    expect(mondayBoard.settlement).toEqual({
+      weekId: '2036-09-29',
+      phase: 'verification',
+      verifyEnds: Date.parse('2036-10-06T12:00:00.000Z'),
+      appealsEnd: Date.parse('2036-10-07T12:00:00.000Z'),
+      payoutAt: Date.parse('2036-10-07T12:00:00.000Z'),
+      payoutEnds: Date.parse('2036-10-08T00:00:00.000Z'),
+    });
     ctx.clock.advance(8 * 86_400);
     expect((await handler.execute(new GetPrizeBoardQuery('1h', null))).board).toEqual([]);
     expect((await handler.execute(new GetPrizeBoardQuery('1h', new Date(ctx.now().getTime() - 8 * 86_400_000)))).board).toHaveLength(3);

@@ -81,6 +81,9 @@ import { MemoryDonationOrderRepository, MemoryRideEventRepository, MemoryRideMut
 import { DonationOrderRepositoryPort } from '../../src/application/ports/live/donation-order.repository.port.js';
 import { RideMuteRepositoryPort } from '../../src/application/ports/live/ride-mute.repository.port.js';
 import { RideEventRepositoryPort } from '../../src/application/ports/live/ride-event.repository.port.js';
+import { WeeklyTicketRepositoryPort } from '../../src/application/ports/prize/weekly-ticket.repository.port.js';
+import { MemoryWeeklyTicketRepository } from './in-memory/memory-weekly-ticket.js';
+import { HonkReleaseScheduler } from '../../src/infrastructure/scheduling/honk-release.scheduler.js';
 
 /** the real entropy, except that a test can fix the NEXT ride seed (a seed decides the route and the start hour) */
 class TestEntropy extends NodeEntropy {
@@ -146,8 +149,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
   let server: (() => Server) | null = null;
   const mcp = new TestMcpClient(() => server!(), () => !!process.env['EDITOR_MCP_TOKEN']);
 
-  // the stale-ride sweep and replay-verification scheduler run on REAL timers – they would race the fake clock; scenarios run commands themselves
-  let builder = Test.createTestingModule({ imports: [AppModule, EditorWorkerModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ReplayVerificationScheduler).useValue({}).overrideProvider(ReplayQueuePort).useValue(replayQueue).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(PoolPayoutChainPort).useValue(payoutChain).overrideProvider(NameServicePort).useValue(nameService).overrideProvider(EditorJobSweepScheduler).useValue({}).overrideProvider(McpClientPort).useValue(mcp);
+  // the stale-ride sweep, replay-verification, and honk-release schedulers run on REAL timers – they would race the fake clock; scenarios run commands themselves
+  let builder = Test.createTestingModule({ imports: [AppModule, EditorWorkerModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ReplayVerificationScheduler).useValue({}).overrideProvider(HonkReleaseScheduler).useValue({}).overrideProvider(ReplayQueuePort).useValue(replayQueue).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(PoolPayoutChainPort).useValue(payoutChain).overrideProvider(NameServicePort).useValue(nameService).overrideProvider(EditorJobSweepScheduler).useValue({}).overrideProvider(McpClientPort).useValue(mcp);
   if (persistence === 'memory') {
     builder = builder
       .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined })
@@ -168,6 +171,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(PromoRepositoryPort).useValue(new MemoryPromoRepository(memory))
       .overrideProvider(CosmeticRepositoryPort).useValue(new MemoryCosmeticRepository(memory))
       .overrideProvider(HonkRepositoryPort).useValue(new MemoryHonkRepository(memory))
+      .overrideProvider(WeeklyTicketRepositoryPort).useValue(new MemoryWeeklyTicketRepository(memory))
       .overrideProvider(TicketOrderRepositoryPort).useValue(new MemoryTicketOrderRepository(memory))
       .overrideProvider(RideBatchRepositoryPort).useValue(new MemoryRideBatchRepository(memory))
       .overrideProvider(RideVerdictRepositoryPort).useValue(new MemoryRideVerdictRepository(memory))

@@ -87,6 +87,7 @@ export interface WatchRideDto {
   hull: number | null;
   /** the escrowed pool of a ticket ride (null = free / pay-per-ride): only these take pledges (POST /api/pledges) */
   poolId: number | null;
+  ranked?: boolean;
 }
 
 /** The spectator's one poll: the ride, the next recording batches from `from`, the feed after `after` – plus every event stamped (applied) since `since`,

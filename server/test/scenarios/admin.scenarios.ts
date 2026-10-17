@@ -197,7 +197,7 @@ export function adminScenarios(h: () => Harness): void {
     expect((await admin.agent.get('/api/admin/queue/count').expect(200)).body).toEqual({ flagged: 0, underReview: 0 });
     const list = (await admin.agent.get('/api/admin/players').expect(200)).body.rows as { wallet: string; freeRides: number; lastSignInAt: number | null }[];
     expect(list.map((p) => p.wallet)).toEqual(expect.arrayContaining([rider.address, ADMIN.address]));
-    expect(list.find((p) => p.wallet === rider.address)).toMatchObject({ freeRides: 9, rides: 0, tickets: 0 });
+    expect(list.find((p) => p.wallet === rider.address)).toMatchObject({ freeRides: 10, rides: 0, tickets: 0 });
     expect(list.find((p) => p.wallet === rider.address)?.lastSignInAt).toEqual(expect.any(Number));
     const prefix = rider.address.slice(0, 8);
     expect((await admin.agent.get(`/api/admin/players?q=${prefix}`).expect(200)).body.rows.map((p: { wallet: string }) => p.wallet)).toEqual([rider.address]);
@@ -208,7 +208,7 @@ export function adminScenarios(h: () => Harness): void {
     expect((await admin.agent.get(`/api/admin/players?q=${otherPrefix}`).expect(200)).body.rows).toEqual([]);
     expect((await admin.agent.get('/api/admin/players?q=0OIl').expect(400)).body.code).toBeDefined();
     const one = (await admin.agent.get(`/api/admin/players/${rider.address}`).expect(200)).body;
-    expect(one.player).toMatchObject({ wallet: rider.address, freeRides: 9 });
+    expect(one.player).toMatchObject({ wallet: rider.address, freeRides: 10 });
     expect(one.rides.map((r: { id: string }) => r.id)).toEqual([rideId]);
     expect(one.signIns).toHaveLength(1);
     expect(one).toMatchObject({ stats: null, tickets: [], payments: { count: 0, lamports: 0 } });

@@ -41,4 +41,23 @@ describe('ReleaseHonkHandler', () => {
     expect(await ctx.honkRepo.findMint('gone')).toMatchObject({ released: false });
     expect(emission.calls).toEqual([]);
   });
+
+  it('cancels a pending 8h reservation whose verdict is no longer verified and survives chain RPC errors', async () => {
+    const ctx = unitContext();
+    await ctx.player('w');
+    const emission = new RecordingEmission();
+    emission.mint = async () => { throw new Error('rpc down'); };
+    const handler = new ReleaseHonkHandler(ctx.honkRepo, ctx.honkMint, ctx.players, ctx.transactions, emission, ctx.clock, ctx.verdictRepo);
+    await ctx.honkMint.credit({ rideId: 'bad-8h', wallet: 'w', tier: '8h', distance: 10_000, completeDist: 10_000 });
+    await ctx.honkMint.credit({ rideId: 'ok-8h', wallet: 'w', tier: '8h', distance: 10_000, completeDist: 10_000 });
+    ctx.db.verdicts.set('bad-8h', {
+      rideId: 'bad-8h', status: 'rejected' as never, reasons: [], scores: {} as never,
+      rulesVersion: 1, judgedAt: ctx.now(), overriddenBy: 'admin', overriddenAt: ctx.now(), note: null, version: 1,
+    });
+    ctx.clock.advance(48 * 3600);
+    expect(await handler.execute(new ReleaseHonkCommand())).toBe(1);
+    expect(await ctx.honkRepo.findMint('bad-8h')).toBeNull();
+    expect(await ctx.honkRepo.findMint('ok-8h')).toMatchObject({ released: true });
+    expect(await ctx.honkRepo.balance('w')).toBe(800n * U);
+  });
 });

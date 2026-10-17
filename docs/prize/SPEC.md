@@ -2,7 +2,7 @@
 
 **Draft. Needs legal review.** Not legal advice. The owner chose variant B of the 2026-10-16 prize-pool research. Variant B is a skill contest. Training rides are not an entry. The free path onto a board is one granted paid ticket per wallet per week (AMOE), plus a separate promo-code slot. Flag for counsel: 18+ is a checkbox, country comes from edge headers, and a wallet is free, so this is closer to an equal-chance entry than a promo code and it is not a finished one-person method of entry.
 
-This contest is not the on-chain ticket vault (`programs/freightchain-pools`). That program still sells tickets and pays its own winners root. This contest is funded by the operator: a published base plus a capped share of the previous week's ticket revenue, paid in USDC after KYC. The program was not changed. TEN4 is never a prize, an entry, or a score boost.
+This contest is not the on-chain ticket vault (`programs/freightchain_pools`). That program still sells tickets and pays its own winners root. This contest is funded by the operator: a published base plus a capped share of the previous week's ticket revenue, paid in USDC after KYC. The program was not changed. TEN4 is never a prize, an entry, or a score boost.
 
 The rules live in `server/src/domain/prize/`. Pool maths and eligibility are pure functions. A ranked start is now stored on the ride. USDC is still not sent.
 

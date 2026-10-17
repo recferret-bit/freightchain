@@ -43,7 +43,7 @@ function idlArgs(name: string, a: Record<string, unknown>): Record<string, unkno
 describe('pool program IDL (vendored)', () => {
   it('is the committed IDL without its doc comments', () => {
     const strip = (v: unknown): unknown => (Array.isArray(v) ? v.map(strip) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => k !== 'docs').map(([k, x]) => [k, strip(x)])) : v);
-    const committed = JSON.parse(readFileSync(join(SERVER_DIR, '../programs/freightchain-pools/idl/freightchain_pools.json'), 'utf8')) as unknown;
+    const committed = JSON.parse(readFileSync(join(SERVER_DIR, '../programs/idl/freightchain_pools.json'), 'utf8')) as unknown;
     expect(POOL_PROGRAM_IDL).toEqual(strip(committed)); // differs → node scripts/vendor-idl.mjs
     expect(POOL_PROGRAM_IDL.address).toBe(fx.programId);
   });

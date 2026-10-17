@@ -78,7 +78,7 @@ export function freeLevelScenarios(h: () => Harness): void {
     await w.agent.post('/api/rides').send({ tier: 'free', level: 3, assist: true }).expect(409);
     expect((await w.agent.get(`/api/rides/${first.id}`).expect(200)).body).toMatchObject({ level: 3, assist: false });
     expect(await order(w, { level: 1, assist: true })).toMatchObject({ id: first.id, level: 1, trip: 'free-1c', route: 'stuart', minSeconds: 60, assist: true });
-    expect((await me(w)).freeRides).toBe(9);
+    expect((await me(w)).freeRides).toBe(10);
   });
 
   it('ordering the ready free ride again WITHOUT a level keeps its level (HARD stays HARD) – only the helpers change', async () => {
@@ -87,7 +87,7 @@ export function freeLevelScenarios(h: () => Harness): void {
     expect((await w.agent.post('/api/rides').send({ tier: 'free', assist: true }).expect(409)).body.code).toBe('assist_not_allowed');   // still HARD: no assist
     expect(await order(w, { level: 2 })).toMatchObject({ id: hard.id, level: 2, trip: 'free-2c' });
     expect(await order(w, { tutorial: true })).toMatchObject({ id: hard.id, level: 2, trip: 'free-2c', tutorial: true });
-    expect((await me(w)).freeRides).toBe(9);
+    expect((await me(w)).freeRides).toBe(10);
   });
 
   it('a start that names the trip the game built: re-chosen in the lobby meanwhile = 409 ride_rechosen and the ride stays ready; the right trip (or none) starts it', async () => {

@@ -106,6 +106,14 @@ fn initialize_refuses_anything_but_the_opening_deposit() {
 }
 
 #[test]
+fn initialize_requires_the_upgrade_authority() {
+    let mut e = Env::bare();
+    let other = Keypair::new();
+    set_upgrade_authority(&mut e.svm, &other.pubkey());
+    assert_err!(e.initialize(OPENING), HonkError::BadAuthority);
+}
+
+#[test]
 fn swap_of_one_sol_pays_the_constant_product_and_the_vault_falls() {
     let mut e = Env::new();
     let honk_reserve = e.pool().honk_reserve;

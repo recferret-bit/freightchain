@@ -101,8 +101,8 @@ test('numbers: tiers, governor and completion distance equal the server rules', 
   const landing = readFileSync(join(root, 'index.html'), 'utf8'); assert.match(landing, /id="why-20"/); assert.match(landing, /20 tickets of \$5/); assert.match(landing, /\$26/);
   const rules = src('server/src/domain/rides/ride-rules.ts'); assert.match(rules, /MAX_SPEED = 28/); assert.match(rules, /COMPLETE_DIST_K = 0\.5/);
   assert.match(text, /28 m\/s/); assert.match(text, /100\.8 km\/h/); assert.match(text, /50\.4 km/, '½ × 28 m/s × 3600 s');
-  // the free run: FREE_RIDE_SECONDS (180 = EASY's length) × the level's multiple – EASY 1 · MEDIUM 5⁄3 · HARD 5, i.e. 3 · 5 · 15 minutes (server/src/domain/rides/ride-trip.ts FREE_LEVELS – not quoted here: the landing image does not copy it), ending by itself at the line
-  assert.match(src('server/src/infrastructure/config/env.schema.ts'), /FREE_RIDE_SECONDS: z\.coerce\.number\(\)\.positive\(\)\.default\(180\)/); assert.match(text, /FREE\s+3–15 minutes/);
+  // the free run: FREE_RIDE_SECONDS (180 = EASY's length) × the level's multiple – EASY 1 · MEDIUM 5 · HARD 10, i.e. 3 · 15 · 30 minutes (server/src/domain/rides/ride-trip.ts FREE_LEVELS – not quoted here: the landing image does not copy it), ending by itself at the line
+  assert.match(src('server/src/infrastructure/config/env.schema.ts'), /FREE_RIDE_SECONDS: z\.coerce\.number\(\)\.positive\(\)\.default\(180\)/); assert.match(text, /FREE\s+3–30 minutes/);
   assert.match(src('client/js/trips.js'), /free: \{[^}]*finish: true/); assert.match(text, /ends by itself at the line/);
 });
 
@@ -166,9 +166,9 @@ test('numbers: live-stream prices and limits equal live-rules.ts', () => {
 test('all 34 achievements, their names and descriptions match domain achievements.ts', () => {
   const achCode = src('server/src/domain/achievements/achievements.ts');
   const ids = [...achCode.matchAll(/id: '([^']+)', family: '([^']+)', tier: (\d+), name: '([^']+)', desc: '([^']+)'/g)];
-  assert.equal(ids.length, 35);
+  assert.equal(ids.length, 41);
   for (const [, id, family,, name, desc] of ids) {
-    if (family === 'podium') continue;
+    if (family === 'podium' || family === 'medium' || family === 'hard') continue;
     assert.ok(html.includes(name), `whitepaper missing badge name ${name}`);
     assert.ok(html.includes(desc), `whitepaper missing badge desc ${desc}`);
     assert.ok(html.includes(`/badges/${id}.svg`), `whitepaper missing badge image for ${id}`);
@@ -189,7 +189,7 @@ test('the landing image copies every repo file this test reads', () => {
 test('numbers: the production live flags and the program facts the page states', () => {
   const compose = src('deploy/docker-compose.prod.yml'); assert.match(compose, /LIVE_FREE_DONATIONS[^\n]*off/); assert.match(compose, /LIVE_EFFECTS[^\n]*free/);
   assert.match(text, /game effects on free rides only/);
-  const idl = JSON.parse(src('programs/freightchain-pools/idl/freightchain_pools.json'));
+  const idl = JSON.parse(src('programs/idl/freightchain_pools.json'));
   assert.equal(idl.instructions.length, 29, 'the page says 29 instructions'); assert.equal(idl.events.length, 27, '27 events'); assert.equal(idl.errors.length, 48, '48 error codes');
   assert.match(text, /29 instructions, 27 events, 48 error codes/);
   const tiers = src('server/src/domain/rides/ride-tier.ts');

@@ -1,5 +1,5 @@
 /*
- * One prize the server's payout job pays from a pool (programs/freightchain-pools: `pay_prize` signed by the payout key). The plan is fixed once written
+ * One prize the server's payout job pays from a pool (programs/freightchain_pools: `pay_prize` signed by the payout key). The plan is fixed once written
  * (ranks 1..n from the pool's verified ranking, the amounts of pool-payouts.ts), and every row walks planned → sent → paid. `sent` is CLAIMED with a
  * conditional update before the transaction goes out, so two payout passes can never both send the same prize; a row left `sent` by a crash is resolved
  * from its signature's status (landed → paid, expired → planned again), never by sending blind. The program caps the sum at the pool's prize share anyway.

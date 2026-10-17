@@ -54,7 +54,10 @@ export class MemoryHonkRepository extends HonkRepositoryPort {
   }
 
   async listDue(now: Date, limit: number): Promise<HonkMintRow[]> {
-    return [...this.db.honkMints.values()].filter((r) => !r.released && r.releaseAt.getTime() <= now.getTime()).slice(0, limit);
+    return [...this.db.honkMints.values()]
+      .filter((r) => !r.released && r.releaseAt.getTime() <= now.getTime() && (this.db.players.size === 0 || this.db.players.has(r.wallet)))
+      .sort((a, b) => a.releaseAt.getTime() - b.releaseAt.getTime())
+      .slice(0, limit);
   }
 
   async balance(wallet: string): Promise<bigint> {

@@ -1,4 +1,4 @@
-// Admin CLI for the escrow program (programs/freightchain-pools) with KEYPAIR FILES – the instructions the server never builds: initialize, create_pool,
+// Admin CLI for the escrow program (programs/freightchain_pools) with KEYPAIR FILES – the instructions the server never builds: initialize, create_pool,
 // set_config, close_pool (+ show). Encodes through the server's own codec (dist/, so `npm run build` first) from the vendored IDL. Run from server/:
 //   node scripts/pool-admin.mjs show        --url <rpc> [--pool N]
 //   node scripts/pool-admin.mjs initialize  --url <rpc> -k <upgrade-authority.json> --admin <pubkey> --platform-treasury <pubkey> [--platform-fee-bps 0]

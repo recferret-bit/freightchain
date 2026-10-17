@@ -741,7 +741,7 @@ function stagePlan(id) {
   if (id === 'server-integration') {
     return { cwd: join(ROOT, 'server'), cmd: vitest, args: ['run', '--config', 'vitest.integration.config.ts', '--reporter=json', '--outputFile', jsonOut('server-integration')], parse: 'vitest', timeout: 20 * 60 * 1000, json: jsonOut('server-integration'), dbUp: true };
   }
-  if (id === 'program-test') return { cwd: join(ROOT, 'programs/freightchain-pools'), cmd: 'cargo', args: ['test'], parse: 'cargo', timeout: 20 * 60 * 1000, cargo: true };
+  if (id === 'program-test') return { cwd: join(ROOT, 'programs'), cmd: 'cargo', args: ['test'], parse: 'cargo', timeout: 20 * 60 * 1000, cargo: true };
   if (id === 'e2e') return withRouteLog(bash(join(ROOT, '.claude/skills/run-tests/e2e.sh'), [], 50));
   if (id.startsWith('e2e:')) {
     const suite = id.slice(4);

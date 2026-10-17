@@ -1,4 +1,4 @@
-import type { GeoHeaders } from '../../../../ports/prize/geo-locator.port.js';
+import type { GeoHeaders } from '../../../ports/prize/geo-locator.port.js';
 import type { RideTierId } from '../../../../domain/rides/ride-tier.js';
 import type { FreeLevel } from '../../../../domain/rides/ride-trip.js';
 

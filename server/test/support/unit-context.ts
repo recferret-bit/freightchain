@@ -145,7 +145,8 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const registry = new PoolRegistryService(poolChain, pools, clock, entropy);
   const honkRepo = new MemoryHonkRepository(db);
   const honkMint = new HonkMintService(honkRepo, clock);
-  const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock, honkMint, { enabled: () => false, mint: async () => {} }, replayRepo, rideEvents, replayQueue, entropy);
+  const honkEmissionChain = { enabled: () => false, mint: async (..._args: unknown[]) => {} };
+  const verdicts = new VerdictService(rides, players, batches, verdictRepo, adminActions, transactions, clock, honkMint, honkEmissionChain, replayRepo, rideEvents, replayQueue, entropy);
   const proofs = new AdminProofService(challenges, new NaclSignatureVerifier(), rulesPort, clock, entropy);
   const settlement = new PaymentSettlementService(rounds, roundRepo, payments, rides, players, lookup, transactions, clock);
 
@@ -187,7 +188,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
 
   return {
     db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, mints, mintChain, batches, hasher, verdictRepo, replayRepo, replayQueue, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
-    pools, poolPayouts, pledges, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement, honkRepo, honkMint,
+    pools, poolPayouts, pledges, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement, honkRepo, honkMint, honkEmissionChain,
     sessions, weekly, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, accept, freeRide, paidOrder, paidRide, reload, storedPlayer,
     poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats, nameService,
   };

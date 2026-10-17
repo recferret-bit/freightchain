@@ -4,7 +4,7 @@
 use {
     anchor_lang::{
         prelude::{pubkey, Clock, Pubkey},
-        solana_program::{instruction::Instruction, system_program},
+        solana_program::{bpf_loader_upgradeable, instruction::Instruction, system_program},
         AccountDeserialize, AnchorDeserialize, Discriminator, Event, InstructionData,
         ToAccountMetas,
     },
@@ -59,6 +59,17 @@ macro_rules! assert_err {
 
 pub fn pid() -> Pubkey {
     freightchain_honk::id()
+}
+pub fn programdata_pda() -> Pubkey {
+    Pubkey::find_program_address(&[pid().as_ref()], &bpf_loader_upgradeable::ID).0
+}
+pub fn set_upgrade_authority(svm: &mut LiteSVM, who: &Pubkey) {
+    let addr = programdata_pda();
+    let mut acc = svm.get_account(&addr).expect("ProgramData");
+    assert_eq!(acc.data[0..4], [3, 0, 0, 0], "not a ProgramData account");
+    acc.data[12] = 1;
+    acc.data[13..45].copy_from_slice(who.as_ref());
+    svm.set_account(addr, acc).unwrap();
 }
 pub fn config_pda() -> Pubkey {
     Pubkey::find_program_address(&[b"config"], &pid()).0
@@ -169,6 +180,7 @@ impl Env {
         c.unix_timestamp = T0;
         svm.set_sysvar(&c);
         let payer = funded(&mut svm, 1_000 * SOL);
+        set_upgrade_authority(&mut svm, &payer.pubkey());
         Env { svm, payer }
     }
 
@@ -256,6 +268,8 @@ impl Env {
             },
             accounts::Initialize {
                 payer: payer.pubkey(),
+                program: pid(),
+                program_data: programdata_pda(),
                 config: config_pda(),
                 honk_mint: honk_mint_pda(),
                 authority: authority_pda(),
