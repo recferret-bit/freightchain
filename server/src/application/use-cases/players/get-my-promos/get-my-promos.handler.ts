@@ -10,13 +10,14 @@ export class GetMyPromosHandler implements IQueryHandler<GetMyPromosQuery, MyPro
   constructor(private readonly promos: PromoRepositoryPort) {}
 
   async execute({ wallet }: GetMyPromosQuery): Promise<MyPromosDto> {
-    const [records, all] = await Promise.all([this.promos.listRedemptions({ wallet, limit: MAX_ROWS }), this.promos.list()]);
+    const [records, all, grants] = await Promise.all([this.promos.listRedemptions({ wallet, limit: MAX_ROWS }), this.promos.list(), this.promos.listUnspent(wallet)]);
     const byCode = new Map(all.map((p) => [p.code, p]));
     return {
       redemptions: records.flatMap((r) => {
         const p = byCode.get(r.code);
         return p ? [{ code: r.code, label: describeEffect(p.effect), description: p.description, kind: p.effect.kind, at: r.at.getTime() }] : [];
       }),
+      grants: grants.map((g) => ({ code: g.code, tier: g.tier })),
     };
   }
 }

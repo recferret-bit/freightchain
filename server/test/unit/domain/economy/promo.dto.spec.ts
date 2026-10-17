@@ -11,6 +11,7 @@ describe('describeEffect – the one line a code is known by', () => {
     expect(describeEffect(ticketEffect({ credits: 2, poolId: 7 }))).toBe('2 × 1h ride tickets (pool #7)');
   });
   it('free rides', () => {
+    expect(describeEffect({ kind: 'ride', tier: '8h' })).toBe('one free 8h ride (not for sale)');
     expect(describeEffect({ kind: 'free_rides', count: 1 })).toBe('1 free ride');
     expect(describeEffect({ kind: 'free_rides', count: 3 })).toBe('3 free rides');
   });

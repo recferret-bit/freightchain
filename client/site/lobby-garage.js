@@ -1,9 +1,10 @@
+import { TOKEN_SYMBOL } from '../js/config.js';
 import { el } from './dom.js';
 import { REFERRAL_PAINTS, SLOTS } from '../js/cosmetics.js';
 import { SLOT_NAME, itemName, swatch } from './lobby-promo.js';
 
 /* The Garage (lobby → GARAGE, docs/garage.md): every part, owned or locked, can be observed on the real cab. APPLY still sends only the owned pick
-   (POST /api/garage/loadout). A locked part is minted by burning HONK (POST /api/honk/visuals – lobby.js). Pure builders: lobby.js owns the state and the API calls.
+   (POST /api/garage/loadout). A locked part is minted by burning TEN4 (POST /api/honk/visuals – lobby.js). Pure builders: lobby.js owns the state and the API calls.
    Server text (names, descriptions, codes, prices) goes in with textContent only. Price and description come from the garage payload; the catalog is only a price backup. */
 
 /** Has the player picked something other than what is saved? */
@@ -17,7 +18,7 @@ export function garageProgress(g) {
     el('div', { class: 'big' }, `${collected} / ${total}`, el('small', {}, ` parts · ${percent}%`)),
     el('div', { class: 'bar', role: 'progressbar', 'aria-valuenow': String(percent), 'aria-valuemin': '0', 'aria-valuemax': '100' }, el('i', { style: `width:${percent}%` })),
     el('div', { class: 'gslots' }, g.slots.map(s => el('span', { 'data-slot': s.slot }, `${SLOT_NAME[s.slot] ?? s.slot} `, el('b', {}, `${s.collected}/${s.total}`)))),
-    el('p', { class: 'dim' }, collected === total ? 'Every part collected – the garage is complete.' : 'Locked parts are minted by burning HONK; referral paints come from invites.'));
+    el('p', { class: 'dim' }, collected === total ? 'Every part collected – the garage is complete.' : `Locked parts are minted by burning ${TOKEN_SYMBOL}; referral paints come from invites.`));
 }
 
 const badge = (part, picked) => (!part.owned ? '🔒' : picked ? (part.worn ? 'WORN' : 'SELECTED') : 'SELECT');
@@ -37,9 +38,9 @@ const origin = (part, slot) => {
   if (part.isDefault) return 'Everybody has this one.';
   const when = part.unlockedAt ? new Date(part.unlockedAt).toLocaleDateString() : '';
   if (referralPaint(slot, part)) return part.owned ? `Referral gift · ${when}` : 'Locked – finish a verified ride through an invite to earn this paint.';
-  if (part.owned && String(part.code || '').startsWith('honk:')) return when ? `Minted by burning HONK · ${when}` : 'Minted by burning HONK';
+  if (part.owned && String(part.code || '').startsWith('honk:')) return when ? `Minted by burning ${TOKEN_SYMBOL} · ${when}` : `Minted by burning ${TOKEN_SYMBOL}`;
   if (part.owned) return `Unlocked by ${part.code} · ${when}`;
-  return 'Locked – burn HONK to mint it.';
+  return `Locked – burn ${TOKEN_SYMBOL} to mint it.`;
 };
 
 /** The part `observe` ({ slot, id }) points at, or null. */
@@ -61,7 +62,7 @@ export function previewLoadout(garage, pick, observe) {
 /** The card above the slots. Rebuilt on every paint. `balance` null = omit it (the honk request failed, or has not answered). */
 export function garageDetail({ garage, observe, catalog = null, balance = null, busy = false, onBurn = () => {} }) {
   const held = knownPrice(balance);
-  const head = held ? el('p', { class: 'dim bal', id: 'garage-honk' }, `You hold ${held} HONK.`) : null;
+  const head = held ? el('p', { class: 'dim bal', id: 'garage-honk' }, `You hold ${held} ${TOKEN_SYMBOL}.`) : null;
   const seen = partAt(garage, observe);
   if (!seen) return el('div', { class: 'card', id: 'garage-detail' }, head, el('p', { class: 'dim' }, 'Choose a part.'));
   const { slot, part } = seen;
@@ -71,14 +72,14 @@ export function garageDetail({ garage, observe, catalog = null, balance = null, 
   if (part.isDefault) lines.push(el('p', { class: 'dim' }, 'Included. Everybody has this one.'));
   else if (referralPaint(slot, part)) lines.push(el('p', { class: 'dim' }, origin(part, slot)));
   else {
-    lines.push(el('p', { class: 'price' }, price ? `Burns ${price} HONK` : 'The price is unavailable.'));
+    lines.push(el('p', { class: 'price' }, price ? `Burns ${price} ${TOKEN_SYMBOL}` : 'The price is unavailable.'));
     if (part.owned) lines.push(el('p', { class: 'dim' }, origin(part, slot)));
     else {
-      lines.push(el('p', { class: 'dim' }, 'Preview only. Burn HONK to keep it.'));
+      lines.push(el('p', { class: 'dim' }, `Preview only. Burn ${TOKEN_SYMBOL} to keep it.`));
       lines.push(el('button', {
         type: 'button', class: 'ghost honk-burn', id: 'garage-burn', 'data-burn': part.id, disabled: !!busy || !price,
         onclick: () => { if (price && !busy) onBurn(slot, part); },
-      }, price ? `BURN ${price} HONK` : 'BURN HONK'));
+      }, price ? `BURN ${price} ${TOKEN_SYMBOL}` : `BURN ${TOKEN_SYMBOL}`));
     }
   }
   return el('div', { class: 'card', id: 'garage-detail' }, ...lines);
@@ -97,7 +98,7 @@ export function garageSlots(g, pick, onPick, onHover = () => {}, opt = {}) {
         class: `item${picked ? ' on' : ''}${watching ? ' obs' : ''}${part.worn ? ' saved' : ''}${part.owned ? '' : ' lock'}`, type: 'button', 'data-item': part.id,
         'aria-pressed': String(picked), 'aria-current': watching ? 'true' : null, title: origin(part, s.slot), onclick: () => onPick(s.slot, part),
       }, swatch(s.slot, part.id), el('span', { class: 'nm' }, partTitle(part)), el('span', { class: 'st' }, badge(part, picked)),
-        part.isDefault ? null : referralPaint(s.slot, part) ? el('span', { class: 'pr' }, 'Referral gift') : el('span', { class: 'pr' }, price ? `Burns ${price} HONK` : 'Price unavailable'));
+        part.isDefault ? null : referralPaint(s.slot, part) ? el('span', { class: 'pr' }, 'Referral gift') : el('span', { class: 'pr' }, price ? `Burns ${price} ${TOKEN_SYMBOL}` : 'Price unavailable'));
     })))));
 }
 

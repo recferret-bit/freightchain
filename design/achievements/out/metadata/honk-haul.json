@@ -1,7 +1,7 @@
 {
   "name": "First Mint",
   "symbol": "FCHAIN",
-  "description": "The road paid this one in HONK. A verified checkpoint, then the mint. Condition: A verified paid ride mints HONK. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "description": "The road paid this one in TEN4. A verified checkpoint, then the mint. Condition: A verified paid ride mints TEN4. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
   "image": "__IMAGE__",
   "seller_fee_basis_points": 0,
   "external_url": "https://freightchain.fun/",
@@ -12,7 +12,7 @@
   "attributes": [
     {
       "trait_type": "Family",
-      "value": "HONK"
+      "value": "TEN4"
     },
     {
       "trait_type": "Tier",
@@ -24,7 +24,7 @@
     },
     {
       "trait_type": "Condition",
-      "value": "A verified paid ride mints HONK."
+      "value": "A verified paid ride mints TEN4."
     },
     {
       "trait_type": "Requirement",

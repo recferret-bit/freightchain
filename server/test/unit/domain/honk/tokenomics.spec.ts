@@ -1,27 +1,29 @@
 import { COSMETIC_ITEMS, COSMETIC_SLOTS, defaultCosmetic } from '../../../../src/domain/economy/cosmetics.js';
 import { GIFT_ITEMS } from '../../../../src/domain/referral/referral-rules.js';
 import { HONK_PARTS } from '../../../../src/domain/honk/parts-catalog.js';
-import { HONK_EMISSION_CAP, HONK_GENESIS, HONK_MAX_SUPPLY, bandAmounts, clipToCap, formatHonk, honkQuote, visualPrice } from '../../../../src/domain/honk/tokenomics.js';
+import { HONK_AIRDROP, HONK_DAILY_GLOBAL_ERA1, HONK_DAILY_WALLET, HONK_EMISSION_CAP, HONK_ERA_SIZE, HONK_LIQUIDITY, HONK_MAX_SUPPLY, HONK_TEAM, HONK_TREASURY, TOKEN_SYMBOL, bandAmounts, clipPayout, formatHonk, holdMs, honkQuote, visualPrice } from '../../../../src/domain/honk/tokenomics.js';
 
 const U = 1_000_000n;
-const full = (tier: string) => tier === '8h' ? 2000n * U : tier === '4h' ? 500n * U : 100n * U;
+const full = (tier: string) => tier === '8h' ? 1200n * U : tier === '4h' ? 500n * U : 100n * U;
 
-describe('HONK quote', () => {
+describe('TEN4 quote', () => {
   it('formats base units with 6 decimals, trimming trailing zeros', () => {
     expect(formatHonk(0n)).toBe('0');
     expect(formatHonk(100n * U)).toBe('100');
     expect(formatHonk(15n * U)).toBe('15');
     expect(formatHonk(1_500_000n)).toBe('1.5');
     expect(formatHonk(-U)).toBe('-1');
+    expect(TOKEN_SYMBOL).toBe('TEN4');
   });
 
-  it('keeps the supply split: genesis is the pool, rides stop at the rest, burns do not raise it', () => {
+  it('keeps the supply split, with the team bucket optional on top of the rest', () => {
     expect(HONK_MAX_SUPPLY).toBe(100_000_000n * U);
-    expect(HONK_GENESIS).toBe(2_000_000n * U);
-    expect(HONK_EMISSION_CAP).toBe(98_000_000n * U);
+    expect(HONK_LIQUIDITY + HONK_EMISSION_CAP + HONK_AIRDROP + HONK_TREASURY + HONK_TEAM).toBe(HONK_MAX_SUPPLY);
+    expect(HONK_ERA_SIZE).toBe(27_500_000n * U);
+    expect(HONK_EMISSION_CAP).toBe(55_000_000n * U);
   });
 
-  it('pays 15 / 25 / 60 of the tier mint at 20 / 50 / 100, with the +1 m finish', () => {
+  it('pays 15 / 25 / 60 of the era-1 finish at 20 / 50 / 100, with the +1 m finish', () => {
     const line = 10_000;
     expect(bandAmounts('1h', 1998, line).quote).toBe(0n);
     expect(bandAmounts('1h', 1999, line)).toMatchObject({ quote: 15n * U });
@@ -32,17 +34,23 @@ describe('HONK quote', () => {
     expect(bandAmounts('4h', 1999, line).quote).toBe(75n * U);
     expect(bandAmounts('4h', 4999, line).quote).toBe(200n * U);
     expect(bandAmounts('4h', line, line).quote).toBe(full('4h'));
-    expect(bandAmounts('8h', 1999, line).quote).toBe(300n * U);
-    expect(bandAmounts('8h', 4999, line).quote).toBe(800n * U);
+    expect(bandAmounts('8h', 1999, line).quote).toBe(180n * U);
+    expect(bandAmounts('8h', 4999, line).quote).toBe(480n * U);
     expect(bandAmounts('8h', line, line).quote).toBe(full('8h'));
+    expect(bandAmounts('8h', line, line, HONK_ERA_SIZE).quote).toBe(600n * U);
     for (const tier of ['free', 'nope', '1h']) expect(bandAmounts(tier, 100, tier === '1h' ? 0 : 10_000).quote, tier).toBe(0n);
   });
 
-  it('clips to the room left under the emission cap and mints nothing once it is closed', () => {
-    expect(clipToCap(100n * U, 0n)).toBe(100n * U);
-    expect(clipToCap(100n * U, HONK_EMISSION_CAP - 10n * U)).toBe(10n * U);
-    expect(clipToCap(100n * U, HONK_EMISSION_CAP)).toBe(0n);
-    expect(clipToCap(0n, 0n)).toBe(0n);
+  it('clips to the tightest room and names the cap that closed it', () => {
+    expect(clipPayout(100n * U, 0n, 0n, 0n)).toEqual({ amount: 100n * U, reason: 'ok' });
+    expect(clipPayout(100n * U, HONK_ERA_SIZE - 10n * U, 0n, 0n)).toEqual({ amount: 10n * U, reason: 'ok' });
+    expect(clipPayout(100n * U, HONK_EMISSION_CAP, 0n, 0n).reason).toBe('emission');
+    expect(clipPayout(1200n * U, HONK_ERA_SIZE - 50n * U, 0n, 0n).amount).toBe(50n * U);
+    expect(clipPayout(100n * U, 0n, HONK_DAILY_GLOBAL_ERA1, 0n).reason).toBe('daily');
+    expect(clipPayout(1200n * U, 0n, 0n, HONK_DAILY_WALLET - 800n * U).amount).toBe(800n * U);
+    expect(clipPayout(100n * U, 0n, 0n, HONK_DAILY_WALLET).reason).toBe('wallet');
+    expect(holdMs('8h')).toBe(48 * 60 * 60 * 1000);
+    expect(holdMs('1h')).toBe(0);
   });
 
   it('prices gold at 260 and every other part at 65', () => {
@@ -57,7 +65,7 @@ describe('HONK quote', () => {
     for (const p of HONK_PARTS) expect(p.price, `${p.slot}:${p.item}`).toBe(p.item === defaultCosmetic(p.slot) ? null : visualPrice(p.item));
   });
 
-  it('previews before a verdict, mints on a pass, withholds a flag or a reject, and is silent on a free ride', () => {
+  it('previews before a verdict, holds an 8h pass, mints a 1h pass, and withholds a flag', () => {
     const line = 10_000;
     const preview = honkQuote('1h', line, line, null);
     expect(preview).toMatchObject({ state: 'preview', pays: '0', quote: '100', full: '100' });
@@ -65,7 +73,8 @@ describe('HONK quote', () => {
     expect(preview.bands.every((b) => b.reached)).toBe(true);
     expect(honkQuote('1h', 1999, line, null)).toMatchObject({ state: 'preview', quote: '15', bands: [{ pct: 20, reached: true, amount: '15' }, { pct: 50, reached: false, amount: '25' }, { pct: 100, reached: false, amount: '60' }] });
     expect(honkQuote('4h', line, line, 'verified')).toMatchObject({ state: 'minted', pays: '500', quote: '500', full: '500' });
-    expect(honkQuote('8h', line, line, 'verified')).toMatchObject({ state: 'minted', pays: '2000', quote: '2000', full: '2000' });
+    expect(honkQuote('8h', line, line, 'verified')).toMatchObject({ state: 'pending', pays: '0', quote: '1200', full: '1200' });
+    expect(honkQuote('8h', line, line, 'verified', { paid: true })).toMatchObject({ state: 'minted', pays: '1200' });
     expect(honkQuote('1h', 0, line, 'verified')).toMatchObject({ state: 'none', pays: '0', quote: '0' });
     expect(honkQuote('1h', line, line, 'flagged')).toMatchObject({ state: 'withheld', pays: '0', quote: '100' });
     expect(honkQuote('1h', line, line, 'rejected')).toMatchObject({ state: 'withheld', pays: '0', quote: '100' });

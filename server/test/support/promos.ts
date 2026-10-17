@@ -9,10 +9,10 @@ export const promoInput = (over: Partial<PromoCreateInput> = {}): PromoCreateInp
   code: 'HELLO', effect: ticketEffect(), description: null, maxRedemptions: 10, perWallet: 1, startsAt: null, expiresAt: null, note: null, ...over,
 });
 
-/** A stored promo code as of `now`. A cosmetic effect is a row that already exists: `create` refuses a new one (`visuals_are_honk`). */
+/** A stored promo code as of `now`. A cosmetic or retired free-ride effect is a row that already exists: `create` refuses a new one. */
 export const aPromo = (now: Date, over: Partial<PromoCreateInput> = {}): PromoCode => {
   const input = promoInput(over);
-  if (input.effect.kind !== 'cosmetic') return PromoCode.create({ ...input, now });
+  if (input.effect.kind !== 'cosmetic' && input.effect.kind !== 'free_rides') return PromoCode.create({ ...input, now });
   const description = input.description?.trim() || null;
   const note = input.note?.trim() || null;
   return PromoCode.restore({

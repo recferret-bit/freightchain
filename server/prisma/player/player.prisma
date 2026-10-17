@@ -2,9 +2,10 @@
 model Player {
   wallet       String              @id
   version      Int                 @default(1) // optimistic lock for save()
-  freeRides    Int // credits: free_on_signup (default 10) for a NEW wallet; a promo or an admin grant may sit above the daily cap
-  freeDay      String // UTC day (YYYY-MM-DD) of the last daily grant
-  freeRidesMax Int                 @default(5) // where the daily refill stops (the live setting free_rides_daily_max; a surplus balance is kept)
+  freeRides    Int // retired counted balance. Training rides are unlimited. The column stays so an old number can still be read.
+  freeDay      String // retired UTC day of the last daily grant. The column stays.
+  freeRidesMax Int                 @default(5) // retired daily-cap mirror. The column stays.
+  guest        Boolean             @default(false) // anonymous EASY session. The secret was never stored. Progress does not merge into a later wallet.
   createdAt    DateTime
   tutorialPassedAt DateTime? // the first time a ride was STARTED with the tutorial on – the lobby then defaults the tutorial off (null = never)
   age18At      DateTime? // when the rider ticked "I am 18 or older" (null = off). Both stamps are required before a paid shift.
@@ -23,9 +24,26 @@ model Player {
   referralCode   ReferralCode?
   referralsOut   Referral[] @relation("AsReferrer")
   referralIn     Referral?  @relation("AsReferee")
+  weeklyTickets  WeeklyTicket[]
 
   @@index([createdAt]) // the admin PLAYERS list: newest first
-  @@index([freeDay]) // the midnight daily free-ride grant
+  @@index([freeDay]) // retired with the daily grant; left in place
+  @@schema("player")
+}
+
+// One granted paid ticket per tier per interval. Not a purchase. Does not mint TEN4.
+// An unused row expires at the next interval of that tier, or Sunday 12:00 UTC, whichever is earlier.
+model WeeklyTicket {
+  wallet      String
+  player      Player   @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  weekId      String // prize week the row was issued in (the Monday, YYYY-MM-DD)
+  tier        String // 1h | 4h | 8h
+  periodStart DateTime // start of this tier's grant interval
+  expiresAt   DateTime
+  rideId      String?  @unique
+  createdAt   DateTime
+
+  @@id([wallet, tier, periodStart])
   @@schema("player")
 }
 

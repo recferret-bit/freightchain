@@ -15,7 +15,7 @@ export interface WinnersTree {
   proofs: Buffer[][];
 }
 
-/** the program's WINNER_LEAF_TAG (programs/freightchain-pools … constants.rs) */
+/** the program's WINNER_LEAF_TAG (programs/freightchain_pools/src/constants.rs) */
 const LEAF_TAG = new TextEncoder().encode('fc-winner');
 /** `Pool.paid_mask` is a u64 */
 export const MAX_WINNERS = 64;

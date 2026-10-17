@@ -28,7 +28,7 @@ COPY server/src/domain/achievements/achievements.ts ./server/src/domain/achievem
 COPY server/src/infrastructure/config/env.schema.ts ./server/src/infrastructure/config/
 COPY deploy/docker-compose.prod.yml deploy/Dockerfile ./deploy/
 COPY .dockerignore ./
-COPY programs/freightchain-pools/idl/freightchain_pools.json ./programs/freightchain-pools/idl/
+COPY programs/idl/freightchain_pools.json ./programs/idl/
 WORKDIR /app/landing
 COPY landing/package.json landing/package-lock.json ./
 RUN npm ci

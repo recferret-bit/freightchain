@@ -4,6 +4,7 @@ import type { PromoEffect, PromoState } from './promo.types.js';
 /** One line saying what a code gives – the same words in the lobby, the admin page and the signed admin text. */
 export function describeEffect(e: PromoEffect): string {
   switch (e.kind) {
+    case 'ride': return `one free ${e.tier} ride (not for sale)`;
     case 'tickets': return `${e.credits} × ${e.tier} ride ticket${e.credits === 1 ? '' : 's'}${e.poolId !== null ? ` (pool #${e.poolId})` : ''}`;
     case 'free_rides': return `${e.count} free ride${e.count === 1 ? '' : 's'}`;
     case 'cosmetic': return `${e.slot.replace('_', ' ')}: ${e.item}`;

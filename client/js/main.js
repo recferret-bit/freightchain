@@ -34,6 +34,7 @@ import { cabChain } from './ui/cab-chain.js';
 import { track } from './analytics.js';
 import { guide, setGuide } from './guide.js';
 import { offlineRide, offlineWanted } from './offline-ride.js';
+import { beginEasyEntry } from './easy-entry.js';
 import { FORK } from './net/patterns.js';
 import { toggleMap } from './ui/map.js';
 import { phone } from './phone.js';
@@ -59,12 +60,14 @@ function frame(now) {
 }
 await loadEntities();   // every 3D model is an entity from the API's bundle (world/entities.js); nothing below may build one before it
 selectTheme(THEMES[0].id, true); setClock(12, true, true);   // the prototype's world: Route 66 at noon (no picker, nothing remembered). A real ride gets the SERVER's route + start hour just below
-await initOnline();   // only with ?ride=<id> (see online.js); offline it returns at once
-const wantOffline = offlineWanted() && !online.ride && !online.error;   // the guest run is every page that is not a ride (?ride=, or a failed load of one) or a replay (?watch=)
+await initOnline();   // only with ?ride=<id> (see online.js); otherwise it returns at once
+const easy = await beginEasyEntry();   // bare play.html orders the real EASY ride (anonymous session if nobody is signed in). ?sim=1 stays the tool sim
+if (easy === 'fail') online.error = online.error || 'could not start the EASY ride';
+const wantOffline = easy === false && offlineWanted() && !online.ride && !online.error;   // ?sim=1: the local sim (free-g) so tools can devRun. A product page never sets this
 if (online.ride) { selectTheme(online.ride.route ?? THEMES[0].id, true); if (online.ride.startHour != null) setClock(online.ride.startHour, true, true); }   // what the server assigned: a free level's country, or worldFor for a paid ride
-if (wantOffline) setGuide({ tutorial: false, assist: false });   // the guest run: the menu's two checkboxes set the helpers at START (ui/game.js)
+if (wantOffline) setGuide({ tutorial: false, assist: false });   // the tool sim: the menu's two checkboxes set the helpers at START (ui/game.js)
 else setGuide(online.ride ?? {});   // the free ride's tutorial / assist: the SERVER's flags of the ride
-if (wantOffline) { setTrip('free-g'); selectTheme(FREE_COUNTRIES[1].route, true); }   // the guest run = 2 min with one crossroads on a winding road, on the EASY level's country
+if (wantOffline) { setTrip('free-g'); selectTheme(FREE_COUNTRIES[1].route, true); }   // tool sim only: 2 min, one crossroads, winding, EASY country. The product page is a real EASY ride
 else setTrip(online.ride ? tripOf(online.ride) : null);   // the ride's road (trips.js): the trip the server stamped on it (a replay sets its own below); before the road is built
 if (trip.tutorial === false) guide.tutorial = false;   // the HARD free run has no tutorial (the server refuses it on the ride too)
 if (trip.assist === false) guide.assist = false;   // the HARD free run has no assist (the server refuses it on the ride too)
@@ -78,8 +81,10 @@ if (online.ride) {
   const stage = online.error.startsWith('not signed in') ? 'not_signed_in' : online.error.startsWith('this ride is') ? 'bad_status' : typeof online.status === 'number' ? 'http' : 'unknown';
   track('ride_load_failed', { stage, http_status: typeof online.status === 'number' ? online.status : null, code: typeof online.code === 'string' ? online.code : null });
 }
-const isWatching = await initWatch();
-if (isWatching) {   // only with ?watch=<id> (see watch.js): the watched ride's route + seed, no menu, the watch panel instead
+const isWatching = easy === 'go' ? false : await initWatch();
+if (easy === 'go') {
+  // redirecting to ?ride=<id>
+} else if (isWatching) {   // only with ?watch=<id> (see watch.js): the watched ride's route + seed, no menu, the watch panel instead
   CFG.TRAFFIC = false;   // no traffic SIM in a replay: watch.js draws the traffic the driver's game RECORDED (an empty road for recordings from before that)
   if (watch.ride) followRoadPlan(watch.ride.id);   // a replay draws the server's holes, never a copy of what the driver's game had
   if (watch.ride) { setTrip(tripOf(watch.ride)); selectTheme(THEMES.some(t => t.id === watch.ride.route) ? watch.ride.route : THEMES[0].id, true); resize(); resetRide(watch.ride.seed); st.mode = 'drive'; startWatch(); }
@@ -88,7 +93,7 @@ if (isWatching) {   // only with ?watch=<id> (see watch.js): the watched ride's 
 } else if (isMobileDevice()) {
   showMobileBlocker();
 } else { if (wantOffline) offlineRide.on = true; resize(); resetRide(); showMenu('FREIGHT CHAIN', 'Long-haul truck simulator'); }
-let looping = isWatching || !isMobileDevice(); if (looping) requestAnimationFrame(frame);
+let looping = easy !== 'go' && (isWatching || !isMobileDevice()); if (looping) requestAnimationFrame(frame);
 /* a real ride (online, a failed load of one, a watched ride): the route and the clock are fixed – no function to change them stays reachable from the page */
 const pageQuery = typeof location === 'undefined' ? null : new URL(location.href).searchParams;
 const realRide = !!(online.ride || online.error || watch.ride || (pageQuery && (pageQuery.get('ride') || pageQuery.get('watch'))));

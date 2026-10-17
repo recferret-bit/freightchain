@@ -15,6 +15,7 @@ export class RideMapper {
       paused: row.paused, startedAt: row.startedAt, lastHbAt: row.lastHbAt, lastS: row.lastS, lastT: row.lastT, driveSeconds: row.driveSeconds,
       hull: row.hull, endedAt: row.endedAt, reason: row.reason, challenges: parseChallenges(row.challenges), nextChallengeAt: row.nextChallengeAt, version: row.version, paymentReference: row.paymentReference,
       seedCommitment: row.seedCommitment, blockhash: row.blockhash, slot: row.slot,
+      ranked: row.ranked, cleanMetres: row.cleanMetres, prizeCountry: row.prizeCountry, prizeRegion: row.prizeRegion, promoCode: row.promoCode, weeklyGrant: row.weeklyGrant,
     });
   }
 
@@ -31,6 +32,7 @@ export class RideMapper {
       trafficVersion: p.trafficVersion ?? 0, minSeconds: p.minSeconds, completeDist: p.completeDist, status: p.status as unknown as RideStatusRow, roundId: p.roundId, paidAt: p.paidAt, route: p.route, startHour: p.startHour, loadout: p.loadout ?? Prisma.DbNull, trip: p.trip, tutorial: p.tutorial, assist: p.assist, nightSeconds: p.nightSeconds, crashesVehicle: p.crashesVehicle, crashesBuilding: p.crashesBuilding, paused: p.paused,
       startedAt: p.startedAt, lastHbAt: p.lastHbAt, lastS: p.lastS, lastT: p.lastT, driveSeconds: p.driveSeconds, hull: p.hull, endedAt: p.endedAt, reason: p.reason,
       challenges: p.challenges.length ? (p.challenges as unknown as Prisma.InputJsonValue) : Prisma.DbNull, nextChallengeAt: p.nextChallengeAt, paymentReference: p.paymentReference ?? null,
+      ranked: p.ranked === true, cleanMetres: p.cleanMetres ?? null, prizeCountry: p.prizeCountry ?? null, prizeRegion: p.prizeRegion ?? null, promoCode: p.promoCode ?? null, weeklyGrant: p.weeklyGrant === true,
     };
   }
 }

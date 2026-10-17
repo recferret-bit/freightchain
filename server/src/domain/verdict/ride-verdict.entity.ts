@@ -41,7 +41,7 @@ export class RideVerdict {
   /** Judge the ride from what is stored – always the whole recording (its batches' facts: chain columns + summaries), so judging again (a late batch)
       gives the up-to-date answer. The dispatch prompts the ride issued are judged against the recording's input events. */
   static judge(ride: Ride, batches: readonly BatchFacts[], now: Date, replayReasons: readonly VerdictReason[] = []): RideVerdict {
-    const facts = { rideId: ride.id, driveSeconds: ride.driveSeconds, distance: ride.distance };
+    const facts = { rideId: ride.id, driveSeconds: ride.driveSeconds, distance: ride.distance, ranked: ride.ranked, cleanMetres: ride.cleanMetres };
     const ordered = [...batches].sort((a, b) => a.seq - b.seq);
     const chain = checkChain(facts, ordered);
     const road = { forkSwitch: (s0: number, s1: number) => roadPlanFor(ride.seed, ride.trip).layout.forkSwitch(s0, s1) }; // built lazily: only a boundary step over the governor asks

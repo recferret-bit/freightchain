@@ -1,0 +1,52 @@
+{
+  "name": "Medium Veteran",
+  "symbol": "FCHAIN",
+  "description": "Five minutes of bends, traffic and forks. You know the MEDIUM run by heart. Condition: Clear the MEDIUM free run 10 times. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "image": "__IMAGE__",
+  "seller_fee_basis_points": 0,
+  "external_url": "https://freightchain.fun/",
+  "collection": {
+    "name": "Freight Chain Achievements",
+    "family": "Freight Chain"
+  },
+  "attributes": [
+    {
+      "trait_type": "Family",
+      "value": "Medium"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Gold"
+    },
+    {
+      "trait_type": "Tier Number",
+      "value": 3
+    },
+    {
+      "trait_type": "Condition",
+      "value": "Clear the MEDIUM free run 10 times."
+    },
+    {
+      "trait_type": "Requirement",
+      "value": 10,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Game",
+      "value": "Freight Chain"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "__IMAGE__",
+        "type": "image/png"
+      }
+    ]
+  }
+}

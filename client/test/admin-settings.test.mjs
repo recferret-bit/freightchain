@@ -4,6 +4,12 @@ import { SETTING_KNOBS } from '../site/admin-settings.js';
 
 /* key, camelCase field on GET /api/admin/settings, min, max. Existing free-ride knobs stay 0..100_000. */
 const RANGES = [
+  ['weekly_ticket_1h_enabled', 'weeklyTicket1hEnabled', 0, 1],
+  ['weekly_ticket_1h_days', 'weeklyTicket1hDays', 1, 100_000],
+  ['weekly_ticket_4h_enabled', 'weeklyTicket4hEnabled', 0, 1],
+  ['weekly_ticket_4h_days', 'weeklyTicket4hDays', 1, 100_000],
+  ['weekly_ticket_8h_enabled', 'weeklyTicket8hEnabled', 0, 1],
+  ['weekly_ticket_8h_days', 'weeklyTicket8hDays', 1, 100_000],
   ['free_on_signup', 'freeOnSignup', 0, 100_000],
   ['free_rides_daily_max', 'freeRidesDailyMax', 0, 100_000],
   ['referral_max', 'referralMax', 1, 1000],
@@ -28,5 +34,5 @@ const RANGES = [
 
 test('each settings knob has its own min and max', () => {
   assert.deepEqual(SETTING_KNOBS.map(([key, prop, , , min, max]) => [key, prop, min, max]), RANGES);
-  for (const [, , label] of SETTING_KNOBS) assert.match(label, /^[A-Z]/);
+  for (const [, , label] of SETTING_KNOBS) assert.match(label, /^[A-Z0-9]/);
 });

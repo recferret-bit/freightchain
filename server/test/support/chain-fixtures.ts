@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SERVER_DIR } from '../architecture/source-files.js';
 
-/* Real pool-program output recorded on LiteSVM by programs/freightchain-pools/programs/freightchain_pools/tests/export_fixtures.rs (regenerate there; keys are random per run).
+/* Real pool-program output recorded on LiteSVM by programs/freightchain_pools/tests/export_fixtures.rs (regenerate there; keys are random per run).
    u64 values are strings, i64 values unix seconds, order ids base64. */
 export interface FixtureMeta { pubkey: string; isSigner: boolean; isWritable: boolean }
 export interface FixtureInstruction { name: string; programId: string; accounts: FixtureMeta[]; data: string; args: Record<string, unknown> }

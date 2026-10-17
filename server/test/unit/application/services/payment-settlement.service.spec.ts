@@ -23,7 +23,6 @@ describe('PaymentSettlementService', () => {
     const order = await ctx.paidOrder('w');
     order.expire(ctx.now()); await ctx.rides.save(order);
     const free = await ctx.freeRide('w');
-    const player = await ctx.storedPlayer('w'); player.spendFreeRide(); await ctx.players.save(player); // the credit the free ride cost
     const otherOrder = await ctx.paidOrder('w');
     const settled = await ctx.settlement.settle(order.id, 'w', 'sig-late');
     expect(settled.cancelled.map((r) => r.id)).toEqual([free.id]);

@@ -16,6 +16,8 @@ export interface PlayerProps {
   age18At: Date | null;
   /** when the rider ticked the loss offer (null = off). Paid play needs this and `age18At`. */
   lossAt: Date | null;
+  /** A throwaway session from POST /api/auth/guest. The secret was never stored. Progress does not merge into a later wallet. */
+  guest?: boolean;
 }
 
 /** A rider, identified by the Solana wallet that signed in. Owns the free-ride credits. */
@@ -25,13 +27,13 @@ export class Player {
 
   private constructor(private readonly props: PlayerProps) {}
 
-  /** First sight of a wallet: the signup free rides. */
-  static register(wallet: string, now: Date, freeOnSignup: number, freeRidesMax: number): Player {
-    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), freeRidesMax, createdAt: now, tutorialPassedAt: null, age18At: null, lossAt: null });
+  /** First sight of a wallet. `freeOnSignup` is stored and unused: training rides are not counted. `guest` is only the anonymous EASY session. */
+  static register(wallet: string, now: Date, freeOnSignup: number, freeRidesMax: number, guest = false): Player {
+    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), freeRidesMax, createdAt: now, tutorialPassedAt: null, age18At: null, lossAt: null, guest });
   }
 
   static restore(props: PlayerProps): Player {
-    return new Player({ ...props });
+    return new Player({ ...props, guest: props.guest === true });
   }
 
   get wallet(): string { return this.props.wallet; }
@@ -44,6 +46,7 @@ export class Player {
   get tutorialPassed(): boolean { return this.props.tutorialPassedAt !== null; }
   get age18At(): Date | null { return this.props.age18At; }
   get lossAt(): Date | null { return this.props.lossAt; }
+  get guest(): boolean { return this.props.guest === true; }
   /** Both boxes on. Free rides do not ask. */
   get paidPlayAllowed(): boolean { return this.props.age18At !== null && this.props.lossAt !== null; }
   /** True only when this process inserted the row on the touch that returned this instance. */
@@ -143,6 +146,6 @@ export class Player {
   }
 
   snapshot(): PlayerProps {
-    return { ...this.props };
+    return { ...this.props, guest: this.guest };
   }
 }

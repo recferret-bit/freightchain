@@ -6,6 +6,7 @@ import type { PaidTierId } from '../../../domain/rides/ride-tier.js';
 
 /** The effect is stored flat (one nullable column group per kind) so the atomic redemption UPDATE and the admin queries stay plain SQL. */
 const effectOf = (row: PromoCodeRow): PromoEffect => {
+  if (row.kind === 'ride' && (row.tier === '1h' || row.tier === '4h' || row.tier === '8h')) return { kind: 'ride', tier: row.tier };
   if (row.kind === 'free_rides') return { kind: 'free_rides', count: row.freeRides ?? 0 };
   if (row.kind === 'cosmetic' && isCosmeticSlot(row.cosmeticSlot)) return { kind: 'cosmetic', slot: row.cosmeticSlot, item: row.cosmeticItem ?? '' };
   if (row.kind !== 'tickets' || row.tier === null || row.credits === null) throw new Error(`promo code ${row.code}: unreadable effect (kind ${row.kind})`);   // never guess a grant from a row the catalog no longer knows
@@ -24,7 +25,7 @@ export class PromoMapper {
     const { effect: e, ...s } = promo.snapshot();
     return {
       ...s, kind: e.kind,
-      poolId: e.kind === 'tickets' ? e.poolId : null, tier: e.kind === 'tickets' ? e.tier : null, credits: e.kind === 'tickets' ? e.credits : null,
+      poolId: e.kind === 'tickets' ? e.poolId : null, tier: e.kind === 'tickets' || e.kind === 'ride' ? e.tier : null, credits: e.kind === 'tickets' ? e.credits : null,
       freeRides: e.kind === 'free_rides' ? e.count : null, cosmeticSlot: e.kind === 'cosmetic' ? e.slot : null, cosmeticItem: e.kind === 'cosmetic' ? e.item : null,
     };
   }

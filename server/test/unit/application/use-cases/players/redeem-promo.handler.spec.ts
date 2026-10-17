@@ -48,29 +48,23 @@ describe('RedeemPromoHandler', () => {
     });
   });
 
-  describe('free rides', () => {
-    it('adds them on top of the daily ones – even above the daily cap – and nothing else', async () => {
-      const { ctx, redeem } = await setup({ effect: { kind: 'free_rides', count: 3 } });
-      await ctx.player('w'); // 10 of a daily cap of 5
-      expect(await redeem()).toEqual({ kind: 'free_rides', code: 'HELLO', label: '3 free rides', added: 3, freeRides: 13 });
-      expect((await ctx.storedPlayer('w')).freeRides).toBe(13);
-      expect((await ctx.storedPlayer('w')).freeRidesMax).toBe(5);
-      expect(await ctx.promos.countRedemptions('HELLO', 'w')).toBe(1);
-      expect(await ctx.tickets.listByWallet('w')).toEqual([]); // no ticket row either
-    });
-
-    it('is not pulled back down by the daily grant the next day, and a ride spends from it', async () => {
-      const { ctx, redeem } = await setup({ effect: { kind: 'free_rides', count: 1 } });
+  describe('ride codes', () => {
+    it('grants one unspent shift of that tier and does not add a free ride or a ticket', async () => {
+      const { ctx, redeem } = await setup({ effect: { kind: 'ride', tier: '4h' } });
       await ctx.player('w');
-      await redeem();
-      ctx.clock.advance(86_400);
-      await ctx.sessions.touch('w'); // the lazy daily grant: at / above the cap it adds nothing and takes nothing
-      expect((await ctx.storedPlayer('w')).freeRides).toBe(11);
+      expect(await redeem()).toEqual({ kind: 'ride', code: 'HELLO', label: 'one free 4h ride (not for sale)', tier: '4h' });
+      expect((await ctx.storedPlayer('w')).freeRides).toBe(10);
+      expect(await ctx.promos.listUnspent('w')).toEqual([expect.objectContaining({ code: 'HELLO', tier: '4h', rideId: null })]);
+      expect(await ctx.tickets.listByWallet('w')).toEqual([]);
+      await expect(redeem()).rejects.toMatchObject({ errorCode: 'promo_unavailable' });
     });
 
-    it('one ride in "1 free ride" reads singular', async () => {
-      const { redeem } = await setup({ effect: { kind: 'free_rides', count: 1 } });
-      expect(await redeem()).toMatchObject({ label: '1 free ride', added: 1 });
+    it('a stored extra-free-ride code is refused and the redemption is not taken', async () => {
+      const { ctx, redeem } = await setup({ effect: { kind: 'free_rides', count: 3 } });
+      await ctx.player('w');
+      await expect(redeem()).rejects.toMatchObject({ errorCode: 'promo_retired' });
+      expect((await ctx.storedPlayer('w')).freeRides).toBe(10);
+      expect((await ctx.promos.findByCode('HELLO'))?.snapshot().redeemed).toBe(0);
     });
   });
 
@@ -79,7 +73,7 @@ describe('RedeemPromoHandler', () => {
 
     it('a stored cab-visual code is refused before a redemption is taken, and nothing is unlocked', async () => {
       const { ctx, redeem } = await setup({ effect: wheel, maxRedemptions: 5 });
-      await expect(redeem()).rejects.toMatchObject({ errorCode: 'visuals_are_honk', message: 'cab visuals are minted by burning HONK' });
+      await expect(redeem()).rejects.toMatchObject({ errorCode: 'visuals_are_honk', message: 'cab visuals are minted by burning TEN4' });
       expect(await ctx.cosmetics.has('w', 'wheel', 'gold')).toBe(false);
       expect(await ctx.cosmetics.listEquipped('w')).toEqual({});
       expect((await ctx.promos.findByCode('HELLO'))?.snapshot().redeemed).toBe(0);
@@ -88,28 +82,30 @@ describe('RedeemPromoHandler', () => {
 
   describe('PostHog', () => {
     it('a redeemed code is one promo_redeemed per kind, after the commit, with what it gave – and the person is updated', async () => {
-      const { ctx, redeem } = await setup({ effect: { kind: 'free_rides', count: 3 } });
+      const { ctx, redeem } = await setup({ effect: { kind: 'ride', tier: '8h' } });
       await ctx.promos.insert(aPromo(ctx.now(), { code: 'TIX', effect: ticketEffect({ credits: 2 }) }));
       await ctx.pools.upsert(aPool({ id: 1, status: 'active' }));
       await redeem(); await redeem('TIX');
       const [rides, tickets] = ctx.analytics.named('promo_redeemed');
-      expect(rides).toMatchObject({ distinctId: 'w', dedupeKey: 'promo:HELLO:w:1', timestamp: ctx.now(), set: { free_rides: 13 }, properties: { code: 'HELLO', kind: 'free_rides', redemption_n: 1, rides_added: 3, free_rides: 13, is_demo: false, source: 'server' } });
+      expect(rides).toMatchObject({ distinctId: 'w', dedupeKey: 'promo:HELLO:w:1', timestamp: ctx.now(), properties: { code: 'HELLO', kind: 'ride', redemption_n: 1, tier_id: '8h', is_demo: false, source: 'server' } });
+      expect(rides?.set).toBeUndefined();
       expect(tickets).toMatchObject({ properties: { kind: 'tickets', tier_id: '1h', pool_id: 1, tickets_added: 2, ticket_balance: 2 } });
       expect(tickets?.set).toBeUndefined();
     });
     it('the n-th use of a code by one wallet has its own dedupe key; a refusal tells nothing; a broken or switched-off adapter never changes the answer', async () => {
-      const { ctx, redeem } = await setup({ effect: { kind: 'free_rides', count: 1 }, perWallet: 2 });
+      const { ctx, redeem } = await setup({ effect: ticketEffect({ credits: 1 }), perWallet: 2 });
+      await ctx.pools.upsert(aPool({ id: 1, status: 'active' }));
       await redeem(); await redeem();
       expect(ctx.analytics.named('promo_redeemed').map((e) => e.dedupeKey)).toEqual(['promo:HELLO:w:1', 'promo:HELLO:w:2']);
       await expect(redeem()).rejects.toBeDefined();
       await expect(redeem('NOPE')).rejects.toBeDefined();
       expect(ctx.analytics.named('promo_redeemed')).toHaveLength(2);
       ctx.analytics.throwOnCapture = true;
-      await ctx.promos.insert(aPromo(ctx.now(), { code: 'MORE', effect: { kind: 'free_rides', count: 1 } }));
-      expect(await redeem('MORE')).toMatchObject({ kind: 'free_rides' });
+      await ctx.promos.insert(aPromo(ctx.now(), { code: 'MORE', effect: { kind: 'ride', tier: '1h' } }));
+      expect(await redeem('MORE')).toMatchObject({ kind: 'ride' });
       ctx.analytics.throwOnCapture = false; ctx.analytics.on = false;
-      await ctx.promos.insert(aPromo(ctx.now(), { code: 'OFF', effect: { kind: 'free_rides', count: 1 } }));
-      expect(await redeem('OFF')).toMatchObject({ kind: 'free_rides' });
+      await ctx.promos.insert(aPromo(ctx.now(), { code: 'OFF', effect: { kind: 'ride', tier: '4h' } }));
+      expect(await redeem('OFF')).toMatchObject({ kind: 'ride' });
       expect(ctx.analytics.named('promo_redeemed')).toHaveLength(2);
     });
   });
@@ -138,11 +134,11 @@ describe('RedeemPromoHandler', () => {
     });
 
     it('a code scheduled for later is refused until its start – and works from that very instant', async () => {
-      const { ctx, redeem } = await setup({ effect: { kind: 'free_rides', count: 2 }, startsAt: new Date(Date.UTC(2036, 9, 8, 12) + DAY) });
+      const { ctx, redeem } = await setup({ effect: { kind: 'ride', tier: '1h' }, startsAt: new Date(Date.UTC(2036, 9, 8, 12) + DAY) });
       await expect(redeem()).rejects.toMatchObject({ errorCode: 'promo_unavailable', message: 'this promo code is not active yet' });
       expect(await ctx.promos.countRedemptions('HELLO', 'w')).toBe(0);
       ctx.clock.advance(86_400);
-      expect(await redeem()).toMatchObject({ kind: 'free_rides', added: 2 });
+      expect(await redeem()).toMatchObject({ kind: 'ride', tier: '1h' });
     });
   });
 });

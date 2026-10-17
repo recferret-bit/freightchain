@@ -7,7 +7,7 @@ import {
   type RejudgeFilter,
   RideQueryPort, type FinishedRideRow, type HistoryFilter, type HistoryRideRow, type LeaderboardEntry, type LeaderboardPage, type LeaderboardRow, type LiveRideRow, type RecentRideRow, type RideSummary, type UpcomingRideRow,
 } from '../../../application/ports/rides/ride-query.port.js';
-import { completedLevels } from '../../../domain/rides/ride-trip.js';
+import { completedLevels, freeFinishCounts } from '../../../domain/rides/ride-trip.js';
 import { PrismaService } from '../prisma.service.js';
 
 const CLEAN_HULL = 99.5;
@@ -85,8 +85,8 @@ export class RideQueryPrismaRepository extends RideQueryPort {
     const [started, done, honkMints, honkFinishes, qualifiedReferrals] = await Promise.all([
       this.prisma.ride.aggregate({ where: { wallet, startedAt: { not: null } }, _count: { _all: true }, _sum: { lastS: true } }),
       this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { tier: true, trip: true, assist: true, lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true, verdict: { select: { status: true, reasons: true } } } }),
-      this.prisma.honkMint.count({ where: { wallet, amount: { gt: 0 } } }),
-      this.prisma.honkMint.count({ where: { wallet, amount: { gt: 0 }, band100: true } }),
+      this.prisma.honkMint.count({ where: { wallet, released: true, amount: { gt: 0 } } }),
+      this.prisma.honkMint.count({ where: { wallet, released: true, amount: { gt: 0 }, band100: true } }),
       this.prisma.referral.count({ where: { referrer: wallet, badgeCounted: true } }),
     ]);
     // the badges' rides: a ride the verdict rejected (achievements.ts badgeRejected) earns no completion badge and its metres don't count – its START still
@@ -101,6 +101,7 @@ export class RideQueryPrismaRepository extends RideQueryPort {
         siberiaShifts: fair.filter((r) => r.route === SIBERIA).length,
         freeUnassisted: fair.filter((r) => r.tier === 'free' && !r.assist).length,
         completedFreeLevels: completedLevels(fair),
+        freeFinishes: freeFinishCounts(fair),
         honkMints, honkFinishes,
         qualifiedReferrals,
       },

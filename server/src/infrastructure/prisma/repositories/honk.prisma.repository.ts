@@ -28,14 +28,48 @@ export class HonkPrismaRepository extends HonkRepositoryPort {
     await clientFor(this.prisma, tx).honkSupply.update({ where: { id: 1 }, data: { minted: { increment: amount } } });
   }
 
+  async subEmission(amount: bigint, tx?: TransactionHandle): Promise<void> {
+    await clientFor(this.prisma, tx).honkSupply.update({ where: { id: 1 }, data: { minted: { decrement: amount } } });
+  }
+
+  async emittedOnDay(start: Date, wallet: string | null, tx?: TransactionHandle): Promise<bigint> {
+    const end = new Date(start.getTime() + 86_400_000);
+    const row = await clientFor(this.prisma, tx).honkMint.aggregate({
+      where: { createdAt: { gte: start, lt: end }, ...(wallet ? { wallet } : {}) },
+      _sum: { amount: true },
+    });
+    return row._sum.amount ?? 0n;
+  }
+
   async insertMint(row: HonkMintRow, tx?: TransactionHandle): Promise<boolean> {
     // ON CONFLICT keeps the transaction open so the loser can read the winner's row. A thrown unique violation would abort it.
     const inserted = await clientFor(this.prisma, tx).$queryRaw<{ rideId: string }[]>`
-      INSERT INTO "economy"."HonkMint" ("rideId", "wallet", "tier", "amount", "band20", "band50", "band100", "createdAt")
-      VALUES (${row.rideId}, ${row.wallet}, ${row.tier}, ${row.amount}, ${row.band20}, ${row.band50}, ${row.band100}, ${row.createdAt})
+      INSERT INTO "economy"."HonkMint" ("rideId", "wallet", "tier", "amount", "band20", "band50", "band100", "createdAt", "releaseAt", "released")
+      VALUES (${row.rideId}, ${row.wallet}, ${row.tier}, ${row.amount}, ${row.band20}, ${row.band50}, ${row.band100}, ${row.createdAt}, ${row.releaseAt}, ${row.released})
       ON CONFLICT ("rideId") DO NOTHING
       RETURNING "rideId"`;
     return inserted.length === 1;
+  }
+
+  async markReleased(rideId: string, tx?: TransactionHandle): Promise<boolean> {
+    const { count } = await clientFor(this.prisma, tx).honkMint.updateMany({ where: { rideId, released: false }, data: { released: true } });
+    return count === 1;
+  }
+
+  async deleteMint(rideId: string, tx?: TransactionHandle): Promise<boolean> {
+    const { count } = await clientFor(this.prisma, tx).honkMint.deleteMany({ where: { rideId, released: false } });
+    return count === 1;
+  }
+
+  async listDue(now: Date, limit: number): Promise<HonkMintRow[]> {
+    const rows = await this.prisma.$queryRaw<HonkMintRow[]>`
+      SELECT m."rideId", m."wallet", m."tier", m."amount", m."band20", m."band50", m."band100", m."createdAt", m."releaseAt", m."released"
+      FROM "economy"."HonkMint" m
+      INNER JOIN "player"."Player" p ON p."wallet" = m."wallet"
+      WHERE m."released" = false AND m."releaseAt" <= ${now}
+      ORDER BY m."releaseAt" ASC
+      LIMIT ${limit}`;
+    return rows.map((row) => ({ ...row, tier: row.tier }));
   }
 
   async balance(wallet: string, tx?: TransactionHandle): Promise<bigint> {
@@ -78,7 +112,7 @@ export class HonkPrismaRepository extends HonkRepositoryPort {
   }
 
   async counts(wallet: string): Promise<{ mints: number; finishes: number }> {
-    const rows = await this.prisma.honkMint.findMany({ where: { wallet, amount: { gt: 0 } }, select: { band100: true } });
+    const rows = await this.prisma.honkMint.findMany({ where: { wallet, released: true, amount: { gt: 0 } }, select: { band100: true } });
     return { mints: rows.length, finishes: rows.filter((r) => r.band100).length };
   }
 

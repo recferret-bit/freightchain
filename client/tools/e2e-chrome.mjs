@@ -1,18 +1,18 @@
 // Real-Chrome end-to-end check: launches headless Chrome (software WebGL), drives the game over the DevTools protocol
 // (start ride, engine start, gears, washer, off-road, a screenshot of every route), records JS exceptions / console errors, and saves screenshots.
-//   node tools/e2e-chrome.mjs [url]       default url http://localhost:8765/play.html (run ./serve.sh first)
+//   node tools/e2e-chrome.mjs [url]       default url http://localhost:8765/play.html?sim=1 (run ./serve.sh first)
 //   env: CHROME=/path/to/chrome  SHOTS=/dir/for/screenshots (default: <tmp>/fc-shots)
 // Exits 1 if anything threw. Needs Node >= 22 (global WebSocket/fetch). Look at the screenshots – the script can't judge visuals.
 import fs from 'node:fs';
 import { launch, sleep, withEntities } from './cdp.mjs';
-const PORT=+process.env.PORT||9333, URL=await withEntities(process.argv[2]||'http://localhost:8765/play.html');
+const PORT=+process.env.PORT||9333, URL=await withEntities(process.argv[2]||'http://localhost:8765/play.html?sim=1');
 const { send, ev, shot, filt, problems, SHOTS, finish } = await launch({ port: PORT, shotsDir: 'fc-shots', args: ['--autoplay-policy=no-user-gesture-required'], evalProblems: true });
 const key=async(code,type)=>{ const map={KeyW:87,KeyS:83,KeyA:65,KeyD:68,KeyE:69,KeyQ:81,KeyI:73,KeyB:66,KeyR:82,KeyX:88,KeyV:86,KeyN:78,KeyL:76,KeyG:71,KeyC:67,KeyH:72,ShiftLeft:16}; await send('Input.dispatchKeyEvent',{type:type==='up'?'keyUp':'keyDown',code,key:code.replace('Key','').toLowerCase(),windowsVirtualKeyCode:map[code]}); };
 await send('Page.navigate',{url:URL}); await sleep(3500);
 console.log('title:',await ev('document.title'),'| __game:',await ev('typeof window.__game'));
 await shot('01-menu');
 if(await ev('typeof window.__game')==='object'){
-  await ev('window.__game.devRun(); window.__game.startRide()');   // devRun: the classic road + depot, no helpers (a bare page is the guest's FREE RUN)
+  await ev('window.__game.devRun(); window.__game.startRide()');   // ?sim=1 keeps the local sim; devRun: the classic road + depot, no helpers
   // the scripted driver pops the clutch: use the pre-weight handling and a warm engine, or the truck stalls on launch (cold engine / MASS 2.5 are exercised by the climate checks below)
   await ev('Object.assign(__game.CFG.TRUCK,{MASS:1,BRAKE:9,STEER_RATE:1.8,STEER_RETURN:3.5,YAW_LAG:0,CENTRIF:.03}); __game.st.temp=__game.CFG.ENGINE_WARM+5');
   await sleep(500); await key('KeyI'); await sleep(3500); if(await ev('__game.st.park')) await key('KeyB'); await shot('02-engine-running');

@@ -1,6 +1,6 @@
 ---
 name: program-check
-description: Check the Solana escrow program (programs/freightchain-pools, Anchor) – reproducible solana-verify build in Docker against the pinned hash, the LiteSVM tests on THAT exact .so, IDL drift, clippy, cargo audit (RustSec), then a security review with the Trail of Bits Solana scanner plus this program's own invariant checklist; read-only on-chain hash comparison after a deploy. Use when the program changes, before a devnet/mainnet deploy, when asked to "verify the contract", "audit / security-check the program", "solana-verify", or to confirm what is deployed matches the repo.
+description: Check the Solana escrow program (programs/freightchain_pools, Anchor) – reproducible solana-verify build in Docker against the pinned hash, the LiteSVM tests on THAT exact .so, IDL drift, clippy, cargo audit (RustSec), then a security review with the Trail of Bits Solana scanner plus this program's own invariant checklist; read-only on-chain hash comparison after a deploy. Use when the program changes, before a devnet/mainnet deploy, when asked to "verify the contract", "audit / security-check the program", "solana-verify", or to confirm what is deployed matches the repo.
 ---
 
 # Check the escrow program
@@ -18,7 +18,7 @@ bash .claude/skills/program-check/check.sh fast     # no Docker: IDL + tests on 
 
 | stage | tool | fails when |
 |---|---|---|
-| verifiable build | [`solana-verify`](https://github.com/solana-foundation/solana-verifiable-build) 0.5.2 (Solana Foundation) – clean `cargo build-sbf` in the pinned `solanafoundation/solana-verifiable-build` image for `[workspace.metadata.cli] solana` (4.1.2), SBPF v0 | the build fails, or its hash ≠ `programs/freightchain-pools/verifiable-build.hash` |
+| verifiable build | [`solana-verify`](https://github.com/solana-foundation/solana-verifiable-build) 0.5.2 (Solana Foundation) – clean `cargo build-sbf` in the pinned `solanafoundation/solana-verifiable-build` image for `[workspace.metadata.cli] solana` (4.1.2), SBPF v0 | the build fails, or its hash ≠ `programs/verifiable-build.hash` |
 | IDL | `anchor idl build` | the committed `idl/freightchain_pools.json` is stale |
 | tests | `cargo test` (51: 49 LiteSVM + 2 unit) – they `include_bytes!` `target/deploy/freightchain_pools.so`, so after stage 1 they run **on the verifiable artifact**, the bytes a deploy ships | any test fails |
 | lint | `cargo clippy --lib -D warnings` (program code only; the test harness trips `result_large_err` on LiteSVM's error type) | any warning |
@@ -49,14 +49,14 @@ PROGRAM_ID=<id> RPC_URL=https://api.devnet.solana.com bash .claude/skills/progra
 nothing is deployed, so this stage cannot pass yet.
 
 **Public verification** (OtterSec verify API, the "Verified" badge on explorers) is the user's call, not this skill's: it needs the repo public on
-GitHub, the commit hash, and `solana-verify verify-from-repo -u <devnet url> --program-id <id> --mount-path programs/freightchain-pools --library-name freightchain_pools --commit-hash <sha> https://github.com/<repo>`
+GitHub, the commit hash, and `solana-verify verify-from-repo -u <devnet url> --program-id <id> --mount-path programs --library-name freightchain_pools --commit-hash <sha> https://github.com/<repo>`
 which **writes a PDA on chain signed by the upgrade authority** (then `solana-verify -u <devnet url> remote submit-job …`; every solana-verify call needs `-u`, it otherwise reads the global config). Offer it; do not run it.
 
 ## 3. Security review (an agent pass, after the gate is green)
 
 1. **Trail of Bits `solana-vulnerability-scanner`** – open source (CC-BY-SA-4.0, `trailofbits/skills`), instructions only (ripgrep over `programs/`, no binaries, no network).
    Six classes: arbitrary CPI, PDA bump canonicalisation, owner checks, signer checks, sysvar spoofing, instruction introspection.
-   If it is not installed, ask the user to run `/plugin marketplace add trailofbits/skills` then install `building-secure-contracts` from `/plugin` (it changes their Claude Code config – don't do it for them). Run it on `programs/freightchain-pools/programs/freightchain_pools/src`.
+   If it is not installed, ask the user to run `/plugin marketplace add trailofbits/skills` then install `building-secure-contracts` from `/plugin` (it changes their Claude Code config – don't do it for them). Run it on `programs/freightchain_pools/src`.
 2. **This program's own checklist** – `review-checklist.md` next to this file. Money, rent, the state machine, authority, and the six Sealevel classes the Trail of Bits six do not cover (account-data matching, type cosplay, re-init, duplicate mutable accounts, PDA sharing, closing). Source for those six: `coral-xyz/sealevel-attacks`, the set Anchor's security page points at. Open every instruction in the program module. An instruction you did not open is an incomplete review. The escrow rows (reload after CPI, who a PDA signs for, stored payment keys, direct lamports, the slot-hashes sysvar) are in that file too. ✓ / ✗ with the line. A regex hit is a lead, not a pass. The OWASP Solana Programs Top 10 is unpublished. Do not invent S01–S10.
 3. Report findings with file:line and a failing LiteSVM test where one can be written (`tests/common/mod.rs` has the harness). A finding without a reproducing test is "plausible", not "confirmed".
 

@@ -19,8 +19,8 @@ if [ "$SCENARIO" = session ]; then
 fi
 command -v solana-test-validator >/dev/null || fail "solana-test-validator missing"
 [ -d "$SERVER/node_modules" ] || fail "server/node_modules missing – npm ci --prefix server"
-SO="$ROOT/programs/freightchain-pools/target/deploy/freightchain_honk.so"
-[ -f "$SO" ] || fail "missing $SO – from programs/freightchain-pools run: anchor build --arch v0 -p freightchain_honk"
+SO="$ROOT/programs/target/deploy/freightchain_honk.so"
+[ -f "$SO" ] || fail "missing $SO – from programs run: anchor build --arch v0 -p freightchain_honk"
 TMP="$(mktemp -d -t fc-honk-XXXXXX)"
 DB="freightchain_honk_local_$$"
 URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"
@@ -39,7 +39,7 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p "$TMP/keys"
 : > "$TMP/empty.env"
-for k in payer mint treasury player spectator upgrade; do solana-keygen new -s --no-bip39-passphrase -o "$TMP/keys/$k.json" >/dev/null; done
+for k in payer mint treasury player spectator; do solana-keygen new -s --no-bip39-passphrase -o "$TMP/keys/$k.json" >/dev/null; done
 pub() { solana-keygen pubkey "$TMP/keys/$1.json"; }
 RPC_PORT="$(free_pair)"; FAUCET_PORT="$(free_port)"; GOSSIP_PORT="$(free_port)"
 DYN=$(( RPC_PORT < 40000 ? RPC_PORT + 2000 : RPC_PORT - 2000 ))
@@ -47,7 +47,7 @@ RPC="http://127.0.0.1:$RPC_PORT"
 # --mint is the payer, not the HONK mint: that account is funded at genesis, so it cannot also be created as the SPL mint.
 solana-test-validator --ledger "$TMP/ledger" --reset --quiet --bind-address 127.0.0.1 --rpc-port "$RPC_PORT" --faucet-port "$FAUCET_PORT" \
   --gossip-port "$GOSSIP_PORT" --dynamic-port-range "$DYN-$((DYN + 30))" --mint "$(pub payer)" \
-  --upgradeable-program GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx "$SO" "$TMP/keys/upgrade.json" \
+  --upgradeable-program GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx "$SO" "$TMP/keys/payer.json" \
   > "$TMP/validator.log" 2>&1 &
 VAL_PID=$!
 for _ in $(seq 1 90); do curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" 2>/dev/null | grep -q '"ok"' && break; kill -0 "$VAL_PID" 2>/dev/null || { tail -20 "$TMP/validator.log"; fail "validator exited"; }; sleep 1; done

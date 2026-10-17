@@ -5,6 +5,7 @@ import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SystemProgram, Tr
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, TokenAccountNotFoundError, getAccount, getAssociatedTokenAddressSync, getMint } from '@solana/spl-token';
 
 export const PROGRAM_ID = new PublicKey('GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx');
+const BPF_LOADER_UPGRADEABLE_ID = new PublicKey('BPFLoaderUpgradeab1e11111111111111111111111');
 const CONFIRMED = { commitment: 'confirmed' };
 
 const disc = (name) => createHash('sha256').update(`global:${name}`).digest().subarray(0, 8);
@@ -36,6 +37,7 @@ function pda(seeds) {
 
 export function pdas() {
   return {
+    programData: PublicKey.findProgramAddressSync([PROGRAM_ID.toBuffer()], BPF_LOADER_UPGRADEABLE_ID)[0],
     config: pda([Buffer.from('config')]),
     authority: pda([Buffer.from('authority')]),
     honkMint: pda([Buffer.from('honk-mint')]),
@@ -44,7 +46,17 @@ export function pdas() {
     lpMint: pda([Buffer.from('lp-mint')]),
     lpLocker: pda([Buffer.from('lp-locker')]),
     locker: pda([Buffer.from('locker')]),
+    emission: pda([Buffer.from('emission')]),
+    airdrop: pda([Buffer.from('airdrop')]),
+    treasury: pda([Buffer.from('treasury')]),
+    team: pda([Buffer.from('team')]),
   };
+}
+
+function walletDay(rider, dayIndex) {
+  const day = Buffer.alloc(8);
+  day.writeBigInt64LE(BigInt(dayIndex));
+  return pda([Buffer.from('wallet-day'), asPk(rider).toBuffer(), day]);
 }
 
 function partPda(buyer, slot, item) {
@@ -73,13 +85,19 @@ async function send(connection, tx, signers) {
   return sendAndConfirmTransaction(connection, tx, signers, CONFIRMED);
 }
 
-export async function initialize({ rpc, payer, solIn }) {
+export async function initialize({ rpc, payer, solIn, emitter, treasury, teamRecipient, teamEnabled = true, teamLinearMonths = 36 }) {
   const p = pdas();
+  const who = (k) => (k ? asPk(k) : payer.publicKey);
+  const teamOn = !!teamEnabled;
+  const team = teamOn ? who(teamRecipient) : PublicKey.default;
+  const months = teamOn ? teamLinearMonths : 0;
   const keys = [
-    w(payer.publicKey, true), w(p.config), w(p.honkMint), w(p.authority), w(p.vault), w(p.pool),
-    w(p.lpMint), w(p.lpLocker), w(p.locker), ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId),
+    w(payer.publicKey, true), ro(PROGRAM_ID), ro(p.programData), w(p.config), w(p.honkMint), ro(p.authority), w(p.vault), w(p.pool),
+    w(p.lpMint), w(p.lpLocker), ro(p.locker), w(p.emission), w(p.airdrop), w(p.treasury), w(p.team),
+    ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId),
   ];
-  return send(connectionOf(rpc), new Transaction().add(ix('initialize', keys, [u64(solIn)])), [payer]);
+  const body = [u64(solIn), who(emitter).toBuffer(), who(treasury).toBuffer(), team.toBuffer(), Buffer.from([teamOn ? 1 : 0, months])];
+  return send(connectionOf(rpc), new Transaction().add(ix('initialize', keys, body)), [payer]);
 }
 
 export async function swapSolForHonk({ rpc, user, solIn, minOut }) {
@@ -100,29 +118,25 @@ export async function swapHonkForSol({ rpc, user, honkIn, minSolOut }) {
   return send(connectionOf(rpc), new Transaction().add(ix('swap_honk_for_sol', keys, [u64(honkIn), u64(minSolOut)])), [user]);
 }
 
-/** Burn LP for that share of the vault and the SOL reserve. The locker holds the LP until `release_lp`. */
-export async function withdrawLp({ rpc, user, lpIn, minHonk, minSol }) {
-  const p = pdas();
-  const owner = asPk(user.publicKey ?? user);
-  const keys = [
-    w(owner, true), w(p.pool), w(p.honkMint), w(p.vault), w(userHonk({ publicKey: owner })),
-    w(p.lpMint), w(getAssociatedTokenAddressSync(p.lpMint, owner, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID)),
-    ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId), ro(ASSOCIATED_TOKEN_PROGRAM_ID),
-  ];
-  return send(connectionOf(rpc), new Transaction().add(ix('withdraw_lp', keys, [u64(lpIn), u64(minHonk), u64(minSol)])), [user]);
+/** LP is burned inside initialize. There is no withdraw. */
+export function withdrawLp() {
+  throw new Error('LP is burned at initialize; withdraw_lp is gone');
 }
 
-/** Ride reward. The emitter signs. The vault is not a party to this instruction. */
-export async function mintRide({ rpc, emitter, rider, rideId, amount }) {
+/** Ride reward. The program derives the amount from tier and band bits and pays it from the emission vault. */
+export async function mintRide({ rpc, emitter, rider, rideId, tier = 1, bands = 0b111, dayIndex }) {
   const p = pdas();
   const riderPk = asPk(rider);
   const ride = rideId.length === 16 ? rideId : Buffer.from(rideId);
+  const day = dayIndex ?? Math.floor(Date.now() / 1000 / 86_400);
+  const dayBuf = Buffer.alloc(8);
+  dayBuf.writeBigInt64LE(BigInt(day));
   const keys = [
-    w(emitter.publicKey, true), w(p.config), w(p.honkMint), w(p.authority), ro(riderPk),
-    w(userHonk({ publicKey: riderPk })), w(pda([Buffer.from('ride-mint'), ride])),
+    w(emitter.publicKey, true), w(p.config), ro(p.honkMint), ro(p.authority), w(p.emission), ro(riderPk),
+    w(userHonk({ publicKey: riderPk })), w(pda([Buffer.from('ride-mint'), ride])), w(walletDay(riderPk, day)),
     ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId), ro(ASSOCIATED_TOKEN_PROGRAM_ID),
   ];
-  const data = [ride, u64(amount)];
+  const data = [ride, Buffer.from([tier, bands]), dayBuf];
   return send(connectionOf(rpc), new Transaction().add(ix('mint_ride', keys, data)), [emitter]);
 }
 
@@ -146,15 +160,13 @@ export async function buyPart({ rpc, buyer, slot, item }) {
   return { mint: nft.publicKey.toBase58(), ata: ata.toBase58(), signature };
 }
 
-/** The contract lists no accounts. This is the program's order: the time check runs only after the recipient's LP ATA is in the list. */
-export async function releaseLp({ rpc, payer }) {
-  const p = pdas();
-  const recipientLp = getAssociatedTokenAddressSync(p.lpMint, payer.publicKey, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
-  const keys = [
-    w(payer.publicKey, true), ro(p.pool), ro(p.lpMint), w(p.lpLocker), ro(p.locker), w(recipientLp),
-    ro(TOKEN_PROGRAM_ID), ro(ASSOCIATED_TOKEN_PROGRAM_ID), ro(SystemProgram.programId),
-  ];
-  return send(connectionOf(rpc), new Transaction().add(ix('release_lp', keys, [])), [payer]);
+/** LP is burned inside initialize. There is no release. */
+export function releaseLp() {
+  throw new Error('LP is burned at initialize; release_lp is gone');
+}
+
+export async function emissionBalance({ rpc }) {
+  return (await getAccount(connectionOf(rpc), pdas().emission, 'confirmed', TOKEN_PROGRAM_ID)).amount;
 }
 
 export async function honkBalance({ rpc, owner, mint }) {

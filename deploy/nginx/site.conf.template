@@ -21,6 +21,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;   # the server trusts exactly this one hop (TRUST_PROXY=1)
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-FC-Country "";
+        proxy_set_header X-FC-Region "";
         proxy_read_timeout 60s;
     }
 }
@@ -42,6 +44,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-FC-Country "";
+        proxy_set_header X-FC-Region "";
         proxy_read_timeout 60s;
     }
 

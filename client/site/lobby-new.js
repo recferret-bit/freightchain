@@ -78,7 +78,7 @@ export function createNewRideTab({ S, view, now, dur, km, TIER_NAME, refreshMe, 
 
   function tierOff(t) {
     if (S.pending) return 'finish the paid ride waiting for you first';
-    if (t.id === 'free') return S.me.freeRides <= 0 && !S.me.readyFreeRide ? 'no free rides left – the next one at 00:00 UTC' : '';
+    if (t.id === 'free') return '';   // training is unlimited. A ready free ride is still handed back by START
     return t.available ? '' : 'not available right now';
   }
 
@@ -344,7 +344,8 @@ export function createNewRideTab({ S, view, now, dur, km, TIER_NAME, refreshMe, 
       el('li', {}, 'End the shift early, abandon it or crash and it does ', el('b', {}, 'not'), ' count as finished. A ticket is spent when its ride is created.'),
       el('li', {}, 'Pool tickets: your entry sits in the pool’s vault on chain, not with us. A pool that misses its goal refunds every ticket in full; in a live pool the finished shifts rank for its prize share. ', el('a', { href: escrowExplainer(), target: '_blank', rel: 'noopener' }, 'How the escrow works →')),
       el('li', {}, 'The game records your inputs while you drive. After the shift the server checks that recording – complete, consistent with your ride, human-timed – and verified shifts rank for prizes (the leaderboard says when that check is switched on). Flagged shifts wait for a review.'),
-      el('li', {}, `Free rides: no fee, no prize. A new wallet starts with a few; the daily refill (+1 at 00:00 UTC) tops you up to ${S.me?.freeRidesMax ?? 5}. A promo or an admin grant can sit above that.`)));
+      el('li', {}, 'Training rides: unlimited, no fee, no prize, not ranked, no live stream. Statistics and achievements still count.'),
+      el('li', {}, 'Granted paid tickets, one per enabled tier (default: 1 hour every 7 days; 4 hour and 8 hour off), for a wallet that is 18+ and in an eligible country. Not a purchase. Each can be ranked like a paid start, using one of the five paid slots, and can be watched. An unused grant expires when the next one of that tier is due, or Sunday 12:00 UTC, whichever is earlier. It does not stack. It does not mint TEN4.')));
   }
 
   function paintTiers() {
@@ -375,5 +376,5 @@ export function createNewRideTab({ S, view, now, dur, km, TIER_NAME, refreshMe, 
     if (salesOpen(S.tiers)) checkOrder();
   }
 
-  return { renderNew, paintPool, paintTiers, checkPending, refund };
+  return { renderNew, paintPool, paintTiers, checkPending, refund, play };
 }

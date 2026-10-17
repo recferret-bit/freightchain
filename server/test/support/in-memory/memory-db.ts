@@ -41,6 +41,9 @@ export class MemoryDb {
   promos = new Map<string, PromoCodeProps>();
   /** key `${code}|${wallet}|${n}` */
   redemptions = new Map<string, Date>();
+  promoGrants: import('../../../src/application/ports/economy/promo.repository.port.js').PromoRideGrantRecord[] = [];
+  /** key `${wallet}|${tier}|${periodStart}` */
+  weeklyTickets = new Map<string, import('../../../src/application/ports/prize/weekly-ticket.repository.port.js').WeeklyTicketRecord>();
   orders = new Map<string, TicketOrderProps>();
   /** key `${wallet}|${slot}|${item}` */
   cosmeticUnlocks = new Map<string, CosmeticUnlockRecord>();
@@ -96,7 +99,7 @@ export class MemoryDb {
     this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear(); this.replays.clear();
     this.rounds = []; this.payments = []; this.unlocks = []; this.mints = []; this.signIns = []; this.adminActions = [];
     this.seq = 0; this.roundSeq = 0;
-    this.pools.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.orders.clear(); this.cosmeticUnlocks.clear(); this.cosmeticEquipped.clear();
+    this.pools.clear(); this.poolPayouts.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.promoGrants = []; this.weeklyTickets.clear(); this.orders.clear(); this.cosmeticUnlocks.clear(); this.cosmeticEquipped.clear();
     this.chainEvents = []; this.chainCursors.clear();
     this.rideEvents = []; this.rideMutes.clear(); this.donationOrders.clear(); this.playerStats.clear(); this.globalStats = null; this.dailyStats.clear();
     this.settings.clear(); this.dailySeeds.clear(); this.pledges.clear();

@@ -177,6 +177,7 @@ test('promo redeem: 404 / every 409 code / success', () => {
 
 test('promo redeem: every kind of effect reads as one sentence; an item you own is refused without using the code up', () => {
   assert.equal(promoOk({ kind: 'tickets', code: 'WELCOME', label: '2 × 1h ride tickets', poolId: 1, tier: '1h', added: 2, balance: 2, cap: 5 }), '+2 tickets (WELCOME) in pool #1 · you hold 2 · cap 5');
+  assert.equal(promoOk({ kind: 'ride', code: 'HAUL', label: 'one free 4h ride (not for sale)', tier: '4h' }), 'One free 4h ride (HAUL). It is not for sale. Start it from your profile. It does not mint TEN4.');
   assert.equal(promoOk({ kind: 'free_rides', code: 'THREE', label: '3 free rides', added: 3, freeRides: 8 }), '+3 free rides (THREE) · you now have 8');
   assert.equal(promoOk({ kind: 'free_rides', code: 'ONE', label: '1 free ride', added: 1, freeRides: 6 }), '+1 free ride (ONE) · you now have 6');
   assert.match(promoOk({ kind: 'cosmetic', code: 'GOLD', label: 'wheel: gold', slot: 'wheel', item: 'gold' }), /^Unlocked wheel: gold \(GOLD\) – it is on your truck now/);

@@ -4,7 +4,7 @@
 //     fixtures validator is torn down, so it is scanned there);
 //   · REFUSALS: a transaction refused in simulation never lands, so the scenarios record those themselves (`refused(step, stderr)` – the error code read from
 //     the simulation result).
-// The report adds the LiteSVM program tests (programs/freightchain-pools/…/tests/*.rs, static: which `PoolError::X` they assert) and fails unless every
+// The report adds the LiteSVM program tests (programs/freightchain_pools/tests/*.rs, static: which `PoolError::X` they assert) and fails unless every
 // instruction and event happened on the validator and every error code is asserted somewhere (validator or LiteSVM).
 //   module:  const cov = coverage(FILE); cov.refused('pool D: buy while paused', e); await cov.scan(conn, 'phase 2'); cov.save()
 //   CLI:     node scripts/localnet-coverage.mjs scan <file> <rpc> <label>   ·   node scripts/localnet-coverage.mjs report <file>
@@ -15,7 +15,7 @@ import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.cod
 import { POOL_PROGRAM_IDL as IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
-const TESTS = join(ROOT, 'programs/freightchain-pools/programs/freightchain_pools/tests');
+const TESTS = join(ROOT, 'programs/freightchain_pools/tests');
 const codec = new PoolProgramCodec(IDL.address);
 /** Anchor's own account errors a scenario provokes on purpose (v3: pay_prize to a wallet with no Attestation account fails before the handler runs) */
 const ANCHOR_ERRORS = { 2006: 'ConstraintSeeds', 3007: 'AccountOwnedByWrongProgram', 3012: 'AccountNotInitialized' };

@@ -11,7 +11,7 @@ import { VersionConflictError } from '../../../src/domain/shared/errors.js';
 import { PoolRepositoryPort } from '../../../src/application/ports/economy/pool.repository.port.js';
 import { PoolPayoutRepositoryPort } from '../../../src/application/ports/economy/pool-payout.repository.port.js';
 import type { PlannedPayout, PoolPayoutRecord } from '../../../src/domain/economy/pool-payout.js';
-import { PromoRepositoryPort, type PromoRedemptionRecord } from '../../../src/application/ports/economy/promo.repository.port.js';
+import { PromoRepositoryPort, type PromoRedemptionRecord, type PromoRideGrantRecord } from '../../../src/application/ports/economy/promo.repository.port.js';
 import { CosmeticRepositoryPort, type CosmeticUnlockRecord } from '../../../src/application/ports/players/cosmetic.repository.port.js';
 import type { CosmeticSlot } from '../../../src/domain/economy/cosmetics.js';
 import { RideTicketRepositoryPort } from '../../../src/application/ports/players/ride-ticket.repository.port.js';
@@ -181,6 +181,25 @@ export class MemoryPromoRepository extends PromoRepositoryPort {
       .filter((r) => (!code || r.code === code) && (!wallet || r.wallet === wallet))
       .sort((a, b) => b.at.getTime() - a.at.getTime() || a.code.localeCompare(b.code) || b.n - a.n)
       .slice(0, limit);
+  }
+
+  async insertGrant(grant: PromoRideGrantRecord): Promise<void> {
+    this.db.promoGrants.push({ ...grant });
+  }
+
+  async hasUnspent(wallet: string, tier: PaidTierId): Promise<boolean> {
+    return this.db.promoGrants.some((g) => g.wallet === wallet && g.tier === tier && g.rideId === null);
+  }
+
+  async claimUnspent(wallet: string, tier: PaidTierId, rideId: string): Promise<string | null> {
+    const grant = this.db.promoGrants.filter((g) => g.wallet === wallet && g.tier === tier && g.rideId === null).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
+    if (!grant) return null;
+    grant.rideId = rideId;
+    return grant.code;
+  }
+
+  async listUnspent(wallet: string): Promise<PromoRideGrantRecord[]> {
+    return this.db.promoGrants.filter((g) => g.wallet === wallet && g.rideId === null).map((g) => ({ ...g }));
   }
 }
 

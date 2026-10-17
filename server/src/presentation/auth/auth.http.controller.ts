@@ -6,6 +6,9 @@ import { LogoutCommand, type LogoutResultDto } from '../../application/use-cases
 import { ClaimPhonePairCommand, OpenPhonePairCommand, PollPhonePairCommand, type OpenPhonePairDto, type PollPhonePairDto } from '../../application/use-cases/auth/phone-pair/phone-pair.command.js';
 import { RequestChallengeCommand, type ChallengeDto } from '../../application/use-cases/auth/request-challenge/request-challenge.command.js';
 import { VerifySignInCommand, type SignInResultDto } from '../../application/use-cases/auth/verify-signin/verify-signin.command.js';
+import type { GeoHeaders } from '../../application/ports/prize/geo-locator.port.js';
+import { StartGuestCommand } from '../../application/use-cases/auth/start-guest/start-guest.command.js';
+import { ClientGeo } from '../../infrastructure/http/decorators/client-geo.js';
 import { CurrentClient, CurrentOrigin, CurrentPairSecret, CurrentSessionToken } from '../../infrastructure/http/decorators/client-info.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import type { ClientInfo } from '../../domain/auth/sign-in.js';
@@ -58,9 +61,15 @@ export class AuthHttpController {
     return this.commandBus.execute<LogoutCommand, LogoutResultDto>(new LogoutCommand());
   }
 
+  /** Anonymous EASY. A throwaway wallet, no secret stored. The cookie is the same session as a signed-in rider. */
+  @Post('auth/guest') @HttpCode(200) @UseInterceptors(SetSessionCookieInterceptor)
+  guest(@CurrentClient() client: ClientInfo): Promise<SignInResultDto> {
+    return this.commandBus.execute<StartGuestCommand, SignInResultDto>(new StartGuestCommand(client));
+  }
+
   @Get('me') @UseGuards(PlayerAuthGuard)
-  me(@CurrentPlayer() player: PlayerIdentity): Promise<MeDto> {
-    return this.queryBus.execute<GetMeQuery, MeDto>(new GetMeQuery(player.wallet));
+  me(@CurrentPlayer() player: PlayerIdentity, @ClientGeo() headers: GeoHeaders = {}): Promise<MeDto> {
+    return this.queryBus.execute<GetMeQuery, MeDto>(new GetMeQuery(player.wallet, headers));
   }
 }
 

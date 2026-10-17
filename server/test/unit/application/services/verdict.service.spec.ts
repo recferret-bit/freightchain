@@ -157,4 +157,151 @@ describe('VerdictService', () => {
     expect(blew).toBe(true);
     expect((await bare.verdictRepo.findByRide(other.id))?.status).toBe(VerdictStatus.Verified);
   });
+
+  it('judges failed or abandoned paid rides that reached the 20% or 50% band and mints their checkpoint TEN4', async () => {
+    const ctx = unitContext();
+    await ctx.player('w');
+    let ride = Ride.createPaidOrder({ id: 'paid-half', wallet: 'w', tier: '1h', seed: 7, minSeconds: 60, timeScale: 60, priceUsd: 5, lamports: 1, solUsd: 100, now: ctx.now(), quoteTtlMs: 60_000 });
+    await ctx.rides.insert(ride);
+    ride.markPaid(1, ctx.now());
+    ride.start(ctx.now());
+    ride = await ctx.rides.save(ride);
+    const halfDist = Math.ceil(ride.completeDist * 0.55);
+    for (const b of recording(ride.id, { seconds: 35, distance: halfDist, road: ride.seed, trip: ride.trip })) {
+      await ctx.batches.insert(RideBatch.accept(ride.id, b, hashBatch(b), ctx.now()));
+    }
+    ctx.clock.advance(35);
+    ride = await ctx.reload(ride.id);
+    ride.applyReport({ s: halfDist, t: 35, hull: 0, paused: false, night: false }, ctx.now(), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
+    ride.finish('failed', 'wreck', ctx.now());
+    await ctx.rides.save(ride);
+    const v = await ctx.verdicts.judge(ride.id);
+    expect(v?.status).toBe(VerdictStatus.Verified);
+    expect(await ctx.honkRepo.balance('w')).toBe(40_000_000n); // 15 + 25 TEN4 (20% + 50% bands of 100 TEN4)
+    expect(await ctx.honkRepo.findMint(ride.id)).toMatchObject({ band20: true, band50: true, band100: false });
+  });
+
+  it('override and addAttention update TEN4 credits and pending 8h reservations', async () => {
+    const ctx = unitContext();
+    await ctx.player('w');
+    let ride8 = Ride.createPaidOrder({ id: 'paid-8h', wallet: 'w', tier: '8h', seed: 7, minSeconds: 60, timeScale: 60, priceUsd: 20, lamports: 1, solUsd: 100, now: ctx.now(), quoteTtlMs: 60_000 });
+    await ctx.rides.insert(ride8);
+    ride8.markPaid(1, ctx.now());
+    ride8.start(ctx.now());
+    ride8 = await ctx.rides.save(ride8);
+    for (const b of recording(ride8.id, { seconds: 60, distance: 840, road: ride8.seed, trip: ride8.trip })) {
+      await ctx.batches.insert(RideBatch.accept(ride8.id, b, hashBatch(b), ctx.now()));
+    }
+    ctx.clock.advance(60);
+    ride8 = await ctx.reload(ride8.id);
+    ride8.applyReport({ s: 840, t: 60, hull: 100, paused: false, night: false }, ctx.now(), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
+    ride8.finish('shift', null, ctx.now());
+    await ctx.rides.save(ride8);
+    expect((await ctx.verdicts.judge(ride8.id))?.status).toBe(VerdictStatus.Verified);
+    expect(await ctx.honkRepo.findMint(ride8.id)).toMatchObject({ released: false, amount: 1_200_000_000n });
+
+    // Pool attention mark flags the ride and cancels the pending 8h reservation
+    await ctx.verdicts.addAttention('w', [{ rideId: ride8.id, reasons: [mark] }]);
+    expect(await ctx.honkRepo.findMint(ride8.id)).toBeNull();
+    expect(ctx.db.honkEmission).toBe(0n);
+
+    // Admin override to verified re-reserves the 8h mint; override to rejected cancels it again
+    await ctx.verdicts.override(ride8.id, VerdictStatus.Verified, 'admin', 'ok', null);
+    expect(await ctx.honkRepo.findMint(ride8.id)).toMatchObject({ released: false, amount: 1_200_000_000n });
+    await ctx.verdicts.override(ride8.id, VerdictStatus.Rejected, 'admin', 'bad', null);
+    expect(await ctx.honkRepo.findMint(ride8.id)).toBeNull();
+
+    // Failed 8h ride at 50% checkpoint can also be flagged by addAttention, cancelling its pending reservation
+    let failed8 = Ride.createPaidOrder({ id: 'paid-8h-fail', wallet: 'w', tier: '8h', seed: 7, minSeconds: 60, timeScale: 60, priceUsd: 20, lamports: 1, solUsd: 100, now: ctx.now(), quoteTtlMs: 60_000 });
+    await ctx.rides.insert(failed8);
+    failed8.markPaid(1, ctx.now());
+    failed8.start(ctx.now());
+    failed8 = await ctx.rides.save(failed8);
+    const halfDist = Math.ceil(failed8.completeDist * 0.5 + 10);
+    for (const b of recording(failed8.id, { seconds: 35, distance: halfDist, road: failed8.seed, trip: failed8.trip })) {
+      await ctx.batches.insert(RideBatch.accept(failed8.id, b, hashBatch(b), ctx.now()));
+    }
+    ctx.clock.advance(35);
+    failed8 = await ctx.reload(failed8.id);
+    failed8.applyReport({ s: halfDist, t: 35, hull: 0, paused: false, night: false }, ctx.now(), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
+    failed8.finish('failed', 'wreck', ctx.now());
+    await ctx.rides.save(failed8);
+    expect((await ctx.verdicts.judge(failed8.id))?.status).toBe(VerdictStatus.Verified);
+    expect(await ctx.honkRepo.findMint(failed8.id)).toMatchObject({ released: false, amount: 480_000_000n });
+    await ctx.verdicts.addAttention('w', [{ rideId: failed8.id, reasons: [mark] }]);
+    expect((await ctx.verdictRepo.findByRide(failed8.id))?.status).toBe(VerdictStatus.Flagged);
+    expect(await ctx.honkRepo.findMint(failed8.id)).toBeNull();
+  });
+
+  it('rejects a ranked ride with clean-mismatch, clamps cleanMetres, and preserves clean-mismatch across re-judges', async () => {
+    const ctx = unitContext();
+    await ctx.player('w');
+    let ride = Ride.createPaidOrder({ id: 'ranked-lie', wallet: 'w', tier: '1h', seed: 7, minSeconds: 60, timeScale: 60, priceUsd: 5, lamports: 1, solUsd: 100, now: ctx.now(), quoteTtlMs: 60_000 });
+    await ctx.rides.insert(ride);
+    ride.markPaid(1, ctx.now());
+    ride.start(ctx.now(), null, 0, { country: 'CA', region: null });
+    ride = await ctx.rides.save(ride);
+    const batches = recording(ride.id, { seconds: 60, distance: 840, road: ride.seed, trip: ride.trip });
+    batches[0] = {
+      ...batches[0]!,
+      samples: batches[0]!.samples.map((row, idx) => (idx >= 20 ? [...row.slice(0, 7), 80, ...row.slice(8)] : row)),
+    };
+    batches[0]!.hash = hashBatch(batches[0]!);
+    for (let i = 1; i < batches.length; i++) {
+      batches[i] = { ...batches[i]!, prevHash: batches[i - 1]!.hash! };
+      batches[i]!.hash = hashBatch(batches[i]!);
+    }
+    for (const b of batches) await ctx.batches.insert(RideBatch.accept(ride.id, b, hashBatch(b), ctx.now()));
+    ctx.clock.advance(60);
+    ride = await ctx.reload(ride.id);
+    ride.applyReport({ s: 840, t: 60, hull: 100, paused: false, night: false }, ctx.now(), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
+    ride.finish('shift', null, ctx.now());
+    await ctx.rides.save(ride);
+    expect(ride.cleanMetres).toBeNull();
+    const v = await ctx.verdicts.judge(ride.id);
+    expect(v?.status).toBe(VerdictStatus.Rejected);
+    expect(v?.reasons.map((r) => r.code)).toContain('clean-mismatch');
+    const saved = await ctx.reload(ride.id);
+    expect(saved.cleanMetres).not.toBeNull();
+    expect(saved.cleanMetres!).toBeLessThan(100);
+
+    // Subsequent judge / rejudge / rejudgeQuietly calls must NOT flip the rejected ride to verified
+    const v2 = await ctx.verdicts.judge(ride.id);
+    expect(v2?.status).toBe(VerdictStatus.Rejected);
+    expect(v2?.reasons.map((r) => r.code)).toContain('clean-mismatch');
+    const v3 = await ctx.verdicts.rejudge(ride.id, 'admin', null);
+    expect(v3.status).toBe(VerdictStatus.Rejected);
+    expect(v3.reasons.map((r) => r.code)).toContain('clean-mismatch');
+    const v4 = await ctx.verdicts.rejudgeQuietly(ride.id);
+    expect(v4).toEqual({ before: VerdictStatus.Rejected, after: VerdictStatus.Rejected });
+    expect((await ctx.verdictRepo.findByRide(ride.id))?.reasons.map((r) => r.code)).toContain('clean-mismatch');
+  });
+
+  it('catches and logs on-chain emission.mint RPC errors after committing verdict and TEN4 credit', async () => {
+    const ctx = unitContext();
+    let mintAttempts = 0;
+    ctx.honkEmissionChain.enabled = () => true;
+    ctx.honkEmissionChain.mint = async () => {
+      mintAttempts++;
+      throw new Error('rpc down');
+    };
+    await ctx.player('w');
+    let ride = Ride.createPaidOrder({ id: 'r-rpc-err', wallet: 'w', tier: '1h', seed: 7, minSeconds: 60, timeScale: 60, priceUsd: 5, lamports: 1, solUsd: 100, now: ctx.now(), quoteTtlMs: 60_000 });
+    await ctx.rides.insert(ride);
+    ride.markPaid(1, ctx.now());
+    ride.start(ctx.now());
+    ride = await ctx.rides.save(ride);
+    for (const b of recording(ride.id, { seconds: 60, distance: 840, road: ride.seed, trip: ride.trip })) {
+      await ctx.batches.insert(RideBatch.accept(ride.id, b, hashBatch(b), ctx.now()));
+    }
+    ctx.clock.advance(60);
+    ride = await ctx.reload(ride.id);
+    ride.applyReport({ s: 840, t: 60, hull: 100, paused: false, night: false }, ctx.now(), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
+    ride.finish('shift', null, ctx.now());
+    await ctx.rides.save(ride);
+    const v = await ctx.verdicts.judge(ride.id);
+    expect(v?.status).toBe(VerdictStatus.Verified);
+    expect(mintAttempts).toBe(1);
+    expect(await ctx.honkRepo.balance('w')).toBe(100_000_000n);
+  });
 });
