@@ -91,22 +91,17 @@ h1 em{font-style:normal;color:var(--accent)}
 .split{display:flex;gap:6px;height:118px;margin:0 0 40px;transition:gap .7s cubic-bezier(.65,0,.2,1)}
 .split span{font:600 16px/1.1 var(--body);letter-spacing:1px;white-space:nowrap}
 
-/* tip: always on, a slow pulse */
-#help{position:fixed;left:50%;bottom:14px;translate:-50%;z-index:30;padding:9px 18px;border-radius:999px;border:1px solid #9945ff99;background:#000a;font:700 13px var(--body);letter-spacing:2.5px;text-transform:uppercase;color:#fffc;pointer-events:none;white-space:nowrap;animation:tipwave 3.6s ease-in-out infinite}
-#help::before{content:"";position:absolute;inset:-8px;border-radius:inherit;pointer-events:none;z-index:-1;box-shadow:0 0 18px 2px #9945ff88,0 0 28px 4px #14f19544;animation:pulse 2.4s ease-in-out infinite}   /* the glow is rasterized once; only its opacity ticks */
-#help.flash{animation:tipwave 3.6s ease-in-out infinite,tipflash .5s ease-out 1}
-@keyframes tipflash{0%{background:#fff;color:#050505;border-color:#fff;scale:1.22;box-shadow:0 0 46px 14px #14f195cc,0 0 90px 24px #9945ffaa}100%{background:#000a;color:#fffc;border-color:#9945ff99;scale:1}}
+/* tip: always on, sitting still. A press still flashes. The cards above keep the float. */
+#help{position:fixed;left:50%;bottom:14px;translate:-50%;z-index:30;padding:9px 18px;border-radius:999px;border:1px solid #ffcf5a55;background:#000a;font:700 13px var(--body);letter-spacing:2.5px;text-transform:uppercase;color:#fffc;pointer-events:none;white-space:nowrap}
+#help::before{content:"";position:absolute;inset:-8px;border-radius:inherit;pointer-events:none;z-index:-1;box-shadow:0 0 16px #ffb02e33}
+#help.flash{animation:tipflash .5s ease-out 1}
+@keyframes tipflash{0%{background:#fff;color:#050505;border-color:#fff;scale:1.22;box-shadow:0 0 28px #ffcf5aee}100%{background:#000a;color:#fffc;border-color:#ffcf5a55;scale:1}}
 #help .k{display:flex;align-items:center;gap:22px}
 #help i{font-style:normal}
-#help .pb{color:var(--good);display:inline-block;font:700 40px/1 var(--body);letter-spacing:0;pointer-events:auto;cursor:pointer;padding:2px 10px;margin:-6px -8px}
-#help .pb:first-child{animation:nudge-l 1.8s ease-in-out infinite}
-#help .pb:last-child{animation:nudge-r 1.8s ease-in-out infinite}
-#help .pb:hover{color:#fff;text-shadow:0 0 12px var(--good)}
+#help .pb{color:var(--accent);display:inline-block;font:700 40px/1 var(--body);letter-spacing:0;pointer-events:auto;cursor:pointer;padding:2px 10px;margin:-6px -8px}
+#help .pb:hover{color:#fff;text-shadow:0 0 12px var(--accent)}
 #help.flash .pb.hit{animation:arrowflash .5s ease-out 1}
-@keyframes arrowflash{0%{color:#050505;text-shadow:0 0 14px #14f195;scale:1.9}100%{color:var(--good);text-shadow:none;scale:1}}   /* `scale`, not transform: the arrow's own nudge owns transform */
-@keyframes nudge-l{0%,100%{transform:translateX(0)}50%{transform:translateX(-7px)}}
-@keyframes nudge-r{0%,100%{transform:translateX(0)}50%{transform:translateX(7px)}}
-@keyframes tipwave{0%,100%{transform:translateY(0) rotate(-.6deg) scale(1);opacity:.75}25%{transform:translateY(-5px) rotate(0) scale(1.04)}50%{transform:translateY(0) rotate(.6deg) scale(1.08);opacity:1}75%{transform:translateY(-5px) rotate(0) scale(1.04)}}
+@keyframes arrowflash{0%{color:#050505;text-shadow:0 0 14px #ffcf5a;scale:1.9}100%{color:var(--accent);text-shadow:none;scale:1}}
 @keyframes pulse{50%{opacity:.4}}
 
 /* slide 1: the screens hang in the air, lean away from the mouse, lift on hover / tap. The border is a conic gradient rotated as a layer (a moving background-position repainted the photo).
