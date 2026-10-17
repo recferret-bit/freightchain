@@ -42,7 +42,7 @@ const problems = h => h.filt().filter(p => !expected(p));
 
 if (process.env.SEED === '1') {   // dev-only seeds through the admin CLI (refused in production); "already exists" is fine
   for (const args of [['pool:seed', '--id', '1', '--tier', '1h', '--status', 'active', '--min', '2'], ['pool:seed', '--id', '2', '--tier', '4h', '--status', 'open', '--min', '10', '--sold', '7'], ['promo:create', 'WELCOME', '--tier', '1h', '--credits', '2'], ['promo:create', 'OPEN4H', '--tier', '4h', '--pool', '2', '--credits', '1'], ['promo:create', 'THREE', '--free-rides', '3']]) {
-    try { execFileSync('node', ['dist/cli/index.js', ...args], { cwd: new URL('..', import.meta.url).pathname, stdio: 'pipe' }); console.log(`seeded: ${args.join(' ')}`); } catch { console.log(`seed skipped (exists?): ${args.join(' ')}`); }
+    try { execFileSync('node', [process.env.CLI || 'dist/cli/index.js', ...args], { cwd: new URL('..', import.meta.url).pathname, stdio: 'pipe' }); console.log(`seeded: ${args.join(' ')}`); } catch { console.log(`seed skipped (exists?): ${args.join(' ')}`); }
   }
 }
 const tiers = await get('tiers'), live1h = tiers.tiers.find(t => t.id === '1h')?.pool, open4h = tiers.tiers.find(t => t.id === '4h')?.pool, soon8h = tiers.tiers.find(t => t.id === '8h');
@@ -78,9 +78,10 @@ check('phone width: no horizontal page scroll', await rider.ev('document.documen
 await size(rider, 1100, 900, false);
 
 // ── START FREE RIDE → game
-check('free card: TUTORIAL is on for a new rider, ASSIST is off (both checkboxes are there)', (await rider.ev('document.getElementById("opt-tutorial")?.checked')) === true && (await rider.ev('document.getElementById("opt-assist")?.checked')) === false);
+check('free card: TUTORIAL and ASSIST are on for a new rider', (await rider.ev('document.getElementById("opt-tutorial")?.checked')) === true && (await rider.ev('document.getElementById("opt-assist")?.checked')) === true);
 await rider.ev('document.getElementById("opt-assist").click()'); await sleep(1300);   // a repaint (the 1 s tick) must keep the choice
-check('the checkbox choice survives a repaint', (await rider.ev('document.getElementById("opt-assist").checked')) === true && (await rider.ev('document.getElementById("opt-tutorial").checked')) === true);
+check('turning ASSIST off survives a repaint', (await rider.ev('document.getElementById("opt-assist").checked')) === false && (await rider.ev('document.getElementById("opt-tutorial").checked')) === true);
+await rider.ev('document.getElementById("opt-assist").click()');   // choose it on again before HARD temporarily locks both helpers off
 // the LEVEL picker (GET /api/tiers → levels; FREE_RIDE_SECONDS=3 → 3 s / 5 s / 15 s): EASY by default, HARD locks ASSIST off, the ride is free-3b
 check('free card: a LEVEL picker EASY / MEDIUM / HARD, each a different country, EASY picked', (await rider.ev('[...document.querySelectorAll(".levels .lv b")].map(b => b.textContent).join(",")')) === 'EASY,MEDIUM,HARD' && (await rider.ev('[...document.querySelectorAll(".levels .cty")].map(n => n.textContent).join("|")')) === 'Australia|USA|Austria · Italy' && (await rider.ev('document.getElementById("level-1").checked')) === true && /EASY/.test(await txt(rider, '.lv.on b')) && /Stuart Highway/.test(await txt(rider, '.lv.on')) && /side-wind/.test(await txt(rider, '.lv.on')) && /0:03/.test(await txt(rider, '.lv.on')) && (await rider.ev('document.getElementById("free-shift") == null')) === true, await txt(rider, '#tier-free .levels') + ' | ' + await txt(rider, '.lv.on'));
 await rider.ev('document.getElementById("level-3").click()'); await sleep(300);
@@ -105,26 +106,26 @@ check('ordered, not started: the tutorial is not passed yet', (await get('me', A
 await rider.ev('document.getElementById("go").click()'); await sleep(800);
 check('the tutorial dialog is up over the gameplay (step 1 of 8, the key highlighted)', await until(async () => await rider.ev('(() => { const d = document.getElementById("tutorial"); return !!d && !d.hidden && d.textContent.includes("1/8") && __game.guide.tips.some(t => t.id === "key-on"); })()')), await rider.ev('JSON.stringify({ mode: __game.st.mode, tips: __game.guide.tips, hidden: document.getElementById("tutorial")?.hidden })'));
 check('starting the ride with the tutorial on marked it PASSED (the lobby then leaves it off)', await until(async () => (await get('me', A.cookie)).tutorialPassed === true));
-await rider.ev('__game.guide.hold = false');   // the tutorial would hold the free run\'s finish line – this script drives the ride to its end
-await rider.ev('__game.st.s = 60');
-
-// ── LIVE (second browser)
+// ── LIVE (second browser): a running free ride is private; the header still counts visitors.
+const freeRideId = await rider.ev('__game.online.ride.id');
 await open(obs, B, `${BASE}/lobby.html#live`);
-check('LIVE tab shows the rider\'s truck', await until(async () => (await obs.ev('document.getElementById("rides")?.textContent || ""')).includes(A.short)), (await obs.ev('document.getElementById("rides")?.textContent || ""')).slice(0, 120));
-check('…with its tier badge and a progress bar', /TEST RIDE/.test(await obs.ev('document.getElementById("rides").textContent')) && (await obs.ev('document.querySelectorAll(".road .fill").length')) >= 1);
-check('header live counter ≥ 1', /^[1-9]/.test(await obs.ev('document.getElementById("chip-live").textContent')), await obs.ev('document.getElementById("chip-live").textContent'));
+check('LIVE renders without the running free rider', await until(async () => await obs.ev('!!document.getElementById("rides")')) && !(await txt(obs, '#rides')).includes(A.short));
+const live = await get('live');
+check('the public live API excludes free rides', live.rides.every(r => r.tier !== 'free') && !live.rides.some(r => r.id === freeRideId));
+const blockedWatch = await fetch(`${BASE}/api/watch/${freeRideId}`), blockedBody = await blockedWatch.json();
+check('a running free ride cannot be watched (403 free_ride_no_stream)', blockedWatch.status === 403 && blockedBody.code === 'free_ride_no_stream');
+check('header online counter ≥ 1', /^[1-9]/.test(await txt(obs, '#chip-live')), await txt(obs, '#chip-live'));
 await obs.shot('live-desktop'); await size(obs, 390, 844, true); await sleep(400); await obs.shot('live-phone');
 
-// ── finish the shift, back to the lobby
-check('shift complete in the client', await until(async () => await rider.ev('__game.st.complete'), 40000), `t=${await rider.ev('__game.st.t.toFixed(1)')}`);
-await rider.ev('document.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true })); window.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true }))'); await sleep(500);
-await rider.ev('document.getElementById("endshift")?.click()');
-// the distance was set directly (no recording of a real drive), so the recording check rejects it – this script is about the lobby; e2e-browser.mjs covers VERIFIED
+// ── cross the finish line: free rides end automatically, without another pause/end action.
+await rider.ev('__game.guide.hold = false; __game.st.s = __game.CFG.COMPLETE_DIST + 1');
+check('the finish line ends the free ride', await until(async () => await rider.ev('__game.st.complete && !!document.getElementById("lobby")'), 40000));
+// Direct position injection is deliberately unverified; the strict traffic suite covers honest driving.
 check('server verdict COMPLETED + the recording check on the result screen', await until(async () => /^COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.getElementById("verdict")?.textContent || ""'))), await rider.ev('document.getElementById("verdict")?.textContent || ""'));
 await rider.ev('document.getElementById("lobby").click()');
 check('BACK TO LOBBY returns to the lobby', await until(async () => (await rider.ev('location.pathname')) === '/lobby.html'));
-check('…and the free-ride count dropped to 9/5', await until(async () => /9\/5 free rides/.test(await rider.ev('document.getElementById("chip-free").textContent'))));
-check('the finished ride left the live feed', await until(async () => { await sleep(5200); return !(await obs.ev('document.getElementById("rides")?.textContent || ""')).includes(A.short); }, 15000));
+check('…and the free-ride count dropped to 9/5', await until(async () => /9\/5 free rides/.test(await txt(rider, '#chip-free'))));
+check('the finished free ride stays out of live', !(await get('live')).rides.some(r => r.id === freeRideId));
 
 // ── another signed-in lobby. 8h is not on sale and 1h/4h have pools, so this seed has no legacy order to recover.
 const C = await wallet();
@@ -137,7 +138,7 @@ check('…and no page errors on that path', problems(third).length === 0, proble
 // ── TICKETS: promo → RIDE with a ticket → the game; the 409s read as sentences (fourth browser, wallet D)
 const D = await wallet(), tix = await launch({ port: CDP + 3, shotsDir: 'fc-lobby-shots', evalProblems: true }); await size(tix, 1100, 900, false);
 await open(tix, D, `${BASE}/lobby.html#new`); await until(async () => (await tix.ev('document.querySelectorAll(".tier:not(.result)").length')) === 4);
-const redeem = async code => { await tix.ev('if (location.hash !== "#profile") location.hash = "#profile"'); await until(async () => await tix.ev('!!document.getElementById("promo-code")')); await tix.ev(`document.getElementById("promo-code").value = ${JSON.stringify(code)}; document.getElementById("promo-go").click()`); await until(async () => !/Redeeming/.test(await txt(tix, '#promo-msg')) && (await txt(tix, '#promo-msg')) !== ''); return txt(tix, '#promo-msg'); };
+const redeem = async code => { await tix.ev('if (location.hash !== "#profile") location.hash = "#profile"'); await until(async () => await tix.ev('!!document.getElementById("promo-code")')); await tix.ev(`document.getElementById("promo-code").value = ${JSON.stringify(code)}; document.getElementById("promo-go").click()`); await until(async () => !/Redeeming/.test(await txt(tix, '#promo-msg')) && (await txt(tix, '#promo-msg')) !== ''); const message = await txt(tix, '#promo-msg'); await tix.ev('location.hash = "#new"'); await until(async () => (await tix.ev('document.querySelectorAll(".tier:not(.result)").length')) === 4); return message; };
 check('promo: an unknown code reads "Unknown promo code"', /Unknown promo code/.test(await redeem('NOPE-NOPE')), await txt(tix, '#promo-msg'));
 check('promo: WELCOME (any case) → +2 tickets, balance and cap shown', /^\+2 tickets \(WELCOME\) in pool #\d+ · you hold 2 · cap \d+/.test(await redeem('welcome')), await txt(tix, '#promo-msg'));
 check('…the 1h card now offers RIDE (2 left) and counts your tickets', await until(async () => (await txt(tix, '#tier-1h .go')) === 'RIDE (2 left)') && /your tickets: 2/.test(await txt(tix, '#tier-1h .mine')), await txt(tix, '#tier-1h .go'));
@@ -174,13 +175,15 @@ check('…and no unexpected page errors (ticket holder)', problems(tix).length =
 // ── PROFILE
 await rider.ev('location.hash = "#profile"');
 check('PROFILE: stats + the ride in history', await until(async () => (await rider.ev('document.querySelectorAll(".hist .hrow").length')) >= 1));
+check('PROFILE: the ride in history carries its recording verdict', await until(async () => /COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await txt(rider, '.hist .hrow'))), await txt(rider, '.hist .hrow'));
+const rejected = /COMPLETED · REJECTED/.test(await txt(rider, '.hist .hrow'));
 await rider.ev('location.hash = "#achievements"');
-check('ACHIEVEMENTS tab: every badge is a card', await until(async () => (await rider.ev('document.querySelectorAll(".a, .ac").length')) === 32));
-check('PROFILE: the ride in history carries its recording verdict', /COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""')), await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""'));
+check('ACHIEVEMENTS: 38 badges in ten ladders plus legacy Top 20', await until(async () => (await rider.ev('document.querySelectorAll(".a, .ac").length')) === 39)
+  && (await rider.ev('document.querySelectorAll("#ach .fam").length')) === 10
+  && (await rider.ev(`!!document.querySelector('[data-id="honk-haul"]') && !!document.querySelector('[data-id="convoy-4"]')`)));
 const ach = await rider.ev('[...document.querySelectorAll(".a, .ac")].map(a => (a.classList.contains("lock") ? "-" : "+") + a.querySelector(".nm").textContent).join("|")');
-// the drive above sets the distance directly, so its recording is REJECTED (line ~106); with the verdict enforced (this server's default) a rejected recording
+// The drive above sets the distance directly, so its recording is REJECTED; with the verdict enforced (this server's default) a rejected recording
 // earns its ride no badge (achievements.ts badgeRejected) – only First Mile (a started ride) – while a verified / flagged one earns them
-const rejected = /COMPLETED · REJECTED/.test(await rider.ev('document.querySelector(".hist .hrow")?.textContent || ""'));
 check('First Mile unlocked; Shift Complete stays locked (it is for PAID shifts – this drive is free); Top 20 locked',
   /\+First Mile/.test(ach) && /-Shift Complete/.test(ach) && /-Top 20/.test(ach), ach);
 check(rejected ? 'the rejected EASY run clears no level: Learner’s Permit, Crossroads, Long Haul locked' : 'the EASY free run cleared: Learner’s Permit unlocked, Crossroads + Long Haul locked',
@@ -207,6 +210,8 @@ check('PROMO: no code field in the header or on the NEW RIDE tab – it is in th
 await obs.ev('location.hash = "#profile"');
 check('PROFILE: the code field + REDEEM sit in the promo codes section', await until(async () => (await obs.ev('!!document.querySelector("#view #promo #promo-code") && !!document.getElementById("promo-go")')) === true));
 check('PROFILE: the promo codes section – cab parts are HONK, no codes yet', await until(async () => /Cab parts are minted by burning HONK/.test(await txt(obs, '#view')) && /No codes redeemed yet/.test(await txt(obs, '#my-codes'))));
+check('PROFILE: referral code and three gift paints render', await until(async () => /^[A-Z2-9]{8}$/.test(await txt(obs, '#ref-code')))
+  && (await obs.ev('document.querySelectorAll("#ref-box .ref-gifts button").length')) === 3);
 const promoGo = async code => { await obs.ev(`document.getElementById("promo-code").value = ${JSON.stringify(code)}; document.getElementById("promo-go").click()`); await until(async () => !/Redeeming/.test(await txt(obs, '#promo-msg')) && (await txt(obs, '#promo-msg')) !== ''); return txt(obs, '#promo-msg'); };
 check('PROMO: THREE → +3 free rides, the chip shows 13/5 (above the daily cap)', /^\+3 free rides \(THREE\) · you now have 13/.test(await promoGo('three')) && await until(async () => /13\/5 free rides/.test(await txt(obs, '#chip-free'))), await txt(obs, '#chip-free'));
 check('PROMO: …and the next daily credit is not counted down (at / above the cap)', /full/.test(await txt(obs, '#chip-free')), await txt(obs, '#chip-free'));
@@ -219,7 +224,14 @@ check('HONK: burning 260 mints the gold wheel and wears it', gold.r.status === 2
 // ── GARAGE: the catalog, the progression, picking parts, SAVE into the database
 const part = (slot, item) => `document.querySelector("#garage-slots [data-slot=${slot}] [data-item=${item}]")`;
 await obs.ev('location.hash = "#garage"');
-check('GARAGE: five slots × six parts, the progression (1 of 25 parts: the gold wheel), classics + the gold wheel marked, 24 locked', await until(async () => (await obs.ev('document.querySelectorAll("#garage-slots .slot").length')) === 5) && (await obs.ev('document.querySelectorAll("#garage-slots .item").length')) === 30 && /^COLLECTION1 \/ 25/.test(await txt(obs, '#garage-progress')) && (await obs.ev('document.querySelectorAll("#garage-slots .item.lock").length')) === 24 && (await obs.ev(`${part('wheel', 'gold')}.classList.contains('on') && ${part('wheel', 'gold')}.classList.contains('saved')`)) === true, await txt(obs, '#garage-progress'));
+check('GARAGE: nine slots, 57 parts (48 non-default): one collected, 47 locked', await until(async () => (await obs.ev('document.querySelectorAll("#garage-slots .slot").length')) === 9) && (await obs.ev('document.querySelectorAll("#garage-slots .item").length')) === 57 && /^COLLECTION1 \/ 48/.test(await txt(obs, '#garage-progress')) && (await obs.ev('document.querySelectorAll("#garage-slots .item.lock").length')) === 47 && (await obs.ev(`${part('wheel', 'gold')}.classList.contains('on') && ${part('wheel', 'gold')}.classList.contains('saved')`)) === true, await txt(obs, '#garage-progress'));
+check('GARAGE: the three referral paints are gifts, with no burn purchase', await obs.ev(`['convoy', 'signal', 'amber'].every(id => {
+  const p = document.querySelector('#garage-slots [data-slot=truck_color] [data-item=' + id + ']');
+  return p?.classList.contains('lock') && p.querySelector('.pr')?.textContent === 'Referral gift';
+})`));
+await obs.ev(`${part('truck_color', 'convoy')}.click()`);
+check('GARAGE: a referral paint explains qualification without a HONK burn button', await until(async () => /through an invite/.test(await txt(obs, '#garage-detail')))
+  && (await obs.ev('document.getElementById("garage-burn") === null')));
 check('GARAGE: an owned part says it was minted by burning HONK; the default says everybody has it; the preview is there', /Minted by burning HONK/.test(await obs.ev(`${part('wheel', 'gold')}.title`)) && /Everybody has this one/.test(await obs.ev(`${part('wheel', 'classic')}.title`)) && (await obs.ev('!!document.querySelector("#garage-preview canvas")')) === true);
 check('GARAGE: nothing to save yet (SAVE disabled)', (await obs.ev('document.getElementById("garage-save").disabled')) === true);
 await obs.ev(`${part('needle', 'cyan')}.click()`);
@@ -239,20 +251,24 @@ const blue = await mintPart(P, 'truck_color', 'blue');
 check('HONK: burning 65 mints the blue paint (the saved wheel stays classic)', blue.r.status === 200 && (await get('wardrobe', P.cookie)).equipped.truck_color === 'blue' && (await get('wardrobe', P.cookie)).equipped.wheel === 'classic', JSON.stringify(blue.j));
 await mintPart(P, 'dice', 'pink');
 await obs.send('Page.navigate', { url: `${BASE}/lobby.html#garage` });
-check('GARAGE: it opens at 3 of 25 (gold wheel, blue paint, pink dice)', await until(async () => /^COLLECTION3 \/ 25/.test(await txt(obs, '#garage-progress'))), await txt(obs, '#garage-progress'));
+check('GARAGE: it opens at 3 of 48 (gold wheel, blue paint, pink dice)', await until(async () => /^COLLECTION3 \/ 48/.test(await txt(obs, '#garage-progress'))), await txt(obs, '#garage-progress'));
 await obs.ev(`${part('wheel', 'gold')}.click()`); await obs.ev(`${part('dice', 'pink')}.click()`); await obs.ev(`${part('dice', 'pink')}.click()`);
 await obs.ev('document.getElementById("garage-save").click()');
-const worn = { wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'pink', needle: 'orange' }, wornJson = JSON.stringify(worn);
+const worn = { wheel: 'gold', truck_color: 'blue', gearbox: 'stick', dice: 'pink', needle: 'orange', ornament: 'spear', dash: 'stock', indicator: 'amber', phone: 'black' }, wornJson = JSON.stringify(worn);
 check('GARAGE: two parts picked together are saved together', await until(async () => JSON.stringify((await get('garage', P.cookie)).equipped) === wornJson), JSON.stringify((await get('garage', P.cookie)).equipped));
 // the whole point of a part: the game wears what the ride was started with (start answer = what is stamped on the ride) – and a spectator / the replay draws the SAME from the public watch API
 const cosRide = await post('rides', { tier: 'free' }, P.cookie);
 await obs.send('Page.navigate', { url: `${BASE}/play.html?ride=${cosRide.j.id}` });
 check('PROMO: the game opens a ride of that wallet already wearing its parts (gold wheel, blue paint, pink dice)', await until(async () => JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')) === wornJson), JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')));
 await post(`rides/${cosRide.j.id}/start`, {}, P.cookie);
-check('PROMO: the started ride carries the loadout, and so does the PUBLIC watch API (live streams + replays)', JSON.stringify((await get(`rides/${cosRide.j.id}`, P.cookie)).loadout) === wornJson && JSON.stringify((await get(`watch/${cosRide.j.id}`)).ride.loadout) === wornJson);
+check('HONK: the started ride stamps all nine loadout slots', JSON.stringify((await get(`rides/${cosRide.j.id}`, P.cookie)).loadout) === wornJson);
+const cosmeticWatch = await fetch(`${BASE}/api/watch/${cosRide.j.id}`);
+check('the free cosmetic ride stays private while running', cosmeticWatch.status === 403 && (await cosmeticWatch.json()).code === 'free_ride_no_stream');
+const cosmeticEnd = await post(`rides/${cosRide.j.id}/end`, { outcome: 'failed', s: 0, t: 0, hull: 100, reason: 'e2e' }, P.cookie);
+check('the ended free ride exposes its stamped loadout to replays', cosmeticEnd.r.ok && JSON.stringify((await get(`watch/${cosRide.j.id}`)).ride.loadout) === wornJson);
 await post('garage/loadout', { loadout: { wheel: 'classic', truck_color: 'red', dice: 'white' } }, P.cookie);   // the driver changes back AFTER the start: the ride keeps what it was driven with
 await obs.send('Page.navigate', { url: `${BASE}/play.html?watch=${cosRide.j.id}` });
-check('PROMO: a spectator\'s game wears what the ride was driven with (the watch page never reads a wardrobe – only the ride\'s loadout), though the driver now wears the classics', await until(async () => JSON.stringify(await obs.ev('window.__game?.watch?.ride?.loadout')) === wornJson && JSON.stringify(await obs.ev('({ ...__game.cosmetics.loadout })')) === wornJson), JSON.stringify(await obs.ev('({ w: window.__game?.watch?.ride?.loadout, c: window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null })')));
+check('HONK: a replay wears what the ride was driven with (the watch page never reads a wardrobe – only the ride\'s loadout), though the driver now wears the classics', await until(async () => JSON.stringify(await obs.ev('window.__game?.watch?.ride?.loadout')) === wornJson && JSON.stringify(await obs.ev('({ ...__game.cosmetics.loadout })')) === wornJson), JSON.stringify(await obs.ev('({ w: window.__game?.watch?.ride?.loadout, c: window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null })')));
 await sleep(1200); await obs.shot('promo-in-game');
 check('…and no unexpected page errors (promo, garage)', problems(obs).length === 0, problems(obs).join(' | '));
 await obs.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await sleep(800);

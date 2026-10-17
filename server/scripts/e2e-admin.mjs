@@ -1,7 +1,7 @@
 // The admin page in REAL headless Chrome against a RUNNING server: a non-admin sees "not available" (the API answers 404), the admin sees the overview,
 // the review queue holds a flagged ride, the ride detail shows its reasons and batches, ACCEPT turns it verified (audited, the rider sees it), the POOLS tab
 // (every pool, its phase and winners; HOLD → RELEASE of the payout, both signed – on a live pool if there is one), sign-ins, logs and the audit tab render; screenshots at desktop + phone width. No wallet extension: keypairs sign the challenges.
-// Server: FREE_RIDE_SECONDS=3 ADMIN_WALLETS=<admin address> … node dist/main.js – easiest via `bash .claude/skills/run-tests/e2e.sh admin` (creates the admin keypair).
+// Server: FREE_RIDE_SECONDS=3 TRAFFIC_PROOF_REQUIRED=true ADMIN_WALLETS=<admin address> … node dist/main.js – easiest via `bash .claude/skills/run-tests/e2e.sh admin` (creates the admin keypair).
 //   ADMIN_KEYPAIR=<path to a JSON array secret key> BASE=http://localhost:<port> node scripts/e2e-admin.mjs
 //   SEED=1 + the server's DATABASE_URL (optional; CLI=<path to cli/index.js>, default dist/cli/index.js): seeds a live 1h pool (id 901) for the HOLD → RELEASE round trip – dev-only, throwaway database
 import { createHash } from 'node:crypto';
@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../client/tools/cdp.mjs';
+import { encodeTrafficProof } from '../../client/shared/traffic-proof.js';
 const BASE = process.env.BASE || 'http://localhost:3111';
 const fails = []; const check = (n, ok, x = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x ? ' – ' + x : ''}`); if (!ok) fails.push(n); };
 const post = async (p, b, c) => { const r = await fetch(`${BASE}/api/${p}`, { method: 'POST', headers: { 'content-type': 'application/json', ...(c && { cookie: c }) }, body: JSON.stringify(b) }); return { r, j: await r.json().catch(() => ({})) }; };
@@ -44,13 +45,21 @@ const until = async (fn, ms = 20000) => { const t0 = Date.now(); for (;;) { cons
 async function open(h, w, url) { const [n, v] = w.cookie.split('='); await h.send('Network.setCookie', { name: n, value: v, url: BASE, httpOnly: true }); await h.send('Page.navigate', { url }); }
 const size = (h, w, hgt, mobile) => h.send('Emulation.setDeviceMetricsOverride', { width: w, height: hgt, deviceScaleFactor: 1, mobile });
 
-/* a recording like the game's (client/js/telemetry.js): hash-chained batches, 10 Hz samples, some key presses – covering `seconds` of a ride ending at `metres` */
+/* Two 1.5 s batches: full, hashed 20 Hz traffic evidence, but only 10 samples per batch (2 s of 10 Hz coverage).
+   The short gaps between sample groups stay below the sample-gap rejection threshold. Only recording-gaps should flag. */
 function recording(rideId, seconds, metres) {
-  const out = []; let prev = rideId;
-  for (let seq = 0, t0 = 0; t0 < seconds; seq++, t0 += 1) {
-    const t1 = Math.min(seconds, t0 + 1), samples = [];
-    for (let t = t0; t < t1 - 1e-9; t = Math.round((t + 0.1) * 10) / 10) samples.push([t, Math.round(metres * t / seconds * 10) / 10, 2.4, 0, 14, 1700, 3, 100, 1, 0, 0, 0]);
-    const body = { seq, prevHash: prev, t0, t1, samples, inputs: [[t0 * 1000 + 120.5, 'KeyW', 1], [t0 * 1000 + 610.2, 'KeyW', 0]] };
+  const out = [], speed = metres / seconds; let prev = rideId;
+  for (let seq = 0; seq < 2; seq++) {
+    const t0 = seq * seconds / 2, t1 = (seq + 1) * seconds / 2, samples = [], frames = [];
+    for (let i = 1; i <= 10; i++) {
+      const t = Number((t0 + i / 10).toFixed(2));
+      samples.push([t, Math.round(speed * t * 10) / 10, 2.4, 0, speed, 1700, 3, 100, 1, 0, 0, 0]);
+    }
+    for (let i = 0; i < 30; i++) {
+      const time = Number((t0 + i / 20).toFixed(2));
+      frames.push([.05, time, speed * (time + .05), 2.4, 0, 0, speed, speed, 100, 0, 0, 100]);
+    }
+    const body = { seq, prevHash: prev, t0, t1, samples, inputs: [[t0 * 1000 + 120.5, 'KeyW', 1], [t0 * 1000 + 610.2, 'KeyW', 0]], trafficProof: encodeTrafficProof(frames) };
     const hash = createHash('sha256').update(JSON.stringify(body)).digest('hex');
     out.push({ ...body, hash }); prev = hash;
   }
@@ -61,13 +70,23 @@ const adminKp = nacl.sign.keyPair.fromSecretKey(Uint8Array.from(JSON.parse(readF
 const admin = await signIn(adminKp);   // the admin's PLAYER session (signed in on the site) – grants nothing on the admin API
 const rider = await signIn(riderKp);
 
-// ── a flagged ride: a 3 s free shift whose recording covers only 2 s (coverage 67 % → 'recording-gaps')
-const { j: ride } = await post('rides', { tier: 'free' }, rider.cookie);
-await post(`rides/${ride.id}/start`, {}, rider.cookie);
-for (const b of recording(ride.id, 2, 42)) await post(`rides/${ride.id}/batches`, b, rider.cookie);
-await sleep(3200);   // the server credits driven time against its own clock
+// ── a flagged ride: full traffic proof, 2 s of samples across a 3 s free shift (coverage 67%).
+const { r: ordered, j: ride } = await post('rides', { tier: 'free' }, rider.cookie);
+if (!ordered.ok || ride.trafficVersion !== 1 || ride.minSeconds !== 3) throw new Error('admin fixture requires FREE_RIDE_SECONDS=3 and TRAFFIC_PROOF_REQUIRED=true');
+const started = await post(`rides/${ride.id}/start`, {}, rider.cookie);
+if (!started.r.ok) throw new Error(`admin fixture could not start the ride: ${started.r.status}`);
+const began = Date.now();
+for (const b of recording(ride.id, 3, 42)) {
+  await sleep(Math.max(0, began + b.t1 * 1000 + 100 - Date.now()));
+  const uploaded = await post(`rides/${ride.id}/batches`, b, rider.cookie);
+  if (!uploaded.r.ok) throw new Error(`admin fixture batch ${b.seq} refused: ${uploaded.r.status}`);
+}
 const { j: ended } = await post(`rides/${ride.id}/end`, { outcome: 'shift', s: 42, t: 3, hull: 100 }, rider.cookie);
-check('setup: the ride ended COMPLETED and FLAGGED (recording-gaps)', ended.status === 'completed' && ended.verdict?.status === 'flagged', JSON.stringify(ended.verdict));
+let flagged;
+await until(async () => { flagged = (await get(`rides/${ride.id}`, rider.cookie)).j.verdict; return flagged && flagged.status !== 'pending'; });
+const ready = ended.status === 'completed' && flagged?.status === 'flagged' && flagged.reasons.length === 1 && flagged.reasons[0].code === 'recording-gaps';
+check('setup: COMPLETED and FLAGGED only for recording-gaps, with required traffic proof', ready, JSON.stringify(flagged));
+if (!ready) throw new Error('admin fixture must be COMPLETED with only recording-gaps flagged');
 
 // ── the API is invisible to a non-admin
 check('a rider gets 404 from /api/admin/*', (await get('admin/overview', rider.cookie)).r.status === 404 && (await get('admin/rides', rider.cookie)).r.status === 404);
@@ -133,9 +152,10 @@ const first = await post('promo/redeem', { code: 'e2e three' }, promoRider.cooki
 check('promos: a player redeems it (+3 free rides)', first.r.status === 200 && first.j.kind === 'free_rides' && first.j.freeRides === 13, JSON.stringify(first.j));
 await A.ev('document.getElementById("refresh").click()');   // reload the tab (a player redeemed meanwhile)
 check('promos: the list counts the use (1 / 5) and USED BY PLAYERS shows the wallet and what it got', await until(async () => /1 \/ 5/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && (await A.ev('document.getElementById("promo-used")?.textContent || ""')).includes(promoRider.short) && /3 free rides/.test(await A.ev('document.getElementById("promo-used").textContent'))));
-await setField('pf-code', 'E2E-WHEEL'); await setField('pf-kind', 'cosmetic'); await setField('pf-slot', 'wheel'); await setField('pf-item', 'gold');
+check('promos: only free rides and tickets can be created; cosmetic codes are not offered', (await A.ev('[...document.querySelectorAll("#pf-kind option")].map(o => o.value).join(",")')) === 'free_rides,tickets');
+await setField('pf-code', 'E2E-TICKETS'); await setField('pf-kind', 'tickets'); await setField('pf-tier', '1h'); await setField('pf-credits', '2');
 await submitPromo();
-check('promos: a wheel code through the same form (wheel: gold)', await until(async () => /E2E-WHEEL/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && /wheel: gold/.test(await A.ev('document.getElementById("promo-table").textContent'))));
+check('promos: a ticket code through the same signed form', await until(async () => /2 × 1h ride tickets/.test(await A.ev('document.querySelector("#promo-table tr[data-code=E2E-TICKETS]")?.textContent || ""'))));
 await setField('pf-code', ''); await submitPromo();
 check('promos: a form mistake is explained on the page and nothing is signed', await until(async () => /Give the code a name/.test(await A.ev('document.getElementById("promo-note")?.textContent || ""'))) && (await A.ev('window.__signed')) === signedBefore + 2, await A.ev('document.getElementById("promo-note")?.textContent'));
 await A.shot('promos-desktop');
@@ -176,7 +196,13 @@ if (holdable) {
 // ── SETTINGS: a knob (signed), one wallet's free rides (signed, +/-), a form mistake signs nothing
 const setsBefore = await A.ev('window.__signed');
 await A.ev('location.hash = "#settings"');
-check('settings: the tab lists the knobs with their values (free rides + the AI editor\'s five)', await until(async () => (await A.ev('document.querySelectorAll("#set-table input").length')) === 7 && (await A.ev('document.querySelector("#set-table input[data-key=free_rides_daily_max]")?.value')) === '5'));
+check('settings: all twenty knobs render (free rides, referrals, AI editor)', await until(async () => (await A.ev('document.querySelectorAll("#set-table input").length')) === 20 && (await A.ev('document.querySelector("#set-table input[data-key=free_rides_daily_max]")?.value')) === '5'));
+check('settings: referral fields retain their per-key bounds', await A.ev(`(() => {
+  const field = key => document.querySelector('#set-table input[data-key="' + key + '"]');
+  return field('referral_max')?.value === '30' && field('referral_max')?.min === '1' && field('referral_max')?.max === '1000'
+    && field('referral_referrer_part_bps')?.min === '5001' && field('referral_referrer_part_bps')?.max === '10000'
+    && field('referral_donation_cap_lamports')?.max === '2000000000';
+})()`));
 await A.shot('settings-desktop');
 await A.ev('(() => { const i = document.querySelector("#set-table input[data-key=free_rides_daily_max]"); i.value = "7"; })()');
 await A.ev('document.querySelector("#set-table button[data-key=free_rides_daily_max]").click()');

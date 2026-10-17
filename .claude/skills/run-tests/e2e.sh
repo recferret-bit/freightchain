@@ -57,10 +57,10 @@ for suite in "${SUITES[@]}"; do
   echo "▸ e2e $suite"; SUITE="$suite"
   case "$suite" in
     browser) start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" FREE_RIDE_SECONDS=20 node scripts/e2e-browser.mjs) || fails=$((fails + 1)) ;;
-    lobby)   start 3;  (cd "$SERVER" && BASE="http://localhost:$PORT" SEED=1 DATABASE_URL="$URL" node scripts/e2e-lobby.mjs) || fails=$((fails + 1)) ;;   # SEED=1: the dev pool seeds it expects (throwaway database)
+    lobby)   start 3;  (cd "$SERVER" && BASE="http://localhost:$PORT" SEED=1 DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" node scripts/e2e-lobby.mjs) || fails=$((fails + 1)) ;;   # SEED=1: the dev pool seeds it expects (throwaway database)
     admin)
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
-      EXTRA_ENV="EDITOR_WALLETS=$wallet" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-admin.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;   # the admin wallet is an editor too (the owner's setup)
+      EXTRA_ENV="EDITOR_WALLETS=$wallet TRAFFIC_PROOF_REQUIRED=true" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" SEED=1 DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" node scripts/e2e-admin.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;   # the admin wallet is an editor too (the owner's setup)
     promo)   # the whole promo loop: admin page (signs) → lobby + landing players → admin sees the uses; expiry, start, used up, disabled, abuse. Own limit: a hundred players behind one IP
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
       EXTRA_ENV="THROTTLE_PROMO_LIMIT=100000" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" SEED=1 DATABASE_URL="$URL" CHROME_PORT="$(free_port)" node scripts/e2e-promo.mjs) || fails=$((fails + 1)) ;;
