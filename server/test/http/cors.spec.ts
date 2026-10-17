@@ -99,10 +99,10 @@ describe('HTTP · CORS + shared cookie domain', () => {
     });
   });
 
-  it('the session cookie is issued for the parent domain', async () => {
+  it('the session cookie is shared on a matching API host', async () => {
     const w = newWallet();
-    const { body } = await request(h.server()).post('/api/auth/nonce').send({ wallet: w.address }).expect(200);
-    const res = await request(h.server()).post('/api/auth/verify').send({ wallet: w.address, signature: sign(w.kp, body.message) }).expect(200);
+    const { body } = await request(h.server()).post('/api/auth/nonce').set('Host', 'api.freightchain.fun').send({ wallet: w.address }).expect(200);
+    const res = await request(h.server()).post('/api/auth/verify').set('Host', 'api.freightchain.fun').send({ wallet: w.address, signature: sign(w.kp, body.message) }).expect(200);
     expect(String(res.headers['set-cookie'])).toMatch(/fc_session=.*Domain=freightchain\.fun/i);
   });
 });

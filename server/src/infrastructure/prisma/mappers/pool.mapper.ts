@@ -8,7 +8,7 @@ export class PoolMapper {
     return Pool.restore({
       id: row.id, address: row.address, tier: row.tier as PaidTierId, label: row.label, priceLamports: Number(row.priceLamports),
       minTickets: row.minTickets, maxTickets: row.maxTickets, maxPerWallet: row.maxPerWallet, prepDeadline: row.prepDeadline, playDeadline: row.playDeadline, payoutAt: row.payoutAt,
-      prizeBps: row.prizeBps, seedBps: row.seedBps, feeBps: row.feeBps, feeTreasury: row.feeTreasury, seedTreasury: row.seedTreasury,
+      prizeBps: row.prizeBps, seedBps: row.seedBps, feeBps: row.feeBps, referralBps: row.referralBps, feeTreasury: row.feeTreasury, seedTreasury: row.seedTreasury,
       status: row.status as PoolStatus, ticketsSold: row.ticketsSold, buyers: row.buyers, vaultLamports: Number(row.vaultLamports), sponsored: Number(row.sponsored),
       roundId: row.roundId, rideSeed: row.rideSeed, createdAt: row.createdAt, syncedAt: row.syncedAt,
       payoutState: row.payoutState as PayoutState, payoutNote: row.payoutNote,
@@ -30,6 +30,7 @@ export class PoolMapper {
       holdBy: hold?.by ?? null,
       holdAt: hold?.at ?? null,
       holdNote: hold?.note ?? null,
+      referralBps: s.referralBps ?? 0,
       status: s.status as PoolStatusRow,
       priceLamports: BigInt(s.priceLamports),
       vaultLamports: BigInt(s.vaultLamports),

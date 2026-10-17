@@ -1,3 +1,4 @@
+import { Optional } from '@nestjs/common';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import { poolPayouts, TOP20_SIZE } from '../../../../domain/economy/pool-payouts.js';
 import type { PoolStandingsDto, StandingRankDto } from '../../../../domain/economy/pool-standings.dto.js';
@@ -6,6 +7,7 @@ import { NotFoundError } from '../../../../domain/shared/errors.js';
 import { PoolPayoutRepositoryPort } from '../../../ports/economy/pool-payout.repository.port.js';
 import { PoolRepositoryPort } from '../../../ports/economy/pool.repository.port.js';
 import { RideQueryPort } from '../../../ports/rides/ride-query.port.js';
+import { ReferralPayoutService } from '../../../services/referral-payout.service.js';
 import { GetPoolStandingsQuery } from './get-pool-standings.query.js';
 
 /** under-review rides counted for the public number (the exact count above this is not interesting) */
@@ -22,6 +24,7 @@ export class GetPoolStandingsHandler implements IQueryHandler<GetPoolStandingsQu
     private readonly pools: PoolRepositoryPort,
     private readonly payouts: PoolPayoutRepositoryPort,
     private readonly rides: RideQueryPort,
+    @Optional() private readonly referralPayout?: ReferralPayoutService,
   ) {}
 
   async execute({ poolId }: GetPoolStandingsQuery): Promise<PoolStandingsDto> {
@@ -35,12 +38,18 @@ export class GetPoolStandingsHandler implements IQueryHandler<GetPoolStandingsQu
       this.rides.poolUnreviewed(poolId, UNDER_REVIEW_LIMIT),
     ]);
     const byWallet = new Map(ranking.map((r) => [r.wallet, r]));
-    const ranks: StandingRankDto[] = plan.length
-      ? plan.map((p) => ({ rank: p.rank, wallet: p.wallet, distance: Math.round(byWallet.get(p.wallet)?.distance ?? 0), rides: byWallet.get(p.wallet)?.rides ?? 0, lamports: p.lamports, paid: p.status === 'paid', signature: p.signature }))
-      : (() => {
-        const amounts = new Map(poolPayouts(prizeLamports, ranking.map((r) => r.wallet)).map((p) => [p.wallet, p.lamports]));
-        return ranking.map((r, i) => ({ rank: i + 1, wallet: r.wallet, distance: Math.round(r.distance), rides: r.rides, lamports: amounts.get(r.wallet) ?? 0, paid: false, signature: null }));
-      })();
+    const riderPlan = plan.filter((p) => (p.kind ?? 'rider') === 'rider');
+    const rowOf = (p: { rank: number; wallet: string; lamports: number }, paid: boolean, signature: string | null): StandingRankDto => ({
+      rank: p.rank, wallet: p.wallet, distance: Math.round(byWallet.get(p.wallet)?.distance ?? 0), rides: byWallet.get(p.wallet)?.rides ?? 0, lamports: p.lamports, paid, signature,
+    });
+    const ranks: StandingRankDto[] = riderPlan.length
+      ? riderPlan.map((p) => rowOf(p, p.status === 'paid', p.signature))
+      : this.referralPayout
+        ? (await this.referralPayout.leaves(pool)).filter((p) => (p.kind ?? 'rider') === 'rider').map((p) => rowOf(p, false, null))
+        : (() => {
+          const amounts = new Map(poolPayouts(prizeLamports, ranking.map((r) => r.wallet)).map((p) => [p.wallet, p.lamports]));
+          return ranking.map((r, i) => ({ rank: i + 1, wallet: r.wallet, distance: Math.round(r.distance), rides: r.rides, lamports: amounts.get(r.wallet) ?? 0, paid: false, signature: null }));
+        })();
     return {
       poolId, tier: s.tier, label: s.label, playDeadline: s.playDeadline.getTime(), payoutAt: s.payoutAt.getTime(), prizeLamports, final: plan.length > 0,
       payout: { state: s.payoutState, note: s.payoutNote, held: s.hold !== null }, underReview: underReview.length, ranks,

@@ -1,7 +1,12 @@
 import { BadRequestError } from '../shared/errors.js';
 
 /** Owner-tweakable integers in `player.GameSetting`. A missing or out-of-range row falls back to the code default. */
-export const SETTING_KEYS = ['free_on_signup', 'free_rides_daily_max', 'editor_jobs_per_day', 'editor_max_steps', 'editor_max_output_tokens', 'editor_max_input_ktokens', 'editor_jobs_parallel'] as const;
+export const SETTING_KEYS = [
+  'free_on_signup', 'free_rides_daily_max', 'editor_jobs_per_day', 'editor_max_steps', 'editor_max_output_tokens', 'editor_max_input_ktokens', 'editor_jobs_parallel',
+  'referral_max', 'referral_invite_start', 'referral_invite_step', 'referral_shifts_per_step', 'referral_invite_ttl_days',
+  'referral_free_ride_window_days', 'referral_free_rides_referrer', 'referral_free_rides_referee', 'referral_free_ride_weekly_cap',
+  'referral_referrer_part_bps', 'referral_ride_cap_lamports', 'referral_donation_share_bps', 'referral_donation_cap_lamports',
+] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 
 export const SETTING_DEFAULTS: Record<SettingKey, number> = {
@@ -12,6 +17,43 @@ export const SETTING_DEFAULTS: Record<SettingKey, number> = {
   editor_max_output_tokens: 32_000,   // cumulative output tokens per job
   editor_max_input_ktokens: 500,   // input tokens per job, in thousands (every turn re-sends the history: the cost cap)
   editor_jobs_parallel: 5,   // jobs running at once across all app replicas (0 = the AI editor paused)
+  referral_max: 30,
+  referral_invite_start: 3,
+  referral_invite_step: 3,
+  referral_shifts_per_step: 5,
+  referral_invite_ttl_days: 14,
+  referral_free_ride_window_days: 7,
+  referral_free_rides_referrer: 2,
+  referral_free_rides_referee: 3,
+  referral_free_ride_weekly_cap: 10,
+  referral_referrer_part_bps: 8000,
+  referral_ride_cap_lamports: 1_000_000_000,
+  referral_donation_share_bps: 1000,
+  referral_donation_cap_lamports: 500_000_000,
+};
+
+/** Per key. `GameSetting.value` is a signed 32-bit int, so a lamport cap stops at 2e9. */
+export const SETTING_BOUNDS: Record<SettingKey, { min: number; max: number }> = {
+  free_on_signup: { min: 0, max: 100_000 },
+  free_rides_daily_max: { min: 0, max: 100_000 },
+  editor_jobs_per_day: { min: 0, max: 100_000 },
+  editor_max_steps: { min: 0, max: 100_000 },
+  editor_max_output_tokens: { min: 0, max: 100_000 },
+  editor_max_input_ktokens: { min: 0, max: 100_000 },
+  editor_jobs_parallel: { min: 0, max: 100_000 },
+  referral_max: { min: 1, max: 1000 },
+  referral_invite_start: { min: 0, max: 1000 },
+  referral_invite_step: { min: 0, max: 1000 },
+  referral_shifts_per_step: { min: 1, max: 1000 },
+  referral_invite_ttl_days: { min: 1, max: 90 },
+  referral_free_ride_window_days: { min: 1, max: 90 },
+  referral_free_rides_referrer: { min: 0, max: 20 },
+  referral_free_rides_referee: { min: 0, max: 20 },
+  referral_free_ride_weekly_cap: { min: 0, max: 1000 },
+  referral_referrer_part_bps: { min: 5001, max: 10_000 },
+  referral_ride_cap_lamports: { min: 0, max: 2_000_000_000 },
+  referral_donation_share_bps: { min: 0, max: 10_000 },
+  referral_donation_cap_lamports: { min: 0, max: 2_000_000_000 },
 };
 
 export const SETTING_MIN = 0;
@@ -28,6 +70,19 @@ export interface GameSettings {
   editorMaxOutputTokens: number;
   editorMaxInputKTokens: number;
   editorJobsParallel: number;
+  referralMax: number;
+  referralInviteStart: number;
+  referralInviteStep: number;
+  referralShiftsPerStep: number;
+  referralInviteTtlDays: number;
+  referralFreeRideWindowDays: number;
+  referralFreeRidesReferrer: number;
+  referralFreeRidesReferee: number;
+  referralFreeRideWeeklyCap: number;
+  referralReferrerPartBps: number;
+  referralRideCapLamports: number;
+  referralDonationShareBps: number;
+  referralDonationCapLamports: number;
 }
 
 const CAMEL: Record<SettingKey, keyof GameSettings> = {
@@ -38,31 +93,40 @@ const CAMEL: Record<SettingKey, keyof GameSettings> = {
   editor_max_output_tokens: 'editorMaxOutputTokens',
   editor_max_input_ktokens: 'editorMaxInputKTokens',
   editor_jobs_parallel: 'editorJobsParallel',
+  referral_max: 'referralMax',
+  referral_invite_start: 'referralInviteStart',
+  referral_invite_step: 'referralInviteStep',
+  referral_shifts_per_step: 'referralShiftsPerStep',
+  referral_invite_ttl_days: 'referralInviteTtlDays',
+  referral_free_ride_window_days: 'referralFreeRideWindowDays',
+  referral_free_rides_referrer: 'referralFreeRidesReferrer',
+  referral_free_rides_referee: 'referralFreeRidesReferee',
+  referral_free_ride_weekly_cap: 'referralFreeRideWeeklyCap',
+  referral_referrer_part_bps: 'referralReferrerPartBps',
+  referral_ride_cap_lamports: 'referralRideCapLamports',
+  referral_donation_share_bps: 'referralDonationShareBps',
+  referral_donation_cap_lamports: 'referralDonationCapLamports',
 };
 
 export const isSettingKey = (key: string): key is SettingKey => (SETTING_KEYS as readonly string[]).includes(key);
 
-const inBounds = (n: number): boolean => Number.isInteger(n) && n >= SETTING_MIN && n <= SETTING_MAX;
+const inBounds = (key: SettingKey, n: number): boolean => {
+  const b = SETTING_BOUNDS[key];
+  return Number.isInteger(n) && n >= b.min && n <= b.max;
+};
 
-/** Fill every knob. Unknown keys are ignored. A stored value outside 0..100_000 is ignored (the code default stands). */
+/** Fill every knob. Unknown keys are ignored. A stored value outside that key's bounds is ignored (the code default stands). */
 export function resolveSettings(rows: readonly { key: string; value: number }[]): GameSettings {
-  const out: GameSettings = {
-    freeOnSignup: SETTING_DEFAULTS.free_on_signup,
-    freeRidesDailyMax: SETTING_DEFAULTS.free_rides_daily_max,
-    editorJobsPerDay: SETTING_DEFAULTS.editor_jobs_per_day,
-    editorMaxSteps: SETTING_DEFAULTS.editor_max_steps,
-    editorMaxOutputTokens: SETTING_DEFAULTS.editor_max_output_tokens,
-    editorMaxInputKTokens: SETTING_DEFAULTS.editor_max_input_ktokens,
-    editorJobsParallel: SETTING_DEFAULTS.editor_jobs_parallel,
-  };
+  const out = {} as GameSettings;
+  for (const key of SETTING_KEYS) out[CAMEL[key]] = SETTING_DEFAULTS[key];
   for (const row of rows) {
-    if (!isSettingKey(row.key) || !inBounds(row.value)) continue;
+    if (!isSettingKey(row.key) || !inBounds(row.key, row.value)) continue;
     out[CAMEL[row.key]] = row.value;
   }
   return out;
 }
 
-/** Unknown key or a value outside 0..100_000. Called before a signature is issued or spent. */
+/** Unknown key or a value outside that key's bounds. Called before a signature is issued or spent. */
 export function assertSettingValue(key: string, value: number): asserts key is SettingKey {
-  if (!isSettingKey(key) || !inBounds(value)) throw new BadRequestError('unknown setting or value out of range', 'bad_setting');
+  if (!isSettingKey(key) || !inBounds(key, value)) throw new BadRequestError('unknown setting or value out of range', 'bad_setting');
 }

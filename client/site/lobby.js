@@ -8,6 +8,8 @@ import { careerTiles } from './lobby-career.js';
 import { achievementsSection } from './lobby-achievements.js';
 import { agreementsCard, blockPaid } from './lobby-agreements.js';
 import { redemptionList } from './lobby-promo.js';
+import { referralSection } from './lobby-referral.js';
+import { bindStoredRef, captureRef, searchWithoutRef } from './referral.js';
 import { dirty, garageActions, garageDetail, garageProgress, garageSlots, partAt, previewLoadout } from './lobby-garage.js';
 import { garageCab } from './garage-cab.js';
 import { el } from './dom.js';
@@ -665,6 +667,7 @@ async function renderProfile() {
     el('section', { class: 'prof-sec ch' }, ...careerTiles(p.career, p.stats, { km, sol })),
     el('section', { class: 'prof-sec ch' }, ...profileTickets(p, S.busy, refund)),
     el('section', { class: 'prof-sec ch' }, ...promoSection()),
+    el('section', { class: 'prof-sec ch' }, ...referralSection({ api, short, base: SITE_BASE, origin: location.origin, alive: () => my === seq })),
     el('section', { class: 'prof-sec ch' },
       el('h2', {}, 'RECENT RIDES'),
       p.recent.length ? el('div', { class: 'hist' }, p.recent.map(r => el('div', { class: 'hrow' },
@@ -711,8 +714,11 @@ for (const a of document.querySelectorAll('a[href="/play.html"]')) a.addEventLis
   track('offline_practice_clicked');
   flushSoon();
 });
+captureRef(store, location.search);   // ?ref=CODE, before sign-in: stored only. Bind waits until a session exists.
+{ const next = searchWithoutRef(location.search); if (next != null) history.replaceState(null, '', `${location.pathname}${next}${location.hash}`); }
 try { S.me = await api('me'); } catch { flushSoon(); location.href = '/'; }   // reporting GET: a failure here is api_request_failed, then back to the landing
 if (S.me) {
+  try { await bindStoredRef(api, store); } catch { /* kept in storage; the next signed-in load tries again */ }
   track('session_restored', { surface: 'lobby', wallet: S.me.wallet, ...(S.me.demo ? { is_demo: true } : {}) });
   const viewed = { is_demo: !!S.me.demo };
   if (S.pool?.round?.id != null) viewed.round_id = S.pool.round.id;   // pool is not loaded yet; do not delay the pageview for it

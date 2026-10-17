@@ -240,6 +240,7 @@ export class MemoryRideQuery extends RideQueryPort {
         completedFreeLevels: completedLevels(fair),
         honkMints: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.amount > 0n).length,
         honkFinishes: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.amount > 0n && m.band100).length,
+        qualifiedReferrals: [...this.db.referrals.values()].filter((r) => r.referrer === wallet && r.badgeCounted).length,
       },
     };
   }

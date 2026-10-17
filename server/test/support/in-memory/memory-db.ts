@@ -21,6 +21,7 @@ import type { RideEventProps } from '../../../src/domain/live/ride-event.entity.
 import type { StatsRow } from '../../../src/application/ports/stats/stats.repository.port.js';
 import type { DonationOrderProps } from '../../../src/domain/live/donation-order.entity.js';
 import type { HonkAccountRow, HonkBurnRow, HonkMintRow, HonkVisualRow } from '../../../src/application/ports/honk/honk.repository.port.js';
+import type { ReferralCodeRecord, ReferralRecord } from '../../../src/domain/referral/referral-rules.js';
 
 /** The whole "database" of the in-memory suite: plain maps of snapshots (repositories hand out fresh entities, like real rows). */
 export class MemoryDb {
@@ -65,6 +66,10 @@ export class MemoryDb {
   dailyStats = new Map<string, import('../../../src/domain/stats/stats.js').StatsTotals>();
   /** `player.GameSetting` */
   settings = new Map<string, number>();
+  /** wallet → invite code */
+  referralCodes = new Map<string, ReferralCodeRecord>();
+  /** referee → the one referral */
+  referrals = new Map<string, ReferralRecord>();
   /** `${tier}|${day}` → the day's road seed of a paid tier (ride.DailySeed) */
   dailySeeds = new Map<string, number>();
   pledges = new Map<string, import('../../../src/domain/economy/pledge.types.js').PledgeProps>();
@@ -97,5 +102,6 @@ export class MemoryDb {
     this.settings.clear(); this.dailySeeds.clear(); this.pledges.clear();
     this.honkMints.clear(); this.honkAccounts.clear(); this.honkBurns.clear(); this.honkVisuals.clear(); this.honkEmission = 0n;
     this.entities.clear(); this.entityRevisions = []; this.editorJobPrompts.clear(); this.editorJobs.clear(); this.editorJobEvents.clear();
+    this.referralCodes.clear(); this.referrals.clear();
   }
 }

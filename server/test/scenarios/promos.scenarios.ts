@@ -141,11 +141,12 @@ export function promoScenarios(h: () => Harness): void {
       const w = await login();
       const g = (await w.agent.get('/api/garage').expect(200)).body;
       expect(g.slots.map((s: { slot: string }) => s.slot)).toEqual(SLOTS);
-      expect(g.progress).toEqual({ collected: 0, total: 45, percent: 0 });
+      expect(g.progress).toEqual({ collected: 0, total: 48, percent: 0 });
       expect(g.equipped).toEqual(defaultLoadout());
       for (const s of g.slots) {
-        expect(s).toMatchObject({ collected: 0, total: 5 });
-        expect(s.parts).toHaveLength(6);
+        const paints = s.slot === 'truck_color'; // convoy, signal, amber sit on truck paint only
+        expect(s).toMatchObject({ collected: 0, total: paints ? 8 : 5 });
+        expect(s.parts).toHaveLength(paints ? 9 : 6);
         expect(s.parts[0]).toMatchObject({ isDefault: true, owned: true, worn: true, code: null, unlockedAt: null });
         expect(s.parts.slice(1).every((p: { owned: boolean; worn: boolean }) => !p.owned && !p.worn)).toBe(true);
       }
@@ -158,7 +159,7 @@ export function promoScenarios(h: () => Harness): void {
       sec(60);
       await unlock(w, 'needle', 'lime');
       const g = (await w.agent.get('/api/garage').expect(200)).body;
-      expect(g.progress).toEqual({ collected: 2, total: 45, percent: 4 });
+      expect(g.progress).toEqual({ collected: 2, total: 48, percent: 4 });
       expect(g.equipped).toMatchObject({ wheel: 'gold', needle: 'lime', dice: 'white' });
       const gold = g.slots[0].parts.find((p: { id: string }) => p.id === 'gold');
       expect(wheel.id).toMatch(/^[0-9a-f]{32}$/);

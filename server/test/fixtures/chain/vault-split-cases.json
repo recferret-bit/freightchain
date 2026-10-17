@@ -326,6 +326,83 @@
         "unclaimed": "0",
         "rentReturned": "890880"
       }
+    },
+    {
+      "name": "product default 6500/2000/1000/500",
+      "price": "100000000",
+      "sold": 10,
+      "sponsored": "0",
+      "prizeBps": 6500,
+      "seedBps": 2000,
+      "feeBps": 1000,
+      "referralBps": 500,
+      "platformFeeBps": 0,
+      "prizesPaid": "400000000",
+      "stray": "0",
+      "cancelled": false,
+      "pot": "1000000000",
+      "prize": "650000000",
+      "seed": "200000000",
+      "referral": "50000000",
+      "fee": "100000000",
+      "platform": "0",
+      "close": {
+        "vault": "600890880",
+        "seed": "500000000",
+        "fee": "100000000",
+        "platformFee": "0",
+        "unclaimed": "300000000",
+        "rentReturned": "890880"
+      }
+    },
+    {
+      "name": "product default, paid into the referral leg (above the prize, within prize + referral)",
+      "price": "100000000",
+      "sold": 4,
+      "sponsored": "0",
+      "prizeBps": 6500,
+      "seedBps": 2000,
+      "feeBps": 1000,
+      "referralBps": 500,
+      "platformFeeBps": 0,
+      "prizesPaid": "270000000",
+      "stray": "0",
+      "cancelled": false,
+      "pot": "400000000",
+      "prize": "260000000",
+      "seed": "80000000",
+      "referral": "20000000",
+      "fee": "40000000",
+      "platform": "0",
+      "close": {
+        "vault": "130890880",
+        "seed": "90000000",
+        "fee": "40000000",
+        "platformFee": "0",
+        "unclaimed": "10000000",
+        "rentReturned": "890880"
+      }
+    },
+    {
+      "name": "product default dust: each floor drops its fraction onto the fee",
+      "price": "10001",
+      "sold": 1,
+      "sponsored": "0",
+      "prizeBps": 6500,
+      "seedBps": 2000,
+      "feeBps": 1000,
+      "referralBps": 500,
+      "platformFeeBps": 0,
+      "prizesPaid": "0",
+      "stray": "0",
+      "cancelled": false,
+      "pot": "10001",
+      "prize": "6500",
+      "seed": "2000",
+      "referral": "500",
+      "fee": "1001",
+      "platform": "0",
+      "close": null
     }
   ]
 }

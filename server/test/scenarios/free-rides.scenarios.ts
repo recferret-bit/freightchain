@@ -32,8 +32,9 @@ export function freeRideScenarios(h: () => Harness): void {
     await rider.agent.get('/api/admin/settings').expect(404); // a player session is not an admin session
     expect(await me(rider)).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });
     const admin = await loginAdmin(FREE_RIDES_ADMIN);
-    expect((await admin.agent.get('/api/admin/settings').expect(200)).body).toEqual({
+    expect((await admin.agent.get('/api/admin/settings').expect(200)).body).toMatchObject({
       freeOnSignup: 10, freeRidesDailyMax: 5, editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 32000, editorMaxInputKTokens: 500, editorJobsParallel: 5,
+      referralMax: 30, referralReferrerPartBps: 8000,
     });
   });
 

@@ -23,6 +23,10 @@ import { PollProgramCommand, type PollProgramResultDto } from '../../src/applica
 import { ReceiveChainWebhookCommand, type ChainWebhookResultDto } from '../../src/application/use-cases/chain/receive-chain-webhook/receive-chain-webhook.command.js';
 import { SyncPledgesCommand } from '../../src/application/use-cases/pledges/sync-pledges/sync-pledges.command.js';
 import { PledgeRepositoryPort } from '../../src/application/ports/economy/pledge.repository.port.js';
+import { RULES_VERSION } from '../../src/domain/verdict/verdict-rules.js';
+import { ReferralService } from '../../src/application/services/referral.service.js';
+import { EFFECTS } from '../../src/domain/live/live-rules.js';
+import { randomUUID } from 'node:crypto';
 
 /* What in-memory fakes can never tell you: parallel requests against a real database. Every critical section the old synchronous SQLite server got "for free"
    is exercised here with Promise.all and EXACT counts – one ride, one credit, one successful verify, one round, one payment. */
@@ -355,11 +359,11 @@ describe('concurrency (PostgreSQL)', () => {
       const { driver, sponsor, ride, pledge, sig } = await pledged();
       await sponsor.agent.post(`/api/pledges/${pledge.id}/confirm`).send({ signature: sig }).expect(200);
       harness.payoutChain.payoutAddress = 'Payout11111111111111111111111111111111111111';
-      // the ride the attestation rests on: completed, recorded, VERIFIED, 4.3 km (the pledge job reads the rides again before it settles – audit M7)
-      sec(200); // 4.3 km needs a plausible drive; the recording must pass the road work bounds before testing settlement races.
-      await prisma.ride.update({ where: { id: ride.id }, data: { status: 'completed', lastS: 4_300, endedAt: harness.clock.now() } });
+      // the ride the attestation rests on: completed, recorded, VERIFIED, 4.3 km (the pledge job reads the rides again before it settles – pentest M7)
+      sec(200); // 4.3 km at 21.5 m/s; the upload must fit both the governor and the server's elapsed time
+      await prisma.ride.update({ where: { id: ride.id }, data: { status: 'completed', lastS: 4_300, lastT: 200, driveSeconds: 200, endedAt: harness.clock.now() } });
       for (const b of recording(ride.id, { seconds: 200, distance: 4_300 })) await driver.agent.post(`/api/rides/${ride.id}/batches`).send(b).expect(200);
-      await prisma.rideVerdict.upsert({ where: { rideId: ride.id }, update: { status: 'verified', reasons: [] }, create: { rideId: ride.id, status: 'verified', reasons: [], scores: {}, rulesVersion: 4, judgedAt: harness.clock.now() } });
+      await prisma.rideVerdict.upsert({ where: { rideId: ride.id }, update: { status: 'verified', reasons: [], rulesVersion: RULES_VERSION }, create: { rideId: ride.id, status: 'verified', reasons: [], scores: {}, rulesVersion: RULES_VERSION, judgedAt: harness.clock.now() } });
       harness.payoutChain.attestations.set(`1:${ride.id}`, { driver: driver.address, telemetryRoot: new Uint8Array(32), verifiedKm: 4, status: 1, settleFrom: new Date(0), settledPledges: 0 });   // v4: per RIDE
       const bus = harness.app.get(CommandBus);
       await parallel(PARALLEL, () => bus.execute(new SyncPledgesCommand()));
@@ -722,6 +726,70 @@ describe('concurrency (PostgreSQL)', () => {
       expect(career.donations).toBe(tip.status === 200 ? 1 : 0);
     }
     expect(await harness.app.get(CommandBus).execute(new ReconcileStatsCommand(null, false))).toMatchObject({ drifted: [], global: null });
+  });
+
+  it('two wallets binding the last invite: one pending row, the other no_slots', async () => {
+    const host = await login(), a = await login(), b = await login();
+    const code = (await host.agent.get('/api/referrals').expect(200)).body.code as string;
+    await prisma.gameSetting.upsert({ where: { key: 'referral_max' }, create: { key: 'referral_max', value: 1 }, update: { value: 1 } });
+    await prisma.gameSetting.upsert({ where: { key: 'referral_invite_start' }, create: { key: 'referral_invite_start', value: 1 }, update: { value: 1 } });
+    const results = await Promise.all([a, b].map((w) => w.agent.post('/api/referrals/bind').send({ code })));
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect(results.find((r) => r.status === 409)?.body.code).toBe('no_slots');
+    expect(await prisma.referral.count({ where: { referrer: host.address, status: 'pending' } })).toBe(1);
+  });
+
+  it('two MEDIUM finishes under a weekly cap of one grant the referrer once', async () => {
+    const host = await login(), a = await login(), b = await login();
+    const code = (await host.agent.get('/api/referrals').expect(200)).body.code as string;
+    await prisma.gameSetting.upsert({ where: { key: 'referral_free_ride_weekly_cap' }, create: { key: 'referral_free_ride_weekly_cap', value: 1 }, update: { value: 1 } });
+    await a.agent.post('/api/referrals/bind').send({ code }).expect(200);
+    await b.agent.post('/api/referrals/bind').send({ code }).expect(200);
+    const now = new Date();
+    const rideFor = async (wallet: string) => {
+      const id = randomUUID();
+      await prisma.ride.create({ data: { id, wallet, tier: 'free', trip: 'free-2c', seed: 1, minSeconds: 10, completeDist: 1, status: 'completed', createdAt: now, startedAt: now, endedAt: now, assist: false } });
+      await prisma.rideVerdict.create({ data: { rideId: id, status: 'verified', reasons: [], scores: {}, rulesVersion: 1, judgedAt: now } });
+      return id;
+    };
+    const [left, right] = await Promise.all([rideFor(a.address), rideFor(b.address)]);
+    const svc = harness.app.get(ReferralService);
+    await Promise.all([svc.onVerified(left), svc.onVerified(right)]);
+    expect(await prisma.referral.count({ where: { referrer: host.address, status: 'qualified' } })).toBe(2);
+    expect(await prisma.referral.count({ where: { referrer: host.address, freeGranted: true } })).toBe(1);
+    expect(await freeRides(host)).toBe(12);
+    const friends = [await freeRides(a), await freeRides(b)].sort((x, y) => x - y);
+    expect(friends).toEqual([10, 13]); // one friend takes the only grant; the other stays at the signup grant
+  });
+
+  it('two spectators reserving the last donation share: one share, the cap holds', async () => {
+    await harness.close();
+    harness = await createHarness('postgres', { FREE_RIDE_SECONDS: '10', LIVE_FREE_DONATIONS: 'off' });
+    prisma = harness.app.get(PrismaService, { strict: false });
+    try {
+      const referrer = await login();
+      const driver = await login();
+      const code = (await referrer.agent.get('/api/referrals').expect(200)).body.code as string;
+      await driver.agent.post('/api/referrals/bind').send({ code }).expect(200);
+      await prisma.referral.update({ where: { referee: driver.address }, data: { status: 'qualified', qualifiedAt: new Date() } });
+      const share = Math.floor((EFFECTS.tip.lamports * 1000) / 10_000);
+      await prisma.gameSetting.upsert({ where: { key: 'referral_donation_cap_lamports' }, create: { key: 'referral_donation_cap_lamports', value: share }, update: { value: share } });
+      const ride = (await driver.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+      const sig = harness.chain.addPayment({ payer: driver.address, destination: TREASURY, lamports: ride.lamports, memo: ride.id });
+      await driver.agent.post(`/api/rides/${ride.id}/confirm`).send({ signature: sig }).expect(200);
+      await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+      const fans = await Promise.all([login(), login()]);
+      const results = await Promise.all(fans.map((f) => f.agent.post(`/api/watch/${ride.id}/donation-orders`).send({ effect: 'tip' })));
+      expect(results.every((r) => r.status === 200)).toBe(true);
+      const rows = await prisma.donationOrder.findMany({ where: { recipient: driver.address } });
+      const held = rows.filter((r) => r.shareState === 'reserved' || r.shareState === 'paid');
+      expect(held).toHaveLength(1);
+      expect(Number(held[0]?.shareLamports)).toBe(share);
+    } finally {
+      await harness.close();
+      harness = await createHarness('postgres', { FREE_RIDE_SECONDS: '10' });
+      prisma = harness.app.get(PrismaService, { strict: false });
+    }
   });
 });
 

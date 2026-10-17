@@ -218,7 +218,7 @@ describe('ProgramChainAdapter – reads', () => {
     expect(state).toEqual({
       poolId: 0, address: pool.address, status: 'active', ticketsSold: 3, buyers: 2, sponsored: 50_000_000, prizesPaid: 0, refunded: 0, vaultLamports: vault, escrowLamports: 350_000_000,
       vault: fixtureTx('buy_ticket self-paid').instructions[0]!.accounts[4]!.pubkey, authority: fx.keys.authority, tier: 1, priceLamports: 100_000_000, minTickets: 3, maxTickets: 10, maxPerWallet: 4,
-      prepDeadline: new Date(Number(d['prepDeadline']) * 1000), playDeadline: new Date(Number(d['playDeadline']) * 1000), payoutAt: new Date(Number(d['payoutAt']) * 1000), prizeBps: 6000, seedBps: 2500, feeBps: 1500,
+      prepDeadline: new Date(Number(d['prepDeadline']) * 1000), playDeadline: new Date(Number(d['playDeadline']) * 1000), payoutAt: new Date(Number(d['payoutAt']) * 1000), prizeBps: 6000, seedBps: 2500, feeBps: 1500, referralBps: 0,
       feeTreasury: fx.keys.feeTreasury, seedTreasury: fx.keys.seedTreasury, createdAt: new Date(Number(d['createdAt']) * 1000),
       seedCommitment: String(d['seedCommitment']), seedSlot: 1008, seedSlotHash: bs58.encode(Buffer.from(String(d['seedSlotHash']), 'base64')),
       // program v4: sealed (sealSlot 0), nothing committed yet – no root, no lock, no rank paid

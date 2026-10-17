@@ -33,7 +33,7 @@ const grants = [{ poolId: 3, delta: 2, source: 'payment', ref: sig(), at: t0 - 3
 const orders = new Map(), polls = new Map(), refunds = new Map(), rides = new Map();
 let freeRides = 10;
 const CATALOG = {   // = server/src/domain/economy/cosmetics.ts (the first item of a slot is its default)
-  wheel: ['classic', 'crimson', 'ocean', 'moss', 'gold', 'ivory'], truck_color: ['red', 'blue', 'green', 'black', 'yellow', 'white'], gearbox: ['stick', 'chrome', 'wood', 'racing', 'gold', 'carbon'],
+  wheel: ['classic', 'crimson', 'ocean', 'moss', 'gold', 'ivory'], truck_color: ['red', 'blue', 'green', 'black', 'yellow', 'white', 'convoy', 'signal', 'amber'], gearbox: ['stick', 'chrome', 'wood', 'racing', 'gold', 'carbon'],
   dice: ['white', 'red', 'blue', 'gold', 'pink', 'black'], needle: ['orange', 'red', 'lime', 'cyan', 'white', 'gold'],
 };
 const redeemed = [], owned = Object.fromEntries(Object.entries(CATALOG).map(([k, v]) => [k, [v[0]]])), worn = Object.fromEntries(Object.entries(CATALOG).map(([k, v]) => [k, v[0]])), earned = {};   // promo codes: what this wallet redeemed + its parts

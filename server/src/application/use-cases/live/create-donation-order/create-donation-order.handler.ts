@@ -1,14 +1,20 @@
+import { Optional } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { DonationOrder } from '../../../../domain/live/donation-order.entity.js';
 import { EFFECTS, EFFECT_WINDOW_MS } from '../../../../domain/live/live-rules.js';
 import type { DonationOrderDto } from '../../../../domain/live/live.dto.js';
+import { DONATION_SHARE_TTL_MS } from '../../../../domain/referral/referral-rules.js';
 import { ConflictError, TooManyRequestsError } from '../../../../domain/shared/errors.js';
 import { ChainPort } from '../../../ports/economy/chain.port.js';
 import { DonationOrderRepositoryPort } from '../../../ports/live/donation-order.repository.port.js';
 import { RideEventRepositoryPort } from '../../../ports/live/ride-event.repository.port.js';
+import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { EntropyPort } from '../../../ports/shared/entropy.port.js';
+import { TransactionPort } from '../../../ports/shared/transaction.port.js';
+import { GameSettingsService } from '../../../services/game-settings.service.js';
 import { LiveAccessService } from '../../../services/live-access.service.js';
+import { ReferralService } from '../../../services/referral.service.js';
 import { CreateDonationOrderCommand } from './create-donation-order.command.js';
 
 /**
@@ -25,6 +31,10 @@ export class CreateDonationOrderHandler implements ICommandHandler<CreateDonatio
     private readonly chain: ChainPort,
     private readonly entropy: EntropyPort,
     private readonly clock: ClockPort,
+    @Optional() private readonly referrals?: ReferralService,
+    @Optional() private readonly settings?: GameSettingsService,
+    @Optional() private readonly players?: PlayerRepositoryPort,
+    @Optional() private readonly transactions?: TransactionPort,
   ) {}
 
   async execute({ wallet, rideId, effect, note }: CreateDonationOrderCommand): Promise<DonationOrderDto> {
@@ -38,8 +48,32 @@ export class CreateDonationOrderHandler implements ICommandHandler<CreateDonatio
     }
     const order = DonationOrder.create({ id: this.entropy.uuid(), rideId, wallet, recipient: ride.wallet, effect, note, now });
     order.assignReference(this.entropy.referenceKey());
-    const transaction = await this.chain.buildPaymentTransaction({ payer: wallet, treasury: order.recipient, lamports: order.lamports, memo: order.memo, reference: order.paymentReference });
-    await this.orders.insert(order);
+    await this.reserveShare(order, wallet, now);
+    let transaction;
+    try {
+      transaction = await this.chain.buildPaymentTransaction({
+        payer: wallet, treasury: order.recipient, lamports: order.shareLamports > 0 ? order.lamports - order.shareLamports : order.lamports, memo: order.memo, reference: order.paymentReference,
+        ...(order.shareLamports > 0 && order.referrer ? { also: [{ to: order.referrer, lamports: order.shareLamports }] } : {}),
+      });
+    } catch (error) {
+      if (order.shareState === 'reserved') await this.orders.releaseShare(order.id);
+      throw error;
+    }
     return { order: { id: order.id, effect: order.effect, lamports: order.lamports, to: order.recipient, memo: order.memo, reference: order.paymentReference }, transaction };
+  }
+
+  /** Lock the driver and the referrer (address order), drop stale reserves, then keep a share only when it still fits the cap. The spectator is not locked. */
+  private async reserveShare(order: DonationOrder, spectator: string, now: Date) {
+    if (!this.referrals || !this.settings || !this.players || !this.transactions) { await this.orders.insert(order); return; }
+    const referrer = await this.referrals.donationReferrer(order.recipient, spectator);
+    if (!referrer) { await this.orders.insert(order); return; }
+    const knobs = await this.settings.current();
+    await this.transactions.run(async (tx) => {
+      for (const w of [order.recipient, referrer].sort()) await this.players!.findByWalletForUpdate(w, tx);
+      await this.orders.releaseStale(referrer, order.recipient, new Date(now.getTime() - DONATION_SHARE_TTL_MS), tx);
+      const share = this.referrals!.shareOf(order.lamports, knobs.referralDonationShareBps, await this.orders.sumShare(referrer, order.recipient, tx), knobs.referralDonationCapLamports, false);
+      if (share > 0) order.assignShare(referrer, share);
+      await this.orders.insert(order, tx);
+    });
   }
 }

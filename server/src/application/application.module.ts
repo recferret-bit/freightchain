@@ -14,6 +14,8 @@ import { PoolAttentionService } from './services/pool-attention.service.js';
 import { AttestationService } from './services/attestation.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
 import { GameSettingsService } from './services/game-settings.service.js';
+import { ReferralService } from './services/referral.service.js';
+import { ReferralPayoutService } from './services/referral-payout.service.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
 import { RecordTelemetryHandler } from './use-cases/telemetry/record-telemetry/record-telemetry.handler.js';
 import { ReportClientErrorHandler } from './use-cases/telemetry/report-client-error/report-client-error.handler.js';
@@ -135,11 +137,13 @@ import { GetPledgeHandler } from './use-cases/pledges/get-pledge/get-pledge.hand
 import { BurnHonkHandler, GetHonkCatalogHandler, GetHonkHandler, MintHonkVisualHandler } from './use-cases/honk/honk.handlers.js';
 import { BurnHonkTimeHandler } from './use-cases/honk/burn-honk-time.handler.js';
 import { BurnHonkWeatherHandler } from './use-cases/honk/burn-honk-weather.handler.js';
+import { BindReferralHandler, GetReferralsHandler, SetReferralGiftHandler } from './use-cases/referrals/referrals.handler.js';
 
 const services: Provider[] = [
   EntityCatalogService, EntityWriteService,
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
   PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService,
+  ReferralService, ReferralPayoutService,
 ];
 
 import { ReconcileStatsHandler } from './use-cases/stats/reconcile-stats/reconcile-stats.handler.js';
@@ -199,6 +203,7 @@ const handlers: Provider[] = [
   GetActionsJsonHandler, GetHelloActionHandler, SayHelloActionHandler, GetShiftActionHandler, PrepareShiftActionHandler, OpenSiteActionHandler, GetRideActionHandler, OpenRideActionHandler,
   CreatePledgeHandler, ConfirmPledgeHandler, SyncPledgesHandler, GetRidePledgesHandler, GetPledgeHandler,
   BurnHonkHandler, BurnHonkTimeHandler, BurnHonkWeatherHandler, MintHonkVisualHandler, GetHonkHandler, GetHonkCatalogHandler,
+  GetReferralsHandler, BindReferralHandler, SetReferralGiftHandler,
 ];
 
 @Module({

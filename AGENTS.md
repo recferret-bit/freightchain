@@ -23,6 +23,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | admin page, observing production | `admin-ops.md` |
 | 3D model editor: entity storage + revisions, the bundle API, editor sign-in, signed publish | `editor.md` |
 | free levels, tutorial + assist, free rides, trips | `free-rides.md` |
+| referrals: invites, the 5% pot leg, donation share | `referral.md` |
 | garage, promo codes | `garage-promo.md` |
 | money, escrowed pools, the program toolchain | `escrow.md` |
 | achievement tiers, the soulbound badge cNFTs, mint job + art | `achievements.md` |

@@ -185,7 +185,7 @@ portrait.addEventListener('change', askTurn); document.getElementById('turn-skip
 
 initStats(SLIDES.map(s => s.id), touch);
 setOnGrab(() => interact('coin_drag'));
-setOnSplit(() => interact('split'));   // the 70/20/10 bar opens on hover as well as tap, so the click list in stats.js never sees it
+setOnSplit(() => interact('split'));   // the 65/5/20/10 bar opens on hover as well as tap, so the click list in stats.js never sees it
 const fromHash = () => show((parseInt(location.hash.slice(1), 10) || 1) - 1);
 addEventListener('hashchange', fromHash);
 fromHash();

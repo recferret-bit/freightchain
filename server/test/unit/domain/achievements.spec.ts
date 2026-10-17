@@ -1,6 +1,6 @@
 import { ACHIEVEMENTS, FAMILY_NAMES, TIER_NAMES, earnedIds, progressOf, type Facts } from '../../../src/domain/achievements/achievements.js';
 
-const none: Facts = { started: 0, paidShifts: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [], honkMints: 0, honkFinishes: 0 };
+const none: Facts = { started: 0, paidShifts: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [], honkMints: 0, honkFinishes: 0, qualifiedReferrals: 0 };
 const families = [...new Set(ACHIEVEMENTS.map((a) => a.family))];
 
 /* the ids production unlock rows already reference – FROZEN (docs/agents/achievements.md): a rename or a changed meaning of tier 1 breaks them */
@@ -37,6 +37,7 @@ describe('achievement tiers', () => {
         cleanRuns: a.family === 'clean' ? value : 0, siberiaShifts: a.family === 'siberia' ? value : 0, freeUnassisted: a.family === 'solo' ? value : 0,
         completedFreeLevels: a.family === 'licence' && value >= 1 ? [a.tier] : [],
         honkMints: a.id === 'honk-haul' ? value : 0, honkFinishes: a.family === 'honk' && a.tier > 1 ? value : 0,
+        qualifiedReferrals: a.family === 'convoy' ? value : 0,
       });
       expect(earnedIds(at(a.target)), `${a.id} at target`).toContain(a.id);
       expect(earnedIds(at(a.target - 1)), `${a.id} one short`).not.toContain(a.id);

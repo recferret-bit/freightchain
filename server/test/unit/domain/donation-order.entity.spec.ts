@@ -1,4 +1,4 @@
-import { DonationOrder, verifyDonation } from '../../../src/domain/live/donation-order.entity.js';
+import { DonationOrder, donationSplitLanded, verifyDonation } from '../../../src/domain/live/donation-order.entity.js';
 import { EFFECTS } from '../../../src/domain/live/live-rules.js';
 import type { ChainTransaction } from '../../../src/domain/economy/chain-transaction.js';
 
@@ -22,5 +22,19 @@ describe('DonationOrder (a paid donation in flight)', () => {
     expect(verifyDonation(tx({ feePayer: 'someone' }), order)).toBe('not signed by your wallet');
     expect(verifyDonation(tx({ outcome: 'failed' }), order)).toBe('transaction failed on chain');
     expect(verifyDonation(tx({ outcome: 'no_metadata' }), order)).toBe('transaction has no metadata');
+  });
+
+  it('a reserved share must be the split; once released, the full price or a split that already landed both pay it', () => {
+    const shared = DonationOrder.restore({ ...order.snapshot(), referrer: 'host', shareLamports: 1_000_000, shareState: 'reserved' });
+    const price = shared.lamports;
+    const split = tx({ transfers: [{ source: 'fan', destination: 'driver', lamports: price - 1_000_000 }, { source: 'fan', destination: 'host', lamports: 1_000_000 }] });
+    const full = tx();
+    expect(verifyDonation(split, shared)).toBeNull();
+    expect(donationSplitLanded(split, shared)).toBe(true);
+    expect(verifyDonation(full, shared)).toMatch(/no transfer/);
+    const released = DonationOrder.restore({ ...shared.snapshot(), shareState: 'released' });
+    expect(verifyDonation(full, released)).toBeNull();
+    expect(verifyDonation(split, released)).toMatch(/no transfer/);
+    expect(donationSplitLanded(full, released)).toBe(false);
   });
 });

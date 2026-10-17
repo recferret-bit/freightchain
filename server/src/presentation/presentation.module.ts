@@ -25,6 +25,7 @@ import { SnsHttpController } from './sns/sns.http.controller.js';
 import { SolanaPayHttpController } from './solana-pay/solana-pay.http.controller.js';
 import { ActionsHttpController } from './actions/actions.http.controller.js';
 import { PledgesHttpController } from './economy/pledges.http.controller.js';
+import { ReferralsHttpController } from './referrals/referrals.http.controller.js';
 import { HonkHttpController } from './honk/honk.http.controller.js';
 import { EntitiesHttpController } from './entities/entities.http.controller.js';
 import { EditorAuthHttpController } from './editor/editor-auth.http.controller.js';
@@ -33,6 +34,6 @@ import { EditorJobsHttpController } from './editor/editor-jobs.http.controller.j
 import { EditorMcpHttpController } from './editor/editor-mcp.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, HonkHttpController, EntitiesHttpController, EditorAuthHttpController, EditorEntitiesHttpController, EditorJobsHttpController, EditorMcpHttpController],
+  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, HonkHttpController, EntitiesHttpController, EditorAuthHttpController, EditorEntitiesHttpController, EditorJobsHttpController, EditorMcpHttpController, ReferralsHttpController],
 })
 export class PresentationModule {}

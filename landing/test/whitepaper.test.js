@@ -163,12 +163,12 @@ test('numbers: live-stream prices and limits equal live-rules.ts', () => {
   assert.match(l, /EFFECT_WINDOW_MS = 20_000/); assert.match(text, /per ride per 20 s/); assert.match(l, /LINE_WINDOW_MS = 3_000/); assert.match(text, /per 3 s/);
 });
 
-test('all 34 achievements, their names and descriptions match domain achievements.ts', () => {
+test('the minted badges match the catalogue; convoy stays off this page until its cards exist', () => {
   const achCode = src('server/src/domain/achievements/achievements.ts');
   const ids = [...achCode.matchAll(/id: '([^']+)', family: '([^']+)', tier: (\d+), name: '([^']+)', desc: '([^']+)'/g)];
-  assert.equal(ids.length, 35);
+  assert.equal(ids.length, 39); // 35 existing rows (34 cards + the legacy podium) plus the convoy ladder
   for (const [, id, family,, name, desc] of ids) {
-    if (family === 'podium') continue;
+    if (family === 'podium' || family === 'convoy') continue; // convoy is catalogue-only; the page still shows the 34 existing badges
     assert.ok(html.includes(name), `whitepaper missing badge name ${name}`);
     assert.ok(html.includes(desc), `whitepaper missing badge desc ${desc}`);
     assert.ok(html.includes(`/badges/${id}.svg`), `whitepaper missing badge image for ${id}`);

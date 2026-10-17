@@ -14,7 +14,7 @@ const CHAIN = [
   { c: '#14f195', st: 'LIVE LOOKUP', h: 'SNS', big: 'YOU.SOL', p: 'Your Solana Name Service name, when you have one, shows on your profile instead of a wallet string.', small: 'Chain read · 24 h cache',
     why: 'A 44-character address means nothing to a rider. A .sol name is a handle people remember and share.',
     fit: 'Sign-in reads your favourite .sol name from chain, caches it for 24 h, and falls back to the wallet.' },
-  { c: '#ffcf5a', st: 'DEVNET · NOT AUDITED', h: 'Escrow', big: '70 / 20 / 10', p: 'An Anchor program holds every pool. Prizes go only to attested rides. A missed goal refunds everyone.', small: '14 instructions · 12 events',
+  { c: '#ffcf5a', st: 'DEVNET · NOT AUDITED', h: 'Escrow', big: '65 / 5 / 20 / 10', p: 'An Anchor program holds every pool. Prizes go only to attested rides. A missed goal refunds everyone.', small: '14 instructions · 12 events',
     why: 'A prize pool only works if nobody can run off with it, not even us. The money has to sit where we cannot touch it.',
     fit: 'Tickets pay the program. The server can only attest rides. Winners are committed as a root, then paid by Merkle proof; a missed goal refunds.' },
   { c: '#ff5a4d', st: 'MOCK OR DEVNET SOL', h: 'Donations', big: 'NIGHT · SINKHOLE', p: 'Spectators of a live ride can chat and donate to turn day to night or open a hole ahead. One effect per 20 s.', small: 'Applied by the driver\'s game',
@@ -148,8 +148,9 @@ export const SLIDES = [
       <div class="copy">
         <div class="lbl">04 · The money</div>
         <h1>The program<br>holds the money.</h1>
-        <div class="split" role="group" aria-label="70 percent to finishers, 20 percent to the next pool, 10 percent fee">
-          <div style="--w:70"><b>70%</b><i class="desc">Of every pool: paid to finishers, ranked by distance</i><span>finishers · by distance</span></div>
+        <div class="split" role="group" aria-label="65 percent prizes, 5 percent referrals, 20 percent to the next pool, 10 percent fee">
+          <div style="--w:65"><b>65%</b><i class="desc">Of every pool: paid to finishers, ranked by distance</i><span>finishers · by distance</span></div>
+          <div style="--w:5"><b>5%</b><i class="desc">Of every pool: paid for invites</i><span>invites</span></div>
           <div style="--w:20"><b>20%</b><i class="desc">Of every pool: seeds the next pool</i><span>next pool</span></div>
           <div style="--w:10"><b>10%</b><i class="desc">Of every pool: the platform fee</i><span>fee</span></div>
         </div>
@@ -216,7 +217,7 @@ export const FACTS = [
   ['code', 'TORQUE_PEAK = 2000 rpm · SHIFT_TIME = 0.4 s'],
   ['code', 'HOLE_CHANCE = 0.045 · HOLE_FIRST = 150 · OFFROAD_FAIL_SECONDS = 20'],
   ['code', 's = (s + 0x6D2B79F5) | 0   // mulberry32: the same road in your browser and on the server'],
-  'Vanilla ES modules · three.js r160 · no build step · no framework', 'NestJS · Prisma · PostgreSQL', 'Prize pool split 70 / 20 / 10',
+  'Vanilla ES modules · three.js r160 · no build step · no framework', 'NestJS · Prisma · PostgreSQL', 'Prize pool split 65 / 5 / 20 / 10',
   'Solana devnet · no token · not audited', ['code', 'program id 8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p'], 'Anchor program · 14 instructions · 12 events · 24 errors',
   'Built solo in Belgrade'];
 

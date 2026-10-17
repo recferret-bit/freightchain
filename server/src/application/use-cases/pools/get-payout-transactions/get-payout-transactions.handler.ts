@@ -1,3 +1,4 @@
+import { Optional } from '@nestjs/common';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import { poolPayouts, TOP20_SIZE } from '../../../../domain/economy/pool-payouts.js';
 import { prizeBound } from '../../../../domain/economy/vault-split.js';
@@ -9,6 +10,7 @@ import { RideQueryPort } from '../../../ports/rides/ride-query.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { HasherPort } from '../../../ports/shared/hasher.port.js';
 import { winnersTree } from '../../../../domain/economy/winners-merkle.js';
+import { ReferralPayoutService } from '../../../services/referral-payout.service.js';
 import { GetPayoutTransactionsQuery, type PayoutTransactionsDto, type PayoutTxDto, type SignableTxDto } from './get-payout-transactions.query.js';
 
 /**
@@ -27,6 +29,7 @@ export class GetPayoutTransactionsHandler implements IQueryHandler<GetPayoutTran
     private readonly rules: RulesConfigPort,
     private readonly clock: ClockPort,
     private readonly hasher: HasherPort,
+    @Optional() private readonly referralPayout?: ReferralPayoutService,
   ) {}
 
   async execute({ wallet, poolId }: GetPayoutTransactionsQuery): Promise<PayoutTransactionsDto> {
@@ -41,13 +44,18 @@ export class GetPayoutTransactionsHandler implements IQueryHandler<GetPayoutTran
     const s = pool.snapshot();
     const prizeLamports = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps });
     const ranking = await this.rides.poolRanking(poolId, TOP20_SIZE, true); // verified recordings only – money never follows shadow mode
-    const plan = poolPayouts(prizeLamports, ranking.map((r) => r.wallet)).filter((p) => p.lamports > 0);
+    const plan = this.referralPayout
+      ? await this.referralPayout.leaves(pool)
+      : poolPayouts(prizeLamports, ranking.map((r) => r.wallet)).filter((p) => p.lamports > 0).map((p) => ({ ...p, kind: 'rider' as const }));
     const tree = winnersTree(poolId, plan.map((p) => ({ wallet: p.wallet, lamports: p.lamports })), (d) => this.hasher.sha256(d));
     const chain = await this.chain.readPool(poolId);
     if (!chain) throw new NotFoundError(`pool ${poolId} is not on chain`);
     const paidBit = (rank: number) => chain.paidMask !== undefined && ((chain.paidMask >> BigInt(rank - 1)) & 1n) === 1n;
-    const amounts = new Map(plan.map((p) => [p.wallet, p.lamports]));
-    const ranks = ranking.map((r, i) => ({ rank: i + 1, wallet: r.wallet, distance: Math.round(r.distance), rides: r.rides, lamports: amounts.get(r.wallet) ?? 0, paid: paidBit(i + 1) }));
+    const riderLeaves = plan.filter((p) => (p.kind ?? 'rider') === 'rider');
+    const ranks = riderLeaves.map((p) => {
+      const row = ranking.find((r) => r.wallet === p.wallet);
+      return { rank: p.rank, wallet: p.wallet, distance: Math.round(row?.distance ?? 0), rides: row?.rides ?? 0, lamports: p.lamports, paid: paidBit(p.rank) };
+    });
     const sign = (t: SignableTxDto): SignableTxDto => ({ transaction: t.transaction, message: t.message, lastValidBlockHeight: t.lastValidBlockHeight });
     const out: PayoutTransactionsDto = { poolId, prizeLamports, ranks, committedRoot: chain.winnersRoot ?? null, payFrom: chain.payFrom?.getTime() ?? null, commit: null, veto: null, transactions: [], close: null, note: null };
     if (!chain.winnersRoot) {

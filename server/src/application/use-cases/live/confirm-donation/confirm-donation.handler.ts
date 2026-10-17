@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
-import { verifyDonation, type DonationOrder } from '../../../../domain/live/donation-order.entity.js';
+import { donationSplitLanded, verifyDonation, type DonationOrder } from '../../../../domain/live/donation-order.entity.js';
 import { liveFeatures } from '../../../../domain/live/live-features.js';
 import { EFFECTS, EFFECT_WINDOW_MS, NOTE_MAX_LENGTH, type EffectId } from '../../../../domain/live/live-rules.js';
 import { toRideEventDto, type ConfirmDonationResultDto } from '../../../../domain/live/live.dto.js';
@@ -44,19 +44,27 @@ export class ConfirmDonationHandler implements ICommandHandler<ConfirmDonationCo
     if (used) throw new ConflictError('this transaction already paid a donation', 'signature_reused');
     const tx = await this.chain.getTransaction(signature);
     if (!tx) return { status: 'pending' };
-    const why = verifyDonation(tx, order);
-    if (why) throw new BadRequestError(why, 'bad_donation_payment');
+    const current = await this.orders.findById(orderId); // the RPC wait is long enough for a stale reservation to be released
+    if (!current || current.wallet !== wallet || current.rideId !== rideId) throw new NotFoundError('donation not found');
+    if (current.status === 'paid') return this.alreadyPaid(current, signature);
+    const why = verifyDonation(tx, current);
+    if (why) {
+      await this.orders.releaseShare(current.id); // a transfer that does not match gives the reserved share back; a rebuild is then one transfer of the whole price
+      throw new BadRequestError(why, 'bad_donation_payment');
+    }
     const now = this.clock.now();
-    if (!(await this.orders.claim(order.id, signature, now))) {
-      const again = await this.orders.findById(order.id);
+    if (!(await this.orders.claim(current.id, signature, now))) {
+      const again = await this.orders.findById(current.id);
       if (again?.status === 'paid' && again.signature === signature) return this.alreadyPaid(again, signature);
       throw new ConflictError('this transaction already paid a donation', 'signature_reused');
     }
-    return { status: 'paid', event: toRideEventDto(await this.deliver(order, signature, now)) };
+    if (current.shareState === 'reserved' && donationSplitLanded(tx, current)) await this.orders.markSharePaid(current.id);
+    return { status: 'paid', event: toRideEventDto(await this.deliver(current, signature, now)) };
   }
 
   private async alreadyPaid(order: DonationOrder, signature: string): Promise<ConfirmDonationResultDto> {
     if (order.signature !== signature) throw new ConflictError('this donation is already paid', 'already_paid');
+    if (order.shareState === 'reserved') await this.orders.markSharePaid(order.id); // the claimer died before the share update; a reserved claim was a split
     const event = await this.events.findBySignature(signature) ?? await this.deliver(order, signature, this.clock.now());   // the claimer died before writing it
     return { status: 'paid', event: toRideEventDto(event) };
   }
@@ -79,7 +87,9 @@ export class ConfirmDonationHandler implements ICommandHandler<ConfirmDonationCo
     event ??= await this.events.findBySignature(signature);   // a racing delivery of the same transfer won
     if (!event) throw new ConflictError('the donation could not be recorded – confirm again', 'retry');
     await this.orders.setEvent(order.id, event.id ?? 0);
-    if (inserted && ride) await this.stats.recordDonation(ride.wallet, order.lamports, true, event.snapshot().createdAt).catch((e: unknown) => this.logger.warn(`donation statistics deferred to stats:reconcile: ${e instanceof Error ? e.message : String(e)}`));   // the DRIVER's totals: money that moved
+    const fresh = await this.orders.findById(order.id);
+    const kept = fresh?.shareState === 'paid' ? fresh.shareLamports : 0; // the driver was paid the price minus a share that actually stuck
+    if (inserted && ride) await this.stats.recordDonation(ride.wallet, order.lamports - kept, true, event.snapshot().createdAt).catch((e: unknown) => this.logger.warn(`donation statistics deferred to stats:reconcile: ${e instanceof Error ? e.message : String(e)}`));
     this.logger.log({ event: 'live-donation', msg: `paid donation ${event.effect} on ride ${order.rideId}`, rideId: order.rideId, wallet: order.wallet, effect: event.effect, signature });
     return event;
   }

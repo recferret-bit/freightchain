@@ -171,6 +171,7 @@ pub fn daily_series(start_at: i64) -> SeriesParams {
         prize_bps: 7000,
         seed_bps: 2000,
         fee_bps: 1000,
+        referral_bps: 0,
         start_at,
     }
 }
@@ -196,6 +197,7 @@ pub fn default_params() -> CreatePoolParams {
         prize_bps: 6000,
         seed_bps: 2500,
         fee_bps: 1500,
+        referral_bps: 0,
     }
 }
 

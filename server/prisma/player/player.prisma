@@ -20,6 +20,9 @@ model Player {
   stats        PlayerStats?
   sponsorPledges Pledge[] @relation("SponsorPledges")
   driverPledges  Pledge[] @relation("DriverPledges")
+  referralCode   ReferralCode?
+  referralsOut   Referral[] @relation("AsReferrer")
+  referralIn     Referral?  @relation("AsReferee")
 
   @@index([createdAt]) // the admin PLAYERS list: newest first
   @@index([freeDay]) // the midnight daily free-ride grant
@@ -120,5 +123,34 @@ model GameSetting {
   key   String @id
   value Int
 
+  @@schema("player")
+}
+
+// The wallet's invite code and the cab colour it gives a friend. Off the Player row so a player snapshot stays the credits and the stamps.
+model ReferralCode {
+  wallet    String   @id
+  player    Player   @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  code      String   @unique
+  gift      String   @default("convoy") // convoy | signal | amber
+  createdAt DateTime
+
+  @@schema("player")
+}
+
+// One referrer per wallet, ever. referee is the key. status expired is a tombstone: the slot returns, the wallet cannot bind again.
+model Referral {
+  referee      String    @id
+  refereePlayer Player   @relation("AsReferee", fields: [referee], references: [wallet], onDelete: Cascade)
+  referrer     String
+  referrerPlayer Player  @relation("AsReferrer", fields: [referrer], references: [wallet], onDelete: Cascade)
+  status       String // pending | qualified | expired
+  boundAt      DateTime
+  expiresAt    DateTime
+  qualifiedAt  DateTime?
+  rideId       String?
+  freeGranted  Boolean   @default(false)
+  badgeCounted Boolean   @default(false)
+
+  @@index([referrer, status])
   @@schema("player")
 }

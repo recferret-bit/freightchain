@@ -1,4 +1,5 @@
 import { COSMETIC_ITEMS, COSMETIC_SLOTS, defaultCosmetic } from '../../../../src/domain/economy/cosmetics.js';
+import { GIFT_ITEMS } from '../../../../src/domain/referral/referral-rules.js';
 import { HONK_PARTS } from '../../../../src/domain/honk/parts-catalog.js';
 import { HONK_EMISSION_CAP, HONK_GENESIS, HONK_MAX_SUPPLY, bandAmounts, clipToCap, formatHonk, honkQuote, visualPrice } from '../../../../src/domain/honk/tokenomics.js';
 
@@ -49,10 +50,10 @@ describe('HONK quote', () => {
     expect(visualPrice('crimson')).toBe(65n * U);
   });
 
-  it('the cab catalog is the 30 cosmetics, and an unlockable costs visualPrice', () => {
+  it('the HONK catalog excludes referral paints, and an unlockable costs visualPrice', () => {
     expect(HONK_PARTS).toHaveLength(54);
     expect(HONK_PARTS.map((p) => p.sort)).toEqual(HONK_PARTS.map((_, i) => i));
-    expect(HONK_PARTS.map((p) => `${p.slot}:${p.item}`)).toEqual(COSMETIC_SLOTS.flatMap((slot) => COSMETIC_ITEMS[slot].map((item) => `${slot}:${item}`)));
+    expect(HONK_PARTS.map((p) => `${p.slot}:${p.item}`)).toEqual(COSMETIC_SLOTS.flatMap((slot) => COSMETIC_ITEMS[slot].filter((item) => slot !== 'truck_color' || !(GIFT_ITEMS as readonly string[]).includes(item)).map((item) => `${slot}:${item}`)));
     for (const p of HONK_PARTS) expect(p.price, `${p.slot}:${p.item}`).toBe(p.item === defaultCosmetic(p.slot) ? null : visualPrice(p.item));
   });
 

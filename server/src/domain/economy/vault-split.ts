@@ -1,11 +1,13 @@
 /* The pool program's money maths, exactly as programs/freightchain-pools computes it (state.rs `bps_of` / `split` / `Pool::pot`, settle.rs `handle_close_pool`):
-     pot         = price × tickets_sold + sponsored                 (u64; more is MathOverflow)
-     prize_share = floor(pot × prize_bps / 10 000)                  – also the bound of every pay_prize together
-     seed_share  = floor(pot × seed_bps  / 10 000)
-     fee_share   = pot − prize_share − seed_share                   (the floor remainders land here; fee_bps is never multiplied)
-     platform    = floor(fee_share × platform_fee_bps / 10 000)     (program v4: the pool's own snapshot, taken when it opened – L8)
+     pot             = price × tickets_sold + sponsored             (u64; more is MathOverflow)
+     prize_share     = floor(pot × prize_bps / 10 000)
+     seed_share      = floor(pot × seed_bps  / 10 000)
+     referral_share  = floor(pot × referral_bps / 10 000)           (0 when the pool has no referral leg)
+     fee_share       = pot − prize − seed − referral                (the floor remainders land here; fee_bps is never multiplied)
+     platform        = floor(fee_share × platform_fee_bps / 10 000) (program v4: the pool's own snapshot, taken when it opened – L8)
+   pay_prize is capped at prize_share + referral_share (rider leaves and referrer leaves share one root).
    close_pool sends fee_share − platform to the fee treasury, platform to the platform treasury, the vault's rent minimum back to the pool's creator and EVERYTHING else
-   (seed share + unclaimed prize + stray lamports) to the seed treasury; a refunded pool sends all but the rent minimum to the seed treasury (program v4: its
+   (seed share + unclaimed prize + unclaimed referral + stray lamports) to the seed treasury; a refunded pool sends all but the rent minimum to the seed treasury (program v4: its
    tickets AND its sponsors are refunded first – M8 – so that is only stray lamports).
    The program works in u128; pot × bps passes 2^53 at ~1 300 SOL, so this file computes in BigInt and hands out numbers only when they are exact.
    One table pins both implementations: server/test/fixtures/chain/vault-split-cases.json (read by this file's spec AND by the program's tests/vault_split_table.rs). */
@@ -24,9 +26,9 @@ export class VaultMathOverflowError extends RangeError {
   constructor(what: string) { super(`MathOverflow: ${what} does not fit a u64`); this.name = 'VaultMathOverflowError'; }
 }
 
-export interface SplitBps { prizeBps: number; seedBps: number }
+export interface SplitBps { prizeBps: number; seedBps: number; /** absent on a pool from before the referral leg – treated as 0, which keeps the old prize/seed/fee numbers */ referralBps?: number }
 export interface PoolMoney extends SplitBps { priceLamports: number | bigint; ticketsSold: number; sponsored: number | bigint }
-export interface Split<T> { prize: T; seed: T; fee: T }
+export interface Split<T> { prize: T; seed: T; referral: T; fee: T }
 export interface CloseInput extends PoolMoney {
   /** Config.platform_fee_bps when close_pool runs */
   platformFeeBps: number;
@@ -71,10 +73,10 @@ export function potOfBig(m: PoolMoney): bigint {
 }
 
 export function splitLamportsBig(total: bigint, bps: SplitBps): Split<bigint> {
-  const prize = bpsOfBig(total, bps.prizeBps), seed = bpsOfBig(total, bps.seedBps);
-  const fee = total - prize - seed;
-  if (fee < 0n) throw new VaultMathOverflowError('prize + seed share'); // prize_bps + seed_bps > 10 000 – the program refuses such a pool (BpsSum)
-  return { prize, seed, fee };
+  const prize = bpsOfBig(total, bps.prizeBps), seed = bpsOfBig(total, bps.seedBps), referral = bpsOfBig(total, bps.referralBps ?? 0);
+  const fee = total - prize - seed - referral;
+  if (fee < 0n) throw new VaultMathOverflowError('prize + seed + referral share'); // the three floored legs exceed the pot – the program refuses a split that sums past 10 000
+  return { prize, seed, referral, fee };
 }
 
 export function closeSplitBig(i: CloseInput): CloseSplit<bigint> {
@@ -87,8 +89,9 @@ export function closeSplitBig(i: CloseInput): CloseSplit<bigint> {
     const s = splitLamportsBig(potOfBig(i), i);
     platformFee = bpsOfBig(s.fee, i.platformFeeBps);
     fee = s.fee - platformFee;
-    unclaimed = s.prize - big(i.prizesPaid, 'prizes paid');
-    if (unclaimed < 0n) throw new VaultMathOverflowError('prizes paid above the prize share');
+    // referral lamports are paid through the same pay_prize path, so an unpaid referral leg is unclaimed the same way an unpaid prize is
+    unclaimed = s.prize + s.referral - big(i.prizesPaid, 'prizes paid');
+    if (unclaimed < 0n) throw new VaultMathOverflowError('prizes paid above the prize and referral shares');
   }
   const seed = distributable - fee - platformFee;
   if (seed < 0n) throw new VaultMathOverflowError('vault below fee + platform cut'); // BelowRentMin on chain
@@ -101,13 +104,17 @@ export function closeSplitBig(i: CloseInput): CloseSplit<bigint> {
 export const bpsOf = (amount: number, bps: number): number => exact(bpsOfBig(big(amount, 'amount'), bps));
 /** price × tickets sold + sponsorship: what the split is computed on */
 export const potOf = (m: PoolMoney): number => exact(potOfBig(m));
-/** prize and seed floored, the remainder to the fee */
+/** prize, seed and referral floored; the remainder is the fee */
 export function splitLamports(total: number, bps: SplitBps): Split<number> {
   const s = splitLamportsBig(big(total, 'total'), bps);
-  return { prize: exact(s.prize), seed: exact(s.seed), fee: exact(s.fee) };
+  return { prize: exact(s.prize), seed: exact(s.seed), referral: exact(s.referral), fee: exact(s.fee) };
 }
-/** The most all pay_prize instructions of a pool may pay together: its prize share (it grows with sponsorship). */
+/** The most the rider leaves of a pool may pay together: its prize share (it grows with sponsorship). */
 export const prizeBound = (m: PoolMoney): number => exact(splitLamportsBig(potOfBig(m), m).prize);
+/** The referral leg. 0 when the pool was opened without one. */
+export const referralBound = (m: PoolMoney): number => exact(splitLamportsBig(potOfBig(m), m).referral);
+/** prize share + referral share: the cap on the winners root (riders and referrers together). */
+export const payoutBound = (m: PoolMoney): number => exact(splitLamportsBig(potOfBig(m), m).prize + splitLamportsBig(potOfBig(m), m).referral);
 /** What close_pool will send where (the PoolClosed event's numbers). */
 export function closeSplit(i: CloseInput): CloseSplit<number> {
   const c = closeSplitBig(i);

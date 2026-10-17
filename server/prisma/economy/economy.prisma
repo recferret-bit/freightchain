@@ -71,6 +71,7 @@ model Pool {
   prizeBps      Int
   seedBps       Int
   feeBps        Int
+  referralBps   Int           @default(0) // 0 = a pool from before the referral leg (prize/seed/fee only)
   feeTreasury   String
   seedTreasury  String
   status        PoolStatus
@@ -109,13 +110,14 @@ model Pool {
   @@schema("economy")
 }
 
-// One prize the server's payout job pays from a pool (the payout key signs pay_prize). The row is written BEFORE the transaction goes out: `planned` →
+// One leaf the server's payout job pays from a pool (the payout key signs pay_prize). The row is written BEFORE the transaction goes out: `planned` →
 // `sent` (signature + lastValidBlockHeight stored, then broadcast) → `paid` once confirmed. A crash after `sent` is resolved from the signature's status (landed =
-// paid, expired = planned again), never by sending blind – one prize per rank and per wallet.
+// paid, expired = planned again), never by sending blind. One leaf per rank. A wallet who both finishes and referred someone has two rows, distinguished by kind.
 model PoolPayout {
   poolId               Int
   rank                 Int
   wallet               String
+  kind                 String    @default("rider") // rider | referrer
   lamports             BigInt
   status               String // planned | sent | paid
   signature            String?   @unique
@@ -127,7 +129,7 @@ model PoolPayout {
   pool                 Pool      @relation(fields: [poolId], references: [id])
 
   @@id([poolId, rank])
-  @@unique([poolId, wallet])
+  @@unique([poolId, wallet, kind])
   @@schema("economy")
 }
 

@@ -28,6 +28,13 @@ fn u(v: &Value, k: &str) -> u64 {
 fn n(v: &Value, k: &str) -> u64 {
     v[k].as_u64().unwrap()
 }
+/// A row without the key is referral 0 (every case written before the fourth leg).
+fn opt_n(v: &Value, k: &str) -> u64 {
+    v.get(k).and_then(|x| x.as_u64()).unwrap_or(0)
+}
+fn opt_u(v: &Value, k: &str) -> u64 {
+    v.get(k).map(|x| x.as_str().unwrap_or_else(|| panic!("{k} must be a string")).parse().unwrap()).unwrap_or(0)
+}
 
 fn pool_of(r: &Value) -> Pool {
     Pool {
@@ -69,6 +76,7 @@ fn pool_of(r: &Value) -> Pool {
         sponsor_refunded: 0,
         open_pledges: 0,
         min_review_secs: 0,
+        referral_bps: opt_n(r, "referralBps") as u16,
     }
 }
 
@@ -85,9 +93,10 @@ fn shared_table_matches_the_program_functions() {
         }
         let pot = p.pot().unwrap();
         assert_eq!(pot, u(r, "pot"), "{name}: pot");
-        let (prize, seed, fee) = split(pot, p.prize_bps, p.seed_bps).unwrap();
-        assert_eq!((prize, seed, fee), (u(r, "prize"), u(r, "seed"), u(r, "fee")), "{name}: split");
-        assert_eq!(p.prize_share().unwrap(), prize, "{name}: pay_prize bound");
+        let (prize, seed, referral, fee) = split(pot, p.prize_bps, p.seed_bps, p.referral_bps).unwrap();
+        assert_eq!((prize, seed, referral, fee), (u(r, "prize"), u(r, "seed"), opt_u(r, "referral"), u(r, "fee")), "{name}: split");
+        assert_eq!(p.prize_share().unwrap(), prize, "{name}: prize leg");
+        assert_eq!(p.payout_cap().unwrap(), prize + referral, "{name}: pay_prize bound");
         let platform = bps_of(fee, p.platform_fee_bps).unwrap();
         assert_eq!(platform, u(r, "platform"), "{name}: platform cut");
         let Some(c) = r["close"].as_object() else { continue };
@@ -96,7 +105,7 @@ fn shared_table_matches_the_program_functions() {
         let rent = u(&c, "rentReturned");
         let distributable = u(&c, "vault") - rent;
         let cancelled = r["cancelled"].as_bool().unwrap();
-        let (fee_out, plat_out, unclaimed) = if cancelled { (0, 0, 0) } else { (fee - platform, platform, prize - p.prizes_paid) };
+        let (fee_out, plat_out, unclaimed) = if cancelled { (0, 0, 0) } else { (fee - platform, platform, prize + referral - p.prizes_paid) };
         assert_eq!((fee_out, plat_out, unclaimed), (u(&c, "fee"), u(&c, "platformFee"), u(&c, "unclaimed")), "{name}: close legs");
         assert_eq!(distributable - fee_out - plat_out, u(&c, "seed"), "{name}: seed leg");
     }
@@ -132,6 +141,7 @@ fn shared_table_matches_close_pool_on_chain() {
             prize_bps: n(&r, "prizeBps") as u16,
             seed_bps: n(&r, "seedBps") as u16,
             fee_bps: n(&r, "feeBps") as u16,
+            referral_bps: opt_n(&r, "referralBps") as u16,
         };
         let id = e.create_pool(params);
         // L8: the cut is fixed when the pool opens – changing the config afterwards does not move this pool's close

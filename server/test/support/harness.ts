@@ -79,6 +79,8 @@ import { MemoryStatsRepository } from './in-memory/memory-stats-repository.js';
 import { StatsRepositoryPort } from '../../src/application/ports/stats/stats.repository.port.js';
 import { MemoryDonationOrderRepository, MemoryRideEventRepository, MemoryRideMuteRepository } from './in-memory/memory-live-repositories.js';
 import { DonationOrderRepositoryPort } from '../../src/application/ports/live/donation-order.repository.port.js';
+import { ReferralRepositoryPort } from '../../src/application/ports/referral/referral.repository.port.js';
+import { MemoryReferralRepository } from './in-memory/memory-referral-repository.js';
 import { RideMuteRepositoryPort } from '../../src/application/ports/live/ride-mute.repository.port.js';
 import { RideEventRepositoryPort } from '../../src/application/ports/live/ride-event.repository.port.js';
 
@@ -183,6 +185,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RideEventRepositoryPort).useValue(new MemoryRideEventRepository(memory))
       .overrideProvider(RideMuteRepositoryPort).useValue(new MemoryRideMuteRepository(memory))
       .overrideProvider(DonationOrderRepositoryPort).useValue(new MemoryDonationOrderRepository(memory))
+      .overrideProvider(ReferralRepositoryPort).useValue(new MemoryReferralRepository(memory))
       .overrideProvider(StatsRepositoryPort).useValue(new MemoryStatsRepository(memory))
       .overrideProvider(SettingsRepositoryPort).useValue(new MemorySettingsRepository(memory))
       .overrideProvider(EntityRepositoryPort).useValue(new MemoryEntityRepository(memory))

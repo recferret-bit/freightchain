@@ -46,14 +46,22 @@ A runtime knob (how many free rides a new wallet gets, the daily cap) is **not**
 
 ## Runtime settings
 
-Table `player.GameSetting` (`key` text, `value` integer). The migration seeds the rows. A missing row, or a stored value outside 0..100_000, falls back to the code default in `server/src/domain/settings/game-settings.ts`. Truncating the table does not change the defaults.
+Table `player.GameSetting` (`key` text, `value` integer). The migration seeds the rows. A missing row, or a stored value outside that key's bounds (`SETTING_BOUNDS`), falls back to the code default in `server/src/domain/settings/game-settings.ts`. Truncating the table does not change the defaults. Referral lamport caps stop at 2_000_000_000 because `value` is a signed 32-bit int.
 
 | Key | Default | What it does |
 |---|---|---|
 | `free_on_signup` | 10 | Free rides a **new** wallet starts with. Wallets that already exist are not topped up. |
 | `free_rides_daily_max` | 5 | The +1 at 00:00 UTC stops here. A balance already above it (signup, a promo, an admin grant) stays. |
+| `referral_max` | 30 | Most invites one wallet can hold (1..1000). |
+| `referral_invite_start` / `referral_invite_step` / `referral_shifts_per_step` | 3 / 3 / 5 | Invites at the start, added every N verified paid shifts. |
+| `referral_invite_ttl_days` | 14 | A pending invite with no verified finish expires. The wallet cannot bind again. |
+| `referral_free_ride_window_days` | 7 | The MEDIUM free-run bonus has to land inside this many days of the bind. |
+| `referral_free_rides_referrer` / `referral_free_rides_referee` / `referral_free_ride_weekly_cap` | 2 / 3 / 10 | The bonus, and how many of them one referrer can receive per window. |
+| `referral_referrer_part_bps` | 8000 | The referrer's part of a sponsored rider's referral slice (5001..10000). |
+| `referral_ride_cap_lamports` | 1000000000 | Per referrer, per pool. |
+| `referral_donation_share_bps` / `referral_donation_cap_lamports` | 1000 / 500000000 | Spectator-tip share, and the lifetime cap of that share for one pair. |
 
-Change one with the signed admin API (`GET /api/admin/settings`, then the challenge and `POST /api/admin/settings`). Bounds are 0..100_000. The same session can add or remove one signed-in wallet's free rides (`POST /api/admin/players/free-rides`). A result below 0 or above 100_000 is refused.
+Change one with the signed admin API (`GET /api/admin/settings`, then the challenge and `POST /api/admin/settings`). Each key has its own bounds (the admin form shows them). The same session can add or remove one signed-in wallet's free rides (`POST /api/admin/players/free-rides`). A result below 0 or above 100_000 is refused. Detail of the invite rules: `docs/agents/referral.md`.
 
 ## Server settings (`env.schema.ts`)
 

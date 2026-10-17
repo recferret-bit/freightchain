@@ -44,6 +44,8 @@ export interface PoolCreatedFields {
   prizeBps?: number;
   seedBps?: number;
   feeBps?: number;
+  /** omitted on a hand-made event = 0 */
+  referralBps?: number;
   feeTreasury?: string;
   seedTreasury?: string;
   /** opened by `open_next_pool` from the tier's series (else `create_pool` by the admin) */
@@ -137,6 +139,8 @@ export interface PoolChainState {
   prizeBps: number;
   seedBps: number;
   feeBps: number;
+  /** omitted on an account read that predates the field = 0 */
+  referralBps?: number;
   feeTreasury: string;
   seedTreasury: string;
   createdAt: Date;
@@ -181,6 +185,8 @@ export interface SeriesChainState {
   prizeBps: number;
   seedBps: number;
   feeBps: number;
+  /** omitted = 0 */
+  referralBps?: number;
   feeTreasury: string;
   seedTreasury: string;
   nextOpenAt: Date;
