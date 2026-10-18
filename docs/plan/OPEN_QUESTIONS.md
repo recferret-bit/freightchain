@@ -1,5 +1,7 @@
 # FreightChain — сводный список открытых вопросов
 
+> **Superseded.** Open questions now live in [docs/spec/OPEN.md](../spec/OPEN.md). This file is kept as history. See [docs/spec](../spec/README.md).
+
 Статус на 17.10.2026 (после раунда 19). Один список всего, что ещё не решено, по всем планам (`MASTER_PLAN.md`, `DEVNET_PRESEASON.md`, `GAPS.md`, `research/*`, `../legal/*`).
 У каждого пункта — **рекомендация**.
 

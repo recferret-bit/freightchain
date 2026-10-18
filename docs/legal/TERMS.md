@@ -101,7 +101,7 @@ The Services are in active development. We may add, change, suspend or remove fe
 ## 7. Game modes, rides and tickets
 
 7.1. **Free modes.**
-- **Training rides** are unlimited and free. They are not ranked, not part of any contest, do not earn TEN4 and cannot be watched live.
+- **Training rides** are unlimited and free. They are not ranked, not part of any contest, do not earn TEN4. **[CHANGED 2026-10-17]** No ride of any kind can be watched live (Section 14.4).
 - **EASY** is a free introductory ride that guests and new players can start without a ticket.
 - Free modes may offer levels, tutorials and assists.
 
@@ -121,7 +121,7 @@ The Services are in active development. We may add, change, suspend or remove fe
 
 ## 8. Skill-based competition — no wagering
 
-8.1. Prize contests on FreightChain are **contests of skill**. Ranking depends on driving performance (for example on-time delivery, cargo condition and route execution) measured by the game. There are **no random draws, no lotteries and no games of chance** for prizes.
+8.1. Prize contests on FreightChain are **contests of skill**. Ranking depends on driving performance (for example on-time delivery, cargo condition and route execution) measured by the game. There are **no random draws, no lotteries and no games of chance** for prizes. **[CHANGED 2026-10-17]** Donations, tips and any other viewer action never affect a ride, a result or a ranking (Section 14).
 
 8.2. **No wagering.** You do not bet or stake anything on any outcome. Buying a Ticket buys access to a ride; you can always play free training rides, and you can enter the ranked contest with a free granted ticket.
 
@@ -199,9 +199,17 @@ The Services are in active development. We may add, change, suspend or remove fe
 
 13.6. **Availability.** TEN4 features or claims may be restricted in some locations, and third-party exchanges may impose their own restrictions.
 
-## 14. Donations to drivers
+## 14. Donations, tips and viewer interaction **[CHANGED 2026-10-17]**
 
-Viewers may send donations to a driver during a live ride. **100% of the donation amount goes to the driver** (network fees apply). Donations are voluntary gifts, **final and non-refundable**, and create no obligation for the driver or us. Donation effects shown in the ride are cosmetic. Do not use donations for payment for services, money transfers or to influence contest results; donations do not affect rankings.
+14.1. **No effect on any ride.** Donations, tips and any other paid or free action by a viewer **never affect any ride** — not the road, obstacles or holes, traffic, weather, day or night, damage, speed, timing, mini-games or anything else in the game — and never affect results, rankings, verification or prizes.
+
+14.2. **Where viewers can interact.** Viewer interaction is limited to **chat and cosmetic reactions** on the **replay of a player's previous completed ride**. There is no viewer interaction with a ride that is in progress.
+
+14.3. **Donations and tips.** Where available, viewers may send a donation or tip to a driver while viewing such a replay. **100% of the donation amount goes to the driver** (network fees apply). Donations are voluntary gifts, **final and non-refundable**, and create no obligation for the driver or us. Do not use donations for payment for services, money transfers or to influence contest results. Donations and replay chat are enabled at the devnet launch for testing; on devnet any tokens used have no value. [CHANGED 2026-10-17] [LAWYER: confirm treatment of peer-to-peer gifts (consumer, tax and payment-services rules) in target locations.]
+
+14.4. **No live watching; when replays become public.** Rides in progress are **not publicly watchable**. A player's ride replay becomes public only after that ride is completed and, for a ride in a prize pool, only **after the pool's validation (review) window ends**; the same applies to the pool's road plan. Replays show positions reconstructed by our servers and do not show your raw, per-frame inputs.
+
+14.5. **Not an entry; no advantage.** A donation or tip is not an entry into any contest, does not buy or replace a Ticket or an attempt, gives **no prize advantage** and is **not linked to ranking** in any way, either for the sender or for the driver.
 
 ## 15. Seasons
 
@@ -219,7 +227,7 @@ Viewers may send donations to a driver during a live ride. **100% of the donatio
 
 16.3. **Moderation.** We may filter, remove or hide content, mute or ban users, and report illegal content. We are not obliged to monitor content.
 
-16.4. **Retention.** Live chat messages are deleted after 90 days (Privacy Policy).
+16.4. **Retention.** **[CHANGED 2026-10-17]** Chat messages (on replays) are deleted after 90 days (Privacy Policy).
 
 16.5. **Feedback.** If you send ideas or feedback, we may use them without obligation.
 

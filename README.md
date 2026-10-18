@@ -555,7 +555,8 @@ flowchart TB
 - [`shared/`](shared) — workspace package (`@freightchain/shared`) re-exporting [`client/shared/`](client/shared) (`prng.js`, `road.js`, `traffic.js`, `physics.js`) for both browser client and backend `ReplayEngine`.
 - [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `editor-worker`, `postgres`, `redis`, `mcp`). `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icons, banners, badge art.
-- [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at.
+- [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at. As-built product: [`docs/spec/PRODUCT.md`](docs/spec/PRODUCT.md). Coverage bar: [`docs/testing/COVERAGE_CONTRACT.md`](docs/testing/COVERAGE_CONTRACT.md). The happy-dom checklist is [`docs/testing/E2E_PLAN.md`](docs/testing/E2E_PLAN.md).
+- [`e2e/`](e2e) — fast page-module checks (happy-dom + API). Not the browser bar. `npm run test:e2e:block1` and `npm run test:e2e:block2`.
 - [`landing/`](landing) — the `/` page, the whitepaper and the pitch deck. Vite.
 - [`mcp/`](mcp) — the entity MCP server: the `3d-assets` skill as tools for the AI model editor (Streamable HTTP for the server's bridge, stdio for Claude Code). Production HTTP counters are shared in Redis with a restricted MCP user; AI jobs use a shared PostgreSQL queue with atomic admission and claims; the bridge owns its tool policy, AI writes remain checked drafts, and publishing requires a wallet signature.
 - [`media/`](media) — promo clips and the chiptune synth.
@@ -563,7 +564,7 @@ flowchart TB
 - [`programs/`](programs) — the Anchor programs (`freightchain_pools`, `freightchain_honk`). Anchor 1.2.
 - [`server/`](server) — NestJS 12, Prisma, PostgreSQL, the replay worker, and the dedicated AI worker (`npm run editor:worker`).
 
-Also at the root: `package.json`, `docker-compose.yml` (PostgreSQL on `127.0.0.1:15433`, Redis and `worker` optional under profiles), [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md).
+Also at the root: `package.json`, `docker-compose.yml` (PostgreSQL on `127.0.0.1:15433`, Redis and `worker` optional under profiles), `docker-compose.e2e.yml` (the code e2e database on `127.0.0.1:15434`), [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md).
 
 ## Skills
 
@@ -759,6 +760,19 @@ bash .claude/skills/run-tests/e2e.sh editor
 ```
 
 Integration tests must use a dedicated test database. See the [security review and residual limitations](docs/reviews/entity-editor-security.md), [editor architecture](docs/agents/editor.md), [HTTP contract](docs/editor-api.md), [entity format](docs/agents/world.md#entities-every-3d-model-is-data) and [configuration reference](docs/configuration.md).
+
+## Local code end-to-end
+
+Fast layer, no browser. It does not replace the headless Chrome suites or the coverage contract ([`docs/testing/COVERAGE_CONTRACT.md`](docs/testing/COVERAGE_CONTRACT.md), plan [`docs/testing/IMPLEMENTATION_PLAN.md`](docs/testing/IMPLEMENTATION_PLAN.md)). Block 1 is Postgres, Redis and the API with the chain off. Block 2 is the same API in program mode, plus a host `solana-test-validator` when Agave is installed (the script does not pull a Solana image).
+
+```bash
+npm run test:e2e:block1
+npm run test:e2e:block2
+```
+
+Page modules alone, with API checks skipped: `npm run test:e2e:pages`.
+
+The stack is [`docker-compose.e2e.yml`](docker-compose.e2e.yml) (project `freightchain-e2e`, Postgres `127.0.0.1:15434`, Redis `:16381`) so it can sit beside the dev database on 15433. The checklist, the player / admin / promo / referral / paid-week scenarios, and the coverage matrix are [`docs/testing/E2E_PLAN.md`](docs/testing/E2E_PLAN.md). Wallet popups, phone QR and Solana Pay deep links are [`docs/testing/MANUAL_TESTS.md`](docs/testing/MANUAL_TESTS.md).
 
 ## Tests
 
