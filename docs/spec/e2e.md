@@ -30,7 +30,7 @@
   1. `free-g` — только тул-сим `?sim=1` (продуктовой ссылки `?offline=1` нет); голый `play.html` заказывает EASY;
   2. онлайн-тренировки `free-1c` / `free-2c` / `free-3c` (HARD ×10; `free-3b` заморожен), без списания `freeRides`;
   3. `POST /api/auth/guest` — только EASY (`guest_easy_only`);
-  4. недельный выданный билет 1h (повторный `POST`, пока грант ещё `created`, возвращает ту же поездку; `weekly_ticket_spent` — гонка claim);
+  4. недельный выданный билет 1h (промо 1h забирается раньше и грант не тратится; без промо первый `POST` тратит грант; повторный `POST`, пока поездка `created`, возвращает её; `weekly_ticket_spent` — гонка claim);
   5. счётчик `free_on_signup` / дневной грант по-прежнему хранится, тренировки его не тратят.
   
   Промо `kind: 'ride'`, `GET /api/prize/board` и тикер TEN4 тоже на main. Маршруты `auth/pair` и `referrals` с main сохранены. Программы: `programs/freightchain_pools` и `programs/freightchain_honk`.
