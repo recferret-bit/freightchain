@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { liveFeatures, refusalFor, type LiveFeaturesDto } from '../../domain/live/live-features.js';
-import type { EffectId } from '../../domain/live/live-rules.js';
+import { EFFECTS, type EffectId } from '../../domain/live/live-rules.js';
+import { rankedSpectatorBlocked } from '../../domain/prize/prize-rules.js';
 import type { Ride } from '../../domain/rides/ride.entity.js';
 import { RideStatus } from '../../domain/rides/ride-status.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../domain/shared/errors.js';
@@ -24,6 +25,9 @@ export class LiveAccessService {
     if (ride.isFree) throw new ForbiddenError('stream watching and interactions are not available on free rides', 'free_ride_no_stream');
     if (ride.wallet === wallet) throw new ForbiddenError('this is your own ride – spectators write here', 'own_ride');
     if (!ride.isInStatus(RideStatus.Running) || ride.isStaleRunning(now, this.rules.get())) throw new ConflictError(`the ride is ${ride.isInStatus(RideStatus.Running) ? 'off the air' : ride.status}`, 'ride_not_live');
+    if (rankedSpectatorBlocked(ride.ranked, input.kind === 'donation' ? { kind: 'donation', game: EFFECTS[input.effect].game, obstacle: EFFECTS[input.effect].obstacle, effect: input.effect } : input)) {
+      throw new ConflictError('ranked rides do not take spectator effects – the chat line still works', 'ranked_effects_off');
+    }
     const features = liveFeatures(this.rules.get().live, ride);
     const refused = refusalFor(features, input);
     if (refused) throw new ForbiddenError(refused, 'live_feature_off');

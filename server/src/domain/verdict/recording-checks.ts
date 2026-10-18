@@ -19,6 +19,8 @@ export interface RideFacts {
   driveSeconds: number;
   /** the distance the ride ended with */
   distance: number;
+  ranked?: boolean;
+  cleanMetres?: number | null;
 }
 
 export interface RecordingScores {
@@ -103,6 +105,15 @@ export function checkAgreement(ride: RideFacts, batches: readonly BatchFacts[]):
   const missingSeconds = Math.max(0, ride.driveSeconds - (last?.[0] ?? 0));
   if (last && Math.abs(last[1] - ride.distance) > AGREE_METRES + AGREE_SHARE * ride.distance + MAX_SPEED * TELEPORT_FACTOR * missingSeconds) {
     out.push(reject('recording-mismatch', `the recording ends at ${Math.round(last[1])} m, the ride at ${Math.round(ride.distance)} m`));
+  }
+  if (ride.ranked) {
+    const damaged = batches.find((b) => typeof b.summary.firstDamageS === 'number');
+    if (damaged && typeof damaged.summary.firstDamageS === 'number') {
+      const claimedClean = ride.cleanMetres ?? ride.distance;
+      if (claimedClean > damaged.summary.firstDamageS + AGREE_METRES) {
+        out.push(reject('clean-mismatch', `the ride claimed ${Math.round(claimedClean)} m clean, but the recording took hull damage at ${Math.round(damaged.summary.firstDamageS)} m`));
+      }
+    }
   }
   if (coverage < COVERAGE_REJECT) out.push(reject('recording-incomplete', `the recording covers ${Math.round(coverage * 100)} % of the ${Math.round(needed)} s driven`));
   else if (coverage < COVERAGE_FLAG) out.push(flag('recording-gaps', `the recording covers ${Math.round(coverage * 100)} % of the ${Math.round(needed)} s driven`));

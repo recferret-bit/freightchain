@@ -14,7 +14,7 @@ export function selectTheme(id, assigned = false) {
   if (locked && !assigned) return getTheme(env.theme?.id);
   const t = getTheme(id);
   Object.assign(weather, { ambient: 25, snow: 0 }, t.weather, { grime: t.grime });   // sim/ and the windscreen read the climate from state, not from the scene
-  weather.baseAmbient = weather.ambient;   // a later HONK clear restores this route ambient, not the snow chill
+  weather.baseAmbient = weather.ambient;   // a later TEN4 clear restores this route ambient, not the snow chill
   applyTheme(t); roads.setTheme(t); setLivery(t.livery);
   return t;
 }

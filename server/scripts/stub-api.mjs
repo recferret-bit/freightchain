@@ -57,7 +57,7 @@ const me = () => ({ wallet: WALLET.toBase58(), freeRides, freeRidesMax: 5, nextF
 const FREE_LEVELS = [   // = server/src/domain/rides/ride-trip.ts FREE_LEVELS at FREE_RIDE_SECONDS 180 (GET /api/tiers → the free tier's `levels`). route = that level's country.
   { level: 1, trip: 'free-1c', name: 'EASY', seconds: 180, completeDist: 1512, tutorial: true, assist: true, route: 'stuart' },
   { level: 2, trip: 'free-2c', name: 'MEDIUM', seconds: 300, completeDist: 3360, tutorial: true, assist: true, route: 'route66' },
-  { level: 3, trip: 'free-3b', name: 'HARD', seconds: 900, completeDist: 10080, tutorial: false, assist: false, route: 'brenner' },
+  { level: 3, trip: 'free-3c', name: 'HARD', seconds: 1800, completeDist: 20160, tutorial: false, assist: false, route: 'brenner' },
 ];
 const TIERS = [{ id: 'free', usd: 0, seconds: 180, completeDist: 1512, onSale: true, levels: FREE_LEVELS }, { id: '1h', usd: 5, seconds: 3600, completeDist: 50400, onSale: true }, { id: '4h', usd: 15, seconds: 14400, completeDist: 201600, onSale: false }, { id: '8h', usd: 50, seconds: 28800, completeDist: 403200, onSale: false }];
 const problem = (status, code, detail) => ({ status, body: { type: `/problems/${code}`, title: 'Error', status, code, detail } });
@@ -111,7 +111,7 @@ const R = [
       Object.assign(ready, { minSeconds: lv.seconds, completeDist: lv.completeDist, trip: lv.trip, level: lv.level, route: lv.route, tutorial: !!b.tutorial, assist: !!b.assist });
       return { body: ready };
     }
-    if (tier === 'free') { if (freeRides <= 0) return problem(409, 'conflict', 'no free rides left'); freeRides--; } else {
+    if (tier === 'free') { /* training does not spend a balance */ } else {
       const held = pools.filter(p => p.tier === tier && tickets.get(p.id)?.balance > 0), live = held.find(p => p.status === 'active');
       if (!live) return held.length ? problem(409, 'pool_not_live', `pool not live yet – ${toGo(held[0])} more tickets needed`) : problem(409, 'no_tickets', `no ${tier} tickets left`);
       tickets.get(live.id).balance--; grants.push({ poolId: live.id, delta: -1, source: 'spend', ref: 'stub-ride', at: NOW() });
@@ -119,10 +119,10 @@ const R = [
     const r = { id: `stub-${rides.size + 1}`, tier, seed: 1, status: 'created', minSeconds: lv ? lv.seconds : 300, completeDist: lv ? lv.completeDist : 4200, trip: lv ? lv.trip : tier, level: lv?.level ?? null, route: lv?.route ?? 'route66', startHour: 12, tutorial: !!b.tutorial, assist: !!b.assist, timeScale: 1, priceUsd: 0, lamports: 0, quoteExpiresAt: null, roundId: 1, poolId: null, driveSeconds: 0, distance: 0, reason: null };
     rides.set(r.id, r); return { status: 201, body: r };
   }],
-  ['POST', /^promo\/redeem$/, (m, b) => {   // STUB = 2 tickets · RIDES = +3 free rides (above the cap). A colour code is refused – cab parts are HONK burns.
+  ['POST', /^promo\/redeem$/, (m, b) => {   // STUB = 2 tickets · RIDES = +3 free rides (above the cap). A colour code is refused – cab parts are TEN4 burns.
     const code = String(b.code).replace(/\s+/g, '').toUpperCase();
     if (code === 'RIDES') { freeRides += 3; redeemed.unshift({ code, label: '3 free rides', description: 'Three extra rides', kind: 'free_rides', at: NOW() }); return { body: { kind: 'free_rides', code, label: '3 free rides', added: 3, freeRides } }; }
-    if (code === 'GOLD' || code === 'BLUE' || code === 'RACING') return problem(409, 'visuals_are_honk', 'cab visuals are minted by burning HONK');
+    if (code === 'GOLD' || code === 'BLUE' || code === 'RACING') return problem(409, 'visuals_are_honk', 'cab visuals are minted by burning TEN4');
     if (code !== 'STUB') return problem(404, 'not_found', 'no such promo code');
     const t = tickets.get(1), add = Math.min(2, 5 - t.balance); t.balance += add; grants.push({ poolId: 1, delta: add, source: 'promo', ref: 'STUB', at: NOW() });
     redeemed.unshift({ code: 'STUB', label: '2 × 1h ride tickets', description: null, kind: 'tickets', at: NOW() });
@@ -133,7 +133,7 @@ const R = [
   ['GET', /^wardrobe$/, () => ({ body: wardrobeDto() })],
   ['POST', /^wardrobe\/equip$/, (m, b) => {
     if (!owned[b.slot]) return problem(400, 'bad_request', 'no such slot');
-    if (!owned[b.slot].includes(b.item)) return problem(409, 'not_owned', 'you do not own this item – burn HONK in the garage to mint it');
+    if (!owned[b.slot].includes(b.item)) return problem(409, 'not_owned', 'you do not own this item – burn TEN4 in the garage to mint it');
     worn[b.slot] = b.item; return { body: wardrobeDto() };
   }],
   ['GET', /^garage$/, () => ({ body: garageDto() })],
@@ -141,7 +141,7 @@ const R = [
     const picks = Object.entries(b.loadout ?? {});
     if (!picks.length || picks.some(([slot]) => !CATALOG[slot])) return problem(400, 'bad_cosmetic', 'pick at least one known part');
     if (picks.some(([slot, item]) => !CATALOG[slot].includes(item))) return problem(400, 'bad_cosmetic', 'no such part');
-    if (picks.some(([slot, item]) => !owned[slot].includes(item))) return problem(409, 'not_owned', 'you do not own that part – burn HONK in the garage to mint it');
+    if (picks.some(([slot, item]) => !owned[slot].includes(item))) return problem(409, 'not_owned', 'you do not own that part – burn TEN4 in the garage to mint it');
     for (const [slot, item] of picks) worn[slot] = item;
     return { body: garageDto() };
   }],
@@ -199,4 +199,4 @@ http.createServer(async (req, res) => {
   let out = problem(404, 'not_found', `Cannot ${req.method} /api/${p}`);
   for (const [m, re, h] of R) { const hit = m === req.method && p.match(re); if (hit) { out = h(hit, body, query); break; } }
   res.writeHead(out.status ?? 200, { 'content-type': out.status >= 400 ? 'application/problem+json' : 'application/json' }); res.end(JSON.stringify(out.body));
-}).listen(PORT, () => console.log(`stub API + site on http://localhost:${PORT}/lobby.html (wallet ${WALLET.toBase58()}, sales ${SALES}) – promo codes STUB (2 tickets) · RIDES (+3 free rides). Cab parts are minted by burning HONK, not by a code.`));
+}).listen(PORT, () => console.log(`stub API + site on http://localhost:${PORT}/lobby.html (wallet ${WALLET.toBase58()}, sales ${SALES}) – promo codes STUB (2 tickets) · RIDES (+3 free rides). Cab parts are minted by burning TEN4, not by a code.`));

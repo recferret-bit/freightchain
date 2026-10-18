@@ -1,8 +1,13 @@
+import type { PaidTierId } from '../rides/ride-tier.js';
 import { BadRequestError } from '../shared/errors.js';
 
 /** Owner-tweakable integers in `player.GameSetting`. A missing or out-of-range row falls back to the code default. */
 export const SETTING_KEYS = [
-  'free_on_signup', 'free_rides_daily_max', 'editor_jobs_per_day', 'editor_max_steps', 'editor_max_output_tokens', 'editor_max_input_ktokens', 'editor_jobs_parallel',
+  'free_on_signup', 'free_rides_daily_max',
+  'weekly_ticket_1h_enabled', 'weekly_ticket_1h_days',
+  'weekly_ticket_4h_enabled', 'weekly_ticket_4h_days',
+  'weekly_ticket_8h_enabled', 'weekly_ticket_8h_days',
+  'editor_jobs_per_day', 'editor_max_steps', 'editor_max_output_tokens', 'editor_max_input_ktokens', 'editor_jobs_parallel',
   'referral_max', 'referral_invite_start', 'referral_invite_step', 'referral_shifts_per_step', 'referral_invite_ttl_days',
   'referral_free_ride_window_days', 'referral_free_rides_referrer', 'referral_free_rides_referee', 'referral_free_ride_weekly_cap',
   'referral_referrer_part_bps', 'referral_ride_cap_lamports', 'referral_donation_share_bps', 'referral_donation_cap_lamports',
@@ -12,9 +17,15 @@ export type SettingKey = (typeof SETTING_KEYS)[number];
 export const SETTING_DEFAULTS: Record<SettingKey, number> = {
   free_on_signup: 10,
   free_rides_daily_max: 5,
+  weekly_ticket_1h_enabled: 1, // 0 off, 1 on. Default grant is the 1h shift.
+  weekly_ticket_1h_days: 7, // one 1h ticket per wallet per interval. 7 lands on prize weeks.
+  weekly_ticket_4h_enabled: 0,
+  weekly_ticket_4h_days: 7,
+  weekly_ticket_8h_enabled: 0,
+  weekly_ticket_8h_days: 7,
   editor_jobs_per_day: 40,   // AI model-editor jobs per editor wallet per UTC day
   editor_max_steps: 24,   // model turns per job (each may call tools)
-  editor_max_output_tokens: 32_000,   // cumulative output tokens per job
+  editor_max_output_tokens: 100_000,   // cumulative output tokens per job (GLM thinks on every turn)
   editor_max_input_ktokens: 500,   // input tokens per job, in thousands (every turn re-sends the history: the cost cap)
   editor_jobs_parallel: 5,   // jobs running at once across all app replicas (0 = the AI editor paused)
   referral_max: 30,
@@ -36,6 +47,12 @@ export const SETTING_DEFAULTS: Record<SettingKey, number> = {
 export const SETTING_BOUNDS: Record<SettingKey, { min: number; max: number }> = {
   free_on_signup: { min: 0, max: 100_000 },
   free_rides_daily_max: { min: 0, max: 100_000 },
+  weekly_ticket_1h_enabled: { min: 0, max: 1 },
+  weekly_ticket_1h_days: { min: 1, max: 100_000 },
+  weekly_ticket_4h_enabled: { min: 0, max: 1 },
+  weekly_ticket_4h_days: { min: 1, max: 100_000 },
+  weekly_ticket_8h_enabled: { min: 0, max: 1 },
+  weekly_ticket_8h_days: { min: 1, max: 100_000 },
   editor_jobs_per_day: { min: 0, max: 100_000 },
   editor_max_steps: { min: 0, max: 100_000 },
   editor_max_output_tokens: { min: 0, max: 100_000 },
@@ -65,6 +82,14 @@ export const FREE_RIDES_HARD_MAX = 100_000;
 export interface GameSettings {
   freeOnSignup: number;
   freeRidesDailyMax: number;
+  /** 0 or 1. The 1h granted ticket. */
+  weeklyTicket1hEnabled: number;
+  /** Days between 1h grants. At least 1. */
+  weeklyTicket1hDays: number;
+  weeklyTicket4hEnabled: number;
+  weeklyTicket4hDays: number;
+  weeklyTicket8hEnabled: number;
+  weeklyTicket8hDays: number;
   editorJobsPerDay: number;
   editorMaxSteps: number;
   editorMaxOutputTokens: number;
@@ -88,6 +113,12 @@ export interface GameSettings {
 const CAMEL: Record<SettingKey, keyof GameSettings> = {
   free_on_signup: 'freeOnSignup',
   free_rides_daily_max: 'freeRidesDailyMax',
+  weekly_ticket_1h_enabled: 'weeklyTicket1hEnabled',
+  weekly_ticket_1h_days: 'weeklyTicket1hDays',
+  weekly_ticket_4h_enabled: 'weeklyTicket4hEnabled',
+  weekly_ticket_4h_days: 'weeklyTicket4hDays',
+  weekly_ticket_8h_enabled: 'weeklyTicket8hEnabled',
+  weekly_ticket_8h_days: 'weeklyTicket8hDays',
   editor_jobs_per_day: 'editorJobsPerDay',
   editor_max_steps: 'editorMaxSteps',
   editor_max_output_tokens: 'editorMaxOutputTokens',
@@ -110,17 +141,25 @@ const CAMEL: Record<SettingKey, keyof GameSettings> = {
 
 export const isSettingKey = (key: string): key is SettingKey => (SETTING_KEYS as readonly string[]).includes(key);
 
-const inBounds = (key: SettingKey, n: number): boolean => {
+/** Check whether a value is within the key's configured bounds. */
+export function settingAccepted(key: SettingKey, value: number): boolean {
   const b = SETTING_BOUNDS[key];
-  return Number.isInteger(n) && n >= b.min && n <= b.max;
-};
+  return Number.isInteger(value) && value >= b.min && value <= b.max;
+}
+
+/** Whether this tier's grant is on, and how many UTC days sit between grants. */
+export function tierGrant(settings: GameSettings, tier: PaidTierId): { enabled: boolean; days: number } {
+  if (tier === '4h') return { enabled: settings.weeklyTicket4hEnabled === 1, days: settings.weeklyTicket4hDays };
+  if (tier === '8h') return { enabled: settings.weeklyTicket8hEnabled === 1, days: settings.weeklyTicket8hDays };
+  return { enabled: settings.weeklyTicket1hEnabled === 1, days: settings.weeklyTicket1hDays };
+}
 
 /** Fill every knob. Unknown keys are ignored. A stored value outside that key's bounds is ignored (the code default stands). */
 export function resolveSettings(rows: readonly { key: string; value: number }[]): GameSettings {
   const out = {} as GameSettings;
   for (const key of SETTING_KEYS) out[CAMEL[key]] = SETTING_DEFAULTS[key];
   for (const row of rows) {
-    if (!isSettingKey(row.key) || !inBounds(row.key, row.value)) continue;
+    if (!isSettingKey(row.key) || !settingAccepted(row.key, row.value)) continue;
     out[CAMEL[row.key]] = row.value;
   }
   return out;
@@ -128,5 +167,5 @@ export function resolveSettings(rows: readonly { key: string; value: number }[])
 
 /** Unknown key or a value outside that key's bounds. Called before a signature is issued or spent. */
 export function assertSettingValue(key: string, value: number): asserts key is SettingKey {
-  if (!isSettingKey(key) || !inBounds(key, value)) throw new BadRequestError('unknown setting or value out of range', 'bad_setting');
+  if (!isSettingKey(key) || !settingAccepted(key, value)) throw new BadRequestError('unknown setting or value out of range', 'bad_setting');
 }

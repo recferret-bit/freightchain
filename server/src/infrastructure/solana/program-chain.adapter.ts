@@ -108,7 +108,7 @@ export function parseKeypair(secret: string): Keypair {
 }
 
 /**
- * PAYMENT_MODE=program: the Anchor pool program (programs/freightchain-pools). Builds unsigned transactions for wallets, reads and decodes what the program did,
+ * PAYMENT_MODE=program: the Anchor pool program (programs/freightchain_pools). Builds unsigned transactions for wallets, reads and decodes what the program did,
  * (every wallet signs AND pays its own transaction – the server holds no fee-payer key). Never connects at construction (the app boots without a program configured); every call then says
  * "unavailable" instead. Reads fall back over SOLANA_RPC_FALLBACKS; sends go to SOLANA_RPC only.
  */

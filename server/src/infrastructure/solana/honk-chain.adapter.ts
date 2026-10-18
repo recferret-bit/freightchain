@@ -22,7 +22,7 @@ interface TokenEffect {
   account: string;
 }
 
-/** Confirmed HONK program transaction. No program id: the ledger stands alone and `load` is not used. */
+/** Confirmed TEN4 (`freightchain_honk`) program transaction. No program id: the ledger stands alone and `load` is not used. */
 @Injectable()
 export class HonkChainAdapter extends HonkChainPort {
   private readonly connection: Connection;

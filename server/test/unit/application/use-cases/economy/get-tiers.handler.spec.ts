@@ -22,7 +22,7 @@ describe('GetTiersHandler', () => {
         levels: [   // FREE_RIDE_SECONDS (10 here) × 1 / 5⁄3 / 5, whole seconds, each at its own K
           { level: 1, trip: 'free-1c', name: 'EASY', seconds: 10, completeDist: 0.3 * 28 * 10, tutorial: true, assist: true },
           { level: 2, trip: 'free-2c', name: 'MEDIUM', seconds: 17, completeDist: 0.4 * 28 * 17, tutorial: true, assist: true },
-          { level: 3, trip: 'free-3b', name: 'HARD', seconds: 50, completeDist: 0.4 * 28 * 50, tutorial: false, assist: false },
+          { level: 3, trip: 'free-3c', name: 'HARD', seconds: 100, completeDist: 0.4 * 28 * 100, tutorial: false, assist: false },
         ],
       },
       { id: '1h', usd: 5, seconds: 3600, completeDist: 50_400, lamports: null, available: false, onSale: false, schedule: { saleHours: 24, playHours: 3, reviewHours: 48 }, pool: null },

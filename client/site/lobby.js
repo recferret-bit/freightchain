@@ -17,6 +17,7 @@ import { API_BASE, GAME_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
+import { TOKEN_SYMBOL } from '../js/config.js';
 import { isMobileDevice, showMobileToast } from '../js/mobile.js';
 import { formatDriver, seedSns } from './sns.js';
 
@@ -36,8 +37,12 @@ const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'free', boardLevel: Number(store.get('freightchain.board-level')) || 3, boardTier: store.get('freightchain.board-tier') === '4h' || store.get('freightchain.board-tier') === '8h' ? store.get('freightchain.board-tier') : '1h', pending: null, pendingNote: '', pools: null, standings: {}, stAt: {}, tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') !== '0', level: Number(store.get('freightchain.level')) || 1 } };
 let seq = 0, meGen = 0, honkTicket = 0;
 const now = () => Date.now() + S.skew;
-const freeLeft = m => `${m.freeRides}/${m.freeRidesMax} free ride${m.freeRides === 1 ? '' : 's'}`;
-const freeCd = m => m.nextFreeRideAt == null ? 'full' : `+1 in ${left(m.nextFreeRideAt - now())}`;
+const freeLeft = () => 'training · unlimited';   // no counted balance. Statistics and achievements still count; the ride is not ranked and not a prize entry
+const weeklyChip = m => {   // granted paid tickets (AMOE). Unspent until ordered. Each dies at its next interval or Sunday 12:00 UTC
+  const live = (m.weeklyTickets ?? []).filter(t => !t.rideId && t.expiresAt > now());
+  if (!live.length) return '';
+  return ` · weekly ${live.map(t => t.tier).join(' ')}`;
+};
 
 function tickCountdowns() {
   const n = now();
@@ -52,7 +57,7 @@ function paintHeader() {
   if (m.sns) seedSns(m.wallet, m.sns);
   $('chip-wallet').replaceChildren(el('span', { class: 'dot', style: `background:hsl(${hue(m.wallet)} 60% 50%)` }), formatDriver(m.wallet, m.sns));
   $('chip-wallet').title = m.wallet;
-  $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
+  $('chip-free').textContent = `${freeLeft()}${weeklyChip(m)}`;
   $('chip-paid').textContent = paidChip(m.tickets);
   $('chip-live').textContent = liveTab.liveChip();
 }
@@ -82,7 +87,7 @@ async function refreshPool() {
 }
 
 const newTab = createNewRideTab({ S, view, now, dur, km, TIER_NAME, refreshMe, refreshPool, creditLocal, tickCountdowns });
-const profileTab = createProfileTab({ S, view, getSeq: () => seq, bumpMeGen: () => { meGen++; }, paintHeader, refreshMe, refund: newTab.refund, km, avatar, ROUTES, TIER_NAME });
+const profileTab = createProfileTab({ S, view, getSeq: () => seq, bumpMeGen: () => { meGen++; }, paintHeader, refreshMe, refund: newTab.refund, play: newTab.play, km, avatar, ROUTES, TIER_NAME });
 
 /* ───────── GARAGE ───────── */
 const catalogRows = body => Array.isArray(body) ? body : Array.isArray(body?.items) ? body.items : Array.isArray(body?.catalog) ? body.catalog : Array.isArray(body?.visuals) ? body.visuals : [];
@@ -101,7 +106,7 @@ function showHonk(amount) {
   const panel = $('garage-detail'); if (!panel || S.tab !== 'garage') return;
   const line = panel.querySelector('.bal');
   if (amount == null) { line?.remove(); return; }
-  const text = `You hold ${amount} HONK.`;
+  const text = `You hold ${amount} ${TOKEN_SYMBOL}.`;
   if (line) { line.textContent = text; return; }
   panel.prepend(el('p', { class: 'dim bal', id: 'garage-honk' }, text));
 }
@@ -156,7 +161,7 @@ async function burnVisual(slot, part) {
     const seen = partAt(S.garage, { slot, id: part.id });
     if (seen?.part.owned) S.pick = { ...S.pick, [slot]: part.id };
     S.observe = { slot, id: part.id };
-    note = { text: 'Minted by burning HONK.' };
+    note = { text: `Minted by burning ${TOKEN_SYMBOL}.` };
   } catch (e) { note = { text: e.message, bad: true }; }
   S.burning = false; paintGarage(note);
 }
@@ -185,15 +190,9 @@ function go() {
   ({ new: newTab.renderNew, live: liveTab.renderLive, replays: () => renderReplays(view, { me: S.me, ROUTES, TIER_NAME, dur, km, avatar }), board: () => renderBoard(view, { S, now, track, km, dur, avatar }), achievements: renderAchievements, garage: renderGarage, profile: profileTab.renderProfile })[S.tab]();
 }
 
-function tickFree() {
+function tickFree() {   // the weekly ticket drops off the chip when Sunday 12:00 UTC passes. Training has no countdown
   const m = S.me; if (!m) return;
-  $('chip-free').textContent = `${freeLeft(m)} · ${freeCd(m)}`;
-  document.querySelectorAll('.fr-cd').forEach(n => { n.textContent = freeCd(m); });
-  if (m.nextFreeRideAt != null && now() >= m.nextFreeRideAt && (S.meMiss ?? 0) < 3 && Date.now() - (S.meAt ?? 0) > 5000) {
-    S.meAt = Date.now();
-    const gen = ++meGen, prev = m.nextFreeRideAt;
-    api('me', undefined, { report: false }).then(x => { if (gen !== meGen) return; S.meMiss = x.nextFreeRideAt === prev ? (S.meMiss ?? 0) + 1 : 0; takeMe(x); }, () => { if (gen === meGen) S.meMiss = (S.meMiss ?? 0) + 1; });
-  }
+  $('chip-free').textContent = `${freeLeft()}${weeklyChip(m)}`;
 }
 
 function tick() {
@@ -221,7 +220,7 @@ if (S.me) {
   if (S.pool?.round?.id != null) viewed.round_id = S.pool.round.id;
   track('lobby_viewed', viewed);
   paintHeader();
-  for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html?offline=1`;
+  for (const a of document.querySelectorAll('a[href="/play.html"]')) a.href = `${GAME_BASE}/play.html`;   // bare play.html orders the real EASY ride. Paid and watch links already carry their own query
   $('out').onclick = async () => { track('player_signed_out'); flushSoon(); await signOut(); location.href = '/'; };
   [S.tiers, S.pool, S.pools] = await Promise.all(['tiers', 'pool', 'pools'].map(x => api(x, undefined, { report: false }).catch(() => null)));
   await liveTab.pollLive();

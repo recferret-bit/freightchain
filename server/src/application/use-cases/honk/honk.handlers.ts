@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 import { CommandHandler, QueryHandler, type ICommandHandler, type IQueryHandler } from '@nestjs/cqrs';
 import { isCosmeticSlot, isUnlockableCosmetic, type CosmeticSlot } from '../../../domain/economy/cosmetics.js';
 import { RideEvent } from '../../../domain/live/ride-event.entity.js';
-import { formatHonk, HONK_STREAM_BURN, STREAM_BURN_GAP_MS } from '../../../domain/honk/tokenomics.js';
+import { formatHonk, HONK_STREAM_BURN, STREAM_BURN_GAP_MS, TOKEN_SYMBOL } from '../../../domain/honk/tokenomics.js';
 import { BadRequestError, ConflictError, TooManyRequestsError } from '../../../domain/shared/errors.js';
 import { HonkChainPort } from '../../ports/honk/honk-chain.port.js';
 import { CosmeticRepositoryPort } from '../../ports/players/cosmetic.repository.port.js';
@@ -47,7 +47,7 @@ export interface HonkCatalogEntry { slot: CosmeticSlot; item: string; name: stri
 const visualId = (hasher: HasherPort, wallet: string, slot: string, item: string): string => hasher.sha256Hex(`${wallet}|${slot}|${item}`).slice(0, 32);
 const visualName = (slot: string, item: string): string => `${slot} ${item}`;
 
-/** Burns 1 HONK and posts the chat line HONK. The line is inserted after the debit; a refused line is refunded. No effect on the truck. */
+/** Burns 1 TEN4 and posts the chat line HONK. The line is inserted after the debit; a refused line is refunded. No effect on the truck. */
 @CommandHandler(BurnHonkCommand)
 export class BurnHonkHandler implements ICommandHandler<BurnHonkCommand, HonkBurnResult> {
   private readonly logger = new Logger(BurnHonkHandler.name);
@@ -71,7 +71,7 @@ export class BurnHonkHandler implements ICommandHandler<BurnHonkCommand, HonkBur
     await this.transactions.run(async (tx) => {
       await this.players.findByWalletForUpdate(wallet, tx);
       await this.assertGap(wallet, rideId, now, tx);
-      if (!(await this.honk.debit(wallet, HONK_STREAM_BURN, now, tx))) throw new ConflictError('not enough HONK', 'honk_balance');
+      if (!(await this.honk.debit(wallet, HONK_STREAM_BURN, now, tx))) throw new ConflictError(`not enough ${TOKEN_SYMBOL}`, 'honk_balance');
       await this.honk.insertBurn({ id: burnId, wallet, amount: HONK_STREAM_BURN, kind: 'stream', ref: rideId, createdAt: now }, tx);
     });
     const stored = await this.events.insert(RideEvent.message({ rideId, wallet, text: 'HONK', now }));
@@ -92,7 +92,7 @@ export class BurnHonkHandler implements ICommandHandler<BurnHonkCommand, HonkBur
   }
 }
 
-/** Burns HONK for one cab visual and unlocks it. When a program id is set, the wallet's buy_part must already be confirmed; a miss does not debit. */
+/** Burns TEN4 for one cab visual and unlocks it. When a program id is set, the wallet's buy_part must already be confirmed; a miss does not debit. */
 @CommandHandler(MintHonkVisualCommand)
 export class MintHonkVisualHandler implements ICommandHandler<MintHonkVisualCommand, HonkVisualResult> {
   constructor(
@@ -118,7 +118,7 @@ export class MintHonkVisualHandler implements ICommandHandler<MintHonkVisualComm
     const balance = await this.transactions.run(async (tx) => {
       await this.players.findByWalletForUpdate(wallet, tx);
       if (await this.cosmetics.has(wallet, slot as CosmeticSlot, item, tx)) throw new ConflictError('you already own this visual', 'already_owned');
-      if (!(await this.honk.debit(wallet, price, now, tx))) throw new ConflictError('not enough HONK', 'honk_balance');
+      if (!(await this.honk.debit(wallet, price, now, tx))) throw new ConflictError(`not enough ${TOKEN_SYMBOL}`, 'honk_balance');
       await this.honk.insertBurn({ id: burnId, wallet, amount: price, kind: 'visual', ref: `${slot}:${item}`, createdAt: now }, tx);
       if (!(await this.honk.insertVisual({ id, wallet, slot, item, amount: price, createdAt: now, chainMint: bought?.mint ?? null, chainSignature: bought?.signature ?? null }, tx))) throw new ConflictError('you already own this visual', 'already_owned');
       await this.cosmetics.unlock({ wallet, slot: slot as CosmeticSlot, item, code: `honk:${id}`, at: now }, tx);

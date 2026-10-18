@@ -52,6 +52,21 @@ export interface JobEventRecord {
   at: Date;
 }
 
+/** One MCP round-trip a job actually sent. The chat does not show these; the row keeps the editor's wallet. */
+export interface EditorMcpCallRecord {
+  id: string;
+  jobId: string;
+  wallet: string;
+  seq: number;
+  tool: string;
+  args: Record<string, unknown>;
+  result: string;
+  ok: boolean;
+  createdAt: Date;
+}
+
+export type EditorMcpCallInput = Omit<EditorMcpCallRecord, 'id' | 'seq'>;
+
 export interface EditorJobDto {
   id: string;
   wallet: string;

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Checks the escrow program (programs/freightchain-pools) – local and read-only, nothing is signed or sent.
+# Checks the escrow program (programs/freightchain_pools) – local and read-only, nothing is signed or sent.
 #   bash .claude/skills/program-check/check.sh            all local stages: verifiable build (Docker) -> pinned hash -> IDL -> tests on THAT .so -> clippy -> cargo audit
 #   bash .claude/skills/program-check/check.sh fast       no Docker: the same stages on the current target/deploy .so (warns when it is not the pinned build)
 #   bash .claude/skills/program-check/check.sh onchain    compare the pinned hash with the deployed program (read-only RPC; PROGRAM_ID, RPC_URL)
@@ -7,7 +7,7 @@
 # The hash is solana-verify's executable hash (sha256 of the .so without its trailing zero padding) – not `sha256sum` of the file.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-WS="$ROOT/programs/freightchain-pools"
+WS="$ROOT/programs"
 LIB=freightchain_pools
 SO="$WS/target/deploy/$LIB.so"
 PIN="$WS/verifiable-build.hash"   # committed: the verifiable build of this commit = the bytes a deploy must ship
@@ -26,7 +26,7 @@ need solana-verify "cargo install solana-verify --version 0.5.2 --locked"
 if [ "$MODE" = onchain ]; then
   # Read-only: fetches the program data and hashes it. Never `verify-from-repo` here – it writes a PDA on chain.
   RPC_URL="${RPC_URL:-https://api.devnet.solana.com}"   # explicit: solana-verify would otherwise read the global CLI config
-  PROGRAM_ID="${PROGRAM_ID:-$(grep -oE 'declare_id!\("[1-9A-HJ-NP-Za-km-z]+"\)' "$WS/programs/$LIB/src/lib.rs" | cut -d'"' -f2 || true)}"
+  PROGRAM_ID="${PROGRAM_ID:-$(grep -oE 'declare_id!\("[1-9A-HJ-NP-Za-km-z]+"\)' "$WS/$LIB/src/lib.rs" | cut -d'"' -f2 || true)}"
   want="$(pinned)"; [ -n "$want" ] || fail "no pinned hash in $PIN"
   [ -n "$PROGRAM_ID" ] || fail "no PROGRAM_ID (and none found in declare_id!)"
   step "on-chain hash of $PROGRAM_ID ($(printf %s "$RPC_URL" | sed -E 's#^([a-z]+://[^/]+).*#\1/…#'))"   # host only: a provider URL carries its API token
@@ -71,7 +71,7 @@ fi
 step "IDL (anchor idl build – does not touch the .so) = the committed idl/"
 # the event-discriminator tests read target/idl; a fresh checkout / worktree only has the committed copy
 mkdir -p "$WS/target/idl"
-(cd "$WS" && anchor idl build -o "target/idl/$LIB.json" >/dev/null 2>&1) || fail "anchor idl build failed – (cd programs/freightchain-pools && ANCHOR_LOG=true anchor idl build)"
+(cd "$WS" && anchor idl build -p "$LIB" -o "target/idl/$LIB.json" >/dev/null 2>&1) || fail "anchor idl build failed – (cd programs && ANCHOR_LOG=true anchor idl build -p $LIB)"
 diff -q "$WS/target/idl/$LIB.json" "$WS/idl/$LIB.json" >/dev/null || fail "the committed idl/$LIB.json is stale – npm run program:idl, then (cd server && node scripts/vendor-idl.mjs)"
 echo "✓ IDL unchanged"
 
@@ -91,5 +91,5 @@ echo "✓ clippy"
 step "cargo audit (RustSec)"
 # Vulnerabilities fail; 'unmaintained' / 'unsound' warnings in Solana's transitive deps are printed, not fatal (reviewed in SKILL.md).
 (cd "$WS" && cargo audit --quiet 2>&1 | grep -E '^(Crate|ID|Warning|error)' | paste - - - | sed 's/^/  /') || true
-(cd "$WS" && cargo audit --quiet >/dev/null 2>&1) || fail "cargo audit found a vulnerability – (cd programs/freightchain-pools && cargo audit)"
+(cd "$WS" && cargo audit --quiet >/dev/null 2>&1) || fail "cargo audit found a vulnerability – (cd programs && cargo audit)"
 echo "✓ no RustSec vulnerabilities"

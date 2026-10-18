@@ -1,4 +1,4 @@
-// The player signs a HONK program transaction. Used only when GET /api/honk returns chain.programId.
+// The player signs a TEN4 (freightchain_honk) program transaction. Used only when GET /api/honk returns chain.programId.
 // The local suite signs with its own keys. A browser wallet sends on its own cluster, which is not the local validator.
 import { payingWallet, ensureAccount } from './wallet.js';
 import { publicRpc } from './pools.js';
@@ -18,7 +18,7 @@ function pad16(text) {
   const out = new Uint8Array(16); out.set(raw); return out;
 }
 const disc = async (name) => {
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`global:${name}`)));
+  const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(`global:${name}`)));
   return digest.slice(0, 8);
 };
 const u64 = (n) => { const b = new Uint8Array(8); new DataView(b.buffer).setBigUint64(0, BigInt(n), true); return b; };

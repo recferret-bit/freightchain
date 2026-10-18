@@ -61,7 +61,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #chain a{color:#14f195;text-decoration:none;pointer-events:auto}#chain a:hover{text-decoration:underline}
 .seal a{margin-left:6px;color:#14f195;font-weight:normal}
 body:has(#chain:not([hidden])) #toast{top:calc(14% + 40px)}
-/* paid rides: the server's HONK quote while driving (ui/game.js). The end panel has its own rows. */
+/* paid rides: the server's TEN4 quote while driving (ui/game.js). The end panel has its own rows. */
 #honk-hud{position:absolute;left:max(12px,8vw);bottom:34%;z-index:4;max-width:min(420px,calc(100vw - 24px));box-sizing:border-box;padding:5px 10px;border:1px solid #ffcf5a88;border-radius:6px;background:#0b0a09e6;color:#efe6cf;font-size:12px;line-height:1.45;pointer-events:none;text-shadow:0 1px 2px #000}
 #honk-hud[hidden]{display:none}
 #honk-hud div{display:flex;justify-content:space-between;gap:12px}

@@ -11,7 +11,7 @@ export interface GaragePartDto {
   code: string | null;
   name: string;
   description: string;
-  /** Decimal HONK. Null for a slot default, and when the catalog copy has no row for this part. */
+  /** Decimal TEN4. Null for a slot default, and when the catalog copy has no row for this part. */
   price: string | null;
 }
 

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { HONK_PARTS } from '../../../../src/domain/honk/parts-catalog.js';
 
-const rust = readFileSync(join(import.meta.dirname, '../../../../../programs/freightchain-pools/programs/freightchain_honk/src/catalog.rs'), 'utf8');
+const rust = readFileSync(join(import.meta.dirname, '../../../../../programs/freightchain_honk/src/catalog.rs'), 'utf8');
 
 describe('HONK catalog drift', () => {
   it('the program sells the same pairs, at the same gold flag, as the ledger catalog', () => {

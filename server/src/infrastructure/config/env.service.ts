@@ -186,6 +186,11 @@ export class EnvService {
   /** Capture runs only with a real project token, POSTHOG_ENABLED of `1` or `true`, and the kill switch off. */
   get analyticsEnabled(): boolean { return this.posthogKey !== null && this.posthogEnabled && !this.posthogDisabled; }
 
+  /** Empty = the code defaults in prize-rules.ts. A non-empty list replaces that default. */
+  get prizeSanctionedCountries(): string { return this.env.PRIZE_SANCTIONED_COUNTRIES; }
+  get prizeBlockedCountries(): string { return this.env.PRIZE_BLOCKED_COUNTRIES; }
+  get prizeBlockedUsStates(): string { return this.env.PRIZE_BLOCKED_US_STATES; }
+
   /** TREASURY_PUBKEY, else – outside production and tests – data/treasury.json written by `npm run treasury:init`. A file that is there but invalid stops the boot. */
   private resolveTreasury(): string {
     if (this.env.TREASURY_PUBKEY) return this.env.TREASURY_PUBKEY; // validated by the schema

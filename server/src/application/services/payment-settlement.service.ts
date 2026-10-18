@@ -75,18 +75,14 @@ export class PaymentSettlementService {
       const ride = await this.lookup.require(rideId, wallet, tx); // re-read under the lock
       ride.markPaid(round.id, now);
       const room = await this.makeRoomFor(ride, now, tx);
-      if (room.refunded) {
-        player.refundFreeRide();
-        await this.players.save(player, tx);
-      }
       // the unique signature / ride keys make a concurrent double-settle fail here with a ConflictError, rolling the whole transaction back
       await this.payments.insert(new Payment({ signature, rideId: ride.id, wallet, lamports: ride.lamports, usd: ride.priceUsd, roundId: round.id, at: now }), tx);
       return { ride: toRideDto(await this.rides.save(ride, tx)), inserted: true, paidAt: now, cancelled: room.cancelled, expired: room.expired };
     });
   }
 
-  /** Cancel an unstarted free ride (refund its credit) and let other unpaid orders lapse. Running and other paid rides stay. */
-  private async makeRoomFor(paid: Ride, now: Date, tx: TransactionHandle): Promise<{ refunded: boolean; cancelled: RideProps[]; expired: RideProps[] }> {
+  /** Cancel an unstarted free ride and let other unpaid orders lapse. Running and other paid rides stay. */
+  private async makeRoomFor(paid: Ride, now: Date, tx: TransactionHandle): Promise<{ cancelled: RideProps[]; expired: RideProps[] }> {
     const cancelled: RideProps[] = [];
     const expired: RideProps[] = [];
     for (const other of await this.rides.listOpenByWallet(paid.wallet, tx)) {
@@ -102,6 +98,6 @@ export class PaymentSettlementService {
       }
       await this.rides.save(other, tx);
     }
-    return { refunded: cancelled.length > 0, cancelled, expired };
+    return { cancelled, expired };
   }
 }

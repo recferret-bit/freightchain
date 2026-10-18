@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { EditorJobRepositoryPort } from '../../../src/application/ports/editor/editor-job.repository.port.js';
-import type { EditorJobRecord, JobEventRecord, JobEventType, JobStatus } from '../../../src/domain/editor/editor-job.js';
+import type { EditorJobRecord, EditorMcpCallInput, EditorMcpCallRecord, JobEventRecord, JobEventType, JobStatus } from '../../../src/domain/editor/editor-job.js';
 import type { MemoryDb } from './memory-db.js';
 
 /** asset.EditorJob / EditorJobEvent in memory (the prompts also feed the entity revision list, like the SQL join). */
@@ -60,6 +61,12 @@ export class MemoryEditorJobRepository extends EditorJobRepositoryPort {
     list.push(e); this.db.editorJobEvents.set(jobId, list); return e;
   }
   async events(jobId: string, after: number, limit: number): Promise<JobEventRecord[]> { return (this.db.editorJobEvents.get(jobId) ?? []).filter((e) => e.seq > after).slice(0, limit).map((e) => structuredClone(e)); }
+  async recordMcpCall(call: EditorMcpCallInput): Promise<EditorMcpCallRecord> {
+    const list = this.db.editorMcpCalls.get(call.jobId) ?? [];
+    const row: EditorMcpCallRecord = { ...call, id: randomUUID(), seq: list.length + 1, args: structuredClone(call.args) };
+    list.push(row); this.db.editorMcpCalls.set(call.jobId, list); return structuredClone(row);
+  }
+  async mcpCalls(jobId: string): Promise<EditorMcpCallRecord[]> { return (this.db.editorMcpCalls.get(jobId) ?? []).map((r) => structuredClone(r)); }
   async createdIds(jobId: string): Promise<string[]> {
     const ids = (this.db.editorJobEvents.get(jobId) ?? []).filter((e) => e.type === 'draft').map((e) => (typeof e.payload['entityId'] === 'string' ? e.payload['entityId'] : ''));
     return [...new Set(ids.filter((id) => id.length > 0))];

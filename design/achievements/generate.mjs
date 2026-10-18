@@ -38,7 +38,9 @@ const FAMILY = {
   siberia: { a: ['#e6f6ff', BLUE], glow: BLUE, flavour: 'Ice on the road, frost on the glass, a thousand empty kilometres of white.' },
   solo: { a: ['#ff9a8a', '#e23a2e'], glow: '#ff5a4a', flavour: 'No assist, no net. Just a driver, a wheel and the truth about their reflexes.' },
   licence: { a: [AMBER, GEAR], glow: AMBER, flavour: 'Every free run is a licence of its own. This one is stamped and framed.' },
-  honk: { a: [AMBER, NEEDLE], glow: AMBER, flavour: 'The road paid this one in HONK. A verified checkpoint, then the mint.' },
+  medium: { a: [AMBER, GEAR], glow: AMBER, flavour: 'Five minutes of bends, traffic and forks. You know the MEDIUM run by heart.' },
+  hard: { a: [NEEDLE, '#e23a2e'], glow: NEEDLE, flavour: 'Thirty minutes without assist. Clearing the HARD run more than once is no accident.' },
+  honk: { a: [AMBER, NEEDLE], glow: AMBER, flavour: 'The road paid this one in TEN4. A verified checkpoint, then the mint.' },
   convoy: { a: ['#ff8a1e', '#e07020'], glow: '#ff8a1e', flavour: 'You brought them, and they crossed the line. The convoy carries your name.' },
 };
 
@@ -168,6 +170,8 @@ const GLYPHS = {
       ${[0, 1, 2].map((i) => `<circle cx="${(i - 1) * 40}" cy="92" r="${i < level ? 5 : 0}" fill="${c.s}"/>`).join('')}
     </g>`;
   },
+  medium(c, a) { return GLYPHS.licence(c, a); },
+  hard(c, a) { return GLYPHS.licence(c, a); },
   honk(c) { // a cab horn: the mint you burn, and the mint a verified checkpoint pays
     return `<g>
       <rect x="-96" y="-6" width="28" height="40" rx="8" fill="${c.s}"/>

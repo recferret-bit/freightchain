@@ -15,6 +15,7 @@ export interface AchievementMintRecord {
 /** transactions sent for one unlock before the row stays `failed` (an admin looks at it: `achievement:mint --retry`) */
 export const MAX_MINT_ATTEMPTS = 5;
 export const SKIP_DEMO_WALLET = 'demo-wallet';
+export const SKIP_GUEST_WALLET = 'guest-wallet';
 export const SKIP_NO_LONGER_EARNED = 'no-longer-earned';
 
 /** the on-chain symbol of every badge */

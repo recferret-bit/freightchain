@@ -1,4 +1,4 @@
-/* The pool program's money maths, exactly as programs/freightchain-pools computes it (state.rs `bps_of` / `split` / `ticket_room` / `Pool::counted_pot`, settle.rs `handle_close_pool`).
+/* The pool program's money maths, exactly as programs/freightchain_pools computes it (state.rs `bps_of` / `split` / `ticket_room` / `Pool::counted_pot`, settle.rs `handle_close_pool`).
      pot             = price × tickets_sold + sponsored                          (u64; more is MathOverflow) – the vault, not the prize base
      room            = floor(sponsored × max_player_share_bps / (10 000 − bps))  (0 when the cap is absent on a pre-v5 mirror: every ticket counts)
      counted_tickets = min(tickets, room)

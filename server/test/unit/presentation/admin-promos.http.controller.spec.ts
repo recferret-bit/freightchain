@@ -8,7 +8,7 @@ import { createPromoBodySchema, disablePromoBodySchema, promoBodySchema, promoCh
 import { busMock } from '../../support/bus.js';
 
 const W = 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn';
-const body = { code: ' welcome ', effect: { kind: 'free_rides', count: 3 }, description: ' Hi ', maxRedemptions: 50, perWallet: 2, startsAt: 1_800_000_000_000, expiresAt: 1_800_086_400_000, note: '' };
+const body = { code: ' welcome ', effect: { kind: 'ride', tier: '4h' }, description: ' Hi ', maxRedemptions: 50, perWallet: 1, startsAt: 1_800_000_000_000, expiresAt: 1_800_086_400_000, note: '' };
 const parsed = promoBodySchema.parse(body);
 
 describe('AdminPromosHttpController', () => {
@@ -32,7 +32,7 @@ describe('AdminPromosHttpController', () => {
   describe('DTO schemas', () => {
     it('a promo body becomes a PromoCreateInput: trimmed text, blank = none, epoch ms → dates, per-wallet defaults to 1', () => {
       expect(parsed).toEqual({
-        code: 'welcome', effect: { kind: 'free_rides', count: 3 }, description: 'Hi', maxRedemptions: 50, perWallet: 2,
+        code: 'welcome', effect: { kind: 'ride', tier: '4h' }, description: 'Hi', maxRedemptions: 50, perWallet: 1,
         startsAt: new Date(1_800_000_000_000), expiresAt: new Date(1_800_086_400_000), note: null,
       });
       expect(promoBodySchema.parse({ code: 'X1Y', effect: { kind: 'cosmetic', slot: 'wheel', item: 'gold' } })).toEqual({

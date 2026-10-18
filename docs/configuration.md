@@ -16,7 +16,7 @@ Everything in Freight Chain that can be configured, where it lives, and what to 
 | Hosts / URLs | `client/js/hosts.js` | yes | derives API / game / site / admin URLs from the page's hostname |
 | Verdict thresholds | `server/src/domain/verdict/verdict-rules.ts` (`RULES_VERSION`) | yes | verified-play rules |
 | Ride rules mirrored from client | `server/src/domain/rides/ride-rules.ts` | yes | `MAX_SPEED`, `COMPLETE_DIST_K`, route ids – keep equal to the client |
-| Solana program | `programs/freightchain-pools/Anchor.toml` | yes | program id, deploy wallet path |
+| Solana program | `programs/Anchor.toml` | yes | program id, deploy wallet path |
 | Landing build | `landing/vite.config.js` | yes | dev proxy to Nest, build output |
 | nginx | `deploy/nginx/*.conf.template` | yes | the six hosts in production |
 | Claude Code skills | `.claude/skills/*` | yes | read-only prod tooling + the test runner |
@@ -52,6 +52,12 @@ Table `player.GameSetting` (`key` text, `value` integer). The migration seeds th
 |---|---|---|
 | `free_on_signup` | 10 | Free rides a **new** wallet starts with. Wallets that already exist are not topped up. |
 | `free_rides_daily_max` | 5 | The +1 at 00:00 UTC stops here. A balance already above it (signup, a promo, an admin grant) stays. |
+| `weekly_ticket_1h_enabled` | 1 | Granted 1h ticket. 0 off, 1 on. Not a purchase. Does not mint TEN4. |
+| `weekly_ticket_1h_days` | 7 | Days between 1h grants. Integer, at least 1. 7 starts on a prize-week Monday. |
+| `weekly_ticket_4h_enabled` | 0 | Granted 4h ticket. 0 off, 1 on. |
+| `weekly_ticket_4h_days` | 7 | Days between 4h grants. Integer, at least 1. Stored while the flag is off. |
+| `weekly_ticket_8h_enabled` | 0 | Granted 8h ticket. 0 off, 1 on. |
+| `weekly_ticket_8h_days` | 7 | Days between 8h grants. Integer, at least 1. Stored while the flag is off. |
 | `referral_max` | 30 | Most invites one wallet can hold (1..1000). |
 | `referral_invite_start` / `referral_invite_step` / `referral_shifts_per_step` | 3 / 3 / 5 | Invites at the start, added every N verified paid shifts. |
 | `referral_invite_ttl_days` | 14 | A pending invite with no verified finish expires. The wallet cannot bind again. |
@@ -61,7 +67,7 @@ Table `player.GameSetting` (`key` text, `value` integer). The migration seeds th
 | `referral_ride_cap_lamports` | 1000000000 | Per referrer, per pool. |
 | `referral_donation_share_bps` / `referral_donation_cap_lamports` | 1000 / 500000000 | Spectator-tip share, and the lifetime cap of that share for one pair. |
 
-Change one with the signed admin API (`GET /api/admin/settings`, then the challenge and `POST /api/admin/settings`). Each key has its own bounds (the admin form shows them). The same session can add or remove one signed-in wallet's free rides (`POST /api/admin/players/free-rides`). A result below 0 or above 100_000 is refused. Detail of the invite rules: `docs/agents/referral.md`.
+Change one with the signed admin API (`GET /api/admin/settings`, then the challenge and `POST /api/admin/settings`). Each key has its own bounds (`SETTING_BOUNDS`; the admin form shows them: a grant flag is only 0 or 1, a grant interval is at least 1 day). The same session can add or remove one signed-in wallet's free rides (`POST /api/admin/players/free-rides`). A result below 0 or above 100_000 is refused. The retired key `weekly_ticket_tier` is ignored. Detail of the invite rules: `docs/agents/referral.md`.
 
 ## Server settings (`env.schema.ts`)
 
@@ -90,7 +96,7 @@ Change one with the signed admin API (`GET /api/admin/settings`, then the challe
 
 | Key | Default | Notes |
 |---|---|---|
-| `FREE_RIDE_SECONDS` | `180` | Free-ride length – the EASY level's (three minutes, two crossroads – `client/js/trips.js`); MEDIUM is × 5⁄3 (5 min), HARD × 5 (15 min) (`ride-trip.ts` `FREE_LEVELS`). Production's `deploy/.env` must say 180 (it said 60 for the first round of levels). Test/demo override |
+| `FREE_RIDE_SECONDS` | `180` | Free-ride length – the EASY level's (three minutes, two crossroads – `client/js/trips.js`); MEDIUM is × 5⁄3 (5 min), HARD × 10 (30 min, trip `free-3c`) (`ride-trip.ts` `FREE_LEVELS`). Production's `deploy/.env` must say 180 (it said 60 for the first round of levels). Test/demo override |
 | `HB_MIN_INTERVAL_MS` | `1000` | Minimum spacing of ride heartbeats |
 | `HB_TIMEOUT_MS` | `150000` | A running ride with no heartbeat this long has lost its tab – it could not resume anyway (its next heartbeat would fail it): it leaves the live feed and the stale-ride sweeper (every min(30 s, timeout / 3)) ends it as *failed · heartbeat lost*. Tests set it low |
 | `DEMO_WALLETS` | empty | Comma-separated wallets (or `*`) whose **paid** rides run `DEMO_SCALE`× shorter – for demo videos |
@@ -112,6 +118,16 @@ Enforced by the server (a refused post is `403 live_feature_off`) and sent to th
 | `LIVE_DONATIONS` | `on` | `off` = no donations at all (tips and effects) |
 | `LIVE_FREE_DONATIONS` | code `on`, **prod compose `off`** | `on` = MOCK donations (nothing charged) · `off` = each donation is a real SOL transfer from the spectator to the driver, verified on chain before it counts |
 | `LIVE_EFFECTS` | code `all`, **prod compose `free`** | Donations that change the ride (night / day / holes): `all` rides · `free` = only free test rides, never paid ones · `off` = tips only |
+
+### Weekly skill contest geo
+
+Ranked starts read the country from edge headers (`CF-IPCountry` and `CF-Region-Code`, else `X-FC-Country` and `X-FC-Region`). There is no paid geo vendor. The edge must set these and drop a client-supplied copy. An empty list keeps the code default in `server/src/domain/prize/prize-rules.ts`. A non-empty comma list replaces that one default.
+
+| Key | Default | Notes |
+|---|---|---|
+| `PRIZE_SANCTIONED_COUNTRIES` | empty → CU, IR, KP, SY | Draft. Not an OFAC list |
+| `PRIZE_BLOCKED_COUNTRIES` | empty → GB and the EU-27 | Germany is country `DE` |
+| `PRIZE_BLOCKED_US_STATES` | empty → SC, AZ, LA, AR, DE, MT, TN | `DE` here is Delaware, and only when the country is US |
 
 ### Solana & payments
 
@@ -166,7 +182,7 @@ The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `D
 | `EDITOR_JOB_TIMEOUT_MS` | `600000` | 10 s – 1 h; a longer job is aborted, one left by a restart is failed |
 | `EDITOR_FAKE_LLM` | `0` | **Test only**: `1` offers the scripted fake model (browser e2e of the editor). Refused in production |
 
-Runtime knobs of the AI editor are `player.GameSetting` rows (signed admin settings API): `editor_jobs_per_day` (40), `editor_max_steps` (24), `editor_max_output_tokens` (32000), `editor_max_input_ktokens` (500: input tokens per job, thousands), `editor_jobs_parallel` (5; 0 pauses the AI editor).
+Runtime knobs of the AI editor are `player.GameSetting` rows (signed admin settings API): `editor_jobs_per_day` (40), `editor_max_steps` (24), `editor_max_output_tokens` (100000), `editor_max_input_ktokens` (500: input tokens per job, thousands), `editor_jobs_parallel` (5; 0 pauses the AI editor).
 
 Run the AI worker separately with `npm run server:build && npm run editor:worker`. API and worker must share their database, timeout, provider configuration and explicit `JWT_SECRET` (including in local development). API, worker and MCP must share the MCP token. Generation is not started by the HTTP API. The API retains provider keys for provider discovery; model sessions execute only in the worker. Production starts and health-checks `editor-worker` alongside MCP.
 
@@ -238,7 +254,7 @@ npm run server:dev                   # :3000, behind http://freightchain.localho
 - **Landing** (`landing/`): dev proxy in `vite.config.js`; `LANDING_DIR` on the server; size budget enforced by `landing/test`. The whitepaper (`whitepaper.html`) is the second Vite input of the same build, served by the same `LANDING_DIR`; host `whitepaper.<apex>` comes from `DEPLOY_DOMAIN`, no env key of its own.
 - **App icon**: generated – edit `design/icons/build-app-icons.mjs` and rerun, never the PNGs.
 - **nginx / certificates**: `deploy/nginx/*.conf.template`, applied by `npm run deploy:setup` (a new host = new template + `setup.sh` + smoke check + `hosts.js` prefix).
-- **Anchor program**: `programs/freightchain-pools/Anchor.toml` (program id, `wallet` → `deploy/secrets/program-deploy.json`, gitignored). Building: `npm run program:build`, `program:test`, `program:idl`.
+- **Anchor program**: `programs/Anchor.toml` (program id, `wallet` → `deploy/secrets/program-deploy.json`, gitignored). Building: `npm run program:build`, `program:test`, `program:idl`.
 - **Logging**: JSON lines in production, ring buffer of 5000 in memory for the admin page; read with `npm run ops -- logs`.
 - **Scheduled jobs** (no env): free-ride refill 00:00 UTC, the retention sweeps (recordings, sign-ins) 00:30 UTC. By hand: `node dist/cli/index.js retention:sweep`; after a verdict-rules change `verdict:rejudge [--status …] [--since DATE] [--dry-run]` judges completed shifts again.
 

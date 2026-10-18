@@ -9,7 +9,7 @@ import { Round, type RoundProps } from '../../../src/domain/economy/round.entity
 import { Player } from '../../../src/domain/players/player.entity.js';
 import { Ride, type RideProps } from '../../../src/domain/rides/ride.entity.js';
 import { OPEN_RIDE_STATUSES, RideStatus } from '../../../src/domain/rides/ride-status.js';
-import { completedLevels } from '../../../src/domain/rides/ride-trip.js';
+import { completedLevels, freeFinishCounts } from '../../../src/domain/rides/ride-trip.js';
 import { ConflictError, VersionConflictError } from '../../../src/domain/shared/errors.js';
 import { AchievementMintRepositoryPort } from '../../../src/application/ports/achievements/achievement-mint.repository.port.js';
 import { MAX_MINT_ATTEMPTS, type AchievementMintRecord } from '../../../src/domain/achievements/achievement-mint.js';
@@ -79,14 +79,8 @@ export class MemoryPlayerRepository extends PlayerRepositoryPort {
     return true;
   }
 
-  async grantDailyFreeRides(today: string, cap: number): Promise<number> {
-    let touched = 0;
-    for (const [wallet, p] of [...this.db.players].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
-      if (p.freeDay >= today) continue;
-      this.db.players.set(wallet, { ...p, freeRides: p.freeRides < cap ? p.freeRides + 1 : p.freeRides, freeRidesMax: cap, freeDay: today, version: p.version + 1 });
-      touched++;
-    }
-    return touched;
+  async grantDailyFreeRides(_today: string, _cap: number): Promise<number> {
+    return 0; // the daily refill is retired; the stored balance is not a gate
   }
 
   async save(player: Player): Promise<Player> {
@@ -171,6 +165,30 @@ export class MemoryRideRepository extends RideRepositoryPort {
   async hasCompletedInPool(poolId: number, wallet: string): Promise<boolean> {
     return [...this.db.rides.values()].some((r) => r.props.wallet === wallet && r.props.poolId === poolId && r.props.status === RideStatus.Completed && inWindow(this.db, r.props));
   }
+
+  async countRankedStarts(wallet: string, from: Date, to: Date): Promise<{ free: number; paid: number; promo: number }> {
+    const rows = [...this.db.rides.values()].filter((r) => r.props.wallet === wallet && r.props.ranked === true && inRange(r.props.startedAt, from, to));
+    const promo = rows.filter((r) => r.props.promoCode).length;
+    const free = rows.filter((r) => !r.props.promoCode && r.props.tier === 'free').length;
+    return { free, promo, paid: rows.length - free - promo };
+  }
+
+  async listRankedEnded(tier: string, from: Date, to: Date, _tx?: unknown, opts?: { verifiedOnly?: boolean }): Promise<Ride[]> {
+    const ended = new Set<RideStatus>([RideStatus.Completed, RideStatus.Abandoned, RideStatus.Failed]);
+    return [...this.db.rides.values()]
+      .filter((r) => r.props.tier === tier && r.props.ranked === true && ended.has(r.props.status) && inRange(r.props.startedAt, from, to))
+      .filter((r) => {
+        const v = this.db.verdicts.get(r.props.id);
+        return opts?.verifiedOnly ? v?.status === 'verified' : (!v || v.status === 'verified');
+      })
+      .sort((a, b) => (a.props.startedAt?.getTime() ?? 0) - (b.props.startedAt?.getTime() ?? 0) || a.seq - b.seq)
+      .map((r) => Ride.restore(r.props));
+  }
+}
+
+function inRange(at: Date | null, from: Date, to: Date): boolean {
+  const ms = at?.getTime() ?? -1;
+  return ms >= from.getTime() && ms < to.getTime();
 }
 
 @Injectable()
@@ -238,8 +256,9 @@ export class MemoryRideQuery extends RideQueryPort {
         siberiaShifts: fair.filter((r) => r.route === 'siberia').length,
         freeUnassisted: fair.filter((r) => r.tier === 'free' && !r.assist).length,
         completedFreeLevels: completedLevels(fair),
-        honkMints: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.amount > 0n).length,
-        honkFinishes: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.amount > 0n && m.band100).length,
+        freeFinishes: freeFinishCounts(fair),
+        honkMints: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.released && m.amount > 0n).length,
+        honkFinishes: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.released && m.amount > 0n && m.band100).length,
         qualifiedReferrals: [...this.db.referrals.values()].filter((r) => r.referrer === wallet && r.badgeCounted).length,
       },
     };

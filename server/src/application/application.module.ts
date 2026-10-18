@@ -10,6 +10,8 @@ import { StatsService } from './services/stats.service.js';
 import { RoundService } from './services/round.service.js';
 import { VerdictService } from './services/verdict.service.js';
 import { HonkMintService } from './services/honk-mint.service.js';
+import { RankedEntryService } from './services/ranked-entry.service.js';
+import { WeeklyTicketService } from './services/weekly-ticket.service.js';
 import { PoolAttentionService } from './services/pool-attention.service.js';
 import { AttestationService } from './services/attestation.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
@@ -23,6 +25,7 @@ import { GetMeHandler } from './use-cases/auth/get-me/get-me.handler.js';
 import { LogoutHandler } from './use-cases/auth/logout/logout.handler.js';
 import { ClaimPhonePairHandler, OpenPhonePairHandler, PollPhonePairHandler } from './use-cases/auth/phone-pair/phone-pair.handler.js';
 import { RequestChallengeHandler } from './use-cases/auth/request-challenge/request-challenge.handler.js';
+import { StartGuestHandler } from './use-cases/auth/start-guest/start-guest.handler.js';
 import { VerifySignInHandler } from './use-cases/auth/verify-signin/verify-signin.handler.js';
 import { GetChainFeesHandler } from './use-cases/chain/get-chain-fees/get-chain-fees.handler.js';
 import { GetLeaderboardHandler } from './use-cases/economy/get-leaderboard/get-leaderboard.handler.js';
@@ -136,14 +139,16 @@ import { SyncPledgesHandler } from './use-cases/pledges/sync-pledges/sync-pledge
 import { GetRidePledgesHandler } from './use-cases/pledges/get-ride-pledges/get-ride-pledges.handler.js';
 import { GetPledgeHandler } from './use-cases/pledges/get-pledge/get-pledge.handler.js';
 import { BurnHonkHandler, GetHonkCatalogHandler, GetHonkHandler, MintHonkVisualHandler } from './use-cases/honk/honk.handlers.js';
+import { ReleaseHonkHandler } from './use-cases/honk/release-honk.handler.js';
 import { BurnHonkTimeHandler } from './use-cases/honk/burn-honk-time.handler.js';
 import { BurnHonkWeatherHandler } from './use-cases/honk/burn-honk-weather.handler.js';
 import { BindReferralHandler, GetReferralsHandler, SetReferralGiftHandler } from './use-cases/referrals/referrals.handler.js';
+import { GetPrizeBoardHandler } from './use-cases/prize/get-prize-board/get-prize-board.handler.js';
 
 const services: Provider[] = [
   EntityCatalogService, EntityWriteService,
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
-  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService,
+  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService, RankedEntryService, WeeklyTicketService,
   ReferralService, ReferralPayoutService,
 ];
 
@@ -179,7 +184,7 @@ const handlers: Provider[] = [
   CreateEditorJobHandler, CancelEditorJobHandler, ListEditorJobsHandler, GetEditorJobHandler, GetEditorJobEventsHandler, McpConfigsHandler, McpSaveDraftHandler,
   GetEntityBundleHandler, ListEntitiesHandler, GetEntityHandler, ListRevisionsHandler, GetRevisionHandler, SaveDraftHandler, RestoreRevisionHandler, RequestPublishChallengeHandler, PublishRevisionHandler, RequestEditorChallengeHandler, VerifyEditorSignInHandler, GetEditorMeHandler,
   GetStatsHandler, GetDailyStatsHandler, ReconcileStatsHandler,
-  RequestChallengeHandler, VerifySignInHandler, GetMeHandler, LogoutHandler, OpenPhonePairHandler, ClaimPhonePairHandler, PollPhonePairHandler,
+  RequestChallengeHandler, VerifySignInHandler, StartGuestHandler, GetMeHandler, LogoutHandler, OpenPhonePairHandler, ClaimPhonePairHandler, PollPhonePairHandler,
   CreateRideHandler, GetRideHandler, GetPendingRideHandler, GetPublicRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler, SweepSignInsHandler, RejudgeRidesHandler, GetRideReplaysHandler, ProcessReplayQueueHandler,
@@ -203,8 +208,9 @@ const handlers: Provider[] = [
   GetSnsReverseHandler, ResolveSnsHandler,
   GetActionsJsonHandler, GetHelloActionHandler, SayHelloActionHandler, GetShiftActionHandler, PrepareShiftActionHandler, OpenSiteActionHandler, GetRideActionHandler, OpenRideActionHandler,
   CreatePledgeHandler, ConfirmPledgeHandler, SyncPledgesHandler, GetRidePledgesHandler, GetPledgeHandler,
-  BurnHonkHandler, BurnHonkTimeHandler, BurnHonkWeatherHandler, MintHonkVisualHandler, GetHonkHandler, GetHonkCatalogHandler,
+  BurnHonkHandler, BurnHonkTimeHandler, BurnHonkWeatherHandler, MintHonkVisualHandler, GetHonkHandler, GetHonkCatalogHandler, ReleaseHonkHandler,
   GetReferralsHandler, BindReferralHandler, SetReferralGiftHandler,
+  GetPrizeBoardHandler,
 ];
 
 @Module({

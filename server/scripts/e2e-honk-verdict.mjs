@@ -12,7 +12,7 @@ import { honestRoad } from './road-damage.mjs';
 import { honkBalance, vaultBalance } from './honk-program.mjs';
 
 const RPC = process.env.RPC, KEYS = process.env.KEYS, BASE = process.env.BASE;
-const UNIT = 1_000_000n; // ledger strings are whole HONK; the chain balance is base units
+const UNIT = 1_000_000n; // ledger strings are whole TEN4; the chain balance is base units
 const fails = [];
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -145,7 +145,7 @@ const minted = BigInt(String(after.minted).split('.')[0]) - BigInt(String(before
 const chainDelta = (await honkBalance({ rpc: RPC, owner: player.kp.publicKey })) - beforeChain;
 const chainExpect = 100n * UNIT;
 check('ledger mint', minted === 100n, `${before.minted} -> ${after.minted}`);
-check('chain mint matches', chainDelta === chainExpect && chainDelta === minted * UNIT, `chain ${chainDelta} ledger ${minted} HONK`);
+check('chain mint matches', chainDelta === chainExpect && chainDelta === minted * UNIT, `chain ${chainDelta} ledger ${minted} TEN4`);
 check('vault unchanged', (await vaultBalance({ rpc: RPC })) === beforeVault, String(beforeVault));
 const again = await post(`rides/${driven.id}/end`, { outcome: 'shift', s: 1, t: 1, hull: 100 }, player.cookie);
 const chainAfter = await honkBalance({ rpc: RPC, owner: player.kp.publicKey });

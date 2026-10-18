@@ -57,6 +57,7 @@ export const TRIP_TRAFFIC = {
   'free-1c': { traffic: 0.4, cross: 0,   calm: true,  start: 'straight' },
   'free-2c': { traffic: 0.8, cross: 0.8, calm: true,  start: 'depot' },
   'free-3b': { traffic: 1.4, cross: 1.4, calm: false, start: 'depot' },
+  'free-3c': { traffic: 1.4, cross: 1.4, calm: false, start: 'depot' },
   '1h':      { traffic: 1,   cross: 1,   calm: false, start: 'depot' },
   '4h':      { traffic: 1.4, cross: 1.4, calm: false, start: 'depot' },
   '8h':      { traffic: 1.8, cross: 1.8, calm: false, start: 'depot' },

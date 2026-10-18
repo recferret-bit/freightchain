@@ -30,8 +30,10 @@ function buildChunk(ci) {
   const colliders = []; grp.userData.colliders = colliders; grp.userData.heads = [];
   const fk = net.forksNear(s0, s0 + CH)[0] ?? null;
   roadside(ci, grp, false, fk, colliders);
-  for (const j of net.near(s0, s0 + CH)) if (j.s < s0 + CH) buildJunction(j, { surf, pad, marks, place: (o, s, l, y) => putAt(grp, roadAt, o, s, l, y), reg: (obj, id, s, lat, extra) => regAt(grp, colliders, obj, id, s, lat, extra), destroyed, heads: grp.userData.heads });
+  const js = net.near(s0, s0 + CH).filter(j => j.s < s0 + CH);
+  for (const j of js) buildJunction(j, { surf, pad, marks, place: (o, s, l, y) => putAt(grp, roadAt, o, s, l, y), reg: (obj, id, s, lat, extra) => regAt(grp, colliders, obj, id, s, lat, extra), destroyed, heads: grp.userData.heads });
   if (ci === 0) buildDepot({ place: (o, s, l, y) => putAt(grp, roadAt, o, s, l, y), reg: (obj, id, s, lat, extra) => regAt(grp, colliders, obj, id, s, lat, extra), destroyed });
+  grp.userData.s1 = Math.max(s0 + CH, ci <= 1 ? 96 : 0, ...js.map(j => j.s + 64));
   const out = [[surf, M.surface], [pad, M.pad], [marks, M.marks]];
   if (fk) {   // a fork: the OTHER road too – its ribbon (just under the spine's, so the shared apron does not flicker), its roadside and its holes, drawn only (no colliders)
     const asurf = strips(.024), amarks = strips(.043); buildAlt(asurf, amarks, Math.max(s0, fk.f0), Math.min(s0 + CH, fk.f1));
@@ -109,6 +111,18 @@ class RoadObjectManager {
     const lo = Math.floor((s - BEHIND) / CH), hi = Math.floor((s + AHEAD) / CH);
     for (const [ci, g] of chunks) if (ci < lo || ci > hi) { releaseChunk(g); chunks.delete(ci); }
     for (let ci = Math.max(0, lo); ci <= hi; ci++) if (!chunks.has(ci)) chunks.set(ci, buildChunk(ci));
+  }
+  /* hide chunks strictly behind the forward camera during the main pass, then restore for the rear-view mirror passes */
+  setBehindVisible(visible, s, psi, d = 0) {
+    if (visible) { for (const [, g] of chunks) g.visible = true; return; }
+    if (Math.abs(psi) >= 0.8) return;
+    const p = roadAt(s), th = p.t + psi, px = p.x + Math.cos(p.t) * d, pz = p.z + Math.sin(p.t) * d;
+    const fx = Math.sin(th), fz = -Math.cos(th), rx = Math.cos(th), rz = Math.sin(th), cutoff = s - 48;
+    const isBehind = q => { const dx = q.x - px, dz = q.z - pz, f = dx * fx + dz * fz, r = dx * rx + dz * rz; return f < -32 - Math.abs(r) * 0.4; };
+    for (const [ci, g] of chunks) {
+      const s1 = g.userData?.s1 ?? (ci + 1) * CH;
+      if (s1 < cutoff && isBehind(roadAt((ci + 0.5) * CH)) && isBehind(roadAt(s1))) g.visible = false;
+    }
   }
 }
 export const roadObjects = new RoadObjectManager();

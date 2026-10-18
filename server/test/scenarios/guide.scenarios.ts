@@ -55,7 +55,7 @@ export function guideScenarios(h: () => Harness): void {
     const again = await order(w, { assist: true });
     expect(again).toMatchObject({ id: first.id, tutorial: false, assist: true });
     expect((await w.agent.get(`/api/rides/${first.id}`).expect(200)).body).toMatchObject({ tutorial: false, assist: true });
-    expect((await me(w)).freeRides).toBe(9);
+    expect((await me(w)).freeRides).toBe(10);
   });
 
   it('a running ride keeps what it started with', async () => {

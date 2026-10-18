@@ -1,5 +1,5 @@
 // The WHOLE promo loop in real headless Chrome against a RUNNING server (PostgreSQL, the built landing): the admin makes a free-ride code and a ticket code on the admin page (the wallet signs each one),
-// different players redeem them from the lobby and from the landing, see what changed (free rides, tickets), then burn HONK for cab parts. The admin sees who used what – and the ways a code stops
+// different players redeem them from the lobby and from the landing, see what changed (free rides, tickets), then burn TEN4 for cab parts. The admin sees who used what – and the ways a code stops
 // working (expired, not started, used up, disabled, already redeemed) and is abused (spelling variants, double clicks, parallel wallets racing for the last use, hostile text).
 //   Server: FREE_RIDE_SECONDS=3 ADMIN_WALLETS=<admin address> THROTTLE_PROMO_LIMIT=100000 … node dist/main.js – easiest: `bash .claude/skills/run-tests/e2e.sh promo` (admin keypair + a live 1h pool seeded).
 //   ADMIN_KEYPAIR=<path to a JSON array secret key> BASE=http://localhost:<port> [SEED=1 DATABASE_URL=… to seed the 1h pool] CHROME_PORT=<first of three DevTools ports> node scripts/e2e-promo.mjs
@@ -14,7 +14,7 @@ const BASE = process.env.BASE || 'http://localhost:3111', CDP = +(process.env.CH
 const fails = []; const check = (n, ok, x = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x ? ' – ' + x : ''}`); if (!ok) fails.push(n); };
 const call = async (method, p, b, c, extra = {}) => { const r = await fetch(`${BASE}/api/${p}`, { method, headers: { 'content-type': 'application/json', ...(c && { cookie: c }), ...extra }, body: b === undefined ? undefined : JSON.stringify(b) }); return { r, j: await r.json().catch(() => ({})) }; };
 const post = (p, b, c, extra) => call('POST', p, b, c, extra), get = (p, c) => call('GET', p, undefined, c);
-/** Test-only ledger credit. The product has no credit route. `honk` is whole HONK. */
+/** Test-only ledger credit. The product has no credit route. `honk` is whole TEN4. */
 async function creditHonk(wallet, honk) {
   const prisma = new PrismaClient();
   const amount = BigInt(honk) * 1_000_000n, updatedAt = new Date();
@@ -133,7 +133,7 @@ check('lobby: the TICKETS code puts 2 tickets into the live 1h pool', r.good && 
 await creditHonk(u1.address, 520); // gold 260 + four parts at 65
 let minted = 0;
 for (const [slot, item] of PARTS) { const m = await post('honk/visuals', { slot, item }, u1.cookie); if (m.r.status === 200) minted++; }
-check('lobby: burning HONK mints the five cab parts', minted === 5 && (await get('honk', u1.cookie)).j.balance === '0', String(minted));
+check('lobby: burning TEN4 mints the five cab parts', minted === 5 && (await get('honk', u1.cookie)).j.balance === '0', String(minted));
 r = await redeemUI(C('RIDE1'));
 check('lobby: the 1-free-ride code works too (14/5 free rides)', r.good && await until(async () => /14\/5 free rides/.test(await txt(B, '#chip-free'))), r.text);
 r = await redeemUI('NO-SUCH-' + T);
@@ -176,7 +176,7 @@ check('lobby (arrived from the landing): REDEEM works – the ticket code', awai
 await L.shot('promo-lobby-from-landing');
 const landed = await signInCookie(L);
 await creditHonk(bs58.encode(u4kp.publicKey), 65);
-check('…and burning 65 HONK wears the pink dice', (await post('honk/visuals', { slot: 'dice', item: 'pink' }, landed)).r.status === 200 && (await get('wardrobe', landed)).j.equipped.dice === 'pink');
+check('…and burning 65 TEN4 wears the pink dice', (await post('honk/visuals', { slot: 'dice', item: 'pink' }, landed)).r.status === 200 && (await get('wardrobe', landed)).j.equipped.dice === 'pink');
 await L.send('Page.navigate', { url: `${BASE}/` });
 await until(async () => !(await L.ev('document.getElementById("chip-wallet")?.hidden ?? true')));
 await L.ev(`document.getElementById('invite-code').value = ${JSON.stringify(C('RIDE1'))}; document.getElementById('invite').requestSubmit()`);

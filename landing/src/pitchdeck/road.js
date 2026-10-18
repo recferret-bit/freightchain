@@ -1,5 +1,5 @@
-/* slide 8 – go to market: the truck drives to the exit under the pointer (or a tapped one), honks, mines HONK as it drives, and dodges rare obstacles in two lanes;
-   the closer to the last exit (HONK listing), the faster the road – light-speed streaks, tunnel lamps and the light at the end of the tunnel on the .warp canvas.
+/* slide 8 – go to market: the truck drives to the exit under the pointer (or a tapped one), honks, mines TEN4 as it drives, and dodges rare obstacles in two lanes;
+   the closer to the last exit (TEN4 listing), the faster the road – light-speed streaks, tunnel lamps and the light at the end of the tunnel on the .warp canvas.
    The truck's position is the script's own `--tx` and lane. Rects are read only while a drive or a swerve transition is catching up to that.
    Exit positions are cached, an obstacle's box is worked out from its own position, never read back. The streak gradient is one sprite, reused. */
 import { reduced, view, stage, slideOf, everyFrame, replay, shakeScreen } from './core.js';
@@ -29,7 +29,7 @@ export function initRoad(exitsEl) {
   requestAnimationFrame(() => { measure(); park(); });
 
   /* the truck HONKS when hovered or tapped: a two-tone air horn synthesized with Web Audio (no file, no request; browsers only let it sound after a click on the page), the cab hops,
-     a comic HONK! and sound rings burst from it, the stack puffs, the HONK sign hears it – and any SOL coins near the cab are blown into the air */
+     a comic HONK! and sound rings burst from it, the stack puffs, the TEN4 sign hears it – and any SOL coins near the cab are blown into the air */
   const horn = click => {
     try {
       actx ??= new (window.AudioContext || window.webkitAudioContext)();
@@ -53,7 +53,7 @@ export function initRoad(exitsEl) {
     const s = stage.getBoundingClientRect(), r = truck.getBoundingClientRect();
     blowCoins((r.left + r.width * .9 - s.left) / view.scale, (r.top - s.top) / view.scale);
   };
-  /* driving mines HONK (earned by distance, as the spec has it): a HONK coin pops off the truck and arcs into the counter – every 5 s under EXIT 1, a second less under each exit on, every 0.5 s under the last */
+  /* driving mines TEN4 (earned by distance, as the spec has it): a TEN4 coin pops off the truck and arcs into the counter – every 5 s under EXIT 1, a second less under each exit on, every 0.5 s under the last */
   const mine = () => {
     const c = document.createElement('i'), x0 = tx + truck.offsetWidth * .35, y0 = hwy.offsetTop + truck.offsetTop - (lane ? 40 : 0), x1 = counter.offsetLeft + cnum.offsetLeft + cnum.offsetWidth / 2, y1 = hwy.offsetTop + counter.offsetTop + 10;
     honk(false);   // the horn, the hop, the HONK! burst (it sounds only once the page has had a click)

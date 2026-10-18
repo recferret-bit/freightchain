@@ -8,10 +8,11 @@ import { env } from './environment.js';
 import { mats as themeMats } from '../themes/_shared/mats.js';
 import { MAT } from './props.js';
 import { trailer, trailerMats } from './trailer.js';
-import { vehicleMats } from './vehicles.js';
+import { vehicleMats, setBehindVehiclesVisible } from './vehicles.js';
 import { junctionMats } from './junctions.js';
 import { depotMats } from './depot.js';
 import { holeMats } from './holes.js';
+import { roadObjects } from './chunks.js';
 import { cv, view, mirrorRects } from '../cockpit/canvas.js';
 import { updateBeam } from './daynight.js';
 import { SHAKE_START, SHAKE_MOVING, rpmShake } from '../sim/shake.js';
@@ -66,6 +67,7 @@ export function renderWorld() {
   env.sky.mesh.position.copy(camera.position); env.mountains.position.set(px, 0, pz); env.terrain.update(px, pz);   // sky/mountains/terrain follow the camera
   trailer.position.set(px - Math.sin(th) * 1.2, 0, pz + Math.cos(th) * 1.2); trailer.rotation.y = -st.tyaw;  trailer.userData.rev.visible = st.gear < 0 && drive;   // hitched at the kingpin, lags in curves
   updateBeam(px, pz, th);   // (the road around the truck is streamed by net/orchestrator.js before this)
-  renderer.render(scene, camera);
+  roadObjects.setBehindVisible(false, st.s, st.psi, lat); setBehindVehiclesVisible(false, px, pz, th, st.psi); trailer.visible = false;
+  try { renderer.render(scene, camera); } finally { roadObjects.setBehindVisible(true, st.s, st.psi, lat); setBehindVehiclesVisible(true, px, pz, th, st.psi); trailer.visible = true; }
   renderMirrors(px, pz, th, shake);
 }

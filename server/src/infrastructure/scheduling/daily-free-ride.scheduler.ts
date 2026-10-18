@@ -10,8 +10,8 @@ const RETRY_MS = 60 * SECOND_MS;
 const LOCK_KEY = 'sched:daily-free-ride';
 
 /**
- * The 00:00 UTC cron: dispatches GrantDailyFreeRidesCommand on boot (catches up a midnight the server slept through) and then at every UTC midnight.
- * Coordinated across replicas via CachePort.tryLock when Redis is configured.
+ * Retired. Not registered in AppModule. Training rides are unlimited, so there is no midnight credit.
+ * The class stays so a deploy that still imports it does not lose the file in a partial checkout.
  */
 @Injectable()
 export class DailyFreeRideScheduler implements OnApplicationBootstrap, OnApplicationShutdown {

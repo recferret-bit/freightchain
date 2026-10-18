@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Freight Chain Whitepaper – How the Solana Truck Driving Game Works</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="The Freight Chain whitepaper: how to drive, the rides and the rules, the rewards, the escrow program on Solana, how every shift is validated, and how a ride is streamed. Devnet, v0.2.">
+<meta name="description" content="The Freight Chain whitepaper: how to drive, the rides and the rules, the rewards, the escrow program on Solana, how every shift is validated, and how a ride is streamed. Devnet, v0.3.">
 <!-- search + link previews: the whitepaper's ONE public URL is its own host (the apex's /whitepaper.html 301s there in production); absolute URLs, see index.html -->
 <link rel="canonical" href="https://whitepaper.freightchain.fun/">
 <meta property="og:type" content="article">
@@ -18,7 +18,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@FreightChainSol">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"TechArticle","@id":"https://whitepaper.freightchain.fun/#article","headline":"Freight Chain whitepaper: how the Solana truck-driving game works","description":"How to drive, the rides and the rules, the rewards, the escrow program on Solana, how every shift is validated and how a ride is streamed.","version":"0.2","datePublished":"2026-10-08","dateModified":"2026-10-16","inLanguage":"en","url":"https://whitepaper.freightchain.fun/","mainEntityOfPage":"https://whitepaper.freightchain.fun/","image":"https://freightchain.fun/media/og.jpg","author":{"@type":"Organization","@id":"https://freightchain.fun/#org","name":"Freight Chain","url":"https://freightchain.fun/"},"publisher":{"@id":"https://freightchain.fun/#org"},"about":{"@id":"https://freightchain.fun/#game","@type":"VideoGame","name":"Freight Chain","url":"https://freightchain.fun/"}}
+{"@context":"https://schema.org","@type":"TechArticle","@id":"https://whitepaper.freightchain.fun/#article","headline":"Freight Chain whitepaper: how the Solana truck-driving game works","description":"How to drive, the rides and the rules, the rewards, the escrow program on Solana, how every shift is validated and how a ride is streamed.","version":"0.3","datePublished":"2026-10-08","dateModified":"2026-10-17","inLanguage":"en","url":"https://whitepaper.freightchain.fun/","mainEntityOfPage":"https://whitepaper.freightchain.fun/","image":"https://freightchain.fun/media/og.jpg","author":{"@type":"Organization","@id":"https://freightchain.fun/#org","name":"Freight Chain","url":"https://freightchain.fun/"},"publisher":{"@id":"https://freightchain.fun/#org"},"about":{"@id":"https://freightchain.fun/#game","@type":"VideoGame","name":"Freight Chain","url":"https://freightchain.fun/"}}
 </script>
 <meta name="theme-color" content="#0b0a09">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
@@ -33,10 +33,10 @@
 <header class="top">
   <a class="brand" href="#abstract"><span class="mark">⛟</span> FREIGHT CHAIN <small>WHITEPAPER</small></a>
   <div class="right">
-    <span class="chip">v0.2 · OCT 16 2026</span>
-    <span class="chip warn">DEVNET · NO TOKEN</span>
+    <span class="chip">v0.3 · OCT 17 2026</span>
+    <span class="chip warn">DEVNET · PRE-SEASON NOV 2026</span>
     <a class="cta sm ghost" id="landing-top" data-to="site" data-path="/" href="https://freightchain.fun/" aria-label="Return to the landing" title="Return to the landing">← <span class="hide-sm">LANDING</span></a>
-    <a class="cta sm" id="play-top" data-to="game" data-path="/play.html?offline=1" href="https://ride.freightchain.fun/play.html?offline=1">PLAY</a>
+    <a class="cta sm" id="play-top" data-to="game" data-path="/play.html" href="https://ride.freightchain.fun/play.html">PLAY</a>
   </div>
 </header>
 
@@ -59,52 +59,49 @@
 
 <!-- ───────── 00 · ABSTRACT ───────── -->
 <section id="abstract" class="ch lead">
-  <p class="eyebrow">FREIGHT CHAIN · WHITEPAPER v0.2 · SOLANA DEVNET</p>
+  <p class="eyebrow">FREIGHT CHAIN · WHITEPAPER v0.3 · SOLANA DEVNET</p>
   <h1>A long drive, a server-checked finish and a public prize pool.</h1>
-  <p class="lede">Freight Chain is a browser game in which you drive a manual-gearbox truck down a road that never ends. The 1 hour, 4 hour and 8 hour shifts are soon. Nothing is skipped and nothing can be bought to speed it up. A server keeps the clock and judges the finish; the money for a paid shift sits in an escrow program on Solana, not with the operator.</p>
-  <p>This paper describes the game as it is built today and says plainly which parts are live on devnet, which are written but not deployed, and which are only plans. It is written for players who want to know how to drive and what the rules are, for people who might put in money (on devnet, for now) and want to know where it goes, and for reviewers who want to check the claims against the source.</p>
+  <p class="lede">Freight Chain is a browser game in which you drive a manual-gearbox truck down a road that never ends. Nothing is skipped and nothing can be bought to speed it up. A server keeps the clock and judges the finish; the money for a paid shift sits in an escrow program on Solana where player-derived funding is capped below 50%.</p>
+  <p>This paper states what is live on devnet today, what is built in source awaiting deployment, and what is planned for the Nov 2–17, 2026 Devnet Pre-season ($500 USDC + 100k TEN4 points), Season 1 mainnet (Jan 11 – Feb 28, 2027), and the March 2027 TEN4 TGE.</p>
   <div class="stats">
-    <div class="stat"><span class="lbl">SHIFTS</span><b class="num lcd">FREE · 1 · 4 · 8 H</b><span class="unit">free rides on · paid shifts soon</span></div>
+    <div class="stat"><span class="lbl">SHIFTS</span><b class="num lcd">FREE · 1 · 4 · 8 H</b><span class="unit">unlimited training · weekly 1 h grant</span></div>
     <div class="stat"><span class="lbl">SPEED GOVERNOR</span><b class="num lcd">28 m/s</b><span class="unit">100.8 km/h for every truck</span></div>
     <div class="stat"><span class="lbl">RECORDING</span><b class="num lcd">10 Hz</b><span class="unit">truck samples + hashed traffic frames</span></div>
     <div class="stat"><span class="lbl">STREAM DELAY</span><b class="num lcd">≈ 25 s</b><span class="unit">anyone can watch any ride</span></div>
   </div>
   <h3 class="sub">STATUS AT A GLANCE</h3>
   <div class="tblwrap"><table class="tbl status">
-    <thead><tr><th>Part</th><th>State</th><th>Where it is described</th></tr></thead>
+    <thead><tr><th>Part</th><th>State</th><th>Where</th></tr></thead>
     <tbody>
-      <tr><td>The driving game, five routes, free rides</td><td><span class="pill ok">LIVE</span></td><td><a href="#drive">02</a>, <a href="#rides">03</a></td></tr>
-      <tr><td>Server-timed shifts, recording, verdicts (shadow mode)</td><td><span class="pill ok">LIVE</span></td><td><a href="#verify">06</a></td></tr>
-      <tr><td>Anti-cheat v4: recording bounds, the server's road, review and bulk re-judge</td><td><span class="pill ok">LIVE</span></td><td><a href="#verify">06</a></td></tr>
-      <tr><td>Anti-cheat v7: shared traffic simulation and required frame evidence</td><td><span class="pill wip">BUILT · NEXT APP RELEASE</span></td><td><a href="#verify">06</a></td></tr>
-      <tr><td>Live streams, replays, chat, paid donations to the driver</td><td><span class="pill ok">LIVE · DEVNET SOL</span></td><td><a href="#stream">07</a></td></tr>
-      <tr><td>Escrowed prize pools (Anchor program)</td><td><span class="pill ok">ON DEVNET · NOT AUDITED</span></td><td><a href="#onchain">05</a></td></tr>
-      <tr><td>Program version 4: winners published before they are paid, a road nobody picks, sponsors refunded by a failed pool</td><td><span class="pill wip">BUILT · NEXT DEPLOY</span></td><td><a href="#onchain">05</a></td></tr>
-      <tr><td>Blinks (Solana Actions): buy a ticket or open a ride from a shared link</td><td><span class="pill ok">LIVE · DEVNET</span> <span class="pill plan">ON 𝕏 AFTER THE HACKATHON</span></td><td><a href="#onchain">05</a></td></tr>
-      <tr><td>Achievement badges as soulbound compressed NFTs</td><td><span class="pill ok">LIVE · DEVNET</span></td><td><a href="#rewards">04</a></td></tr>
-      <tr><td>Garage colours</td><td><span class="pill ok">LIVE</span></td><td><a href="#rewards">04</a></td></tr>
-      <tr><td>Security check &amp; contracts audit by twelve AI auditors (not a third-party audit)</td><td><span class="pill ok">DONE OCT 13</span> <span class="pill wip">PROGRAM V4 PENDING</span></td><td><a href="#audit">08</a></td></tr>
-      <tr><td>Prize payouts, mainnet</td><td><span class="pill plan">PLANNED</span></td><td><a href="#rewards">04</a>, <a href="#risks">09</a></td></tr>
+      <tr><td>Driving game, five routes, unlimited training, weekly granted 1 h ticket (AMOE)</td><td><span class="pill ok">LIVE</span></td><td><a href="#drive">02</a>, <a href="#rides">03</a></td></tr>
+      <tr><td>Server-timed shifts, recording, verdicts (shadow mode), Anti-cheat v4</td><td><span class="pill ok">LIVE</span></td><td><a href="#verify">06</a></td></tr>
+      <tr><td>Anti-cheat v7: shared road/physics/traffic kernel and required frame evidence</td><td><span class="pill wip">BUILT · NEXT APP RELEASE</span></td><td><a href="#verify">06</a></td></tr>
+      <tr><td>Live streams, replays, CB chat, paid donations to the driver</td><td><span class="pill ok">LIVE · DEVNET SOL</span></td><td><a href="#stream">07</a></td></tr>
+      <tr><td>Escrowed prize pools (Program v3 on devnet; v5 built: 85 / 5 / 10 split, &lt; 50% player share cap, winners root)</td><td><span class="pill ok">DEVNET V3</span> <span class="pill wip">V5 BUILT</span></td><td><a href="#onchain">05</a></td></tr>
+      <tr><td>TEN4 coin (100M fixed cap, 20/50/100% checkpoints, cab burns, Convoy 4M &amp; Airdrop 8M vaults)</td><td><span class="pill wip">BUILT · LOCALNET</span> <span class="pill plan">TGE MAR 2027</span></td><td><a href="#rewards">04</a></td></tr>
+      <tr><td>Nine-slot Garage, single-effect promo codes, Convoy referrals (?ref=), 3D AI entity editor + MCP</td><td><span class="pill ok">BUILT IN MAIN</span></td><td><a href="#rewards">04</a></td></tr>
+      <tr><td>Achievement badges (38 soulbound compressed NFTs across 10 ladders, incl. TEN4 &amp; Convoy)</td><td><span class="pill ok">LIVE · DEVNET</span></td><td><a href="#rewards">04</a></td></tr>
+      <tr><td>12-AI blind security review across 6 surfaces (7H / 9M fixed in source; not a third-party audit)</td><td><span class="pill ok">DONE OCT 13</span></td><td><a href="#audit">08</a></td></tr>
+      <tr><td>Devnet Pre-season ($500 USDC + 100k TEN4 points, Nov 2–17, 2026) &amp; Season 1 Mainnet (Jan 2027)</td><td><span class="pill plan">NOV 2026 · JAN 2027</span></td><td><a href="#rewards">04</a>, <a href="#risks">09</a></td></tr>
     </tbody>
   </table></div>
-  <p class="dim note">SOL remains the pool. HONK is specified in the game as a capped mint-on-verified-checkpoint coin and is not an offer. Nothing here is an offer to sell anything, or financial advice. Read <a href="#risks">section 09</a> before you put anything in.</p>
+  <p class="dim note">SOL / USDC funds the pools. TEN4 is a separate capped coin (100M supply) minted by verified paid checkpoints; HONK is the horn/chat verb. Nothing here is an offer to sell any asset or financial advice. Read <a href="#risks">section 09</a>.</p>
 </section>
 
 <!-- ───────── 01 · THESIS ───────── -->
 <section id="thesis" class="ch">
   <header class="ch-h"><i>01</i><h2>Thesis</h2><p>Attention is the scarce good. A public clock, a public pool and a public board sell it.</p></header>
-  <p><em>Desert Bus</em> (1995) was an eight-hour drive from Tucson to Las Vegas at 45 mph for one point. Nobody should have finished it, and people did – and other people watched. What made it famous was not the driving; it was that the cost was time, in public, and spectators could watch a finish happen.</p>
-  <p>Freight Chain keeps that and adds the two things that were missing: a <b>finish decided by a server</b> instead of a promise, and <b>a pot that is held by a program</b> instead of a company. The design follows from four rules:</p>
+  <p><em>Desert Bus</em> (1995) was an eight-hour drive from Tucson to Las Vegas at 45 mph for one point. People finished it, and others watched, because the cost was real time in public. Freight Chain keeps that drive and adds a <b>server-verified finish</b> and a <b>program-held skill pool</b>:</p>
   <ol class="rules">
     <li><b>Time is the price.</b> A shift completes at its server-set finish line. The truck is governed at 28 m/s, so distance takes time; idling and a hidden tab earn no progress.</li>
-    <li><b>The finish is not self-reported.</b> The browser reports the drive; the server checks samples, traffic frames and live events against shared road and simulation rules (<a href="#verify">06</a>).</li>
-    <li><b>Money is held by rules, not by us.</b> Paid tickets go into a program-owned vault with fixed, public rules and a refund path nobody needs permission for (<a href="#onchain">05</a>).</li>
-    <li><b>Everything is watchable.</b> Any ride can be streamed live or replayed from the same recording the verdict is made from. Spectators can talk to the driver and, on devnet, tip them (<a href="#stream">07</a>).</li>
+    <li><b>The finish is not self-reported.</b> The browser reports the drive; the server checks 10 Hz samples, frame-level traffic proof and live events against shared road and simulation rules (<a href="#verify">06</a>).</li>
+    <li><b>Money is held by rules, not by us.</b> Tickets and base funding sit in a program-owned vault (85% weekly boards &middot; 5% rollover &middot; 10% Season Final, with player-derived funding &lt; 50%) and a permissionless refund path (<a href="#onchain">05</a>).</li>
+    <li><b>Everything is watchable.</b> Any ride can be streamed live or replayed from the same recording the verdict judges. Spectators can chat and tip the driver (<a href="#stream">07</a>).</li>
   </ol>
   <div class="grid3">
-    <article class="card"><h3>WHO IT IS FOR</h3><p>Players who like manual-gearbox sims and long, quiet challenges; people who watch streams of them; and Solana users who want to see escrow and verification done in the open.</p></article>
-    <article class="card"><h3>WHAT IT IS NOT</h3><p>Not a token launch, not a yield product and not a casino game: the drive is skill and patience, the finish is verified, and no outcome depends on a random draw in the current design.</p></article>
-    <article class="card"><h3>WHERE IT RUNS</h3><p>In a desktop browser, no download. Wallet: Phantom or Solflare, on this computer or by scanning a Solana Pay code with the same account on a phone. Network: Solana <b>devnet</b>. Touch controls for driving are not built.</p></article>
+    <article class="card"><h3>WHO IT IS FOR</h3><p>Players who enjoy manual-gearbox sims and endurance challenges, stream viewers, and Solana users who want verifiable skill pools.</p></article>
+    <article class="card"><h3>WHAT IT IS NOT</h3><p>Not a casino game or yield product: results depend strictly on driving skill with equal tie-splitting, and operator + sponsor base funding always exceeds the player-derived bonus (&lt; 50% player share).</p></article>
+    <article class="card"><h3>WHERE IT RUNS</h3><p>In a desktop browser, no download. Wallet: Phantom, Solflare, Backpack, or QR phone-to-desktop pairing. Network: Solana <b>devnet</b> today (Pre-season Nov 2026; Season 1 mainnet Jan 2027).</p></article>
   </div>
 </section>
 
@@ -214,24 +211,21 @@
   <div class="tblwrap"><table class="tbl tiers2">
     <thead><tr><th>Tier</th><th>Nominal length</th><th>List price</th><th>What it is</th></tr></thead>
     <tbody>
-      <tr><td><b>FREE</b></td><td>3–15 minutes</td><td>$0</td><td>Three levels: EASY (3 min, two crossroads), MEDIUM (5 min, three crossroads and a fork), HARD (15 min, six crossroads, two forks, no assist, no tutorial); it ends by itself at the line. Ten at sign-up; daily refill stops at five. Its own leaderboard and badges. No pool.</td></tr>
-      <tr><td><b>1 H</b></td><td>1 hour</td><td>$5</td><td>Soon. Opens at 20 tickets, or it refunds. The standard road.</td></tr>
-      <tr><td><b>4 H</b></td><td>4 hours</td><td>$15</td><td>Soon. Tighter bends, busier traffic. Sold only once a 4-hour pool opens.</td></tr>
-      <tr><td><b>8 H</b></td><td>8 hours</td><td>$50</td><td>Soon. The hardest road. Sold only once an 8-hour pool opens.</td></tr>
+      <tr><td><b>FREE</b></td><td>3–30 minutes</td><td>$0</td><td>Three training levels: EASY (3 min, two crossroads), MEDIUM (5 min, three crossroads and a fork), HARD (30 min, six crossroads, two forks, no assist, no tutorial); ends by itself at the line. Unlimited. Its own leaderboard and badges. Not a prize entry.</td></tr>
+      <tr><td><b>1 H</b></td><td>1 hour (50.4 km)</td><td>$5</td><td>Sprint board (25% of weekly boards; 100 TEN4 Era 1 finish). Every eligible wallet also receives 1 granted paid 1 h ticket per week (AMOE, no TEN4 mint).</td></tr>
+      <tr><td><b>4 H</b></td><td>4 hours (201.6 km)</td><td>$15</td><td>Haul board (30% of weekly boards; 500 TEN4 Era 1 finish). Tighter bends, busier traffic.</td></tr>
+      <tr><td><b>8 H</b></td><td>8 hours (403.2 km)</td><td>$50</td><td>Long Haul board (45% of weekly boards; 1,200 TEN4 Era 1 finish with 48 h review hold). The hardest road.</td></tr>
     </tbody>
   </table></div>
-  <p class="dim">Paid shifts are soon. $5, $15 and $50 are the planned list prices. List prices are in US dollars. A pool fixes its price in lamports at creation and that price never changes. Devnet SOL has no value.</p>
-  <p class="dim">Ten free rides at sign-up. Daily refill stops at five. Offline practice runs need no wallet. Then connect a Solana wallet.</p>
+  <p class="dim">Training rides are unlimited (<code>play.html</code> with no ride id starts the real EASY ride). Every eligible wallet gets one weekly granted paid ticket (AMOE, default 1 h; free-ticket entries are capped at 30% of any board's prize pool). Ranked play runs Mon 00:00 – Sun 12:00 UTC (up to 5 paid + 1 promo ranked starts per week; verification to Mon 12:00, appeals to Tue 12:00, payouts Tue).</p>
 
   <h3 class="sub">HOW A SHIFT RUNS</h3>
   <ol class="flow">
-    <li><i>1</i><b>SIGN IN</b><span>Native 1-click Sign-In With Solana (solana:signIn). Modern wallets (Phantom, Solflare, Backpack) connect and sign in a single verified modal; automatic fallback to signMessage. Your .sol domain from SNS automatically displays on all boards and receipts.</span></li>
-    <li><i>2</i><b>START</b><span>Free: spend a free ride. Paid: spend one ticket of that tier's live pool. The server issues a signed ride with a seed shared by its pool, or by its tier that day: everyone drives one road and a start time.</span></li>
-    <li><i>3</i><b>DRIVE</b><span>The game heartbeats the server. Driven seconds come from those beats, capped by wall time. Samples and traffic frames upload in hash-chained batches (<a href="#verify">06</a>).</span></li>
-    <li><i>4</i><b>FINISH</b><span>Reach the server-set distance and the shift is <em>complete</em>. Free levels end automatically; a paid driver may keep driving, then end it (P → END SHIFT).</span></li>
+    <li><i>1</i><b>SIGN IN</b><span>1-click Sign-In With Solana (<code>solana:signIn</code>, CAIP-122), legacy <code>signMessage</code> fallback, or QR phone-to-desktop pairing (<code>/api/auth/pair</code>). <code>.sol</code> names resolve on chain via SNS.</span></li>
+    <li><i>2</i><b>START</b><span>Pick a free level or spend a ticket (1h / 4h / 8h). The server issues a signed ride with a seed derived from the pool's on-chain slot hash: everyone on that board drives the same road and start hour.</span></li>
+    <li><i>3</i><b>DRIVE</b><span>Heartbeats track time; 10 Hz truck samples and lossless per-frame traffic proof (<code>trafficVersion=1</code>) upload in SHA-256 hash-chained batches (<a href="#verify">06</a>).</span></li>
+    <li><i>4</i><b>FINISH</b><span>Reach the server-set distance (<code>½ × 28 m/s × nominal length</code> on paid shifts; no minimum time gate) and the shift is <em>complete</em>. Free levels end automatically; paid drivers end via P → END SHIFT.</span></li>
   </ol>
-  <p>A paid ticket is bought before that start. The server builds an unsigned devnet transaction. Sign it in Phantom or Solflare on this computer, or scan the Solana Pay code with the same wallet on a phone. A reference key on the transaction is how the server finds the payment. A free ride skips it.</p>
-  <p><b>The completion rule.</b> Completion is distance-only, with no separate minimum-time gate. A paid finish line is ½ × 28 m/s × the nominal length (for 1 hour: 50.4 km); free levels use their own distance factors. The governor sets the fastest possible arrival.</p>
 
   <h3 class="sub">HOW IT ENDS</h3>
   <div class="grid3">
@@ -242,42 +236,39 @@
 
   <h3 class="sub">RULES OF PARTICIPATION</h3>
   <ol class="rules">
-    <li><b>You need a wallet, not a balance, to look around.</b> Watching a ride, the boards and this paper need no sign-in. Driving, chatting and tipping need one signature. A payment can be signed in this browser, or by scanning a Solana Pay code with the same account on a phone.</li>
-    <li><b>One account is one wallet.</b> Free rides, tickets, badges and rank belong to the wallet that signed in. A session cookie is not revocable one by one; sign out of shared computers.</li>
-    <li><b>A ticket is spent when the shift starts.</b> A paid ticket is not returned if you crash or abandon. It is returned only if the <em>pool</em> fails: if too few riders buy in during the 24-hour sale, every buyer is refunded in full (<a href="#onchain">05</a>). Starting a ride while one is open resumes it.</li>
-    <li><b>Per-wallet cap.</b> A pool states how many tickets one wallet may hold; the program and the server both enforce it. Promo codes add tickets of a tier and count against the same cap.</li>
-    <li><b>Drive by hand, in the real game.</b> The browser records your key presses and the truck's state; timing that looks scripted is <em>flagged</em> for a person to review, and recordings that are impossible are <em>rejected</em>. Using bots, macros or a modified client is against the rules and is the thing the validation is built to catch (<a href="#verify">06</a>).</li>
-    <li><b>Keep the tab visible.</b> Time with the tab hidden is not driven time. Slow computers are not penalised: times come from the browser's event clock, and if the game runs below real time it simply takes longer.</li>
-    <li><b>Spectators may talk and tip.</b> An online ride can be streamed live and replayed by anyone for 90 days – the road, your truck's state and the traffic around you; your key presses are never shown (<a href="#stream">07</a>). You may mute any chat wallet.</li>
-    <li><b>Rankings are provisional while the rules are tuned.</b> The production default is <em>shadow mode</em>: verdicts are stored and shown, but boards do not yet depend on them. Rules v7 await the next app release. A person reviews flagged rides and every decision is signed and logged.</li>
-    <li><b>It is a devnet build.</b> Nothing here is real money. Before any mainnet version exists, whether a prize game is lawful where you live is a question you and the operator both have to answer (<a href="#risks">09</a>).</li>
-    <li><b>A paid shift needs both boxes.</b> Tick that you are 18 or older, and that SOL spent on a shift can be lost. A prize is not guaranteed. This is not a deposit or an investment. Free rides stay open.</li>
+    <li><b>No wallet needed to watch or try EASY.</b> Watching streams, reading boards, and the guest EASY ride need no sign-in. Ranked shifts, chat, and tips need one signature.</li>
+    <li><b>One person, one wallet.</b> Tickets, badges, TEN4 and rank belong to the wallet that signed in. Multi-accounting or account sharing disqualifies all linked entries.</li>
+    <li><b>Ticket spend &amp; refunds.</b> A ticket is spent when the shift starts and is refunded only if the pool misses its minimum sale goal (<a href="#onchain">05</a>). Starting while a ride is open resumes it.</li>
+    <li><b>Weekly ranked cap.</b> Up to 5 paid + 1 promo ranked starts per wallet per week across the Mon 00:00 – Sun 12:00 UTC window.</li>
+    <li><b>Drive by hand in the real client.</b> Scripted timing flags for human review; impossible physics or missing/altered traffic proof rejects (<a href="#verify">06</a>).</li>
+    <li><b>Keep the tab visible.</b> Hidden-tab time is not driven time. Slow PCs are not penalized: event timestamps follow the browser clock.</li>
+    <li><b>Public streams &amp; replays.</b> Online rides stream ~25 s behind and stay replayable for 90 days (<a href="#stream">07</a>). Drivers can mute any chat wallet; spectator road effects are off on ranked runs.</li>
+    <li><b>Equal tie-splitting &amp; skill ranking.</b> Rank depends on verified distance before the first mistake, then fewer corrections at a clean finish. Equal results split the combined prize of the tied places equally—never by submission time or wallet address.</li>
+    <li><b>Eligibility &amp; compliance.</b> Players must be 18 or older outside excluded jurisdictions, accept that SOL spent on a shift can be lost (not a deposit or an investment), and complete sanctions / KYC verification before USDC prize payouts (<a href="#risks">09</a>).</li>
   </ol>
 </section>
 
 <!-- ───────── 04 · REWARDS ───────── -->
 <section id="rewards" class="ch">
-  <header class="ch-h"><i>04</i><h2>Rewards &amp; promotion</h2><p>What can come back to a driver. Everything is a possibility with a stated state – none of it is a promise.</p></header>
-  <p class="note">No payout amount is guaranteed or advertised. The prize figures below are <b>proposed defaults</b> from the pool design; each pool fixes its own at creation. No prize has been paid out in this build.</p>
+  <header class="ch-h"><i>04</i><h2>Rewards &amp; promotion</h2><p>Skill pools, TEN4 tokenomics, Convoy referrals, soulbound badges, and the 9-slot Garage.</p></header>
+  <p class="note">No payout amount is guaranteed. Weekly skill pools cap player-derived funding below 50% (&le; 47.4%). Our first prize event is the <b>Nov 2–17, 2026 Devnet Pre-season</b> ($500 USDC organizer-funded 1 h board + 100,000 TEN4 airdrop points), ahead of Season 1 mainnet (Jan 11 – Feb 28, 2027).</p>
 
   <div class="tblwrap"><table class="tbl">
     <thead><tr><th>Reward</th><th>Who gets it</th><th>State</th></tr></thead>
     <tbody>
-      <tr><td><b>Free rides</b> – 10 at sign-up, daily refill stops at 5</td><td>Every wallet</td><td><span class="pill ok">LIVE</span></td></tr>
-      <tr><td><b>Free board</b> – every completed free ride ranks</td><td>Free drivers</td><td><span class="pill ok">LIVE</span></td></tr>
-      <tr><td><b>SNS (.sol) driver identity</b> – drivers holding a .sol primary domain are recognized across all leaderboards, profile dialogs, and ride receipts via zero-dependency Mainnet-Beta PDA resolution</td><td>All .sol owners</td><td><span class="pill ok">LIVE · MAINNET RPC</span></td></tr>
-      <tr><td><b>Native 1-click SIWS</b> – unified wallet-standard connect and sign sheet (solana:signIn) with domain origin binding and single-use burned nonces</td><td>Phantom, Solflare, Backpack</td><td><span class="pill ok">LIVE</span></td></tr>
-      <tr><td><b>Achievements</b> – 34 badges in nine ladders, three stars each (Platinum on top). Every earned badge is a soulbound compressed NFT in your wallet, <a href="#achievements">details below</a></td><td>Wallets that earn them</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
-      <tr><td><b>Tips and effects from spectators</b> – SOL from a viewer's wallet straight to yours</td><td>The driver being watched</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
-      <tr><td><b>Promo codes</b> – free tickets of a tier</td><td>Whoever holds a code</td><td><span class="pill wip">BUILT</span></td></tr>
-      <tr><td><b>Pool prizes</b> – the prize share of a pool, to the top of its board</td><td>Verified finishers of that pool</td><td><span class="pill wip">ON DEVNET · PAYOUTS OFF</span></td></tr>
-      <tr><td><b>Sponsorship</b> – anyone adds SOL to a pool's pot; a pool that fails gives it back</td><td>The pool, split by its rules</td><td><span class="pill wip">ON DEVNET · NO PAGE</span></td></tr>
-      <tr><td><b>The garage</b> – cab colours are in the lobby. A gold wheel, gauge faces and a heavier battery are not.</td><td>Owners</td><td><span class="pill ok">LIVE · COLOURS</span></td></tr>
+      <tr><td><b>Unlimited training &amp; weekly ticket (AMOE)</b> – unlimited EASY/MEDIUM/HARD runs + 1 granted paid 1 h ticket every 7 days (30% free-ticket prize cap per board)</td><td>Every eligible wallet</td><td><span class="pill ok">LIVE</span></td></tr>
+      <tr><td><b>Devnet Pre-season (Nov 2–17, 2026)</b> – $500 USDC organizer prize pool on the 1 h board (Top 20: $100 / $70 / $50 / $30×2 / $20×5 / $12×10, equal ties) + 100,000 TEN4 points (50k board + 50k referrals)</td><td>Verified 1 h Pre-season finishers &amp; inviters</td><td><span class="pill plan">NOV 2–17, 2026</span></td></tr>
+      <tr><td><b>Weekly Skill Pools &amp; 7-Week Seasons</b> – 85% weekly boards (1h 25% · 4h 30% · 8h 45%; 80% top 10 + 20% clean finishers) · 5% rollover · 10% Season Final (Week 7 Live Final)</td><td>Verified finishers on each board</td><td><span class="pill wip">V5 BUILT · S1 JAN 2027</span></td></tr>
+      <tr><td><b>TEN4 coin (100M fixed cap)</b> – minted at 20% / 50% / 100% checkpoints on verified paid shifts (Era 1: 100 / 500 / 1,200 TEN4), 8M Merkle airdrop (2k cap/wallet), 4M Convoy vault</td><td>Verified paid drivers, airdrop &amp; Convoy</td><td><span class="pill wip">LOCALNET · TGE MAR 2027</span></td></tr>
+      <tr><td><b>Convoy referrals (<code>?ref=</code>)</b> – free rides on first MEDIUM finish (2 to referrer, 3 to referee), 3 referral paints (<code>convoy</code>, <code>signal</code>, <code>amber</code>), capped spectator-tip share (10% up to 0.5 SOL), and 100 / 50 TEN4 milestones M1/M2</td><td>Inviter &amp; invitee</td><td><span class="pill ok">BUILT IN MAIN</span></td></tr>
+      <tr><td><b>Nine-slot Garage &amp; promo codes</b> – wheel, paint, shifter, dice, needles, ornament, dash, indicators, phone unlocked by burning 65 / 260 TEN4 (4,485 full garage); single-effect promo codes (ride grant or pool tickets)</td><td>Wallets that unlock or redeem</td><td><span class="pill ok">LIVE</span></td></tr>
+      <tr><td><b>Achievements</b> – 44 earnable soulbound Bubblegum v2 cNFT badges across 12 ladders (34 on devnet Arweave + Medium/Hard mastery &amp; Convoy; 45 total definitions), <a href="#achievements">details below</a></td><td>Wallets that earn them</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
+      <tr><td><b>Spectator tips, per-km pledges &amp; SNS (.sol)</b> – direct SOL tips, escrow-settled per-km sponsor pledges, and mainnet <code>.sol</code> identity across boards and receipts</td><td>Drivers &amp; <code>.sol</code> holders</td><td><span class="pill ok">LIVE · DEVNET</span></td></tr>
     </tbody>
   </table></div>
 
   <h3 class="sub" id="achievements">ACHIEVEMENTS: SOULBOUND BADGES ON SOLANA</h3>
-  <p>Money is one reason to drive well. Pride is the other. Every wallet climbs nine ladders; each rung is an achievement, and each achievement, once earned, becomes a <b>soulbound compressed NFT</b> (cNFT) in that wallet. The lobby has its own ACHIEVEMENTS tab: a card per badge, three stars for the level (Bronze one, Silver two, Gold three; Platinum, the fourth rung of most ladders, lights all three in holographic colour), the date earned, a progress bar for what is still locked, and what to do for the next level. Flip a card (hover or tap) for the condition and the proof: the cNFT in the Solana Explorer, Solscan, Orb, the mint transaction and a share link for 𝕏.</p>
+  <p>Every wallet climbs twelve ladders (44 earnable soulbound compressed NFTs — 34 with devnet Arweave art below across nine ladders, plus the 3-tier Medium &amp; Hard mastery ladders and the 4-tier Convoy referral ladder; 45 definitions including the Top-20 podium badge). The lobby's ACHIEVEMENTS tab shows each badge's stars (Bronze, Silver, Gold, holographic Platinum), unlock date, progress bar, and on-chain proof (Solana Explorer, Solscan, Orb, mint tx, and 𝕏 share).</p>
   <div class="tblwrap"><table class="tbl">
     <thead><tr><th>Ladder</th><th>What counts</th><th>Rungs (rides, shifts, km…)</th></tr></thead>
     <tbody>
@@ -289,11 +280,14 @@
       <tr><td><b>Siberia</b></td><td>Completed rides (free or paid) on the Trans-Siberian route</td><td>1 · 5 · 15 · 40</td></tr>
       <tr><td><b>Solo</b></td><td>Free rides finished without assist</td><td>1 · 5 · 20 · 50</td></tr>
       <tr><td><b>Licence</b></td><td>The EASY, MEDIUM and HARD free runs</td><td>one badge each</td></tr>
-      <tr><td><b>HONK</b></td><td>Verified paid rides that mint HONK (the finish band for the higher rungs)</td><td>1 · 5 · 25</td></tr>
+      <tr><td><b>Medium</b></td><td>Free MEDIUM runs cleared</td><td>3 · 10 · 25</td></tr>
+      <tr><td><b>Hard</b></td><td>Free HARD runs cleared</td><td>3 · 10 · 25</td></tr>
+      <tr><td><b>TEN4</b></td><td>Verified paid rides that mint TEN4 (the finish band for the higher rungs)</td><td>1 · 5 · 25</td></tr>
+      <tr><td><b>Convoy</b></td><td>Referred drivers (<code>?ref=</code>) who complete a verified shift</td><td>1 · 5 · 20 · 100</td></tr>
     </tbody>
   </table></div>
   <h3 class="sub" id="catalogue">THE 34 BADGES · CATALOGUE &amp; TIERS</h3>
-  <p>The catalogue below details every badge across all nine ladders. Each card displays the on-chain badge art, tier rating (Bronze, Silver, Gold, Platinum), requirement threshold, and verified completion condition. Once earned, every badge is minted as a soulbound Bubblegum v2 cNFT directly to your wallet address.</p>
+  <p>The catalogue below details the 34 illustrated badges across the nine on-chain artwork ladders (Medium, Hard and Convoy mint once their URIs are uploaded). Each card displays the on-chain badge art, tier rating (Bronze, Silver, Gold, Platinum), requirement threshold, and verified completion condition. Once earned, every badge is minted as a soulbound Bubblegum v2 cNFT directly to your wallet address.</p>
   <div class="ach-catalogue">
     <div class="ach-fam" data-family="road">
       <div class="ach-fam-h"><b>ROAD</b><span>Rides started · cumulative progression</span></div>
@@ -363,13 +357,13 @@
       <div class="ach-ladder r3">
         <article class="ac-card t1"><img src="/badges/free-easy.svg" class="ac-art" width="84" height="84" loading="lazy" decoding="async" alt="Learner’s Permit – ★☆☆ Bronze"><div class="ac-meta"><div class="ac-tier"><span class="star">★☆☆ Bronze</span><span class="req">EASY</span></div><b>Learner’s Permit</b><p>Clear the EASY free run.</p></div></article>
         <article class="ac-card t2"><img src="/badges/free-crossroads.svg" class="ac-art" width="84" height="84" loading="lazy" decoding="async" alt="Crossroads – ★★☆ Silver"><div class="ac-meta"><div class="ac-tier"><span class="star">★★☆ Silver</span><span class="req">MEDIUM</span></div><b>Crossroads</b><p>Clear the MEDIUM free run.</p></div></article>
-        <article class="ac-card t3"><img src="/badges/free-hard.svg" class="ac-art" width="84" height="84" loading="lazy" decoding="async" alt="Long Haul – ★★★ Gold"><div class="ac-meta"><div class="ac-tier"><span class="star">★★★ Gold</span><span class="req">HARD</span></div><b>Long Haul</b><p>Clear the HARD free run – fifteen minutes, no assist.</p></div></article>
+        <article class="ac-card t3"><img src="/badges/free-hard.svg" class="ac-art" width="84" height="84" loading="lazy" decoding="async" alt="Long Haul – ★★★ Gold"><div class="ac-meta"><div class="ac-tier"><span class="star">★★★ Gold</span><span class="req">HARD</span></div><b>Long Haul</b><p>Clear the HARD free run – thirty minutes, no assist.</p></div></article>
       </div>
     </div>
     <div class="ach-fam" data-family="honk">
-      <div class="ach-fam-h"><b>HONK</b><span>Verified paid rides that mint HONK</span></div>
+      <div class="ach-fam-h"><b>TEN4</b><span>Verified paid rides that mint TEN4</span></div>
       <div class="ach-ladder r3">
-        <article class="ac-card t1"><img src="/badges/honk-haul.svg" class="ac-art" width="84" height="84" loading="lazy" decoding="async" alt="First Mint – ★☆☆ Bronze"><div class="ac-meta"><div class="ac-tier"><span class="star">★☆☆ Bronze</span><span class="req">1 mint</span></div><b>First Mint</b><p>A verified paid ride mints HONK.</p></div></article>
+        <article class="ac-card t1"><img src="/badges/honk-haul.svg" class="ac-art" width="84" height="84" loading="lazy" decoding="async" alt="First Mint – ★☆☆ Bronze"><div class="ac-meta"><div class="ac-tier"><span class="star">★☆☆ Bronze</span><span class="req">1 mint</span></div><b>First Mint</b><p>A verified paid ride mints TEN4.</p></div></article>
         <article class="ac-card t2"><img src="/badges/honk-haul-2.svg" class="ac-art" width="84" height="84" loading="lazy" decoding="async" alt="Checkpoint Hauler – ★★☆ Silver"><div class="ac-meta"><div class="ac-tier"><span class="star">★★☆ Silver</span><span class="req">5 finishes</span></div><b>Checkpoint Hauler</b><p>Five verified paid rides mint the finish band.</p></div></article>
         <article class="ac-card t3"><img src="/badges/honk-haul-3.svg" class="ac-art" width="84" height="84" loading="lazy" decoding="async" alt="Long Haul Mint – ★★★ Gold"><div class="ac-meta"><div class="ac-tier"><span class="star">★★★ Gold</span><span class="req">25 finishes</span></div><b>Long Haul Mint</b><p>Twenty-five verified paid rides mint the finish band.</p></div></article>
       </div>
@@ -378,77 +372,77 @@
 
   <h3 class="sub">HOW A BADGE IS MADE</h3>
   <ol>
-    <li><b>The server decides.</b> Counts come from the rides the server judged, never from the client. A ride whose recording is rejected counts for nothing, except as a ride started. Unlock rows are append-only and badge ids never change.</li>
-    <li><b>An hour later, a second look.</b> The mint job waits an hour, re-checks the facts (a ride that was rejected in the meantime no longer counts) and skips demo wallets. A badge no longer earned is skipped, not minted.</li>
-    <li><b>One key that can only mint.</b> A dedicated key, separate from the pool crank and the payout key, mints through Metaplex Bubblegum v2 into one Merkle tree (depth 16: 65,536 badges for about 0.7 SOL of rent, well under a cent each). The player signs nothing and pays nothing.</li>
-    <li><b>Crash-safe.</b> Every mint is a row in an outbox (planned, sent, minted, failed or skipped). The signature is stored before the transaction is broadcast. After a crash the job waits until that transaction's blockhash has expired, looks the signature up one last time and only then signs a new one, so a crash delays a badge by a minute or two and never mints it twice. A full tree sends nothing; the job raises an error from 90 % full.</li>
-    <li><b>Soulbound by the chain.</b> The collection is an MPL-Core collection with the permanent freeze plugin, authority removed. A transfer is refused by the program, not by our server: our smoke test mints a badge to a fresh wallet and then tries to move it as the owner (error: "Collection is frozen").</li>
-    <li><b>Art and metadata live on Arweave</b> (through Irys): 34 badges drawn by one generator in the repo, a descriptive trait set (family, tier, condition, requirement), no royalties. Devnet files are kept for about 60 days; mainnet gets its own upload.</li>
+    <li><b>The server decides.</b> Counts come from the rides the server judged, never from the client. A rejected recording counts only as a ride started. Unlock rows are append-only and badge ids are frozen.</li>
+    <li><b>An hour later, a second look.</b> The mint job waits an hour, re-checks the facts (a ride rejected in the meantime no longer counts) and skips demo wallets.</li>
+    <li><b>One key that can only mint.</b> A dedicated key, separate from the pool crank and payout key, mints through Metaplex Bubblegum v2 into one Merkle tree (depth 16: 65,536 badges for ~0.7 SOL rent). The player signs nothing and pays nothing.</li>
+    <li><b>Crash-safe.</b> Every mint is an outbox row (planned, sent, minted, failed, skipped). The signature is stored before broadcast; after a crash the job waits for blockhash expiry and checks the signature before signing a new one.</li>
+    <li><b>Soulbound by the chain.</b> An MPL-Core collection with the permanent freeze plugin and authority removed refuses transfers on chain ("Collection is frozen").</li>
+    <li><b>Art and metadata on Arweave</b> (via Irys): generated SVGs/PNGs, descriptive traits, zero royalties. The 34 original badges are live on devnet; the Convoy and free-level ladders unlock off chain and mint once their URIs are uploaded.</li>
   </ol>
-  <p><b>Verify it yourself.</b> The collection <a href="https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet" target="_blank" rel="noopener">56ijQ5…XoMC</a> and the tree <a href="https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet" target="_blank" rel="noopener">45NKrZ…M336</a> are on devnet. Each badge card links its asset and its mint transaction. Wallets differ in how they show compressed NFTs on devnet (some need testnet mode, some do not index Bubblegum v2 yet); if yours does not show a badge, the links on the card always do.</p>
-  <p><b>Honest limits.</b> Badges are devnet-only until the pool program is on mainnet. Compressed NFTs depend on an indexer (the DAS API) for display; the mint transaction and the Merkle tree are the receipts that do not. The Top 20 round badge is designed but not minted yet.</p>
+  <p><b>Verify it yourself.</b> Collection <a href="https://explorer.solana.com/address/56ijQ5t2RFpXezbPtEuqECo5gCQiGSek2LBsp7cfMoXC?cluster=devnet" target="_blank" rel="noopener">56ijQ5…XoMC</a> and tree <a href="https://explorer.solana.com/address/45NKrZA9rGFcKr62VY5NvM89yarFuBqtBseRK7ZSM336?cluster=devnet" target="_blank" rel="noopener">45NKrZ…M336</a> are on devnet. Each minted badge links its asset and mint transaction.</p>
 
   <h3 class="sub">HOW A POOL'S MONEY IS SPLIT (EXAMPLE)</h3>
-  <p>A pool is every ticket sold plus any sponsorship. Its split is written in basis points when it is created and cannot be changed. The proposed default is <b>65 % prizes · 5 % referrals · 20 % seeds the next pool · 10 % fees</b>. Shares are rounded down and the remainder goes to fees, so the pieces always add up to the pot exactly.</p>
+  <p>A weekly contest pool combines fixed base funding <code>F = B + S</code> (operator base <code>B</code> stepping $300 &rarr; $750 &rarr; $1,500 &rarr; $3,000 across Season 1 plus sponsorships <code>S</code>), a player-derived performance bonus <code>P = min(0.40 &times; R_prev, $2,500, 0.90 &times; F)</code> so player-derived funding is always below 50% (&le; 47.4%) of <code>F + P</code>, and incoming rollover <code>C &le; 25% &times; F</code>. Its split is fixed in basis points at creation: <b>85 % prizes · 5 % seeds the next pool · 10 % fees</b> (Season Final reserve). Shares round down and the remainder goes to fees.</p>
   <figure class="diagram wide">
-    <svg viewBox="0 0 960 220" role="img" aria-label="A 1 SOL pot split: 70 percent prize share (0.25 first, 0.15 second, 0.10 third, 0.20 top 20), 20 percent to the seed treasury, 10 percent fees.">
-          <!-- brackets -->
-          <polyline points="40,76 40,68 656,68 656,76" class="ln br"/>
-          <text x="348" y="56" text-anchor="middle" class="tx">Prize share 70% · pay_prize, capped on chain</text>
-          <polyline points="660,76 660,68 920,68 920,76" class="ln br"/>
-          <text x="790" y="56" text-anchor="middle" class="tx">close_pool · declared treasuries</text>
+    <svg viewBox="0 0 960 220" role="img" aria-label="A 1 SOL pot split: 85 percent prize share (80% top 10 places, 20% clean finishers), 5 percent to the seed treasury, 10 percent Season Final / fees.">
+          <polyline points="40,76 40,68 748,68 748,76" class="ln br"/>
+          <text x="394" y="56" text-anchor="middle" class="tx">Prize share 85% · pay_prize, capped on chain</text>
+          <polyline points="752,76 752,68 920,68 920,76" class="ln br"/>
+          <text x="836" y="56" text-anchor="middle" class="tx">close_pool · treasuries</text>
 
           <rect x="40" y="86" width="220" height="60" class="sp s1"/>
           <rect x="260" y="86" width="132" height="60" class="sp s2"/>
           <rect x="392" y="86" width="88" height="60" class="sp s3"/>
-          <rect x="480" y="86" width="176" height="60" class="sp s4"/>
-          <rect x="656" y="86" width="176" height="60" class="sp seed"/>
-          <rect x="832" y="86" width="88" height="60" class="sp fee"/>
+          <rect x="480" y="86" width="268" height="60" class="sp s4"/>
+          <rect x="748" y="86" width="68" height="60" class="sp seed"/>
+          <rect x="816" y="86" width="104" height="60" class="sp fee"/>
 
-          <text x="150" y="112" text-anchor="middle" class="tx">1st place</text><text x="150" y="133" text-anchor="middle" class="tx s">0.25 SOL</text>
-          <text x="326" y="112" text-anchor="middle" class="tx">2nd</text><text x="326" y="133" text-anchor="middle" class="tx s">0.15 SOL</text>
-          <text x="436" y="112" text-anchor="middle" class="tx">3rd</text><text x="436" y="133" text-anchor="middle" class="tx s">0.10</text>
-          <text x="568" y="112" text-anchor="middle" class="tx">Top 20</text><text x="568" y="133" text-anchor="middle" class="tx m">0.20 SOL</text>
-          <text x="744" y="112" text-anchor="middle" class="tx">Next pool seed</text><text x="744" y="133" text-anchor="middle" class="tx m">0.20 SOL</text>
-          <text x="876" y="112" text-anchor="middle" class="tx">Fees</text><text x="876" y="133" text-anchor="middle" class="tx m">0.10</text>
+          <text x="150" y="112" text-anchor="middle" class="tx">1st place</text><text x="150" y="133" text-anchor="middle" class="tx s">25% of top-10</text>
+          <text x="326" y="112" text-anchor="middle" class="tx">2nd</text><text x="326" y="133" text-anchor="middle" class="tx s">15%</text>
+          <text x="436" y="112" text-anchor="middle" class="tx">3rd</text><text x="436" y="133" text-anchor="middle" class="tx s">10%</text>
+          <text x="614" y="112" text-anchor="middle" class="tx">4th–10th + clean finishers</text><text x="614" y="133" text-anchor="middle" class="tx m">80% top-10 · 20% finishers</text>
+          <text x="782" y="112" text-anchor="middle" class="tx">Rollover</text><text x="782" y="133" text-anchor="middle" class="tx m">0.05 SOL</text>
+          <text x="868" y="112" text-anchor="middle" class="tx">Final / Fees</text><text x="868" y="133" text-anchor="middle" class="tx m">0.10</text>
 
-          <text x="40" y="178" class="tx s">Example pot: 20 tickets × 0.04 SOL + 0.20 SOL sponsorship = 1.00 SOL</text>
-          <text x="40" y="200" class="tx s">The 25 / 15 / 10 / 20 cut inside the prize share comes from the game's ranking. The program enforces the 70% ceiling.</text>
+          <text x="40" y="178" class="tx s">Example 1.00 SOL pot (F + P + C, player share &lt; 50%): 0.85 SOL weekly boards · 0.05 SOL next pool · 0.10 SOL Season Final / fees</text>
+          <text x="40" y="200" class="tx s">Weekly boards split 25% Sprint (1h) · 30% Haul (4h) · 45% Long Haul (8h); Program v5 enforces the 85% prize ceiling and &lt; 50% player-share cap.</text>
         </svg>
-    <figcaption><b>The program caps the total, not the ranking.</b> Prize payouts can never add up to more than the prize share. Which wallets win is decided off chain from the server-checked results; that list is published on chain through the review before any of it is paid.</figcaption>
+    <figcaption><b>The program caps the total and the player share.</b> Prize payouts can never exceed the 85% prize share, and player-derived funding cannot reach 50% (<code>max_player_share_bps &le; 4999</code>, default 4740). Verified winners are published on chain through the review window before payout.</figcaption>
   </figure>
   <div class="tblwrap"><table class="tbl compact">
-    <thead><tr><th>Example pot: 20 tickets × 0.04 SOL + 0.20 SOL sponsorship = 1.00 SOL</th><th>Share</th></tr></thead>
+    <thead><tr><th>Unified Pool &amp; 7-Week Season Split (1.00 SOL / $100 example)</th><th>Share</th></tr></thead>
     <tbody>
-      <tr><td>1st place</td><td class="r">0.25 SOL</td></tr>
-      <tr><td>2nd place</td><td class="r">0.15 SOL</td></tr>
-      <tr><td>3rd place</td><td class="r">0.10 SOL</td></tr>
-      <tr><td>Top-20 share</td><td class="r">0.20 SOL</td></tr>
-      <tr><td>Seeds the next pool</td><td class="r">0.20 SOL</td></tr>
-      <tr><td>Fees</td><td class="r">0.10 SOL</td></tr>
+      <tr><td>Weekly boards prize pool (Sprint 1h 25% · Haul 4h 30% · Long Haul 8h 45%)</td><td class="r">85% (0.85 SOL)</td></tr>
+      <tr><td>Inside each board: Top 10 places (25 / 15 / 10 / 7.5 / 7.5 / 3×5) + Clean finishers</td><td class="r">80% top-10 · 20% finishers</td></tr>
+      <tr><td>Seeds the next pool (rollover, capped at 25% of F; excess to Season Final)</td><td class="r">5% (0.05 SOL)</td></tr>
+      <tr><td>Season Final reserve &amp; fees (Week 7 Live Final for top 8 qualifiers + ties per board)</td><td class="r">10% (0.10 SOL)</td></tr>
     </tbody>
   </table></div>
-  <p>The 25 / 15 / 10 / 20 inside the prize share comes from the game's ranking, which happens off chain. The program enforces the <em>ceiling</em>: payouts can never total more than the prize share (<a href="#onchain">05</a>). Ranking is by verified paid shifts (<a href="#verify">06</a>).</p>
+  <p>Each 7-week season runs 6 regular weekly contests plus a Week 7 Live Final ($1,000 operator final base + 10% weekly reserves). Boards require at least 10 participants and a $5 minimum payout; equal results split tied places equally (<a href="#onchain">05</a>, <a href="#verify">06</a>).</p>
 
   <h3 class="sub">WHY 20 TICKETS AT $5</h3>
-  <p>The 1 hour pool opens at 20 tickets of $5: a $100 pot. Fewer sold by the deadline, and every ticket is refunded.</p>
+  <p>The 1 hour pool opens at 20 tickets of $5: a $100 pot. Fewer sold by the deadline, and every ticket is refunded. Under Program v5 (85 / 5 / 10), $85 goes to the board prizes, $5 rolls over, and $10 feeds the Season Final; on the legacy devnet v3 table (70 / 20 / 10), a 20-finisher pot pays:</p>
   <div class="tblwrap"><table class="tbl fit">
-    <thead><tr><th>If 20 finish</th><th>Gets</th></tr></thead>
+    <thead><tr><th>If 20 finish (devnet v3 table)</th><th>Gets</th></tr></thead>
     <tbody>
       <tr><td>1st</td><td class="r">$26</td></tr>
       <tr><td>2nd</td><td class="r">$16</td></tr>
       <tr><td>3rd</td><td class="r">$11</td></tr>
       <tr><td>4th–20th, each</td><td class="r">$1</td></tr>
-      <tr><td>Next pool · fees</td><td class="r">$20 · $10</td></tr>
+      <tr><td>Next pool · fees (v5: $85 prizes · $5 seed · $10 final)</td><td class="r">$20 · $10</td></tr>
     </tbody>
   </table></div>
   <p class="dim">1st’s $26 is the 25% place plus $1 of the shared slice. At 10 tickets, 1st would win $13.50, so the pool does not open. Places 4–20 get $1.</p>
 
+  <h3 class="sub">TEN4 TOKENOMICS &amp; CONVOY REFERRALS</h3>
+  <p><b>TEN4</b> (<code>programs/freightchain_honk</code>) has a fixed <b>100,000,000</b> supply with zero inflation: <b>55M</b> Ride Emission across halving eras (Era 1: 27.5M &rarr; Era 2: 13.75M &rarr; &hellip;), <b>15M</b> Liquidity, <b>8M</b> Merkle Airdrop (2,000 TEN4 wallet cap, 90-day claim window; 2M in Season 1 + 100k Pre-season points), <b>4M</b> Convoy Referral vault, <b>10M</b> Treasury (36m linear), and <b>8M</b> Team (12m cliff + 24m linear). Verified paid rides mint across three distance checkpoints (20% / 50% / 100%; Era 1 finishes: 1h = 100, 4h = 500, 8h = 1,200 TEN4 with a 48h hold on 8h; 75,000/day global Era 1 cap, 2,000/day wallet cap). Drivers burn TEN4 to unlock 9-slot Garage parts (65 / 260 TEN4; 4,485 full garage) and stream effects (1 TEN4 HONK, 10 TEN4 day/night, 25 TEN4 weather).</p>
+  <p><b>Convoy referrals (<code>?ref=</code>).</b> Inviting a driver binds off chain at sign-in: their first verified finish gifts you a free ride, unlocks 3 referral paints (<code>convoy</code>, <code>signal</code>, <code>amber</code>), shares a capped cut of spectator tips, advances the Convoy badge ladder (1 / 5 / 20 / 100), and claims 100 TEN4 (M1) + 50 TEN4 (M2) from the 4M Convoy vault (30k/mo soft start for 3 months, then 60k/mo global, 1,000/mo per wallet).</p>
+
   <h3 class="sub">PROMOTION &amp; GROWTH</h3>
   <div class="grid3">
-    <article class="card"><h3>FREE FIRST</h3><p>Ten at sign-up, daily refill stops at five; then connect Solana.</p></article>
-    <article class="card"><h3>WATCH BEFORE YOU BUY</h3><p>Every ride has a public live page and a replay. A visitor sees real drivers, real distances and the real board before connecting a wallet.</p></article>
-    <article class="card"><h3>PROMO &amp; SPONSORS</h3><p>Promo codes hand out tickets of a tier. Sponsors can add SOL to a pool; it is split like ticket money and visibly raises the pot. If the pool fails, each sponsor gets it back.</p></article>
+    <article class="card"><h3>FREE FIRST</h3><p>Unlimited training and one weekly granted paid ticket (AMOE), plus the zero-entry $500 USDC Devnet Pre-season.</p></article>
+    <article class="card"><h3>WATCH BEFORE YOU BUY</h3><p>Every ride has a public live page and a replay. Visitors see real drivers, distances and boards before connecting a wallet.</p></article>
+    <article class="card"><h3>PROMO &amp; SPONSORS</h3><p>Single-effect promo codes grant a free paid ride (1h/4h/8h) or pool tickets. Sponsors add base funding on chain and are refunded if a pool fails.</p></article>
   </div>
   <p class="dim">What is deliberately not on this list: paid advertising, a referral token, user-side yield promises or staking lockups. The business is the fee share of a pool, only once pools pay out.</p>
 </section>
@@ -456,34 +450,34 @@
 <!-- ───────── 05 · ON-CHAIN ───────── -->
 <section id="onchain" class="ch">
   <header class="ch-h"><i>05</i><h2>On-chain: the escrow program</h2><p>One Solana program, many prize pools. The vault holds the money; the rules move it.</p></header>
-  <p class="note"><b>Status.</b> The program <code>freightchain_pools</code> (Anchor, Rust) runs on <b>devnet</b> for testing. This chapter describes version 4, rewritten after our own security review and passing 154 tests against the reproducible build; devnet still runs version 3 until it is upgraded. It is <b>not audited</b> and not on mainnet.</p>
+  <p class="note"><b>Status.</b> <code>freightchain_pools</code> (Anchor, Rust) runs on <b>devnet</b> (v3 deployed; <b>v5 built</b> and passing 154+ Anchor tests against the reproducible build). Program v5 builds on v4's winners Merkle root, per-ride pledge attestations, sponsor refunds, and <code>seal_road</code>, adding the <b>85 / 5 / 10</b> split, on-chain <code>max_player_share_bps &le; 4999</code> (&lt; 50% player-derived share), <code>set_pool_rules</code>, and <code>paid_tickets_enabled</code> (removing the on-chain referral leg). Local <code>freightchain_honk</code> runs the 9-instruction TEN4 mint/burn/airdrop/referral suite. Neither is audited yet.</p>
 
   <h3 class="sub">WHERE THE MONEY GOES</h3>
   <figure class="diagram">
     <svg viewBox="0 0 860 330" role="img" aria-labelledby="d1t d1d">
-      <title id="d1t">Escrow money flow</title><desc id="d1d">Players buy tickets into the pool vault. The vault pays refunds to buyers and sponsors, capped prizes to the wallets on a winners list that was public through the review, and the remainder to seed and fee treasuries.</desc>
+      <title id="d1t">Escrow money flow</title><desc id="d1d">Players and sponsors fund the pool vault. The vault pays refunds to buyers and sponsors, capped prizes (85%) to wallets on the published winners root, and the remainder to rollover seed (5%) and Season Final / fee (10%) treasuries.</desc>
       <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah"/></marker></defs>
       <rect class="bx" x="20" y="120" width="170" height="80" rx="8"/><text class="tx b" x="105" y="150" text-anchor="middle">Player wallets</text><text class="tx s" x="105" y="172" text-anchor="middle">each purchase signed</text>
       <rect class="bx hi" x="345" y="105" width="190" height="110" rx="8"/><text class="tx b" x="440" y="135" text-anchor="middle">Pool vault</text><text class="tx s" x="440" y="156" text-anchor="middle">program-owned account</text><text class="tx s" x="440" y="174" text-anchor="middle">PDA ["vault", pool_id]</text><text class="tx s" x="440" y="192" text-anchor="middle">nothing is staked</text>
       <rect class="bx" x="670" y="20" width="170" height="60" rx="8"/><text class="tx b" x="755" y="56" text-anchor="middle">Buyers (refund)</text>
-      <rect class="bx" x="670" y="105" width="170" height="60" rx="8"/><text class="tx b" x="755" y="141" text-anchor="middle">Winners (pay_prize)</text>
-      <rect class="bx" x="670" y="190" width="170" height="60" rx="8"/><text class="tx b" x="755" y="226" text-anchor="middle">Seed treasury</text>
-      <rect class="bx" x="670" y="262" width="170" height="56" rx="8"/><text class="tx b" x="755" y="295" text-anchor="middle">Fee treasury</text>
+      <rect class="bx" x="670" y="105" width="170" height="60" rx="8"/><text class="tx b" x="755" y="141" text-anchor="middle">Winners (85% prize)</text>
+      <rect class="bx" x="670" y="190" width="170" height="60" rx="8"/><text class="tx b" x="755" y="226" text-anchor="middle">Seed treasury (5%)</text>
+      <rect class="bx" x="670" y="262" width="170" height="56" rx="8"/><text class="tx b" x="755" y="295" text-anchor="middle">Final / Fee (10%)</text>
       <path class="ln" d="M190 160H345" marker-end="url(#ar)"/><text class="tx s" x="268" y="150" text-anchor="middle">buy_ticket</text>
       <path class="ln" d="M535 130L670 55" marker-end="url(#ar)"/><path class="ln" d="M535 160H670" marker-end="url(#ar)"/><path class="ln" d="M535 190L670 220" marker-end="url(#ar)"/><path class="ln" d="M535 205L670 285" marker-end="url(#ar)"/>
       <text class="tx s" x="568" y="82" text-anchor="middle">full price</text><text class="tx s" x="603" y="152" text-anchor="middle">published list</text><text class="tx s" x="590" y="268" text-anchor="middle">close_pool</text>
       <rect class="bx dash" x="20" y="250" width="420" height="64" rx="8"/><text class="tx b" x="230" y="278" text-anchor="middle">Game server</text><text class="tx s" x="230" y="298" text-anchor="middle">reads events · publishes winners · no admin key</text>
       <path class="ln dsh" d="M440 215V250" marker-end="url(#ar)"/>
     </svg>
-    <figcaption>Every arrow that moves money starts or ends at the vault. The server's link is dashed because it only reads what the program announced, hands players transactions to sign and publishes the winners list; it cannot send a prize anywhere else – each payment goes to the wallet the published list names. A phone can sign the same transaction by scanning a Solana Pay code.</figcaption>
+    <figcaption>Every arrow that moves money starts or ends at the vault. The server only reads program events, hands players unsigned transactions (or Solana Pay QR codes) to sign, and commits the winners Merkle root; each payment goes only to the wallet named in the published root.</figcaption>
   </figure>
 
   <h3 class="sub">PLEDGES PER KM</h3>
-  <p>A spectator on the watch page can lock SOL per km for the driver of a ticket ride, up to a cap, in a <code>Pledge</code> account (<code>[b"pledge", ride_id, sponsor]</code>) that their own wallet signs. The server puts its verdict on that one ride on chain (the verified km and the recording's Merkle root); it stays public through the same review lock as the winners list, then <code>settle_pledge</code> pays the driver for those km and returns the rest and the account's rent. A ride that was never judged, or a failed pool, means <code>refund_pledge</code> returns it all. Anyone may send either; the server does. Pool money is not staked.</p>
+  <p>A spectator on the watch page can lock SOL per km for the driver of a ticket ride in a <code>Pledge</code> account (<code>[b"pledge", ride_id, sponsor]</code>). The server attests verified km and the recording's Merkle root on chain; after the review lock, <code>settle_pledge</code> pays the driver for those km and refunds the rest and rent. Unjudged rides or failed pools refund in full via <code>refund_pledge</code>.</p>
 
   <h3 class="sub">WALLET STANDARD &amp; DECENTRALIZED IDENTITY</h3>
-  <p><b>Native 1-Click SIWS.</b> Freight Chain implements the official Solana Wallet Standard <code>solana:signIn</code> specification (CAIP-122). Instead of sequential "Connect" and "Sign Message" popups, modern Solana wallets (Phantom, Solflare, Backpack) present a single native approval sheet verifying domain origin, issued timestamps, and single-use burned nonces (<code>nonce:${nonce}</code>), with automatic fallback to standard message signing for older wallets.</p>
-  <p><b>Zero-Dependency SNS Resolution.</b> Driver public keys are resolved on-chain against the Solana Name Service (SPL Name Service program on Mainnet-Beta, <code>namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX</code>). The backend derives reverse registry and favorite domain PDAs directly via <code>@solana/web3.js</code> with multi-tier caching (24h positive / 30m negative), displaying <code>driver.sol</code> across all leaderboards, profiles, and receipts without third-party SDK bloat.</p>
+  <p><b>Native 1-Click SIWS &amp; QR Pairing.</b> Freight Chain implements Solana Wallet Standard <code>solana:signIn</code> (CAIP-122) with single-use burned nonces, automatic <code>signMessage</code> fallback, and phone-to-desktop QR pairing (<code>/api/auth/pair</code>).</p>
+  <p><b>Zero-Dependency SNS Resolution.</b> Driver public keys resolve on chain against the Solana Name Service (<code>namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX</code>) via direct PDA derivation and multi-tier caching, displaying <code>driver.sol</code> across leaderboards, profiles, and receipts.</p>
 
   <h3 class="sub">THE LIFE OF A POOL</h3>
   <p>A pool opens with a commitment goal. The 1 hour pool's is 20 tickets: live on the 20th sale, or a refund if the deadline comes first. Every path ends as the declared split, or every buyer paid back.</p>
@@ -581,9 +575,9 @@
     <article class="claim"><em>VAULT</em><b>Held by the program</b><span>A vault with no private key. Only the program can move it.</span></article>
     <article class="claim"><em>REFUND</em><b>Missed goal, money back</b><span>Any wallet can trigger it. You never wait for us.</span></article>
     <article class="claim"><em>RECEIVER</em><b>Nobody redirects a refund</b><span>The ticket is tied to your wallet. It lands with you, once.</span></article>
-    <article class="claim"><em>FIXED</em><b>Rules never change</b><span>Price, deadlines, split and treasuries are written at creation.</span></article>
-    <article class="claim"><em>CAP</em><b>Prizes have a ceiling</b><span>No payout can take the total above the prize share.</span></article>
-    <article class="claim"><em>WINNERS</em><b>Published, then paid</b><span>The winners list sits on chain through the review; then anyone can pay each listed prize, once.</span></article>
+    <article class="claim"><em>FIXED</em><b>Rules never change</b><span>Price, deadlines, 85/5/10 split, &lt;50% player cap and treasuries are fixed.</span></article>
+    <article class="claim"><em>CAP</em><b>Prizes have a ceiling</b><span>No payout can take the total above the 85% prize share.</span></article>
+    <article class="claim"><em>WINNERS</em><b>Published, then paid</b><span>The winners root sits on chain through the review; then anyone can pay each listed prize, once.</span></article>
     <article class="claim"><em>PLEDGE</em><b>Per-km solvency</b><span>settle_pledge enforces exact lamport conservation with refunds.</span></article>
     <article class="claim"><em>SEED</em><b>Road from the chain</b><span>Each pool's road is sealed from a slot hash after the pool opened.</span></article>
     <article class="claim"><em>NO TRAP</em><b>A vanished operator can't trap it</b><span>14 days after the review anyone can expire the pool.</span></article>
@@ -596,37 +590,31 @@
   <div class="roles">
     <div class="role pl"><b>PLAYER</b><span>puts money in</span><ul><li>Buy a ticket</li><li>Create a pledge</li></ul></div>
     <div class="role any"><b>ANYONE</b><span>can rescue it</span><ul><li>Sponsor a pool</li><li>Fail a pool that missed its goal</li><li>Refund a ticket – it lands with the buyer</li><li>Refund a sponsor of a failed pool</li><li>Open the next daily pool and seal its road</li><li>Pay a listed prize <small>after the review</small></li><li>Settle a finished pledge</li><li>Expire a stuck pool <small>+14 days</small></li></ul></div>
-    <div class="role adm"><b>ADMIN</b><span>sets the rules</span><ul><li>Schedule · create · cancel · pause</li><li>Veto a winners list <small>before a prize is paid</small></li><li>Close and split <small>anyone after +14 days</small></li></ul></div>
+    <div class="role adm"><b>ADMIN</b><span>sets the rules</span><ul><li>Schedule · create · set rules · pause</li><li>Veto a winners list <small>before a prize is paid</small></li><li>Close and split <small>anyone after +14 days</small></li></ul></div>
     <div class="role srv"><b>GAME SERVER</b><span>payout key</span><ul><li>Publishes the winners list <small>public through the review</small></li><li>Attests each pledged ride</li><li>Closes the pool <small>once every listed prize is paid</small></li><li class="no">Rules, refunds, treasuries: never</li></ul></div>
   </div>
 
   <h3 class="sub">WHAT THE PROGRAM DOES NOT PROMISE</h3>
   <ul class="honest">
-    <li><b>Telemetry truth.</b> The program only checks that the payout key signed the winners list and each ride's attestation; the telemetry root and km in them are the off-chain judge's (<a href="#verify">06</a>).</li>
-    <li><b>Off-chain ranking.</b> The program pays exactly the published list, within the prize cap, and only after it was public through the review; who is on it, and in what order, is the server's ranking. A wrong list is stopped by the admin's veto, not by the program. The list may also name no winner; the prize share then goes to the seed treasury at close.</li>
-    <li><b>The treasuries.</b> The seed and fee treasuries are wallets the operator controls. A pool fixes their addresses, not what happens to the money afterwards.</li>
-    <li><b>Maturity.</b> Not audited, devnet only.</li>
+    <li><b>Telemetry truth &amp; ranking.</b> The program checks that the payout key signed the winners root and ride attestations within the 85% prize cap after the review lock; who ranks where is the off-chain judge's (<a href="#verify">06</a>), with cold-admin veto before payout.</li>
+    <li><b>The treasuries &amp; maturity.</b> Seed and fee treasuries are operator wallets fixed per pool. Not audited, devnet only.</li>
   </ul>
 
-  <h3 class="sub">HOW THE GAME SERVER FITS</h3>
-  <p>The server <em>mirrors</em> pools and tickets; the chain wins. A ticket is credited from <code>TicketBought</code>, once per signature, by confirm, the log watcher, or a webhook. The server never holds the admin or treasury key.</p>
-
-  <h3 class="sub">BLINKS</h3>
-  <p>A shared link to the site or to a ride page is also a Solana Action (spec 2.4, devnet): a blink client shows the card and its buttons – <b>buy one ticket</b> into the pool on sale, <b>open the ride</b>, <b>watch</b> it. The buy is the lobby's own unsigned transaction: your wallet pays the fee and is the only signer, and the 18+ and loss terms must be accepted on the site first. 𝕏 only turns a link into a blink once Dialect lists the site in its registry; that listing is booked for after the hackathon. Until then <a href="https://freightchain.fun/blink.html">freightchain.fun/blink.html</a> renders the cards, and the shared post shows a plain preview.</p>
+  <h3 class="sub">HOW THE GAME SERVER FITS &amp; BLINKS</h3>
+  <p>The server <em>mirrors</em> pools and tickets from <code>TicketBought</code> events; the chain wins, and the server never holds the admin or treasury key. Shared ride and lobby links also serve Solana Actions (spec 2.4, devnet blinks, previewed at <a href="https://freightchain.fun/blink.html">freightchain.fun/blink.html</a>): buy one ticket, open the ride, or watch it once the 18+ and loss terms are accepted on the site.</p>
 
   <h3 class="sub">IDEAS ON THE TABLE</h3>
-  <p class="dim">Not built; ordered roughly by fit, from the Solana feature plan.</p>
   <ul class="ideas">
-    <li><b>Convoys.</b> Three to five wallets ride the same round and share a side pot by combined distance.</li>
+    <li><b>Team Convoys.</b> Three to five wallets ride the same round and share a side pot by combined distance.</li>
     <li><b>Fixed-point replay core.</b> Integer fixed-point re-simulation from raw inputs alone, tightening the 10 Hz float replay worker (<a href="#verify">06</a>).</li>
-    <li><b>Badges on mainnet.</b> A mainnet collection and tree, with the art re-uploaded, once the pool program is there.</li>
+    <li><b>Badges on mainnet.</b> Mainnet collection, Merkle tree, and Arweave art upload alongside Season 1.</li>
   </ul>
 </section>
 
 <!-- ───────── 06 · VALIDATION ───────── -->
 <section id="verify" class="ch">
   <header class="ch-h"><i>06</i><h2>Telemetry, validation &amp; anti-cheat</h2><p>The server rebuilds the road and checks the submitted evidence against shared simulation rules before it records a verdict.</p></header>
-  <p class="note"><b>Release snapshot · 16 Oct 2026.</b> Rules v7 are <b>built, awaiting deployment</b>. The public app release checked today uses rules v4. Production defaults to <b>shadow mode</b>: verdicts are recorded and shown, while paid boards ignore them. The program upgrade is separate (<a href="#onchain">05</a>). Full codes and thresholds: <code>docs/anti-cheat/</code>.</p>
+  <p class="note"><b>Release snapshot · 17 Oct 2026.</b> Rules v7 are <b>built, awaiting deployment</b>. The public app release checked today uses rules v4. Production defaults to <b>shadow mode</b>: verdicts are recorded and shown, while paid boards ignore them. The program upgrade is separate (<a href="#onchain">05</a>). Full codes and thresholds: <code>docs/anti-cheat/</code>.</p>
 
   <h3 class="sub">NINE LAYERS, FROM CHEAPEST TO STRONGEST</h3>
   <ol class="flow">
@@ -638,7 +626,7 @@
     <li><i>6</i><b>BOUNDED WORK</b><span>Untrusted samples are bounded before road lookups; wall time limits batches and canonical bytes.</span></li>
     <li><i>7</i><b>HUMAN TIMING</b><span>Uniform holds and repeated rhythms only flag; a statistic cannot prove cheating.</span></li>
     <li><i>8</i><b>CHALLENGE CHANNEL</b><span>The protocol supports timed prompts. Its kinds table is empty today, so none are issued.</span></li>
-    <li><i>9</i><b>SIGNED REVIEW &amp; SETTLEMENT</b><span>Admins sign decisions. Program v4 adds a public winners root and per-ride pledge attestations; its devnet upgrade is pending.</span></li>
+    <li><i>9</i><b>SIGNED REVIEW &amp; SETTLEMENT</b><span>Admins sign decisions. Program v5 commits a public winners root and per-ride pledge attestations; its devnet upgrade is pending.</span></li>
   </ol>
 
   <h3 class="sub">TWO RECORDINGS OF THE SAME DRIVE</h3>
@@ -648,7 +636,7 @@
     <article class="card"><h3>TRAFFIC · EVERY FRAME</h3><p>Lossless timing, pre-contact truck pose and trailer angle, speed, fork choice, and hull before/after contact. This evidence is inside the batch hash. Display-only car tracks are not evidence.</p></article>
   </div>
   <p>For required-proof rides, the client seals a batch after <b>2 game seconds or 500 frames</b>, whichever comes first. Legacy recordings used 15-second batches. The server stamps <code>trafficVersion=1</code> at start; dropping optional replay columns cannot select legacy rules. <code>TRAFFIC_PROOF_REQUIRED</code> defaults to true.</p>
-  <p class="dim"><b>Never recorded:</b> your screen, other tabs or apps, microphone or camera. The offline game records nothing.</p>
+  <p class="dim"><b>Never recorded:</b> your screen, other tabs or apps, microphone or camera. A training ride records the drive, the same way a paid ride does.</p>
 
   <figure class="diagram evidence-figure" id="traffic-evidence">
     <div class="chart-scroll" tabindex="0" role="region" aria-label="Traffic verification diagram; scroll horizontally on a narrow screen">
@@ -713,29 +701,25 @@
   <ul class="honest">
     <li><b>Server time bounds the recording.</b> The game clock cannot buy unlimited distance, frames or canonical bytes. Invalid values and excessive travel are refused before geometry work.</li>
     <li><b>Protocol-specific budgets.</b> Required traffic evidence gets a larger byte and batch budget than historical recordings; it keeps the same 96 kB canonical batch cap, 400 samples and 2000 events.</li>
-    <li><b>Races:</b> uploads and judging share the player's row lock. A late accepted batch triggers a new judgement and cannot overturn a signed admin decision.</li>
-    <li><b>Finish retries:</b> ending waits up to 3 s for the last upload, the game retries for 55 s, and the server accepts batches for 60 s. Required traffic frames must still cover the completed drive.</li>
+    <li><b>Races &amp; finish retries:</b> uploads and judging share the player's row lock. Ending waits up to 3 s for the last upload, the game retries for 55 s, and the server accepts batches for 60 s.</li>
   </ul>
 
   <h3 class="sub">CHALLENGE CHANNEL</h3>
-  <p>The heartbeat can issue a prompt about every 240 s of driving, with a 20 s response window. The kinds table is empty today, so none are issued. When enabled, the judge looks for that key within 20 s: Half or more of 3+ prompts ignored rejects; fewer misses flag. A median answer under 80 ms after the server issued the prompt flags. A prompt still open at the end is not judged.</p>
+  <p>The heartbeat can issue a prompt about every 240 s of driving, with a 20 s response window. The kinds table is empty today, so none are issued. When enabled, the judge looks for that key within 20 s: Half or more of 3+ prompts ignored rejects; fewer misses flag. A median answer under 80 ms after the server issued the prompt flags.</p>
 
   <h3 class="sub">WHO REVIEWS, AND HOW THAT POWER IS LOCKED</h3>
   <ol class="flow">
     <li><i>1</i><b>OWN SITE + PASSWORD</b><span>The admin page lives on its own address behind a password. The admin API answers nowhere else.</span></li>
     <li><i>2</i><b>ADMIN WALLET</b><span>Only listed wallets can sign in, for 2 hours. A player login opens nothing.</span></li>
     <li><i>3</i><b>EVERY DECISION SIGNED</b><span>Accept, reject and re-judge are each signed by the admin's wallet for that exact ride and decision.</span></li>
-    <li><i>4</i><b>AUDIT LOG</b><span>Who decided what, when, why, and the signature are kept for good. A late upload never overturns a human decision; neither does a bulk re-judge after a rules change.</span></li>
-    <li><i>5</i><b>WINNERS LOCKED ON CHAIN</b><span>The server's payout key commits the verified winners as one Merkle root (rank, wallet, amount). It is public through the review before anyone can pay a rank, and the admin's own wallet can veto it until the first prize is paid.</span></li>
+    <li><i>4</i><b>AUDIT LOG</b><span>Who decided what, when, why, and the signature are kept for good. Late uploads never overturn a human decision.</span></li>
+    <li><i>5</i><b>WINNERS LOCKED ON CHAIN</b><span>The payout key commits verified winners as one Merkle root (rank, wallet, amount), public through the 48 h review and subject to cold-admin veto before payout.</span></li>
   </ol>
 
   <h3 class="sub">LIMITS, SAID PLAINLY</h3>
   <ul class="honest">
-    <li><b>Client-reported state.</b> Shared traffic responses at recorded timing are stronger evidence than sparse reconstruction, but are not proof of an unmodified browser. A careful bot using the real game can still pass.</li>
-    <li><b>Float physics.</b> Road and acceleration bounds reject impossible traces; carried coasting estimates flag. An input-only fixed-point replay core is a future goal.</li>
-    <li><b>A captcha before a paid shift starts and before a prize is claimed</b> remains on the roadmap. The daily cap and rate limits limit free-ride abuse.</li>
-    <li><b>Off-chain judgement.</b> The Solana program checks settlement rules and signatures or Merkle proofs, not driving physics. Program v4's winners root and per-ride attestations are a separate upgrade.</li>
-    <li><b>Retention.</b> Recordings are kept for 90 days; flagged and never-judged completed rides are retained. The sweep deletes the sign-in log after 180 days.</li>
+    <li><b>Client-reported state &amp; float physics.</b> Shared traffic responses at recorded timing reject tampered traces, while carried coasting estimates flag; an input-only fixed-point replay core and a captcha before a paid shift remain on the roadmap.</li>
+    <li><b>Off-chain judgement &amp; retention.</b> The Solana program checks settlement rules, signatures and Merkle proofs, not driving physics. Recordings are kept 90 days; the sweep deletes the sign-in log after 180 days.</li>
   </ul>
 </section>
 
@@ -746,18 +730,17 @@
   <h3 class="sub">ONE RECORDING, THREE USES</h3>
   <ol class="flow">
     <li><i>1</i><b>DRIVER</b><span>The game records the truck at 10 Hz and, twice a second, the nearest ≤ 16 vehicles within 400 m. There is no second stream.</span></li>
-    <li><i>2</i><b>SERVER</b><span>The batch is sealed, hashed, chained and stored – the same upload the verdict judges. Traffic rides beside it, outside the fingerprint, and is dropped, never refused, if malformed.</span></li>
-    <li><i>3</i><b>WATCH PAGE · every 4 s</b><span>It polls for the next batches and the chat feed, builds the road from the ride's seed and route, and writes the truck's state from the samples. The truck is not simulated. Frost and fog follow the recorded heater and cooling switches.</span></li>
-    <li><i>4</i><b>REPLAY</b><span>Once the ride has ended, the same page is a replay with a timeline and 1×, 4× and 16× speeds, for as long as the recording is kept (90 days).</span></li>
+    <li><i>2</i><b>SERVER</b><span>The batch is sealed, hashed, chained and stored – the same upload the verdict judges.</span></li>
+    <li><i>3</i><b>WATCH PAGE · every 4 s</b><span>Polls for the next batches and chat feed, builds the road from the ride's seed and route, and writes the truck's state from the samples. Frost and fog follow the recorded heater and cooling switches.</span></li>
+    <li><i>4</i><b>REPLAY</b><span>Once ended, the same page is a replay with a timeline and 1×, 4× and 16× speeds for 90 days.</span></li>
   </ol>
-  <p><b>Live is slightly behind.</b> The page plays about 25 s behind the newest recorded second: a playback buffer with room for late uploads. New proof rides upload shorter batches; the viewer retains its delay. If the next batch has not arrived, the last frame holds and the panel says so. A paused game records no game time, so a pause never shows as a gap. Anyone can watch any ride that has started; a ride that has not started is a 404. A shared seed goes public with its first ride.</p>
-  <p>The road is endless but deterministic: layout is a pure function of the ride's seed, route and trip, so only the truck is recorded. <b>The holes are the server's</b>, never the driver's game's. A hole driven through undamaged is ringed red, and the replay stamps NO IMPACT as it passes. The cab switches are replayed with the truck: headlights, heater and cooling stay as the driver set them, and a press of <kbd>H</kbd>, <kbd>J</kbd> or their buttons flashes on the dash like the other controls. Not replayed: cracks, debris, the radio, and the raw key-press times.</p>
+  <p><b>Live is slightly behind.</b> The page plays about 25 s behind the newest recorded second. Road layout is a pure function of the ride's seed, route and trip; <b>the holes are the server's</b>. A hole driven through undamaged is ringed red, and the replay stamps NO IMPACT as it passes. Headlights, heater and cooling replay with the truck.</p>
 
   <h3 class="sub">CHAT: A CB RADIO IN THE CAB</h3>
   <div class="grid3">
     <article class="card"><h3>SPECTATOR SIDE</h3><p>Sign in with a wallet on the watch page. Lines are up to 140 characters, one per wallet per 3 s; control characters are stripped and everything is shown as text, never as HTML.</p></article>
-    <article class="card"><h3>DRIVER SIDE</h3><p>A small panel shows the last four lines, a viewer count and the total donated. <kbd>K</kbd> or a click folds it. Drivers cannot post into their own feed – their hands are on the wheel.</p></article>
-    <article class="card"><h3>MUTE</h3><p>Every spectator line has a MUTE button. A muted wallet cannot post on that ride, its lines vanish from every feed and its donation notes are blanked. An obstacle it already paid for stays on the road, because replays need it.</p></article>
+    <article class="card"><h3>DRIVER SIDE</h3><p>A small panel shows the last four lines, a viewer count and the total donated. <kbd>K</kbd> or a click folds it. Drivers cannot post into their own feed.</p></article>
+    <article class="card"><h3>MUTE</h3><p>Every spectator line has a MUTE button. A muted wallet cannot post on that ride, its lines vanish from every feed and its donation notes are blanked.</p></article>
   </div>
 
   <h3 class="sub">DONATIONS THAT CHANGE THE ROAD</h3>
@@ -772,9 +755,7 @@
       <tr><td>⚠ Sinkhole</td><td>0.05 SOL</td><td>Lane-wide with cones; up to 14 % hull per axle and 35 % of speed. At full speed it can wreck a damaged truck.</td></tr>
     </tbody>
   </table></div>
-  <p>A donation may carry a note of up to 80 characters. In production it is a <b>real devnet SOL transfer from the spectator's wallet to the driver's</b>: the server builds the unsigned transaction (a memo names the order, and a reference key sits on that memo), the wallet signs and sends it – on this computer, or by scanning the Solana Pay code with the same account on a phone – and the donation exists in the feed only once the server has seen it on chain. The platform never touches the money. One conditional update claims the order once (signatures are unique), so two tabs confirming at once make one donation.</p>
-  <p><b>Money that moved is never refused.</b> If the effect can no longer happen when the payment is confirmed – another effect landed, effects were switched off, or the ride ended – the donation is delivered as a tip and its text says why.</p>
-  <p><b>Where a paid hole goes.</b> Past the stretch of road already built (so it never pops into view), plus the warning sign's 90 m, in the lane the truck is in – about 940 m ahead. The driver's game reports back where and when it landed (“the stamp”, first report wins), and every replay then puts the hole exactly there, now or in a month. If there is no suitable chunk within about 1.3 km, the effect fizzles and says so.</p>
+  <p>A donation may carry a note of up to 80 characters and is a real devnet SOL transfer from the spectator's wallet to the driver's (signed in browser or via Solana Pay QR). If an effect can no longer happen when confirmed, it delivers as a tip. Paid holes spawn ~940 m ahead and the driver's game stamps where they landed for every replay.</p>
 
   <h3 class="sub">RULES AND FEATURE FLAGS</h3>
   <div class="tblwrap"><table class="tbl compact">
@@ -784,32 +765,31 @@
       <tr><td>Only a signed-in spectator writes</td><td>Chat and donations need the player session; the wallet is the author of every line.</td></tr>
       <tr><td>Not your own ride</td><td>The driver cannot chat to or donate to themselves.</td></tr>
       <tr><td>Only rides on the air</td><td>Running with a heartbeat in the last 150 s.</td></tr>
-      <tr><td>One game effect per ride per 20 s</td><td>A sliding window checked under a per-ride lock, so two simultaneous clicks never both pass; the second is told how long to wait. It keeps a ride drivable.</td></tr>
+      <tr><td>One game effect per ride per 20 s</td><td>Checked under a per-ride lock so two simultaneous clicks never both pass.</td></tr>
       <tr><td>One chat line per wallet per 3 s</td><td>Spam control.</td></tr>
       <tr><td>The stamp is the driver's, and final</td><td>Only the ride's owner can report where an effect landed.</td></tr>
     </tbody>
   </table></div>
-  <p>Four server switches decide what a ride offers; the server refuses what is off and tells the page what is on. In production today: <b>chat on for every ride, donations on and paid (real devnet SOL to the driver), game effects on free rides only</b> – never on a paid ticket ride – with tips available everywhere.</p>
-  <p class="dim">Open: reloading the watch page finds a tip this browser started. If that browser never comes back, there is still no chain watcher for the transfer. The SOL is already in the driver's wallet. A real Phantom on the game's own host is still to be tried by hand.</p>
+  <p>In production today: <b>chat on for every ride, donations on and paid (real devnet SOL to the driver), game effects on free rides only</b> – never on a paid ticket ride – with tips available everywhere.</p>
   <p><a class="link" data-to="game" data-path="/play.html" href="https://ride.freightchain.fun/play.html">Open the game, then use a ride's WATCH link from the lobby's Live tab →</a></p>
 </section>
 
 <!-- ───────── 08 · LIMITS & RISKS ───────── -->
 <section id="audit" class="ch">
   <header class="ch-h"><i>08</i><h2>Security check &amp; contracts audit</h2><p>Twelve AI auditors attacked the code on Oct 13. What they found, and what is fixed.</p></header>
-  <p>Six surfaces – the escrow program, money paths, identity and admin, anti-cheat, client, infrastructure – were each attacked by two agents from different vendors (Claude, GPT, Gemini, Grok), blind to each other. A finding counts only if two of them raised it, or one raised it with a test that reproduces it; disputed claims went to a third vendor. 69 raw findings became <b>7 high</b> and <b>13 medium</b>; 4 claims were corrected or refuted. It is <b>not a third-party audit</b>: the program stays unaudited until one is done (<a href="#risks">09</a>).</p>
+  <p>Six surfaces – escrow program, money paths, identity and admin, anti-cheat, client, infrastructure – were each attacked by two agents from different vendors (Claude, GPT, Gemini, Grok), blind to each other. 69 raw findings became <b>7 high</b> and <b>13 medium</b>; 4 claims were refuted. It is <b>not a third-party audit</b>: the program stays unaudited until an external review is done (<a href="#risks">09</a>).</p>
   <div class="tblwrap"><table class="tbl">
     <thead><tr><th>Finding</th><th>State</th></tr></thead>
     <tbody>
-      <tr><td>Anti-cheat: an empty recording verified, 1.9× the governor, hidden hole passes (H1, H3, M10, M13)</td><td><span class="pill wip">APP FIX SHIPPED · OCT 15</span></td></tr>
-      <tr><td>Another rider's recording replayed as your own (H2)</td><td><span class="pill wip">APP FIX SHIPPED · OCT 15</span></td></tr>
-      <tr><td>Rides after the play deadline still ranked; a revoked verdict still paid (H6, M7)</td><td><span class="pill wip">APP FIX SHIPPED · OCT 15</span></td></tr>
-      <tr><td>Session cookie scope, login CSRF, logout, admin CORS, sign-in text, rate limits (H7, M2, M3, M4, M9)</td><td><span class="pill wip">APP FIX SHIPPED · OCT 15</span></td></tr>
-      <tr><td>Program: the payout key was the whole prize gate, pledges not bound to their ride, sponsorships kept by a failed pool (H5, H4, M6, M8)</td><td><span class="pill wip">PROGRAM V4 BUILT · NOT ON DEVNET YET</span></td></tr>
+      <tr><td>Anti-cheat: an empty recording verified, 1.9× the governor, hidden hole passes (H1, H3, M10, M13)</td><td><span class="pill ok">APP FIX SHIPPED · OCT 15</span></td></tr>
+      <tr><td>Another rider's recording replayed as your own (H2)</td><td><span class="pill ok">APP FIX SHIPPED · OCT 15</span></td></tr>
+      <tr><td>Rides after the play deadline still ranked; a revoked verdict still paid (H6, M7)</td><td><span class="pill ok">APP FIX SHIPPED · OCT 15</span></td></tr>
+      <tr><td>Session cookie scope, login CSRF, logout, admin CORS, sign-in text, rate limits (H7, M2, M3, M4, M9)</td><td><span class="pill ok">APP FIX SHIPPED · OCT 15</span></td></tr>
+      <tr><td>Program: payout key prize gate, pledges bound to ride, sponsor refunds, 85/5/10 split &amp; &lt;50% player share cap (H5, H4, M6, M8)</td><td><span class="pill wip">PROGRAM V5 BUILT · DEVNET UPGRADE NEXT</span></td></tr>
       <tr><td>Blink relay, no CSP / HSTS / SRI, public verdict codes, the lows (M1, M11, M12, M5)</td><td><span class="pill plan">OPEN</span></td></tr>
     </tbody>
   </table></div>
-  <p class="dim">The review supplied reproductions that became regression tests. The original report and PoC status are archived at the reviewed commit; the current reusable audit tool keeps new run outputs outside tracked source. <a href="https://github.com/recferret-bit/freightchain/tree/16870e81">Report</a> · <a href="https://github.com/recferret-bit/freightchain/blob/main/docs/reviews/audit-2026-10/fix-plan.md">fix plan</a> · <a href="https://github.com/recferret-bit/freightchain/tree/16870e81">PoC status</a>.</p>
+  <p class="dim">Reproductions became regression tests. <a href="https://github.com/recferret-bit/freightchain/tree/16870e81">Report</a> · <a href="https://github.com/recferret-bit/freightchain/blob/main/docs/reviews/audit-2026-10/fix-plan.md">fix plan</a> · <a href="https://github.com/recferret-bit/freightchain/tree/16870e81">PoC status</a>.</p>
 </section>
 
 <section id="risks" class="ch">
@@ -819,37 +799,38 @@
   <div class="tblwrap"><table class="tbl">
     <thead><tr><th>Risk</th><th>What it means</th><th>Mitigation today</th></tr></thead>
     <tbody>
-      <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 154 tests; refund paths that need no key. An independent audit is a precondition for mainnet.</td></tr>
-      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Versioned recording, road and physics checks; v7 adds required traffic-frame evidence (<a href="#verify">06</a>). Human review remains necessary; challenge kinds are empty and a captcha is planned.</td></tr>
-      <tr><td><b>Operator trust</b></td><td>A payout key names the winners within the cap; the admin holds the treasuries.</td><td>Signed, audited decisions and on-chain caps. Program v4, pending upgrade, adds a public winners root and admin veto.</td></tr>
+      <tr><td><b>Smart-contract</b></td><td>Bugs in an unaudited program can lose funds.</td><td>Devnet only; reproducible build; 154+ tests; permissionless refunds. Independent audit before mainnet.</td></tr>
+      <tr><td><b>Cheating</b></td><td>A modified or scripted client could still pass inside the checks.</td><td>Versioned recording, road/physics checks, and v7 required traffic-frame proof (<a href="#verify">06</a>) plus human review.</td></tr>
+      <tr><td><b>Operator trust</b></td><td>A payout key names the winners within the cap; the admin holds the treasuries.</td><td>Signed, audited decisions, on-chain 85% prize cap and &lt;50% player-share cap, public winners root and admin veto.</td></tr>
       <tr><td><b>Availability</b></td><td>A long shift can be lost if your tab or connection dies for more than 150 s.</td><td>Resume of an open ride; honest pauses cost nothing; final upload retries.</td></tr>
-      <tr><td><b>Regulation</b></td><td>Paid prize games are regulated differently around the world.</td><td>Devnet, no value. The mainnet question is answered per region before any mainnet launch.</td></tr>
+      <tr><td><b>Regulation</b></td><td>Skill-contest prize pools are regulated differently around the world.</td><td>Player-derived funding capped &lt;50% (&le;47.4%), weekly granted ticket (AMOE), equal tie-splitting, 18+ geo/KYC checks.</td></tr>
       <tr><td><b>Loss of SOL</b></td><td>SOL spent on a shift can be lost. A prize is not guaranteed. Not a deposit or an investment.</td><td>Both profile boxes must be on before a paid shift. Devnet SOL has no monetary value.</td></tr>
-      <tr><td><b>Tuning</b></td><td>Verdict thresholds and some game values (e.g. strain time) are first guesses.</td><td>Shadow mode; versioned rules; values flagged as test values.</td></tr>
+      <tr><td><b>Tuning</b></td><td>Verdict thresholds and some game values are first guesses.</td><td>Shadow mode; versioned rules; values flagged as test values.</td></tr>
     </tbody>
   </table></div>
 
   <h3 class="sub">ROADMAP</h3>
   <ol class="legs">
-    <li class="done"><b>Built</b> (mid-Sep – Oct 2026) The driving sim; sign-in with Solana; server-timed rides; verified-play recording and verdicts (shadow); shared simulation and required traffic-frame checks built for the next app release; signed admin review; live streams, replays, chat, paid donations; the escrow program and its server mirror, written and tested; garage, promo codes, cosmetics; analytics half wired.</li>
-    <li class="now"><b>Devnet release</b> (Oct 13 – Nov 30) The verified program build on devnet; the first real pools – tickets bought, a missed goal refunded, prizes paid; verdict thresholds (prompts included) tuned on real rides, then enforced; analytics finished; twenty outside drivers; a heavy load test; a small crew of four – a CPO / COO hybrid, QA, community and support, a content creator.</li>
-    <li><b>Mainnet</b> (Dec 2026) Legals (the skill prizes, terms, privacy, regions blocked where needed); an outside security check of the API, sessions and admin zone; a program review on the published build; the load test repeated on the release candidate; mainnet pools with published rules; a public Dune board of the program.</li>
-    <li><b>Long haul</b> (2027) Garage parts and promo cosmetics as NFTs; sponsors, per-km pledges and convoys on top of tips; a storybook workshop where SOL buys attempts at a new prop, vehicle or landmark and drivers vote what ships; an input-only fixed-point replay core.</li>
+    <li class="done"><b>Built</b> (Sep – Oct 2026) Driving sim; 1-click SIWS, QR pairing &amp; SNS <code>.sol</code>; server-timed shifts; Anti-cheat v4 live &amp; v7 shared-kernel traffic proof built; signed admin review; live streams, replays, chat, paid donations &amp; pledges; Program v5 (85/5/10 split, &lt;50% player share) &amp; <code>freightchain_honk</code> (TEN4) built and tested; 44 soulbound badges across 12 ladders; 9-slot Garage, promo codes, Convoy referrals, 3D AI entity editor + MCP.</li>
+    <li class="now"><b>Devnet Pre-season</b> (Nov 2–17, 2026) Registration from Nov 2; contest week Nov 9–15; payouts from Nov 17. $500 USDC organizer-funded prize pool on the 1 h board (Top 20: $100 / $70 / $50 / $30×2 / $20×5 / $12×10, equal tie-splitting, 1 ranked attempt via mandatory tasks, unlimited free training) + 100,000 TEN4 airdrop points (50k leaderboard + 50k referrals).</li>
+    <li><b>Mainnet prep &amp; audit</b> (Dec 2026) Skill-contest legal opinion, sanctions / KYC / geo gates, external security &amp; program audit on the reproducible <code>freightchain_pools</code> v5 build, full-length load test.</li>
+    <li><b>Season 1 Mainnet</b> (Jan 11 – Feb 28, 2027) 7-week Season 1 (6 regular weeks + Week 7 Live Final; 85% weekly boards across Sprint 1h 25% · Haul 4h 30% · Long Haul 8h 45% · 5% rollover · 10% Season Final; operator base $300 &rarr; $3,000/wk + $1,000 Final base; 2,000,000 TEN4 Season 1 points).</li>
+    <li><b>TEN4 TGE &amp; Long Haul</b> (Mar 2027+) 100M fixed-supply TEN4 launch (15M LP, 8M Merkle claims, 55M checkpoint mints, 4M Convoy vault, cab &amp; stream burns), mainnet badges, team convoys, and fixed-point replay core.</li>
   </ol>
-  <p class="dim">Cut on purpose: an ICO, pay-to-win parts, mobile and Telegram, paid ads before someone owns growth, a big team, an eight-hour mandatory ride with forced stops, a second chain.</p>
+  <p class="dim">Cut on purpose: an ICO, pay-to-win parts, mobile and Telegram driving, paid ads before organic traction, a second chain.</p>
 
   <h3 class="sub">DISCLAIMER</h3>
-  <p class="legal">This document is informational. Freight Chain runs on Solana <b>devnet</b>; devnet SOL has no monetary value. SOL remains the pool. HONK is specified in the game as a capped mint-on-verified-checkpoint coin and is not an offer. Nothing in this paper is an offer or solicitation to buy or sell any asset, an investment contract, or financial, legal or tax advice. Statements about the future describe intentions, not commitments, and may change. Smart contracts, wallets and browsers can fail; the program has not been audited. Prices, splits and deadlines shown are proposed defaults, and each pool fixes its own. You are responsible for complying with the laws that apply to you. The source of truth for every number is the code; where this paper and the code disagree, the code wins.</p>
+  <p class="legal">This document is informational. Freight Chain runs on Solana <b>devnet</b>; devnet SOL has no monetary value. SOL / USDC funds the pools. TEN4 is specified in the game as a capped mint-on-verified-checkpoint coin (100,000,000 fixed supply) and is not an offer. HONK is the in-game verb. Nothing in this paper is an offer or solicitation to buy or sell any asset, an investment contract, or financial, legal or tax advice. Statements about the future describe intentions, not commitments, and may change. Smart contracts, wallets and browsers can fail; the program has not been audited. Prices, splits and deadlines shown are proposed defaults, and each pool fixes its own. You are responsible for complying with the laws that apply to you. The source of truth for every number is the code; where this paper and the code disagree, the code wins.</p>
 
   <h3 class="sub">SOURCES</h3>
-  <p class="dim">The rules quoted here are mirrored from the source: <code>client/shared/</code> (<code>@freightchain/shared</code>), <code>server/src/domain/rides/ride-tier.ts</code> (tiers), <code>…/verdict/verdict-rules.ts</code> &amp; <code>…/verdict/replay-engine.ts</code> (validation &amp; 10 Hz replay), <code>…/live/live-rules.ts</code> (streaming), <code>programs/freightchain-pools</code> (the escrow program), <code>client/js/config.js</code> (the game).</p>
+  <p class="dim">The rules quoted here are mirrored from the source: <code>client/shared/</code> (<code>@freightchain/shared</code>), <code>server/src/domain/rides/ride-tier.ts</code> (tiers), <code>server/src/domain/prize/</code> (pool split &amp; season rules), <code>server/src/domain/honk/tokenomics.ts</code> (TEN4), <code>…/verdict/verdict-rules.ts</code> &amp; <code>…/verdict/replay-engine.ts</code> (validation &amp; 10 Hz replay), <code>…/live/live-rules.ts</code> (streaming), <code>programs/freightchain_pools</code> &amp; <code>programs/freightchain_honk</code> (Anchor programs), <code>client/js/config.js</code> (the game).</p>
   <p><a id="lobby-link" data-to="site" data-path="/lobby.html" href="https://freightchain.fun/lobby.html">lobby</a> · <a id="storybook-link" data-to="storybook" data-path="/viewer.html" href="https://storybook.freightchain.fun/">model viewer</a></p>
 </section>
 
 </main>
 </div>
 
-<footer>FREIGHT CHAIN · WHITEPAPER v0.2 · Oct 16 2026 · devnet build, nothing here is real money · <a id="home-link" data-to="site" data-path="/" href="https://freightchain.fun/">home</a></footer>
+<footer>FREIGHT CHAIN · WHITEPAPER v0.3 · Oct 17 2026 · devnet build, nothing here is real money · <a id="home-link" data-to="site" data-path="/" href="https://freightchain.fun/">home</a></footer>
 
 <script type="module" src="/src/whitepaper.js"></script>
 </body>

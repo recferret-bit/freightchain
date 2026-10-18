@@ -40,7 +40,7 @@ describe('Ride – the free LEVELS (EASY / MEDIUM / HARD)', () => {
   it('each level stamps its trip and its own finish line (k × 28 m/s × minSeconds); no level = EASY; a paid ride has none', () => {
     expect(free(1, 60)).toMatchObject({ trip: 'free-1c', level: 1, minSeconds: 60, completeDist: 0.3 * 28 * 60 });
     expect(free(2, 180)).toMatchObject({ trip: 'free-2c', level: 2, minSeconds: 180, completeDist: 0.4 * 28 * 180 });
-    expect(free(3, 600)).toMatchObject({ trip: 'free-3b', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600 });
+    expect(free(3, 600)).toMatchObject({ trip: 'free-3c', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600 });
     expect(order().level).toBeNull();
     expect(Ride.restore({ ...freeRide().snapshot(), trip: 'free' }).level).toBeNull();   // a free ride from before the levels
   });
@@ -62,7 +62,7 @@ describe('Ride – the free LEVELS (EASY / MEDIUM / HARD)', () => {
     expect(() => r.chooseFree(3, 600, true, false)).toThrow(ConflictError);
     expect(r).toMatchObject({ trip: 'free-2c', minSeconds: 180, assist: true });
     expect(r.chooseFree(3, 600, false, false)).toBe(true);
-    expect(r).toMatchObject({ trip: 'free-3b', route: 'brenner', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600, tutorial: false, assist: false });
+    expect(r).toMatchObject({ trip: 'free-3c', route: 'brenner', level: 3, minSeconds: 600, completeDist: 0.4 * 28 * 600, tutorial: false, assist: false });
     expect(() => order().chooseFree(1, 60, false, false)).toThrow(ConflictError);
     r.start(T0);
     expect(() => r.chooseFree(1, 60, false, false)).toThrow(ConflictError);   // a running ride keeps its road
@@ -311,6 +311,25 @@ describe('Ride – crash counters (statistics only)', () => {
     const r = running();
     expect(r.applyReport(report({ s: 9000, crashesVehicle: 5 }), at(5), rules)).toBe(false);
     expect(r.snapshot()).toMatchObject({ status: RideStatus.Failed, crashesVehicle: 0 });
+  });
+});
+
+describe('Ride – ranked clean distance', () => {
+  const ranked = () => { const r = freeRide(); r.start(T0, null, 0, { country: 'CA', region: null }); return r; };
+
+  it('freezes at the previous heartbeat when hull drops or a crash counter rises, and an unranked ride does not', () => {
+    const r = ranked();
+    expect(r.applyReport(report({ s: 40, t: 2, hull: 100 }), at(2), rules)).toBe(true);
+    expect(r.cleanMetres).toBeNull();
+    expect(r.applyReport(report({ s: 80, t: 4, hull: 90 }), at(4), rules)).toBe(true);
+    expect(r.cleanMetres).toBe(40);
+    expect(r.distance).toBe(80);
+    expect(r.applyReport(report({ s: 100, t: 6, hull: 40, crashesVehicle: 1 }), at(6), rules)).toBe(true);
+    expect(r.cleanMetres).toBe(40);
+    const plain = running();
+    plain.applyReport(report({ s: 20, t: 2, hull: 10, crashesVehicle: 3 }), at(2), rules);
+    expect(plain.cleanMetres).toBeNull();
+    expect(plain.ranked).toBe(false);
   });
 });
 

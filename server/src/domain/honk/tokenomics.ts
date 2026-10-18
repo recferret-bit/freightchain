@@ -1,30 +1,52 @@
-/* HONK (docs/honk/SPEC.md). A capped mint for verified paid checkpoints. The ledger is the source of truth; nothing here talks to a chain. */
+/* TEN4 (docs/honk/SPEC.md). The ticker is TEN4; HONK stays the in-game verb. Until TGE the ledger is the source of truth. */
 
 const UNIT = 1_000_000n;
 
+export const TOKEN_NAME = 'TEN4';
+export const TOKEN_SYMBOL = 'TEN4';
 export const HONK_DECIMALS = 6;
-export const HONK_MAX_SUPPLY = 100_000_000n * UNIT;
-export const HONK_GENESIS = 2_000_000n * UNIT;
-export const HONK_EMISSION_CAP = HONK_MAX_SUPPLY - HONK_GENESIS;
+export const HONK_LIQUIDITY = 15_000_000n * UNIT;
+export const HONK_EMISSION_CAP = 55_000_000n * UNIT;
+export const HONK_AIRDROP = 8_000_000n * UNIT;
+export const HONK_REFERRAL = 4_000_000n * UNIT;
+export const HONK_TREASURY = 10_000_000n * UNIT;
+export const HONK_TEAM = 8_000_000n * UNIT;
+/** Fixed 100M supply. Team allocation (8M) is always enabled (12m cliff + 24m linear vest). */
+export const HONK_MAX_SUPPLY = HONK_LIQUIDITY + HONK_EMISSION_CAP + HONK_AIRDROP + HONK_REFERRAL + HONK_TREASURY + HONK_TEAM;
+export const HONK_ERA_SIZE = HONK_EMISSION_CAP / 2n;
+export const HONK_REFERRAL_ERA_SIZE = HONK_REFERRAL / 2n;
+export const HONK_REFERRAL_TAIL_ERA = 8;
+export const HONK_DAILY_GLOBAL_ERA1 = 75_000n * UNIT;
+export const HONK_DAILY_WALLET = 2_000n * UNIT;
+export const HONK_REFERRAL_MONTHLY_GLOBAL = 60_000n * UNIT;
+export const HONK_REFERRAL_SOFT_START_GLOBAL = 30_000n * UNIT;
+export const HONK_REFERRAL_SOFT_START_MONTHS = 3;
+export const HONK_REFERRAL_MONTHLY_WALLET = 1_000n * UNIT;
+export const HONK_AIRDROP_WALLET_CAP = 2_000n * UNIT;
+export const HONK_AIRDROP_WINDOW_DAYS = 90;
+export const HONK_TREASURY_VEST_MONTHS = 36;
+export const HONK_TEAM_CLIFF_MONTHS = 12;
+export const HONK_TEAM_LINEAR_MONTHS = 24;
+export const HONK_HOLD_8H_MS = 48 * 60 * 60 * 1000;
+export const DAY_MS = 86_400_000;
 export const HONK_STREAM_BURN = 1n * UNIT;
-/** Day or night on a live ride. Not the 1 HONK chat line. */
+/** Day or night on a live ride. Not the 1 TEN4 chat honk. */
 export const HONK_TIME_BURN = 10n * UNIT;
 /** Snow or clear on a live ride. Not a donation. */
 export const HONK_WEATHER_BURN = 25n * UNIT;
 /** One stream burn per wallet per ride. The chat window is shorter; this is the burn's own gap. */
 export const STREAM_BURN_GAP_MS = 10_000;
 
-const BASE_FULL = 100n * UNIT;
-/** Not the hour count. 4h is ×5 and 8h is ×20, so a longer shift pays more than its hours. Each band of each full mint stays an integer. */
-const MULT: Readonly<Record<string, bigint>> = { '1h': 1n, '4h': 5n, '8h': 20n };
+const FINISH: Readonly<Record<string, bigint>> = { '1h': 100n * UNIT, '4h': 500n * UNIT, '8h': 1_200n * UNIT };
 const BANDS = [
-  { pct: 20 as const, bps: 1500 },
-  { pct: 50 as const, bps: 2500 },
-  { pct: 100 as const, bps: 6000 },
+  { pct: 20 as const, bps: 1500, bit: 1 },
+  { pct: 50 as const, bps: 2500, bit: 2 },
+  { pct: 100 as const, bps: 6000, bit: 4 },
 ];
 
 export type HonkPct = 20 | 50 | 100;
-export type HonkState = 'none' | 'preview' | 'minted' | 'withheld';
+export type HonkState = 'none' | 'preview' | 'pending' | 'minted' | 'withheld';
+export type CapReason = 'ok' | 'emission' | 'daily' | 'wallet';
 
 export interface HonkBandView {
   pct: HonkPct;
@@ -40,7 +62,7 @@ export interface HonkQuoteDto {
   bands: HonkBandView[];
 }
 
-/** Decimal HONK, trailing zeros trimmed, at least one digit. */
+/** Decimal TEN4, trailing zeros trimmed, at least one digit. */
 export function formatHonk(base: bigint): string {
   const neg = base < 0n;
   const v = neg ? -base : base;
@@ -49,37 +71,181 @@ export function formatHonk(base: bigint): string {
   return `${neg ? '-' : ''}${whole}${frac ? `.${frac}` : ''}`;
 }
 
-/** Ordinary 65, gold 260. Both are 30% above the first prices, so the 25-part garage is 2,405. */
+/** Ordinary 65, gold 260. Both are 30% above the first prices, so the first five slots are 2,405. */
 export function visualPrice(item: string): bigint {
   return (item === 'gold' ? 260n : 65n) * UNIT;
 }
 
+/** Unix day containing `at`. Caps count every mint row stamped that day, pending included. */
+export function dayStart(at: Date): Date {
+  return new Date(Math.floor(at.getTime() / DAY_MS) * DAY_MS);
+}
+
+/** Unix day index the program checks against its own clock. Callers pass ClockPort, not Date.now. */
+export function dayIndex(at: Date): number {
+  return Math.floor(at.getTime() / DAY_MS);
+}
+
+/** Era of `emitted` ride TEN4. Era 0 is the first 27.5M. Each later era is half the previous one. */
+export function eraIndex(emitted: bigint): number {
+  if (emitted >= HONK_EMISSION_CAP) return 63;
+  let start = 0n;
+  let size = HONK_ERA_SIZE;
+  let era = 0;
+  while (size > 0n) {
+    const end = start + size;
+    if (emitted < end) return era;
+    start = end;
+    size /= 2n;
+    era += 1;
+    if (era >= 63) return 63;
+  }
+  return era;
+}
+
+export function eraRemaining(emitted: bigint): bigint {
+  if (emitted >= HONK_EMISSION_CAP) return 0n;
+  let start = 0n;
+  let size = HONK_ERA_SIZE;
+  let era = 0;
+  while (size > 0n) {
+    const end = start + size;
+    if (emitted < end) return end - emitted;
+    start = end;
+    size /= 2n;
+    era += 1;
+    if (era >= 63) break;
+  }
+  return HONK_EMISSION_CAP - emitted;
+}
+
+/** Era of `emitted` referral TEN4 (4M cap: 2M -> 1M -> 500k -> ...). */
+export function referralEraIndex(emitted: bigint): number {
+  if (emitted >= HONK_REFERRAL) return 63;
+  let start = 0n;
+  let size = HONK_REFERRAL_ERA_SIZE;
+  let era = 0;
+  while (size > 0n) {
+    const end = start + size;
+    if (emitted < end) return era;
+    start = end;
+    size /= 2n;
+    era += 1;
+    if (era >= 63) return 63;
+  }
+  return era;
+}
+
+export function referralEraRemaining(emitted: bigint): bigint {
+  if (emitted >= HONK_REFERRAL) return 0n;
+  let start = 0n;
+  let size = HONK_REFERRAL_ERA_SIZE;
+  let era = 0;
+  while (size > 0n) {
+    const end = start + size;
+    if (emitted < end) return end - emitted;
+    start = end;
+    size /= 2n;
+    era += 1;
+    if (era >= 63) break;
+  }
+  return HONK_REFERRAL - emitted;
+}
+
+/** 30,000 TEN4/month for the first 3 months after TGE (`monthIndex < 3`), then 60,000 TEN4/month. */
+export function referralMonthlyGlobalCap(monthIndex: number): bigint {
+  if (monthIndex < 0) return 0n;
+  return monthIndex < HONK_REFERRAL_SOFT_START_MONTHS ? HONK_REFERRAL_SOFT_START_GLOBAL : HONK_REFERRAL_MONTHLY_GLOBAL;
+}
+
+/** Referral reward scaled by `>> max(era_ref, era_ride)`. */
+export function referralQuoteUnits(baseAmount: bigint, referralEmitted: bigint, rideEmitted = 0n): { quote: bigint; era: number } {
+  if (baseAmount <= 0n) return { quote: 0n, era: 0 };
+  const era = Math.max(referralEraIndex(referralEmitted), eraIndex(rideEmitted));
+  if (era >= 63) return { quote: 0n, era: 63 };
+  return { quote: baseAmount >> BigInt(era), era };
+}
+
+export function clipReferralPayout(
+  quote: bigint,
+  referralEmitted: bigint,
+  monthIndex: number,
+  monthGlobal: bigint,
+  monthWallet: bigint,
+): { amount: bigint; reason: CapReason } {
+  const roomCap = HONK_REFERRAL - referralEmitted;
+  const roomEra = referralEraRemaining(referralEmitted);
+  const roomMonth = referralMonthlyGlobalCap(monthIndex) - monthGlobal;
+  const roomWallet = HONK_REFERRAL_MONTHLY_WALLET - monthWallet;
+  if (quote <= 0n || roomCap <= 0n || roomEra <= 0n) return { amount: 0n, reason: 'emission' };
+  if (roomMonth <= 0n) return { amount: 0n, reason: 'daily' };
+  if (roomWallet <= 0n) return { amount: 0n, reason: 'wallet' };
+  let amount = quote < roomCap ? quote : roomCap;
+  if (roomEra < amount) amount = roomEra;
+  if (roomMonth < amount) amount = roomMonth;
+  if (roomWallet < amount) amount = roomWallet;
+  return { amount, reason: 'ok' };
+}
+
+export function globalDailyCap(era: number): bigint {
+  if (era >= 63) return 0n;
+  return HONK_DAILY_GLOBAL_ERA1 >> BigInt(era);
+}
+
+export function finishUnits(tier: string, era: number): bigint | null {
+  const base = FINISH[tier];
+  if (base === undefined) return null;
+  if (era >= 63) return 0n;
+  return base >> BigInt(era);
+}
+
+/** 8h waits 48h for the final verdict. 1h and 4h credit immediately and are not clawed back. */
+export function holdMs(tier: string): number {
+  return tier === '8h' ? HONK_HOLD_8H_MS : 0;
+}
+
 interface Band { pct: HonkPct; reached: boolean; amount: bigint }
 
-/** Checkpoint mint for one ride. Free and unknown tiers are empty. A band is reached at +1 m so a finish the game calls complete takes the last band. */
-export function bandAmounts(tier: string, distance: number, completeDist: number): { bands: Band[]; quote: bigint; full: bigint } {
-  const mult = MULT[tier];
-  if (mult === undefined || !(completeDist > 0)) return { bands: [], quote: 0n, full: 0n };
-  const full = BASE_FULL * mult;
+/** Checkpoint mint for one ride at the era of `emitted`. Free and unknown tiers are empty. A band is reached at +1 m so a finish the game calls complete takes the last band. */
+export function bandAmounts(tier: string, distance: number, completeDist: number, emitted = 0n): { bands: Band[]; quote: bigint; full: bigint } {
+  const full = finishUnits(tier, eraIndex(emitted));
+  if (full === null || !(completeDist > 0)) return { bands: [], quote: 0n, full: 0n };
   const bands = BANDS.map((b) => ({ pct: b.pct, reached: distance + 1 >= (completeDist * b.pct) / 100, amount: (full * BigInt(b.bps)) / 10_000n }));
   return { bands, quote: bands.reduce((sum, b) => sum + (b.reached ? b.amount : 0n), 0n), full };
 }
 
-/** What still fits under the ride-emission cap. Burns do not give this room back. */
-export function clipToCap(quote: bigint, alreadyMinted: bigint): bigint {
-  const room = HONK_EMISSION_CAP - alreadyMinted;
-  if (room <= 0n || quote <= 0n) return 0n;
-  return quote < room ? quote : room;
+/** The most this ride can pay. A zero room names the cap that closed it: emission, then the global day, then the wallet day. */
+export function clipPayout(quote: bigint, emitted: bigint, dayGlobal: bigint, dayWallet: bigint): { amount: bigint; reason: CapReason } {
+  const era = eraIndex(emitted);
+  const roomCap = HONK_EMISSION_CAP - emitted;
+  const roomEra = eraRemaining(emitted);
+  const roomDay = globalDailyCap(era) - dayGlobal;
+  const roomWallet = HONK_DAILY_WALLET - dayWallet;
+  if (quote <= 0n || roomCap <= 0n || roomEra <= 0n) return { amount: 0n, reason: 'emission' };
+  if (roomDay <= 0n) return { amount: 0n, reason: 'daily' };
+  if (roomWallet <= 0n) return { amount: 0n, reason: 'wallet' };
+  let amount = quote < roomCap ? quote : roomCap;
+  if (roomEra < amount) amount = roomEra;
+  if (roomDay < amount) amount = roomDay;
+  if (roomWallet < amount) amount = roomWallet;
+  return { amount, reason: 'ok' };
 }
 
-/** The ride JSON. `pays` equals `quote` once verified — a cap clip is applied in the ledger, and the quote stays the unclipped checkpoint sum. */
-export function honkQuote(tier: string, distance: number, completeDist: number, verdict: string | null): HonkQuoteDto {
+export function bandBits(flags: { band20: boolean; band50: boolean; band100: boolean }): number {
+  return (flags.band20 ? 1 : 0) | (flags.band50 ? 2 : 0) | (flags.band100 ? 4 : 0);
+}
+
+/** The ride JSON. `pays` equals the unclipped quote once it has landed. An 8h ride stays `pending` (pays 0) until `paid`. */
+export function honkQuote(tier: string, distance: number, completeDist: number, verdict: string | null, opts?: { paid?: boolean }): HonkQuoteDto {
   const { bands, quote, full } = bandAmounts(tier, distance, completeDist);
   if (bands.length === 0) return { state: 'none', pays: '0', quote: '0', full: '0', bands: [] };
   const view = bands.map((b) => ({ pct: b.pct, reached: b.reached, amount: formatHonk(b.amount) }));
   const q = formatHonk(quote);
   const f = formatHonk(full);
-  if (verdict === 'verified') return { state: quote > 0n ? 'minted' : 'none', pays: q, quote: q, full: f, bands: view };
+  if (verdict === 'verified') {
+    if (holdMs(tier) > 0 && !opts?.paid) return { state: quote > 0n ? 'pending' : 'none', pays: '0', quote: q, full: f, bands: view };
+    return { state: quote > 0n ? 'minted' : 'none', pays: q, quote: q, full: f, bands: view };
+  }
   if (verdict === 'flagged' || verdict === 'rejected') return { state: 'withheld', pays: '0', quote: q, full: f, bands: view };
   return { state: 'preview', pays: '0', quote: q, full: f, bands: view };
 }

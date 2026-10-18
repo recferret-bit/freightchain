@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Full HONK coin suite on one local validator. Does not deploy.
+# Full TEN4 coin suite on one local validator. Does not deploy.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/server"
-PROGRAMS="$ROOT/programs/freightchain-pools"
+PROGRAMS="$ROOT/programs"
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
 SO="$PROGRAMS/target/deploy/freightchain_honk.so"
 fail() { echo "✗ $*"; exit 1; }

@@ -9,4 +9,4 @@ export const basic = (color, opts = {}) => trackMat(new THREE.MeshBasicMaterial(
 /* a fixed colour an entity names ({ color: 0x… }) – one tracked material per colour (lamp = self-lit) until the route changes */
 const byColor = new Map();
 export const colorMat = (color, lamp = false) => { const k = color + (lamp ? 'L' : ''); let m = byColor.get(k); if (!m) byColor.set(k, m = basic(color, lamp ? { toneMapped: false } : {})); return m; };
-export function disposeMats() { for (const m of mats) m.dispose?.(); mats.length = 0; byColor.clear(); }
+export function disposeMats() { for (const m of mats) { m.map?.dispose?.(); m.dispose?.(); } mats.length = 0; byColor.clear(); }

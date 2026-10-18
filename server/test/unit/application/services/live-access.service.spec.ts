@@ -1,3 +1,4 @@
+import { Ride } from '../../../../src/domain/rides/ride.entity.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../../../src/domain/shared/errors.js';
 import { unitContext, unitRules } from '../../../support/unit-context.js';
 import { LiveAccessService } from '../../../../src/application/services/live-access.service.js';
@@ -20,5 +21,18 @@ describe('LiveAccessService', () => {
 
     const free = await ctx.freeRide('free-driver', true);
     await expect(access.requirePostable(free.id, 'fan', { kind: 'message' }, ctx.now())).rejects.toThrow(new ForbiddenError('stream watching and interactions are not available on free rides', 'free_ride_no_stream'));
+  });
+
+  it('a ranked ride refuses day/night, weather and road obstacles before they can be charged, and still takes chat and a tip', async () => {
+    const ctx = unitContext();
+    const access = new LiveAccessService(ctx.rides, ctx.rideMutes, ctx.rules);
+    const started = await ctx.paidRide('driver', true);
+    await ctx.rides.save(Ride.restore({ ...started.snapshot(), ranked: true }));
+    await expect(access.requirePostable(started.id, 'fan', { kind: 'honk-time' }, ctx.now())).rejects.toMatchObject({ errorCode: 'ranked_effects_off' });
+    await expect(access.requirePostable(started.id, 'fan', { kind: 'honk-weather' }, ctx.now())).rejects.toMatchObject({ errorCode: 'ranked_effects_off' });
+    await expect(access.requirePostable(started.id, 'fan', { kind: 'donation', effect: 'sinkhole' }, ctx.now())).rejects.toMatchObject({ errorCode: 'ranked_effects_off' });
+    await expect(access.requirePostable(started.id, 'fan', { kind: 'donation', effect: 'night' }, ctx.now())).rejects.toMatchObject({ errorCode: 'ranked_effects_off' });
+    expect((await access.requirePostable(started.id, 'fan', { kind: 'message' }, ctx.now())).ride.ranked).toBe(true);
+    expect((await access.requirePostable(started.id, 'fan', { kind: 'donation', effect: 'tip' }, ctx.now())).ride.id).toBe(started.id);
   });
 });

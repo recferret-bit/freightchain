@@ -77,6 +77,36 @@ export class RidePrismaRepository extends RideRepositoryPort {
     return rows[0] ? RideMapper.toDomain(rows[0]) : null;
   }
 
+  async countRankedStarts(wallet: string, from: Date, to: Date, tx?: TransactionHandle): Promise<{ free: number; paid: number; promo: number }> {
+    const rows = await clientFor(this.prisma, tx).ride.findMany({
+      where: { wallet, ranked: true, startedAt: { gte: from, lt: to } },
+      select: { tier: true, promoCode: true },
+    });
+    let free = 0, paid = 0, promo = 0;
+    for (const row of rows) {
+      if (row.promoCode) promo += 1;
+      else if (row.tier === 'free') free += 1;
+      else paid += 1;
+    }
+    return { free, paid, promo };
+  }
+
+  async listRankedEnded(tier: string, from: Date, to: Date, tx?: TransactionHandle, opts?: { verifiedOnly?: boolean }): Promise<Ride[]> {
+    const rows = await clientFor(this.prisma, tx).ride.findMany({
+      where: {
+        tier,
+        ranked: true,
+        status: { in: ['completed', 'abandoned', 'failed'] },
+        startedAt: { gte: from, lt: to },
+        ...(opts?.verifiedOnly
+          ? { verdict: { is: { status: 'verified' } } }
+          : { OR: [{ verdict: { is: null } }, { verdict: { is: { status: 'verified' } } }] }),
+      },
+      orderBy: [{ startedAt: 'asc' }, { seq: 'asc' }],
+    });
+    return rows.map((row) => RideMapper.toDomain(row));
+  }
+
   async hasCompletedInPool(poolId: number, wallet: string, tx?: TransactionHandle): Promise<boolean> {
     const endBy = await this.endBy(poolId, tx);
     return (await clientFor(this.prisma, tx).ride.count({ where: { poolId, wallet, status: 'completed', ...(endBy ? { endedAt: { lte: endBy } } : {}) } })) > 0;

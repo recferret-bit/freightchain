@@ -4,20 +4,21 @@ import type { PrismaService } from '../../../src/infrastructure/prisma/prisma.se
 import { HONK_PARTS } from '../../../src/domain/honk/parts-catalog.js';
 import { HONK_EMISSION_CAP } from '../../../src/domain/honk/tokenomics.js';
 import type { ClockPort } from '../../../src/application/ports/shared/clock.port.js';
-import { at, inTx, testPrisma, wipe } from '../../support/db.js';
+import { at, inTx, seedPlayer, testPrisma, wipe } from '../../support/db.js';
 
 const U = 1_000_000n;
 const ride = (rideId: string, distance = 10_000) => ({ rideId, wallet: 'w', tier: '1h', distance, completeDist: 10_000 });
 
 describe('HonkPrismaRepository (PostgreSQL)', () => {
   let prisma: PrismaService, repo: HonkPrismaRepository, mint: HonkMintService;
+  const clock = { ms: at(3).getTime(), now() { return new Date(this.ms); } };
   beforeAll(async () => {
     prisma = await testPrisma();
     repo = new HonkPrismaRepository(prisma);
-    mint = new HonkMintService(repo, { now: () => at(3) } as ClockPort);
+    mint = new HonkMintService(repo, clock as ClockPort);
   });
   afterAll(() => prisma.$disconnect());
-  beforeEach(() => wipe(prisma));
+  beforeEach(() => { clock.ms = at(3).getTime(); return wipe(prisma); });
 
   it('credits a wallet, debits only what the balance covers, and a reversed burn puts it back', async () => {
     await repo.credit('w', 50n * U, at(1));
@@ -68,10 +69,30 @@ describe('HonkPrismaRepository (PostgreSQL)', () => {
     expect(await repo.findPart('wheel', 'nope')).toBeNull();
   });
 
-  it('a mint that does not fit the emission cap takes the remainder', async () => {
+  it('a mint near the emission cap pays the era-scaled finish, not the raw room', async () => {
     await prisma.honkSupply.create({ data: { id: 1, minted: HONK_EMISSION_CAP - 10n * U } });
-    expect(await inTx(prisma, (tx) => mint.credit(ride('clip'), tx))).toBe(10n * U);
+    // 10 TEN4 of cap room is era 22. A finished 1h there is 23 base units, and the band split pays 21.
+    expect(await inTx(prisma, (tx) => mint.credit(ride('clip'), tx))).toBe(21n);
+    expect((await prisma.honkSupply.findUnique({ where: { id: 1 } }))?.minted).toBe(HONK_EMISSION_CAP - 10n * U + 21n);
+    await prisma.honkSupply.update({ where: { id: 1 }, data: { minted: HONK_EMISSION_CAP } });
     expect(await inTx(prisma, (tx) => mint.credit(ride('after'), tx))).toBeNull();
     expect((await prisma.honkSupply.findUnique({ where: { id: 1 } }))?.minted).toBe(HONK_EMISSION_CAP);
+  });
+
+  it('an 8h finish stays unreleased until 48h, then credits 1200, and cancel returns reserved room', async () => {
+    await seedPlayer(prisma, 'w');
+    clock.ms = at(3).getTime();
+    expect(await inTx(prisma, (tx) => mint.credit({ ...ride('long'), tier: '8h' }, tx))).toBeNull();
+    expect(await repo.balance('w')).toBe(0n);
+    expect(await repo.findMint('long')).toMatchObject({ amount: 1200n * U, released: false });
+    expect(await repo.counts('w')).toEqual({ mints: 0, finishes: 0 });
+    clock.ms += 48 * 3600 * 1000;
+    expect(await repo.listDue(new Date(clock.ms), 10)).toMatchObject([{ rideId: 'long', wallet: 'w', released: false }]);
+    expect(await inTx(prisma, (tx) => mint.releaseIfDue('long', tx))).toBe(1200n * U);
+    expect(await repo.balance('w')).toBe(1200n * U);
+    expect(await repo.counts('w')).toEqual({ mints: 1, finishes: 1 });
+    expect(await inTx(prisma, (tx) => mint.credit({ ...ride('cancelled'), tier: '8h' }, tx))).toBeNull();
+    expect(await inTx(prisma, (tx) => mint.cancelPending('cancelled', tx))).toBe(1200n * U);
+    expect(await repo.findMint('cancelled')).toBeNull();
   });
 });

@@ -42,12 +42,13 @@ export async function initOnline() {
    so the pagehide beacon below must not end it. The checkboxes (tutorial / assist) are re-chosen on the same trip too: the started ride says which. */
 const RECHOSEN = 'ride_rechosen';
 
-export async function beginOnline() {
+export async function beginOnline(opts = {}) {
   if (!online.ride || online.started) return;
   online.started = true;
+  const ranked = opts.ranked === true;
   let started;
-  try { started = await api(`rides/${online.ride.id}/start`, { trip: online.ride.trip ?? 'classic' }); }   // (null = a ride from before trips = 'classic' – trips.js tripOf)
-  catch (e) { if (e.status === 409 && e.code === RECHOSEN) { online.started = false; location.reload(); return new Promise(() => {}); } throw e; }   // re-chosen elsewhere: load it as it is now
+  try { started = await api(`rides/${online.ride.id}/start`, { trip: online.ride.trip ?? 'classic', ...(ranked ? { ranked: true } : {}) }); }   // (null = a ride from before trips = 'classic' – trips.js tripOf)
+  catch (e) { online.started = false; if (e.status === 409 && e.code === RECHOSEN) { location.reload(); return new Promise(() => {}); } throw e; }   // re-chosen elsewhere: load it as it is now. Any other refusal can be retried.
   if (started.tutorial !== online.ride.tutorial || started.assist !== online.ride.assist) setGuide(started);   // (HARD's assist is refused by the server: false here too)
   online.running = true;   // the server has started the ride: its road plan is served from now on (road-plan.js)
   setLoadout(started.loadout);   // what the server stamped on the ride (what spectators and replays draw) – normally what the menu already wore

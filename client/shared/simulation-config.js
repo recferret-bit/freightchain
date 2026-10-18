@@ -262,6 +262,36 @@ export const SIMULATION_TRIPS = {
       ]
     }
   },
+  "free-3c": {
+    "bends": 1.6,
+    "traffic": 1.4,
+    "cross": 1.4,
+    "calm": false,
+    "start": "depot",
+    "road": {
+      "first": [
+        "open",
+        "xroad",
+        "highway",
+        "xroad",
+        "fork",
+        "xroad",
+        "xroad",
+        "fork",
+        "xroad",
+        "xroad"
+      ],
+      "weights": {
+        "open": 2,
+        "highway": 1
+      },
+      "holeChance": 2,
+      "firstLen": [
+        450,
+        450
+      ]
+    }
+  },
   "1h": {
     "bends": 1,
     "traffic": 1,

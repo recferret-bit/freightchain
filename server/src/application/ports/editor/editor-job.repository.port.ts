@@ -1,7 +1,7 @@
-import type { EditorJobRecord, JobEventRecord, JobEventType, JobStatus } from '../../../domain/editor/editor-job.js';
+import type { EditorJobRecord, EditorMcpCallInput, EditorMcpCallRecord, JobEventRecord, JobEventType, JobStatus } from '../../../domain/editor/editor-job.js';
 import type { TransactionHandle } from '../shared/transaction.port.js';
 
-/** `asset.EditorJob` + `asset.EditorJobEvent`: jobs and their append-only events (seq 1, 2, … per job). */
+/** `asset.EditorJob` + `asset.EditorJobEvent` + `asset.EditorMcpCall`: jobs, the chat's events, and the full MCP calls. */
 export abstract class EditorJobRepositoryPort {
   /** Atomic shared admission: cap and open-wallet/entity checks plus queued event in one transaction. */
   abstract admit(job: EditorJobRecord, since: Date, dailyCap: number): Promise<'accepted' | 'job_cap' | 'job_running'>;
@@ -23,6 +23,10 @@ export abstract class EditorJobRepositoryPort {
   /** appends with the next seq (unique per job). Pass `tx` to join a transaction that already holds `lock`. */
   abstract appendEvent(jobId: string, type: JobEventType, payload: Record<string, unknown>, at: Date, tx?: TransactionHandle): Promise<JobEventRecord>;
   abstract events(jobId: string, after: number, limit: number): Promise<JobEventRecord[]>;
+  /** The next MCP seq under the job row lock. Stores the call that was sent, including the editor's wallet. */
+  abstract recordMcpCall(call: EditorMcpCallInput): Promise<EditorMcpCallRecord>;
+  /** Oldest first. */
+  abstract mcpCalls(jobId: string): Promise<EditorMcpCallRecord[]>;
   /** distinct entity ids of this job's draft events – not a prefix of the event log */
   abstract createdIds(jobId: string, tx?: TransactionHandle): Promise<string[]>;
   /** jobs of a wallet created since `since` (the daily cap) */

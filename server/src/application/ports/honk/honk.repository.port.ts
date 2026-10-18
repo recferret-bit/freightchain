@@ -18,6 +18,10 @@ export interface HonkMintRow {
   band50: boolean;
   band100: boolean;
   createdAt: Date;
+  /** When an 8h mint may credit the wallet. Immediate tiers use the insert time. */
+  releaseAt: Date;
+  /** False while an 8h mint is reserved and not yet credited. Existing rows default true. */
+  released: boolean;
 }
 
 export interface HonkAccountRow {
@@ -53,8 +57,16 @@ export abstract class HonkRepositoryPort {
   /** The emission already minted, holding the supply row so two rides cannot both pass the cap. */
   abstract lockEmission(tx?: TransactionHandle): Promise<bigint>;
   abstract addEmission(amount: bigint, tx?: TransactionHandle): Promise<void>;
+  abstract subEmission(amount: bigint, tx?: TransactionHandle): Promise<void>;
+  /** Mint rows stamped on the unix day starting at `start`, one wallet or every wallet. Pending rows count. */
+  abstract emittedOnDay(start: Date, wallet: string | null, tx?: TransactionHandle): Promise<bigint>;
   /** False when that rideId was already inserted. */
   abstract insertMint(row: HonkMintRow, tx?: TransactionHandle): Promise<boolean>;
+  /** True only when this call flipped an unreleased row. */
+  abstract markReleased(rideId: string, tx?: TransactionHandle): Promise<boolean>;
+  /** True only when an unreleased row was deleted. */
+  abstract deleteMint(rideId: string, tx?: TransactionHandle): Promise<boolean>;
+  abstract listDue(now: Date, limit: number): Promise<HonkMintRow[]>;
   abstract balance(wallet: string, tx?: TransactionHandle): Promise<bigint>;
   abstract account(wallet: string, tx?: TransactionHandle): Promise<HonkAccountRow>;
   /** False when the balance cannot cover it. Does not change the emission counter. */

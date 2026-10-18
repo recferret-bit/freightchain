@@ -1,7 +1,7 @@
 {
   "name": "Long Haul",
   "symbol": "FCHAIN",
-  "description": "Every free run is a licence of its own. This one is stamped and framed. Condition: Clear the HARD free run – fifteen minutes, no assist. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
+  "description": "Every free run is a licence of its own. This one is stamped and framed. Condition: Clear the HARD free run – thirty minutes, no assist. A soulbound Freight Chain achievement – compressed NFT, non-transferable.",
   "image": "__IMAGE__",
   "seller_fee_basis_points": 0,
   "external_url": "https://freightchain.fun/",
@@ -24,7 +24,7 @@
     },
     {
       "trait_type": "Condition",
-      "value": "Clear the HARD free run – fifteen minutes, no assist."
+      "value": "Clear the HARD free run – thirty minutes, no assist."
     },
     {
       "trait_type": "Requirement",

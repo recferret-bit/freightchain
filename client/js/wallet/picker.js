@@ -48,18 +48,16 @@ const h = (tag, style, text) => { const n = css(document.createElement(tag), sty
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const title = text => h('b', { display: 'block', marginBottom: '8px', color: '#d98a14', letterSpacing: '.06em', userSelect: 'none' }, text);
 
-/** Pitch-deck motion: the box hovers (the card float), a purple/green glow breathes, and a small rotate shake plays every few seconds.
- *  Drag lives on a frame around the box, so its `translate` does not fight the hover. The grab pad sticks out past the rounded corners. Follow is the pitch card trail: a little behind the pointer, then home on release. */
+/** The box sits still. Drag lives on a frame around it. The grab pad sticks out past the rounded corners.
+ *  Follow is a little behind the pointer, then home on release. */
 function liveDialog(panel) {
   const frame = h('div');
   panel.replaceWith(frame);
   frame.append(panel);
   panel.style.position = 'relative';
-  panel.style.isolation = 'isolate';   // the glow sits at z-index -1 and must not fall behind the page scrim
-  const glow = h('i', { position: 'absolute', inset: '-8px', borderRadius: '12px', pointerEvents: 'none', zIndex: '-1', boxShadow: '0 0 18px 2px #9945ff88, 0 0 28px 4px #14f19544' });
   const pad = h('div', { position: 'absolute', inset: '-14px', borderRadius: '20px', cursor: 'grab', touchAction: 'none', zIndex: '0' });
   pad.dataset.fcDrag = '';
-  panel.prepend(glow, pad);
+  panel.prepend(pad);
   let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0, tx = 0, ty = 0, x = 0, y = 0, raf = 0;
   const step = reduced() ? 1 : 0.12;   // pitch cards chase at .06; a dialog should trail, not swim
   const paint = () => {
@@ -89,18 +87,7 @@ function liveDialog(panel) {
   panel.addEventListener('pointermove', onMove);
   panel.addEventListener('pointerup', onUp);
   panel.addEventListener('pointercancel', onUp);
-  if (!reduced()) {
-    glow.animate({ opacity: [1, 0.4, 1] }, { duration: 2400, easing: 'ease-in-out', iterations: Infinity });
-    panel.animate({ translate: ['0 0', '0 -16px', '0 0'] }, { duration: 6000, easing: 'ease-in-out', iterations: Infinity });   // the pitch cards' float
-  }
-  let next = performance.now() + 800;   // the first shake comes quickly, then every 2.2–8 s, the pitch deck's "touch me" clock
-  const timer = reduced() ? 0 : setInterval(() => {
-    if (document.hidden || dragging || Math.hypot(x, y) > 1 || performance.now() < next) return;
-    next = performance.now() + 2200 + Math.random() * 5800;
-    const a = (0.9 + Math.random() * 0.9) * (Math.random() < 0.5 ? -1 : 1);
-    panel.animate({ rotate: ['0deg', `${a}deg`, `${-a * 0.75}deg`, `${a * 0.5}deg`, `${-a * 0.25}deg`, '0deg'] }, { duration: 520 + Math.random() * 200, easing: 'ease-out' });
-  }, 200);
-  return () => { clearInterval(timer); cancelAnimationFrame(raf); };
+  return () => { cancelAnimationFrame(raf); };
 }
 const BTN = { display: 'flex', alignItems: 'center', gap: '10px', width: '100%', margin: '6px 0', padding: '10px 12px', background: '#1b1b1b', color: '#f2f2f2', border: '1px solid #444', borderRadius: '6px', font: 'inherit', cursor: 'pointer', textDecoration: 'none', boxSizing: 'border-box', pointerEvents: 'auto', position: 'relative', overflow: 'hidden' };
 

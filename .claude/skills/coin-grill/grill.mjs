@@ -76,7 +76,7 @@ function hasUnnegatedMatch(text, pattern, negationRe = /\b(?:no|not|never|withou
 
 // Inspect the main repository so project-fit checks reference actual code & architecture.
 function loadProjectContext() {
-  const hasPools = existsSync(join(REPO_ROOT, "programs/freightchain-pools"));
+  const hasPools = existsSync(join(REPO_ROOT, "programs/freightchain_pools"));
   const hasVerdict = existsSync(join(REPO_ROOT, "server/src/domain/verdict/replay-engine.ts"));
   const hasSharedPhysics = existsSync(join(REPO_ROOT, "client/shared/physics.js"));
   return {
@@ -84,7 +84,7 @@ function loadProjectContext() {
     isFreightChainRepo: hasPools && hasVerdict && hasSharedPhysics,
     pillars: [
       "Browser 3D long-haul driving game (28 m/s speed governor, manual gearbox, hull & battery systems)",
-      "Anchor v4 SOL escrow pools on Solana (`programs/freightchain-pools`): ticket vaults, SlotHashes `seal_road`, winners Merkle root, per-km `Pledge` & `RideAttestation`",
+      "Anchor v4 SOL escrow pools on Solana (`programs/freightchain_pools`): ticket vaults, SlotHashes `seal_road`, winners Merkle root, per-km `Pledge` & `RideAttestation`",
       "Two-tier anti-cheat: RFC 6962 hash-chained 15 s telemetry batches + 10 Hz `ReplayEngine` (`@freightchain/shared` physics & swept traffic CCD)",
       "Live spectator watch (`~25 s` delay), CB chat, driver tips, and paid road/weather events (`potholes`, `trench`, `sinkhole`, `night`, `day`)",
       "Cosmetic-only Garage (`paint`, `wheel`, `gearbox`, `dice`, `needles` — never alters handling) & 31 soulbound Bubblegum v2 cNFT achievement badges",
@@ -900,7 +900,7 @@ export function runThreeIterations(spec) {
       severity: "HIGH",
       dimension: "Main Project & Coin Fit",
       title: "Replacing native SOL escrow prize pools with a volatile token adds severe onboarding & legal friction",
-      detail: "Freight Chain's Anchor program (`programs/freightchain-pools`) is architected around trustless SOL vaults, lamport-exact splits (`vault-split.ts`), and Solana Pay ticket checkout. Forcing riders to swap into a custom token just to buy a $5 shift ticket adds DEX slippage, two-step UX drop-off, and prize-pool volatility during 3-hour play windows.",
+      detail: "Freight Chain's Anchor program (`programs/freightchain_pools`) is architected around trustless SOL vaults, lamport-exact splits (`vault-split.ts`), and Solana Pay ticket checkout. Forcing riders to swap into a custom token just to buy a $5 shift ticket adds DEX slippage, two-step UX drop-off, and prize-pool volatility during 3-hour play windows.",
       proposal: "Adopt a Dual-Rail Model: keep core competitive shift tickets and per-km driver pledges denominated in SOL, while making the token the exclusive currency for Live Spectator Hazards, Garage Cosmetics, Seasonal League Passes, and Community Prize Sponsorships."
     });
   }
@@ -1772,7 +1772,7 @@ footer { border-top: 1px solid var(--rule); padding-top: 18px; display: flex; fl
       <h3>Core Project Invariants Checked</h3>
       <ul class="checks">
         <li><b>28 m/s Governor &amp; 10 Hz Replay Fairness</b><span class="c">Token must never sell speed, hull armor, battery immunity, or verdict leniency. Pay-to-win flag: ${spec.utilities.payToWinHazard ? "VIOLATED (Critical)" : "Clean (Respected)"}.</span></li>
-        <li><b>Anchor v4 SOL Escrow Preservation</b><span class="c">Paid shifts ($5 / $15 / $50) and per-km pledges in <code>programs/freightchain-pools</code> settle cleanly in SOL lamports. Replacing SOL escrow: ${spec.utilities.replacesSolEscrow ? "VIOLATED (High Friction)" : "Clean (Dual-Rail)"}.</span></li>
+        <li><b>Anchor v4 SOL Escrow Preservation</b><span class="c">Paid shifts ($5 / $15 / $50) and per-km pledges in <code>programs/freightchain_pools</code> settle cleanly in SOL lamports. Replacing SOL escrow: ${spec.utilities.replacesSolEscrow ? "VIOLATED (High Friction)" : "Clean (Dual-Rail)"}.</span></li>
         <li><b>Live Watch &amp; Spectator Sabotage Fit</b><span class="c">Spectators watching live rides (~25s batch delay) trigger <code>potholes</code>, <code>trench</code>, <code>sinkhole</code>, and <code>night</code> shifts checked by <code>ReplayEngine</code>.</span></li>
         <li><b>Garage Cosmetics &amp; Soulbound cNFTs</b><span class="c">Garage items (wheel, paint, gearbox, dice, needles) and 31 Bubblegum v2 achievement badges provide natural non-P2W sinks and gating.</span></li>
       </ul>

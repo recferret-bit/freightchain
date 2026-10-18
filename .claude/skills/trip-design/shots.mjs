@@ -10,7 +10,7 @@ import { launch, sleep, withEntities } from '../../../client/tools/cdp.mjs';
 const BASE = process.env.BASE || 'http://localhost:8765', PORT = +process.env.PORT || 9338, SEED = 4242;
 const TRIPS = (process.env.TRIPS || 'free,1h,4h,8h').split(','), ROUTES = (process.env.ROUTES || 'route66,brenner').split(',');
 const { ev, shot, filt, SHOTS, finish, send } = await launch({ port: PORT, shotsDir: 'fc-trip-shots', evalProblems: true });
-await send('Page.navigate', { url: await withEntities(`${BASE}/play.html`) }); await sleep(3500);
+await send('Page.navigate', { url: await withEntities(`${BASE}/play.html?sim=1`) }); await sleep(3500);
 if (await ev('typeof window.__game') !== 'object') { console.log('the game did not boot at', BASE); finish(1); }
 await ev('__game.devRun()');   // no helpers; each trip below sets its own road
 

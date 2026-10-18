@@ -5,7 +5,10 @@ import { ReplayEngine, REPLAY_SIM_HZ } from '../../domain/verdict/replay-engine.
 import { RideReplay } from '../../domain/verdict/ride-replay.entity.js';
 import { RideVerdict } from '../../domain/verdict/ride-verdict.entity.js';
 import { isPoolMark } from '../../domain/verdict/pool-attention.js';
+import { classifyPass, firstPasses } from '../../domain/verdict/world-checks.js';
 import { VerdictStatus, type VerdictDecision, type VerdictReason } from '../../domain/verdict/verdict.dto.js';
+import { bandAmounts, dayIndex } from '../../domain/honk/tokenomics.js';
+import type { Ride } from '../../domain/rides/ride.entity.js';
 import { ConflictError, NotFoundError } from '../../domain/shared/errors.js';
 import { AdminActionRepositoryPort } from '../ports/admin/admin-action.repository.port.js';
 import { RideEventRepositoryPort } from '../ports/live/ride-event.repository.port.js';
@@ -22,8 +25,15 @@ import { HonkMintService } from './honk-mint.service.js';
 import { HonkEmissionPort } from '../ports/honk/honk-emission.port.js';
 import { ReferralService } from './referral.service.js';
 
+function canJudgeRide(ride: Ride): boolean {
+  if (ride.isInStatus(RideStatus.Completed)) return true;
+  if (!ride.isInStatus(RideStatus.Abandoned, RideStatus.Failed)) return false;
+  if (ride.ranked && ride.distance > 0) return true;
+  return !ride.isFree && !ride.isPromo && !ride.isWeeklyGrant && bandAmounts(ride.tier, ride.distance, ride.completeDist).quote > 0n;
+}
+
 /**
- * Judges a completed ride from its stored recording (RideVerdict.judge + 10 Hz ReplayEngine) and saves both the verdict and the RideReplay record.
+ * Judges an ended ride from its stored recording (RideVerdict.judge + 10 Hz ReplayEngine) and saves both the verdict and the RideReplay record.
  * Called right after /end, when a late batch lands, or asynchronously from ReplayQueuePort across concurrent worker sessions.
  * Runs under the wallet's player row lock, and reads batches only once it holds it: of two racing judgements the one that saves last has seen
  * every batch the other saw, so a stale verdict can never overwrite a fresher one. A verdict an admin decided is kept as is.
@@ -66,7 +76,7 @@ export class VerdictService {
     @Optional() private readonly referral?: ReferralService,
   ) {}
 
-  /** null = nothing to judge (only completed shifts can rank, so only they are judged). A verdict an admin decided is returned as is. */
+  /** null = nothing to judge (completed shifts, ranked attempts with distance, or paid shifts that reached a TEN4 band). A verdict an admin decided is returned as is. */
   async judge(rideId: string, expectedPendingReplayId?: string): Promise<RideVerdict | null> {
     const result = await this.transactions.run((tx) => this.judgeLocked(rideId, false, tx, false, expectedPendingReplayId));
     await this.mintRide(result);
@@ -74,12 +84,12 @@ export class VerdictService {
     return result?.verdict ?? null;
   }
 
-  /** Enqueues a completed ride for asynchronous replay verification by background workers (creates a pending RideReplay row and pushes to ReplayQueuePort). */
+  /** Enqueues an ended ride for asynchronous replay verification by background workers (creates a pending RideReplay row and pushes to ReplayQueuePort). */
   async enqueueVerification(rideId: string): Promise<RideReplay | null> {
     if (!this.replays) return null;
     const replay = await this.transactions.run(async (tx) => {
       const ride = await this.rides.findById(rideId, tx);
-      if (!ride || !ride.isInStatus(RideStatus.Completed)) return null;
+      if (!ride || !canJudgeRide(ride)) return null;
       await this.players.findByWalletForUpdate(ride.wallet, tx);
       const latest = await this.replays!.findLatestByRide(rideId, tx);
       if (latest && latest.status === VerdictStatus.Pending) return latest;
@@ -173,12 +183,18 @@ export class VerdictService {
       `guardSwept` refuses (409) when the recording was deleted by the retention sweep – a late batch (neither) may still judge an empty recording. */
   private async mintRide(result: { minted: bigint | null; wallet: string; verdict: RideVerdict } | null): Promise<void> {
     if (!result?.minted) return;
-    await this.emission.mint(result.verdict.rideId, result.wallet, result.minted);
+    const chain = await this.honk.chainOf(result.verdict.rideId);
+    if (!chain) return;
+    try {
+      await this.emission.mint(result.verdict.rideId, result.wallet, chain.tier, chain.bands, dayIndex(this.clock.now()));
+    } catch (error) {
+      this.logger.warn(`chain mint after verdict failed for ride ${result.verdict.rideId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   private async judgeLocked(rideId: string, force: boolean, tx: TransactionHandle, guardSwept = force, expectedPendingReplayId?: string): Promise<{ verdict: RideVerdict; before: string | null; minted: bigint | null; wallet: string } | null> {
-    const ride = await this.rides.findById(rideId, tx);
-    if (!ride || !ride.isInStatus(RideStatus.Completed)) return null;
+    let ride = await this.rides.findById(rideId, tx);
+    if (!ride || !canJudgeRide(ride)) return null;
     await this.players.findByWalletForUpdate(ride.wallet, tx);
     const existing = await this.verdicts.findByRide(rideId, tx);
     if (existing?.isOverridden && !force && !this.replays) return { verdict: existing, before: existing.status, minted: null, wallet: ride.wallet }; // an admin decided – a late batch never replaces that
@@ -188,6 +204,7 @@ export class VerdictService {
     }
     const now = this.clock.now();
     let replayReasons: VerdictReason[] = [];
+    let simDamageS: number | null = null;
     if (this.replays) {
       const latestReplay = await this.replays.findLatestByRide(rideId, tx);
       if (expectedPendingReplayId && latestReplay && latestReplay.id === expectedPendingReplayId && latestReplay.status !== VerdictStatus.Pending && existing) {
@@ -201,6 +218,11 @@ export class VerdictService {
         this.rideEvents ? this.rideEvents.listAfter(rideId, 0, 500, tx) : Promise.resolve([]),
       ]);
       const simOut = ReplayEngine.verify(ride, fullBatches, events);
+      for (const f of simOut.redFlags) {
+        if (typeof f.atMetre === 'number' && (f.category === 'obstacle' || f.category === 'traffic' || f.code === 'donated-obstacle-ignored')) {
+          simDamageS = simDamageS === null ? f.atMetre : Math.min(simDamageS, f.atMetre);
+        }
+      }
       const replay = latestReplay && latestReplay.status === VerdictStatus.Pending
         ? latestReplay
         : RideReplay.createPending({
@@ -220,12 +242,25 @@ export class VerdictService {
       replayReasons = replay.toVerdictReasons();
     }
     const verdict = RideVerdict.judge(ride, batches, now, replayReasons);
+    if (ride.ranked) {
+      const ordered = [...batches].sort((a, b) => a.seq - b.seq);
+      const damaged = ordered.find((b) => typeof b.summary.firstDamageS === 'number');
+      const worldHit = firstPasses(ordered).find((p) => { const k = classifyPass(p).kind; return k === 'hit' || k === 'ignored'; });
+      const candidates = [damaged?.summary.firstDamageS, worldHit?.s, simDamageS].filter((x): x is number => typeof x === 'number' && Number.isFinite(x));
+      if (candidates.length > 0 && ride.clampCleanMetres(Math.min(...candidates))) {
+        ride = await this.rides.save(ride, tx);
+      }
+    }
     // the pool-level attention marks (pool-attention.ts) come from the other rides of the pool, not from this recording – judging the recording again
-    // cannot recompute them, so they are carried over (also when an admin re-judges: clearing a mark is an admin DECISION – the override –, not a re-run)
-    verdict.addReasons(existing?.reasons.filter((r) => isPoolMark(r.code)) ?? []);
+    // cannot recompute them, so they are carried over (also when an admin re-judges: clearing a mark is an admin DECISION – the override –, not a re-run).
+    // `clean-mismatch` is carried over too because clamping `ride.cleanMetres` above would otherwise hide the heartbeat discrepancy on a later re-judge.
+    verdict.addReasons(existing?.reasons.filter((r) => isPoolMark(r.code) || r.code === 'clean-mismatch') ?? []);
     await this.verdicts.save(verdict, tx);
-    // HONK is credited in this same transaction. A flagged or rejected ride mints nothing, and a second pass of a verified ride does not mint again.
-    const minted = verdict.status === 'verified' ? await this.honk.credit({ rideId, wallet: ride.wallet, tier: ride.tier, distance: ride.distance, completeDist: ride.completeDist }, tx) : null;
+    // TEN4 is reserved in this same transaction. 1h and 4h credit now. An 8h row waits; a later non-verified verdict returns that reservation. A released mint is not clawed back, and a second pass does not mint again.
+    // A promo ride and the weekly granted ticket are not purchases, so they do not mint TEN4. A non-verified verdict returns an unreleased reservation.
+    const minted = verdict.status === 'verified' && !ride.isPromo && !ride.isWeeklyGrant
+      ? await this.honk.credit({ rideId, wallet: ride.wallet, tier: ride.tier, distance: ride.distance, completeDist: ride.completeDist }, tx)
+      : await this.honk.cancelPending(rideId, tx).then(() => null);
     this.logger.log({ event: 'verdict', msg: `ride ${rideId}: ${verdict.status}`, rideId, wallet: ride.wallet, status: verdict.status, reasons: verdict.reasons.map((r) => r.code) });
     return { verdict, before: existing?.status ?? null, minted, wallet: ride.wallet };
   }
@@ -239,13 +274,16 @@ export class VerdictService {
       const out: AttentionOutcome[] = [];
       for (const { rideId, reasons } of marks) {
         const ride = await this.rides.findById(rideId, tx);
-        if (!ride || ride.wallet !== wallet || !ride.isInStatus(RideStatus.Completed)) { out.push({ rideId, before: null, after: null, added: [], skipped: 'not-completed' }); continue; }
+        if (!ride || ride.wallet !== wallet || !canJudgeRide(ride)) { out.push({ rideId, before: null, after: null, added: [], skipped: 'not-completed' }); continue; }
         const existing = await this.verdicts.findByRide(rideId, tx);
         const verdict = existing ?? RideVerdict.judge(ride, await this.batches.listFactsByRide(rideId, tx), this.clock.now());
         const before = existing?.status ?? null;
         if (verdict.isOverridden) { out.push({ rideId, before, after: verdict.status, added: [], skipped: 'overridden' }); continue; }
         const had = new Set(verdict.reasons.map((r) => r.code));
-        if (verdict.addReasons(reasons) || !existing) await this.verdicts.save(verdict, tx);
+        if (verdict.addReasons(reasons) || !existing) {
+          await this.verdicts.save(verdict, tx);
+          if (verdict.status !== VerdictStatus.Verified) await this.honk.cancelPending(rideId, tx);
+        }
         out.push({ rideId, before, after: verdict.status, added: verdict.reasons.filter((r) => !had.has(r.code)).map((r) => r.code), skipped: null });
       }
       return out;
@@ -256,23 +294,27 @@ export class VerdictService {
 
   /** An admin's decision from the review queue, under the same player lock as judging (so a racing re-judge cannot overwrite it), audited in the same transaction. */
   async override(rideId: string, decision: VerdictDecision, admin: string, note: string | null, requestId: string | null, proof: AdminProof | null = null): Promise<RideVerdict> {
-    const verdict = await this.transactions.run(async (tx) => {
+    const result = await this.transactions.run(async (tx) => {
       const ride = await this.rides.findById(rideId, tx);
       if (!ride) throw new NotFoundError('ride not found');
       await this.players.findByWalletForUpdate(ride.wallet, tx);
-      // a completed shift whose judgement failed after /end (best-effort) has no verdict yet: judge it now, then decide
-      const current = (await this.verdicts.findByRide(rideId, tx)) ?? (ride.isInStatus(RideStatus.Completed) ? RideVerdict.judge(ride, await this.batches.listFactsByRide(rideId, tx), this.clock.now()) : null);
+      // a shift whose judgement failed after /end (best-effort) has no verdict yet: judge it now, then decide
+      const current = (await this.verdicts.findByRide(rideId, tx)) ?? (canJudgeRide(ride) ? RideVerdict.judge(ride, await this.batches.listFactsByRide(rideId, tx), this.clock.now()) : null);
       if (!current) throw new NotFoundError('this ride has no verdict (only completed shifts are judged)');
       const before = current.status;
       const now = this.clock.now();
       current.override(decision, admin, note, now);
       await this.verdicts.save(current, tx);
+      const minted = decision === VerdictStatus.Verified && !ride.isPromo && !ride.isWeeklyGrant
+        ? await this.honk.credit({ rideId, wallet: ride.wallet, tier: ride.tier, distance: ride.distance, completeDist: ride.completeDist }, tx)
+        : await this.honk.cancelPending(rideId, tx).then(() => null);
       await this.audit.insert({ wallet: admin, action: 'verdict.override', target: rideId, detail: { from: before, to: decision, note, rider: ride.wallet, ...(proof ? { signed: proof } : {}) }, requestId, at: now }, tx);
-      return current;
+      return { verdict: current, minted, wallet: ride.wallet };
     });
     this.logger.log({ event: 'admin', msg: `verdict of ride ${rideId} set to ${decision} by ${admin}`, action: 'verdict.override', rideId, admin, decision, requestId });
-    if (decision === VerdictStatus.Verified) await this.afterVerified(rideId, verdict.status);
-    return verdict;
+    await this.mintRide(result);
+    if (decision === VerdictStatus.Verified) await this.afterVerified(rideId, result.verdict.status);
+    return result.verdict;
   }
 
   /** After the verdict transaction commits. A referral failure is logged and retried on the next judge: qualifying locks the referrer, which cannot share the rider's lock. */

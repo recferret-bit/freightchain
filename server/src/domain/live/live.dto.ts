@@ -30,7 +30,7 @@ export const toRideEventDto = (e: RideEvent): RideEventDto => {
   };
 };
 
-/** The feed as everyone sees it once the driver muted someone: their chat lines are gone, their donation notes blanked. A HONK day, night, or weather line stays
+/** The feed as everyone sees it once the driver muted someone: their chat lines are gone, their donation notes blanked. A TEN4 day, night, or weather line stays
     (the burn already landed; the text is the server's, not a chat note). Applied stamps stay – every replay needs where an obstacle went.
     ONE function for the watch page and the driver's inbox, so both always agree. */
 export function withoutMuted(events: RideEventDto[], muted: Set<string>): RideEventDto[] {
@@ -87,6 +87,7 @@ export interface WatchRideDto {
   hull: number | null;
   /** the escrowed pool of a ticket ride (null = free / pay-per-ride): only these take pledges (POST /api/pledges) */
   poolId: number | null;
+  ranked?: boolean;
 }
 
 /** The spectator's one poll: the ride, the next recording batches from `from`, the feed after `after` – plus every event stamped (applied) since `since`,

@@ -1,4 +1,4 @@
-/* The interactive bits of the slides: floating cards (lean, drag), the "touch me" shakes, the badge carousel, the storybook sneak peek, the 65 / 5 / 20 / 10 bar,
+/* The interactive bits of the slides: floating cards (lean, drag), the "touch me" shakes, the badge carousel, the storybook sneak peek, the 85 / 5 / 10 bar,
    the live canvas scene and the secret tiers. Each init* finds its elements once. */
 import { ACH, achTier, BADGES, STORY } from './data.js';
 import { reduced, view, deck, replay, slideOf, everyFrame, wakeFrames } from './core.js';
@@ -89,7 +89,7 @@ export function initShakes(sel) {
   }, 200);
 }
 
-/* the soulbound-NFT card: a carousel of the 31 badges – the middle one big, its neighbours small and dim; every 2.6 s the row slides one place left and the caption follows;
+/* the soulbound-NFT card: a carousel of the 34 badges – the middle one big, its neighbours small and dim; every 2.6 s the row slides one place left and the caption follows;
    as the new badge reaches the middle two purple rings ripple out of it and it pops. Five slots (o = −2…2): the one that slid out on the left jumps to the far right, unseen. */
 export function initCarousel() {
   const ach = deck.querySelector('.ach'); if (!ach) return;
@@ -130,7 +130,7 @@ export function initPeek() {
   pk.addEventListener('click', () => { if (pk.classList.contains('hot')) run(); else stop(); });   // runs after the generic toggle: a tap opens (and runs) or closes it
 }
 
-/* the 65 / 5 / 20 / 10 bar – hover (or tap) a block: every other block runs to the bar's border on ITS side of the picked one and squeezes into it (the farthest first, equally
+/* the 85 / 5 / 10 bar – hover (or tap) a block: every other block runs to the bar's border on ITS side of the picked one and squeezes into it (the farthest first, equally
    far ones together), the picked one slides to the left edge and grows to the full width, then its % gives way to what it means; leaving plays it backwards, nearest first */
 export let onSplit = () => {};   // pitchdeck.js sets it (analytics): hover and tap both open through expand()
 export const setOnSplit = f => { onSplit = f; };

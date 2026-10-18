@@ -12,7 +12,8 @@ describe('GetMyPromosHandler', () => {
     ctx.clock.advance(5);
     await ctx.promos.insertRedemption('BBB', 'w', 1, ctx.now());
     await ctx.promos.insertRedemption('AAA', 'someone', 1, ctx.now());
-    const { redemptions } = await new GetMyPromosHandler(ctx.promos).execute(new GetMyPromosQuery('w'));
+    const { redemptions, grants } = await new GetMyPromosHandler(ctx.promos).execute(new GetMyPromosQuery('w'));
+    expect(grants).toEqual([]);
     expect(redemptions).toEqual([
       { code: 'BBB', label: '3 free rides', description: null, kind: 'free_rides', at: ctx.clock.ms },
       { code: 'AAA', label: '2 × 1h ride tickets', description: 'First', kind: 'tickets', at: ctx.clock.ms - 5000 },

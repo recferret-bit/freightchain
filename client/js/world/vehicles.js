@@ -23,9 +23,16 @@ const ctx = { slot: () => null, color: (hex, lamp) => (lamp ? lampMat(hex) : mat
 for (const c of [HEAD, TAIL, BRAKE, RED, BLUE, AMBER]) lampMat(c);
 for (const c of [GLASS, TYRE, RIM, 0x6a7078, 0x8a5a14, RED, WHITE, 0x15191f, 0x4a5a6a, 0xd8d4c8, 0xc8c8c0, 0xe8c020, 0xd89a20, 0x20406a, 0xe3e1d9, 0x1d3a5c, ...CAR_COLORS]) mat(c);
 
+export const activeVehicles = new Set();
 /* builds a vehicle group in the scene; `pick` selects the sedan colour */
 export function buildVehicle(def, pick = 0) {
   const g = new THREE.Group(); g.userData.pick = pick; g.userData.hi = pick % 3 === 0;
-  buildInto(g, def.type, { len: def.len, w: def.w, h: def.h, pick, hi: g.userData.hi }, ctx); scene.add(g); return g;
+  buildInto(g, def.type, { len: def.len, w: def.w, h: def.h, pick, hi: g.userData.hi }, ctx); scene.add(g); activeVehicles.add(g); return g;
 }
-export function removeVehicle(g) { scene.remove(g); releaseTree(g); }   // its mk() parts go back to the pool (world/pool.js)
+export function removeVehicle(g) { activeVehicles.delete(g); scene.remove(g); releaseTree(g); }   // its mk() parts go back to the pool (world/pool.js)
+export function setBehindVehiclesVisible(visible, px, pz, th, psi = 0) {
+  if (visible) { for (const g of activeVehicles) g.visible = true; return; }
+  if (Math.abs(psi) >= 0.8) return;
+  const fx = Math.sin(th), fz = -Math.cos(th);
+  for (const g of activeVehicles) if ((g.position.x - px) * fx + (g.position.z - pz) * fz < -25) g.visible = false;
+}

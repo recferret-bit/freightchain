@@ -19,6 +19,7 @@ import { rideFailed, rideStarted } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { isDemoWallet } from '../../../services/demo.js';
 import { RideLookupService } from '../../../services/ride-lookup.service.js';
+import { RankedEntryService } from '../../../services/ranked-entry.service.js';
 import { StartRideCommand } from './start-ride.command.js';
 
 interface StartFacts {
@@ -48,9 +49,10 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
     private readonly analytics: AnalyticsPort,
     private readonly stats: StatsService,
     private readonly pools: PoolRepositoryPort,
+    private readonly rankedEntry: RankedEntryService,
   ) {}
 
-  async execute({ wallet, rideId, trip }: StartRideCommand): Promise<RideDto> {
+  async execute({ wallet, rideId, trip, ranked, headers }: StartRideCommand): Promise<RideDto> {
     const facts = await this.transactions.run(async (tx) => {
       const now = this.clock.now();
       const player = await this.players.findByWalletForUpdate(wallet, tx);
@@ -68,7 +70,7 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
       } else if (running) {
         throw new ConflictError('another ride is in progress');
       }
-      if (!ride.isFree) player.requirePaidPlay(); // a free start stays open; SOL already sent is confirmed by a different command
+      if (!ride.isFree && !ride.isPromo && !ride.isWeeklyGrant) player.requirePaidPlay(); // training, a promo, and the weekly grant were not bought
       if (ride.poolId !== null) {   // a ticket ride starts only while a shift started now ends by its pool's play deadline (H6) – the pool row is read, not locked: its deadline comes from chain and never changes
         const pool = await this.pools.findById(ride.poolId, tx);
         if (pool && !pool.canFinishBy(now, ride.completeDist / MAX_SPEED)) {   // ordered in time (the spend checked the whole shift): it starts while its finish line is still reachable
@@ -78,8 +80,9 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
           return { closed: pool.playDeadline, failed } as const;
         }
       }
+      const stamp = ranked ? await this.rankedEntry.claim(player, ride, headers, now, tx) : null;   // 409 leaves the ride created, so the driver can start it unranked
       const wardrobe = toWardrobeDto(await this.cosmetics.listUnlocked(wallet, tx), await this.cosmetics.listEquipped(wallet, tx));
-      ride.start(now, wardrobe.equipped, this.rules.get().trafficProofRequired === false ? 0 : 1);   // what is worn right now (owned items only) goes with the ride: live streams and replays draw it
+      ride.start(now, wardrobe.equipped, this.rules.get().trafficProofRequired === false ? 0 : 1, stamp);   // what is worn right now (owned items only) goes with the ride: live streams and replays draw it
       const saved = await this.rides.save(ride, tx);
       if (ride.tutorial && player.markTutorialPassed(now)) await this.players.save(player, tx);   // starting a ride with the tutorial on = it was done: the lobby leaves it off from now on
       return { dto: toRideDto(saved), started: saved.snapshot(), failed } satisfies StartFacts;

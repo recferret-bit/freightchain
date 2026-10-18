@@ -4,6 +4,7 @@ import { roadObjects } from '../world/chunks.js';
 import { updateSignals } from '../world/junctions.js';
 import { clearHoleCache } from '../world/holes.js';
 import { resetTraffic, clearStretch } from '../sim/traffic.js';
+import { clearDebris } from '../sim/damage.js';
 import { roadAt } from '../road.js';
 import { CFG } from '../config.js';
 import { toast } from '../ui/toast.js';
@@ -19,7 +20,7 @@ import { toast } from '../ui/toast.js';
 class RoadOrchestrator {
   constructor() { this.seed = 1; this.lastS = 0; }
   get net() { return net; }
-  setTheme(theme) { net.setStyle(theme); net.reset(this.seed); clearHoleCache(); roadObjects.clear(); resetTraffic(); }   // (cars would otherwise sit on the old geometry in the menu preview)
+  setTheme(theme) { net.setStyle(theme); net.reset(this.seed); clearHoleCache(); clearDebris(); roadObjects.clear(); resetTraffic(); }   // (cars would otherwise sit on the old geometry in the menu preview)
   newTrip(seed) {
     this.seed = seed ?? (Math.random() * 4294967296 >>> 0);
     net.reset(this.seed); clearHoleCache(); roadObjects.startTrip(); resetTraffic((this.seed ^ 0x9e3779b9) >>> 0); this.lastS = st.s;   // the traffic's own stream, from the road seed: riders of one pool start among the same cars

@@ -21,7 +21,7 @@ type HonkTimeBody = z.infer<typeof honkTimeBodySchema>;
 export const honkWeatherBodySchema = z.object({ weather: z.enum(['snow', 'clear']), signature: honkSignature.optional() });
 type HonkWeatherBody = z.infer<typeof honkWeatherBodySchema>;
 
-/** HONK balances, the cab-visual catalog, a stream burn, a day/night burn, a weather burn, and a visual mint. The catalog is public. */
+/** TEN4 balances, the cab-visual catalog, a stream burn, a day/night burn, a weather burn, and a visual mint. The catalog is public. HONK is the chat-line verb. */
 @Controller('api')
 export class HonkHttpController {
   constructor(
@@ -44,19 +44,19 @@ export class HonkHttpController {
     return this.commandBus.execute<MintHonkVisualCommand, HonkVisualResult>(new MintHonkVisualCommand(player.wallet, body.slot, body.item, body.signature));
   }
 
-  /** 200 the burn · 409 not enough HONK · 429 one HONK per 10 s, or the chat window is taken (the burn is refunded). `signature` is required only when HONK_PROGRAM_ID is set. */
+  /** 200 the burn · 409 not enough TEN4 · 429 one HONK per 10 s, or the chat window is taken (the burn is refunded). `signature` is required only when HONK_PROGRAM_ID is set. */
   @Post('watch/:id/honk') @HttpCode(200) @UseGuards(PlayerAuthGuard)
   honk(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(honkBurnBodySchema) body: HonkBurnBody): Promise<HonkBurnResult> {
     return this.commandBus.execute<BurnHonkCommand, HonkBurnResult>(new BurnHonkCommand(player.wallet, params.id, body.signature));
   }
 
-  /** 200 the burn · 409 not enough HONK · 429 the effect window is taken (the burn is refunded). Not the 1 HONK chat line. */
+  /** 200 the burn · 409 not enough TEN4 · 429 the effect window is taken (the burn is refunded). Not the HONK chat line. */
   @Post('watch/:id/honk/time') @HttpCode(200) @UseGuards(PlayerAuthGuard)
   honkTime(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(honkTimeBodySchema) body: HonkTimeBody): Promise<HonkTimeBurnResult> {
     return this.commandBus.execute<BurnHonkTimeCommand, HonkTimeBurnResult>(new BurnHonkTimeCommand(player.wallet, params.id, body.phase, body.signature));
   }
 
-  /** 200 the burn · 409 not enough HONK · 429 the effect window is taken (the burn is refunded). Not a donation. */
+  /** 200 the burn · 409 not enough TEN4 · 429 the effect window is taken (the burn is refunded). Not a donation. */
   @Post('watch/:id/honk/weather') @HttpCode(200) @UseGuards(PlayerAuthGuard)
   honkWeather(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(honkWeatherBodySchema) body: HonkWeatherBody): Promise<HonkWeatherBurnResult> {
     return this.commandBus.execute<BurnHonkWeatherCommand, HonkWeatherBurnResult>(new BurnHonkWeatherCommand(player.wallet, params.id, body.weather, body.signature));

@@ -33,7 +33,8 @@ export function freeRideScenarios(h: () => Harness): void {
     expect(await me(rider)).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });
     const admin = await loginAdmin(FREE_RIDES_ADMIN);
     expect((await admin.agent.get('/api/admin/settings').expect(200)).body).toMatchObject({
-      freeOnSignup: 10, freeRidesDailyMax: 5, editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 32000, editorMaxInputKTokens: 500, editorJobsParallel: 5,
+      freeOnSignup: 10, freeRidesDailyMax: 5, weeklyTicket1hEnabled: 1, weeklyTicket1hDays: 7, weeklyTicket4hEnabled: 0, weeklyTicket4hDays: 7, weeklyTicket8hEnabled: 0, weeklyTicket8hDays: 7,
+      editorJobsPerDay: 40, editorMaxSteps: 24, editorMaxOutputTokens: 100000, editorMaxInputKTokens: 500, editorJobsParallel: 5,
       referralMax: 30, referralReferrerPartBps: 8000,
     });
   });
@@ -83,7 +84,8 @@ export function freeRideScenarios(h: () => Harness): void {
     expect((await me(await login())).freeRides).toBe(7);
 
     expect((await setSetting(admin, 'free_rides_daily_max', 2)).body.settings.freeRidesDailyMax).toBe(2);
-    expect(await me(existing)).toMatchObject({ freeRides: 10, freeRidesMax: 2, nextFreeRideAt: null });
+    expect(await me(existing)).toMatchObject({ freeRides: 10, freeRidesMax: 5, nextFreeRideAt: null });
+    expect(await me(await login())).toMatchObject({ freeRides: 7, freeRidesMax: 2, nextFreeRideAt: null });
   });
 
   it('an unknown or out-of-range setting is refused before a signature is issued', async () => {
@@ -175,15 +177,16 @@ export function freeRideScenarios(h: () => Harness): void {
     expect(rows.some((row) => row.action === 'free_rides.adjust' && row.target === ghost.address)).toBe(false);
   });
 
-  it('free_on_signup of 0 gives a new wallet nothing to drive, and does not take rides from a wallet that already exists', async () => {
+  it('free_on_signup of 0 still lets a new wallet order a training ride, and does not take rides from a wallet that already exists', async () => {
     const admin = await loginAdmin(FREE_RIDES_ADMIN);
     const existing = await login();
     expect((await setSetting(admin, 'free_on_signup', 0)).status).toBe(200);
     expect((await me(existing)).freeRides).toBe(10);
     const fresh = await login();
     expect((await me(fresh)).freeRides).toBe(0);
-    await fresh.agent.post('/api/rides').send({ tier: 'free' }).expect(409);
+    await fresh.agent.post('/api/rides').send({ tier: 'free' }).expect(200);
     await existing.agent.post('/api/rides').send({ tier: 'free' }).expect(200);
-    expect((await me(existing)).freeRides).toBe(9);
+    expect((await me(fresh)).freeRides).toBe(0);
+    expect((await me(existing)).freeRides).toBe(10);
   });
 }
