@@ -90,7 +90,7 @@ export const CHECKS = [
   c('B1-FREE-06', 1, 'free', 'Signup credit free_on_signup default 10', 'automated', `${page}/free/paths.test.mjs`, 'server/test/scenarios/free-rides.scenarios.ts'),
   c('B1-FREE-07', 1, 'free', 'Daily credit GrantDailyFreeRidesHandler, cap free_rides_daily_max 5', 'automated', `${page}/free/paths.test.mjs`, 'server/test/scenarios/free-rides.scenarios.ts'),
   c('B1-FREE-10', 1, 'free', 'POST /api/auth/guest opens an EASY-only session', 'automated', `${page}/free/merged.test.mjs`, 'server/src/presentation/auth/auth.http.controller.ts'),
-  c('B1-FREE-11', 1, 'free', 'Weekly granted 1h ticket; a second spend is weekly_ticket_spent', 'automated', `${page}/free/merged.test.mjs`, 'server/src/application/services/weekly-ticket.service.ts'),
+  c('B1-FREE-11', 1, 'free', 'Weekly 1h grant; a created grant ride is returned; weekly_ticket_spent is the lost claim', 'automated', `${page}/free/merged.test.mjs`, 'server/src/application/use-cases/rides/create-ride/create-ride.handler.ts'),
   c('B1-FREE-13', 1, 'free', 'HARD trip is free-3c ×10; free-3b stays frozen', 'automated', `${page}/free/merged.test.mjs`, 'server/src/domain/rides/ride-trip.ts'),
   c('B1-API-05', 1, 'free', 'POST /api/rides level 1', 'automated', `${page}/api/rides.test.mjs`, 'server/test/scenarios/free-levels.scenarios.ts'),
   c('B1-API-06', 1, 'free', 'POST /api/rides level 2', 'automated', `${page}/api/rides.test.mjs`, 'server/test/scenarios/free-levels.scenarios.ts'),

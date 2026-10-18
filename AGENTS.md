@@ -33,10 +33,13 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | landing, whitepaper, app icon | `landing.md` |
 | verifying changes (all test commands) | `verifying.md` |
 | deploying to production | `deploy.md` |
+| as-built product, target decisions, coverage bar | `../spec/PROCESS.md` |
 
 ## Hard rules
 
 **Maps stay current.** A key change (a root directory, a skill added / renamed / new command, a public host, a root `npm` script, a product surface or a path these files name) updates `README.md`, this file, `CLAUDE.md` and the matching `docs/agents/` file in the same change – only the sentences it made wrong. A new skill = one row in `README.md` → "Skills". Keep this file and `CLAUDE.md` small: a rule here is one line, its detail goes into `docs/agents/`.
+
+**Specs.** As-built behavior is `docs/spec/PRODUCT.md`. A target decision is not current behavior. A behavior change updates that file in the same change. Tests lock as-built until the target's own change. The coverage bar is `docs/testing/COVERAGE_CONTRACT.md`. Detail: `docs/spec/PROCESS.md`.
 
 Server (`docs/backend-architecture.md`, enforced by `server/test/architecture`):
 - Layers point inward (`domain` pure, `application` = ports + CQRS handlers, `infrastructure` implements ports, `presentation` thin). Controllers only dispatch to the bus; every request part via `@ZodBody/@ZodQuery/@ZodParams`; errors are `DomainError`s, never Nest `HttpException`. Files ≤ 500 lines.
@@ -83,7 +86,7 @@ AGY: use Argon (Pro) for heavy reasoning and planning (via `/boost` or subagents
 - Client (`client/`): `npm run check` (lint + bundle + headless test); refactor gate `npm run trace:save` / `trace:diff`; real Chrome `node tools/e2e-chrome.mjs` (`PORT=` if busy) – look at the screenshots.
 - Root: `npm run check` (client + landing + server unit + media) AND `npm run server:integration` for server changes; real-Chrome suites: `bash .claude/skills/run-tests/e2e.sh`.
 - Everything else (live server e2e, replays, lobby): `docs/agents/verifying.md`.
-- Local code e2e, no browser: `npm run test:e2e:block1` (chain off) and `npm run test:e2e:block2` (host validator). Plan: `docs/testing/E2E_PLAN.md`.
+- Local code e2e, no browser: `npm run test:e2e:block1` (chain off) and `npm run test:e2e:block2` (host validator). Plan: `docs/testing/E2E_PLAN.md`. This layer does not replace the Chrome suites. Bar and phases: `docs/testing/COVERAGE_CONTRACT.md`, `docs/testing/IMPLEMENTATION_PLAN.md`.
 - TEN4 on a local validator (mint, swap, burn, soulbound part, paid ride): `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token half). The full coin suite, including a verified ride: `bash .claude/skills/honk-suite/run.sh`.
 
 ## Style

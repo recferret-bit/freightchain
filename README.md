@@ -555,8 +555,8 @@ flowchart TB
 - [`shared/`](shared) — workspace package (`@freightchain/shared`) re-exporting [`client/shared/`](client/shared) (`prng.js`, `road.js`, `traffic.js`, `physics.js`) for both browser client and backend `ReplayEngine`.
 - [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `editor-worker`, `postgres`, `redis`, `mcp`). `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icons, banners, badge art.
-- [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at. The local code end-to-end plan is [`docs/testing/E2E_PLAN.md`](docs/testing/E2E_PLAN.md).
-- [`e2e/`](e2e) — code-level end-to-end (happy-dom page modules + API checks). No browser. `npm run test:e2e:block1` and `npm run test:e2e:block2`.
+- [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at. As-built product: [`docs/spec/PRODUCT.md`](docs/spec/PRODUCT.md). Coverage bar: [`docs/testing/COVERAGE_CONTRACT.md`](docs/testing/COVERAGE_CONTRACT.md). The happy-dom checklist is [`docs/testing/E2E_PLAN.md`](docs/testing/E2E_PLAN.md).
+- [`e2e/`](e2e) — fast page-module checks (happy-dom + API). Not the browser bar. `npm run test:e2e:block1` and `npm run test:e2e:block2`.
 - [`landing/`](landing) — the `/` page, the whitepaper and the pitch deck. Vite.
 - [`mcp/`](mcp) — the entity MCP server: the `3d-assets` skill as tools for the AI model editor (Streamable HTTP for the server's bridge, stdio for Claude Code). Production HTTP counters are shared in Redis with a restricted MCP user; AI jobs use a shared PostgreSQL queue with atomic admission and claims; the bridge owns its tool policy, AI writes remain checked drafts, and publishing requires a wallet signature.
 - [`media/`](media) — promo clips and the chiptune synth.
@@ -763,7 +763,7 @@ Integration tests must use a dedicated test database. See the [security review a
 
 ## Local code end-to-end
 
-No browser. Block 1 is Postgres, Redis and the API with the chain off. Block 2 is the same API in program mode, plus a host `solana-test-validator` when Agave is installed (the script does not pull a Solana image).
+Fast layer, no browser. It does not replace the headless Chrome suites or the coverage contract ([`docs/testing/COVERAGE_CONTRACT.md`](docs/testing/COVERAGE_CONTRACT.md), plan [`docs/testing/IMPLEMENTATION_PLAN.md`](docs/testing/IMPLEMENTATION_PLAN.md)). Block 1 is Postgres, Redis and the API with the chain off. Block 2 is the same API in program mode, plus a host `solana-test-validator` when Agave is installed (the script does not pull a Solana image).
 
 ```bash
 npm run test:e2e:block1

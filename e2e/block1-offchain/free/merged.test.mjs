@@ -33,7 +33,7 @@ apiTest(test, 'B1-FREE-10 a guest can start EASY and not MEDIUM', async () => {
   assert.equal(medium.json.code, 'guest_easy_only');
 });
 
-test('B1-FREE-11 the weekly granted ticket is one 1h every 7 days, and a second spend is weekly_ticket_spent', () => {
+test('B1-FREE-11 the weekly 1h grant is one every 7 days; a created grant ride is returned, and weekly_ticket_spent is only the lost claim', () => {
   const settings = src('server/src/domain/settings/game-settings.ts');
   const weekly = src('server/src/application/services/weekly-ticket.service.ts');
   const rides = src('server/src/application/use-cases/rides/create-ride/create-ride.handler.ts');
@@ -43,7 +43,10 @@ test('B1-FREE-11 the weekly granted ticket is one 1h every 7 days, and a second 
   assert.match(settings, /weekly_ticket_8h_enabled: 0/);
   assert.match(weekly, /A guest never receives one/);
   assert.match(weekly, /Does not mint TEN4/);
+  // The 409 is claim() losing the row. A later POST while the grant ride is still created returns that ride.
   assert.match(rides, /weekly_ticket_spent/);
+  assert.match(rides, /isInStatus\(RideStatus\.Created\)/);
+  assert.match(rides, /isWeeklyGrant/);
 });
 
 apiTest(test, 'B1-FREE-11 an eligible wallet is offered a 1h grant and the first paid order is that grant', async () => {

@@ -14,6 +14,6 @@
 ## Workflow
 
 1. Change the relevant module; new tunables go in `js/config.js`; a key change updates the maps (AGENTS.md "Maps stay current").
-2. Verify (AGENTS.md "Verify"); local code e2e is `npm run test:e2e:block1` and `npm run test:e2e:block2` (`docs/testing/E2E_PLAN.md`). For behaviour-preserving refactors diff the headless trace. Traffic/road kernels live in `client/shared/` with browser-reference fixtures in `server/test/fixtures/simulation/`; new rides require hashed traffic frames; historical sampled replay remains diagnostic. Full browser validation: `bash .claude/skills/run-tests/e2e.sh traffic`.
+2. Verify (AGENTS.md "Verify"); happy-dom is `npm run test:e2e:block1` and `npm run test:e2e:block2` (`docs/testing/E2E_PLAN.md`) and does not replace Chrome. The bar is `docs/testing/COVERAGE_CONTRACT.md`. For behaviour-preserving refactors diff the headless trace. Traffic/road kernels live in `client/shared/` with browser-reference fixtures in `server/test/fixtures/simulation/`; new rides require hashed traffic frames; historical sampled replay remains diagnostic. Full browser validation: `bash .claude/skills/run-tests/e2e.sh traffic`.
 3. Keep answers short: what changed, which constant to tune, what is untested.
 4. Stop at the commit (and the merge into `main`, if asked). Do NOT deploy: say it is ready and that `npm run deploy` would ship it. Only on an explicit deploy request follow `docs/agents/deploy.md` and report the release id and the smoke result.

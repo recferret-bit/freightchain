@@ -294,7 +294,7 @@
   - `e2e/block1-offchain/streams/*.test.mjs` (RPL-T-70…98, профиль `mockchain`).
 - **Блок 2:** `e2e/block2-chain/streams/donation.test.mjs` (RPL-T-99).
 - **Сценарии сервера:** `server/test/scenarios/live.scenarios.ts` (перестроить под реплей), `pledges.scenarios.ts`, `promos-abuse`; маршруты 106–117, 120, 130, 144–145 из реестра [`backend_contract.md`](backend_contract.md) получают кейсы матрицы B (чужой → `404`, решение 9).
-- **Существующие Chrome-скрипты** (не вызываются блоками): `server/scripts/e2e-watch.mjs`, `e2e-replay.mjs`, `e2e-live-board.mjs`, `e2e-live-flags.mjs`, `client/tools/e2e-viewer.mjs`, навыки `.claude/skills/replay-test`, `live-board-test` — обновить под RPL-M-03/11, иначе они проверяют запрещённое поведение.
+- **Существующие Chrome-скрипты** (не вызываются happy-dom блоками и не удаляются): `server/scripts/e2e-watch.mjs`, `e2e-replay.mjs`, `e2e-live-board.mjs`, `e2e-live-flags.mjs`, `client/tools/e2e-viewer.mjs`, навыки `.claude/skills/replay-test`, `live-board-test`. Они фиксируют собранный живой просмотр ([`PRODUCT.md`](PRODUCT.md)). Решение 68 отменило E2E-M-06. Под RPL-M-03/11 их меняют только вместе с кодом, когда владелец отдельно примет отказ от live watch.
 - **Скрипты npm (план):**
   - корень: `test:e2e:replays` = `bash e2e/scripts/run.sh replays`; `test:e2e:streams` = `bash e2e/scripts/run.sh streams` (поднимает `--profile mockchain`);
   - `e2e/package.json`: `test:replays`, `test:streams`, `mockchain` (`node mockchain/rpc.mjs`);
@@ -339,4 +339,4 @@
 | RPL-M-33 | T-56 | — |
 | RPL-M-34 | T-53, T-102 | — |
 
-Итого: 35 правил, все MUST / MUST NOT (решения 45–58 приняты 17.10.2026). Тестов 93 автоматических (RPL-T-01…29, 30…60, 70…102) + 6 ручных (M-RPL-01…06). Правил без теста нет. Пробелы — в коде, а не в тестах: маршрут донатов водителя, истечение заказа, админ-модерация и фильтр чата, удаление чата через 90 дней, удаление доли реферала, локализация лобби EN/RU.
+Итого: 35 правил, все MUST / MUST NOT (решения 45–58 приняты 17.10.2026). Запланированные id: RPL-T-01…29, 30…60, 70…102 и 6 ручных M-RPL-01…06. Id — не написанный тест. Часть этих правил расходится с собранным продуктом ([`PRODUCT.md`](PRODUCT.md), конфликты). Исполняемая планка — [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).

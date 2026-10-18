@@ -1,18 +1,18 @@
 # Local code end-to-end plan
 
-> **Source of truth:** [docs/spec](../spec/README.md) is the source of truth for how the product should work and how it is tested. This file is the checklist for the local code suite in this PR. Related sections: [e2e](../spec/e2e.md), [replays and streams](../spec/replays_streams.md).
+> **Source of truth:** [docs/spec](../spec/README.md). As-built behavior is [PRODUCT.md](../spec/PRODUCT.md). This file is only the happy-dom checklist. It does not satisfy [the coverage contract](COVERAGE_CONTRACT.md). Related: [e2e](../spec/e2e.md).
 
 PR #3 (`cursor/ten4-tokenomics-6271`) is **merged** into `origin/main` (merge `4e53f247`, main `e8f338ad`). Guest sign-in, the weekly granted ticket, ride promos, `GET /api/prize/board`, HARD `free-3c`, and the TEN4 rename are checks in this suite. Programs live under `programs/freightchain_pools` and `programs/freightchain_honk` (the TEN4 crate).
 
-This suite is code and Docker. It does not open Chrome. Page modules run under happy-dom with fetch mocked. API checks call a real server on the e2e compose database and skip unless `E2E_BASE` is set. `npm run test:e2e:block1` and `npm run test:e2e:block2` set `E2E_REQUIRE=1` so a missing server fails the run.
+This suite is code and Docker. It does not open Chrome, and a green run does not fill the Chrome cell in the coverage contract. Page modules run under happy-dom with fetch mocked. API checks call a real server on the e2e compose database and skip unless `E2E_BASE` is set. `npm run test:e2e:block1` and `npm run test:e2e:block2` set `E2E_REQUIRE=1` so a missing server fails the run.
 
 ## Free paths and the granted ticket
 
 1. **Tool sim.** Trip `free-g` (2 min) is the retired offline guest run. A product page never opens it. `?sim=1` sets it so tools can `devRun`. The menu button is `#go` ("START FREE RUN"). `free-g` is never stamped on a ride. Bare `play.html` orders the real EASY ride (`easy-entry.js`: `POST /api/auth/guest` when nobody is signed in, then level 1).
 2. **Online training rides.** Not counted against `freeRides`. `POST /api/rides` `{ tier: 'free', level }`. EASY is level 1 trip `free-1c`. MEDIUM is level 2 trip `free-2c`. HARD is level 3 trip `free-3c` (×10, 30 min). `free-3b` is the frozen 15 min trip. HARD refuses tutorial and assist (409).
 3. **Anonymous EASY.** `POST /api/auth/guest`. A throwaway session with `guest: true`. MEDIUM, HARD, a promo and a paid tier are 409 `guest_easy_only`.
-4. **Weekly granted ticket.** Default one 1h every 7 days (`weekly_ticket_1h_enabled` / `weekly_ticket_1h_days`). 4h and 8h are off. Issued inside the ranked window to an 18+ wallet in an allowed country. The first `POST /api/rides` `{ tier: '1h' }` is that grant. A second spend is 409 `weekly_ticket_spent`. It does not mint TEN4.
-5. **Stored free-ride counter.** `free_on_signup` is still 10 and `GrantDailyFreeRidesHandler` still caps `free_rides_daily_max` at 5. Training rides do not spend it.
+4. **Weekly granted ticket.** Default one 1h every 7 days (`weekly_ticket_1h_enabled` / `weekly_ticket_1h_days`). 4h and 8h are off. Issued inside the ranked window to an 18+ non-guest in an allowed country. The first `POST /api/rides` `{ tier: '1h' }` spends it and creates an unranked ride. A second POST while that ride is still `created` returns the same ride. `409 weekly_ticket_spent` is the lost-claim race. It does not mint TEN4. Ranked is opt-in at start. See [PRODUCT.md](../spec/PRODUCT.md).
+5. **Stored free-ride counter.** `free_on_signup` is still 10 and `free_rides_daily_max` is still 5. The daily grant scheduler is not registered. Training rides do not spend the counter.
 
 A ride promo (`kind: 'ride'`) grants a 1h, 4h or 8h shift. `kind: 'free_rides'` is retired. `GET /api/prize/board` is the weekly skill board. The token symbol is TEN4. Routes, tables and `HONK_PROGRAM_ID` keep the HONK name. HONK is the chat verb.
 
@@ -140,7 +140,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 - `B1-FREE-06` (automated) Signup credit free_on_signup default 10
 - `B1-FREE-07` (automated) Daily credit GrantDailyFreeRidesHandler, cap free_rides_daily_max 5
 - `B1-FREE-10` (automated) POST /api/auth/guest opens an EASY-only session
-- `B1-FREE-11` (automated) Weekly granted 1h ticket; a second spend is weekly_ticket_spent
+- `B1-FREE-11` (automated) Weekly 1h grant; a created grant ride is returned; weekly_ticket_spent is the lost claim
 - `B1-FREE-13` (automated) HARD trip is free-3c ×10; free-3b stays frozen
 - `B1-API-05` (automated) POST /api/rides level 1
 - `B1-API-06` (automated) POST /api/rides level 2
@@ -358,7 +358,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 | `B1-FREE-06` | server/test/scenarios/free-rides.scenarios.ts | e2e/block1-offchain/free/paths.test.mjs | automated |
 | `B1-FREE-07` | server/test/scenarios/free-rides.scenarios.ts | e2e/block1-offchain/free/paths.test.mjs | automated |
 | `B1-FREE-10` | server/src/presentation/auth/auth.http.controller.ts | e2e/block1-offchain/free/merged.test.mjs | automated |
-| `B1-FREE-11` | server/src/application/services/weekly-ticket.service.ts | e2e/block1-offchain/free/merged.test.mjs | automated |
+| `B1-FREE-11` | server/src/application/use-cases/rides/create-ride/create-ride.handler.ts | e2e/block1-offchain/free/merged.test.mjs | automated |
 | `B1-FREE-13` | server/src/domain/rides/ride-trip.ts | e2e/block1-offchain/free/merged.test.mjs | automated |
 | `B1-API-05` | server/test/scenarios/free-levels.scenarios.ts | e2e/block1-offchain/api/rides.test.mjs | automated |
 | `B1-API-06` | server/test/scenarios/free-levels.scenarios.ts | e2e/block1-offchain/api/rides.test.mjs | automated |

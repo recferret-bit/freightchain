@@ -74,7 +74,7 @@
 | M-19 | RID-T-07 |
 | M-20 | RID-T-08 |
 
-Итого: 20 MUST, 11 новых тестов (RID-T-01…11) + 19 из приложений (AC-R1…R8, AC-F1…F11). Без теста — 0.
+Итого: 20 MUST, запланированные id RID-T-01…11 и id из приложений (AC-R1…R8, AC-F1…F11). Id — не написанный тест. Исполняемая планка — [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
 
 ---
 

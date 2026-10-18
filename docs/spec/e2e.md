@@ -1,6 +1,8 @@
 # E2E-блоки — манифест и план тестирования
 
 > Сводка PR #5 (`cursor/local-e2e-suite-b044`) после мержа PR #3 в `origin/main` (`e8f338ad`). Чек-лист — [`docs/testing/E2E_PLAN.md`](../testing/E2E_PLAN.md), ручные проверки — [`docs/testing/MANUAL_TESTS.md`](../testing/MANUAL_TESTS.md). Решения 1–66 не менялись.
+>
+> **2026-10-18.** Этот файл описывает быстрый прогон happy-dom. Он не является планкой покрытия. Решения 67 и 68 ([`PROCESS.md`](PROCESS.md), [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md)) отменяют **E2E-M-01** (e2e без браузера) и **E2E-M-06** (переписать или удалить Chrome-скрипты живого просмотра). Те скрипты проверяют то, что уже собрано, и остаются, пока отдельное изменение не поменяет продукт.
 
 ## Часть 1. Манифест
 ### 1.1 Как устроено в PR #5
@@ -28,7 +30,7 @@
   1. `free-g` — только тул-сим `?sim=1` (продуктовой ссылки `?offline=1` нет); голый `play.html` заказывает EASY;
   2. онлайн-тренировки `free-1c` / `free-2c` / `free-3c` (HARD ×10; `free-3b` заморожен), без списания `freeRides`;
   3. `POST /api/auth/guest` — только EASY (`guest_easy_only`);
-  4. недельный выданный билет 1h (`weekly_ticket_spent` при повторном списании);
+  4. недельный выданный билет 1h (повторный `POST`, пока грант ещё `created`, возвращает ту же поездку; `weekly_ticket_spent` — гонка claim);
   5. счётчик `free_on_signup` / дневной грант по-прежнему хранится, тренировки его не тратят.
   
   Промо `kind: 'ride'`, `GET /api/prize/board` и тикер TEN4 тоже на main. Маршруты `auth/pair` и `referrals` с main сохранены. Программы: `programs/freightchain_pools` и `programs/freightchain_honk`.
@@ -48,12 +50,12 @@
   - `program:test` (LiteSVM).
 
 ### 1.2 Правила
-- **E2E-M-01** MUST: e2e — код и Docker, без браузера. Браузерные проверки — отдельные ручные M-* или будущий проход Puppeteer.
+- **E2E-M-01** WITHDRAWN by decision 68 (2026-10-18). Was: e2e is code and Docker, with no browser. The happy-dom suite may still run. It does not define coverage. Browser coverage is real headless Chrome ([`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md)).
 - **E2E-M-02** MUST: каждое правило-MUST из `docs/spec/*.md`, у которого есть UI или межсервисный путь, имеет id в `e2e/catalog.mjs`. Каталог генерирует чек-лист (`render-plan.mjs`) из спецификации, и они не расходятся.
 - **E2E-M-03** MUST: блокчейн в блоке 1 — **mock** (`mock-rpc`, профиль compose `mockchain`, [`replays_streams.md`](replays_streams.md) §2.4). В блоке 2 — настоящий локальный валидатор. Сервер в обоих блоках использует реальный `SolanaChainAdapter` без изменений кода.
 - **E2E-M-04** MUST: кошельки в тестах — детерминированные ключи (фиксированные сиды), подписи детерминированы. Golden-файлы хранят подписи.
 - **E2E-M-05** MUST: раздел `API-*` каталога генерируется из реестра маршрутов (решение бэкенда 6, [`backend_contract.md`](backend_contract.md)).
-- **E2E-M-06** MUST: Chrome-скрипты, которые проверяют поведение, запрещённое спецификацией (`e2e-watch.mjs`, `e2e-live-board.mjs`, `e2e-live-flags.mjs`, навыки `replay-test`, `live-board-test`), переписываются или удаляются вместе с изменением кода.
+- **E2E-M-06** WITHDRAWN by decision 68 (2026-10-18). Was: rewrite or delete `e2e-watch.mjs`, `e2e-live-board.mjs`, `e2e-live-flags.mjs`, `replay-test`, and `live-board-test`. Those scripts lock shipped live watch. They stay until a decision-18 change updates `PRODUCT.md` and the tests together.
 - **E2E-M-07** MUST: тесты античита и длинные поездки (1h) — ночью, с фиктивными часами и ускорением времени (решения 4, 17).
 
 ### 1.3 Новые разделы каталога (план)
@@ -85,13 +87,13 @@
 ## Часть 2. План тестирования
 | id | Правило | Тест |
 |---|---|---|
-| E2E-T-01 | M-01 | `run.sh` не запускает Chrome (проверка процесса), блоки проходят в CI-контейнере без дисплея |
+| E2E-T-01 | M-01 | WITHDRAWN with M-01. Do not assert that `run.sh` refuses Chrome. |
 | E2E-T-02 | M-02 | `catalog.test.mjs`: каждый id из `docs/spec/*` с пометкой UI есть в каталоге, и наоборот |
 | E2E-T-03 | M-03 | смоук `mock-rpc`: `getHealth`, `getLatestBlockhash`, перевод → `getParsedTransaction` разбирается `SolanaChainAdapter` |
 | E2E-T-04 | M-04 | два прогона RPL-T-70 → одинаковая подпись |
 | E2E-T-05 | M-05 | diff раздела `API-*` с реестром пуст |
-| E2E-T-06 | M-06 | grep: в `server/scripts` нет вызовов `watch/:id` для `running` |
+| E2E-T-06 | M-06 | WITHDRAWN with M-06. Do not grep `server/scripts` for an absence of live watch. |
 | E2E-T-07 | M-07 | ночной job: AC-F2 (200 сидов, ускорение), AC-P9 |
 
 ### Трассируемость
-E2E-M-01…07 → E2E-T-01…07. 7 MUST, без теста — 0.
+E2E-M-02…05 and E2E-M-07 still have planned ids E2E-T-02…05 and E2E-T-07. E2E-M-01 and E2E-M-06 are withdrawn. Those ids are not written tests.
