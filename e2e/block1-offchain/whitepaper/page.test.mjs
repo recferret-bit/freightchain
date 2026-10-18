@@ -12,11 +12,13 @@ describe('block 1 whitepaper', { concurrency: 1 }, () => {
     assert.match(a.href, /127\.0\.0\.1:3411\/?$/);
   });
 
-  test('B1-PAPER-02 #play-top points at offline practice', () => {
+  test('B1-PAPER-02 #play-top points at the EASY ride', () => {
     const a = page.document.getElementById('play-top');
-    assert.match(a.href, /\/play\.html\?offline=1/);
+    assert.match(a.href, /\/play\.html$/);
+    assert.doesNotMatch(a.href, /offline=1/);
     a.click();
-    assert.match(page.location.href, /play\.html\?offline=1/);
+    assert.match(page.location.href, /play\.html$/);
+    assert.doesNotMatch(page.location.href, /offline=1/);
   });
 
   test('B1-PAPER-03 storybook link', () => {

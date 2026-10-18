@@ -30,9 +30,10 @@ describe('block 1 landing', { concurrency: 1 }, () => {
     });
   }
 
-  test('B1-LAND-09 #play-top unsigned goes to offline practice', () => {
+  test('B1-LAND-09 #play-top unsigned goes to the EASY ride', () => {
     page.document.getElementById('play-top').click();
-    assert.match(page.location.href, /\/play\.html\?offline=1$/);
+    assert.match(page.location.href, /\/play\.html$/);
+    assert.doesNotMatch(page.location.href, /offline=1/);
   });
 
   test('B1-LAND-10 #connect is wired to the sign-in handler', () => {
@@ -61,9 +62,10 @@ describe('block 1 landing', { concurrency: 1 }, () => {
     assert.equal(typeof verify.body.signature, 'string');
   });
 
-  test('B1-LAND-12 #play-free href is the offline run', () => {
+  test('B1-LAND-12 #play-free href is the EASY ride', () => {
     const a = page.document.getElementById('play-free');
-    assert.match(a.getAttribute('href'), /play\.html/);
+    assert.match(a.getAttribute('href') || a.href, /\/play\.html$/);
+    assert.doesNotMatch(a.href, /offline=1/);
   });
 
   test('B1-LAND-13 #demo-btn opens the dialog', () => {

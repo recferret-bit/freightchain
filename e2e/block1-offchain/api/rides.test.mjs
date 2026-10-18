@@ -14,6 +14,7 @@ apiTest(test, 'B1-API-05 POST /api/rides level 1 is the EASY training ride', asy
   assert.equal(r.status, 200);
   assert.equal(r.json.tier, 'free');
   assert.equal(r.json.level, 1);
+  assert.equal(r.json.trip, 'free-1c');
 });
 
 apiTest(test, 'B1-API-06 POST /api/rides level 2 is the MEDIUM training ride', async () => {
@@ -28,6 +29,7 @@ apiTest(test, 'B1-API-07 POST /api/rides level 3 is the HARD training ride', asy
   const r = await api.call('/api/rides', { body: { tier: 'free', level: 3, tutorial: false, assist: false } });
   assert.equal(r.status, 200);
   assert.equal(r.json.level, 3);
+  assert.equal(r.json.trip, 'free-3c');
 });
 
 apiTest(test, 'B1-API-08 HARD with assist is 409 assist_not_allowed', async () => {

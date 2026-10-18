@@ -1,4 +1,4 @@
-/* The three free paths on main, named from the code — not from the unmerged guest API. */
+/* Free training trips on main. Guest sign-in and the weekly ticket are in merged.test.mjs. */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -12,15 +12,22 @@ test('B1-FREE-01 offline guest practice is trip free-g and never a server ride',
   const rules = src('server/src/domain/rides/ride-trip.ts');
   assert.match(trips, /'free-g':/);
   assert.match(trips, /seconds: 120/);
-  assert.match(rules, /'free-g' is the offline guest run: never stamped on a ride/);
+  assert.match(rules, /'free-g' is the retired offline guest run: never stamped on a ride/);
 });
 
-test('B1-FREE-02 the guest entry is play.html?offline=1 with a START FREE RUN button', () => {
+test('B1-FREE-02 bare play.html orders EASY; free-g is only the ?sim=1 tool run', () => {
   const game = src('client/js/ui/game.js');
-  assert.match(game, /play\.html\?offline=1/);
+  const easy = src('client/js/easy-entry.js');
+  const main = src('client/js/main.js');
+  assert.match(easy, /auth\/guest/);
+  assert.match(easy, /level: 1/);
+  assert.match(main, /beginEasyEntry/);
+  assert.match(main, /setTrip\('free-g'\)/);
+  assert.match(main, /\?sim=1/);
   assert.match(game, /id="go"/);
   assert.match(game, /START FREE RUN/);
   assert.match(game, /export async function startRide/);
+  assert.doesNotMatch(easy + main + game, /offline=1/);
 });
 
 test('B1-FREE-03 online training EASY is level 1 trip free-1c', () => {
@@ -33,9 +40,9 @@ test('B1-FREE-04 online training MEDIUM is level 2 trip free-2c', () => {
   assert.match(rules, /2: \{ level: 2, trip: 'free-2c', name: 'MEDIUM'/);
 });
 
-test('B1-FREE-05 online training HARD is level 3 trip free-3b and refuses tutorial and assist', () => {
+test('B1-FREE-05 online training HARD is level 3 trip free-3c and refuses tutorial and assist', () => {
   const rules = src('server/src/domain/rides/ride-trip.ts');
-  assert.match(rules, /3: \{ level: 3, trip: 'free-3b', name: 'HARD'.*tutorial: false, assist: false/);
+  assert.match(rules, /3: \{ level: 3, trip: 'free-3c', name: 'HARD'.*tutorial: false, assist: false/);
   assert.match(rules, /tutorial_not_allowed/);
   assert.match(rules, /assist_not_allowed/);
 });

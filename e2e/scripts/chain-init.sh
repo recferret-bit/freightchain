@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Deploy the local pool and HONK programs when their .so files already exist.
+# Deploy the local pool and TEN4 programs when their .so files already exist.
 # A missing build is a message, not a compile: `npm run program:build` is the owner's step.
+# The TEN4 crate is still freightchain_honk. Anchor writes both .so files under programs/target/deploy.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 RPC="${E2E_SOLANA_RPC:-http://127.0.0.1:8899}"
-POOL_SO="$ROOT/programs/freightchain-pools/target/deploy/freightchain_pools.so"
-HONK_SO="$ROOT/programs/freightchain-pools/target/deploy/freightchain_honk.so"
+POOL_SO="$ROOT/programs/target/deploy/freightchain_pools.so"
+HONK_SO="$ROOT/programs/target/deploy/freightchain_honk.so"
 POOL_ID="8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p"
 HONK_ID="GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx"
 if ! command -v solana >/dev/null; then

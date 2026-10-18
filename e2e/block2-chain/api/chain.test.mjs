@@ -34,12 +34,12 @@ apiTest(test, 'B2-API-04 tiers still list free, 1h, 4h and 8h', async () => {
 });
 
 test('B2-POOL-01 the escrow program id in the IDL is the pinned one', () => {
-  const idl = JSON.parse(readFileSync(join(REPO, 'programs/freightchain-pools/idl/freightchain_pools.json'), 'utf8'));
+  const idl = JSON.parse(readFileSync(join(REPO, 'programs/idl/freightchain_pools.json'), 'utf8'));
   assert.equal(idl.address, POOL);
 });
 
 test('B2-POOL-02 the IDL carries set_pool_rules', () => {
-  const idl = readFileSync(join(REPO, 'programs/freightchain-pools/idl/freightchain_pools.json'), 'utf8');
+  const idl = readFileSync(join(REPO, 'programs/idl/freightchain_pools.json'), 'utf8');
   assert.match(idl, /set_pool_rules/);
 });
 
@@ -55,4 +55,4 @@ chainTest(test, 'B2-API-05 the local validator is healthy for a later ticket buy
 
 test.todo('B2-API-06 buy a paid ticket, finish a ride, settle and pay winners — reuse server/scripts/e2e-localnet.mjs and e2e-localnet-payout.mjs (Chrome); a code-level Merkle payout is not reimplemented here');
 
-test.todo('B2-API-07 HONK mint on the local program matches the PostgreSQL ledger — reuse .claude/skills/honk-suite (Chrome + validator); TEN4 is unmerged');
+test.todo('B2-API-07 TEN4 mint on the local program matches the PostgreSQL ledger — reuse .claude/skills/honk-suite (Chrome + validator)');

@@ -2,19 +2,19 @@
 
 > **Source of truth:** [docs/spec](../spec/README.md) is the source of truth for how the product should work and how it is tested. This file is the checklist for the local code suite in this PR. Related sections: [e2e](../spec/e2e.md), [replays and streams](../spec/replays_streams.md).
 
-PR #3 (`cursor/ten4-tokenomics-6271`) was **not merged** when this branch was cut from `origin/main` (`3ab33d80`). Checks that need that branch are status `unmerged`: they assert the symbol is absent on this tree and leave a `test.todo` for the behaviour.
+PR #3 (`cursor/ten4-tokenomics-6271`) is **merged** into `origin/main` (merge `4e53f247`, main `e8f338ad`). Guest sign-in, the weekly granted ticket, ride promos, `GET /api/prize/board`, HARD `free-3c`, and the TEN4 rename are checks in this suite. Programs live under `programs/freightchain_pools` and `programs/freightchain_honk` (the TEN4 crate).
 
 This suite is code and Docker. It does not open Chrome. Page modules run under happy-dom with fetch mocked. API checks call a real server on the e2e compose database and skip unless `E2E_BASE` is set. `npm run test:e2e:block1` and `npm run test:e2e:block2` set `E2E_REQUIRE=1` so a missing server fails the run.
 
-## The three free paths on main
+## Free paths and the granted ticket
 
-The owner's names (EASY guest / training / weekly granted ticket) do not match this tree.
+1. **Tool sim.** Trip `free-g` (2 min) is the retired offline guest run. A product page never opens it. `?sim=1` sets it so tools can `devRun`. The menu button is `#go` ("START FREE RUN"). `free-g` is never stamped on a ride. Bare `play.html` orders the real EASY ride (`easy-entry.js`: `POST /api/auth/guest` when nobody is signed in, then level 1).
+2. **Online training rides.** Not counted against `freeRides`. `POST /api/rides` `{ tier: 'free', level }`. EASY is level 1 trip `free-1c`. MEDIUM is level 2 trip `free-2c`. HARD is level 3 trip `free-3c` (×10, 30 min). `free-3b` is the frozen 15 min trip. HARD refuses tutorial and assist (409).
+3. **Anonymous EASY.** `POST /api/auth/guest`. A throwaway session with `guest: true`. MEDIUM, HARD, a promo and a paid tier are 409 `guest_easy_only`.
+4. **Weekly granted ticket.** Default one 1h every 7 days (`weekly_ticket_1h_enabled` / `weekly_ticket_1h_days`). 4h and 8h are off. Issued inside the ranked window to an 18+ wallet in an allowed country. The first `POST /api/rides` `{ tier: '1h' }` is that grant. A second spend is 409 `weekly_ticket_spent`. It does not mint TEN4.
+5. **Stored free-ride counter.** `free_on_signup` is still 10 and `GrantDailyFreeRidesHandler` still caps `free_rides_daily_max` at 5. Training rides do not spend it.
 
-1. **Offline guest practice.** No wallet and no API. Trip `free-g` (2 min). Entry is `play.html?offline=1`. The menu button is `#go` ("START FREE RUN"). `free-g` is never stamped on a ride.
-2. **Online training rides.** Metered by `Player.freeRides`. `POST /api/rides` `{ tier: 'free', level }`. EASY is level 1 trip `free-1c`. MEDIUM is level 2 trip `free-2c`. HARD is level 3 trip `free-3b` and refuses tutorial and assist (409).
-3. **Free-ride credits**, not a third mode. Signup `free_on_signup` (default 10) plus a daily UTC +1 capped by `free_rides_daily_max` (default 5) in `GrantDailyFreeRidesHandler`. Tutorial and assist are flags on path 2.
-
-A weekly granted paid ticket, `POST /api/auth/guest`, promo `kind: 'ride'`, `GET /api/prize/board`, HARD `free-3c`, and the TEN4 rename are PR #3 only.
+A ride promo (`kind: 'ride'`) grants a 1h, 4h or 8h shift. `kind: 'free_rides'` is retired. `GET /api/prize/board` is the weekly skill board. The token symbol is TEN4. Routes, tables and `HONK_PROGRAM_ID` keep the HONK name. HONK is the chat verb.
 
 ## Counts
 
@@ -30,11 +30,11 @@ A weekly granted paid ticket, `POST /api/auth/guest`, promo `kind: 'ride'`, `GET
 | admin | 26 | 10 |
 | **total** | **131** | **28** |
 
-Block 1: 131 checks (automated 105, mock 10, manual 9, pending 1, unmerged 6).
+Block 1: 131 checks (automated 111, mock 10, manual 9, pending 1).
 
-Block 2: 28 checks (automated 20, mock 2, manual 1, pending 5, unmerged 0).
+Block 2: 28 checks (automated 20, mock 2, manual 1, pending 5).
 
-All checks: 159. Automated 125, mock 12, manual 10, pending 6, unmerged 6.
+All checks: 159. Automated 131, mock 12, manual 10, pending 6.
 
 Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) are executed in block 1. Block 2 repeats the controls whose payload changes when a pool is on sale.
 
@@ -51,10 +51,10 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 - `B1-LAND-06` (automated) Nav 05 MARKET → #market
 - `B1-LAND-07` (automated) Nav 06 ABOUT → #about
 - `B1-LAND-08` (automated) Nav 07 FAQ → #faq
-- `B1-LAND-09` (automated) #play-top unsigned → play.html?offline=1
+- `B1-LAND-09` (automated) #play-top unsigned → bare play.html (EASY)
 - `B1-LAND-10` (automated) #connect is wired and reads CONNECT WALLET
 - `B1-LAND-11` (mock) Mock keypair sign-in posts nonce and verify
-- `B1-LAND-12` (automated) #play-free href is the offline run
+- `B1-LAND-12` (automated) #play-free href is bare play.html (EASY)
 - `B1-LAND-13` (automated) #demo-btn opens the dialog
 - `B1-LAND-14` (automated) #demo-x closes the dialog
 - `B1-LAND-15` (automated) Empty invite form asks for a code
@@ -93,7 +93,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 
 ### whitepaper
 - `B1-PAPER-01` (automated) Landing link rewritten to this origin
-- `B1-PAPER-02` (automated) #play-top → offline practice
+- `B1-PAPER-02` (automated) #play-top → bare play.html (EASY)
 - `B1-PAPER-03` (automated) Storybook link
 - `B1-PAPER-04` (automated) Home link
 - `B1-PAPER-05` (automated) Lobby link
@@ -123,8 +123,8 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 - `B1-LOBBY-21` (automated) Receipt share and watch buttons exist
 - `B1-LOBBY-22` (mock) Blink SHOW loads /api/actions/hello
 - `B1-LOBBY-23` (mock) Blink CONNECT WALLET is present
-- `B1-BOARD-01` (unmerged) GET /api/prize/board is absent (PR #3 ranked board)
-- `B1-HONK-01` (unmerged) Token symbol on this tree is HONK, not TEN4 (PR #3)
+- `B1-BOARD-01` (automated) GET /api/prize/board?tier=1h is the weekly skill board
+- `B1-HONK-01` (automated) Token symbol is TEN4; route stays /api/honk
 - `M-05` (manual) Solana Pay QR on a ticket buy
 - `M-06` (manual) Wallet signAndSendTransaction for buy_ticket
 - `M-07` (manual) Blink transaction button with a real wallet
@@ -132,16 +132,16 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 - `M-09` (manual) Solana Pay deep link opened from a phone
 
 ### free
-- `B1-FREE-01` (automated) Offline guest practice is trip free-g, never stamped on a ride
-- `B1-FREE-02` (automated) Guest entry is play.html?offline=1 and #go START FREE RUN
+- `B1-FREE-01` (automated) Retired tool sim free-g is never stamped on a ride
+- `B1-FREE-02` (automated) Bare play.html orders EASY; free-g is the ?sim=1 tool run
 - `B1-FREE-03` (automated) Online training EASY is level 1 trip free-1c
 - `B1-FREE-04` (automated) Online training MEDIUM is level 2 trip free-2c
-- `B1-FREE-05` (automated) Online training HARD is level 3 trip free-3b; tutorial and assist refused
+- `B1-FREE-05` (automated) Online training HARD is level 3 trip free-3c; tutorial and assist refused
 - `B1-FREE-06` (automated) Signup credit free_on_signup default 10
 - `B1-FREE-07` (automated) Daily credit GrantDailyFreeRidesHandler, cap free_rides_daily_max 5
-- `B1-FREE-10` (unmerged) POST /api/auth/guest is absent (PR #3)
-- `B1-FREE-11` (unmerged) Weekly granted ticket settings are absent (PR #3)
-- `B1-FREE-13` (unmerged) HARD trip free-3c is absent; free-3b remains (PR #3)
+- `B1-FREE-10` (automated) POST /api/auth/guest opens an EASY-only session
+- `B1-FREE-11` (automated) Weekly granted 1h ticket; a second spend is weekly_ticket_spent
+- `B1-FREE-13` (automated) HARD trip is free-3c ×10; free-3b stays frozen
 - `B1-API-05` (automated) POST /api/rides level 1
 - `B1-API-06` (automated) POST /api/rides level 2
 - `B1-API-07` (automated) POST /api/rides level 3
@@ -149,11 +149,11 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 - `B1-API-09` (automated) HARD + tutorial → 409 tutorial_not_allowed
 
 ### promo
-- `B1-PROMO-01` (mock) Admin signs and creates a free_rides code
-- `B1-PROMO-02` (automated) Player redeems that code and freeRides increases by 3
+- `B1-PROMO-01` (mock) Admin signs and creates a ride code (1h)
+- `B1-PROMO-02` (automated) Player redeems the ride code and POST /api/rides tier 1h is that grant
 - `B1-PROMO-03` (automated) Cosmetic create is 409 visuals_are_honk
 - `B1-PROMO-04` (automated) Unknown code does not redeem
-- `B1-PROMO-05` (unmerged) Promo kind ride is absent; free_rides remains (PR #3)
+- `B1-PROMO-05` (automated) Ride promo grants a 1h shift; free_rides is retired
 
 ### referral
 - `B1-REF-01` (mock) Second wallet binds the first Convoy code
@@ -199,7 +199,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 - `B2-DECK-01` (automated) Deck advances and does not call chain or honk
 
 ### whitepaper
-- `B2-PAPER-01` (automated) Play control stays the offline guest run
+- `B2-PAPER-01` (automated) Play control stays bare play.html (EASY)
 
 ### lobby
 - `B2-LOBBY-01` (automated) 1h tier renders a BUY control
@@ -207,8 +207,8 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 - `B2-LOBBY-03` (automated) Free card remains next to the paid pool
 - `B2-API-05` (automated) Local validator getHealth
 - `B2-API-06` (pending) Buy, ride, settle, pay winners
-- `B2-API-07` (pending) HONK mint matches the ledger (TEN4 is unmerged)
-- `B2-HONK-01` (automated) HONK declare_id matches env.schema
+- `B2-API-07` (pending) TEN4 mint matches the ledger
+- `B2-HONK-01` (automated) TEN4 program declare_id matches env.schema
 - `B2-HONK-02` (pending) Ledger balance versus chain mint after a local ride
 
 ### free
@@ -240,10 +240,10 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 ### Fresh player (block 1)
 
 1. Open the landing unsigned. Boot reads `/api/me` (401), pool, live, replays, tiers, leaderboard.
-2. PLAY and PLAY FREE RIDE NOW go to `play.html?offline=1` (`free-g`, `#go`).
+2. PLAY and PLAY FREE RIDE NOW go to bare `play.html`. That page orders EASY. There is no `?offline=1` product URL.
 3. A keypair signs nonce + verify. `GET /api/me` shows `freeRides: 10`.
 4. The lobby opens on NEW RIDE. START FREE RIDE posts level 1 (EASY, `free-1c`).
-5. Level 2 and level 3 succeed. Level 3 with assist or tutorial is 409.
+5. Level 2 (`free-2c`) and level 3 (`free-3c`) succeed. Level 3 with assist or tutorial is 409.
 6. SIGN OUT posts logout and returns to `/`.
 
 ### Admin
@@ -255,9 +255,9 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 
 ### Promo
 
-1. The admin signs `promo_create` for a `free_rides` code and posts `/api/admin/promos`.
-2. A player posts `/api/promo/redeem`. `freeRides` rises by the count.
-3. A cosmetic code is refused `visuals_are_honk` at the challenge.
+1. The admin signs `promo_create` for a `ride` code (tier 1h) and posts `/api/admin/promos`.
+2. A player posts `/api/promo/redeem`, then `POST /api/rides` `{ tier: '1h' }`. The ride is that grant (`promo`, price 0). `freeRides` does not change.
+3. A `free_rides` create is refused. A cosmetic code is refused `visuals_are_honk` at the challenge.
 4. An unknown code does not redeem.
 
 ### Referral (Convoy)
@@ -269,12 +269,12 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 
 ### Paid season week (block 2)
 
-1. Compose Postgres and Redis, then a host `solana-test-validator` (Agave, same as `localnet-e2e`). Deploy the pool and HONK programs when their `.so` files exist (`e2e/scripts/chain-init.sh`).
+1. Compose Postgres and Redis, then a host `solana-test-validator` (Agave, same as `localnet-e2e`). Deploy the pool and TEN4 programs when their `.so` files exist (`programs/target/deploy`, `e2e/scripts/chain-init.sh`). The TEN4 crate is `freightchain_honk`.
 2. The server runs `PAYMENT_MODE=program` with both program ids. `GET /api/honk` returns `chain.programId`. `GET /api/chain/fees` answers. Tiers still list free, 1h, 4h, 8h.
 3. The landing hero says IN ESCROW when `/api/pool` has vaults. The lobby 1h card shows BUY. START FREE RIDE still posts `tier: 'free'`.
 4. Ticket promo shape is in the admin schema. Redeeming one into a deployed pool is pending (`B2-PROMO-02`).
 5. `set_pool_rules` is in the program and the IDL. No admin HTTP route calls it. The CLI is `pool-admin.mjs set-pool-rules` (`B2-ADMIN-04` pending, `M-10` if a human wallet UI appears).
-6. Buy, ride, settle, and pay winners stay in `server/scripts/e2e-localnet.mjs` and `e2e-localnet-payout.mjs` (Chrome). This suite checks validator health and leaves the Merkle payout as `B2-API-06`. HONK ledger versus chain is `B2-API-07` / `B2-HONK-02`, already covered by `honk-suite` with a browser.
+6. Buy, ride, settle, and pay winners stay in `server/scripts/e2e-localnet.mjs` and `e2e-localnet-payout.mjs` (Chrome). This suite checks validator health and leaves the Merkle payout as `B2-API-06`. TEN4 ledger versus chain is `B2-API-07` / `B2-HONK-02`, already covered by `honk-suite` with a browser.
 
 ## (c) Coverage matrix
 
@@ -351,15 +351,15 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 | `B1-LOBBY-22` | server/scripts/e2e-blinks.mjs | e2e/block1-offchain/lobby/blink.test.mjs | mock |
 | `B1-LOBBY-23` | — | e2e/block1-offchain/lobby/blink.test.mjs | mock |
 | `B1-FREE-01` | docs/agents/free-rides.md | e2e/block1-offchain/free/paths.test.mjs | automated |
-| `B1-FREE-02` | client/js/ui/game.js | e2e/block1-offchain/free/paths.test.mjs | automated |
+| `B1-FREE-02` | client/js/easy-entry.js | e2e/block1-offchain/free/paths.test.mjs | automated |
 | `B1-FREE-03` | server/test/scenarios/free-levels.scenarios.ts | e2e/block1-offchain/free/paths.test.mjs | automated |
 | `B1-FREE-04` | server/test/scenarios/free-levels.scenarios.ts | e2e/block1-offchain/free/paths.test.mjs | automated |
 | `B1-FREE-05` | server/test/scenarios/free-levels.scenarios.ts | e2e/block1-offchain/free/paths.test.mjs | automated |
 | `B1-FREE-06` | server/test/scenarios/free-rides.scenarios.ts | e2e/block1-offchain/free/paths.test.mjs | automated |
 | `B1-FREE-07` | server/test/scenarios/free-rides.scenarios.ts | e2e/block1-offchain/free/paths.test.mjs | automated |
-| `B1-FREE-10` | — | e2e/block1-offchain/free/unmerged.test.mjs | unmerged |
-| `B1-FREE-11` | — | e2e/block1-offchain/free/unmerged.test.mjs | unmerged |
-| `B1-FREE-13` | — | e2e/block1-offchain/free/unmerged.test.mjs | unmerged |
+| `B1-FREE-10` | server/src/presentation/auth/auth.http.controller.ts | e2e/block1-offchain/free/merged.test.mjs | automated |
+| `B1-FREE-11` | server/src/application/services/weekly-ticket.service.ts | e2e/block1-offchain/free/merged.test.mjs | automated |
+| `B1-FREE-13` | server/src/domain/rides/ride-trip.ts | e2e/block1-offchain/free/merged.test.mjs | automated |
 | `B1-API-05` | server/test/scenarios/free-levels.scenarios.ts | e2e/block1-offchain/api/rides.test.mjs | automated |
 | `B1-API-06` | server/test/scenarios/free-levels.scenarios.ts | e2e/block1-offchain/api/rides.test.mjs | automated |
 | `B1-API-07` | server/test/scenarios/free-levels.scenarios.ts | e2e/block1-offchain/api/rides.test.mjs | automated |
@@ -369,13 +369,13 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 | `B1-PROMO-02` | server/scripts/e2e-promo.mjs | e2e/block1-offchain/api/promo.test.mjs | automated |
 | `B1-PROMO-03` | server/test/scenarios/promos.scenarios.ts | e2e/block1-offchain/api/promo.test.mjs | automated |
 | `B1-PROMO-04` | server/test/scenarios/promos-abuse.scenarios.ts | e2e/block1-offchain/api/promo.test.mjs | automated |
-| `B1-PROMO-05` | — | e2e/block1-offchain/free/unmerged.test.mjs | unmerged |
+| `B1-PROMO-05` | server/src/domain/economy/promo.types.ts | e2e/block1-offchain/free/merged.test.mjs | automated |
 | `B1-REF-01` | server/test/scenarios/referrals.scenarios.ts | e2e/block1-offchain/api/referral.test.mjs | mock |
 | `B1-REF-02` | server/test/scenarios/referrals.scenarios.ts | e2e/block1-offchain/api/referral.test.mjs | automated |
 | `B1-REF-03` | client/test/referral.test.mjs | e2e/block1-offchain/api/referral.test.mjs | automated |
 | `B1-REF-04` | server/test/unit/application/services/referral.service.spec.ts | e2e/block1-offchain/api/referral.test.mjs | pending |
-| `B1-BOARD-01` | — | e2e/block1-offchain/free/unmerged.test.mjs | unmerged |
-| `B1-HONK-01` | — | e2e/block1-offchain/free/unmerged.test.mjs | unmerged |
+| `B1-BOARD-01` | server/src/presentation/prize/prize.http.controller.ts | e2e/block1-offchain/free/merged.test.mjs | automated |
+| `B1-HONK-01` | server/src/domain/honk/tokenomics.ts | e2e/block1-offchain/free/merged.test.mjs | automated |
 | `B1-ADMIN-01` | server/scripts/e2e-admin.mjs | e2e/block1-offchain/admin/signin.test.mjs | automated |
 | `B1-ADMIN-02` | — | e2e/block1-offchain/admin/signin.test.mjs | automated |
 | `B1-ADMIN-03` | server/test/scenarios/admin.scenarios.ts | e2e/block1-offchain/admin/tabs.test.mjs | automated |
@@ -423,7 +423,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 | `B2-PROMO-01` | server/test/scenarios/promos.scenarios.ts | e2e/block2-chain/promo/schema.test.mjs | automated |
 | `B2-PROMO-02` | server/scripts/e2e-localnet.mjs | e2e/block2-chain/promo/schema.test.mjs | pending |
 | `B2-REF-01` | server/test/scenarios/referrals.scenarios.ts | e2e/block2-chain/referral/rules.test.mjs | mock |
-| `B2-REF-02` | programs/freightchain-pools | e2e/block2-chain/referral/rules.test.mjs | automated |
+| `B2-REF-02` | programs/freightchain_pools | e2e/block2-chain/referral/rules.test.mjs | automated |
 | `B2-ADMIN-01` | — | e2e/block2-chain/admin/pools.test.mjs | automated |
 | `B2-ADMIN-02` | — | e2e/block2-chain/admin/pools.test.mjs | automated |
 | `B2-ADMIN-03` | server/scripts/pool-admin.mjs | e2e/block2-chain/admin/pools.test.mjs | automated |
@@ -435,7 +435,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 | `B2-API-05` | .claude/skills/localnet-e2e/run.sh | e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-API-06` | server/scripts/e2e-localnet-payout.mjs | e2e/block2-chain/api/chain.test.mjs | pending |
 | `B2-API-07` | .claude/skills/honk-suite/run.sh | e2e/block2-chain/api/chain.test.mjs | pending |
-| `B2-POOL-01` | programs/freightchain-pools/idl/freightchain_pools.json | e2e/block2-chain/api/chain.test.mjs | automated |
+| `B2-POOL-01` | programs/idl/freightchain_pools.json | e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-POOL-02` | — | e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-HONK-01` | docs/agents/honk.md | e2e/block2-chain/honk/ledger.test.mjs | automated |
 | `B2-HONK-02` | .claude/skills/honk-suite/run.sh | e2e/block2-chain/honk/ledger.test.mjs | pending |
@@ -466,12 +466,11 @@ Program: `npm run program:test` (LiteSVM / cargo) and `npm run program:verify`. 
 
 ## Bugs noticed while reading (not fixed)
 
-1. The three free-path names in the request do not match main. Guest API and the weekly ticket are PR #3.
+1. Training rides are not metered by `freeRides`. The signup counter is still stored. Guest EASY and the weekly 1h grant are separate paths.
 2. `paintHero` throws if `/api/pool` is 200 without `split` when `pools` is empty. It also throws if live JSON lacks `totals`, `upcoming`, or `recent`.
-3. `lobby.js` rewrites every `/play.html` link to `?offline=1`, including while signed in. Online free start is the lobby START button.
-4. Cosmetic promo redeem is refused `visuals_are_honk`.
-5. With `HONK_PROGRAM_ID` unset, `GET /api/honk` returns `chain: null` (ledger only).
-6. `docs/promocodes.md` describes promos as undeployed. The routes are on main.
-7. No admin HTTP handler for `set_pool_rules`.
-8. Referral HTTP scenarios never assert the qualify grant.
-9. `e2e-tickets-stub` RETRY CONFIRM and a missing `/reconcile` route fail on main (already noted in `docs/agents/verifying.md`).
+3. Cosmetic promo redeem is refused `visuals_are_honk`.
+4. With `HONK_PROGRAM_ID` unset, `GET /api/honk` returns `chain: null` (ledger only).
+5. `docs/promocodes.md` describes promos as undeployed. The routes are on main.
+6. No admin HTTP handler for `set_pool_rules`.
+7. Referral HTTP scenarios never assert the qualify grant.
+8. `e2e-tickets-stub` RETRY CONFIRM and a missing `/reconcile` route fail on main (already noted in `docs/agents/verifying.md`).

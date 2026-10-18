@@ -4,7 +4,7 @@
 
 ## Часть 1. Манифест
 ### 1.1 Сейчас в коде (`origin/main`)
-- 149 маршрутов в 31 контроллере (+2 в PR #3).
+- 151 маршрут на `origin/main` после мержа PR #3: к прежним 149 добавлены `POST /api/auth/guest` и `GET /api/prize/board`. `auth/pair` (3) и `referrals` (3) с main сохранены.
 - Вход проверяется zod (`ZodBody/ZodParams/ZodQuery`), схем ответов **нет** (0 / 151).
 - 58 / 96 защищённых маршрутов без теста «нет доступа».
 - Только polling, без WebSocket/SSE. Один webhook (`POST /api/chain/webhook`).
@@ -59,17 +59,17 @@ API-M-01…13 → API-T-01…13 один к одному. 13 MUST, 13 сводн
 ## План тестирования бэкенда FreightChain: каждый маршрут, валидация ответа, позитив и негатив
 
 Дата: 17.10.2026. Анализ только чтением кода: тесты не запускались, в git ничего не отправлялось.
-Ветки: `origin/main` (`3ab33d8`), PR #3 `cursor/ten4-tokenomics-6271` (`794fed8`, **не смержен**), PR #5 `cursor/local-e2e-suite-b044` (`3757ce7`).
+Ветки на 17.10.2026: `origin/main` (`3ab33d8`), PR #3 `cursor/ten4-tokenomics-6271` (`794fed8`). **PR #3 смержен в main** (`4e53f247`, текущий main `e8f338ad`). Строки ниже про «не смержен» и «нет в ветке PR #3» — снимок до мержа; маршруты `auth/pair`, `referrals`, `auth/guest` и `prize/board` сейчас все на main.
 
 ### 0. Коротко
 
 | Показатель | Значение |
 |---|---|
 | HTTP-маршрутов в контроллерах (main) | **149** в 31 контроллере |
-| Новых маршрутов только в PR #3 | **2**: `POST /api/auth/guest`, `GET /api/prize/board` |
+| Маршруты, пришедшие с PR #3 | **2**: `POST /api/auth/guest`, `GET /api/prize/board` (оба на main) |
 | Изменённых в PR #3 | 3: `POST /api/rides`, `POST /api/rides/:id/start` (`ranked`, geo, `409 ranked_*`), `GET /api/me` (geo) |
-| В ветке PR #3 нет 6 маршрутов из main | phone-pair ×3 и referrals ×3 (PR #3 ответвился раньше). При мерже их надо сохранить |
-| Итого после мержа PR #3 | **151** маршрут + 4 эндпоинта вне контроллеров (см. 1.3) |
+| `auth/pair` ×3 и `referrals` ×3 | были только на main, пока PR #3 не влит. После мержа сохранены |
+| Итого на main | **151** маршрут + 4 эндпоинта вне контроллеров (см. 1.3) |
 | WebSocket / SSE | **нет**: live-режим полностью на опросе (polling). Исходящая WS-подписка `onLogs` к Solana есть, но это не наш эндпоинт |
 | Webhook | 1: `POST /api/chain/webhook` (общий секрет в `x-webhook-secret` или `Authorization`, сравнение за постоянное время; без секрета маршрута нет, 404) |
 | Маршрутов, которые вызывает хоть один HTTP-тест | **135 / 151** (16 не вызывает ни один) |
@@ -171,9 +171,9 @@ API-M-01…13 → API-T-01…13 один к одному. 13 MUST, 13 сводн
 | 43 | GET | `/api/admin/actions` | admin (fc_admin) | Query:actionsQuery | `AdminListDto<AdminActionDto>` |  |
 | 44 | GET | `/api/admin/logs` | admin (fc_admin) | Query:logsQuery | `AdminLogsDto` |  |
 | 45 | POST | `/api/auth/nonce` | публичный | Body:requestChallengeBody | `ChallengeDto` |  |
-| 46 | POST | `/api/auth/pair` | публичный | — | `OpenPhonePairDto` | нет в ветке PR #3 (сохранить при мерже) |
-| 47 | GET | `/api/auth/pair/:id` | публичный | Params:pairParams | `PollPhonePairDto` | нет в ветке PR #3 (сохранить при мерже) |
-| 48 | POST | `/api/auth/pair/:id/claim` | кошелёк (fc_session) | Params:pairParams | `(inline)` | нет в ветке PR #3 (сохранить при мерже) |
+| 46 | POST | `/api/auth/pair` | публичный | — | `OpenPhonePairDto` | на main (сохранены при мерже PR #3) |
+| 47 | GET | `/api/auth/pair/:id` | публичный | Params:pairParams | `PollPhonePairDto` | на main (сохранены при мерже PR #3) |
+| 48 | POST | `/api/auth/pair/:id/claim` | кошелёк (fc_session) | Params:pairParams | `(inline)` | на main (сохранены при мерже PR #3) |
 | 49 | POST | `/api/auth/verify` | публичный | Body:verifyBody | `SignInResultDto` |  |
 | 50 | POST | `/api/auth/logout` | публичный | — | `LogoutResultDto` |  |
 | 51 | GET | `/api/me` | кошелёк (fc_session) | — | `MeDto` | PR3: + geo |
@@ -248,9 +248,9 @@ API-M-01…13 → API-T-01…13 один к одному. 13 MUST, 13 сводн
 | 120 | GET | `/api/replays` | публичный | Query:replaysQuery | `ReplaysDto` |  |
 | 121 | GET | `/api/profile` | кошелёк (fc_session) | — | `ProfileDto` |  |
 | 122 | PUT | `/api/profile/agreements` | кошелёк (fc_session) | Body:agreementsBody | `AgreementsDto` |  |
-| 123 | GET | `/api/referrals` | кошелёк (fc_session) | — | `ReferralView` | нет в ветке PR #3 (сохранить при мерже) |
-| 124 | POST | `/api/referrals/bind` | кошелёк (fc_session) | Body:bindReferralBody | `ReferralView` | нет в ветке PR #3 (сохранить при мерже) |
-| 125 | POST | `/api/referrals/gift` | кошелёк (fc_session) | Body:giftReferralBody | `ReferralView` | нет в ветке PR #3 (сохранить при мерже) |
+| 123 | GET | `/api/referrals` | кошелёк (fc_session) | — | `ReferralView` | на main (сохранены при мерже PR #3) |
+| 124 | POST | `/api/referrals/bind` | кошелёк (fc_session) | Body:bindReferralBody | `ReferralView` | на main (сохранены при мерже PR #3) |
+| 125 | POST | `/api/referrals/gift` | кошелёк (fc_session) | Body:giftReferralBody | `ReferralView` | на main (сохранены при мерже PR #3) |
 | 126 | GET | `/api/rides/:id/public` | публичный | Params:rideIdParams | `PublicRideDto` |  |
 | 127 | POST | `/api/rides` | кошелёк (fc_session) | Body:createRideBody | `RideDto` | PR3: + geo-заголовки |
 | 128 | GET | `/api/rides/pending` | кошелёк (fc_session) | — | `PendingRideDto` |  |
@@ -275,8 +275,8 @@ API-M-01…13 → API-T-01…13 один к одному. 13 MUST, 13 сводн
 | 147 | GET | `/api/stats/daily` | публичный | — | `DailyStatsDto[]` |  |
 | 148 | POST | `/api/telemetry` | гость/сессия (опц.) | Body:telemetryBody | `TelemetryAckDto` |  |
 | 149 | POST | `/api/client-error` | гость/сессия (опц.) | Body:clientErrorBody | `ClientErrorAckDto` |  |
-| 150 | POST | `/api/auth/guest` | публичный | — | `SignInResultDto` | **только PR #3** |
-| 151 | GET | `/api/prize/board` | публичный | Query:prizeBoardQuery | `PrizeBoardDto` | **только PR #3** |
+| 150 | POST | `/api/auth/guest` | публичный | — | `SignInResultDto` | на main (пришли с PR #3) |
+| 151 | GET | `/api/prize/board` | публичный | Query:prizeBoardQuery | `PrizeBoardDto` | на main (пришли с PR #3) |
 ### 3. Карта покрытия
 
 Источники: `scenario` — `server/test/scenarios/*` (запуск через `test/http/flows.spec.ts` на in-memory и через `test/integration/flows.integration.spec.ts` на Postgres); `http` — `server/test/http/*.spec.ts`; `integration` — `server/test/integration/*.spec.ts`, включая `concurrency`; `e2e-script` — `server/scripts/e2e-*.mjs`; `pr5` — `e2e/` из PR #5; `support` — хелперы `test/support`. Негативные коды собраны со всех источников.
@@ -442,8 +442,8 @@ API-M-01…13 → API-T-01…13 один к одному. 13 MUST, 13 сводн
    - Solana Pay для заказов и донатов: `GET|POST /api/solana-pay/orders/:id`, `GET|POST /api/solana-pay/donations/:id` (проверены только `rides`);
    - `POST /api/tickets/orders/:id/reconcile` (PR #5 уже отмечал, что в stub его нет) и `POST /api/watch/:id/donation-orders/:orderId/reconcile`;
    - `GET /api/rides/:id/public` (квитанция), `GET /api/honk/catalog`, `GET /api/sns/reverse`, `GET /api/sns/resolve`, `GET /api/editor/mcp/entities/:id`;
-   - **PR #3:** `POST /api/auth/guest` и `GET /api/prize/board` проверены только unit-спеком контроллера. Ни одного HTTP-сценария.
-3. **Правила PR #3 проверены только на уровне unit-тестов:** `409 ranked_window`, `ranked_paid_cap`, `ranked_promo_cap`, `ranked_training`, `ranked_ineligible`, `guest_easy_only`, `weekly_ticket_spent`, гео-блокировка по `CF-IPCountry` (`PRIZE_BLOCKED_COUNTRIES`, `…_US_STATES`, `…_SANCTIONED_COUNTRIES`), 18+. Через HTTP их не проверяет ничего.
+   - `POST /api/auth/guest` и `GET /api/prize/board` в `server/test` по-прежнему только unit-спеки. В этом PR их вызывает `e2e/block1-offchain/free/merged.test.mjs`, когда поднят `E2E_BASE`.
+3. **Правила ranked / guest / weekly** в `server/test` по-прежнему в основном unit: `409 ranked_window`, `ranked_paid_cap`, `ranked_promo_cap`, `ranked_training`, `ranked_ineligible`, гео по `CF-IPCountry`. `guest_easy_only` и выдача недельного 1h проверяются e2e при `E2E_BASE`. `weekly_ticket_spent` зафиксирован в исходнике обработчика: открытый грант повторный `POST /api/rides` возвращает, а не списывает второй раз.
 4. **У 25 маршрутов нет проверенного 2xx**, есть только отказы: `POST /api/editor/jobs` (только 403/503), `GET /api/admin/pools/:id`, `GET /api/pools/:id/payout`, `GET /api/editor/revisions/:revId`, blinks `shift/:tier`, `go/:to`, `ride/:id` и маршруты из п. 2.
 5. **У 61 маршрута нет ни одного негатива, у 101 — меньше двух.** Без негативов остались, например, `POST /api/chain/settle`, `POST /api/tickets/orders/:id/confirm`, `GET /api/tickets/orders/:id/payment`, `POST /api/watch/:id/donation-orders`, `POST /api/admin/pools/:id/hold/challenge`, `POST /api/admin/rides/:id/challenge`, `POST /api/editor/entities/:id/restore`, `POST /api/telemetry`, `GET /api/pools`, `GET /api/pool`.
 6. **Матрица доступа неполная:** у 58 из 96 защищённых маршрутов нет своего теста «без сессии», «чужая роль» или «нет X-FC-Admin». Guard'ы проверены unit-тестами и несколькими HTTP-кейсами (`admin-host.spec`, `editor-host.spec`), но если на новом маршруте забыть `@UseGuards`, это ничто не поймает.
@@ -528,7 +528,7 @@ API-M-01…13 → API-T-01…13 один к одному. 13 MUST, 13 сводн
 
 | Шаг | Что | Где | Оценка |
 |---|---|---|---|
-| 0 | Смержить PR #3 (или сразу вести манифест на его маршрутах), сохранить `auth/pair*` и `referrals*` | — | — |
+| 0 | Сделано: PR #3 влит в main, `auth/pair*` и `referrals*` сохранены | — | — |
 | 1 | `route-manifest.spec.ts` через DiscoveryService и сгенерированный черновик манифеста на 151 маршрут (по таблицам выше); gate в режиме **отчёта**, без падения | `server/test/contract` | 1 д |
 | 2 | Zod-схемы ответов + `@ZodResponse` + `ResponseSchemaInterceptor` (strict в test/dev); `checkedAgent` в `test/support/client.ts` и общий валидатор для `e2e/harness/api.mjs`. Начать с денег: rides, tickets, pools, promo, referrals, prize, admin | `server/src/presentation/*/dto`, `test/support` | 3–4 д |
 | 3 | Генерируемая негативная матрица (классы A, C, O) по манифесту | `server/test/contract` | 2 д |

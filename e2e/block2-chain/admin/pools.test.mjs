@@ -21,8 +21,8 @@ describe('block 2 admin pools tab', { concurrency: 1 }, () => {
 });
 
 test('B2-ADMIN-02 set_pool_rules is in the program and missing from every admin HTTP controller', () => {
-  const lib = src('programs/freightchain-pools/programs/freightchain_pools/src/lib.rs');
-  const idl = src('programs/freightchain-pools/idl/freightchain_pools.json');
+  const lib = src('programs/freightchain_pools/src/lib.rs');
+  const idl = src('programs/idl/freightchain_pools.json');
   assert.match(lib, /pub fn set_pool_rules/);
   assert.match(idl, /set_pool_rules/);
   const controllers = src('server/src/presentation/admin/admin.http.controller.ts') + src('server/src/presentation/admin/admin-promos.http.controller.ts');

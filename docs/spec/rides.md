@@ -7,8 +7,8 @@
 ### 1.1 Сейчас в коде (`origin/main`)
 - Тиры:
   - `ride-tier.ts:26` — 1h `{usd 5, minTickets 20, schedule saleHours 24 / playHours 3 / reviewHours 48}`, есть и 4h/8h;
-  - трипы `client/js/trips.js` (`'1h'` `finish:false`, free-уровни `free-1c` / `free-2c` / `free-3b`, гость `free-g`).
-- Тренировки: `POST /api/rides {tier:'free', level}`, лимит `Player.freeRides` (10 при регистрации + 1 в день до 5, `GrantDailyFreeRidesHandler`, по [`E2E_PLAN.md`](../testing/E2E_PLAN.md) PR #5). В PR #3 тренировки безлимитные ([`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §5).
+  - трипы `client/js/trips.js` (`'1h'` `finish:false`, free-уровни `free-1c` / `free-2c` / `free-3c`, замороженный `free-3b`, гость `free-g`).
+- Тренировки: `POST /api/rides {tier:'free', level}` без списания `freeRides` (счётчик `free_on_signup` и `GrantDailyFreeRidesHandler` ещё в коде). Гостевой EASY — `POST /api/auth/guest`. Недельный билет 1h — на main.
 - Финиш: `completeDist = K × MAX_SPEED × minSeconds`. Для 1h это 50 400 м (`ride-rules.ts:5,52`). Завершение — `lastS ≥ completeDist` **со слов клиента** (`ride.entity.ts:337`).
 - Статистики по поездке нет, только агрегаты (`server/prisma/stats/stats.prisma`). Красный свет считает только клиент (`orchestrator.js:49–53`).
 
@@ -39,7 +39,7 @@
 | id | Правило | Сценарий | Ожидание |
 |---|---|---|---|
 | RID-T-01 | M-01 | `POST /api/rides {tier:'4h'}` и `'8h'`; `GET /api/tiers` | отказ; в тирах нет 4h/8h |
-| RID-T-02 | M-02 | тренировочная поездка: `free-1c`, `free-2c`, `free-3b`, офлайн-гость, часовая с assist/туториалом; контроль: бесплатная попытка devnet и промо-заезд 1 ч | у первых пяти нет строки в рейтинге пула, нет TEN4, `mgIssued = 0`, нет в реплеях; у контрольных — есть реплей; видимость → RPL-T-04 |
+| RID-T-02 | M-02 | тренировочная поездка: `free-1c`, `free-2c`, `free-3c` (и замороженный `free-3b`), офлайн-гость, часовая с assist/туториалом; контроль: бесплатная попытка devnet и промо-заезд 1 ч | у тренировочных нет строки в рейтинге пула, нет TEN4, `mgIssued = 0`, нет в реплеях; у контрольных — есть реплей; видимость → RPL-T-04 |
 | RID-T-03 | M-03 | создание 1h | `Ride.completeDist = finishFor(seed, '1h')`, `expectedSeconds ∈ [3600; 3600 + ds/v]` (= AC-F1) |
 | RID-T-04 | M-17 | формула по умолчанию: 10 golden-поездок | `score` совпадает (= AC-R6); пример владельца = 100 %, пример 70 мин = 73,7 % |
 | RID-T-05 | M-17 | равные `score` | порядок по `driveToFinishSeconds + mgPenaltySeconds`, затем урон, `endedAt`, `seq` |

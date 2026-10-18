@@ -4,13 +4,13 @@
 
 ## Часть 1. Манифест
 ### 1.1 Сейчас в коде
-Программа пулов v5 (`origin/main`, `programs/freightchain-pools`):
+Программа пулов v5 (`origin/main`, `programs/freightchain_pools`):
 - `Pool.prep_deadline` / `play_deadline` / `payout_at`, снимок `min_review_secs`;
 - `buy_ticket.rs:50` `PaidTicketsDisabled`, `:52` `require!(now < pool.prep_deadline, TooLate)`;
 - `DEFAULT_MIN_FINISH_SECS = 10_800`;
 - у серии `sale_secs` — это и окно, и каденция.
 
-Бэкенд — `pool-registry.service.ts`, `Pool.fromChain`. `set_pool_rules` без HTTP-маршрута (баг 7 в [`E2E_PLAN.md`](../testing/E2E_PLAN.md)).
+Бэкенд — `pool-registry.service.ts`, `Pool.fromChain`. `set_pool_rules` без HTTP-маршрута (баг 6 в [`E2E_PLAN.md`](../testing/E2E_PLAN.md)).
 
 ### 1.2 Правила
 - **POOL-M-01** MUST: пока один пул в неделю. Расписание — **настраиваемые поля**, а не константы:
@@ -88,7 +88,7 @@
 - **Сгоревшие билеты и мотивация к спешке:** игрок, который «должен успеть», стартует в последние часы. Это нагрузка на сервер в вс вечер (AC-P9 конкурентность — прогнать «пик последних 2 часов»).
 
 #### 20.3 Контракт пулов v5 (в main) — что есть и чего не хватает
-Проверено по `programs/freightchain-pools/programs/freightchain_pools/src` (`origin/main`, v5):
+Проверено по `programs/freightchain_pools/src` (`origin/main` после мержа PR #3, v5; каталог программ сплющен):
 - **Сроки в аккаунте пула уже есть** (`state.rs`, `Pool`): `prep_deadline`, `play_deadline`, `payout_at` («end of the review window: no prize is paid … before it»), плюс снимок `min_review_secs`. `buy_ticket.rs:52`: `require!(now < pool.prep_deadline, PoolError::TooLate)` — **это и есть отсечка продаж**, а `buy_ticket.rs:50` — `PaidTicketsDisabled` (v5). Соответствие:
 
 | Поле формата | Сейчас в v5 | Значение по умолчанию |
@@ -133,6 +133,7 @@
 ---
 
 ## Приложение B. Выписка из MASTER_PLAN.md §3 и §5
+> PR #3 влит в main. Текст ниже — выписка на 17.10, не текущее состояние кода.
 > Перенесено без изменений из `MASTER_PLAN.md (копия; сам MASTER_PLAN не удалён)` (17.10.2026); уровни заголовков сдвинуты на один. Нормативна Часть 1 этого файла; при расхождении прав манифест.
 
 ### 3. Пулы и призы

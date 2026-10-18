@@ -1,6 +1,6 @@
 # E2E-блоки — манифест и план тестирования
 
-> Сводка PR #5 (`cursor/local-e2e-suite-b044`, коммит `3757ce7`, не смержен; [`docs/testing/E2E_PLAN.md`](../testing/E2E_PLAN.md) 475 строк, [`docs/testing/MANUAL_TESTS.md`](../testing/MANUAL_TESTS.md) 83 строки) и новые блоки из спецификаций. Читалось из локального клона ветки, ничего не запускалось.
+> Сводка PR #5 (`cursor/local-e2e-suite-b044`) после мержа PR #3 в `origin/main` (`e8f338ad`). Чек-лист — [`docs/testing/E2E_PLAN.md`](../testing/E2E_PLAN.md), ручные проверки — [`docs/testing/MANUAL_TESTS.md`](../testing/MANUAL_TESTS.md). Решения 1–66 не менялись.
 
 ## Часть 1. Манифест
 ### 1.1 Как устроено в PR #5
@@ -9,9 +9,9 @@
   - `postgres:17-alpine` на `127.0.0.1:15434`, `redis:7-alpine` на `16381`;
   - **сервиса Solana нет**: блок 2 использует `solana-test-validator` хоста (Agave), как навык `localnet-e2e`.
 - **Блоки:**
-  - блок 1 — без цепочки (131 проверка: automated 105, mock 10, manual 9, pending 1, unmerged 6);
+  - блок 1 — без цепочки (131 проверка: automated 111, mock 10, manual 9, pending 1);
   - блок 2 — локальный валидатор (28: automated 20, mock 2, manual 1, pending 5);
-  - всего 159.
+  - всего 159 (automated 131, mock 12, manual 10, pending 6).
   
   Разделы: landing, pitch, whitepaper, lobby, free, promo, referral, admin.
 - **Harness:**
@@ -24,22 +24,23 @@
   - корень: `test:e2e:block1` = `bash e2e/scripts/run.sh 1`, `test:e2e:block2` = `… 2`, `test:e2e:pages`;
   - `e2e/package.json`: `test:pages`, `test:block1`, `test:block2`;
   - зависимости: `bs58`, `happy-dom`, `tweetnacl`.
-- **Три бесплатных пути в main:**
-  1. офлайн-гость `free-g`;
-  2. онлайн-тренировки `free-1c/2c/3b` по `Player.freeRides`;
-  3. кредиты free-ride (10 при регистрации + 1 в день до 5).
+- **Бесплатные пути и выданный билет (PR #3 уже в main):**
+  1. `free-g` — только тул-сим `?sim=1` (продуктовой ссылки `?offline=1` нет); голый `play.html` заказывает EASY;
+  2. онлайн-тренировки `free-1c` / `free-2c` / `free-3c` (HARD ×10; `free-3b` заморожен), без списания `freeRides`;
+  3. `POST /api/auth/guest` — только EASY (`guest_easy_only`);
+  4. недельный выданный билет 1h (`weekly_ticket_spent` при повторном списании);
+  5. счётчик `free_on_signup` / дневной грант по-прежнему хранится, тренировки его не тратят.
   
-  Гостевой API и недельный билет — только в PR #3.
+  Промо `kind: 'ride'`, `GET /api/prize/board` и тикер TEN4 тоже на main. Маршруты `auth/pair` и `referrals` с main сохранены. Программы: `programs/freightchain_pools` и `programs/freightchain_honk`.
 - **Найденные баги (не исправлены):**
-  1. имена путей не совпадают с main;
+  1. тренировки не списывают `freeRides`; счётчик регистрации всё ещё хранится;
   2. `paintHero` падает без `split` / `totals`;
-  3. `lobby.js` переписывает `/play.html` на `?offline=1`;
-  4. косметический промо-код отклоняется `visuals_are_honk`;
-  5. `GET /api/honk` → `chain: null` без `HONK_PROGRAM_ID`;
-  6. [`docs/promocodes.md`](../promocodes.md) устарел;
-  7. нет админского HTTP для `set_pool_rules`;
-  8. реферальные сценарии не проверяют выдачу;
-  9. `e2e-tickets-stub` RETRY CONFIRM и `/reconcile` падают.
+  3. косметический промо-код отклоняется `visuals_are_honk`;
+  4. `GET /api/honk` → `chain: null` без `HONK_PROGRAM_ID`;
+  5. [`docs/promocodes.md`](../promocodes.md) устарел;
+  6. нет админского HTTP для `set_pool_rules`;
+  7. реферальные сценарии не проверяют выдачу;
+  8. `e2e-tickets-stub` RETRY CONFIRM и `/reconcile` падают.
 - **Пробелы PR #5:** Chrome-скрипты (`server/scripts/e2e-*.mjs`, `client/tools/e2e-chrome.mjs`, `e2e-viewer.mjs`, `landing/tools/e2e-wallet.mjs`) не вызываются. `close_ticket` и ролловер seed-treasury — вручную.
 - **Переиспользует:**
   - сценарии `server/test/http/flows.spec.ts` (`flow`, `http-contract`, `telemetry`, `live`, `verdict`, `traffic-proof`, `pools`, `pledges`, `shared-road`, `ticket-orders`, `chain`, `webhook`, `referrals` и др.);

@@ -6,7 +6,7 @@ import { apiTest, session, signInPlayer } from '../../harness/api.mjs';
 import { REPO } from '../../harness/dom.mjs';
 
 test('B2-REF-02 pool v5 has set_pool_rules and no on-chain referral pot instruction', () => {
-  const lib = readFileSync(join(REPO, 'programs/freightchain-pools/programs/freightchain_pools/src/lib.rs'), 'utf8');
+  const lib = readFileSync(join(REPO, 'programs/freightchain_pools/src/lib.rs'), 'utf8');
   assert.match(lib, /pub fn set_pool_rules/);
   assert.doesNotMatch(lib, /fn pay_referrer/);
 });

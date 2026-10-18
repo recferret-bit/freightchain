@@ -5,7 +5,7 @@
 ## Часть 1. Манифест
 ### 1.1 Документы
 - Черновики: [`docs/legal/TERMS.md`](../legal/TERMS.md), [`PRIVACY.md`](../legal/PRIVACY.md), [`PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md). Сводка правок 17.10 — [`docs/legal/CHANGES_donations_2026-10-17.md`](../legal/CHANGES_donations_2026-10-17.md).
-- В репозитории `docs/legal/{TERMS,PRIVACY,PRESEASON_RULES}.md` внесены только помеченные клаузы 17.10 (донаты и реплеи). Остальной текст этих файлов уже отличался от черновиков, поэтому файлы целиком не заменялись. RU-перевода 16a в архиве не было — [`PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md) не менялся. Сводка: [`docs/legal/CHANGES_donations_2026-10-17.md`](../legal/CHANGES_donations_2026-10-17.md).
+- В репозитории `docs/legal/{TERMS,PRIVACY,PRESEASON_RULES}.md` внесены помеченные клаузы 17.10 (донаты и реплеи). Остальной текст этих файлов уже отличался от черновиков, поэтому файлы целиком не заменялись. Пункт 16a есть и в [`PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md). В PRIVACY §4 пункт «Public game data» переписан под просмотр только реплея. Сводка: [`docs/legal/CHANGES_donations_2026-10-17.md`](../legal/CHANGES_donations_2026-10-17.md).
 
 ### 1.2 Правила
 - **LEG-M-01** MUST: TERMS §14.1–14.5 совпадают с [`replays_streams.md`](replays_streams.md):

@@ -4,9 +4,9 @@ import { adminSign, apiTest, devAdmin, session, signInAdmin, signInPlayer } from
 
 const blank = { description: null, maxRedemptions: 5, perWallet: 1, startsAt: null, expiresAt: null, note: null };
 
-apiTest(test, 'B1-PROMO-01 admin signs a free_rides code and B1-PROMO-02 a player redeems it', async () => {
+apiTest(test, 'B1-PROMO-01 admin signs a ride code and B1-PROMO-02 a player redeems it into a 1h shift', async () => {
   const code = `E2E${Date.now().toString(36).toUpperCase()}`;
-  const promo = { code, effect: { kind: 'free_rides', count: 3 }, ...blank };
+  const promo = { code, effect: { kind: 'ride', tier: '1h' }, ...blank };
   const admin = session();
   const keys = await signInAdmin(admin, devAdmin());
   const signature = await adminSign(admin, keys, '/api/admin/promos/challenge', { action: 'promo_create', promo });
@@ -20,9 +20,15 @@ apiTest(test, 'B1-PROMO-01 admin signs a free_rides code and B1-PROMO-02 a playe
   const before = await player.call('/api/me');
   const redeemed = await player.call('/api/promo/redeem', { body: { code } });
   assert.equal(redeemed.status, 200, JSON.stringify(redeemed.json));
-  assert.equal(redeemed.json.kind, 'free_rides');
+  assert.equal(redeemed.json.kind, 'ride');
+  assert.equal(redeemed.json.tier, '1h');
+  const ride = await player.call('/api/rides', { body: { tier: '1h' } });
+  assert.equal(ride.status, 200, JSON.stringify(ride.json));
+  assert.equal(ride.json.promo, true);
+  assert.equal(ride.json.tier, '1h');
+  assert.equal(ride.json.lamports, 0);
   const after = await player.call('/api/me');
-  assert.equal(after.json.freeRides, before.json.freeRides + 3);
+  assert.equal(after.json.freeRides, before.json.freeRides);
 });
 
 apiTest(test, 'B1-PROMO-03 creating a cosmetic code is refused visuals_are_honk', async () => {
