@@ -23,7 +23,7 @@ export function placeTraction(readme) {
   if (lineEnd < 0) return readme;
   if (readme.slice(lineEnd).replace(/^\n+/, '').startsWith(heading) && start < lineEnd + 40) return readme;
   const without = `${readme.slice(0, start)}${readme.slice(end + endMark.length)}`.replace(/\n{3,}/g, '\n\n');
-  const img2 = without.indexOf(BANNER);
+  const img2 = without.indexOf(BANNER) >= 0 ? without.indexOf(BANNER) : without.indexOf('<img src="landing/public/media/day.webp"');
   const line2 = without.indexOf('\n', img2);
   if (img2 < 0 || line2 < 0) return readme;
   return `${without.slice(0, line2 + 1)}\n${block}\n\n${without.slice(line2 + 1).replace(/^\n+/, '')}`;
