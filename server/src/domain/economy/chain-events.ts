@@ -1,6 +1,6 @@
 import type { PaidTierId } from '../rides/ride-tier.js';
 
-/* What the pool program tells the world, decoded (docs/agents/escrow.md). Field names are the camelCase of the program's events in
+/* What the pool program tells the world, decoded (docs/spec/pool.md). Field names are the camelCase of the program's events in
    programs/freightchain_pools/src/events.rs – that file (and the committed IDL) is the final word; the chain adapter
    (infrastructure/solana/program-chain.adapter.ts) decodes into these, its spec decodes real LiteSVM logs (server/test/fixtures/chain/).
    Types: u8/u16/u32 → number; u64 lamports → number, decoded exactly through BigInt – a value above Number.MAX_SAFE_INTEGER (≈ 9 million SOL, unreachable for a pool)
@@ -12,7 +12,7 @@ export const CHAIN_EVENT_KINDS = ['PoolCreated', 'TicketBought', 'PoolActivated'
   'RoadSealed', 'WinnersCommitted', 'WinnersVetoed', 'RideAttestationRecorded', 'SponsorRefunded'] as const;
 export type ChainEventKind = (typeof CHAIN_EVENT_KINDS)[number];
 
-/** The program's tier byte (docs/agents/escrow.md). */
+/** The program's tier byte (docs/spec/pool.md). */
 export const CHAIN_TIER_CODES: Readonly<Record<PaidTierId, number>> = { '1h': 1, '4h': 2, '8h': 3 };
 export const tierFromChainCode = (code: number): PaidTierId | null => (Object.entries(CHAIN_TIER_CODES).find(([, c]) => c === code)?.[0] as PaidTierId | undefined) ?? null;
 

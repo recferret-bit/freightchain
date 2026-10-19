@@ -68,7 +68,7 @@ If the list has no id, the viewer never builds that object. Screenshot it from `
 
 ## Not a still picture
 
-A blinker, a collision, a spawn, or damage only exists while the sim runs. Say so. Indicators and contact are `client/js/sim/traffic.js`. Check them with the headless playthrough in `docs/agents/verifying.md`. A collision fix may push the other vehicle. It must not write `st.s` on a fatal hit: the server flags a teleport (`docs/agents/verified-play.md`).
+A blinker, a collision, a spawn, or damage only exists while the sim runs. Say so. Indicators and contact are `client/js/sim/traffic.js`. Check them with the headless playthrough in `docs/agents/verifying.md`. A collision fix may push the other vehicle. It must not write `st.s` on a fatal hit: the server flags a teleport (`docs/spec/anticheat.md`).
 
 ## Serve
 

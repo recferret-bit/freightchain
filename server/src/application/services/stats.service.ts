@@ -13,7 +13,7 @@ export const DAILY_STATS_KEY = 'stats:daily';
 export const playerStatsKey = (wallet: string): string => `stats:player:${wallet}`;
 
 /**
- * The core metrics (docs/statistics.md). WRITES: `recordRide` runs inside the transaction that saves the ended ride (every path that ends a ride calls it –
+ * The core metrics (docs/spec/platform_services.md). WRITES: `recordRide` runs inside the transaction that saves the ended ride (every path that ends a ride calls it –
  * `test/architecture/stats-hooks.spec.ts` fails when one forgets), `recordDonation` when a donation lands on a stream; both add to the driver's row FIRST and to
  * the global row second, as atomic increments. READS are cached (Redis in production): `global()` for the landing / `GET /api/stats`, `player()` for the profile.
  * After a write commits the caller calls `invalidate(wallet)`; a cache that fails is a miss, so the database is always the answer.

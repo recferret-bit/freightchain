@@ -13,7 +13,7 @@ import { newWallet, sign } from '../support/client.js';
 import { seedEntity } from '../support/entity-fixtures.js';
 import type { Harness } from '../support/harness.js';
 
-/* The AI model editor's jobs (docs/editor-api.md "jobs" + "MCP callbacks"): the scripted fake model (NODE_ENV=test) drives a real job through the
+/* The AI model editor's jobs (docs/spec/platform_services.md "jobs" + "MCP callbacks"): the scripted fake model (NODE_ENV=test) drives a real job through the
    in-process MCP (support/test-mcp.ts), which reads and writes through /api/editor/mcp/* with the job's token – the real callback path.
    Same scenarios on in-memory and PostgreSQL. */
 export const JOB_EDITOR = newWallet();

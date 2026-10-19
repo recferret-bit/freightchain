@@ -281,7 +281,7 @@ model Pledge {
   @@schema("economy")
 }
 
-// TEN4 ledger (docs/honk/SPEC.md). Base units, 6 decimals. Table names stay Honk*. The emission counter is reserved ride TEN4, pending 8h rows included.
+// TEN4 ledger (docs/spec/ten4.md). Base units, 6 decimals. Table names stay Honk*. The emission counter is reserved ride TEN4, pending 8h rows included.
 model HonkAccount {
   wallet    String   @id
   balance   BigInt   @default(0)

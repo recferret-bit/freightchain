@@ -1,2 +1,2 @@
-/** The public game-wide statistics (docs/statistics.md). */
+/** The public game-wide statistics (docs/spec/platform_services.md). */
 export class GetStatsQuery {}

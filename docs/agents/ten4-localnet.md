@@ -1,6 +1,6 @@
 # TEN4 on a local chain
 
-The game balance stays the PostgreSQL ledger (`docs/agents/honk.md`). This suite is the only place TEN4 exists as a Solana token. It runs on `solana-test-validator` against program `GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx` (`docs/agents/honk-program.md`). The pool is that program's pool on this validator: genesis sits in the vault, and a wallet swaps SOL for TEN4. It is not a public listing and not on devnet. It does not deploy, and it does not touch the global Solana config or `~/.config/solana/id.json`. Every RPC call passes an explicit URL. Keys are scratch keypairs.
+The game balance stays the PostgreSQL ledger (`docs/spec/ten4.md`). This suite is the only place TEN4 exists as a Solana token. It runs on `solana-test-validator` against program `GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx` (`docs/spec/ten4.md` §4.1). The pool is that program's pool on this validator: genesis sits in the vault, and a wallet swaps SOL for TEN4. It is not a public listing and not on devnet. It does not deploy, and it does not touch the global Solana config or `~/.config/solana/id.json`. Every RPC call passes an explicit URL. Keys are scratch keypairs.
 
 Run: `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token half, `SCENARIO=session` is the ride half, default is both).
 

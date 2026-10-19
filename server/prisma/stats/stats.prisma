@@ -1,4 +1,4 @@
-// Core metrics, kept as running totals so the landing, the lobby and /api/stats never scan the rides (docs/statistics.md). Written ONLY with atomic
+// Core metrics, kept as running totals so the landing, the lobby and /api/stats never scan the rides (docs/spec/platform_services.md). Written ONLY with atomic
 // increments (`SET x = x + n`, never read-modify-write) by StatsService: when a ride ENDS (any path: /end, the heartbeat that fails it, the stale-ride
 // sweep, a new ride clearing a stale one) the driver's PlayerStats row first, then the GlobalStats row, in the ride's own transaction; when a donation lands
 // on a stream, the driver's row, then the global one. `stats:reconcile` (skill stats-reconcile) recomputes both from rides + feed events and fixes drift.

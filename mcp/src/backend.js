@@ -10,7 +10,7 @@ const ID = /^[a-z][a-z0-9-]{1,47}$/;
 
 /* Where entities live. Both answer the same calls:
      list() → rows · get(id) → { row, source, config } · configs() → { id: config } (heads) · save(id, source, message) → revision
-   HttpBackend: the app's editor API for one job (docs/editor-api.md, /api/editor/mcp/*, the job's capability token) – the editor bridge.
+   HttpBackend: the app's editor API for one job (docs/spec/platform_services.md, /api/editor/mcp/*, the job's capability token) – the editor bridge.
    FileBackend: the repo's seed files (client/shared/entity/seed/) – Claude Code over stdio, edits land in git like any other change. */
 export class HttpBackend {
   constructor(appUrl, jobToken) { this.url = appUrl.replace(/\/$/, ''); this.token = jobToken; }

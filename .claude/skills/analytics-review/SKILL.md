@@ -11,7 +11,7 @@ description: >
 
 # Analytics review
 
-Three passes over the four pages. Each pass edits the integration where it is wrong, then writes one report. The event rules live in docs/agents/analytics.md "Product analytics" and in `docs/analytics/index.html`. Follow those. This file is the pass, the report, and the production boundary.
+Three passes over the four pages. Each pass edits the integration where it is wrong, then writes one report. The event rules live in `docs/spec/platform_services.md` (§3 "Product Analytics") and in `docs/analytics/index.html`. Follow those. This file is the pass, the report, and the production boundary.
 
 ```sh
 node .claude/skills/analytics-review/inventory.mjs
@@ -26,7 +26,7 @@ A batch that reaches EU ingest changes Activity and any insight that counts that
 - Do not run `posthog-test` or `posthog-prod`.
 - Do not set `POSTHOG_ENABLED=1` on a process that has the real token. Do not read or print `POSTHOG_KEY`.
 - Do not call the PostHog API, open the app, or create, edit, pin, share, or delete an insight or a dashboard. Dashboard 1006663 and the Page speed insight stay as they are. Do not pin `web_vital` to 1006663.
-- Do not deploy. Do not change `$create_alias` (docs/agents/analytics.md "Product analytics" → Identity).
+- Do not deploy. Do not change `$create_alias` (`docs/spec/platform_services.md` §3 → Identity).
 
 Local proof is the inventory script plus the unit specs below. They stub `fetch`.
 
@@ -46,7 +46,7 @@ Shared doors: `client/js/analytics.js` (`track`), `client/js/web-vitals.js`, `cl
 Leave these alone. Say so in the report:
 
 - `play.html` with no `?ride`, `play.html?offline=1`, and `viewer.html` send nothing.
-- Verdicts, escrow ticket buys, and live-stream chat, donations, and effects are not analytics events (docs/agents/analytics.md "Not this work"). The watch page is that exclusion.
+- Verdicts, escrow ticket buys, and live-stream chat, donations, and effects are not analytics events (`docs/spec/platform_services.md` §3). The watch page is that exclusion.
 - No `posthog-js`, no session replay, no second project, no nginx `/ingest/`, no per-heartbeat event.
 - The admin page is out of this review. `promo_created` and `promo_disabled` stay server events.
 

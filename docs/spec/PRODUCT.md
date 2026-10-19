@@ -37,7 +37,7 @@ Gap: guest and both SNS routes have no HTTP scenario. Phone-pair HTTP is already
 
 ### Free levels, tutorial, assist
 
-**Shipped.** `docs/agents/free-rides.md`.
+**Shipped.** [`docs/spec/rides.md`](rides.md).
 
 - EASY level 1, trip `free-1c`, nominal 3 min, Stuart Highway.
 - MEDIUM level 2, trip `free-2c`, nominal 5 min, Route 66.
@@ -54,7 +54,7 @@ Gap: guest and both SNS routes have no HTTP scenario. Phone-pair HTTP is already
 
 A live 1h grant is issued only inside the ranked week (Monday 00:00 UTC through Sunday 12:00 UTC) to a non-guest who is 18+ and in an allowed country. It expires at the next interval or Sunday 12:00 UTC, whichever is earlier. An unspent 1h ride promo is claimed first: that POST creates a promo ride and leaves the grant unspent. With no promo, the first `POST /api/rides { tier: '1h' }` creates an unranked ride and spends the grant. A second `POST` while that ride is still `created` returns the same ride. `409 weekly_ticket_spent` is the lost-claim race, not the ordinary second order. After the grant ride has ended, another 1h with no pool and no promo is `409 tier_not_on_sale`. The grant does not mint TEN4. It can be watched. It consumes one of the five paid ranked slots only when `POST /api/rides/:id/start` sends `{ ranked: true }`.
 
-`GET /api/prize/board` ranks ended rides that started ranked. The USDC contest in `docs/prize/SPEC.md` is a draft. No USDC is sent. Spectator road effects are refused on ranked rides. Both profile stamps (`age18` and the loss acknowledgement) are required before a bought paid ride or a blink shift buy (`409 agreements_required`). A promo and a weekly grant skip that check.
+`GET /api/prize/board` ranks ended rides that started ranked. The USDC contest in `docs/spec/pool.md` (Appendix C) is a draft. No USDC is sent. Spectator road effects are refused on ranked rides. Both profile stamps (`age18` and the loss acknowledgement) are required before a bought paid ride or a blink shift buy (`409 agreements_required`). A promo and a weekly grant skip that check.
 
 ### Paid rides, tickets, Solana Pay, blinks
 
@@ -68,11 +68,11 @@ A live 1h grant is issued only inside the ranked week (Monday 00:00 UTC through 
 
 ### Escrow program
 
-**Local v5, devnet v3.** `docs/agents/escrow.md`. Default split for a new v5 pool is 85% / 5% / 10% (`8500/500/1000`). `max_player_share_bps` default 4740, program ceiling 4999. `paid_tickets_enabled` can be off. No on-chain referral leg. `seal_road`, winners root, per-ride attestations, sponsor refunds, and pledges are in the built program. Pledge routes answer normally today. `403 pledges_disabled` is decision 51, not the current server. The crank and the payout key are the server's only two keys. The cold admin can veto a root. Money stays in the program.
+**Local v5, devnet v3.** [`docs/spec/pool.md`](pool.md). Default split for a new v5 pool is 85% / 5% / 10% (`8500/500/1000`). `max_player_share_bps` default 4740, program ceiling 4999. `paid_tickets_enabled` can be off. No on-chain referral leg. `seal_road`, winners root, per-ride attestations, sponsor refunds, and pledges are in the built program. Pledge routes answer normally today. `403 pledges_disabled` is decision 51, not the current server. The crank and the payout key are the server's only two keys. The cold admin can veto a root. Money stays in the program.
 
 ### TEN4
 
-**Ledger shipped. Program local.** `docs/agents/honk.md`, `docs/honk/SPEC.md`.
+**Ledger shipped. Program local.** [`docs/spec/ten4.md`](ten4.md), [`docs/agents/ten4-localnet.md`](../agents/ten4-localnet.md).
 
 Ticker TEN4. Routes, tables, the crate, and `HONK_PROGRAM_ID` stay HONK. HONK is the chat verb. Supply 100,000,000. SOL still prices the ticket. TEN4 is reserved when a paid ride's verdict is verified. Until TGE the balance is PostgreSQL and the UI says points. Era-1 finishes: 1h 100, 4h 500, 8h 1,200. An 8h mint waits 48 hours. Burns: 1 chat HONK, 10 day/night, 25 snow or clear. Cab parts 65 / 260. The local program is not deployed. There is no AMM on devnet.
 
@@ -80,17 +80,17 @@ Ticker TEN4. Routes, tables, the crate, and `HONK_PROGRAM_ID` stay HONK. HONK is
 
 ### Garage and promo
 
-**Shipped.** Nine slots, 48 non-default parts: 45 TEN4 parts and three referral gift paints. Apply is `POST /api/garage/loadout`, all or nothing.
+**Shipped.** [`docs/spec/ten4.md`](ten4.md), [`docs/spec/promocodes.md`](promocodes.md). Nine slots, 48 non-default parts: 45 TEN4 parts and three referral gift paints. Apply is `POST /api/garage/loadout`, all or nothing.
 
-A promo code is one ride shift (1h, 4h, or 8h, once per wallet, no TEN4) or pool tickets. `kind: 'free_rides'` is retired. `kind: 'cosmetic'` is `409 visuals_are_honk`. Old cosmetic unlocks still equip. Admin create and disable are wallet-signed and audited. `docs/promocodes.md` is behind this (the e2e notes already say so).
+A promo code is one ride shift (1h, 4h, or 8h, once per wallet, no TEN4) or pool tickets. `kind: 'free_rides'` is retired. `kind: 'cosmetic'` is `409 visuals_are_honk`. Old cosmetic unlocks still equip. Admin create and disable are wallet-signed and audited.
 
 ### Referrals
 
-**Shipped.** `docs/agents/referral.md`, product note `docs/features/referral/README.md`.
+**Shipped.** [`docs/spec/referral.md`](referral.md).
 
 One code and one referrer per wallet, bound before any ride has `startedAt`. Codes are 8 characters. Gifts: `convoy`, `signal`, `amber`. Capacity is `min(30, 3 + 3 × floor(verified paid shifts / 5))`. A pending invite lasts 14 days. The first verified completion of any ride, including EASY, qualifies the invite and unlocks the gift paint. The 2 and 3 free rides are granted only when that first completion is a verified MEDIUM (`free-2c`), within 7 days of the bind, and the referrer is under the weekly cap of 10. A later MEDIUM does not grant them. Convoy badges are 1 / 5 / 20 / 100 (a paid shift, or HARD with assist off). v5 has no on-chain pot leg. Donation share, when the driver's invite is qualified: 1000 bps (10%) to the referrer, lifetime cap 0.5 SOL for the pair. The whole tip goes to the driver when the share is below rent (890_880 lamports), the driver would receive nothing, or the spectator is the referrer. That is the shipped rule, not decision 50.
 
-`docs/agents/referral.md` says 38 badges. `docs/agents/achievements.md` says 44 plus legacy `top-20`. The achievements file matches the catalogue. The referral line is stale.
+44 earnable badges plus legacy `top-20` in [`docs/spec/web3_solana.md`](web3_solana.md).
 
 ### Achievements
 
@@ -102,17 +102,17 @@ One code and one referrer per wallet, bound before any ride has `startedAt`. Cod
 
 ### Verified play
 
-**Shipped, production in shadow mode.** `docs/agents/verified-play.md`.
+**Shipped, production in shadow mode.** [`docs/spec/anticheat.md`](anticheat.md).
 
-10 Hz samples, hash-chained batches, rules v7, traffic-frame proof required for new starts. The server rebuilds the road and the holes. Verdicts are `verified`, `flagged`, `rejected`. `VERDICT_ENFORCE=false` is the production default: judged and shown, boards and badges ignore a reject. The code default for tests is `true`. Machine-rejected paid rides stay under review until an admin decides. There is no 30 Hz re-sim and no minigame. One person with many wallets is not checked (`docs/roadmap/anti-sybil.md` is a plan).
+10 Hz samples, hash-chained batches, rules v7, traffic-frame proof required for new starts. The server rebuilds the road and the holes. Verdicts are `verified`, `flagged`, `rejected`. `VERDICT_ENFORCE=false` is the production default: judged and shown, boards and badges ignore a reject. The code default for tests is `true`. Machine-rejected paid rides stay under review until an admin decides. There is no 30 Hz re-sim and no minigame. One person with many wallets is not checked ([`docs/spec/anticheat.md`](anticheat.md) Appendix D is the target plan).
 
 ### Statistics
 
-**Shipped.** Running totals only, written by `StatsService` on every end path and every donation, player lock first. Crash counts are client-reported and not judged. Reads are cached. There is no `RideResult` row.
+**Shipped.** [`docs/spec/platform_services.md`](platform_services.md). Running totals only, written by `StatsService` on every end path and every donation, player lock first. Crash counts are client-reported and not judged. Reads are cached. There is no `RideResult` row.
 
 ### Live board, watch, chat, donations, replays
 
-**Shipped.** `docs/agents/live.md`.
+**Shipped.** [`docs/spec/replays_streams.md`](replays_streams.md).
 
 `GET /api/live` is heartbeats plus soft online counts. Running free rides are omitted. `GET /api/replays` is history, including finished free rides. Watch polls. There is no WebSocket. Chat, mutes, mock tips, and paid SOL tips to the driver are shipped. Feature flags: `LIVE_CHAT`, `LIVE_DONATIONS`, `LIVE_FREE_DONATIONS`, `LIVE_EFFECTS`. Code defaults all/on/on/all. Production compose all/on/off/free. With `LIVE_EFFECTS=free`, donation night, day, and holes do not change the ride. Replay draws the recording. It does not run the sim. Sample columns are append-only. Input bits are frozen.
 
@@ -133,11 +133,11 @@ This whole section is the shipped column of the first three conflicts.
 
 ### Entity editor
 
-**Shipped.** `docs/agents/editor.md`. Entities are data. Gameplay numbers stay in `roster.js` and `VEHICLES`. Revisions, a signed publish, a bundle, editor sign-in, MCP on the internal network, a PostgreSQL job queue, and a dedicated worker. Protected routes fail closed when Redis is down. Rate limits need Redis and a counter-only MCP user. `POST /api/editor/auth/logout` has no successful HTTP scenario.
+**Shipped.** [`docs/spec/platform_services.md`](platform_services.md). Entities are data. Gameplay numbers stay in `roster.js` and `VEHICLES`. Revisions, a signed publish, a bundle, editor sign-in, MCP on the internal network, a PostgreSQL job queue, and a dedicated worker. Protected routes fail closed when Redis is down. Rate limits need Redis and a counter-only MCP user. `POST /api/editor/auth/logout` has no successful HTTP scenario.
 
 ### Analytics
 
-**Shipped, opt-in.** `POSTHOG_ENABLED=1` sends to EU PostHog. The browser posts an allowlist to `POST /api/telemetry`. The server emits after commit. The client cannot mint server event names. Do not flip `$create_alias`. Never print `POSTHOG_KEY`. Session replay is off.
+**Shipped, opt-in.** [`docs/spec/platform_services.md`](platform_services.md). `POSTHOG_ENABLED=1` sends to EU PostHog. The browser posts an allowlist to `POST /api/telemetry`. The server emits after commit. The client cannot mint server event names. Do not flip `$create_alias`. Never print `POSTHOG_KEY`. Session replay is off.
 
 ### Game client
 
@@ -159,10 +159,18 @@ These are real and easy to miss. They are not separate games.
 - Promo video and the chiptune synth live in `media/`. They are a toolchain. A clip is not a player flow, so the coverage contract does not ask for a Chrome test per clip. Byte checks stay in the media package tests.
 - The `audit/` suite tests the audit tool. It is not a Freight Chain player surface. It stays out of the product Chrome matrix. Its own unit tests are part of making the census honest (phase 1).
 
-## What the Russian spec added, and what it did not
+## Spec Area Coverage
 
-Present as target, and named in an area file: rides, anti-cheat, minigames, the weekly pool, replays as the spec wants them, the admin security register, the HTTP contract, the legal touch-list.
-
-Present as shipped, and missing as their own as-built spec before this file: achievements, TEN4, referrals, garage, promo, the prize board, Solana Pay, SNS, blinks, the editor, analytics, statistics as they are stored, the live board as it runs, the free-level trips, verified play at 10 Hz.
+Target & as-built area files in `docs/spec/`:
+- [`rides.md`](rides.md): rides, road generation algorithm (`@freightchain/shared` ⇄ `server/src/domain/road`), dynamic finish, `RideResult` scoring.
+- [`anticheat.md`](anticheat.md): telemetry v2.1, 30 Hz re-sim, world integrity, humanness, and anti-sybil layers.
+- [`minigames.md`](minigames.md): 15-id minigame catalog and bot test suite.
+- [`pool.md`](pool.md): weekly pool lifecycle, v5/v6 escrow, and the prize board (`prize-rules.ts`).
+- [`referral.md`](referral.md): referral program (as-built on `main` + target Convoy rework).
+- [`promocodes.md`](promocodes.md): promo codes (`ride` and `tickets`, retired `free_rides` and `cosmetic`) and wardrobe.
+- [`ten4.md`](ten4.md): TEN4 tokenomics, checkpoints, halving eras, burns, 9-slot Cab Garage, and `freightchain_honk`.
+- [`web3_solana.md`](web3_solana.md): SIWS auth, guest sessions, phone pairing, SNS, Solana Actions/Blinks, Solana Pay, escrow pools, and soulbound achievement cNFTs.
+- [`platform_services.md`](platform_services.md): statistics (`StatsService`), 3D entity engine & AI model editor (`storybook`, `mcp/`), PostHog analytics, crash reporting, and the 7 public hosts.
+- [`replays_streams.md`](replays_streams.md), [`admin_security.md`](admin_security.md), [`backend_contract.md`](backend_contract.md), [`legal.md`](legal.md), [`e2e.md`](e2e.md).
 
 The happy-dom catalog (`docs/testing/E2E_PLAN.md`, 159 checks) walks pages with fetch mocked and calls a real API only when `E2E_BASE` is set. It does not replace the Chrome column in the coverage contract.

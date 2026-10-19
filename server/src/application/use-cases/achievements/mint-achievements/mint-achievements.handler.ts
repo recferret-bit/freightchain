@@ -21,7 +21,7 @@ const QUEUE_READ = 200;
 const TREE_WARN_AT = 0.9;
 
 /**
- * The badge mint job (docs/agents/achievements.md). An UNLOCK is a database row that is never removed; a compressed NFT cannot be taken back, so a mint is
+ * The badge mint job (docs/spec/web3_solana.md). An UNLOCK is a database row that is never removed; a compressed NFT cannot be taken back, so a mint is
  * held to a stricter bar:
  *   1. queue: an unlock at least `delayMs` old whose metadata is uploaded becomes a `planned` row (demo wallets are `skipped`);
  *   2. resolve what is in flight: a `sent` row is looked up by its signature – landed → the asset id is read from the transaction → `minted`; failed / expired

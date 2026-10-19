@@ -50,7 +50,7 @@ npm run typecheck && npm run lint
 Verified play: the verdict validates the recording (hash chain, governor, no teleports, ends where the ride ended, covers the driven time, gas pressed) and scores the input timing (flag-only) – `src/domain/verdict/`, thresholds in `verdict-rules.ts`. Settings: `VERDICT_ENFORCE` (false = shadow mode; the code default is true, production's compose default false), `TELEMETRY_RETENTION_DAYS` (recordings swept daily at 00:30 UTC, flagged ones kept), `ADMIN_WALLETS`.
 Logs: one JSON object per line in production (`{time, level, context, msg, …}`, a line per API request with status, ms, requestId, wallet); the newest 5000 are also served to the admin page.
 
-Payments (Plan A): a plain SOL transfer to the treasury, verified on chain (any matching instruction among the transaction's, `meta.err` null, signer = the wallet, memo = ride id, signature unique). Completion is **server-timed telemetry, not a replay** – see `../docs/agents/verified-play.md`.
+Payments (Plan A): a plain SOL transfer to the treasury, verified on chain (any matching instruction among the transaction's, `meta.err` null, signer = the wallet, memo = ride id, signature unique). Completion is **server-timed telemetry, not a replay** – see `../docs/spec/anticheat.md`.
 
 ## Scripts (`scripts/`)
 

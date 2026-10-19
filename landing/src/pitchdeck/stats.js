@@ -1,4 +1,4 @@
-/* The deck's analytics (docs/agents/analytics.md): page views and attraction through client/js/analytics.js → POST /api/telemetry on api.<apex>, never posthog-js.
+/* The deck's analytics (docs/spec/platform_services.md): page views and attraction through client/js/analytics.js → POST /api/telemetry on api.<apex>, never posthog-js.
    Anonymous: the deck sends WITHOUT credentials (configure), so a page view never carries a player session. Events: pitchdeck_viewed (one per load: where the visitor came from),
    pitchdeck_slide_viewed (the first view of each slide per load, and how they got there), pitchdeck_slide_time (visible ms on a slide, sent when it changes or the page is left),
    pitchdeck_interaction (the first use of each toy per load). The 85/5/10 bar is not in WHAT: hover opens it, so pitchdeck.js calls interact('split') from expand(). Allowing motion sensors is interact('tilt') from initTiltAsk(). Nothing here is read back by the page. */

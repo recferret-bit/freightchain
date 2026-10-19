@@ -3,7 +3,7 @@ import { el } from './dom.js';
 import { REFERRAL_PAINTS, SLOTS } from '../js/cosmetics.js';
 import { SLOT_NAME, itemName, swatch } from './lobby-promo.js';
 
-/* The Garage (lobby → GARAGE, docs/garage.md): every part, owned or locked, can be observed on the real cab. APPLY still sends only the owned pick
+/* The Garage (lobby → GARAGE, docs/spec/ten4.md): every part, owned or locked, can be observed on the real cab. APPLY still sends only the owned pick
    (POST /api/garage/loadout). A locked part is minted by burning TEN4 (POST /api/honk/visuals – lobby.js). Pure builders: lobby.js owns the state and the API calls.
    Server text (names, descriptions, codes, prices) goes in with textContent only. Price and description come from the garage payload; the catalog is only a price backup. */
 

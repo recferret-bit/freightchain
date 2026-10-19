@@ -18,7 +18,7 @@ import { SolanaRpc, sleep } from './solana-rpc.js';
 const MINT_CU = 400_000;
 
 /**
- * Soulbound badge cNFTs (docs/agents/achievements.md): Bubblegum v2 `mintV2` into an MPL-Core collection that carries the PermanentFreezeDelegate plugin
+ * Soulbound badge cNFTs (docs/spec/web3_solana.md): Bubblegum v2 `mintV2` into an MPL-Core collection that carries the PermanentFreezeDelegate plugin
  * (frozen = non-transferable) and the BubblegumV2 plugin. The achievement key is the tree creator AND the collection authority and pays the fees; the leaf
  * owner is the player's wallet. Signed and sent through signed-sender.ts, like the crank and the payout key – the signature is handed out BEFORE it is broadcast.
  * Never connects at construction (the app boots without the keys).

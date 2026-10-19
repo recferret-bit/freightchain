@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 RPC_PORT="${E2E_RPC_PORT:-8899}"
 LEDGER="${E2E_LEDGER:-$ROOT/e2e/.ledger}"
 if ! command -v solana-test-validator >/dev/null; then
-  echo "solana-test-validator is not on PATH (Agave, same as docs/agents/escrow.md)." >&2
+  echo "solana-test-validator is not on PATH (Agave, same as docs/spec/pool.md)." >&2
   echo "Block 2 chain checks will skip until it is installed. Postgres and the API still start." >&2
   exit 2
 fi

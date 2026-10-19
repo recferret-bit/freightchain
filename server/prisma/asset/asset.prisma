@@ -39,7 +39,7 @@ model EntityRevision {
   @@schema("asset")
 }
 
-// One request to the AI editor (the bridge + MCP, docs/agents/editor.md): the prompt, the model, what it produced and what it cost.
+// One request to the AI editor (the bridge + MCP, docs/spec/platform_services.md): the prompt, the model, what it produced and what it cost.
 model EditorJob {
   id               String    @id @db.Uuid
   wallet           String

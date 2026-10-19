@@ -136,7 +136,27 @@
 - Сервер, домен: `server/src/domain/verdict/{replay-engine,traffic-proof,traffic-sim,replay-physics,recording-checks,human-checks,challenge-checks,world-checks,verdict-rules,ride-verdict.entity,ride-replay.entity,pool-attention}.ts`, `server/src/domain/telemetry/{telemetry-rules,batch-summary,world-facts,sample-safety,ride-batch.entity,telemetry-merkle}.ts`, `server/src/domain/rides/{ride.entity,ride-trip,ride-challenge}.ts`, `server/src/domain/road/*`.
 - Сервер, приложение: `application/services/verdict.service.ts`, `use-cases/telemetry/upload-batch`, `use-cases/verdict/process-replay-queue`, `use-cases/admin/{rejudge-ride,rejudge-rides,override-verdict}`, `use-cases/rides/{start-ride,end-ride,heartbeat}`, `infrastructure/verdict/*-replay-queue.adapter.ts`, `infrastructure/scheduling/replay-verification.scheduler.ts`.
 - Общее ядро: `client/shared/{physics,traffic-simulation,traffic,road-network,road,simulation-config,traffic-proof,prng}.js`.
-- Клиент: `client/js/telemetry.js`, `client/js/sim/{physics,damage,traffic}.js`, `client/js/trips.js`.
+- Клиент: `client/js/telemetry.js`, `client/js/sim/{physics,damage,traffic}.js`, `client/js/trips.js`, `server/src/domain/verdict/ride-review.ts` (публичная плашка `UNDER REVIEW` / `ACCEPTED` / `REJECTED`).
+- Публичные тех-эксплейнеры: `docs/anti-cheat/index.html`, `docs/verified-play/index.html`.
+
+#### 1.8 Сводка точных порогов, бюджетов и CLI правил v4 / v5 / v7 (из `verified-play`)
+- **Правила v7 (`trafficProof`, `client/shared/traffic-proof.js` ⇄ `server/src/domain/verdict/traffic-proof.ts`)**:
+  - Кадр `Float64Array` (12 чисел LE): `[dt, signalClock, s, d, psi, trailerYaw, v, signedVelocity, hull, reverse, branch, postHull]`, `dt <= 50 мс`.
+  - Нарезка батча каждые **2 игровые секунды** или **500 кадров**, потолок `trafficProof` **64 КБ**, батча **98 304 Б** (HTTP body limit **100 КБ**), поток байт `<= 65 536 Б / с wall`, число батчей `<= wall / 0.2 + 10`.
+  - Коды отказа: `traffic-proof-missing`, `traffic-proof-invalid`, `traffic-collision-ignored`, `traffic-damage-ignored`, `traffic-proof-mismatch`.
+  - Chrome E2E (`bash .claude/skills/run-tests/e2e.sh traffic` / `node server/scripts/e2e-traffic-proof.mjs`, фильтр `TRAFFIC_CASES=<name>`, на macOS запускает Chrome с Metal): 9 сценариев (`honest`, `honest-finish`, `honest-slow`, `honest-collision`, `no-cars`, `no-cars-no-columns`, `ignore-damage`, `strip-proof`, `malformed-proof`).
+- **Правила v5 (`sample-safety.ts`) и v4 (`recording-checks.ts`, `verdict-rules.ts`)**:
+  - Грубые границы позиции сэмплов (`sample-safety.ts` на `POST /api/rides/:id/telemetry`): дистанция от старта `|s| <= 1000 + 56 * game_s` (м), шаг между сэмплами `|Δs| <= 1000 + 56 * dt` (м), пробег за один батч `<= 10 км`, иначе `400 bad_batch` или `bad-sample`; два пустых батча подряд отвергаются. Бюджеты `recordingAllowance` (v4): `game seconds <= wall * 1.05 + 30`, `seq <= wall / 5 + 10`, `totalBytes <= wall * 4 КБ + 256 КБ`.
+  - Границы движения и прогресса: общий пробег `<= 28 * 1.05 * wall + 50 м`, шаг `|Δs| <= 28 * 1.1 * dt + 10 м`, зазор `sample-gap > 1 с`, расхождение интеграла скорости `speed-mismatch > 50 м + 1%`, дубли времени `dupT`, грубый таймер браузера `timerStepMs`, телефонный префикс `PHONE_PREFIX = 'phone:'` (не считается вводом управления).
+  - Серверный лист дерева Меркла батча (`RideBatch.serverHash` в `telemetry-merkle.ts`): префикс `0x02` (RFC 6962).
+- **Проверки мира (`world-checks.ts`, `road-damage.mjs`)**:
+  - Ямы: `>= 2` пропущенных ям без урона → `obstacle-ignored` (reject), `1` → `obstacle-no-impact` (flag), `>= 2` неизмеренных → `obstacle-unmeasured` (flag).
+  - Обочина и развилки: езда вне дороги `> 27 с` (`OFFROAD_FAIL_SECONDS * 1.25 + 2`) → `offroad-ignored` (reject); фартук развилки `RoadLayout.forkApron` даёт коридор `15 м` на протяжении `205 м`.
+  - Разгон без газа: `accel-without-gas` (reject при приросте `>= 2 м/с` или `>= 5` шагах). Ручной аудит урона по дороге: `node server/scripts/road-damage.mjs`.
+- **Очередь пересчёта, хранение и CLI**:
+  - Воркер и ручной запуск 10 Гц `ReplayEngine`: `npm run replay:worker`, `npm run replay:verify -- --ride <id>`.
+  - Пересуживание поездок и пометки пула: `npm run verdict:rejudge`, `npm run pool:attention -- --pool <id>` (`pool-duplicate-recording`: совпадение `|Δd| <= 0.1 м` на `>= 90%` точек с шагом `25 м` на дистанции `>= 1 км`).
+  - Сроки хранения (`retention:sweep`): `TELEMETRY_RETENTION_DAYS = 90` дней для батчей телеметрии, `SIGNIN_RETENTION_DAYS = 180` дней для логов входов.
 
 ---
 
@@ -498,7 +518,7 @@ server/test/fixtures/anticheat/
 | Ф4 | Challenges 1–5, доставка в heartbeat, применение в клиенте и ядре; `roadSeed`/`trafficSalt`, commit–reveal | 5–7 |
 | Ф5 | Оценка человечности: признаки, база, пороги, админка («почему»), политика FP, апелляции | 6–8 |
 | Ф6 | Блок ботов (§3–7) + варианты для тайминга (§10) + golden v2 + ночные прогоны | 6–8 |
-| Ф7 | PRIVACY.md, правила, whitepaper, README, [`docs/agents/verified-play.md`](../agents/verified-play.md) | 1–2 |
+| Ф7 | PRIVACY.md, правила, whitepaper, README, [`docs/spec/anticheat.md`](anticheat.md) | 1–2 |
 | **Итого** | | **39–55** (≈ 8–11 недель одного разработчика) |
 
 Сроки: ~~Рекомендация (решение 11): Pre-season на v1 + теневой сбор базы, v2 к Season 1.~~ **Решение 11 (17.10): рекомендация отклонена — «делаем сразу как надо, я все успею».** Владелец берёт полный объём v2 + мини-игры без промежуточного этапа «Pre-season на v1 в тени». Оценка не меняется: 70–105 человеко-дней (§18), а при одобрении всего расширенного каталога §13.9 — больше. Риск по срокам записан в §9.13 и §18 и не оспаривается.
@@ -777,3 +797,31 @@ server/test/fixtures/anticheat/
 
 ---
 
+## Приложение D. Защита от сибил, мультиаккаунтинга и система TrustScore (бывший `docs/roadmap/anti-sybil.md`)
+
+> Перенесено в `docs/spec/anticheat.md` при консолидации спецификаций (18.10.2026) взамен удалённого `docs/roadmap/anti-sybil.md`. Статус в коде (`PRODUCT.md`): в `main` проверка «один человек — много кошельков» не включена как автоматический блокер; слои ниже задают целевую эшелонированную защиту против сибил-ферм за призами пула, бесплатными попытками, рефералами и аирдропом TEN4 (`MASTER_PLAN.md` §8, §10, §12).
+
+### D.1 Эшелонированная модель (8 слоёв)
+1. **Сетевые сигналы (`player.SignIn.ipHash`, ASN — без `User-Agent` и без отпечатка браузера)**:
+   - Хэш IP `HMAC-SHA256(IP_HASH_SECRET, префикс /24 для IPv4 или /48 для IPv6)`, хранение `90 дней` (`antisybil_ip_retention_days = 90`, `SIGNIN_RETENTION_DAYS = 90` по `PRIVACY.md`); сырого IP и `User-Agent` в `player.SignIn` нет, **отпечаток браузера (fingerprint) отклонён** (`MULTI-ACCOUNT.md`, строка 7).
+   - Проверка IP-кластера через `ipinfo Core`: мобильные ASN исключены (`antisybil_ip_exclude_mobile_asn = 1`), штраф `-50` (`trust_ip_cluster_penalty = 50`) применяется **только при наличии второго сигнала** (`antisybil_ip_penalty_requires_second_signal = 1`).
+2. **Система `TrustScore` (`MASTER_PLAN.md` §8, миграция `20261105200000_trust`)**:
+   - **Игрой**: `+15` очков за день с верифицированным финишем (`trust_finish_points = 15`), максимум `2` дня в неделю (`trust_finish_days_per_week = 2`), потолок `100` (`trust_finish_cap = 100`, `trust_threshold = 100`).
+   - **Быстрые пути (`trust_fast_paths = 'paid,sgt'`)**: покупка платного билета или владение Solana Seeker Genesis Token (SGT) сразу даёт `+100` (`World ID` — Season 2; `Human Passport` — не используется).
+   - **Соцсети (`trust_social_cap = 30`)**: X `+20`, Discord `+15`, Telegram `+5` (суммарно не более `30`).
+   - **Пороги доступа**: пригласивший в Convoy — `trust >= 50` (`referral_min_trust_referrer = 50`); участник аирдропа — `trust >= 50` (`airdrop_min_trust = 50`); зачёт рейса по бесплатному недельному билету друга в вехах Convoy M1/M2 — `trust друга >= 100` (`referral_count_weekly_grant = 1`). Отображение игроку — в виде чек-листа (`trust_display_mode = 'checklist'`).
+3. **Экономические и временны́е ворота (Anti-Farm Gates)**:
+   - Тренировки (`tier = free`) не дают TEN4, билетов и призов (`RID-M-02`).
+   - Выплаты призов и реферальных наград удерживаются (`payout_hold_hours = 72`, удержание реферальных TEN4 — `48 ч`), позволяя отменить (`veto_winners_root` / `withheld`) результаты фермы до вывода средств.
+   - KYC через `Didit`: при игре по бесплатному билету — для любого денежного приза (`payout_kyc_free_any = 1`); при игре по купленному билету — от `$50` за сезон (`payout_kyc_paid_season_cents = 5000`); обязательный скрининг санкций `Chainalysis` (`payout_sanctions_check = 1`, fail-closed).
+4. **Граф ончейн-финансирования (`Helius funded-by` + кластеризация)**:
+   - Проверка общего кошелька-спонсора (`funded-by` через Helius Developer API; ответ `404` — без штрафа, используется собственная проверка графа переводов), веерного распределения SOL (`fan-out`) и слияния выплат (`fan-in`) на один адрес вывода.
+5. **Поведенческий отпечаток вождения и мини-игр (признак `F9` в §16.2)**:
+   - Вектор биометрических признаков поездки (распределение удержаний руля F1, время реакции F2, кинематика курсора в мини-играх F6, динамика клавиш F7) → кластеризация `HDBSCAN` и `MinHash` n-грамм интервалов между разными кошельками (для топ-20 пула и кандидатов на аирдроп, решение 16; `antisybil_telemetry_shadow = 1` на 2 недели старта).
+6. **Лимиты скорости в реферальной программе (Convoy Caps)**:
+   - На `main`: `inviteCapacity` (старт `3`, шаг `+3` за каждые `5` верифицированных платных смен до `30`), TTL инвайта `14` дней, недельный лимит подарков `10`.
+   - Целевая модель Convoy (`MASTER_PLAN.md` §6): слоты `min(100, 5 + 2·A)`, TTL `pending` `72 ч`, окно квалификации `60 дней`, лимит промо-поездок друга `3/день`, `10/нед` на пригласившего и `500/нед` глобально, личный потолок `1,000 TEN4/мес` и глобальный потолок `60,000 TEN4/мес` (`30,000/мес` первые 3 месяца после `tge_at`) (`referral.md`).
+7. **Один зачётный билет / потолок доли бесплатных билетов**:
+   - В рейтинге доски от одного кошелька учитывается только лучшая верифицированная попытка (`one best ride per wallet`), а доля призов бесплатных билетов ограничена `free_prize_board_cap_bps = 3000` (30%).
+8. **Обязательная ручная ревизия топ-20 перед выплатой (§16.6)**:
+   - Перед фиксацией результатов и выплатой все кошельки в топ-20 проверяются в админке по графу `F9`, таймлайнам стимулов, трассам мини-игр, IP-кластерам и графу `funded-by`; при обнаружении сибил-связки связанные аккаунты дисквалифицируются (`rejected`).

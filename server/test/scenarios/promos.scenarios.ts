@@ -8,7 +8,7 @@ import { aPool } from '../support/pools.js';
 import { aPromo } from '../support/promos.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
 
-/* Promo codes beyond tickets (docs/promocodes.md): a free 1h/4h/8h ride code, codes that start later, the player's list of what they
+/* Promo codes beyond tickets (docs/spec/promocodes.md): a free 1h/4h/8h ride code, codes that start later, the player's list of what they
    redeemed, and the admin's PROMOCODES tab – a signed create / disable, the active list and the log of who used what.
    Extra free-ride codes are retired. Cab visuals are minted by burning TEN4, not granted by a code. Same scenarios on in-memory and PostgreSQL. */
 export const PROMOS_ADMIN = newWallet();

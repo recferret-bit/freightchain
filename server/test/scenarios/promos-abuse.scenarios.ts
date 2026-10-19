@@ -8,7 +8,7 @@ import { aPool } from '../support/pools.js';
 import { aPromo, ticketEffect } from '../support/promos.js';
 import { PROMOS_ADMIN } from './promos.scenarios.js';
 
-/* Promo codes under attack and over time (docs/promocodes.md): when a code stops working – to the millisecond –, what stays granted after it ended, and every way a wallet
+/* Promo codes under attack and over time (docs/spec/promocodes.md): when a code stops working – to the millisecond –, what stays granted after it ended, and every way a wallet
    (or someone without one) can try to get more out of a code than the admin meant: the per-wallet limit, the global cap, spelling variants, hostile bodies, a replayed or
    stale admin signature. Same scenarios on in-memory and PostgreSQL. */
 export function promoAbuseScenarios(h: () => Harness): void {

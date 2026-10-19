@@ -5,7 +5,7 @@ import type { PledgeChainEvent } from '../../../domain/economy/pledge.types.js';
 /** The transactions the server builds – each has its own compute-unit budget (programs/README.md "Compute units"). */
 export type ChainTxKind = 'buy' | 'refund' | 'pay_prize' | 'close_pool' | 'commit_winners';
 
-/** What a built transaction costs on the network (docs/agents/escrow.md). */
+/** What a built transaction costs on the network (docs/spec/pool.md). */
 export interface FeeQuote {
   /** compute-unit price in micro-lamports: a percentile of the recent fees of the hot accounts, clamped to [min, max] */
   priorityMicrolamports: number;

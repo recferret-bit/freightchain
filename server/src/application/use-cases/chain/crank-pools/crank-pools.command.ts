@@ -1,6 +1,6 @@
 import type { CrankStep } from '../../../../domain/economy/pool-crank.js';
 
-/** One crank pass (docs/agents/escrow.md: CRANK_SECRET pays for the permissionless cranks): open each tier's next pool when its slot has come, then every pool
+/** One crank pass (docs/spec/pool.md: CRANK_SECRET pays for the permissionless cranks): open each tier's next pool when its slot has come, then every pool
     on chain, the next permissionless step until none is left. */
 export class CrankPoolsCommand {}
 

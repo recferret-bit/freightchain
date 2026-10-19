@@ -67,7 +67,7 @@ Table `player.GameSetting` (`key` text, `value` integer). The migration seeds th
 | `referral_ride_cap_lamports` | 1000000000 | Per referrer, per pool. |
 | `referral_donation_share_bps` / `referral_donation_cap_lamports` | 1000 / 500000000 | Spectator-tip share, and the lifetime cap of that share for one pair. |
 
-Change one with the signed admin API (`GET /api/admin/settings`, then the challenge and `POST /api/admin/settings`). Each key has its own bounds (`SETTING_BOUNDS`; the admin form shows them: a grant flag is only 0 or 1, a grant interval is at least 1 day). The same session can add or remove one signed-in wallet's free rides (`POST /api/admin/players/free-rides`). A result below 0 or above 100_000 is refused. The retired key `weekly_ticket_tier` is ignored. Detail of the invite rules: `docs/agents/referral.md`.
+Change one with the signed admin API (`GET /api/admin/settings`, then the challenge and `POST /api/admin/settings`). Each key has its own bounds (`SETTING_BOUNDS`; the admin form shows them: a grant flag is only 0 or 1, a grant interval is at least 1 day). The same session can add or remove one signed-in wallet's free rides (`POST /api/admin/players/free-rides`). A result below 0 or above 100_000 is refused. The retired key `weekly_ticket_tier` is ignored. Detail of the invite rules: `docs/spec/referral.md`.
 
 ## Server settings (`env.schema.ts`)
 
@@ -147,7 +147,7 @@ Ranked starts read the country from edge headers (`CF-IPCountry` and `CF-Region-
 | `ONCHAIN_SESSION_TTL_HOURS` | `24` | max 168 |
 | `WEBHOOK_SECRET` | unset | **Secret**, ≥ 16 chars. Unset = `POST /api/chain/webhook` answers 404 |
 | `CRANK_SECRET` | unset | **Secret** base58 keypair (or `solana-keygen` JSON array) paying the fees of the pool crank: `fail_pool`, `expire_pool`, refunds (8 per tx), `close_pool` of a refunded pool. Fee money only; unset = no crank (players still CLAIM REFUND from their wallet) |
-| `REDIS_URL` | unset | `redis://[:password@]host:6379` – the cache behind `GET /api/stats`, the landing's all-time totals and the profile's driving record (docs/statistics.md). Unset = an in-process cache (dev, tests). Production compose runs a `redis` service and sets it to `redis://redis:6379`. A Redis that is down is a cache miss for statistics; protected rate-limit buckets reject requests until it recovers. Production AI editing requires Redis |
+| `REDIS_URL` | unset | `redis://[:password@]host:6379` – the cache behind `GET /api/stats`, the landing's all-time totals and the profile's driving record (`docs/spec/platform_services.md`). Unset = an in-process cache (dev, tests). Production compose runs a `redis` service and sets it to `redis://redis:6379`. A Redis that is down is a cache miss for statistics; protected rate-limit buckets reject requests until it recovers. Production AI editing requires Redis |
 | `CRANK_INTERVAL_MS` | `60000` | The crank's schedule (with `CRANK_SECRET` and a program); `0` = only `node dist/cli/index.js pool:crank` |
 | `PAYOUT_SECRET` | unset | **Secret** base58 keypair (or `solana-keygen` JSON array) the admin names on chain as `Config.payout_authority` (`pool-admin.mjs set-payout-authority`). After a pool's review window it pays the ranked prizes and closes the pool; it can do nothing else and pays only its own fees. Unset = no automatic payouts (the admin pays from the admin page) |
 | `PAYOUT_INTERVAL_MS` | `300000` | The payout job's schedule (with `PAYOUT_SECRET` and a program); `0` = only `node dist/cli/index.js pool:payout` |
@@ -163,7 +163,7 @@ Ranked starts read the country from edge headers (`CF-IPCountry` and `CF-Region-
 
 The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD` ≥ 16 chars), a wallet sign-in, and a wallet signature for every change.
 
-### 3D model editor (docs/agents/editor.md)
+### 3D model editor (docs/spec/platform_services.md)
 
 | Key | Default | Notes |
 |---|---|---|

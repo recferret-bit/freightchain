@@ -2,42 +2,42 @@
 
 Browser game after *Desert Bus*: a 2D truck cockpit over an endless, seeded 3D road; each ride costs a free ride or an escrowed ticket and is complete at its finish line (distance only – the speed governor sets the fastest possible time). Client = vanilla ES modules + three.js r160 from a CDN (no build step, no framework). Server = NestJS + Prisma + PostgreSQL. Escrow = an Anchor program on Solana devnet.
 
-This file is the map and the hard rules only. The detail lives in **`docs/agents/<topic>.md` – read the topic file before changing that area.** Skills (with their commands): `README.md` → "Skills".
+This file is the map and the hard rules only. The detail lives in **`docs/agents/<topic>.md` and `docs/spec/<topic>.md` – read the topic file before changing that area.** Skills (with their commands): `README.md` → "Skills".
 
 ## Repo
 
 `client/` the game (`play.html`, `js/`, `shared/`) + site pages (lobby, admin, viewer, `r.html`, `blink.html`, `site/`) · `shared/` workspace package (`@freightchain/shared`) re-exporting `client/shared/` · `landing/` the `/` page + whitepaper + pitch deck (Vite) · `server/` the API + `replay:worker` + dedicated AI worker (`npm run editor:worker`; Clean Architecture, `prisma/`, `test/`) · `programs/` the escrow (`freightchain_pools`) and local TEN4 (`freightchain_honk`) programs · `mcp/` the entity MCP (the 3d-assets skill as tools for the AI model editor; `npm run editor:mcp`, `npm run mcp:check`) · `media/` promo clips + sound · `audit/` multi-agent security check suite for any repo (`--repo <path>` or `--github <url>`) · `deploy/` production deploy; local edge `npm run infra:local` (`http://freightchain.localhost`) · `design/` icons, banners · `docs/` architecture + explainers · `.claude/skills/` project skills · `docker-compose.yml` local PostgreSQL (:15433) + optional Redis & worker · `e2e/` code-level end-to-end (happy-dom + `docker-compose.e2e.yml`; `npm run test:e2e:block1`, `npm run test:e2e:block2`).
 
-## Where the detail is (`docs/agents/`)
+## Where the detail is (`docs/agents/` & `docs/spec/`)
 
 | topic | file |
 |---|---|
-| repo map, split hosts, online mode, logs | `repo.md` |
-| the game: run it, file layout, conventions, rendering gotchas, object pools, sim is not replayable, known gaps | `client.md` |
-| routes / themes, road network + forks, landmarks, model viewer, climate, day / night | `world.md` |
-| controls, gameplay systems (holes, traffic, gearbox, battery, engine, damage…) | `gameplay.md` |
-| server rules, server checks, configuration | `server.md` |
-| verified play (telemetry, verdict, the server's road, 10 Hz replay verification) | `verified-play.md` |
-| statistics | `statistics.md` |
-| live board, live streams, replays, donations | `live.md` |
-| admin page, observing production | `admin-ops.md` |
-| 3D model editor: entity storage + revisions, the bundle API, editor sign-in, signed publish | `editor.md` |
-| free levels, tutorial + assist, free rides, trips | `free-rides.md` |
-| referrals: invites, free-ride gifts, donation share (v5 drops on-chain pot leg) | `referral.md` |
-| garage, promo codes | `garage-promo.md` |
-| money, escrowed pools, the program toolchain | `escrow.md` |
-| achievement tiers, the soulbound badge cNFTs, mint job + art | `achievements.md` |
-| TEN4 (HONK verb): capped mint, checkpoints, the burn, cab visuals | `honk.md` |
-| product analytics (PostHog) | `analytics.md` |
-| promo videos + sound | `media.md` |
-| landing, whitepaper, app icon | `landing.md` |
-| verifying changes (all test commands) | `verifying.md` |
-| deploying to production | `deploy.md` |
-| as-built product, target decisions, coverage bar | `../spec/PROCESS.md` |
+| repo map, split hosts, online mode, logs | `docs/agents/repo.md` |
+| the game: run it, file layout, conventions, rendering gotchas, object pools, sim is not replayable, known gaps | `docs/agents/client.md` |
+| routes / themes, road network + forks, landmarks, model viewer, climate, day / night | `docs/agents/world.md` |
+| controls, gameplay systems (holes, traffic, gearbox, battery, engine, damage…) | `docs/agents/gameplay.md` |
+| server rules, server checks, configuration | `docs/agents/server.md` |
+| verified play (telemetry, verdict, the server's road, 10 Hz replay verification) | `docs/spec/anticheat.md` |
+| statistics | `docs/spec/platform_services.md` |
+| live board, live streams, replays, donations | `docs/spec/replays_streams.md` |
+| admin page, observing production | `docs/agents/admin-ops.md` |
+| 3D model editor: entity storage + revisions, the bundle API, editor sign-in, signed publish | `docs/spec/platform_services.md` |
+| free levels, tutorial + assist, free rides, trips | `docs/spec/rides.md` |
+| referrals: invites, free-ride gifts, donation share (v5 drops on-chain pot leg) | `docs/spec/referral.md` |
+| garage, promo codes | `docs/spec/ten4.md`, `docs/spec/promocodes.md` |
+| money, escrowed pools, the program toolchain | `docs/spec/pool.md` |
+| achievement tiers, the soulbound badge cNFTs, mint job + art | `docs/spec/web3_solana.md` |
+| TEN4 (HONK verb): capped mint, checkpoints, the burn, cab visuals | `docs/spec/ten4.md`, `docs/agents/ten4-localnet.md` |
+| product analytics (PostHog) | `docs/spec/platform_services.md` |
+| promo videos + sound | `docs/agents/media.md` |
+| landing, whitepaper, app icon | `docs/agents/landing.md` |
+| verifying changes (all test commands) | `docs/agents/verifying.md` |
+| deploying to production | `docs/agents/deploy.md` |
+| as-built product, target decisions, coverage bar | `docs/spec/PROCESS.md` |
 
 ## Hard rules
 
-**Maps stay current.** A key change (a root directory, a skill added / renamed / new command, a public host, a root `npm` script, a product surface or a path these files name) updates `README.md`, this file, `CLAUDE.md` and the matching `docs/agents/` file in the same change – only the sentences it made wrong. A new skill = one row in `README.md` → "Skills". Keep this file and `CLAUDE.md` small: a rule here is one line, its detail goes into `docs/agents/`.
+**Maps stay current.** A key change (a root directory, a skill added / renamed / new command, a public host, a root `npm` script, a product surface or a path these files name) updates `README.md`, this file, `CLAUDE.md` and the matching `docs/agents/` or `docs/spec/` file in the same change – only the sentences it made wrong. A new skill = one row in `README.md` → "Skills". Keep this file and `CLAUDE.md` small: a rule here is one line, its detail goes into `docs/agents/` or `docs/spec/`.
 
 **Specs.** As-built behavior is `docs/spec/PRODUCT.md`. A target decision is not current behavior. A behavior change updates that file in the same change. Tests lock as-built until the target's own change. The coverage bar is `docs/testing/COVERAGE_CONTRACT.md`. Detail: `docs/spec/PROCESS.md`.
 
@@ -63,14 +63,14 @@ Client:
 - Reach the API and other hosts only through `client/js/hosts.js` with `credentials: 'include'` – never a bare `/api/…` or `/play.html` (landing included). A new subdomain = its own nginx template + `deploy/scripts/remote/setup.sh` + smoke check, and `hosts.js` must strip the prefix.
 - Modules are acyclic (`sim/*` never imports `cockpit/*`; `cockpit/*` never imports the scene). Canvas size from the shared `view` object. Tunables in `js/config.js`. Use `store()` not raw `localStorage`.
 - Theme materials only inside `create*()` via `basic()` / `trackMat()`; every single-sided material tracked or in `flipMats()` (mirrors). `mesh.position.set()`, never assign `position`.
-- Production AI editor rate limits require Redis; MCP uses its own counter-only ACL user, protected routes fail closed on Redis failure, PostgreSQL owns the shared AI job queue, and only the dedicated editor worker executes generations (`docs/agents/editor.md`).
+- Production AI editor rate limits require Redis; MCP uses its own counter-only ACL user, protected routes fail closed on Redis failure, PostgreSQL owns the shared AI job queue, and only the dedicated editor worker executes generations (`docs/spec/platform_services.md`).
 - Every 3D model is a data-only entity (`client/shared/entity/`, world.md "Entities"); gameplay (collision, footprints, landmark order, sirens, vehicle sizes) is `roster.js` / `VEHICLES`, never an entity. A refactor of the builders passes `npm run test:parity` + `trace:diff`.
 - User-tuned, leave alone unless asked: `SHAKE_START 0.45`, `SHAKE_MOVING 0.09`, `SHAKE_RPM 0.315`, `START_ENGINE_OFF = true`. Numeric tuning requests are relative to the current value ("lower it twice" = halve it).
 - Serve over http (`npm run infra:local` → `http://freightchain.localhost`, or `client/serve.sh` / `npm run server:dev` on :3000); `file://` can't load the modules. Driving is desktop-only; spectating streams/replays works on mobile.
 
-Escrow: the money is in the program; the server only mirrors pools and credits tickets from program events; every wallet signs and sends its own transaction; the server holds two keys – the crank (permissionless steps + opening each day's pool from the admin's `Series`) and the payout key (`PAYOUT_SECRET`: commits a pool's winners root once every ride is decided, records pledged rides' attestations, closes a paid pool – `pool:payout`; prizes are paid with Merkle proofs after the review lock, the cold admin may veto a root). Program v4/v5 (winners root, per-ride attestations, sponsor refunds, `seal_road`, the Config floors; v5: `8500/500/1000` split, `set_pool_rules`, `max_player_share_bps < 5000`, `paid_tickets_enabled`, no on-chain referral leg) is in `docs/agents/escrow.md`. Never touch the global Solana config or `~/.config/solana/id.json`; always an explicit `--url devnet`; no program deploy or pool creation without the user. Keep `docs/escrow-open-items.md` current.
+Escrow: the money is in the program; the server only mirrors pools and credits tickets from program events; every wallet signs and sends its own transaction; the server holds two keys – the crank (permissionless steps + opening each day's pool from the admin's `Series`) and the payout key (`PAYOUT_SECRET`: commits a pool's winners root once every ride is decided, records pledged rides' attestations, closes a paid pool – `pool:payout`; prizes are paid with Merkle proofs after the review lock, the cold admin may veto a root). Program v4/v5 (winners root, per-ride attestations, sponsor refunds, `seal_road`, the Config floors; v5: `8500/500/1000` split, `set_pool_rules`, `max_player_share_bps < 5000`, `paid_tickets_enabled`, no on-chain referral leg) is in `docs/spec/pool.md`. Never touch the global Solana config or `~/.config/solana/id.json`; always an explicit `--url devnet`; no program deploy or pool creation without the user. Keep `docs/escrow-open-items.md` current.
 
-Achievements: ids are FROZEN (add a tier, never retune one); unlock rows are append-only, the NFT mint is its own outbox; badge cNFTs are minted by their own key (`ACHIEVEMENT_MINT_SECRET`) only after the delay and a re-check that skips rejected rides – detail in `docs/agents/achievements.md`.
+Achievements: ids are FROZEN (add a tier, never retune one); unlock rows are append-only, the NFT mint is its own outbox; badge cNFTs are minted by their own key (`ACHIEVEMENT_MINT_SECRET`) only after the delay and a re-check that skips rejected rides – detail in `docs/spec/web3_solana.md`.
 
 Analytics: capture is opt-in (`POSTHOG_ENABLED=1`); never print `POSTHOG_KEY`; don't flip `$create_alias`.
 

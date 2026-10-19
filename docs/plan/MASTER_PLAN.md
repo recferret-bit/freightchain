@@ -179,7 +179,7 @@
 | Страницы | `/terms`, `/privacy`, `/rules` на apex (страницы Vite лендинга), ссылки в футере, на экране кошелька, в KYC и аирдропе |
 | Pre-season, вход | Решено: призовая попытка — **только** за обязательные задания аирдропа, другого бесплатного входа нет. Риск: обязательные действия в соцсетях могут считаться неденежным consideration — вопрос сербскому юристу. «Репост» = цитата с личным кодом; обязательный набор (раунд 19) — тест + Telegram (канал и чат) + X подписка + пост об участии с кодом; Discord по желанию |
 | Pre-season | Организатор — владелец-физлицо (без юрлица); короткие правила и уведомление о данных — `docs/legal/PRESEASON_RULES.md`; полные Terms/Privacy — с Season 1 |
-| Official Rules | ✅ Шаблон Season 1 готов в `docs/legal/OFFICIAL_RULES.md` (сверено с `server/src/domain/prize/` и `docs/prize/OFFICIAL-RULES.md`) — на проверку юристу |
+| Official Rules | ✅ Шаблон Season 1 готов в `docs/legal/OFFICIAL_RULES.md` (сверено с `server/src/domain/prize/` и `docs/spec/pool.md`) — на проверку юристу |
 | Обработчики в политике | Cloudflare, twitterapi.io, Didit, Helius, ipinfo, Chainalysis, PostHog |
 
 ## 11. Инфраструктура
@@ -236,12 +236,12 @@
 
 | Черновик / Спецификация | Где в репо |
 |---|---|
-| `docs_drafts/tokenomics/TEN4-v2.md` | `docs/tokenomics/TEN4-v2.md` (+ `docs/honk/SPEC.md`) |
-| `docs_drafts/prize/POOLS.md` | `docs/prize/POOLS.md` |
-| `docs_drafts/seasons/README.md` | `docs/seasons/README.md` |
-| `docs_drafts/referral/README.md` | `docs/referral/README.md` |
-| `docs_drafts/referral/MULTI-ACCOUNT.md` | **Отдельно**: внутренний документ по мультиаккаунтам, не публикуется (пороги не раскрываем) |
-| `docs_drafts/airdrop/README.md` | `docs/airdrop/README.md` |
+| `docs_drafts/tokenomics/TEN4-v2.md` | `docs/spec/ten4.md` + `docs/spec/tokenomics.md` |
+| `docs_drafts/prize/POOLS.md` | `docs/spec/pool.md` |
+| `docs_drafts/seasons/README.md` | `docs/spec/seasons.md` |
+| `docs_drafts/referral/README.md` | `docs/spec/referral.md` |
+| `docs_drafts/referral/MULTI-ACCOUNT.md` | **Отдельно**: внутренний документ по мультиаккаунтам (`docs/spec/anticheat.md` Приложение D; пороги не раскрываем) |
+| `docs_drafts/airdrop/README.md` | `docs/spec/airdrop.md` |
 | `docs/legal/PRIVACY.md` | Готов черновик → публичная страница `/privacy` после проверки юристом |
 | `docs/legal/TERMS.md` | Готов черновик → страница `/terms` после проверки юристом |
 | `docs/legal/OFFICIAL_RULES.md` | ✅ Готов черновик Season 1 под единую модель пулов и динамическую таблицу финала → `/rules` после проверки юристом |

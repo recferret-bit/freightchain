@@ -15,7 +15,7 @@ export function parse(options) {
   });
   if (!values.keypair) throw new Error('--keypair <path to a solana keypair json> is required (it is read from the file only, never printed)');
   if (!(values.cluster in CLUSTERS)) throw new Error(`--cluster must be devnet or mainnet-beta`);
-  if (values.cluster === 'mainnet-beta' && !(values.rpc && values['i-know-mainnet'])) throw new Error('mainnet needs an explicit --rpc and --i-know-mainnet (docs/agents/achievements.md: mainnet waits for the devnet tests)');
+  if (values.cluster === 'mainnet-beta' && !(values.rpc && values['i-know-mainnet'])) throw new Error('mainnet needs an explicit --rpc and --i-know-mainnet (docs/spec/web3_solana.md: mainnet waits for the devnet tests)');
   return values;
 }
 

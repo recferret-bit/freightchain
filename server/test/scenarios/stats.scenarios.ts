@@ -7,7 +7,7 @@ import type { Harness } from '../support/harness.js';
 import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
 import { TREASURY } from '../support/fake-chain.js';
 
-/* Statistics (docs/statistics.md): the running totals per rider and for the whole game – every started ride that ends counts what it drove (the bug this
+/* Statistics (docs/spec/platform_services.md): the running totals per rider and for the whole game – every started ride that ends counts what it drove (the bug this
    fixed: the landing counted only COMPLETE shifts, so a young game showed 0.00 km), plus time, crashes (vehicle / building) and donations during streams.
    Free shift = 10 s driven AND 140 m. Same scenarios on in-memory and PostgreSQL. */
 export const STATS_ENV = { FREE_RIDE_SECONDS: '10' };

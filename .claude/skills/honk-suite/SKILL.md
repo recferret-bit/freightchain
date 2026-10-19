@@ -5,7 +5,7 @@ description: Full local TEN4 coin suite. Program tests, catalog drift, the valid
 
 # TEN4 coin suite
 
-One local validator. The detail of the chain and the headless session is `docs/agents/honk-localnet.md`.
+One local validator. The detail of the chain and the headless session is `docs/agents/ten4-localnet.md`.
 
 ```sh
 bash .claude/skills/honk-suite/run.sh

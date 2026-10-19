@@ -1,5 +1,5 @@
 /* The achievement catalogue and its rules – pure (and import-free, so design/achievements/generate.mjs reads it as is). Each family is a ladder of 3-4 tiers, easy to
-   hard; each tier is one achievement and, once earned and minted, one soulbound compressed NFT (docs/agents/achievements.md). Tier 1 keeps the id the family had before
+   hard; each tier is one achievement and, once earned and minted, one soulbound compressed NFT (docs/spec/web3_solana.md). Tier 1 keeps the id the family had before
    the tiers existed – unlock rows in production reference those ids, so an id is FROZEN once a wallet could have earned it. A new tier = a new id. */
 export interface Facts {
   started: number; // rides that were actually started

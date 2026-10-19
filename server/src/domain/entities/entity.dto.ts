@@ -1,7 +1,7 @@
 import type { EntityConfig } from '../shared/entity.js';
 import type { EntityRecord, RevisionRecord, RevisionSummary } from './entity.js';
 
-/* What the editor API sends (docs/editor-api.md). Dates are ISO strings. */
+/* What the editor API sends (docs/spec/platform_services.md). Dates are ISO strings. */
 
 export interface EntityBundleDto {
   /** short content hash: changes whenever what players draw changes */

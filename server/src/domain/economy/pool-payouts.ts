@@ -1,5 +1,5 @@
 /*
- * How a pool's PRIZE share is divided among its ranked riders (docs/agents/escrow.md: skill prizes, no draw). Of the pool, prize = prizeBps of the pot
+ * How a pool's PRIZE share is divided among its ranked riders (docs/spec/pool.md: skill prizes, no draw). Of the pool, prize = prizeBps of the pot
  * (70 % by default) – the program caps every pay_prize at that bound. Within it, in parts of 70: the top 3 get 25 / 15 / 10, and 20 parts are shared equally
  * by the top 20 (ranks 1–20, so the top 3 get a share of both). Integer lamports, floors only: the sum never exceeds the prize; whatever is not paid (fewer riders,
  * rounding) stays in the vault and goes to the seed treasury at close.

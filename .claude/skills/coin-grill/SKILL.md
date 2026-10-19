@@ -33,7 +33,7 @@ When invoked on `<path-to-token-file>`, execute all three passes sequentially be
 
 1. **Read Target File & Main Project Context**:
    - Read the target file at `<path-to-token-file>` (never guess if the path is missing or unreadable).
-   - Cross-reference the main repository (`README.md`, `programs/freightchain_pools`, `server/src/domain/verdict`, `client/js/trips.js`, `docs/garage.md`, `docs/agents/escrow.md`, `docs/agents/verified-play.md`).
+   - Cross-reference the main repository (`README.md`, `programs/freightchain_pools`, `server/src/domain/verdict`, `client/js/trips.js`, `docs/spec/ten4.md`, `docs/spec/pool.md`, `docs/spec/anticheat.md`).
    - Run `node .claude/skills/coin-grill/grill.mjs <path-to-token-file> [--out <report.html>]` to run the deterministic checks and generate the baseline HTML structure, then enrich or refine if the input file contains custom nuances.
 
 2. **Pass 1 of 3 — Baseline On-Chain Technical, Structural & Project-Fit Grill**:

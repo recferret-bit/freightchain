@@ -350,7 +350,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 | `B1-LOBBY-21` | server/scripts/e2e-watch.mjs | e2e/block1-offchain/lobby/receipt.test.mjs | automated |
 | `B1-LOBBY-22` | server/scripts/e2e-blinks.mjs | e2e/block1-offchain/lobby/blink.test.mjs | mock |
 | `B1-LOBBY-23` | — | e2e/block1-offchain/lobby/blink.test.mjs | mock |
-| `B1-FREE-01` | docs/agents/free-rides.md | e2e/block1-offchain/free/paths.test.mjs | automated |
+| `B1-FREE-01` | docs/spec/rides.md | e2e/block1-offchain/free/paths.test.mjs | automated |
 | `B1-FREE-02` | client/js/easy-entry.js | e2e/block1-offchain/free/paths.test.mjs | automated |
 | `B1-FREE-03` | server/test/scenarios/free-levels.scenarios.ts | e2e/block1-offchain/free/paths.test.mjs | automated |
 | `B1-FREE-04` | server/test/scenarios/free-levels.scenarios.ts | e2e/block1-offchain/free/paths.test.mjs | automated |
@@ -437,13 +437,13 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 | `B2-API-07` | .claude/skills/honk-suite/run.sh | e2e/block2-chain/api/chain.test.mjs | pending |
 | `B2-POOL-01` | programs/idl/freightchain_pools.json | e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-POOL-02` | — | e2e/block2-chain/api/chain.test.mjs | automated |
-| `B2-HONK-01` | docs/agents/honk.md | e2e/block2-chain/honk/ledger.test.mjs | automated |
+| `B2-HONK-01` | docs/spec/ten4.md | e2e/block2-chain/honk/ledger.test.mjs | automated |
 | `B2-HONK-02` | .claude/skills/honk-suite/run.sh | e2e/block2-chain/honk/ledger.test.mjs | pending |
 
 ## (d) Gaps in the existing tests
 
 - HTTP referral scenarios stop at bind and gift. They do not assert the free-ride grant after a verified MEDIUM ride. The unit spec does.
-- `docs/promocodes.md` still says the feature lives on an undeployed branch. Promo create and redeem are on main.
+- Promo create and redeem are on main (`docs/spec/promocodes.md`).
 - `docs/agents/verifying.md` records that `e2e-tickets-stub` RETRY CONFIRM and the stub's missing `/reconcile` route fail on main (2026-10-13).
 - `set_pool_rules` has no admin HTTP route. Operators use the CLI.
 - The existing compose file has no Solana service. Localnet uses a host `solana-test-validator`. This suite does the same and does not pull a validator image.
@@ -470,7 +470,7 @@ Program: `npm run program:test` (LiteSVM / cargo) and `npm run program:verify`. 
 2. `paintHero` throws if `/api/pool` is 200 without `split` when `pools` is empty. It also throws if live JSON lacks `totals`, `upcoming`, or `recent`.
 3. Cosmetic promo redeem is refused `visuals_are_honk`.
 4. With `HONK_PROGRAM_ID` unset, `GET /api/honk` returns `chain: null` (ledger only).
-5. `docs/promocodes.md` describes promos as undeployed. The routes are on main.
+5. Promo create and redeem routes are on main (`docs/spec/promocodes.md`).
 6. No admin HTTP handler for `set_pool_rules`.
 7. Referral HTTP scenarios never assert the qualify grant.
 8. `e2e-tickets-stub` RETRY CONFIRM and a missing `/reconcile` route fail on main (already noted in `docs/agents/verifying.md`).

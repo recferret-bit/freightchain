@@ -14,7 +14,7 @@
 
 | Нужно мини-запуску | Есть? | Где / что делать |
 |---|---|---|
-| Недельный конкурс мастерства, доски 1h/4h/8h, счёт `cleanBps`, проверка и апелляции | Да | `server/src/domain/prize/prize-rules.ts`, `docs/prize/SPEC.md` |
+| Недельный конкурс мастерства, доски 1h/4h/8h, счёт `cleanBps`, проверка и апелляции | Да | `server/src/domain/prize/prize-rules.ts`, `docs/spec/pool.md` |
 | Лимит рейтинговых стартов: 1 промо + 5 платных в неделю | Да | `PROMO_RANKED_STARTS = 1`, `PAID_RANKED_STARTS = 5` |
 | Промо-поездка 1h (эффект `ride`, один раз на кошелёк, не минтит TEN4) | Да | `promo.types.ts`, `PromoRideGrant` — основа для «1 попытки» |
 | Платные тарифы выключены по умолчанию | Да | `ride-tier.ts`: `onSale: false` у 1h/4h/8h |

@@ -83,4 +83,4 @@ Update these in the same change when you touch the constant. Re-read the test; i
 
 `landing/test/whitepaper.test.js` fails when a quoted figure drifts from the source it names. Do not only edit the page.
 
-A fatal traffic or prop change that can move `st.s` also concerns verified play (`docs/agents/verified-play.md` "Verified play"). Keep the truck where the contact happened.
+A fatal traffic or prop change that can move `st.s` also concerns verified play (`docs/spec/anticheat.md`). Keep the truck where the contact happened.

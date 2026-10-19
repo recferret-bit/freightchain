@@ -20,7 +20,7 @@ import {
   type DraftBody, type EntityIdParams, type PublishBody, type PublishChallengeBody, type RestoreBody, type RevisionIdParams,
 } from './dto/editor.dto.js';
 
-/** The 3D model history (docs/editor-api.md): read heads and revisions, save a draft, restore one, publish one (wallet-signed, audited). Editor session only. */
+/** The 3D model history (docs/spec/platform_services.md): read heads and revisions, save a draft, restore one, publish one (wallet-signed, audited). Editor session only. */
 @Controller('api/editor')
 @UseGuards(EditorGuard)
 export class EditorEntitiesHttpController {

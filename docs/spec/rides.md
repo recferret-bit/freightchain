@@ -12,6 +12,35 @@
 - Финиш: `completeDist = K × MAX_SPEED × minSeconds`. Для 1h это 50 400 м (`ride-rules.ts:5,52`). Завершение — `lastS ≥ completeDist` **со слов клиента** (`ride.entity.ts:337`).
 - Статистики по поездке нет, только агрегаты (`server/prisma/stats/stats.prisma`). Красный свет считает только клиент (`orchestrator.js:49–53`).
 
+### 1.1a Бесплатные уровни, туториал, Assist и недельные билеты (`ride-trip.ts`, `trips.js`, `tutorial.js`, `assist.js`)
+- **Таблица бесплатных уровней (`FREE_LEVELS` в `server/src/domain/rides/ride-trip.ts` ⇄ `client/js/trips.js`, страны в `client/js/free-countries.js`)** (при `FREE_RIDE_SECONDS = 180`):
+  - **Level 1 — EASY (`free-1c`)**: `180 с` (`×1`), `K = 0.3` → `completeDist = 1 512 м`, маршрут Stuart Highway (`stuart`), старт `'straight'`, `first: ['country']`, `firstLen: [500, 500]`, `holesFrom = 4 000 м` (ямы не появляются на EASY), туториал по умолчанию на первой поездке, Assist доступен.
+  - **Level 2 — MEDIUM (`free-2c`)**: `300 с` (`×5/3`), `K = 0.4` → `completeDist = 3 360 м`, маршрут Route 66 (`route66`), `first: ['xroad4', 'fork', 'xroad4']`, `firstLen: [450, 450]`, `holesFrom = 400 м`, Assist доступен.
+  - **Level 3 — HARD (`free-3c`)**: `1 800 с` (`×10`, 30 мин), `K = 0.4` → `completeDist = 20 160 м`, маршрут Brenner Pass (`brenner`), `first: ['fork', 'xroad', 'fork', 'arterial', 'xroad']`, `firstLen: [450, 450]`, крутые повороты (`bends: 1.35`), `holesFrom = 150 м` (`HOLE_FIRST`), `tutorial: false` и `assist: false` (`409 tutorial_not_allowed` / `assist_not_allowed`).
+  - **Гостевой старт (`play.html` / `client/js/easy-entry.js`) и оффлайн `?sim=1` (`free-g`)**: при открытии чистого `play.html` без `?ride=` создаётся одноразовая гостевая сессия `POST /api/auth/guest` (`guest_<hex>`, `walletSignIn: false`) и заказывается реальная поездка EASY (`free-1c`, с сердцебиениями, реплеем и проверкой) либо оффлайн-фолбэк `free-1c` при недоступности API. ID `free-g` остаётся только для режима `?sim=1`.
+  - **Замороженные `trip` ID (`TRIP_ROADS`, `TRIP_HOLE_FIRST`)**: `free`, `free-1`, `free-2`, `free-3`, `free-1b`, `free-2b`, `free-3b` (15 мин HARD), `classic` — **никогда не удалять и не менять параметры**, чтобы старые поездки проходили `verdict:rejudge` и открывались в реплеях; при перенастройке уровня создаётся новый ID (`free-1d` и т. п.). Навыки проверки: `trip-design` и `level-check`.
+- **Выбор и смена уровня (`readyFreeRide`) и доска лидеров**:
+  - Если у игрока уже есть неначатая (`ordered`) бесплатная поездка, повторный `POST /api/rides { tier: 'free', level }` перевыбирает уровень/маршрут/сид на месте (`readyFreeRide`, пересчитывает `completeDist`); попытка стартовать устаревшую вкладку со старым `level` возвращает `409 ride_rechosen`.
+  - Доска бесплатных заездов: `GET /api/leaderboard?board=free&level=1|2|3` (ключи `localStorage`: выбор уровня `freightchain.level`, вкладка доски `freightchain.board-level`, чекбокс Assist `freightchain.assist`).
+- **Туториал (`client/js/ui/tutorial.js`) и водительский Assist (`client/js/ui/assist.js`, `client/js/guide.js` → `cockpit/guide.js`)**:
+  - Туториал (9 шагов на приборной панели + перехват живых ошибок `trouble()`) включается, если у игрока ещё нет `Player.tutorialPassedAt`; старт поездки с `tutorial: true` проставляет `Player.tutorialPassedAt` в `StartRideHandler` под локом игрока.
+  - Водительский Assist (`CFG.ASSIST = 0.5`) вдвое снижает и урон корпусу (`hurt()`, износ от холода), и разряд батареи (`updateBattery`), а также показывает баннер подсказок (`ASSIST_HULL_DAMAGE` при этом остаётся строго выше `PASS_DAMAGE_SHARE = 0.25`, чтобы серверный `checkWorld` засчитывал попадание в яму и не отклонял поездку как `obstacle-ignored`).
+  - Достижения по уровням и самостоятельной езде: `free-easy`, `free-crossroads`, `free-hard`, `on-my-own` (прохождение без Assist), `free-medium-3/5/10`, `free-hard-2/3/5`.
+- **Безлимитные тренировки и еженедельный бесплатный билет (`weekly_ticket_1h_enabled`)**:
+  - Тренировки (`tier: 'free'`) безлимитны (`freeRides` не списывается; исторические поля `freeRides`, `freeDay`, `freeRidesMax` и `GameSetting` ключи `free_on_signup`, `free_rides_daily_max` сохранены для совместимости).
+  - Раз в неделю (`weekly_ticket_1h_enabled = 1`, `weekly_ticket_1h_days = 7`) каждому кошельку выдаётся 1 бесплатный зачётный билет на `1h` (`OrderRideHandler`: сначала тратится `PromoRideGrant`, затем недельный билет, затем купленный билет).
+
+### 1.1b Алгоритм генерации дороги (`@freightchain/shared` ⇄ `server/src/domain/road`)
+Клиент и сервер строят идентичную бесконечную детерминированную дорогу из `(seed, trip)` через общие модули `client/shared/{prng.js,road.js,road-network.js,road-geometry.js,route-curvature.js}` и их серверный порт `server/src/domain/road/{road-rules.ts,road-layout.ts,road-plan.ts}` (полная математическая спецификация — **Приложение C** ниже):
+- **Два детерминированных ГПСЧ (`prng.js`)**: потоковый `mulberry32(seed >>> 0)` для раскладки сегментов, перекрёстков, циклов светофоров и трафика; позиционный хеш `rnd(n) = frac(sin(n * 127.1 + 311.7) * 43758.5453)` для независимого от порядка чанков ролла ям (`rollChunkHole`) и стороны изгиба развилки (`rnd(seed % 9973 + s0 * 0.37)`).
+- **Координаты хребта `(s, d)`**: продольная дистанция `s` (м, чанк `CHUNK_LEN = 32 м`) и поперечное смещение `d` (м, вправо `+`, влево `-`). Первая полоса `LANE0 = 2.4 м`, шаг полосы `LW = 4.2 м`, обочина `SHOULDER = 1.2 м`, ширина проезжей части `edgeOf(n) = 4.5 + (n - 1) * 4.2`, плавный переход числа полос `TAPER = 120 м`.
+- **Стартовый участок (`sA = 190 м`, `Sm = 225 м`)**: подъездная дорога `1+1` (`0..190 м`), затем 90° правый поворот радиусом `START_TURN_R = 22 м` и длиной дуги `L = round(π/2 * 22) = 35 м` (`kTurn = (π/2)/35`, либо `0` при `trip.start === 'straight'`), стартовый узел `j0` (`kind: 'start'`, `arms: []`) в точке `Sm = 225 м`, серверный `knownFrom = Sm + 100 = 325 м`.
+- **Шаблоны (`PATTERNS`) и раскладка сегментов**: 9 шаблонов (`country`, `highway`, `arterial`, `town`, `dual`, `fork`, `open`, `xroad`, `xroad4`) с взвешенными кортежами полос `[nR, nL, weight]`. Генератор сначала выдаёт очередь `trip.road.first` (с длиной из `firstLen`, по умолчанию `[500, 1100]`), затем выбирает шаблон по весам `trip.road.weights` без повтора подряд (если доступно ≥ 2 шаблонов с весом `> 0`). Длина участка шаблона `len[0]..len[1]` режется на сегменты `seg[0]..seg[1]` (остаток `< 0.6 * seg[0]` приклеивается к текущему сегменту).
+- **Перекрёстки и светофоры**: внутри сегмента на интервале `[s0 + TAPER + 100, s1 - 120)` с шагом `gap[0]..gap[1]`; тип `cross` (`arms: [-1, 1]`, вероятность `cross`) или `tee` (`arms: [side]`, `side = ±1`), боковые полосы `sl`, полуширина боковой дороги `sideHalf = edgeOf(sl) + 0.3`, устье `mouth = sideHalf + 1.5`. Цикл светофора (`signal` по вероятности `J.signal`): зелёный главной `g ∈ [16, 26] с`, зелёный поперечной `c ∈ [9, 14] с`, жёлтый `a = 3 с`, промтакты `r = 2 с`, период `T = g + c + 2*(a + r)`, начальная фаза `off = r() * T`.
+- **Развилки (`FORK`)**: длина `1200 м` (`f0 = s0, f1 = seg.s1`), профиль угла `forkG(u) = sin(2πu) * sin²(πu)` (`bulge = 0.55`), две зеркальные ветви относительно хорды от `f0`, точка выбора ветви `forkCommit = f0 + 205 м` (`corridor = 15 м`, `reach = 1.5`, `FORK_SWITCH_JUMP = 4 м`).
+- **Кривизна и 2D-геометрия (`road-geometry.js`, `route-curvature.js`)**: интегрирование средней точкой с шагом `1 м` (`RX[i] = RX[i-1] + sin(tm)`, `RZ[i] = RZ[i-1] - cos(tm)`, `RT[i] = t + k`), `curv(s) = style.curv(s) * bends * calm(s) * trip.bends + forkCurv(s)` с затуханием `calm(s)` вокруг перекрёстков и развилок и профилями маршрутов (`route66`, `stuart`, `siberia`, `brenner`, `panamerican`).
+- **Ямы и урон (`rollChunkHole`, `holeDamage`)**: на каждый 32-метровый чанк `ci` с `q(k) = rnd(ci * 97.13 + k * 3.71)` позиция `s = ci * 32 + 4 + q(1) * 24`; яма (`CONE_HOLE_IDS = ['sinkhole']`, 3 эллипса `ells`, `dmg: 14`, `slow: 0.35`, `crawl: 3`, `lane: true`, `cones: true`) спавнится при `s >= holeFirst`, `s < maxS`, `q(2) < holeChance` (база `0.045 * trip.holeChance`) и `net.plain(s, 70)`. Урон по осям (`AXLES = [2.2, -0.4, -11.5]`, `WHEEL = 1 м`, `CRAWL_SPEED = 3 м/с`, `HOLE_REF_SPEED = 28 м/с`, `REAR_AXLE_SHARE = 0.6`, `MIN_HURT = 0.3`): `holeDamage(type, v, axle) = type.dmg * clamp(v / 28, 0, 1.2)² * (axle ? 0.6 : 1)` при `v >= 3` и `dmg >= 0.3`.
+
 ### 1.2 Правила
 - **RID-M-01** MUST: типы поездок — **тренировочная** (`tier = free`, уровни, гость офлайн) и **1h**. 1h — единственный тип для рейтинга и пула. 4h и 8h не продаются и не создаются (решение 17; `onSale=false`, `POST /api/rides {tier:'4h'}` → `400`/`409`).
 - **RID-M-02** MUST: тренировочная поездка не рейтинговая, без TEN4, без пула, без мини-игр (решение 19), **не попадает в реплеи** и в лобби помечена на EN и RU (→ [`replays_streams.md`](replays_streams.md) RPL-M-02/10/10a). Тренировка (решение 56, ✅ 17.10.2026) = `tier=free` (все уровни) + офлайн-гость + любая поездка с туториалом/assist. Бесплатная попытка devnet-запуска и часовой промо-заезд — **не** тренировка.
@@ -33,6 +62,7 @@
 - **RID-M-18** MUST: строки `legacy` (старые поездки) в пуловый рейтинг не идут, неизмеренные поля — `null`.
 - **RID-M-19** MUST: публичные результаты пула (`GET /api/pools/:id/results`) — только после `payout_at`. `featureScores` и `humannessScore` видны только админке.
 - **RID-M-20** MUST: донаты и действия зрителей не меняют ни одно поле `RideResult` (решение 33).
+- **RID-M-21** MUST: побитовая идентичность генерации дороги между клиентом (`@freightchain/shared`: `prng.js`, `road.js`, `road-network.js`, `road-geometry.js`, `route-curvature.js`) и сервером (`server/src/domain/road/{road-rules.ts,road-layout.ts,road-plan.ts}`) — сегменты, полосы, перекрёстки, фазы светофоров, развилки, кривизна `(RX, RZ, RT)`, ролл ям `rollChunkHole` и расчёт урона `holeDamage` обязаны совпадать при любом `(seed, trip)`. Любое изменение генератора обновляет обе стороны в одном коммите.
 
 ## Часть 2. План тестирования
 Существующие id из приложений: **AC-R1…R8** (статистика), **AC-F1…F11** (финиш). Новые:
@@ -49,6 +79,7 @@
 | RID-T-09 | M-12 | клиент не прислал `reds` | поле S заполнено пересчётом |
 | RID-T-10 | M-11 | 1h-поездка в клиенте (E1, `trips.js` / HUD) | линия финиша на `finishS`, оставшиеся км; ожидаемого времени нет |
 | RID-T-11 | M-15 | новая строка `RideResult` | `stopLineViolations` и `speedingSeconds` = `null` |
+| RID-T-12 | M-21 | паритет генератора дороги клиент ⇄ сервер (`road-drift.spec.ts`, `road-plan.spec.ts`, `replay-engine.spec.ts`) на всех `trip` и десятках `seed` | `segs`, `juncs`, `forks`, `lanesAt(s)`, `roadHalfWidth(s)`, `signal(j)`, `holesNear(s)`, `holeDamage` и 2D-интеграция `(RX, RZ, RT)` совпадают точь-в-точь |
 
 ### Трассируемость
 | Правило | Тесты |
@@ -73,8 +104,9 @@
 | M-18 | AC-R8 |
 | M-19 | RID-T-07 |
 | M-20 | RID-T-08 |
+| M-21 | RID-T-12 (`road-drift.spec.ts`) |
 
-Итого: 20 MUST, запланированные id RID-T-01…11 и id из приложений (AC-R1…R8, AC-F1…F11). Id — не написанный тест. Исполняемая планка — [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
+Итого: 21 MUST, запланированные id RID-T-01…12 и id из приложений (AC-R1…R8, AC-F1…F11). Id — не написанный тест. Исполняемая планка — [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
 
 ---
 
@@ -292,4 +324,170 @@
 | AC-F11 | Смена `FINISH_RULES_VERSION` | у уже созданных поездок `completeDist` не меняется (как `ride-rules.ts:46`) |
 
 ---
+
+## Приложение C. Детерминированный алгоритм генерации дороги (`@freightchain/shared` ⇄ `server/src/domain/road`)
+
+Это нормативное описание текущей реализации генератора дороги на `main`, общей для клиента (`client/shared/prng.js`, `road.js`, `road-network.js`, `road-geometry.js`, `route-curvature.js`, `client/js/trips.js`) и сервера (`server/src/domain/road/road-rules.ts`, `road-layout.ts`, `road-plan.ts`). Тест паритета — `server/src/domain/road/__tests__/road-drift.spec.ts` (**RID-M-21 / RID-T-12**).
+
+### C.1 ГПСЧ и примитивы (`client/shared/prng.js`, `road.js`)
+1. **Позиционный хеш `rnd(n)`** (используется для ролла ям в чанках и выбора стороны развилки, не зависит от порядка обхода):
+   - `x = Math.sin(n * 127.1 + 311.7) * 43758.5453`
+   - `rnd(n) = x - Math.floor(x)`
+2. **Потоковый ГПСЧ `mulberry32(seed)`** (используется для раскладки шаблонов, сегментов, перекрёстков, циклов светофоров и симуляции трафика):
+   - Инициализация: `a = seed >>> 0` (при старте поездки `seed = (ride.seed ?? 0xC0FFEE) >>> 0`).
+   - На каждый вызов `r()`:
+     - `a = (a + 0x6D2B79F5) | 0`
+     - `t = Math.imul(a ^ (a >>> 15), 1 | a)`
+     - `t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t`
+     - возврат `((t ^ (t >>> 14)) >>> 0) / 4294967296`
+3. **Математические утилиты (`road.js`)**:
+   - `clamp(x, a, b) = Math.max(a, Math.min(b, x))`
+   - `smooth(u) = (t = clamp(u, 0, 1), t * t * (3 - 2 * t))`
+   - `wPick(r, items)`: взвешенный выбор из массива, где вес элемента — `x[x.length - 1]` (для шаблонов `[patKey, weight]`, для полос `[nR, nL, weight]`).
+
+### C.2 Координатная система хребта, геометрия полос и контроль съезда (`road.js`, `road-layout.ts`, `road-rules.ts`)
+- `CHUNK_LEN = 32` м (длина одного чанка дороги).
+- `LANE0 = 2.4` м (поперечное смещение центра внутренней полосы `i = 0` от осевой).
+- `LW = 4.2` м (ширина полосы). Центр полосы `i` (`0`-индекс от осевой) в направлении `dir ∈ {+1, -1}`:
+  - `laneLat(dir, i) = dir * (2.4 + i * 4.2)` (`+2.4, +6.6, +10.8` справа; `-2.4, -6.6, -10.8` слева).
+- Полуширина проезжей части для `n` полос в одну сторону:
+  - `edgeOf(n) = 4.5 + (n - 1) * 4.2` (`4.5 м` для 1 полосы, `8.7 м` для 2, `12.9 м` для 3).
+- `TAPER = 120` м (длина плавного сглаживания `smooth((s - seg.s0) / TAPER)` для `halfWidth(s, dir)` в начале нового сегмента `seg.id > 1`, если в начале сегмента нет развилки).
+- `SHOULDER = 1.2` м (ширина обочины за краем асфальта).
+- `SIDE_LEN = 450` м (длина боковых рукавов перекрёстков).
+- `ROAD_PLAN_MAX_S = 1_000_000` м, `ROAD_PLAN_MAX_SPAN = 10_000` м.
+- **Проверка нахождения на асфальте (`RoadLayout.onRoad(s, d)` в `road-layout.ts`)**:
+  - При `s > -80 && s < 30 && Math.abs(d) < 34` (территория депо) → `true`.
+  - В пределах главной проезжей части `d >= -edgeOf(nL) - 0.5 && d <= edgeOf(nR) + 0.5` → `true`.
+  - В зоне развилки `forkApron(s) > 0 && Math.abs(d) <= FORK.corridor + 0.5` (`15.5 м`) → `true`.
+  - При `s < knownFrom` (`Sm + 100 = 325 м`, зона манёвра выезда из депо, где `d` образцов в мировых координатах не совпадает с локальной дугой) → `null` (не судится).
+  - В пределах `pad` перекрёстка (`da ∈ [pad.a0 - 1, pad.a1 + 1]`, `d ∈ [pad.l0 - 1, pad.l1 + 1]`) или на его боковом рукаве (`|da| < j.sideHalf + 0.5 && j.arms.includes(sign(d)) && |d| < j.len`) → `true`; иначе → `false`.
+- **Серверное правило съезда с дороги (`isOffRoad(s, lat, layout)` в `road-rules.ts`)**:
+  - Если `layout` передан: съезд засчитывается при `layout.onRoad(s, lat) === false && layout.onRoad(s, lat - Math.sign(lat) * OFFROAD_GRACE) === false` (`OFFROAD_GRACE = 2.5 м`). Непрерывный съезд дольше `OFFROAD_FAIL_SECONDS = 20 с` завершает поездку с причиной `off_road` (в вердикте — `offroad-ignored`, если превышен `OFFROAD_FAIL_SECONDS * 1.25 + 2`).
+
+### C.3 Стартовый выезд (`sA`, `Sm`, `j0`)
+- Подъездная дорога депо (`id = 0`, `pat = 'access'`): `s ∈ [0, sA]`, где `sA = 190 м`, полосы `nR = 1, nL = 1`, `bends = 0`, `centre = null`.
+- Поворот выезда (`id = 1`, `pat = 'turn'`): радиус `START_TURN_R = 22 м`, длина дуги `L = Math.round((Math.PI / 2) * 22) = 35 м`, конец поворота `Sm = sA + L = 225 м`, полосы `nR = 1, nL = 1`, кривизна `kTurn = 0` при `trip.start === 'straight'`, иначе `(Math.PI / 2) / L`.
+- Стартовый узел `j0` (`id = 0`, `s = Sm = 225 м`): `kind = 'start'`, `signal = false`, `arms = []`, `sideLanes = 1`, `sideHalf = edgeOf(1) + 0.3 = 4.8 м`, `mouth = 0`, `len = 0`, `pad = { a0: -(R + 7.5), a1: 4, l0: -(halfL + SHOULDER), l1: R + 2 }` (где `R = 22`, `halfL = 4.5`).
+- `genEnd` инициализируется значением `Sm = 225 м`, `nextJ = Infinity`.
+
+### C.4 Шаблоны дороги (`PATTERNS`) и раскладка по `trip`
+Девять шаблонов (`client/shared/road.js`, где `lanes` — массив кортежей `[nR, nL, weight]`):
+| Шаблон | `len` (м) | `seg` (м) | `lanes` (`[nR, nL, w]`) | `bends` | `centre` | `junction.gap` (м) | `cross` | `signal` | `side` | Особенности |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `country` | `[900, 2400]` | `[700, 1600]` | `[[1, 1, 1]]` | `1` | `null` | `[420, 950]` | `0.5` | `0.35` | `[1, 1, 2]` | |
+| `highway` | `[1600, 3600]` | `[500, 1100]` | `[[2, 2, 3], [3, 3, 1], [3, 2, 1], [2, 3, 1]]` | `0.55` | `'double'` | `null` | — | — | — | без перекрёстков |
+| `arterial` | `[800, 1700]` | `[400, 900]` | `[[2, 2, 3], [2, 1, 1], [1, 2, 1], [3, 3, 1]]` | `0.35` | `'double'` | `[260, 520]` | `0.85` | `0.9` | `[1, 2]` | |
+| `town` | `[500, 1100]` | `[300, 700]` | `[[1, 1, 2], [2, 2, 1]]` | `0.15` | `null` | `[170, 320]` | `0.7` | `0.75` | `[1]` | |
+| `dual` | `[1500, 3200]` | `[700, 1500]` | `[[2, 2, 1]]` | `0.6` | `'double'` | `null` | — | — | — | `2+2` без перекрёстков |
+| `fork` | `[1200, 1200]` | `[1200, 1200]` | `[[1, 1, 1]]` | `0` | `null` | `null` | — | — | — | `fork: true` |
+| `open` | `[500, 500]` | `[500, 500]` | `[[1, 1, 1]]` | `1` | `null` | `null` | — | — | — | стартовый открытый участок |
+| `xroad` | `[500, 500]` | `[500, 500]` | `[[1, 1, 1]]` | `1` | `null` | `[380, 500]` | `1` | `0.5` | `[1, 1, 2]` | стартовый `1+1` с перекрёстком |
+| `xroad4` | `[500, 500]` | `[500, 500]` | `[[2, 2, 1]]` | `0.6` | `'double'` | `[380, 500]` | `1` | `0.5` | `[1, 1, 2]` | стартовый `2+2` с перекрёстком |
+
+Раскладка маршрутов по `trip` (`TRIP_ROAD_SPEC` в `road-rules.ts` / `client/js/trips.js`):
+| `trip` | `style` | `bends` | `holeChance` | `holeFirst` (м) | `start` | `first` (`firstLen`) | `weights` |
+|---|---|---|---|---|---|---|---|
+| `'1h'`, `'4h'`, `'8h'`, `'free-3'`, `'free-3b'`, `'free-3c'` (и дефолт) | `'route66'` | `1` | `1` | `Sm + 150 = 375` (`'free-3b'/'3c'`: `320`) | `'depot'` | `['country']` (`[500, 1100]`) | `[['country', 4], ['highway', 3], ['arterial', 3], ['town', 2], ['dual', 2], ['fork', 2]]` |
+| `'free-g'` (гостевой EASY) | `'stuart'` | `0.3` | `0.35` | `300` | `'straight'` | `['open', 'xroad', 'country', 'arterial']` (`[420, 550]`) | `[['country', 4], ['arterial', 3], ['dual', 2], ['town', 1]]` |
+| `'free-1'` | `'stuart'` | `0.35` | `0` | `Infinity` | `'depot'` | `['country', 'dual', 'highway']` (`[500, 1100]`) | `[['country', 4], ['dual', 4], ['highway', 3]]` |
+| `'free-1b'`, `'free-1c'` | `'stuart'` | `0.35` | `0.45` | `380` | `'straight'` (`1c`) / `'depot'` (`1b`) | `['open', 'xroad', 'country', 'arterial']` (`[420, 550]`) | `[['country', 4], ['arterial', 3], ['dual', 2], ['town', 1]]` |
+| `'free-2'` | `'route66'` | `0.85` | `0.6` | `Sm + 150 = 375` | `'depot'` | `['country', 'arterial', 'town']` (`[500, 1100]`) | `[['country', 3], ['arterial', 4], ['town', 3], ['dual', 2], ['fork', 1]]` |
+| `'free-2b'`, `'free-2c'` | `'route66'` | `0.85` | `0.75` | `320` | `'straight'` (`2c`) / `'depot'` (`2b`) | `['xroad4', 'arterial', 'fork', 'town']` (`[420, 550]`) | `[['arterial', 4], ['town', 3], ['fork', 3], ['country', 2], ['dual', 2]]` |
+
+Алгоритм `extendTo(targetS)` (`road-network.js` / `road-layout.ts`, где `rr([a, b]) = a + r() * (b - a)`):
+1. Пока `genEnd < targetS`:
+   - Если `patLeft <= 0`:
+     - Если в очереди `firstQueue` (`trip.road.first`) есть элементы, берётся `patKey = firstQueue.shift()`, а `patLeft = rr(firstLen)` (по умолчанию `firstLen = [500, 1100]`).
+     - Иначе выбирается случайный шаблон `patKey = wPick(r, pool)` из `weights` (исключая текущий `patKey`, если в `weights` ≥ 2 элементов), и `patLeft = rr(PATTERNS[patKey].len)`.
+   - Для `P = PATTERNS[patKey]`: длина очередного сегмента `raw = Math.min(rr(P.seg), patLeft)`; если остаток `patLeft - raw < P.seg[0] * 0.6`, то `len = Math.round(patLeft)`, иначе `len = Math.round(raw)`. `patLeft -= len`.
+   - Выбирается кортеж полос `[nR, nL] = wPick(r, P.lanes)` и создаётся сегмент `{ id: segs.length, s0: genEnd, s1: genEnd + len, pat: patKey, nR, nL, bends: P.bends, centre: P.centre, fork: !!P.fork }`, `genEnd = seg.s1`.
+   - Если `P.fork === true`: создаётся развилка `forks.push({ f0: s0, f1: seg.s1, side: rnd(seed % 9973 + s0 * 0.37) < 0.5 ? -1 : 1, choice: 0 })` и `nextJ = seg.s1 + 200`.
+   - Иначе если `!P.junction`: `nextJ = Infinity`.
+   - Иначе (`J = P.junction`):
+     - Если `!isFinite(nextJ)`: `nextJ = s0 + r() * J.gap[0]`.
+     - Пусть `lo = s0 + TAPER + 100`, `hi = seg.s1 - 120`. Пока `nextJ < hi`:
+       - Если `nextJ < lo`: `nextJ = lo; continue`.
+       - Вызывается `addJunction(Math.round(nextJ), J, seg)` со **строгим порядком вызовов `r()`**:
+         1. `kind = r() < J.cross ? 'cross' : 'tee'`
+         2. `side = r() < 0.5 ? -1 : 1` (вызывается всегда, даже для `'cross'`, чтобы поток ГПСЧ не сдвигался!)
+         3. `signal = r() < J.signal`
+         4. `sl = J.side[Math.floor(r() * J.side.length)]`
+         5. `g = rr(SIGNAL_GREEN)` (`[16, 26]`), `c = rr(SIGNAL_CROSS)` (`[9, 14]`), `T = g + SIGNAL_AMBER + SIGNAL_ALL_RED + c + SIGNAL_AMBER + SIGNAL_ALL_RED` (`SIGNAL_AMBER = 3`, `SIGNAL_ALL_RED = 2`)
+         6. `off = r() * T`
+       - Геометрия перекрёстка: `arms = kind === 'cross' ? [-1, 1] : [side]`, `sideHalf = edgeOf(sl) + 0.3`, `mouth = sideHalf + 1.5`, `mainR = edgeOf(seg.nR) + SHOULDER`, `mainL = edgeOf(seg.nL) + SHOULDER`, `pad = { a0: -mouth, a1: mouth, l0: arms.includes(-1) ? -(mainL + 3) : -mainL, l1: arms.includes(1) ? mainR + 3 : mainR }`, `len = SIDE_LEN`.
+       - `nextJ += rr(J.gap)`.
+
+### C.5 Фазы светофора и стоп-линия (`signal`, `stopLine`)
+- Для перекрёстка `j` с `j.signal === true` в момент времени `clock`:
+  - `t = ((clock + j.off) % T + T) % T`, где `{ g, a, r, c, T } = j.cyc`.
+  - Для главной дороги (`approach === 'main'`):
+    - `t < g` → `'G'` (зелёный)
+    - `t < g + a` → `'A'` (жёлтый)
+    - иначе → `'R'` (красный)
+  - Для боковой дороги (`approach === 'side'`):
+    - `t0 = t - g - a - r`
+    - `t0 < 0` → `'R'`
+    - `t0 < c` → `'G'`
+    - `t0 < c + a` → `'A'`
+    - иначе → `'R'`
+- Стоп-линия (`stopLine(j, dir = 1)` в `road-network.js`): `j.s - dir * (j.mouth + 2)`.
+
+### C.6 Развилки (`FORK`), кривизна и 2D-интегрирование (`road-network.js`, `road-geometry.js`, `route-curvature.js`)
+- Константы развилки (`FORK`): `{ len: 1200, bulge: 0.55, commit: 205, corridor: 15, reach: 1.5 }`, `FORK_SWITCH_JUMP = 4`.
+- Профиль отклонения ветви на `u = (s - f.f0) / (f.f1 - f.f0) ∈ (0, 1)`:
+  - `forkG(u) = Math.sin(2 * Math.PI * u) * Math.sin(Math.PI * u) ** 2`
+  - Знак ветви `bulge(f) = f.choice || f.side`.
+  - Конечная разность кривизны развилки (`forkCurv(s)` в `road-network.js:116`):
+    - `forkCurv(s) = bulge(f) * FORK.bulge * (forkG((s + 1 - f.f0) / L) - forkG((s - f.f0) / L))` (где `L = f.f1 - f.f0 = 1200`).
+- Коэффициент успокоения кривизны `calm(s)` (`road-network.js:108`):
+  - Произведение по всем перекрёсткам `j`: `c *= smooth(clamp((Math.abs(s - j.s) - ((j.mouth ?? 110) + 50)) / 110, 0, 1))`.
+  - Произведение по всем развилкам `f`: `c *= smooth(clamp(Math.max(f.f0 - s, s - f.f1, 0) / 110, 0, 1))`.
+- Профили маршрутов `ROUTE_CURVATURE` (`route-curvature.js`, с плавным входом `ramp(s) = clamp((s - 60) / 120, 0, 1)`):
+  - `route66(s) = ramp(s) * (0.0045 * sin(s / 310) + 0.0035 * sin(s / 130 + 1.1) + 0.0016 * sin(s / 47 + 2.0))`
+  - `stuart(s) = ramp(s) * (0.0012 * sin(s / 700) + 0.0007 * sin(s / 260 + 1))`
+  - `siberia(s) = ramp(s) * (0.0030 * sin(s / 420) + 0.0025 * sin(s / 170 + 2) + 0.0010 * sin(s / 60))`
+  - `brenner(s) = ramp(s) * (0.0055 * sin(s / 230) + 0.0035 * sin(s / 95 + 0.6) + 0.0018 * sin(s / 40 + 2))`
+  - `panamerican(s) = ramp(s) * (0.0035 * sin(s / 900) + 0.0015 * sin(s / 300 + 1))`
+- Полная кривизна `curv(s)` (`road-network.js:220`):
+  - На `s < sA` (`190 м`): `0`
+  - На `sA <= s < Sm` (`190..225 м`): `kTurn` (`0` при `trip.start === 'straight'`, иначе `(Math.PI / 2) / 35`)
+  - На `s >= Sm`: `styleFn(s - Sm) * trip.bends * segAt(s).bends * calm(s) + forkCurv(s)`
+- Интегрирование мировых координат `(RX[i], RZ[i], RT[i])` с шагом `1 м` (`createSpineGeometry` в `road-geometry.js`, старт `RX[0] = 0, RZ[0] = 0, RT[0] = 0`):
+  - Для каждого целого шага `i >= 1`:
+    - `t = RT[i - 1]`, `k = profile(i - 1)`, `tm = t + k / 2`
+    - `RX[i] = RX[i - 1] + Math.sin(tm)`
+    - `RZ[i] = RZ[i - 1] - Math.cos(tm)`
+    - `RT[i] = t + k`
+  - На интервале `[s0, s0 + 1]` значения `(x, z, t)` интерполируются линейно по дробной части `f = s - s0`, а локальная нормаль вправо равна `(nx, nz) = (Math.cos(t), Math.sin(t))`, так что `worldPos(s, d) = { x: p.x + nx * d, z: p.z + nz * d, t: p.t }`.
+
+### C.7 Типы ям (`HOLES`), ролл ям (`rollChunkHole`) и формула урона (`holeDamage`)
+- Пять типов ям в `HOLES` (`client/shared/road.js:81`):
+  1. `pothole`: `ells: [[0, 0, 0.55, 0.48, 0.1]]`, `dmg: 4`, `slow: 0.05`, `crawl: 5`
+  2. `deep`: `ells: [[0, 0, 0.85, 0.72, -0.15]]`, `dmg: 8`, `slow: 0.12`, `crawl: 4`
+  3. `cluster`: `ells: [[-0.55, -0.35, 0.48, 0.4, 0.2], [0.5, 0.25, 0.58, 0.46, -0.3], [0.05, -0.55, 0.4, 0.34, 0.1]]`, `dmg: 7`, `slow: 0.1`, `crawl: 4.5`
+  4. `trench`: `ells: [[0, 0, 1.85, 0.48, 0.04]]`, `dmg: 10`, `slow: 0.18`, `crawl: 3.5`, `lane: true`
+  5. `sinkhole`: `ells: [[0, 0, 1.35, 1.15, -0.12], [-0.8, 0.4, 0.65, 0.55, 0.25], [0.75, -0.35, 0.6, 0.5, -0.2]]`, `dmg: 14`, `slow: 0.35`, `crawl: 3`, `lane: true`, `cones: true`
+  - Натуральные дорожные ямы выбираются из `CONE_HOLE_IDS = Object.keys(HOLES).filter(k => HOLES[k].cones)` (`['sinkhole']`).
+- Функция `rollChunkHole(ci, net, holeChance, holeFirst = Sm + 150, maxS = Infinity)` (`road.js:97`):
+  - `q(k) = rnd(ci * 97.13 + k * 3.71)`
+  - Продольная координата `s = ci * 32 + 4 + q(1) * 24`
+  - Если `s < holeFirst || s >= maxS || q(2) >= holeChance || !net.plain(s, 70)` (`plain(s, pad)` проверяет отсутствие перекрёстков ближе `(j.mouth ?? 70) + pad` и развилок ближе `pad`), возвращается `null`.
+  - Иначе:
+    - `type = CONE_HOLE_IDS[Math.floor(q(3) * CONE_HOLE_IDS.length)]`, `T = HOLES[type]`
+    - `r = q(4)`, `j = q(5) - 0.5`
+    - `dir = T.lane ? (r < 0.7 ? 1 : -1) : r < 0.6 ? 1 : -1`
+    - `lanes = net.lanes(s, dir)`
+    - `lane = laneLat(dir, Math.floor(q(6) * lanes))`
+    - `lat = T.lane ? lane : r < 0.85 ? lane + j * 1.6 : j * 1.2`
+    - возвращается `{ id: 'h' + ci, ci, type, s, lat }`.
+- Радиусы ямы и расчёт урона (`holeHalfWidth`, `holeHalfLength`, `holeDamage` в `road.js:92–117`):
+  - `holeHalfWidth(T) = max_{e ∈ T.ells}(|e[0]| + max(e[2], e[3]))` (для `sinkhole`: `max(1.35, 0.8 + 0.65, 0.75 + 0.6) = 1.45 м`)
+  - `holeHalfLength(T) = max_{e ∈ T.ells}(|e[1]| + max(e[2], e[3]))` (для `sinkhole`: `1.35 м`)
+  - Оси грузовика `AXLES = [2.2, -0.4, -11.5]` м (от центра грузовика), полуколия `WHEEL = 1` м (`lat ± 1 м`), `CRAWL_SPEED = 3` м/с, `HOLE_REF_SPEED = 28` м/с, `REAR_AXLE_SHARE = 0.6`, `MIN_HURT = 0.3`.
+  - Для каждого колеса, попавшего внутрь эллипсов `T.ells` при проезде оси `axle` (`0` — передняя, `1` или `2` — задние) со скоростью `v`:
+    - Если `v < CRAWL_SPEED` (`3 м/с`), урон `0`.
+    - `sc = clamp(v / HOLE_REF_SPEED, 0, 1.2) ** 2 * (axle ? REAR_AXLE_SHARE : 1)`
+    - `dmg = type.dmg * sc`
+    - `holeDamage(type, v, axle) = dmg >= MIN_HURT ? dmg : 0`.
 

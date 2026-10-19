@@ -1,4 +1,4 @@
-/* Escrowed prize pools as the lobby and the landing show them (docs/agents/escrow.md). PURE: no DOM, no fetch – unit-tested by landing/test/pools.test.js.
+/* Escrowed prize pools as the lobby and the landing show them (docs/spec/pool.md). PURE: no DOM, no fetch – unit-tested by landing/test/pools.test.js.
    Inputs are the server's DTOs: PrizePoolDto (/api/pools, /api/tiers[].pool), TicketBalanceDto (/api/me.tickets), RFC 9457 problems (Error with .status/.code). Lamports and epoch ms. */
 
 import { WHITEPAPER_BASE } from '../js/hosts.js';

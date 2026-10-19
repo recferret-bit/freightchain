@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/* The editor API's request shapes (docs/editor-api.md). The entity file itself is checked by the domain (checkEntitySource), not here. */
+/* The editor API's request shapes (docs/spec/platform_services.md). The entity file itself is checked by the domain (checkEntitySource), not here. */
 const entityId = z.string().regex(/^[a-z][a-z0-9-]{1,47}$/, 'an entity id is lower-case letters, digits and dashes (2–48)');
 const revisionId = z.string().uuid();
 const signature = z.string().min(1).max(200);

@@ -1,4 +1,4 @@
-// Statistics, end to end (docs/statistics.md) in REAL headless Chrome against a RUNNING server on a fresh database:
+// Statistics, end to end (docs/spec/platform_services.md) in REAL headless Chrome against a RUNNING server on a fresh database:
 //   the landing's hero tiles (DRIVEN, ALL TIME was 0.00 km · 0 shifts on production while rides had driven – only COMPLETE shifts were counted), the lobby's
 //   DRIVING RECORD (per rider), GET /api/stats, and every way a ride ends and a donation lands – a REAL game driving into a car (the client's crash counter →
 //   heartbeat / end report → the server's totals), a ride that fails by a bad report, a ride the stale-ride sweeper ends, a shift that completes, a donation

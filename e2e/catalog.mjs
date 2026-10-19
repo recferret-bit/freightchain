@@ -82,7 +82,7 @@ export const CHECKS = [
   c('B1-LOBBY-22', 1, 'lobby', 'Blink SHOW loads /api/actions/hello', 'mock', `${page}/lobby/blink.test.mjs`, 'server/scripts/e2e-blinks.mjs', 'A real wallet tx button is M-07'),
   c('B1-LOBBY-23', 1, 'lobby', 'Blink CONNECT WALLET is present', 'mock', `${page}/lobby/blink.test.mjs`, '', 'Extension popup is M-01'),
 
-  c('B1-FREE-01', 1, 'free', 'Retired tool sim free-g is never stamped on a ride', 'automated', `${page}/free/paths.test.mjs`, 'docs/agents/free-rides.md'),
+  c('B1-FREE-01', 1, 'free', 'Retired tool sim free-g is never stamped on a ride', 'automated', `${page}/free/paths.test.mjs`, 'docs/spec/rides.md'),
   c('B1-FREE-02', 1, 'free', 'Bare play.html orders EASY; free-g is the ?sim=1 tool run', 'automated', `${page}/free/paths.test.mjs`, 'client/js/easy-entry.js'),
   c('B1-FREE-03', 1, 'free', 'Online training EASY is level 1 trip free-1c', 'automated', `${page}/free/paths.test.mjs`, 'server/test/scenarios/free-levels.scenarios.ts'),
   c('B1-FREE-04', 1, 'free', 'Online training MEDIUM is level 2 trip free-2c', 'automated', `${page}/free/paths.test.mjs`, 'server/test/scenarios/free-levels.scenarios.ts'),
@@ -175,6 +175,6 @@ export const CHECKS = [
   c('B2-API-07', 2, 'lobby', 'TEN4 mint matches the ledger', 'pending', `${chain}/api/chain.test.mjs`, '.claude/skills/honk-suite/run.sh'),
   c('B2-POOL-01', 2, 'admin', 'IDL address is the pinned pool program', 'automated', `${chain}/api/chain.test.mjs`, 'programs/idl/freightchain_pools.json'),
   c('B2-POOL-02', 2, 'admin', 'IDL contains set_pool_rules', 'automated', `${chain}/api/chain.test.mjs`),
-  c('B2-HONK-01', 2, 'lobby', 'TEN4 program declare_id matches env.schema', 'automated', `${chain}/honk/ledger.test.mjs`, 'docs/agents/honk.md'),
+  c('B2-HONK-01', 2, 'lobby', 'TEN4 program declare_id matches env.schema', 'automated', `${chain}/honk/ledger.test.mjs`, 'docs/spec/ten4.md'),
   c('B2-HONK-02', 2, 'lobby', 'Ledger balance versus chain mint after a local ride', 'pending', `${chain}/honk/ledger.test.mjs`, '.claude/skills/honk-suite/run.sh'),
 ];

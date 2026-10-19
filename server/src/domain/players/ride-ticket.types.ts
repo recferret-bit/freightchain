@@ -1,4 +1,4 @@
-/* A wallet's tickets in one pool (docs/agents/escrow.md). `balance` = still unused; `bought` = ever paid for on chain (the pool's per-wallet cap is checked against it).
+/* A wallet's tickets in one pool (docs/spec/pool.md). `balance` = still unused; `bought` = ever paid for on chain (the pool's per-wallet cap is checked against it).
    The rules (spend / refund / void, the cap clamp) live in the RideTicket entity of the ledger workstream. */
 
 export const TICKET_SOURCES = ['payment', 'promo', 'admin', 'spend', 'refund', 'void'] as const;

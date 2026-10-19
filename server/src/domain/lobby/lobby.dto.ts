@@ -4,7 +4,7 @@ import type { TicketBalanceDto, TicketGrantDto } from '../economy/prize-pool.dto
 import type { AchievementDto } from '../achievements/achievement-unlock.entity.js';
 
 /** One truck on the road. Public, so no seed or free-text reason. The ride id IS here (since live streams): it is what the watch page takes, and every
-    owner-side route checks the wallet anyway – an id grants nothing (docs/agents/live.md publishes ride pages by id too). */
+    owner-side route checks the wallet anyway – an id grants nothing (docs/spec/replays_streams.md publishes ride pages by id too). */
 export interface LiveRideDto {
   id: string;
   wallet: string;
@@ -90,7 +90,7 @@ export interface ReplaysDto {
 export const REPLAYS_PAGE = 20;
 export const REPLAYS_MAX_PAGE = 50;
 
-/** The landing's "driven, all time" – read from the statistics table (docs/statistics.md): every started ride that ended counts, not only complete shifts. */
+/** The landing's "driven, all time" – read from the statistics table (docs/spec/platform_services.md): every started ride that ended counts, not only complete shifts. */
 export interface LiveTotalsDto {
   /** complete shifts */
   shifts: number;

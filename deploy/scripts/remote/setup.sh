@@ -71,7 +71,7 @@ else
   nginx -t || true; fail "nginx rejected the media snippet – restored the old one; nothing changed"
 fi
 
-# The 3D model API (docs/agents/editor.md): http-level zones (rate limits, a connection cap, the bundle's microcache) + the /api/entities/ location snippet,
+# The 3D model API (docs/spec/platform_services.md): http-level zones (rate limits, a connection cap, the bundle's microcache) + the /api/entities/ location snippet,
 # included by api.<apex> and storybook.<apex>. Both managed files are rewritten on every setup; undone if nginx -t fails.
 mkdir -p /var/cache/nginx/freightchain_entities
 [ -f "$DEPLOY_PATH/state/fc-limits.conf" ] || fail "the nginx limits file (deploy/nginx/fc-limits.conf) was not uploaded"

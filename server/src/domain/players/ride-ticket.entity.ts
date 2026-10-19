@@ -2,7 +2,7 @@ import { ConflictError } from '../shared/errors.js';
 import type { RideTicketProps } from './ride-ticket.types.js';
 
 /**
- * A wallet's tickets in one pool (docs/agents/escrow.md). Two ways in: `recordPurchase` – the chain says the wallet paid for `qty` tickets (the program already enforced
+ * A wallet's tickets in one pool (docs/spec/pool.md). Two ways in: `recordPurchase` – the chain says the wallet paid for `qty` tickets (the program already enforced
  * the per-wallet cap, so it is never refused here) – and `grant` – an off-chain gift (promo code, admin) that is clamped so the wallet never HOLDS more than the pool's cap.
  * Out: `spend` (a ride starts), `voidAll` (the pool failed: the unused tickets are worthless, the money comes back on chain) and `markRefunded` (it came back). There is deliberately no `refund`:
  * a paid ride is never cancelled, and a future cancel path must give a ticket back only against its recorded spend (TicketGrant `spend`, ref = ride id), never blindly.

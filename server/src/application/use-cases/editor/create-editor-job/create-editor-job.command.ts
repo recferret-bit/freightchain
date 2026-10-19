@@ -1,4 +1,4 @@
-/** A request to the AI model editor (docs/editor-api.md POST /api/editor/jobs). */
+/** A request to the AI model editor (docs/spec/platform_services.md POST /api/editor/jobs). */
 export class CreateEditorJobCommand {
   constructor(
     public readonly wallet: string,

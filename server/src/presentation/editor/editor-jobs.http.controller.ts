@@ -16,7 +16,7 @@ import {
   type CreateJobBody, type JobEventsQuery, type JobIdParams, type JobsQuery,
 } from './dto/editor.dto.js';
 
-/** The AI model editor's chat (docs/editor-api.md "jobs"): ask (202), follow a job's events by polling, cancel. Editor session only. */
+/** The AI model editor's chat (docs/spec/platform_services.md "jobs"): ask (202), follow a job's events by polling, cancel. Editor session only. */
 @Controller('api/editor')
 @UseGuards(EditorGuard)
 export class EditorJobsHttpController {

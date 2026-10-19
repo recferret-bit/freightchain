@@ -6,7 +6,7 @@ import { StatsRepositoryPort } from '../../../ports/stats/stats.repository.port.
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { GetAdminStatsQuery } from './get-admin-stats.query.js';
 
-/** The running totals (docs/statistics.md): the whole game, the newest `days` UTC days, the top riders by distance. Read-only – `stats:reconcile` repairs drift. */
+/** The running totals (docs/spec/platform_services.md): the whole game, the newest `days` UTC days, the top riders by distance. Read-only – `stats:reconcile` repairs drift. */
 @QueryHandler(GetAdminStatsQuery)
 export class GetAdminStatsHandler implements IQueryHandler<GetAdminStatsQuery, AdminStatsDto> {
   constructor(

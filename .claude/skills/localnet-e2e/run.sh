@@ -64,7 +64,7 @@ if [ "$TARGET" = devnet ]; then
   (cd "$SERVER" && node scripts/pool-admin.mjs show --url "$RPC" | node -e 'const j=JSON.parse(require("fs").readFileSync(0)); if (!j.config) { console.error("the program is not initialized on devnet (Phase 1)"); process.exit(1) } if (j.config.authority !== process.argv[1]) { console.error("Config.authority is not the devnet admin key"); process.exit(1) }' "$(pub admin)") || fail "devnet program not ready"
   FIXTURES=""
 else
-command -v solana-test-validator >/dev/null || fail "solana-test-validator missing (Agave CLI, see docs/agents/escrow.md 'Escrowed pools')"
+command -v solana-test-validator >/dev/null || fail "solana-test-validator missing (Agave CLI, see docs/spec/pool.md)"
 [ -f "$SO" ] || fail "$SO missing – build the verifiable binary first: npm run program:verify"
 if command -v solana-verify >/dev/null; then
   got="$(solana-verify get-executable-hash "$SO" 2>/dev/null | tail -1 || true)"

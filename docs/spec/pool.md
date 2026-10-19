@@ -173,3 +173,50 @@
 | Офлайн-режим | Заменён настоящей поездкой EASY (`play.html` → `easy-entry.js`, гостевая сессия) |
 | Платные билеты | Solana Pay в казну (раздел 3) |
 
+---
+
+## Приложение C. Текущая реализация доски призов на `main` (`server/src/domain/prize/prize-rules.ts`, бывший `docs/prize/SPEC.md`)
+
+> Консолидировано из удалённого `docs/prize/SPEC.md` (18.10.2026). Описание поведения, собранного в `server/src/domain/prize/prize-rules.ts` и `GET /api/prize/board` (см. также [`PRODUCT.md`](PRODUCT.md)):
+
+- **Валюта и статус**: расчётные суммы в `USDC` (центы `BASE_STEPS_CENTS = [30_000, 75_000, 150_000, 300_000]` — `$300 / $750 / $1,500 / $3,000`), `TOKEN_IS_PRIZE = false` (TEN4 никогда не является призом контеста). Сейчас черновик: реальные переводы USDC автоматически не отправляются.
+- **Окна недели (`PRIZE_WEEK_OPEN_HOUR_UTC = 0`)**:
+  - Зачётная игра (`ranked`): пн `00:00 UTC` → вс `12:00 UTC` (`RANKED_CLOSE_MS = 156 ч`).
+  - Проверка (`verify`): вс `12:00 UTC` → пн `12:00 UTC` (`VERIFY_END_MS = 180 ч`).
+  - Апелляции (`appeals`): пн `12:00 UTC` → вт `12:00 UTC` (`APPEALS_END_MS = 204 ч`).
+  - Выплаты (`payout`): до конца вторника (`PAYOUT_END_MS = 216 ч`).
+- **Лимиты зачётных стартов в неделю на кошелёк (`ranked: true` в `POST /api/rides/:id/start`)**:
+  - `PAID_RANKED_STARTS = 5` платных стартов (включая еженедельный выданный бесплатный билет 1h — `weekly_ticket_1h_enabled = 1`, AMOE).
+  - `PROMO_RANKED_STARTS = 1` промо-старт (`kind: 'ride'`).
+  - Тренировки (`tier = free`) никогда не идут в зачёт.
+- **Формула призового пула и распределение (`prize-rules.ts`)**:
+  - `F = B + S` (база ступени + спонсор), вклад билетов `P = min(0.40 * R, $2,500, 0.90 * F)`, общий банк недели `T = F + P + C` (где `C ≤ 0.25 * F` — перенос).
+  - Деление `T`: `85%` на доски недели (`1h: 25%`, `4h: 30%`, `8h: 45%`), `5%` в перенос `C`, `10%` в финал сезона (`SEASON_WEEKS = 7`, `LIVE_FINAL_WEEK = 7`, `SEASON_QUALIFIERS = 8` лучших по сумме мест с `MISSED_WEEK_PLACE = 1000`).
+  - Внутри каждой доски (`MIN_BOARD_PARTICIPANTS = 10`): `80%` — топ-места (`TOP_PLACES = 10`, или топ-10% при `> 100` участниках), `20%` — поровну всем финишировавшим (`completer pool`). При равенстве очков делят сумму занятых мест поровну.
+- **Гео-ограничения и возраст (`GeoLocatorPort`, `MeDto`)**:
+  - Возраст `18+` (или `19+`/`21+` по юрисдикции) и отсутствие в санкционном списке (`CU, IR, KP, SY`, `UA-43, UA-14, UA-09`) и списке исключённых для платных контестов штатов США (`SC, AZ, LA, AR, DE, MT, TN`).
+
+---
+
+## Приложение D. Архитектура эскроу-программы (`programs/freightchain_pools` v4/v5), сиды дороги, воркеры и тулчейн
+
+- **Некастодиальный принцип и два серверных ключа**:
+  - Все средства билетов, переносов (`rollover`) и спонсорских пледжей хранятся на PDA программы `programs/freightchain_pools`; каждый кошелёк сам подписывает и отправляет свои транзакции, а сервер только индексирует события (`PoolSyncService` / `sync-pools.command.ts`) и начисляет билеты.
+  - Сервер держит два горячих ключа:
+    1. **Crank (`CRANK_SECRET`, `PoolCrankScheduler` / CLI `npm run pool:crank`)**: выполняет безразрешительные шаги жизненного цикла (`open_next_pool` из админской `Series`, `seal_road`, `fail_pool`, `expire_pool`, `refund`, `refund_sponsor`, `close_pool` через `nextCrankStep`).
+    2. **Payout (`PAYOUT_SECRET`, `PoolPayoutScheduler` / CLI `npm run pool:payout`)**: когда у всех поездок пула вынесен финальный вердикт (`!poolUnreviewed`), записывает ончейн-аттестации заездов с пледжами (`record_ride_attestation` через `AttestationService.attestRide`), публикует корень дерева Меркла победителей (`commit_winners` / `winners-merkle.ts`) и закрывает выплаченные пулы (`close_pool`). Холодный ключ администратора (`admin`) может наложить вето на корень (`veto_winners`) в течение окна проверки `min_review_secs` (`3600 с`).
+- **Одна дорога на пул и запечатывание сида (`seal_road`, `provable-seed.ts`)**:
+  - В режиме программы `Pool.rideSeed` выводится детерминированно из хеша слота (`projectRoadSeed` в `server/src/domain/road/provable-seed.ts`) инструкцией `seal_road` на слоте `>= open_slot + 8`. До вызова `seal_road` старт поездки в пуле возвращает `409 road_not_sealed`.
+  - В кабине грузовика (`client/js/seal.js`, `client/js/ui/cab-chain.js`) отображается криптографическая привязка сида дороги к слоту Solana. (Для legacy `transfer`-режима без пула суточный сид выдаётся через `DailySeedRepositoryPort.claim`.)
+- **Правила программы v4 / v5 (`programs/freightchain_pools`)**:
+  - **v4**: дерево Меркла победителей (`commit_winners`, `veto_winners`, `pay_prize`), ончейн-аттестации поездок (`RideAttestation`), спонсорские пледжи за километр (`Pledge`: `create_pledge`, `settle_pledge`, `refund_pledge`, синхронизация `SyncPledgesHandler`), возврат спонсорских взносов при отмене пула (`SponsorReceipt` / `refund_sponsor`), минимальные пороги `Config` (`min_review_secs = 3600`, `min_finish_secs = 10800`).
+  - **v5**: дефолтный сплит `8500 / 500 / 1000` (85% победителям / 5% перенос / 10% комиссия, без реферальной ноги на цепи), инструкция `set_pool_rules`, потолок доли одного игрока `max_player_share_bps < 5000` (дефолт `4740` = 47.4%), переключатель `paid_tickets_enabled`. Открытые вопросы деплоя отслеживаются в [`docs/escrow-open-items.md`](../escrow-open-items.md) и [`docs/program-deploy.md`](../program-deploy.md).
+- **Окна старта, индексация билетов, Priority Fees / RPC и удержание выплаты (`Pool.hold`)**:
+  - Заказ и старт поездки в пуле разрешены до `Pool.startBy` (`canFinishBy`; после дедлайна — `409 rides_closed`). Если пул не набрал `min_tickets`, возврат билетов (`refundable`) при необходимости бандлит `fail_pool` в ту же транзакцию.
+  - Подтверждение покупки билета (`TicketSettlementService`) идёт по быстрому пути через `confirm`, фоновый `program-watcher.ts` и вебхук `/api/chain/webhook`.
+  - Приоритетные комиссии и перегрузка RPC: `fee-estimator.ts` динамически оценивает compute unit price (`getRecentPrioritizationFees`), а `solana-rpc.ts` прозрачно переключается по списку `SOLANA_RPC_FALLBACKS` при ошибках или перегрузке основного RPC.
+  - Перед коммитом корня победителей `PoolAttentionService.markPool` проверяет топ-20 пула; если сработали флаги внимания или выставлен `Pool.hold` (`saveHold`), `claimSentUnlessHeld` блокирует автоматическую отправку `commit_winners` до ручной проверки администратором.
+- **Тулчейн и команды разработки**:
+  - Сборка и IDL: `anchor build --arch v0`, `npm run program:idl` (`server/scripts/vendor-idl.mjs` обновляет `server/test/fixtures/chain/pool-program.json`), воспроизводимая сборка `npm run program:verify` (`verifiable-build.hash`).
+  - Тесты: `npm run program:test` (LiteSVM: 163 теста `freightchain_pools` + 40 тестов `freightchain_honk`), `npm run test:e2e:block2`.
+  - Devnet-утилиты (никогда не трогать глобальный `~/.config/solana/id.json`; всегда передавать явный `--url devnet`, деплой только по прямому запросу пользователя): `server/scripts/devnet.sh`, `node server/scripts/pool-admin.mjs`.

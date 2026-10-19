@@ -5,7 +5,7 @@ import { bindClient, newWallet, sign } from '../support/client.js';
 import { fatCactus, seedEntity } from '../support/entity-fixtures.js';
 import type { Harness } from '../support/harness.js';
 
-/* The 3D model API (docs/editor-api.md): the public bundle every page loads, and the editor (EDITOR_WALLETS only) – drafts, history, restore, the signed
+/* The 3D model API (docs/spec/platform_services.md): the public bundle every page loads, and the editor (EDITOR_WALLETS only) – drafts, history, restore, the signed
    publish that is the only way a change reaches the players. Same scenarios on in-memory and PostgreSQL; single origin (any host). */
 export const EDITOR = newWallet();
 export const EDITOR_ENV = { EDITOR_WALLETS: EDITOR.address };

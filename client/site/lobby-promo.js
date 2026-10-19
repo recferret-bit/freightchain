@@ -1,7 +1,7 @@
 import { el } from './dom.js';
 import { LOOKS } from '../js/cosmetics.js';
 
-/* The PROMO CODES section of the lobby's PROFILE (docs/promocodes.md): what this wallet redeemed – the parts themselves live in the GARAGE tab (lobby-garage.js, which reuses the names + swatches below).
+/* The PROMO CODES section of the lobby's PROFILE (docs/spec/promocodes.md): what this wallet redeemed – the parts themselves live in the GARAGE tab (lobby-garage.js, which reuses the names + swatches below).
    Pure builders: lobby.js owns the state and the API calls and hands in callbacks. Server text (codes, descriptions) goes in with textContent only. */
 
 export const SLOT_NAME = { wheel: 'STEERING WHEEL', truck_color: 'TRUCK PAINT', gearbox: 'SHIFTER', dice: 'HANGING DICE', needle: 'GAUGE NEEDLES', ornament: 'HOOD ORNAMENT', dash: 'DASHBOARD', indicator: 'INDICATORS', phone: 'PHONE' };

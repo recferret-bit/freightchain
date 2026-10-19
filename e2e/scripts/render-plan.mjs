@@ -129,7 +129,7 @@ ${matrix()}
 ## (d) Gaps in the existing tests
 
 - HTTP referral scenarios stop at bind and gift. They do not assert the free-ride grant after a verified MEDIUM ride. The unit spec does.
-- \`docs/promocodes.md\` still says the feature lives on an undeployed branch. Promo create and redeem are on main.
+- Promo create and redeem are on main (\`docs/spec/promocodes.md\`).
 - \`docs/agents/verifying.md\` records that \`e2e-tickets-stub\` RETRY CONFIRM and the stub's missing \`/reconcile\` route fail on main (2026-10-13).
 - \`set_pool_rules\` has no admin HTTP route. Operators use the CLI.
 - The existing compose file has no Solana service. Localnet uses a host \`solana-test-validator\`. This suite does the same and does not pull a validator image.
@@ -156,7 +156,7 @@ Program: \`npm run program:test\` (LiteSVM / cargo) and \`npm run program:verify
 2. \`paintHero\` throws if \`/api/pool\` is 200 without \`split\` when \`pools\` is empty. It also throws if live JSON lacks \`totals\`, \`upcoming\`, or \`recent\`.
 3. Cosmetic promo redeem is refused \`visuals_are_honk\`.
 4. With \`HONK_PROGRAM_ID\` unset, \`GET /api/honk\` returns \`chain: null\` (ledger only).
-5. \`docs/promocodes.md\` describes promos as undeployed. The routes are on main.
+5. Promo create and redeem routes are on main (\`docs/spec/promocodes.md\`).
 6. No admin HTTP handler for \`set_pool_rules\`.
 7. Referral HTTP scenarios never assert the qualify grant.
 8. \`e2e-tickets-stub\` RETRY CONFIRM and a missing \`/reconcile\` route fail on main (already noted in \`docs/agents/verifying.md\`).

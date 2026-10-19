@@ -1,4 +1,4 @@
-// Local TEN4 only (docs/agents/honk-localnet.md). The game balance stays the ledger. Classic SPL for the fungible mint; Token-2022 for a soulbound part.
+// Local TEN4 only (docs/agents/ten4-localnet.md). The game balance stays the ledger. Classic SPL for the fungible mint; Token-2022 for a soulbound part.
 import { Connection, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
 import {
   TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, ExtensionType, TYPE_SIZE, LENGTH_SIZE, getMintLen,

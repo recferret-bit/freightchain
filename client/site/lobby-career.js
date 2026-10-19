@@ -1,4 +1,4 @@
-/* The profile's DRIVING RECORD: the rider's running totals and career stats (profile.career + profile.stats – docs/statistics.md). Pure DOM, server numbers only
+/* The profile's DRIVING RECORD: the rider's running totals and career stats (profile.career + profile.stats – docs/spec/platform_services.md). Pure DOM, server numbers only
    through textContent. Every tile carries data-k so the e2e suites can read it. */
 import { el } from './dom.js';
 

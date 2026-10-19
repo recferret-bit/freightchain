@@ -7,7 +7,7 @@
 ## Главные находки (проверено по коду)
 
 1. **Гео работает только с заголовками Cloudflare.** `header-geo.adapter.ts` читает только `CF-IPCountry` / `X-FC-Country`. Без них страна `null`, а `prizeAccess()` для неизвестной страны отказывает. Значит, **без прокси Cloudflare никто не сможет сделать рейтинговый старт**. В плане Pre-season прокси Cloudflare стоит «по желанию» — это ошибка, он обязателен.
-2. **Общего маршрута для рейтинга нет.** `docs/prize/SPEC.md`, раздел «Not built»: «One weekly seed per tier. Ranked rides still use the ride's own seed». При одной попытке разные маршруты делают итог заметно случайным, а это бьёт по позиционированию как конкурса мастерства. Общий дневной seed есть только у платных заказов (`DailySeedRepository`).
+2. **Общего маршрута для рейтинга нет.** `docs/spec/pool.md` (Приложение C), раздел «Not built»: «One weekly seed per tier. Ranked rides still use the ride's own seed». При одной попытке разные маршруты делают итог заметно случайным, а это бьёт по позиционированию как конкурса мастерства. Общий дневной seed есть только у платных заказов (`DailySeedRepository`).
 3. **Выплат USDC, KYC и санкционной проверки в коде нет** (там же, «Not built»): «Payout on the board stays false until KYC exists». На доске выплата будет показана как недоступная, пока это не решено.
 4. **Анти-сибил-кода нет совсем:** нет IP-сигналов, Turnstile, Telegram, i18n, Didit, Chainalysis.
 5. **Деплой работает только с devnet:** `deploy` отказывает, если цепочка не devnet. Для mainnet в январе нужны изменения деплоя и конфигурации.

@@ -1,7 +1,7 @@
 import { el } from './dom.js';
 import { setLoadout, pose } from '../js/cosmetics.js';
 
-/* The Garage's cab (lobby → GARAGE, docs/garage.md): the game's OWN cockpit renderer (js/cockpit, no three.js) draws into one hidden canvas and this copies it onto the visible one,
+/* The Garage's cab (lobby → GARAGE, docs/spec/ten4.md): the game's OWN cockpit renderer (js/cockpit, no three.js) draws into one hidden canvas and this copies it onto the visible one,
    over a small sky + road backdrop (the windscreen and mirrors are see-through in the game, where the 3D scene shows there). Same pattern as the landing's dash cards (landing/src/dash-live.js):
    the cockpit modules are singletons that read the global st / dn / disp and look up #cockpit / #toast at import time, so they are loaded lazily (first time the tab opens) after both nodes exist.
    `set(pick)` wears a selection at once (setLoadout) – the picked parts are what the engine draws, before they are applied. Hovering a part (or its slot card) plays a looped movement:

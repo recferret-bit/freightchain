@@ -5,7 +5,7 @@ description: TEN4 as a Solana token on a local validator only – classic SPL mi
 
 # TEN4 on a local chain
 
-The contract is `docs/agents/honk-localnet.md`. The ledger stays the game balance. This suite is the only place TEN4 is a Solana token.
+The contract is `docs/agents/ten4-localnet.md`. The ledger stays the game balance. This suite is the only place TEN4 is a Solana token.
 
 ```sh
 bash .claude/skills/honk-localnet/run.sh                  # token half, then a paid ride on a throwaway database

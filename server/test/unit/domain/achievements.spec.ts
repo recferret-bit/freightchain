@@ -3,7 +3,7 @@ import { ACHIEVEMENTS, FAMILY_NAMES, TIER_NAMES, earnedIds, progressOf, type Fac
 const none: Facts = { started: 0, paidShifts: 0, totalMetres: 0, nightShifts: 0, cleanRuns: 0, siberiaShifts: 0, freeUnassisted: 0, completedFreeLevels: [], freeFinishes: [0, 0, 0], honkMints: 0, honkFinishes: 0, qualifiedReferrals: 0 };
 const families = [...new Set(ACHIEVEMENTS.map((a) => a.family))];
 
-/* the ids production unlock rows already reference – FROZEN (docs/agents/achievements.md): a rename or a changed meaning of tier 1 breaks them */
+/* the ids production unlock rows already reference – FROZEN (docs/spec/web3_solana.md): a rename or a changed meaning of tier 1 breaks them */
 const LEGACY = ['first-mile', 'shift-complete', 'night-owl', 'century', 'clean-run', 'cold-start', 'on-my-own', 'free-easy', 'free-crossroads', 'free-hard', 'top-20'];
 
 describe('achievement tiers', () => {

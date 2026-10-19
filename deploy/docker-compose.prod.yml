@@ -25,7 +25,7 @@ services:
       retries: 20
       start_period: 5s
 
-  # the cache for the public statistics (docs/statistics.md): nothing in it is the source of truth, so no persistence – a restart only costs one cold read.
+  # the cache for the public statistics (docs/spec/platform_services.md): nothing in it is the source of truth, so no persistence – a restart only costs one cold read.
   # Locked down: a PASSWORD (REDIS_PASSWORD in deploy/.env, hex), NO published port, and it sits ONLY on the `cache` network, which is `internal` (no route to or from
   # the internet) and shared with the app alone – postgres cannot even see it. Unprivileged user, read-only filesystem.
   redis:
@@ -102,7 +102,7 @@ services:
       DEMO_WALLETS: ${DEMO_WALLETS:-}
       DEMO_SCALE: ${DEMO_SCALE:-60}
       INITIAL_SEED_SOL: ${INITIAL_SEED_SOL:-0}
-      # escrowed pools (docs/agents/escrow.md) – all optional: unset TICKET_PROGRAM_ID = the legacy transfer mode
+      # escrowed pools (docs/spec/pool.md) – all optional: unset TICKET_PROGRAM_ID = the legacy transfer mode
       PAYMENT_MODE: ${PAYMENT_MODE:-}
       TICKET_PROGRAM_ID: ${TICKET_PROGRAM_ID:-}
       FEE_TREASURY: ${FEE_TREASURY:-}
@@ -151,7 +151,7 @@ services:
       EDITOR_JWT_SECRET: ${EDITOR_JWT_SECRET:-}   # empty = derived from JWT_SECRET
       EDITOR_SESSION_TTL_MINUTES: ${EDITOR_SESSION_TTL_MINUTES:-240}
       EDITOR_IP_ALLOWLIST: ${EDITOR_IP_ALLOWLIST:-}
-      # the AI model editor (docs/agents/editor.md): a provider is offered when its key is set – SECRETS, never logged
+      # the AI model editor (docs/spec/platform_services.md): a provider is offered when its key is set – SECRETS, never logged
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -272,7 +272,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS}
       POSTHOG_ENABLED: "0"
       POSTHOG_DISABLED: "1"
-      # the AI model editor (docs/agents/editor.md): a provider is offered when its key is set – SECRETS, never logged
+      # the AI model editor (docs/spec/platform_services.md): a provider is offered when its key is set – SECRETS, never logged
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -292,7 +292,7 @@ services:
       EDITOR_FAKE_LLM: "0"   # test switch – the server refuses 1 in production
       EDITOR_OPEN: "0"   # local switch – the server refuses 1 in production
 
-  # The entity MCP (mcp/, docs/agents/editor.md): the 3d-assets skill as tools for the AI model editor. Internal network only, no published port,
+  # The entity MCP (mcp/, docs/spec/platform_services.md): the 3d-assets skill as tools for the AI model editor. Internal network only, no published port,
   # no AI or wallet key – only the shared EDITOR_MCP_TOKEN. Started by release.sh only when EDITOR_MCP_TOKEN is set (without it the process refuses to run).
   mcp:
     image: freightchain-mcp:${RELEASE:-latest}

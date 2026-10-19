@@ -5,7 +5,7 @@ description: Test Freight Chain's anti-bot / anti-cheat (verified play) end to e
 
 # Verified play – the anti-cheat, positive and negative
 
-What it covers (how the checks work: `docs/verified-play/index.html`; the thresholds: `server/src/domain/verdict/verdict-rules.ts`; the status page: `docs/agents/verified-play.md`):
+What it covers (how the checks work: `docs/verified-play/index.html`; the thresholds: `server/src/domain/verdict/verdict-rules.ts`; the status page: `docs/spec/anticheat.md`):
 the recording (hash-chained batches, the server's own hashes, bounds, agreement with the ride, coverage, the per-ride time / batch / byte budgets),
 the human-timing statistics (flags only), the **dispatch prompts** – the server asks for a key through the heartbeat ("FLASH YOUR HEADLIGHTS · PRESS L"),
 the recording must show it pressed within 20 s; most prompts ignored rejects, instant answers flag – the admin's hand on the review queue, the retention sweep, and the CLI that re-judges old rides after a rules change – and **the server's road**: the road and its holes rebuilt from the ride seed
@@ -14,7 +14,7 @@ the recording must show it pressed within 20 s; most prompts ignored rejects, in
 
 ## Traffic frame validation
 
-`bash .claude/skills/run-tests/e2e.sh traffic` runs nine cases: honest normal/automatic-finish/slow clients, an honest fatal collision, cars removed (with/without replay columns), ignored collision damage, stripped/re-hashed proof and malformed/re-hashed proof. Strict server-stamped version-1 evidence is required. Assert `/end` and persisted replay verdicts, accepted uploads, intact hashes and no browser errors. See `docs/agents/verified-play.md`.
+`bash .claude/skills/run-tests/e2e.sh traffic` runs nine cases: honest normal/automatic-finish/slow clients, an honest fatal collision, cars removed (with/without replay columns), ignored collision damage, stripped/re-hashed proof and malformed/re-hashed proof. Strict server-stamped version-1 evidence is required. Assert `/end` and persisted replay verdicts, accepted uploads, intact hashes and no browser errors. See `docs/spec/anticheat.md`.
 
 ## Run it
 

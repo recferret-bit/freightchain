@@ -1,6 +1,6 @@
 //! Cab pairs the program will sell. The buyer does not pass a price.
 //! Defaults are absent on purpose: they, and anything unknown, are `NotForSale`.
-//! Ids: `server/src/domain/honk/parts-catalog.ts` and `docs/agents/honk-cab-slots.md`.
+//! Ids: `server/src/domain/honk/parts-catalog.ts` and `docs/spec/ten4.md`.
 use anchor_lang::prelude::*;
 
 use crate::{constants::*, error::HonkError};

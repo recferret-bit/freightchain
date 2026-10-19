@@ -1,7 +1,7 @@
 import { RideStatus } from '../rides/ride-status.js';
 import type { RideProps } from '../rides/ride.entity.js';
 
-/** The core metrics, as running totals (per rider and for the whole game) – docs/statistics.md. Metres and seconds are what was really driven. */
+/** The core metrics, as running totals (per rider and for the whole game) – docs/spec/platform_services.md. Metres and seconds are what was really driven. */
 export interface StatsTotals {
   /** started rides that ended, whatever the outcome */
   rides: number;

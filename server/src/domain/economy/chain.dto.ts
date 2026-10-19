@@ -3,7 +3,7 @@ import type { ChainEventKind, ChainEventOutcome, ChainEventRow } from './chain-e
 /** A blockhash is valid for 151 blocks (~60–90 s): the conservative end is what a client may plan with before it must rebuild the transaction. */
 export const BLOCKHASH_TTL_SECONDS = 60;
 
-/** GET /api/chain/fees – what the lobby shows next to BUY (docs/agents/escrow.md). */
+/** GET /api/chain/fees – what the lobby shows next to BUY (docs/spec/pool.md). */
 export interface ChainFeesDto {
   /** the compute-unit price a ticket purchase is built with now (µL/CU) */
   priorityMicrolamports: number;

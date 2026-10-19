@@ -3,7 +3,7 @@ import { ServiceUnavailableError } from '../../domain/shared/errors.js';
 
 export const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-/* The RPC endpoints (docs/agents/escrow.md "Congestion"): READS go to the primary and, when it fails, to each SOLANA_RPC_FALLBACKS endpoint in turn with an
+/* The RPC endpoints (docs/spec/pool.md "Congestion"): READS go to the primary and, when it fails, to each SOLANA_RPC_FALLBACKS endpoint in turn with an
    exponential backoff (250 ms, 500 ms, …); WRITES (sending a transaction) only ever go to the primary – a public fallback must never be the one that relays our
    transactions – and so do reads whose "nothing there" answer would be acted on (is a signature unknown? a fallback without full history would say so wrongly).
    A failure everywhere is "unavailable" (503), never "not found". */

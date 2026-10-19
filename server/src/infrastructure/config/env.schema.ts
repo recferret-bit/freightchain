@@ -67,9 +67,9 @@ export const envSchema = z
     POSTHOG_DISABLED: optional(z.enum(['1', 'true', '0', 'false'])),
     /** Stored for operators. Never sent on capture. */
     POSTHOG_PROJECT_ID: optional(z.string()),
-    /** Cache for the public statistics (docs/statistics.md): `redis://[:password@]host:6379`. Unset / empty = an in-process cache (dev, tests). A Redis that is down is a miss, never an error. */
+    /** Cache for the public statistics (docs/spec/platform_services.md): `redis://[:password@]host:6379`. Unset / empty = an in-process cache (dev, tests). A Redis that is down is a miss, never an error. */
     REDIS_URL: optional(z.string().url()),
-    // ---- paid tickets (docs/agents/escrow.md). Nothing here is required yet: today's deploy keeps booting; the workstreams add their own production checks.
+    // ---- paid tickets (docs/spec/pool.md). Nothing here is required yet: today's deploy keeps booting; the workstreams add their own production checks.
     /** 'program' = escrow pools through the Anchor program, 'transfer' = plain transfers to the treasuries (fallback). Unset: 'program' when TICKET_PROGRAM_ID is set, else 'transfer'. */
     PAYMENT_MODE: optional(z.enum(['program', 'transfer'])),
     TICKET_PROGRAM_ID: optional(z.string()),
@@ -86,7 +86,7 @@ export const envSchema = z
     CRANK_INTERVAL_MS: z.coerce.number().int().min(0).default(60_000), // the pool crank's schedule (needs CRANK_SECRET); 0 = only `pool:crank` from the CLI
     PAYOUT_SECRET: optional(z.string().min(32)), // base58 keypair named on chain as Config.payout_authority: pays prizes + closes a pool after its review window, nothing else
     PAYOUT_INTERVAL_MS: z.coerce.number().int().min(0).default(300_000), // the payout job's schedule (needs PAYOUT_SECRET); 0 = only `pool:payout` from the CLI
-    ACHIEVEMENT_MINT_SECRET: optional(z.string().min(32)), // base58 keypair = tree creator + collection authority of the badge cNFTs (docs/agents/achievements.md); a mint-only key, never the crank or payout key
+    ACHIEVEMENT_MINT_SECRET: optional(z.string().min(32)), // base58 keypair = tree creator + collection authority of the badge cNFTs (docs/spec/web3_solana.md); a mint-only key, never the crank or payout key
     HONK_PROGRAM_ID: optional(z.string()), // freightchain_honk program id. Unset = ledger burns only, no signature. Local validator: GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx
     HONK_EMITTER_SECRET: optional(z.string().min(32)), // keypair that may mint_ride. The initialize payer. Unset = a verified ride stays on the ledger only
     ACHIEVEMENT_TREE: optional(z.string().min(32).max(44)), // the Bubblegum v2 Merkle tree (scripts/achievements/setup-tree.mjs prints it)
@@ -115,7 +115,7 @@ export const envSchema = z
     EDITOR_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(240),
     /** optional: only these client IPs / CIDRs reach the editor (comma-separated, IPv4 or IPv6); empty = any IP */
     EDITOR_IP_ALLOWLIST: z.string().default(''),
-    /** the AI model editor (docs/agents/editor.md): SECRETS, read by the infrastructure only – a provider is offered when its key is set */
+    /** the AI model editor (docs/spec/platform_services.md): SECRETS, read by the infrastructure only – a provider is offered when its key is set */
     ANTHROPIC_API_KEY: optional(z.string().min(8)),
     OPENAI_API_KEY: optional(z.string().min(8)),
     GEMINI_API_KEY: optional(z.string().min(8)),

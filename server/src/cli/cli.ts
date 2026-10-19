@@ -43,7 +43,7 @@ Commands:
                The pool-level attention checks (distance outlier, shared sign-in IP, a new wallet in the top 3): marks those rides' verdicts flagged
                with pool-* reasons so they stay UNDER REVIEW – an admin's decision is never touched; idempotent; logged (event pool-attention)
   stats:reconcile [--wallet ADDRESS] [--fix]
-               Recompute the statistics tables (per rider + global) from the rides and donations, report the drift; --fix rewrites the rows (quiet app, see docs/statistics.md)
+               Recompute the statistics tables (per rider + global) from the rides and donations, report the drift; --fix rewrites the rows (quiet app, see docs/spec/platform_services.md)
   entities:export
                Write every PUBLISHED 3D model revision back over client/shared/entity/seed/<kind>/<id>.js and regenerate seed/index.js (review + commit it)
   retention:sweep

@@ -3,7 +3,7 @@ import type { CosmeticSlot } from './cosmetics.js';
 
 /* What redeeming a promo code does (one effect per code):
    - ride: one 1h, 4h or 8h shift, free of charge. Not sold, not a ticket, not tied to a purchase. Once per wallet. A ranked start uses the promo slot (+1 per week). It does not mint TEN4.
-   - tickets: free paid-ride tickets of a tier – an off-chain grant into a pool, i.e. a sponsored entry; it does NOT count towards the pool's minimum (docs/promocodes.md). A ride started from one is a paid start and can mint TEN4.
+   - tickets: free paid-ride tickets of a tier – an off-chain grant into a pool, i.e. a sponsored entry; it does NOT count towards the pool's minimum (docs/spec/promocodes.md). A ride started from one is a paid start and can mint TEN4.
    - free_rides: retired. Old rows still load. Creating or redeeming one is refused (`promo_retired`). The column stays so a past redemption still reads.
    - cosmetic: a stored cab colour. Creating or redeeming one is refused (`visuals_are_honk`); new parts are minted by burning TEN4. Old unlocks stay wearable. */
 export type PromoEffect =

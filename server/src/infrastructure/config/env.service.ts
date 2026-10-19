@@ -101,7 +101,7 @@ export class EnvService {
   get solUsdFixed(): number | undefined { return this.env.SOL_USD || undefined; }
   get demoScale(): number { return this.env.DEMO_SCALE; }
 
-  // ---- paid tickets (docs/agents/escrow.md)
+  // ---- paid tickets (docs/spec/pool.md)
   get ticketProgramId(): string { return this.env.TICKET_PROGRAM_ID ?? ''; }
   /** the program when one is configured (unless forced to 'transfer'), else plain transfers */
   get paymentMode(): 'program' | 'transfer' { return this.env.PAYMENT_MODE ?? (this.env.TICKET_PROGRAM_ID ? 'program' : 'transfer'); }

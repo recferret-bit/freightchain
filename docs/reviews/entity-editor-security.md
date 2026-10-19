@@ -112,7 +112,7 @@ Upstream references: [Jayson 5 changelog](https://github.com/tedeh/jayson#change
 
 The fallback `editor_jobs_parallel` is now 5. PostgreSQL continues to enforce the cap globally and keep overflow in admission order. Existing stored settings override the fallback and must be changed via the signed admin Settings UI to enable five on that installation. The one-open-job-per-wallet/entity policy remains; five active jobs currently need distinct editor wallets. No live configuration was changed.
 
-A controlled runner regression holds five scripted generations open, verifies five more stay queued, then releases slots one at a time and checks FIFO refill, peak concurrency exactly five, and completion of all ten. The real PostgreSQL two-client race uses the five-slot default, verifies five unique claims plus five queued rows, and checks that the next queued row takes a released slot. This proves queue/concurrency behavior, not live-provider throughput. Capacity limits and the measurement/scaling plan are documented in `docs/agents/editor.md`.
+A controlled runner regression holds five scripted generations open, verifies five more stay queued, then releases slots one at a time and checks FIFO refill, peak concurrency exactly five, and completion of all ten. The real PostgreSQL two-client race uses the five-slot default, verifies five unique claims plus five queued rows, and checks that the next queued row takes a released slot. This proves queue/concurrency behavior, not live-provider throughput. Capacity limits and the measurement/scaling plan are documented in `docs/spec/platform_services.md`.
 
 ## Dedicated AI worker follow-up
 

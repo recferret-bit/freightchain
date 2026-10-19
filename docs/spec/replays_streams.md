@@ -21,8 +21,28 @@
 | Инбокс водителя | `GET /api/rides/:id/inbox` (`:78`), `client/js/ui/live-feed.js` (CB-рация) | водитель **во время поездки** видит чат и донаты, применяет эффекты (`effects/:eventId/applied`, `:89`), кнопка `mute` (`POST rides/:id/mutes`, `:84`) |
 | Реплей — что показывается | `client/js/watch.js` | **запись клиента** (сэмплы 10 Гц, батчи ≈ 15 с) + колонка ввода `SAMPLE_INPUT_COL` (какие органы управления нажаты в каждые 100 мс, мигающая рамка, `input-bits.js`) + трафик 2 Гц + ROAD CHECK по серверному плану ям. Ничего не симулируется |
 | Хранение | `TELEMETRY_RETENTION_DAYS = 90` (`env.schema.ts:140`) | запись хранится 90 дней. Удаления чата (`live.RideEvent`) через 90 дней в коде **нет** |
-| Флаги | `env.schema.ts:144–150` | `LIVE_CHAT` all/free/off, `LIVE_DONATIONS` on/off, `LIVE_FREE_DONATIONS`, `LIVE_EFFECTS` all/free/off (по умолчанию `all`) |
+| Флаги | `env.schema.ts:144–150` | `LIVE_CHAT` all/free/off, `LIVE_DONATIONS` on/off, `LIVE_FREE_DONATIONS` on/off, `LIVE_EFFECTS` all/free/off (по умолчанию в коде `all / on / on / all`; в прод-компоузе `all / on / off / free`) |
 | Ссылки | `/r/:id` (`configure-app.ts:43`, OG-карточка), blink `POST /api/actions/ride/:id/watch` | публичные |
+
+### 1.1a Операционные детали реализации на `main` (присутствие, закрытие вкладки, сэмплы `watch.js`, воркеры и E2E)
+- **Присутствие на сайте и зрители (`client/site/presence.js`, `GET /api/live`)**:
+  - Лендинг и лобби опрашивают `/api/live?visitor=<id>&page=landing|lobby`, а при уходе со страницы (`pagehide`) `leaveOnClose()` отправляет маяк с `&leave=1`, чтобы счётчики присутствия и зрителей освобождались сразу, не дожидаясь истечения TTL.
+- **Закрытие игровой вкладки и уборка зависших поездок (`online.js`, `StaleRideScheduler`)**:
+  - При закрытии вкладки с игрой (`pagehide`) `client/js/online.js` отправляет `navigator.sendBeacon('/api/rides/:id/end', ...)` (парсится `beaconBodyMiddleware` на сервере), а при возврате из bfcache (`pageshow` с `e.persisted`) перезагружает страницу, чтобы не продолжать уже завершённую поездку.
+  - Если вкладка пропала без маяка и молчит дольше `HB_TIMEOUT_MS = 150 000 мс` (150 с), фоновый `StaleRideScheduler` (`SweepStaleRidesCommand`) переводит поездку из `running` в `failed` (`heartbeat lost`, аналитика `ended_by = 'stale_sweep'`) и вызывает `StatsService.recordRideEnded`. Поездка никогда не остаётся висеть в `running`.
+- **Формат сэмплов реплея и 2 Гц трафик в `client/js/watch.js` (`client/js/replay-end.js`)**:
+  - Колонки `0..11` сэмпла 10 Гц: `[t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch]`.
+  - Колонки `12..15`:
+    - `12`: игровой час суток (`clock`, `0..24`);
+    - `13`: битовая маска состояний кабины (`FLAGS`: печка `heater = 32`, охлаждение `cooling = 2048`, телефон открыт `phone = 4096`);
+    - `14`: `SAMPLE_INPUT_COL` (`client/js/input-bits.js`, биты зажатых клавиш + `MOUSE = 1 << 25`, кнопки телефона `map = 1 << 26`, `cold = 1 << 27`, `share = 1 << 28`);
+    - `15`: `SAMPLE_FORK_COL` (выбранная ветвь развилки, передаётся в `roads.setBranch`).
+  - Трафик для отображения реплея (`trafficSnapshot()` в `client/js/sim/traffic.js`): снимается с частотой **2 Гц** для `<= 16` ближайших машин в радиусе `400 м` от грузовика.
+  - Длительность реплея (`replayEnd()` в `client/js/watch.js`, диалог конца реплея в `client/js/replay-end.js`): точка пересечения финиша `+ 3 с` (или конец записи).
+  - Косметика кабины в реплее: `ride.loadout` применяется через `setLoadout()` при загрузке `watch.js`.
+- **Блокировка окна эффектов и E2E-скрипты**:
+  - Скользящий 20-секундный интервал между эффектами на одну поездку сериализуется транзакционной `pg_advisory_xact_lock` по `rideId`.
+  - Скрипты и навыки проверки: `node server/scripts/sim-rides.mjs`, `node server/scripts/e2e-live-board.mjs` (навык `live-board-test`), `node server/scripts/e2e-close.mjs`, `node server/scripts/e2e-watch.mjs`, `node server/scripts/e2e-replay.mjs`, `node server/scripts/e2e-live-flags.mjs` (навык `replay-test`).
 
 ### 1.2 Что можно смотреть
 - **RPL-M-01** MUST: публично смотреть можно **только реплей завершённой нетренировочной поездки**. «Завершённая» = статус `completed`, `abandoned` или `failed`, финальный вердикт есть и он не `rejected` (решение 55). Поездка в `review` открывается после ручного решения.

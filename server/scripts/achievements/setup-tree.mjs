@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Creates the badge collection (MPL-Core, soulbound) and the Bubblegum v2 Merkle tree, with ONE keypair that then becomes ACHIEVEMENT_MINT_SECRET.
-// Dry-run by default (balance + cost); --yes sends. Devnet by default; mainnet needs --rpc and --i-know-mainnet. docs/agents/achievements.md
+// Dry-run by default (balance + cost); --yes sends. Devnet by default; mainnet needs --rpc and --i-know-mainnet. docs/spec/web3_solana.md
 //   node scripts/achievements/setup-tree.mjs --keypair ~/keys/fc-achievements.json [--cluster devnet] [--rpc URL] [--depth 16 --buffer 64 --canopy 10] [--thaw-authority] [--yes]
 import { createCollection } from '@metaplex-foundation/mpl-core';
 import { createTreeV2 } from '@metaplex-foundation/mpl-bubblegum';

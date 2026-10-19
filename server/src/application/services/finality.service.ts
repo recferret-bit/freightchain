@@ -24,7 +24,7 @@ const NEVER_EXPIRES = Number.MAX_SAFE_INTEGER;
 const DROPPED = 'the network dropped this transaction (never finalized, past its last valid block height)';
 
 /**
- * The finality pass (docs/agents/escrow.md). Tickets are credited at `confirmed`; every settled / applied event is re-checked here until it is final:
+ * The finality pass (docs/spec/pool.md). Tickets are credited at `confirmed`; every settled / applied event is re-checked here until it is final:
  *   finalized → stamped (`finalizedAt`);
  *   expired   → the transaction never landed for good (a fork reverted it and its blockhash is gone): its events become `dropped` and what it credited is undone
  *               in ONE transaction under the locks in the codebase's order – the buyers' player rows (sorted) → the pool rows (sorted) → ticket rows:

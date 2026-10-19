@@ -1,4 +1,4 @@
-// The live feed of a ride (spectators – docs: docs/agents/live.md "Live streams"): a chat line or a MOCK donation (nothing is charged, no chain yet), optionally with an
+// The live feed of a ride (spectators – docs: docs/spec/replays_streams.md "Live streams"): a chat line or a MOCK donation (nothing is charged, no chain yet), optionally with an
 // effect the driver's game applies (night / day / an obstacle on the road). Append-only, except for the driver's "applied" stamp.
 // Rate limits without a lock: (rideId, slotKey, slot) is unique – slotKey 'fx' = one effect per ride per window, 'msg:<wallet>' / 'tip:<wallet>' = one line per
 // wallet per window – so two racing posts cannot both take the same window (domain/live/live-rules.ts).

@@ -117,6 +117,6 @@ The tab icon, the Phantom connect-popup logo and the home-screen icon are plain 
 ## Caveats
 - Nothing is deployed from the working tree – only the commit. `--allow-dirty` just silences the guard.
 - One server, brief downtime while the app container is swapped (no blue/green).
-- Not a security boundary: the mock-era client checks are unchanged; see `docs/agents/verified-play.md`.
+- Not a security boundary: the mock-era client checks are unchanged; see `docs/spec/anticheat.md`.
 
 The dedicated AI worker runs `node dist/app/editor-worker.js` from the server image, with no HTTP listener or published port, a read-only filesystem and a 1 GB memory cap. PostgreSQL owns its five-slot global queue. Its health check requires a fresh successful queue poll; it is started only when the entity MCP is configured. API, worker and MCP share provider/model configuration and the MCP token; API and worker share JWT_SECRET for job capabilities. No money-moving keys are passed to the AI worker. Queue markers are removed on failure/shutdown. Manual and automatic rollback stop the outgoing AI worker and use optional services available in the target release.

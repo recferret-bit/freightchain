@@ -1102,7 +1102,7 @@ export function runThreeIterations(spec) {
       severity: "CRITICAL",
       dimension: "Minting & Burning (Red-Team)",
       title: "Sybil & Bot Faucet Drain Vector on Free Rides",
-      detail: "Adversarial Stress Test: Every new wallet in Freight Chain receives 10 free rides plus 1 daily refill (`docs/agents/free-rides.md`), and browser `dt` physics allows a `1.8x` per-step margin before `physics-speed-mismatch`. If token emissions are paid per km on unverified or free-tier shifts without staking/ticket skin-in-the-game, headless bot farms will spin up thousands of wallets to drain the reward vault and dump on DEX.",
+      detail: "Adversarial Stress Test: Every new wallet in Freight Chain receives 10 free rides plus 1 daily refill (`docs/spec/rides.md`), and browser `dt` physics allows a `1.8x` per-step margin before `physics-speed-mismatch`. If token emissions are paid per km on unverified or free-tier shifts without staking/ticket skin-in-the-game, headless bot farms will spin up thousands of wallets to drain the reward vault and dump on DEX.",
       proposal: "Gate 100% of token faucet emissions behind (a) `VERIFIED` shifts that pass both `RideVerdict.judge` AND the 10 Hz `ReplayEngine` worker (`verdict.RideReplay`), and (b) paid pool participation, seasonal pass ownership, or verified human challenge completion — zero raw token emissions on unverified or guest free runs."
     });
   } else if (spec.honkSignals?.hasNoClawbackWindow) {
@@ -1114,7 +1114,7 @@ export function runThreeIterations(spec) {
       severity: "HIGH",
       dimension: "Minting & Burning (Red-Team)",
       title: "'No Clawback' Post-Verdict Admin Rejection Exploit Window & 8h Multiplier Capital Skew",
-      detail: "Adversarial Stress Test: (1) Section 05 codifies 'No clawback. If an admin later rejects a ride that already minted, the coins stay. Spent coins cannot be pulled back.' Unlike achievement cNFTs (`docs/agents/achievements.md`), which wait out a settlement delay and re-check that skips rejected rides, HONK mints synchronously inside the initial verdict transaction—allowing a bot that passes initial telemetry bounds to immediately spend or swap HONK into the 10 SOL pool before asynchronous replay/admin rejection. (2) An 8h finish ($50 ticket -> 2,000 HONK = 40 HONK/$) yields 2.0x more HONK per dollar than a 1h finish ($5 -> 100 HONK = 20 HONK/$), concentrating emission capture in 8h grinders.",
+      detail: "Adversarial Stress Test: (1) Section 05 codifies 'No clawback. If an admin later rejects a ride that already minted, the coins stay. Spent coins cannot be pulled back.' Unlike achievement cNFTs (`docs/spec/web3_solana.md`), which wait out a settlement delay and re-check that skips rejected rides, HONK mints synchronously inside the initial verdict transaction—allowing a bot that passes initial telemetry bounds to immediately spend or swap HONK into the 10 SOL pool before asynchronous replay/admin rejection. (2) An 8h finish ($50 ticket -> 2,000 HONK = 40 HONK/$) yields 2.0x more HONK per dollar than a 1h finish ($5 -> 100 HONK = 20 HONK/$), concentrating emission capture in 8h grinders.",
       proposal: "Hold newly minted HONK in a `pending_finality` state until the 10 Hz `ReplayEngine` worker (`verdict.RideReplay`) and pool settlement review lock complete (matching the achievement cNFT outbox pattern), or freeze/burn unspent balances if a ride is later rejected by an admin."
     });
   }

@@ -1,6 +1,6 @@
 import { EDITOR_BASE } from '../hosts.js';
 
-/* The editor's API (docs/editor-api.md): same-origin on storybook.<apex>, the host-only fc_editor cookie, x-fc-editor on every unsafe call.
+/* The editor's API (docs/spec/platform_services.md): same-origin on storybook.<apex>, the host-only fc_editor cookie, x-fc-editor on every unsafe call.
    A problem+json answer becomes an Error carrying its code, status and (for a refused entity) errors / warnings. */
 export async function api(path, { method = 'GET', body } = {}) {
   for (let attempt = 0; ; attempt++) {

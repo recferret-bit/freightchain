@@ -22,7 +22,7 @@ export interface FakePledgeAccount { rideId: string; sponsor: string; driver: st
 export type ReadEventsAnswer = ChainEventRecord[] | 'pending' | { invalid: string };
 
 /**
- * The pool program as a test double (docs/agents/escrow.md): scripted events per signature, pool accounts, the program's signature history, statuses,
+ * The pool program as a test double (docs/spec/pool.md): scripted events per signature, pool accounts, the program's signature history, statuses,
  * and the signature statuses. Built transactions are real (unsigned) Solana transactions, paid by the signer, recorded in `built`.
  */
 export class FakePoolChain extends PoolChainPort {

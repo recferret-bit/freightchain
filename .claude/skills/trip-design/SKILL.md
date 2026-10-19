@@ -50,7 +50,7 @@ The shift **length** and **finish line** are the server's, stored on the ride wh
 ## Out of bounds – and the two knobs the server judges
 
 The server rebuilds the layout and the sinkholes from the seed AND the ride's trip and measures every recording against them (`server/src/domain/road`,
-`verdict/world-checks.ts`, docs/agents/verified-play.md "Verified play"). Two trip knobs are therefore JUDGED and live on both sides: `holesFrom` (`road-rules.ts`
+`verdict/world-checks.ts`, `docs/spec/anticheat.md`). Two trip knobs are therefore JUDGED and live on both sides: `holesFrom` (`road-rules.ts`
 `TRIP_HOLE_FIRST`) and `road` (`TRIP_ROADS` / `tripRoadOf`, read by `new RoadLayout(seed, trip)` and `roadPlanFor(seed, trip)` at its call sites –
 `get-road-plan`, `upload-batch`, `ride-audit`); `road-drift.spec.ts` runs every trip's layout seed by seed and fails on a difference. Change both sides in
 one commit, and only on a NEW trip id – an old ride must keep the road it was judged on. A new pattern is APPENDED to `PATTERNS` on both sides (the

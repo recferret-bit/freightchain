@@ -6,7 +6,7 @@ description: Check and repair Freight Chain's statistics (total rides, driven ti
 # Statistics reconciliation
 
 The statistics tables are **running totals** (`stats."PlayerStats"` per rider, `stats."GlobalStats"` one row), written with atomic increments when a ride ends and
-when a donation lands (`StatsService`, docs/statistics.md). Everything they hold can be recomputed from `ride."Ride"` (started rides that ended: metres, driven
+when a donation lands (`StatsService`, `docs/spec/platform_services.md`). Everything they hold can be recomputed from `ride."Ride"` (started rides that ended: metres, driven
 seconds, crash counters) and `live."RideEvent"` (donations, on the ride owner; lamports only when a transfer paid them) – that is the ground truth, the same rule
 the migration's backfill used.
 

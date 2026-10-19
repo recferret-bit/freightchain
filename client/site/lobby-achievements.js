@@ -1,5 +1,5 @@
 /* The profile's ACHIEVEMENTS: one ladder per family (3-4 tiers, easy → hard), each tier an earned or a locked card. An earned card shows its badge art and the state of
-   its soulbound compressed NFT (docs/agents/achievements.md); a locked one shows the badge in steel and how far along the rider is. Server text only through textContent. */
+   its soulbound compressed NFT (docs/spec/web3_solana.md); a locked one shows the badge in steel and how far along the rider is. Server text only through textContent. */
 import { el } from './dom.js';
 import { bindFlipCards } from './effects.js';
 import { extLink } from './ui.js';

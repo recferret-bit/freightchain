@@ -1,5 +1,5 @@
 /* Live streams (spectators): what a signed-in spectator may post into a running ride's feed, and how often. Donations are a MOCK – the amount is shown and
-   summed, nothing is charged (docs/agents/live.md: a wallet-to-wallet tip seen by the chain watcher).
+   summed, nothing is charged (docs/spec/replays_streams.md: a wallet-to-wallet tip seen by the chain watcher).
    The game client mirrors EFFECTS (client/js/live.js – what each effect does, client/js/ui/watch-panel.js – the buttons). */
 
 export const LAMPORTS_PER_SOL = 1_000_000_000;

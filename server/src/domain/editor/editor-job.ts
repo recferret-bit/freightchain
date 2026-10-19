@@ -1,4 +1,4 @@
-/* One request to the AI model editor (docs/agents/editor.md): the prompt, the provider and model, what it produced and what it cost, and its steps as
+/* One request to the AI model editor (docs/spec/platform_services.md): the prompt, the provider and model, what it produced and what it cost, and its steps as
    append-only events (seq per job) that the editor's chat polls. A job writes models only through the MCP callbacks, as drafts. */
 
 export const JOB_STATUSES = ['queued', 'running', 'done', 'failed', 'cancelled'] as const;

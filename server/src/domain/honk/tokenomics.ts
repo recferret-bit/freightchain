@@ -1,4 +1,4 @@
-/* TEN4 (docs/honk/SPEC.md). The ticker is TEN4; HONK stays the in-game verb. Until TGE the ledger is the source of truth. */
+/* TEN4 (docs/spec/ten4.md). The ticker is TEN4; HONK stays the in-game verb. Until TGE the ledger is the source of truth. */
 
 const UNIT = 1_000_000n;
 

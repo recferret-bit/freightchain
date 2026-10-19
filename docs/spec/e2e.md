@@ -39,7 +39,7 @@
   2. `paintHero` падает без `split` / `totals`;
   3. косметический промо-код отклоняется `visuals_are_honk`;
   4. `GET /api/honk` → `chain: null` без `HONK_PROGRAM_ID`;
-  5. [`docs/promocodes.md`](../promocodes.md) устарел;
+  5. спецификация промокодов обновлена и перенесена в [`docs/spec/promocodes.md`](promocodes.md);
   6. нет админского HTTP для `set_pool_rules`;
   7. реферальные сценарии не проверяют выдачу;
   8. `e2e-tickets-stub` RETRY CONFIRM и `/reconcile` падают.
