@@ -242,11 +242,11 @@ test('the lobby and the landing never call a bare /api path or render with inner
 });
 
 test('the escrow explainer is the whitepaper chapter, and the standalone copy is gone', () => {
-  const root = join(new URL('..', import.meta.url).pathname, '..');
+  const root = join(new URL('..', import.meta.url).pathname, '../..');
   assert.equal(escrowExplainer(), '/whitepaper.html#onchain');
-  assert.equal(existsSync(join(root, 'client/escrow')), false);
+  assert.equal(existsSync(join(root, 'frontend/client/escrow')), false);
   assert.equal(existsSync(join(root, 'docs/pool-escrow')), false);
-  for (const f of ['client/site/lobby.js', 'client/site/lobby-new.js', 'client/site/lobby-pools.js', 'landing/src/main.js', 'landing/src/boards.js', 'landing/vite.config.js']) {
+  for (const f of ['frontend/client/site/lobby.js', 'frontend/client/site/lobby-new.js', 'frontend/client/site/lobby-pools.js', 'frontend/landing/src/main.js', 'frontend/landing/src/boards.js', 'frontend/landing/vite.config.js']) {
     assert.doesNotMatch(readFileSync(join(root, f), 'utf8'), /\/escrow\//, f);
   }
 });

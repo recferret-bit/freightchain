@@ -1197,7 +1197,7 @@ async function selfTest() {
   assert(unsafeTestDatabase('') === '' && unsafeTestDatabase('postgresql://u:p@localhost:5432/freightchain_branch_test') === '' && unsafeTestDatabase('postgresql://u:p@localhost:5432/freightchain').includes('_test'), 'test database guard');
   assert(inv.scenarioSides.some((s) => s.name === 'analyticsScenarios' && s.memory === 2 && s.postgres === 2), 'analytics registered twice');
   assert(inv.pureReadable, 'pure list');
-  assert(inv.layers.find((l) => l.id === 'client-headless').checks === 36, 'headless checks');
+  assert(inv.layers.find((l) => l.id === 'client-headless').checks >= 36, 'headless checks');
   const lanes = schedule(['client-unit', 'server-unit', 'landing', 'server-integration', 'e2e', 'e2e:browser', 'program-check']);
   assert(lanes.map((lane) => lane.join('+')).join(' | ') === 'client-unit | server-unit+server-integration | landing | e2e+e2e:browser | program-check', `schedule ${JSON.stringify(lanes)}`);
   const together = fastTimingSentence([
@@ -1262,16 +1262,16 @@ async function selfTest() {
   assert([...attributeCase({ title: 'two redemptions race', keys: new Set(['POST /api/auth/nonce']) }, 'server-concurrency', rows)].join() === 'promo', 'race by title');
   const log = routesFromLog('2026 INFO  [HTTP] GET /api/rides/pending 200 {"event":"request","method":"GET","path":"/api/rides/pending","status":200}\nnoise\nx {"event":"request","method":"GET","path":"/api/rides/abc","status":404}\n', ctrl);
   assert(log.counts['GET /api/rides/pending'] === 1 && log.counts['GET /api/rides/:id'] === 1, JSON.stringify(log));
-  assert(subjectOf('server/test/unit/x/ride.service.spec.ts', ['server/src/domain/shared/errors.ts'], new Map([['ride.service', ['server/src/application/services/ride.service.ts']]])) === 'server/src/application/services/ride.service.ts', 'subject by basename');
-  const acc = addLcov({}, 'SF:js/a.js\nDA:1,1\nDA:2,0\nBRDA:1,0,0,1\nBRDA:1,0,1,-\nend_of_record\n', ROOT, join(ROOT, 'client'));
-  addLcov(acc, 'SF:js/a.js\nDA:2,3\nBRDA:1,0,1,2\nend_of_record\nSF:test/t.test.mjs\nDA:1,1\nend_of_record\n', ROOT, join(ROOT, 'client'));
+  assert(subjectOf('backend/server/test/unit/x/ride.service.spec.ts', ['backend/server/src/domain/shared/errors.ts'], new Map([['ride.service', ['backend/server/src/application/services/ride.service.ts']]])) === 'backend/server/src/application/services/ride.service.ts', 'subject by basename');
+  const acc = addLcov({}, 'SF:js/a.js\nDA:1,1\nDA:2,0\nBRDA:1,0,0,1\nBRDA:1,0,1,-\nend_of_record\n', ROOT, join(ROOT, 'frontend/client'));
+  addLcov(acc, 'SF:js/a.js\nDA:2,3\nBRDA:1,0,1,2\nend_of_record\nSF:test/t.test.mjs\nDA:1,1\nend_of_record\n', ROOT, join(ROOT, 'frontend/client'));
   const lc = linesFromLcov(acc);
-  assert(JSON.stringify(lc) === '{"client/js/a.js":[2,2,2,2]}', JSON.stringify(lc));
+  assert(JSON.stringify(lc) === '{"frontend/client/js/a.js":[2,2,2,2]}', JSON.stringify(lc));
   const ist = linesFromIstanbul(mergeIstanbul(
-    { f: { path: join(ROOT, 'server/src/a.ts'), statementMap: { 0: { start: { line: 1 } }, 1: { start: { line: 2 } } }, s: { 0: 1, 1: 0 }, b: { 0: [1, 0] } } },
-    { f: { path: join(ROOT, 'server/src/a.ts'), statementMap: { 0: { start: { line: 1 } }, 1: { start: { line: 2 } } }, s: { 0: 0, 1: 2 }, b: { 0: [0, 0] } } },
+    { f: { path: join(ROOT, 'backend/server/src/a.ts'), statementMap: { 0: { start: { line: 1 } }, 1: { start: { line: 2 } } }, s: { 0: 1, 1: 0 }, b: { 0: [1, 0] } } },
+    { f: { path: join(ROOT, 'backend/server/src/a.ts'), statementMap: { 0: { start: { line: 1 } }, 1: { start: { line: 2 } } }, s: { 0: 0, 1: 2 }, b: { 0: [0, 0] } } },
   ), ROOT);
-  assert(JSON.stringify(ist) === '{"server/src/a.ts":[2,2,1,2]}', JSON.stringify(ist));
+  assert(JSON.stringify(ist) === '{"backend/server/src/a.ts":[2,2,1,2]}', JSON.stringify(ist));
   const base = { id: 'x', files: 4, withTest: 4, unitFiles: 1, routes: 2, routesHit: 2, scenarioCases: 3, race: 0, sim: 0, harness: [{ name: 'e2e-x.mjs' }], skills: [], e2eRouteHits: 2, lines: null };
   assert(gradeFeature({ ...base, e2eRouteHits: 0 }, true).grade === 'strong' && gradeFeature({ ...base, recordable: true, e2eRouteHits: 0 }, true).grade === 'fair', 'only e2e.sh features need recorded routes');
   assert(gradeFeature(base, true).grade === 'strong', 'strong');

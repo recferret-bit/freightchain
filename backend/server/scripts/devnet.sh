@@ -68,7 +68,7 @@ case "${1:-help}" in
     [ -n "$(envkey SOLANA_WS)" ] && echo "✓ SOLANA_WS set (the watcher subscribes to the program's logs)" || echo "• SOLANA_WS not set – the watcher only polls (WATCH_INTERVAL_MS)"
     ;;
   db)
-    nc -z localhost 15433 || (cd "$SERVER/.." && npm run --silent db:up)
+    nc -z localhost 15433 || (cd "$SERVER/../.." && npm run --silent db:up)
     docker exec freightchain-postgres psql -U freight -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='freightchain_devnet'" | grep -q 1 \
       || docker exec freightchain-postgres psql -U freight -d postgres -c 'CREATE DATABASE "freightchain_devnet"' >/dev/null
     (cd "$SERVER" && DATABASE_URL="postgresql://freight:freight_dev_password@localhost:15433/freightchain_devnet" ./node_modules/.bin/prisma migrate deploy >/dev/null)
@@ -89,7 +89,7 @@ case "${1:-help}" in
     shift; cd "$SERVER" && BASE="http://localhost:$(envkey PORT)" RPC="$(rpc)" ADMIN="$KEYS/admin.json" exec node scripts/devnet-payout.mjs "$@"
     ;;
   rehearse)
-    cd "$SERVER/.." && TARGET=devnet KEYS_DIR="$KEYS" exec bash .claude/skills/localnet-e2e/run.sh
+    cd "$SERVER/../.." && TARGET=devnet KEYS_DIR="$KEYS" exec bash .claude/skills/localnet-e2e/run.sh
     ;;
   airdrop)
     r="${2:?role, e.g. deploy}"; amt="${3:-1}"
@@ -122,7 +122,7 @@ case "${1:-help}" in
       node scripts/pool-admin.mjs initialize --url "$(rpc)" -k "$KEYS/deploy.json" --admin "$(pub admin)" --platform-treasury "$(pub plat)" --platform-fee-bps 0 >/dev/null
     fi
     node scripts/pool-admin.mjs show --url "$(rpc)" | node -e 'const c=JSON.parse(require("fs").readFileSync(0)).config; if (c.authority !== process.argv[1]) { console.error("✗ Config.authority is NOT the devnet admin – someone else initialized: redeploy under a new id"); process.exit(1) } console.log("✓ Config.authority = the admin key, platform cut " + c.platformFeeBps + " bps")' "$(pub admin)"
-    PROGRAM_ID="$(pub program-id)" RPC_URL="$(rpc)" bash "$SERVER/../.claude/skills/program-check/check.sh" onchain
+    PROGRAM_ID="$(pub program-id)" RPC_URL="$(rpc)" bash "$SERVER/../../.claude/skills/program-check/check.sh" onchain
     ;;
   *)
     sed -n '2,18p' "$0"; exit 1 ;;

@@ -621,7 +621,7 @@ export function renderFull(rep, countedAt) {
   for (const f of rep.features.filter((x) => x.untested.length)) {
     const shown = f.untested.map((p) => {
       const l = pct(rep.lineOf(p));
-      return `\`${p.replace(/^server\/src\//, '')}\`${l == null ? '' : ` (${l} % lines)`}`;
+      return `\`${p.replace(/^(?:backend\/)?server\/src\//, '')}\`${l == null ? '' : ` (${l} % lines)`}`;
     });
     out.push(`- **${cell(f.title)}** (${f.untested.length}): ${shown.join(', ')}`);
   }

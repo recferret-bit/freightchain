@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const here = dirname(fileURLToPath(import.meta.url)), client = join(here, '..', '..'), repo = join(client, '..');
+const here = dirname(fileURLToPath(import.meta.url)), client = join(here, '..', '..'), repo = join(client, '..', '..');
 const base = process.argv[2] ?? readFileSync(join(here, 'BASE'), 'utf8').trim();
 const tmp = mkdtempSync(join(tmpdir(), 'fc-parity-'));
 function tree(name, fill) {
@@ -21,7 +21,7 @@ function tree(name, fill) {
   execFileSync('npx', ['esbuild', join(par, 'entry.mjs'), '--bundle', '--format=esm', '--platform=node', `--alias:three=${join(par, 'three-rec.mjs')}`, `--outfile=${out}`, '--log-level=error'], { cwd: client, stdio: 'inherit' });
   return execFileSync('node', [out], { maxBuffer: 1 << 30 }).toString().trimEnd().split('\n');
 }
-const legacy = tree('legacy', root => execFileSync('sh', ['-c', `git -C "${repo}" archive ${base} client | tar -x -C "${root}"`]));
+const legacy = tree('legacy', root => execFileSync('sh', ['-c', `if git -C "${repo}" cat-file -e "${base}:frontend/client" 2>/dev/null; then git -C "${repo}" archive "${base}" frontend/client | tar -x --strip-components=1 -C "${root}"; else git -C "${repo}" archive "${base}" client | tar -x -C "${root}"; fi`]));
 const now = tree('current', root => { mkdirSync(join(root, 'client'), { recursive: true }); for (const d of ['js', 'shared']) cpSync(join(client, d), join(root, 'client', d), { recursive: true }); });
 const A = new Map(legacy.map(l => l.split('\t'))), B = new Map(now.map(l => l.split('\t')));
 let diffs = 0;

@@ -103,9 +103,10 @@ for suite in "${SUITES[@]}"; do
       FIXED_PORT="$(free_port)"; MCP_PORT="$(free_port)"; MCP_TOKEN="e2e-mcp-$$-$(node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))')"
       (cd "$ROOT/backend/mcp" && EDITOR_MCP_PORT="$MCP_PORT" EDITOR_MCP_TOKEN="$MCP_TOKEN" FC_APP_URL="http://localhost:$FIXED_PORT" exec node src/http.js > "/tmp/fc-e2e-mcp-$DB.log" 2>&1) & MCP_PID=$!
       EDITOR_TEST_JWT="e2e-editor-jwt-$$-shared-between-processes"
-      EXTRA_ENV="JWT_SECRET=$EDITOR_TEST_JWT EDITOR_WALLETS=$wallet EDITOR_FAKE_LLM=1 EDITOR_MCP_URL=http://127.0.0.1:$MCP_PORT EDITOR_MCP_TOKEN=$MCP_TOKEN" start 3 "$wallet"   # the editor is the ADMIN wallet too (the owner's setup)
+      FAKE_ONLY="EDITOR_FAKE_LLM=1 EDITOR_DEFAULT_PROVIDER=fake ANTHROPIC_API_KEY= OPENAI_API_KEY= GEMINI_API_KEY= ZAI_API_KEY= XAI_API_KEY="
+      EXTRA_ENV="JWT_SECRET=$EDITOR_TEST_JWT EDITOR_WALLETS=$wallet $FAKE_ONLY EDITOR_MCP_URL=http://127.0.0.1:$MCP_PORT EDITOR_MCP_TOKEN=$MCP_TOKEN" start 3 "$wallet"   # the editor is the ADMIN wallet too (the owner's setup)
       (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" node scripts/e2e-editor-worker.mjs queue "$BUILD/editor-worker-job.txt")
-      (cd "$SERVER" && exec env DATABASE_URL="$URL" JWT_SECRET="$EDITOR_TEST_JWT" EDITOR_WALLETS="$wallet" EDITOR_FAKE_LLM=1 EDITOR_MCP_URL="http://127.0.0.1:$MCP_PORT" EDITOR_MCP_TOKEN="$MCP_TOKEN" node "$BUILD/app/editor-worker.js" > "/tmp/fc-e2e-editor-worker-$DB.log" 2>&1) & EDITOR_WORKER_PID=$!
+      (cd "$SERVER" && exec env DATABASE_URL="$URL" JWT_SECRET="$EDITOR_TEST_JWT" EDITOR_WALLETS="$wallet" $FAKE_ONLY EDITOR_MCP_URL="http://127.0.0.1:$MCP_PORT" EDITOR_MCP_TOKEN="$MCP_TOKEN" node "$BUILD/app/editor-worker.js" > "/tmp/fc-e2e-editor-worker-$DB.log" 2>&1) & EDITOR_WORKER_PID=$!
       (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" node scripts/e2e-editor-worker.mjs wait "$BUILD/editor-worker-job.txt" "$EDITOR_WORKER_PID")
       (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-editor.mjs) || { fails=$((fails + 1)); tail -20 "/tmp/fc-e2e-mcp-$DB.log"; }
       stop_editor; stop; FIXED_PORT=""; EXTRA_ENV="" ;;
