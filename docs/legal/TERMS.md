@@ -304,8 +304,8 @@ Support: [PLACEHOLDER: support email] · Legal notices and arbitration opt-out: 
 **[LAWYER] items to decide:**
 1. Age: 18+ everywhere, or 19/21 where the age of majority is higher (prize features) — §2.1.
 2. Ineligible persons scope (employees, family, sponsor staff) — §2.3.
-3. Sanctions list: CU, IR, KP, SY + Crimea/Donetsk/Luhansk; add RU, BY, VE, others? — §3.1 (`docs/spec/OPEN.md` 2б).
-4. Seven US states: paid/prize features blocked (`geo_block_us_states_paid`), free training/EASY allowed; confirm whether any additional state must be added (Skillz lists AR, CT, DE, LA, SD; Triumph excludes AZ, CT, DE, LA, ME, MI, MT, NV, SD, TN) — §3.2 (`docs/spec/OPEN.md` 2а).
+3. Sanctions list: CU, IR, KP, SY + Crimea/Donetsk/Luhansk; add RU, BY, VE, others? — §3.1 (`docs/spec/OPEN.md` 2b).
+4. Seven US states: paid/prize features blocked (`geo_block_us_states_paid`), free training/EASY allowed; confirm whether any additional state must be added (Skillz lists AR, CT, DE, LA, SD; Triumph excludes AZ, CT, DE, LA, ME, MI, MT, NV, SD, TN) — §3.2 (`docs/spec/OPEN.md` 2a).
 5. Refund of unused purchased tickets when a location becomes restricted or the Services end — §3.6, §23.2; consumer refund rights — §7.5.
 6. Free entry route and 30% free-ticket cap vs. state contest/sweepstakes laws — §8.3, §9.4.
 7. Non-resident withholding (30% / 1042-S) — §10.4 (tax adviser).

@@ -1,0 +1,26 @@
+{
+  "name": "thread-drive",
+  "look": "big",
+  "fps": 24, "width": 1280, "height": 720, "maxSeconds": 15,
+  "gif": { "maxMB": 12, "width": 720, "fps": 12 },
+  "audio": { "ignition": { "at": 0, "dur": 0.7 }, "music": { "id": "road-rush", "gain": 0.5 }, "engine": { "gain": 0.45 } },
+  "scenes": [
+    { "id": "free", "dur": 2.4, "route": "route66", "time": "day", "speed": [8, 24], "push": 0.07, "traffic": false, "seed": 2,
+      "transition": { "type": "flash", "dur": 0.35 },
+      "captions": [ { "at": 0.2, "dur": 2.1, "head": "FREE\nIN THE BROWSER" } ] },
+
+    { "id": "night", "dur": 2.5, "route": "stuart", "time": "night", "speed": 22, "lights": false, "seed": 5,
+      "transition": { "type": "glitch", "dur": 0.35 },
+      "events": [ { "t": 0.35, "do": "lights", "on": true }, { "t": 1.1, "do": "cab", "on": true }, { "t": 1.7, "do": "cab", "on": false } ],
+      "captions": [ { "at": 0.25, "dur": 2.15, "head": "NIGHT\nSHIFT" } ] },
+
+    { "id": "mistake", "dur": 2.5, "route": "route66", "time": "day", "speed": 25, "damage": true, "sway": 0, "seed": 1,
+      "transition": { "type": "whip", "dur": 0.3 },
+      "events": [ { "t": 0.08, "do": "spawn", "type": "truck", "preset": "slow", "zone": "ahead", "dist": 20 } ],
+      "captions": [ { "at": 0.12, "dur": 2.2, "head": "ONE\nMISTAKE" } ] },
+
+    { "id": "end", "dur": 2.4, "route": "brenner", "time": "dusk", "speed": 14, "traffic": false,
+      "transition": { "type": "zoom", "dur": 0.4 },
+      "card": { "title": ["DRIVE A SHIFT", "FREE"], "cta": "freightchain.fun", "foot": "BUILT ON SOLANA · DEVNET" } }
+  ]
+}

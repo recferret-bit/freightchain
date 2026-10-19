@@ -1,183 +1,183 @@
-# Пул — манифест и план тестирования
+# Pool — spec and test plan
 
-> Недельный пул, параметры расписания, билеты, последний старт, сгорание билета, проверка 1,5 дня, апелляции, контракт v5/v6. Решения 34–37, решения владельца 17.10.2026 (раунд 22). Подробности — приложение A (бывший §20 `anticheat_test_plan.md` (superseded, merged into docs/spec), без изменений) и приложение B (выписка из [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §3 и §5).
+> A weekly pool, schedule parameters, tickets, the last start, ticket burn, a 1.5-day review, appeals, and the v5/v6 contract. Decisions 34–37, and the owner's decisions of 17.10.2026 (round 22). The detail is Appendix A (the former §20 of `anticheat_test_plan.md` (superseded, merged into docs/spec), unchanged) and Appendix B (an extract from [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §3 and §5).
 
-## Часть 1. Манифест
-### 1.1 Сейчас в коде
-Программа пулов v5 (`origin/main`, `programs/freightchain_pools`):
-- `Pool.prep_deadline` / `play_deadline` / `payout_at`, снимок `min_review_secs`;
+## Part 1. Spec
+### 1.1 In the code now
+The pool program v5 (`origin/main`, `programs/freightchain_pools`):
+- `Pool.prep_deadline` / `play_deadline` / `payout_at`, and a snapshot of `min_review_secs`;
 - `buy_ticket.rs:50` `PaidTicketsDisabled`, `:52` `require!(now < pool.prep_deadline, TooLate)`;
 - `DEFAULT_MIN_FINISH_SECS = 10_800`;
-- у серии `sale_secs` — это и окно, и каденция.
+- on a series, `sale_secs` is both the window and the cadence.
 
-Бэкенд — `pool-registry.service.ts`, `Pool.fromChain`. `set_pool_rules` без HTTP-маршрута (баг 6 в [`E2E_PLAN.md`](../testing/E2E_PLAN.md)).
+The backend is `pool-registry.service.ts`, `Pool.fromChain`. `set_pool_rules` has no HTTP route (bug 6 in [`E2E_PLAN.md`](../testing/E2E_PLAN.md)).
 
-### 1.2 Правила
-- **POOL-M-01** MUST: пока один пул в неделю. Расписание — **настраиваемые поля**, а не константы:
-  - `opens_at` (по умолчанию вт вечер);
-  - `sales_close_at = prep_deadline` (закрытие − 2 ч);
-  - `last_start_at` (закрытие − 1 ч 15 мин, решение 36);
-  - `play_close_at = play_deadline` (вс вечер);
-  - `validation_until = payout_at` (закрытие + 1,5 дня).
-- **POOL-M-02** MUST: конфиг бэкенда (`POOL_SCHEDULE_*`) используется только при **создании** пула. У живого пула источник правды — аккаунт on-chain. Расхождение → пул не обслуживается, `409 pool_schedule_mismatch` + алерт в админке.
-- **POOL-M-03** MUST: после `sales_close_at` билет не продаётся (программа: `TooLate`; UI: кнопки нет).
-- **POOL-M-04** MUST: старт после `last_start_at` → `409 pool_last_start_passed`. Поездка, начатая вовремя, дописывается до `play_close_at` + 60 с. Не завершённая к этому моменту — `abandoned` (решение 36; лимит → RID-M-09).
-- **POOL-M-05** MUST: билет, не начатый до `last_start_at`, **сгорает без возврата**. Исключение — срыв пула (`min_tickets` не собран, `fail_pool` → Refunding): тогда возврат. В UI покупки — время закрытия и последнего старта в локальном времени, предупреждение и галочка.
-- **POOL-M-06** MUST: на devnet-запуске платных билетов нет (`PaidTicketsDisabled`). Попытка — за задания аирдропа ([`PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md) §2), одна на человека (§6). Не начатая до `last_start_at` попытка пропадает.
-- **POOL-M-07** MUST: проверка 1,5 дня: финальный вердикт → `pool:attention` → ручная проверка топ‑20 → `commit_winners` не позже `payout_at` → выплаты.
-- **POOL-M-08** MUST: результаты публикуются в `payout_at`, затем окно **апелляций** (длительность — параметр расписания). Выплата по спорным местам ждёт решения, по бесспорным — нет.
-- **POOL-M-09** MUST: реплеи и план дороги пуловых поездок публичны после `payout_at` (решение 34 → [`replays_streams.md`](replays_streams.md) RPL-M-04).
-- **POOL-M-10** MUST: сейчас `Config.min_finish_secs ≤ 7 200` через `set_config`. В v6 — `opens_at`, `last_start_at` (или `start_buffer_secs`), `period_secs` у серии. Существующие поля не переименовываются (решение 37).
-- **POOL-M-11** MUST: в правилах платного пула (позже) явно указано, куда идут деньги несыгранных билетов: Solana Pay → выручка `R`; on-chain `buy_ticket` → банк пула (открыто, [`OPEN.md`](OPEN.md)).
-- **POOL-M-12** MUST: у `set_pool_rules` есть админский HTTP-маршрут с подписанной парой challenge → действие (решение бэкенда 8).
-- **POOL-M-13** MUST: формула рейтинга пула публикуется до `opens_at` и не меняется до `play_close_at` (решение 42 → RID-M-17).
-- **POOL-M-14** MUST: донаты не являются входом в пул и не дают преимущества (TERMS 14.5).
+### 1.2 Rules
+- **POOL-M-01** MUST: for now, one pool per week. The schedule is **configurable fields**, not constants:
+  - `opens_at` (Tue evening by default);
+  - `sales_close_at = prep_deadline` (close − 2 h);
+  - `last_start_at` (close − 1 h 15 min, decision 36);
+  - `play_close_at = play_deadline` (Sun evening);
+  - `validation_until = payout_at` (close + 1.5 days).
+- **POOL-M-02** MUST: the backend config (`POOL_SCHEDULE_*`) is used only when **creating** a pool. For a live pool, the source of truth is the on-chain account. A mismatch → the pool is not served, `409 pool_schedule_mismatch` + an alert in the admin.
+- **POOL-M-03** MUST: after `sales_close_at` a ticket is not sold (the program: `TooLate`; the UI: no button).
+- **POOL-M-04** MUST: a start after `last_start_at` → `409 pool_last_start_passed`. A ride started on time keeps being recorded until `play_close_at` + 60 s. One not finished by that moment is `abandoned` (decision 36; the limit → RID-M-09).
+- **POOL-M-05** MUST: a ticket not started before `last_start_at` **burns with no refund**. The exception is a failed pool (`min_tickets` not met, `fail_pool` → Refunding): then there is a refund. The purchase UI shows the close time and the last start in local time, a warning, and a checkbox.
+- **POOL-M-06** MUST: the devnet launch has no paid tickets (`PaidTicketsDisabled`). An attempt is for airdrop tasks ([`PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md) §2), one per person (§6). An attempt not started before `last_start_at` is lost.
+- **POOL-M-07** MUST: a 1.5-day review: the final verdict → `pool:attention` → a manual check of the top 20 → `commit_winners` no later than `payout_at` → payouts.
+- **POOL-M-08** MUST: results are published at `payout_at`, then an **appeals** window (the length is a schedule parameter). Payout for disputed places waits for the decision; payout for undisputed places does not.
+- **POOL-M-09** MUST: replays and the road plan of pool rides are public after `payout_at` (decision 34 → [`replays_streams.md`](replays_streams.md) RPL-M-04).
+- **POOL-M-10** MUST: for now, `Config.min_finish_secs ≤ 7 200` via `set_config`. In v6 — `opens_at`, `last_start_at` (or `start_buffer_secs`), and `period_secs` on the series. Existing fields are not renamed (decision 37).
+- **POOL-M-11** MUST: the rules of a paid pool (later) state explicitly where the money of unplayed tickets goes: Solana Pay → revenue `R`; on-chain `buy_ticket` → the pool bank (open, [`OPEN.md`](OPEN.md)).
+- **POOL-M-12** MUST: `set_pool_rules` has an admin HTTP route with a signed challenge → action pair (backend decision 8).
+- **POOL-M-13** MUST: the pool's ranking formula is published before `opens_at` and does not change until `play_close_at` (decision 42 → RID-M-17).
+- **POOL-M-14** MUST: donations are not an entry into the pool and give no advantage (TERMS 14.5).
 
-## Часть 2. План тестирования
-| id | Правило | Сценарий | Ожидание |
+## Part 2. Test plan
+| id | Rule | Scenario | Expected |
 |---|---|---|---|
-| POOL-T-01 | M-01 | создание пула с конфигом по умолчанию | поля = вт/вс/−2 ч/−1 ч 15 мин/+1,5 дня от заданной точки; часовой пояс из конфига |
-| POOL-T-02 | M-02 | on-chain `play_deadline` ≠ бэкенду | `409 pool_schedule_mismatch`, алерт |
-| POOL-T-03 | M-03 | `buy_ticket` за 1 с до и через 1 с после `prep_deadline` (LiteSVM) | успех / `TooLate` |
-| POOL-T-04 | M-04 | старт в `last_start_at − 1 с` и `+1 с` | 200 / `409 pool_last_start_passed` |
-| POOL-T-05 | M-04 | поездка идёт в `play_close_at + 61 с` | `abandoned`, засчитано пройденное |
-| POOL-T-06 | M-05 | билет не начат | после `last_start_at` — статус «сгорел», возврата нет |
-| POOL-T-07 | M-05 | `fail_pool` | возврат (`claim_refund`) |
-| POOL-T-08 | M-06 | devnet: `buy_ticket` | `PaidTicketsDisabled`; попытка из заданий — одна |
-| POOL-T-09 | M-07 | 2 000 поездок в очереди при закрытии (= AC-P9, вариант) | проверка < 2 ч; `commit_winners` ≤ `payout_at` |
-| POOL-T-10 | M-08 | апелляция по 3-му месту | 1-е и 2-е выплачены, 3-е ждёт |
-| POOL-T-11 | M-09 | реплей до/после `payout_at` | = RPL-T-09 |
-| POOL-T-12 | M-10 | `create_pool` с окном 2 ч при `min_finish_secs = 10 800` / 7 200 | `WindowTooShort` / успех |
-| POOL-T-13 | M-11 | текст правил платного пула | режим денег назван (проверка документа, [`legal.md`](legal.md)) |
-| POOL-T-14 | M-12 | `set_pool_rules` по HTTP: подпись верная / чужая / повтор | 200 / `404` / `409` |
-| POOL-T-15 | M-13 | смена формулы после `opens_at` | = RID-T-06 |
-| POOL-T-16 | M-14 | донат во время пула | нет билета, нет изменения рейтинга (= RPL-T-84) |
+| POOL-T-01 | M-01 | creating a pool with the default config | fields = Tue/Sun/−2 h/−1 h 15 min/+1.5 days from the given point; the time zone comes from the config |
+| POOL-T-02 | M-02 | on-chain `play_deadline` ≠ the backend | `409 pool_schedule_mismatch`, an alert |
+| POOL-T-03 | M-03 | `buy_ticket` 1 s before and 1 s after `prep_deadline` (LiteSVM) | success / `TooLate` |
+| POOL-T-04 | M-04 | a start at `last_start_at − 1 s` and at `+1 s` | 200 / `409 pool_last_start_passed` |
+| POOL-T-05 | M-04 | a ride is still going at `play_close_at + 61 s` | `abandoned`, distance covered is counted |
+| POOL-T-06 | M-05 | a ticket was not started | after `last_start_at` the status is "burned"; there is no refund |
+| POOL-T-07 | M-05 | `fail_pool` | a refund (`claim_refund`) |
+| POOL-T-08 | M-06 | devnet: `buy_ticket` | `PaidTicketsDisabled`; one attempt from the tasks |
+| POOL-T-09 | M-07 | 2,000 rides in the queue at close (= AC-P9, a variant) | review < 2 h; `commit_winners` ≤ `payout_at` |
+| POOL-T-10 | M-08 | an appeal on 3rd place | 1st and 2nd are paid; 3rd waits |
+| POOL-T-11 | M-09 | a replay before/after `payout_at` | = RPL-T-09 |
+| POOL-T-12 | M-10 | `create_pool` with a 2 h window at `min_finish_secs = 10 800` / 7,200 | `WindowTooShort` / success |
+| POOL-T-13 | M-11 | the text of the paid-pool rules | the money mode is named (a document check, [`legal.md`](legal.md)) |
+| POOL-T-14 | M-12 | `set_pool_rules` over HTTP: a valid signature / someone else's / a repeat | 200 / `404` / `409` |
+| POOL-T-15 | M-13 | changing the formula after `opens_at` | = RID-T-06 |
+| POOL-T-16 | M-14 | a donation during the pool | no ticket, no change to the ranking (= RPL-T-84) |
 
-### Трассируемость
-Каждое правило POOL-M-01…14 → запланированный id POOL-T-01…16 (у M-04 и M-05 по 2 id). 14 MUST. Id — не написанный тест. Исполняемая планка — [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
+### Traceability
+Each rule POOL-M-01…14 maps to a planned id POOL-T-01…16 (M-04 and M-05 have 2 ids each). 14 MUST. An id is not a written test. The executable bar is [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
 
 ---
 
-## Приложение A. Недельный формат пула (бывший §20)
-> Перенесено без изменений из `anticheat_test_plan.md §20` (superseded, merged into docs/spec) (17.10.2026); уровни заголовков сдвинуты на один. Нормативна Часть 1 этого файла; при расхождении прав манифест.
+## Appendix A. The weekly pool format (former §20)
+> Carried over unchanged from `anticheat_test_plan.md §20` (superseded, merged into docs/spec) (17.10.2026); heading levels shifted by one. Part 1 of this file is normative; where they differ, the spec wins.
 
-### 20. Недельный формат пула (решение владельца 17.10.2026) и последствия
+### 20. The weekly pool format (owner decision of 17.10.2026) and the consequences
 
-**Формат (пока один пул):** пул открывается во вторник вечером и закрывается в воскресенье вечером. Потом 1,5 дня проверки (вердикты, ручная проверка топ‑20), затем результаты и выплата. Продажа билетов закрывается **за 2 ч до закрытия пула**. Купил билет, но не сыграл до закрытия — **билет сгорает, без возврата**.
+**The format (one pool for now):** the pool opens on Tuesday evening and closes on Sunday evening. Then 1.5 days of review (verdicts, a manual check of the top 20), then the results and the payout. Ticket sales close **2 h before the pool closes**. Bought a ticket but did not play before close — **the ticket burns, with no refund**.
 
-**Время — параметр, а не константа** (уточнение владельца). Точные часы и часовой пояс не фиксируются в документах. Это настраиваемые поля расписания пула: в **аккаунте пула on-chain** и в **конфиге бэкенда**. Значения по умолчанию: вт вечер → вс вечер, отсечка продаж 2 ч, проверка 1,5 дня. Бэкенд держит их синхронно и **сверяет с on-chain** (§20.3).
+**Time is a parameter, not a constant** (the owner's clarification). The exact hours and the time zone are not fixed in the documents. They are configurable fields of the pool schedule: in the **on-chain pool account** and in the **backend config**. The defaults are Tue evening → Sun evening, a sales cutoff of 2 h, and a review of 1.5 days. The backend keeps them in sync and **checks them against on-chain** (§20.3).
 
-#### 20.1 Решение 33 — что удалить в коде (позже, не в этом плане)
-- Сервер:
-  - `server/src/domain/live/live-rules.ts`: `EFFECT_IDS = ['tip','night','day','potholes','trench','sinkhole']` → игровые эффекты убрать, `night`/`day` тоже (они меняют видимость, то есть влияют на поездку). Остаётся только косметика.
-  - `server/src/presentation/live/live.http.controller.ts`: `POST watch/:id/donations` (`:55`), `donation-orders*` (`:61–73`) для текущих поездок, `effects/:eventId/applied` (`:89`).
+#### 20.1 Decision 33 — what to delete in the code (later, not in this plan)
+- Server:
+  - `server/src/domain/live/live-rules.ts`: `EFFECT_IDS = ['tip','night','day','potholes','trench','sinkhole']` → remove the gameplay effects; remove `night`/`day` too (they change visibility, so they affect the ride). Only cosmetics remain.
+  - `server/src/presentation/live/live.http.controller.ts`: `POST watch/:id/donations` (`:55`), `donation-orders*` (`:61–73`) for current rides, `effects/:eventId/applied` (`:89`).
   - `server/src/presentation/live/dto/live.dto.ts` (`donationBodySchema`).
-  - `server/src/domain/verdict/replay-engine.ts`: `donatedObstacles`, `donated-obstacle-ignored` (`:277`), `event-unapplied` (`:144`), `event-clock-mismatch`; `ride-replay.entity.ts` (поля подаренных ям) — **оставить только для перепроверки старых поездок** (правила по `RULES_VERSION` поездки, AC-W18).
+  - `server/src/domain/verdict/replay-engine.ts`: `donatedObstacles`, `donated-obstacle-ignored` (`:277`), `event-unapplied` (`:144`), `event-clock-mismatch`; `ride-replay.entity.ts` (the gifted-hole fields) — **keep only for rechecking old rides** (the rules of the ride's `RULES_VERSION`, AC-W18).
   - `TrafficSimulator(…, donatedObstacles, …)` (`replay-engine.ts:187`).
-- Клиент: `client/js/live-effects.js`, `ui/live-feed.js`, `ui/watch-panel.js`, `ui/watch-pledges.js`, `watch.js` (эффекты на поездке).
-- Конфиг: **временная мера до удаления кода — `LIVE_EFFECTS=off`** (`env.schema.ts:150`, сейчас по умолчанию `all`: «donations that change the ride … every ride»). `LIVE_FREE_DONATIONS` (`:144`) — по решению о донатах на реплее.
-- Тексты:
-  - [`docs/legal/TERMS.md`](../legal/TERMS.md) раньше говорил «Viewers may send donations to a driver during a live ride … Donation effects shown in the ride are cosmetic» — это не совпадало с кодом (подаренные ямы наносят урон) и с решениями 18/33. ✅ **Помеченные клаузы 17.10 внесены в `docs/legal/*`** (TERMS §14.1–14.5, PRIVACY, PRESEASON_RULES 16a; сводка в [`legal.md`](legal.md) §1.1): донаты только на реплее и только косметика, live нет. Код по-прежнему не совпадает с текстом — это отдельное изменение кода.
-  - [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §3 («Донаты: 100% водителю») — без изменений по деньгам.
-- Чаевые (`tip`) без влияния на игру на реплее предыдущей поездки решению 33 не противоречат. Оставлять ли их — продуктовый вопрос, не античит.
+- Client: `client/js/live-effects.js`, `ui/live-feed.js`, `ui/watch-panel.js`, `ui/watch-pledges.js`, `watch.js` (effects on the ride).
+- Config: **a temporary measure until the code is deleted is `LIVE_EFFECTS=off`** (`env.schema.ts:150`; the default now is `all`: "donations that change the ride … every ride"). `LIVE_FREE_DONATIONS` (`:144`) follows the decision on donations on a replay.
+- Texts:
+  - [`docs/legal/TERMS.md`](../legal/TERMS.md) used to say "Viewers may send donations to a driver during a live ride … Donation effects shown in the ride are cosmetic" — that did not match the code (gifted holes deal damage) or decisions 18/33. ✅ **The clauses marked on 17.10 are now in `docs/legal/*`** (TERMS §14.1–14.5, PRIVACY, PRESEASON_RULES 16a; the summary is in [`legal.md`](legal.md) §1.1): donations only on a replay and only as cosmetics; there is no live. The code still does not match the text — that is a separate code change.
+  - [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §3 ("Donations: 100% to the driver") — unchanged as to the money.
+- Tips (`tip`) that do not affect the game, on the replay of the previous ride, do not contradict decision 33. Whether to keep them is a product question, not anti-cheat.
 
-#### 20.2 Последствия для честности и античита
-- **Утечка дороги:** окно ≈ 5 дней при общем `roadSeed` (решение 13). Реплей или план дороги завершённой поездки раскрыли бы дорогу пула тем, кто стартует через несколько дней. Поэтому реплеи и `GET /api/watch/:id/road` пуловых поездок закрыты до закрытия пула, по умолчанию до `payout_at` (решение 34).
-- **Тренировка на своей зачётной дороге:** при нескольких попытках игрок видит свой прошлый реплей и выучивает ямы. На devnet-запуске попытка одна ([`PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md) §5 п. 3, §6), поэтому достаточно общего `roadSeed`. Если попыток станет больше — личная раскладка ям `holeSalt` (**решение 35, принято**).
-- **Последний старт:** → **решение 36**.
-- **Сгоревшие билеты и мотивация к спешке:** игрок, который «должен успеть», стартует в последние часы. Это нагрузка на сервер в вс вечер (AC-P9 конкурентность — прогнать «пик последних 2 часов»).
+#### 20.2 Consequences for fairness and anti-cheat
+- **A road leak:** the window is ≈ 5 days with a shared `roadSeed` (decision 13). A replay, or the road plan of a completed ride, would reveal the pool's road to people who start several days later. So replays and `GET /api/watch/:id/road` for pool rides stay closed until the pool closes, and by default until `payout_at` (decision 34).
+- **Training on one's own qualifying road:** with several attempts, the player sees their past replay and learns the holes. On the devnet launch there is one attempt ([`PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md) §5 item 3, §6), so a shared `roadSeed` is enough. If there come to be more attempts, use a personal hole layout `holeSalt` (**decision 35, accepted**).
+- **The last start:** → **decision 36**.
+- **Burned tickets and an incentive to rush:** a player who "has to make it" starts in the last hours. That is server load on Sunday evening (AC-P9 concurrency — run the "peak of the last 2 hours").
 
-#### 20.3 Контракт пулов v5 (в main) — что есть и чего не хватает
-Проверено по `programs/freightchain_pools/src` (`origin/main` после мержа PR #3, v5; каталог программ сплющен):
-- **Сроки в аккаунте пула уже есть** (`state.rs`, `Pool`): `prep_deadline`, `play_deadline`, `payout_at` («end of the review window: no prize is paid … before it»), плюс снимок `min_review_secs`. `buy_ticket.rs:52`: `require!(now < pool.prep_deadline, PoolError::TooLate)` — **это и есть отсечка продаж**, а `buy_ticket.rs:50` — `PaidTicketsDisabled` (v5). Соответствие:
+#### 20.3 The pool contract v5 (in main) — what is there and what is missing
+Checked against `programs/freightchain_pools/src` (`origin/main` after PR #3 merges, v5; the program catalog is flattened):
+- **Deadlines already exist in the pool account** (`state.rs`, `Pool`): `prep_deadline`, `play_deadline`, `payout_at` ("end of the review window: no prize is paid … before it"), plus a snapshot of `min_review_secs`. `buy_ticket.rs:52`: `require!(now < pool.prep_deadline, PoolError::TooLate)` — **this is the sales cutoff**, and `buy_ticket.rs:50` is `PaidTicketsDisabled` (v5). The mapping:
 
-| Поле формата | Сейчас в v5 | Значение по умолчанию |
+| Format field | In v5 now | Default |
 |---|---|---|
-| `opens_at` (продажи и игра открываются) | нет; пул открыт с `create_pool` / `open_next_pool` (слот серии) | вт вечер |
-| `sales_close_at` | **`prep_deadline`** | `play_close_at − 2 ч` |
-| `last_start_at` | нет (бэкенд) | `play_close_at − 3600 с − 15 мин` (решение 36) |
-| `play_close_at` | **`play_deadline`** | вс вечер |
-| `validation_until` | **`payout_at`** | `play_close_at + 1,5 дня` (129 600 с ≥ `min_review_secs`, по умолчанию 3 600) |
+| `opens_at` (sales and play open) | absent; the pool is open from `create_pool` / `open_next_pool` (a series slot) | Tue evening |
+| `sales_close_at` | **`prep_deadline`** | `play_close_at − 2 h` |
+| `last_start_at` | absent (backend) | `play_close_at − 3600 s − 15 min` (decision 36) |
+| `play_close_at` | **`play_deadline`** | Sun evening |
+| `validation_until` | **`payout_at`** | `play_close_at + 1.5 days` (129,600 s ≥ `min_review_secs`, default 3,600) |
 
-- **Конфликт 1 — пол окна:** `check_windows` (`create_pool.rs`) требует `play_deadline − prep_deadline ≥ Config.min_finish_secs`, а `DEFAULT_MIN_FINISH_SECS = 10_800` (3 ч, `constants.rs:50`). Окно 2 ч будет отклонено (`WindowTooShort`). Пол меняется админом через `set_config(min_finish_secs)` (`admin.rs`) → выставить ≤ 7 200 (решение 37 а). Комментарий в программе («the last call: no sale, no new ride – the shifts on the road finish») подразумевает, что после `prep_deadline` новых поездок нет; у владельца поездки можно начинать до `last_start_at`. Проверка старта — на бэкенде, программа старты не видит.
-- **Конфликт 2 — каденция серии:** `series.rs`: `sale_secs` — «sale window AND cadence: the next pool opens when this one stops selling». Значит, серия не умеет «продажи ≈ 5 дней, следующий пул через 7 дней»: следующий пул откроется сразу после конца продаж. Пока пул один — открывать вручную `create_pool` с явными сроками. В v6 — отдельный `period_secs` (решение 37 б).
-- **Предлагаемые поля v6 (только план):** `opens_at: i64` (`buy_ticket` требует `now ≥ opens_at`), `last_start_at: i64` (или `start_buffer_secs`), у серии `period_secs`. Имена в бэкенде: `sales_close_at = prep_deadline`, `play_close_at = play_deadline`, `validation_until = payout_at`, существующие поля не переименовывать (IDL и раскладка аккаунта, `POOL_STATUS_OFFSET`).
-- **Синхронизация с бэкендом:**
-  - конфиг бэкенда (`POOL_SCHEDULE_*`: смещения и значения по умолчанию) используется только для **создания** пула;
-  - у живого пула источник правды — аккаунт on-chain (`pool-registry.service.ts`, `Pool.fromChain`);
-  - бэкенд при каждом обновлении сверяет сроки. Расхождение → пул не обслуживается (`409 pool_schedule_mismatch`) + алерт в админке;
-  - `last_start_at` бэкенд вычисляет из `play_deadline` и запаса, пока в v6 его нет.
-- **Несыгранные билеты — куда деньги** (два режима, честно):
-  1. **On-chain продажа (v5 `buy_ticket`, `paid_tickets_enabled`):** у программы нет понятия «сыграл». `tickets_sold × price` целиком входит в банк пула. Делёж `prize_bps / seed_bps / fee_bps` (по умолчанию 8500 / 500 / 1000) идёт от `counted_pot = min(tickets_lamports, ticket_room(sponsored, max_player_share_bps)) + sponsored` (`state.rs`). Излишек сверх `max_player_share_bps` (≤ 47,4 %) уходит в seed treasury (`PoolClosed.ticket_excess`). То есть **деньги несыгранных билетов остаются в пуле**, как и сыгранных, с тем же делёжом и тем же потолком.
-  2. **Solana Pay в казну ([`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §3):** билет — выручка оператора, а не эскроу. Несыгранные билеты входят в `R` и через `P = min(0,40·R, $2 500, 0,90·F)` частично попадают в призы **следующей** недели. В «этот пул» напрямую они не идут.
+- **Conflict 1 — the window floor:** `check_windows` (`create_pool.rs`) requires `play_deadline − prep_deadline ≥ Config.min_finish_secs`, and `DEFAULT_MIN_FINISH_SECS = 10_800` (3 h, `constants.rs:50`). A 2 h window is rejected (`WindowTooShort`). An admin changes the floor through `set_config(min_finish_secs)` (`admin.rs`) → set it to ≤ 7,200 (decision 37 a). The comment in the program ("the last call: no sale, no new ride – the shifts on the road finish") implies that there are no new rides after `prep_deadline`; the owner allows a ride to start until `last_start_at`. The start check is on the backend; the program does not see starts.
+- **Conflict 2 — series cadence:** `series.rs`: `sale_secs` is "sale window AND cadence: the next pool opens when this one stops selling". So a series cannot do "sales ≈ 5 days, the next pool in 7 days": the next pool opens as soon as sales end. While there is one pool, open it by hand with `create_pool` and explicit deadlines. In v6, a separate `period_secs` (decision 37 b).
+- **Proposed v6 fields (plan only):** `opens_at: i64` (`buy_ticket` requires `now ≥ opens_at`), `last_start_at: i64` (or `start_buffer_secs`), and `period_secs` on the series. Backend names: `sales_close_at = prep_deadline`, `play_close_at = play_deadline`, `validation_until = payout_at`; do not rename existing fields (the IDL and the account layout, `POOL_STATUS_OFFSET`).
+- **Sync with the backend:**
+  - the backend config (`POOL_SCHEDULE_*`: the offsets and the defaults) is used only to **create** a pool;
+  - for a live pool, the source of truth is the on-chain account (`pool-registry.service.ts`, `Pool.fromChain`);
+  - on every update the backend checks the deadlines. A mismatch → the pool is not served (`409 pool_schedule_mismatch`) + an alert in the admin;
+  - the backend computes `last_start_at` from `play_deadline` and the margin until v6 has the field.
+- **Unplayed tickets — where the money goes** (two modes, stated plainly):
+  1. **An on-chain sale (v5 `buy_ticket`, `paid_tickets_enabled`):** the program has no notion of "played". `tickets_sold × price` enters the pool bank in full. The split `prize_bps / seed_bps / fee_bps` (default 8500 / 500 / 1000) is taken from `counted_pot = min(tickets_lamports, ticket_room(sponsored, max_player_share_bps)) + sponsored` (`state.rs`). The excess above `max_player_share_bps` (≤ 47.4%) goes to the seed treasury (`PoolClosed.ticket_excess`). So **the money of unplayed tickets stays in the pool**, as does the money of played ones, with the same split and the same cap.
+  2. **Solana Pay into the treasury ([`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §3):** a ticket is the operator's revenue, not escrow. Unplayed tickets enter `R` and, through `P = min(0,40·R, $2 500, 0,90·F)`, partly land in **next** week's prizes. They do not go directly into "this pool".
 
-  → для платного пула (позже) нужно явно записать в правилах, какой режим действует. По текущему плану это Solana Pay, тогда формулировка «остаются в призовом пуле» для него **неверна**.
+  → for a paid pool (later), the rules must state which mode applies. Under the current plan that mode is Solana Pay, so the wording "they stay in the prize pool" is **wrong** for it.
 
-#### 20.4 Правило сгорания билета — тексты и UI
-- **К чему применяется:** на devnet-запуске платных билетов нет: «No purchase necessary», попытка только за задания аирдропа ([`PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md) §2, [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §5 / раунд 18). Там действует аналог: попытка, не начатая до последнего старта (решение 36), пропадает. **Правило «купил — не сыграл — сгорел» относится к платному пулу (позже).** Сезоны пока не планируются, поэтому формат «вт вечер – вс вечер + 1,5 дня» — расписание по умолчанию для пула любого запуска. Сроки в правилах devnet-запуска задаются полями пула.
-- **TERMS** уже близко: [`docs/legal/TERMS.md`](../legal/TERMS.md) 7.5 «All Ticket purchases are final and non-refundable, including if you … do not use the Ticket», исключение — сбой с нашей стороны (7.5 a). Добавить явно:
-  - «билет действует только в пуле, для которого куплен; не начатый до `last_start_at` сгорает»;
-  - срыв пула (не собран `min_tickets`, `fail_pool` → Refunding) — возврат.
-- **UI покупки:** время закрытия пула и **последнего старта** в локальном времени игрока, предупреждение «не сыграешь до … — билет сгорит без возврата», подтверждение галочкой. После `sales_close_at` кнопки покупки нет.
-- **Потребительское право (без юридических выводов):** во многих странах у потребителя есть право на отказ от дистанционной покупки, и для досуга на конкретную дату и для цифрового контента бывают исключения. Применимость к билету на пул нужно подтвердить у юриста (консультация отложена владельцем, принятый риск, [`OPEN.md`](OPEN.md) раунд 19). Это не юридическая консультация.
+#### 20.4 The ticket-burn rule — texts and UI
+- **What it applies to:** the devnet launch has no paid tickets: "No purchase necessary"; an attempt is only for airdrop tasks ([`PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md) §2, [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §5 / round 18). An analogue applies there: an attempt not started before the last start (decision 36) is lost. **The rule "bought — did not play — burned" applies to a paid pool (later).** Seasons are not planned yet, so the format "Tue evening – Sun evening + 1.5 days" is the default schedule for a pool of any launch. Deadlines in the devnet-launch rules are set by the pool fields.
+- **TERMS** is already close: [`docs/legal/TERMS.md`](../legal/TERMS.md) 7.5 "All Ticket purchases are final and non-refundable, including if you … do not use the Ticket"; the exception is a failure on our side (7.5 a). Add, explicitly:
+  - "a ticket is valid only in the pool it was bought for; one not started before `last_start_at` burns";
+  - a pool failure (`min_tickets` not met, `fail_pool` → Refunding) is a refund.
+- **Purchase UI:** the pool's close time and the **last start**, in the player's local time; a warning "if you do not play by … the ticket burns with no refund"; confirmation with a checkbox. After `sales_close_at` there is no buy button.
+- **Consumer law (no legal conclusions):** in many countries a consumer has a right to withdraw from a distance purchase, and there are exceptions for leisure on a specific date and for digital content. Whether that applies to a pool ticket must be confirmed with a lawyer (the owner postponed the consultation; it is an accepted risk, [`OPEN.md`](OPEN.md) round 19). This is not legal advice.
 
-#### 20.5 1,5 дня проверки — хватит ли вычислений
-- По §9.7 пересчёт идёт **инкрементально во время поездки**, поэтому к закрытию остаётся финальный вердикт (доли секунды на поездку) и ручная проверка.
-- Худший случай — полная перепроверка после смены правил: N поездок × 2–7 с CPU (30 Гц, §9.3). Пример: 1 000 игроков × 7 попыток = 7 000 поездок × 7 с ≈ 13,6 ч CPU → на 4 воркерах очереди (`ReplayQueuePort`, concurrency 4) ≈ 3,4 ч. Это ≪ 36 ч. Запас есть и на 10 000 поездок (≈ 5 ч на 8 воркерах).
-- Узкое место — **люди:** ручная проверка топ‑20 (≈ 20–30 мин на поездку с трассами мини-игр, два ревьюера на топ‑3) ≈ 8–12 ч работы — укладывается в 1,5 дня. **Апелляции — после окна проверки (решение владельца 17.10):** результаты публикуются в `payout_at`, затем окно апелляций (длительность — параметр расписания пула). Выплата по спорным местам ждёт решения апелляции, по бесспорным — не ждёт (как в правилах: перемещение вверх после дисквалификации).
-- Порядок: финальный вердикт → `pool:attention` → ручная проверка → `commit_winners` (корень победителей on-chain) не позже `payout_at` → выплаты с `pay_from`. Тест: AC-P9 в варианте «закрытие пула: 2 000 поездок в очереди, проверка < 2 ч».
-
----
-
-## Приложение B. Параметры сезонов, пулов и билетов в `MASTER_PLAN.md`
-
-- Полная сводка решений по формуле банка недели (`F = B + S`, `P = min(0.40·R, $2,500, 0.90·F)`, `T = F + P + C`, `85% / 5% / 10%`, потолок `free_prize_board_cap_bps = 3000`, равное деление ничьих, отбор в финал сезона) и недельным билетам (`weekly_ticket_1h_enabled`) находится в [`../plan/MASTER_PLAN.md`](../plan/MASTER_PLAN.md) **§3 и §5** (чтобы не дублировать таблицы между файлами).
-- Целевые решения 33–37 (переход к одному пулу 1h со расписанием вт–вс + 1,5 дня проверки и отмена игровых эффектов донатов) имеют приоритет над расписанием пн–вс из `MASTER_PLAN.md` §4 (см. **Часть 1** и **Приложение A** выше, а также [`rides.md`](rides.md) Приложения A–B).
+#### 20.5 1.5 days of review — whether the compute is enough
+- Under §9.7 the recompute runs **incrementally during the ride**, so at close what remains is the final verdict (fractions of a second per ride) and the manual check.
+- The worst case is a full recheck after a rules change: N rides × 2–7 s of CPU (30 Hz, §9.3). Example: 1,000 players × 7 attempts = 7,000 rides × 7 s ≈ 13.6 h of CPU → on 4 queue workers (`ReplayQueuePort`, concurrency 4) ≈ 3.4 h. That is ≪ 36 h. There is margin even for 10,000 rides (≈ 5 h on 8 workers).
+- The bottleneck is **people:** a manual check of the top 20 (≈ 20–30 min per ride, with minigame traces, and two reviewers on the top 3) is ≈ 8–12 h of work, which fits in 1.5 days. **Appeals come after the review window (owner decision of 17.10):** results are published at `payout_at`, then an appeals window (the length is a pool-schedule parameter). Payout for disputed places waits for the appeal decision; payout for undisputed places does not wait (as in the rules: moving up after a disqualification).
+- The order: the final verdict → `pool:attention` → the manual check → `commit_winners` (the on-chain winners root) no later than `payout_at` → payouts from `pay_from`. Test: AC-P9 in the variant "pool close: 2,000 rides in the queue, review < 2 h".
 
 ---
 
-## Приложение C. Текущая реализация доски призов на `main` (`server/src/domain/prize/prize-rules.ts`)
+## Appendix B. Season, pool, and ticket parameters in `MASTER_PLAN.md`
 
-> Описание поведения, собранного в `server/src/domain/prize/prize-rules.ts` и `GET /api/prize/board` (см. также [`PRODUCT.md`](PRODUCT.md)):
-
-- **Валюта и статус**: расчётные суммы в `USDC` (центы `BASE_STEPS_CENTS = [30_000, 75_000, 150_000, 300_000]` — `$300 / $750 / $1,500 / $3,000`), `TOKEN_IS_PRIZE = false` (TEN4 никогда не является призом контеста). Сейчас черновик: реальные переводы USDC автоматически не отправляются.
-- **Окна недели (`PRIZE_WEEK_OPEN_HOUR_UTC = 0`)**:
-  - Зачётная игра (`ranked`): пн `00:00 UTC` → вс `12:00 UTC` (`RANKED_CLOSE_MS = 156 ч`).
-  - Проверка (`verify`): вс `12:00 UTC` → пн `12:00 UTC` (`VERIFY_END_MS = 180 ч`).
-  - Апелляции (`appeals`): пн `12:00 UTC` → вт `12:00 UTC` (`APPEALS_END_MS = 204 ч`).
-  - Выплаты (`payout`): до конца вторника (`PAYOUT_END_MS = 216 ч`).
-- **Лимиты зачётных стартов в неделю на кошелёк (`ranked: true` в `POST /api/rides/:id/start`)**:
-  - `PAID_RANKED_STARTS = 5` платных стартов (включая еженедельный выданный бесплатный билет 1h — `weekly_ticket_1h_enabled = 1`, AMOE).
-  - `PROMO_RANKED_STARTS = 1` промо-старт (`kind: 'ride'`).
-  - Тренировки (`tier = free`) никогда не идут в зачёт.
-- **Формула призового пула и распределение (`prize-rules.ts`)**:
-  - `F = B + S` (база ступени + спонсор), вклад билетов `P = min(0.40 * R, $2,500, 0.90 * F)`, общий банк недели `T = F + P + C` (где `C ≤ 0.25 * F` — перенос).
-  - Деление `T`: `85%` на доски недели (`1h: 25%`, `4h: 30%`, `8h: 45%`), `5%` в перенос `C`, `10%` в финал сезона (`SEASON_WEEKS = 7`, `LIVE_FINAL_WEEK = 7`, `SEASON_QUALIFIERS = 8` лучших по сумме мест с `MISSED_WEEK_PLACE = 1000`).
-  - Внутри каждой доски (`MIN_BOARD_PARTICIPANTS = 10`): `80%` — топ-места (`TOP_PLACES = 10`, или топ-10% при `> 100` участниках), `20%` — поровну всем финишировавшим (`completer pool`). При равенстве очков делят сумму занятых мест поровну.
-- **Гео-ограничения и возраст (`GeoLocatorPort`, `MeDto`)**:
-  - Возраст `18+` (или `19+`/`21+` по юрисдикции) и отсутствие в санкционном списке (`CU, IR, KP, SY`, `UA-43, UA-14, UA-09`) и списке исключённых для платных контестов штатов США (`SC, AZ, LA, AR, DE, MT, TN`).
+- The full summary of the decisions on the week's bank formula (`F = B + S`, `P = min(0.40·R, $2,500, 0.90·F)`, `T = F + P + C`, `85% / 5% / 10%`, the cap `free_prize_board_cap_bps = 3000`, an equal split of ties, selection into the season final) and on weekly tickets (`weekly_ticket_1h_enabled`) is in [`../plan/MASTER_PLAN.md`](../plan/MASTER_PLAN.md) **§3 and §5** (so the tables are not duplicated across files).
+- Target decisions 33–37 (the move to one 1h pool with a Tue–Sun schedule plus 1.5 days of review, and the removal of donation gameplay effects) take priority over the Mon–Sun schedule in `MASTER_PLAN.md` §4 (see **Part 1** and **Appendix A** above, and also [`rides.md`](rides.md) Appendices A–B).
 
 ---
 
-## Приложение D. Архитектура эскроу-программы (`programs/freightchain_pools` v4/v5), сиды дороги, воркеры и тулчейн
+## Appendix C. The current prize-board implementation on `main` (`server/src/domain/prize/prize-rules.ts`)
 
-- **Некастодиальный принцип и два серверных ключа**:
-  - Все средства билетов, переносов (`rollover`) и спонсорских пледжей хранятся на PDA программы `programs/freightchain_pools`; каждый кошелёк сам подписывает и отправляет свои транзакции, а сервер только индексирует события (`PoolSyncService` / `sync-pools.command.ts`) и начисляет билеты.
-  - Сервер держит два горячих ключа:
-    1. **Crank (`CRANK_SECRET`, `PoolCrankScheduler` / CLI `npm run pool:crank`)**: выполняет безразрешительные шаги жизненного цикла (`open_next_pool` из админской `Series`, `seal_road`, `fail_pool`, `expire_pool`, `refund`, `refund_sponsor`, `close_pool` через `nextCrankStep`).
-    2. **Payout (`PAYOUT_SECRET`, `PoolPayoutScheduler` / CLI `npm run pool:payout`)**: когда у всех поездок пула вынесен финальный вердикт (`!poolUnreviewed`), записывает ончейн-аттестации заездов с пледжами (`record_ride_attestation` через `AttestationService.attestRide`), публикует корень дерева Меркла победителей (`commit_winners` / `winners-merkle.ts`) и закрывает выплаченные пулы (`close_pool`). Холодный ключ администратора (`admin`) может наложить вето на корень (`veto_winners`) в течение окна проверки `min_review_secs` (`3600 с`).
-- **Одна дорога на пул и запечатывание сида (`seal_road`, `provable-seed.ts`)**:
-  - В режиме программы `Pool.rideSeed` выводится детерминированно из хеша слота (`projectRoadSeed` в `server/src/domain/road/provable-seed.ts`) инструкцией `seal_road` на слоте `>= open_slot + 8`. До вызова `seal_road` старт поездки в пуле возвращает `409 road_not_sealed`.
-  - В кабине грузовика (`client/js/seal.js`, `client/js/ui/cab-chain.js`) отображается криптографическая привязка сида дороги к слоту Solana. (Для legacy `transfer`-режима без пула суточный сид выдаётся через `DailySeedRepositoryPort.claim`.)
-- **Правила программы v4 / v5 (`programs/freightchain_pools`)**:
-  - **v4**: дерево Меркла победителей (`commit_winners`, `veto_winners`, `pay_prize`), ончейн-аттестации поездок (`RideAttestation`), спонсорские пледжи за километр (`Pledge`: `create_pledge`, `settle_pledge`, `refund_pledge`, синхронизация `SyncPledgesHandler`), возврат спонсорских взносов при отмене пула (`SponsorReceipt` / `refund_sponsor`), минимальные пороги `Config` (`min_review_secs = 3600`, `min_finish_secs = 10800`).
-  - **v5**: дефолтный сплит `8500 / 500 / 1000` (85% победителям / 5% перенос / 10% комиссия, без реферальной ноги на цепи), инструкция `set_pool_rules`, потолок доли одного игрока `max_player_share_bps < 5000` (дефолт `4740` = 47.4%), переключатель `paid_tickets_enabled`. Открытые вопросы деплоя отслеживаются в [`docs/tech/escrow-open-items.md`](../tech/escrow-open-items.md) и [`docs/tech/program-deploy.md`](../tech/program-deploy.md).
-- **Окна старта, индексация билетов, Priority Fees / RPC и удержание выплаты (`Pool.hold`)**:
-  - Заказ и старт поездки в пуле разрешены до `Pool.startBy` (`canFinishBy`; после дедлайна — `409 rides_closed`). Если пул не набрал `min_tickets`, возврат билетов (`refundable`) при необходимости бандлит `fail_pool` в ту же транзакцию.
-  - Подтверждение покупки билета (`TicketSettlementService`) идёт по быстрому пути через `confirm`, фоновый `program-watcher.ts` и вебхук `/api/chain/webhook`.
-  - Приоритетные комиссии и перегрузка RPC: `fee-estimator.ts` динамически оценивает compute unit price (`getRecentPrioritizationFees`), а `solana-rpc.ts` прозрачно переключается по списку `SOLANA_RPC_FALLBACKS` при ошибках или перегрузке основного RPC.
-  - Перед коммитом корня победителей `PoolAttentionService.markPool` проверяет топ-20 пула; если сработали флаги внимания или выставлен `Pool.hold` (`saveHold`), `claimSentUnlessHeld` блокирует автоматическую отправку `commit_winners` до ручной проверки администратором.
-- **Тулчейн и команды разработки**:
-  - Сборка и IDL: `anchor build --arch v0`, `npm run program:idl` (`server/scripts/vendor-idl.mjs` обновляет `server/test/fixtures/chain/pool-program.json`), воспроизводимая сборка `npm run program:verify` (`verifiable-build.hash`).
-  - Тесты: `npm run program:test` (LiteSVM: 163 теста `freightchain_pools` + 40 тестов `freightchain_honk`), `npm run test:e2e:block2`.
-  - Devnet-утилиты (никогда не трогать глобальный `~/.config/solana/id.json`; всегда передавать явный `--url devnet`, деплой только по прямому запросу пользователя): `server/scripts/devnet.sh`, `node server/scripts/pool-admin.mjs`.
+> A description of the behavior assembled in `server/src/domain/prize/prize-rules.ts` and `GET /api/prize/board` (see also [`PRODUCT.md`](PRODUCT.md)):
+
+- **Currency and status**: computed amounts are in `USDC` (cents `BASE_STEPS_CENTS = [30_000, 75_000, 150_000, 300_000]` — `$300 / $750 / $1,500 / $3,000`), `TOKEN_IS_PRIZE = false` (TEN4 is never a contest prize). It is a draft now: real USDC transfers are not sent automatically.
+- **Week windows (`PRIZE_WEEK_OPEN_HOUR_UTC = 0`)**:
+  - Qualifying play (`ranked`): Mon `00:00 UTC` → Sun `12:00 UTC` (`RANKED_CLOSE_MS = 156 h`).
+  - Review (`verify`): Sun `12:00 UTC` → Mon `12:00 UTC` (`VERIFY_END_MS = 180 h`).
+  - Appeals (`appeals`): Mon `12:00 UTC` → Tue `12:00 UTC` (`APPEALS_END_MS = 204 h`).
+  - Payouts (`payout`): until the end of Tuesday (`PAYOUT_END_MS = 216 h`).
+- **Limits on qualifying starts per week per wallet (`ranked: true` on `POST /api/rides/:id/start`)**:
+  - `PAID_RANKED_STARTS = 5` paid starts (including the weekly issued free 1h ticket — `weekly_ticket_1h_enabled = 1`, AMOE).
+  - `PROMO_RANKED_STARTS = 1` promo start (`kind: 'ride'`).
+  - Training (`tier = free`) never counts as qualifying.
+- **Prize-pool formula and distribution (`prize-rules.ts`)**:
+  - `F = B + S` (step base + sponsor), the ticket contribution `P = min(0.40 * R, $2,500, 0.90 * F)`, the week's total bank `T = F + P + C` (where `C ≤ 0.25 * F` is the rollover).
+  - The split of `T`: `85%` to the week's boards (`1h: 25%`, `4h: 30%`, `8h: 45%`), `5%` into the rollover `C`, `10%` into the season final (`SEASON_WEEKS = 7`, `LIVE_FINAL_WEEK = 7`, `SEASON_QUALIFIERS = 8` best by the sum of places, with `MISSED_WEEK_PLACE = 1000`).
+  - Inside each board (`MIN_BOARD_PARTICIPANTS = 10`): `80%` is the top places (`TOP_PLACES = 10`, or the top 10% when there are `> 100` participants), `20%` is split equally among everyone who finished (`completer pool`). On a tie in points, they split the sum of the places taken, equally.
+- **Geo limits and age (`GeoLocatorPort`, `MeDto`)**:
+  - Age `18+` (or `19+`/`21+` by jurisdiction), and absence from the sanctions list (`CU, IR, KP, SY`, `UA-43, UA-14, UA-09`) and from the list of US states excluded from paid contests (`SC, AZ, LA, AR, DE, MT, TN`).
+
+---
+
+## Appendix D. Escrow-program architecture (`programs/freightchain_pools` v4/v5), road seeds, workers, and the toolchain
+
+- **The non-custodial principle and two server keys**:
+  - All funds from tickets, rollovers (`rollover`), and sponsor pledges are held on the program PDA `programs/freightchain_pools`; each wallet signs and sends its own transactions, and the server only indexes events (`PoolSyncService` / `sync-pools.command.ts`) and credits tickets.
+  - The server holds two hot keys:
+    1. **Crank (`CRANK_SECRET`, `PoolCrankScheduler` / CLI `npm run pool:crank`)**: it runs the permissionless lifecycle steps (`open_next_pool` from the admin `Series`, `seal_road`, `fail_pool`, `expire_pool`, `refund`, `refund_sponsor`, `close_pool` via `nextCrankStep`).
+    2. **Payout (`PAYOUT_SECRET`, `PoolPayoutScheduler` / CLI `npm run pool:payout`)**: when every ride in the pool has a final verdict (`!poolUnreviewed`), it records on-chain attestations of rides that have pledges (`record_ride_attestation` via `AttestationService.attestRide`), publishes the winners' Merkle-tree root (`commit_winners` / `winners-merkle.ts`), and closes paid-out pools (`close_pool`). The cold admin key (`admin`) may veto the root (`veto_winners`) during the review window `min_review_secs` (`3600 s`).
+- **One road per pool, and sealing the seed (`seal_road`, `provable-seed.ts`)**:
+  - In program mode, `Pool.rideSeed` is derived deterministically from the slot hash (`projectRoadSeed` in `server/src/domain/road/provable-seed.ts`) by the `seal_road` instruction at a slot `>= open_slot + 8`. Before `seal_road` is called, starting a ride in the pool returns `409 road_not_sealed`.
+  - The truck cab (`client/js/seal.js`, `client/js/ui/cab-chain.js`) shows the cryptographic binding of the road seed to the Solana slot. (For the legacy `transfer` mode with no pool, the daily seed is issued through `DailySeedRepositoryPort.claim`.)
+- **Program rules v4 / v5 (`programs/freightchain_pools`)**:
+  - **v4**: a winners Merkle tree (`commit_winners`, `veto_winners`, `pay_prize`), on-chain ride attestations (`RideAttestation`), sponsor pledges per kilometer (`Pledge`: `create_pledge`, `settle_pledge`, `refund_pledge`, sync `SyncPledgesHandler`), a refund of sponsor contributions when a pool is cancelled (`SponsorReceipt` / `refund_sponsor`), and the minimum `Config` thresholds (`min_review_secs = 3600`, `min_finish_secs = 10800`).
+  - **v5**: the default split `8500 / 500 / 1000` (85% to the winners / 5% rollover / 10% fee, with no on-chain referral leg), the `set_pool_rules` instruction, a cap on one player's share `max_player_share_bps < 5000` (default `4740` = 47.4%), and the `paid_tickets_enabled` switch. Open deploy questions are tracked in [`docs/tech/escrow-open-items.md`](../tech/escrow-open-items.md) and [`docs/tech/program-deploy.md`](../tech/program-deploy.md).
+- **Start windows, ticket indexing, Priority Fees / RPC, and holding a payout (`Pool.hold`)**:
+  - Ordering and starting a ride in the pool are allowed until `Pool.startBy` (`canFinishBy`; after the deadline, `409 rides_closed`). If the pool has not reached `min_tickets`, a ticket refund (`refundable`) bundles `fail_pool` into the same transaction when that is required.
+  - Confirmation of a ticket purchase (`TicketSettlementService`) takes the fast path through `confirm`, the background `program-watcher.ts`, and the webhook `/api/chain/webhook`.
+  - Priority fees and RPC overload: `fee-estimator.ts` estimates the compute unit price dynamically (`getRecentPrioritizationFees`), and `solana-rpc.ts` switches transparently over the `SOLANA_RPC_FALLBACKS` list on errors or when the primary RPC is overloaded.
+  - Before the winners root is committed, `PoolAttentionService.markPool` checks the pool's top 20; if attention flags have fired, or `Pool.hold` is set (`saveHold`), `claimSentUnlessHeld` blocks the automatic send of `commit_winners` until an administrator's manual check.
+- **The toolchain and the development commands**:
+  - Build and IDL: `anchor build --arch v0`, `npm run program:idl` (`server/scripts/vendor-idl.mjs` updates `server/test/fixtures/chain/pool-program.json`), and a reproducible build `npm run program:verify` (`verifiable-build.hash`).
+  - Tests: `npm run program:test` (LiteSVM: 163 tests of `freightchain_pools` + 40 tests of `freightchain_honk`), `npm run test:e2e:block2`.
+  - Devnet utilities (never touch the global `~/.config/solana/id.json`; always pass an explicit `--url devnet`; deploy only on a direct request from the user): `server/scripts/devnet.sh`, `node server/scripts/pool-admin.mjs`.

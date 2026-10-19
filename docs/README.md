@@ -1,6 +1,6 @@
 # Freight Chain — Documentation Index
 
-Read the same tree as a book: [Docs wiki](./wiki.html). It opens every folder and page, and keeps the headings, tables, and section breaks.
+Read the same tree as a book: [Docs wiki](./wiki.html). It opens every folder and page, and keeps the headings, tables, and section breaks. After a docs edit, rebuild it with `node docs/build-wiki.mjs`.
 
 This directory is organized into seven top-level categories:
 

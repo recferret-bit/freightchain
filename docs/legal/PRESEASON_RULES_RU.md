@@ -1,119 +1,103 @@
-# FreightChain Pre-season (devnet) — Правила события и Уведомление о конфиденциальности — ШАБЛОН (RU)
+# FreightChain Pre-season (devnet) — Event Rules and Privacy Notice — TEMPLATE (RU)
 
-> **ЧЕРНОВИК — НЕ ЯВЛЯЕТСЯ ЮРИДИЧЕСКОЙ КОНСУЛЬТАЦИЕЙ.** Краткие правила бесплатного промо-соревнования на мастерство вождения, проводимого **организатором — физическим лицом** (без компании). Полные версии `TERMS.md` и `PRIVACY.md` вступают в силу с Сезона 1 после регистрации юридического лица оператора (краткое резюме на русском языке приведено в Части C ниже).
-> Замените все `[PLACEHOLDER: …]` перед публикацией. При расхождениях между русской и английской версиями (`docs/legal/PRESEASON_RULES.md`) преимущественную силу имеет английская версия `[LAWYER: подтвердить приоритет английской версии]`.
-> Статус: подготовлено 17.10.2026 на основе `docs/legal/PRESEASON_RULES.md` и `docs/plan/DEVNET_PRESEASON.md` (D1–D13, Раунд 19).
+> **DRAFT — NOT LEGAL ADVICE.** Short rules for one free promotional skill event run by an **individual organizer** (no company). Full `TERMS.md` / `PRIVACY.md` apply from Season 1, once an operator entity exists (a short summary is set out in Part C below).
+> Replace every `[PLACEHOLDER: …]` before publication. If the Russian and English versions differ (`docs/legal/PRESEASON_RULES.md`), the English version controls [LAWYER: confirm the priority of the English version].
+> Status: drafted 17.10.2026 from `docs/legal/PRESEASON_RULES.md` and `docs/plan/DEVNET_PRESEASON.md` (D1–D13, Round 19).
 
-**Версия:** `PS-1.0` · **Опубликовано:** `[PLACEHOLDER: дата публикации, не позднее 02.11.2026]`
+**Version:** `PS-1.0` · **Published:** [PLACEHOLDER: publication date, on or before 2 November 2026]
 
 ---
 
-## Часть A — Правила события (Pre-season)
+## Part A — Event Rules (Pre-season)
 
-**1. Организатор.** Предсезонное событие FreightChain Pre-season («**Событие**») организуется физическим лицом `[PLACEHOLDER: имя или публичный псевдоним организатора]`, контакт для связи: `[PLACEHOLDER: Telegram @handle / email]` («**Организатор**»). За Событием не стоит юридическое лицо. Организатор финансирует призовой фонд из собственных личных средств. Telegram, X, Discord, Solana, провайдеры кошельков и иные платформы не являются спонсорами или организаторами События и не несут за него ответственности.
+**1. Organizer.** The FreightChain Pre-season (the "**Event**") is organized by an individual, [PLACEHOLDER: organizer name or public handle], contact [PLACEHOLDER: Telegram @handle / email] (the "**Organizer**"). There is no company behind the Event. The Organizer funds all prizes personally. Telegram, X, Discord, Solana, wallet providers and other platforms do not sponsor or endorse the Event, are not its organizers, and bear no responsibility for it.
 
-**2. Покупка не требуется. Участие только через выполнение заданий.** В рамках События ничего нельзя купить, и никакая оплата не требуется. Единственный способ получить зачётную попытку — выполнить обязательные задания, указанные в Разделе 5; иных способов входа нет. Любые сторонние покупки не повышают шансы на победу. `[LAWYER: подтвердить квалификацию обязательных действий в соцсетях в целевых юрисдикциях]`
+**2. No purchase necessary. Entry only by completing tasks.** Nothing can be bought in the Event and no payment is required. The only way to receive the ranked attempt is to complete the mandatory tasks in Section 5; there is no other method of entry. Buying anything elsewhere does not improve your chance to win. [LAWYER: confirm the classification of mandatory social-media actions in the target jurisdictions.]
 
-**3. Сроки проведения (UTC).**
-- **Регистрация и задания открываются:** понедельник, 2 ноября 2026 г.
-- **Призовая неделя:** с понедельника, 9 ноября 2026 г., 00:00 UTC по воскресенье, 15 ноября 2026 г., 12:00 UTC (зачётный заезд должен быть начат не позднее воскресенья 11:00 UTC, чтобы завершиться до закрытия окна).
-- **Проверка результатов:** до понедельника, 16 ноября 2026 г., 12:00 UTC.
-- **Апелляции:** до вторника, 17 ноября 2026 г., 12:00 UTC.
-- **Выплаты призов:** начиная со вторника, 17 ноября 2026 г.
-Игра работает в тестовой сети **Solana devnet**; токены devnet не имеют денежной стоимости.
+**3. Dates (UTC).** Registration and tasks open Monday 2 November 2026. The prize week runs from Monday 9 November 2026 00:00 to Sunday 15 November 2026 12:00 (an attempt must start by Sunday 11:00 to finish in time). Review until Monday 16 November 12:00; appeals until Tuesday 17 November 12:00; payouts start Tuesday 17 November 2026. The game runs on the Solana **devnet** test network; devnet tokens have no value.
 
-**4. Допуск участников (Eligibility).** Вам должно быть **не менее 18 лет** (или возраст совершеннолетия в стране вашего проживания, если он выше), и вы должны быть реальным человеком, играющим лично за себя.
-- **Допущены к игре и получению призов:** резиденты и лица, находящиеся в Казахстане, Узбекистане, Кыргызстане, Армении, Азербайджане, Грузии, Молдове, Украине (за исключением временно оккупированных территорий Крыма, Донецкой и Луганской областей) и иных странах, не входящих в список исключений ниже.
-- **Могут играть (тренировки и заезд в таблице), но НЕ могут получать денежные призы:** резиденты и лица, находящиеся в Российской Федерации и Республике Беларусь (`[LAWYER: Организатор — налоговый резидент Сербии и гражданин РФ; РФ/РБ остаются без права на призы до подтверждения консультантом]`).
-- **Не допускаются:** Великобритания (UK), страны ЕС/ЕЭЗ (EU/EEA), Куба, Иран, КНДР, Сирия, временно оккупированные территории Украины, штаты США Аризона, Арканзас, Делавэр, Луизиана, Монтана, Южная Каролина и Теннесси, лица из санкционных списков, а также Организатор, модераторы и члены их домохозяйств.
-- **Запрет VPN и прокси:** использование VPN, прокси, Tor или хостинговых сетей во время зачётной попытки или при получении выплаты запрещено.
+**4. Eligibility.** You must be **18 or older** (or the age of majority where you live, if higher) and a real person playing for yourself.
+- **Prize-eligible:** residents of and persons located in Kazakhstan, Uzbekistan, Kyrgyzstan, Armenia, Azerbaijan, Georgia, Moldova, Ukraine (except the occupied Crimea, Donetsk and Luhansk regions) and other locations not excluded below.
+- **May play but cannot win prizes:** residents of or persons located in Russia and Belarus (training and a leaderboard ride are allowed; cash prizes are not) [LAWYER: Organizer is a Serbian tax resident and RF citizen; RU/BY remain excluded from prizes unless counsel confirms otherwise].
+- **Excluded:** the United Kingdom, the EU/EEA, Cuba, Iran, North Korea, Syria, the occupied regions of Ukraine, the US states of Arizona, Arkansas, Delaware, Louisiana, Montana, South Carolina and Tennessee, persons on sanctions lists, and the Organizer, moderators and their household members.
+- **No VPNs or proxies** during your ranked attempt or at payout, including a VPN, proxy, Tor, or hosting network.
 
-**5. Как принять участие.**
-1. Подключите кошелёк Solana и примите настоящие Правила (подтвердив возраст 18+).
-2. Выполните **все** обязательные задания:
-   - (a) проехать верифицированный тестовый заезд уровня MEDIUM или HARD;
-   - (b) привязать аккаунт Telegram и вступить в официальный канал `[PLACEHOLDER: ссылка на канал Telegram]` и чат `[PLACEHOLDER: ссылка на чат Telegram]`;
-   - (c) подписаться на `@FreightChainSol` в X;
-   - (d) опубликовать публичный пост в X (или quote-пост нашего анонса) о том, что вы участвуете в FreightChain Pre-season, содержащий ваш персональный код, и отправить ссылку на этот пост — этот шаг также привязывает ваш аккаунт X. Пост и подписка должны сохраняться до окончания проверки результатов.
-   Подключение Discord является необязательным (даёт только очки для будущего аирдропа). Лайки и обычные репосты без текста/кода не засчитываются.
-3. После выполнения всех обязательных заданий вы получаете **ровно одну (1) зачётную попытку** в таблице 1h Event.
+**5. How to enter.**
+1. Connect a Solana wallet and accept these Rules (18+ confirmation).
+2. Complete **all** mandatory tasks: (a) a verified MEDIUM or HARD test ride; (b) link your Telegram account and join the official channel [PLACEHOLDER: link to the Telegram channel] and the chat [PLACEHOLDER: link to the Telegram chat]; (c) follow @FreightChainSol on X; (d) publish a public post on X (or a quote of our campaign post) saying that you take part in the FreightChain Pre-season, containing your personal code, and submit its link — this post also links your X account. The post and the follow must stay in place until the end of the review. Discord is optional and earns points for a future airdrop only. Likes and plain reposts without text or a code are not counted.
+3. You then receive **exactly one ranked attempt** on the 1h Event board.
 
-**6. Один человек — одна попытка.** Каждый участник имеет право использовать только один кошелёк, один аккаунт Telegram, один аккаунт X и одну зачётную попытку. Создание или использование нескольких кошельков или аккаунтов («мультиаккаунтинг»), передача аккаунта другим лицам, прохождение заезда другим человеком, использование ботов, скриптов, модификаций клиента или уязвимостей запрещены. **Если будет установлено, что один человек стоит за несколькими аккаунтами или попытками, дисквалифицируются ВСЕ его аккаунты и попытки.** Выход из обязательного Telegram-канала или чата до окончания призовой недели аннулирует попытку.
+**6. One person, one attempt.** Each person may hold one wallet, one Telegram account, one X account and one attempt. Creating or using more than one wallet or account ("multi-accounting"), sharing accounts, letting others play for you, bots, scripts, client modifications, cheats or exploits are prohibited. **If one person is found behind more than one entry, all of that person's accounts and attempts are disqualified.** Leaving the required channel or chat before the end of the prize week voids the attempt.
 
-**7. Соревнование на мастерство (Contest of Skill).** Все зачётные попытки проходят по одному и тому же общему маршруту События (единый seed маршрута, препятствий и погоды). Место в таблице определяется исключительно качеством вождения: долей маршрута, пройденной до первой ошибки, а при чистом финише — меньшим числом корректировок управления. Случайных розыгрышей нет; время старта/финиша в пределах окна и адрес кошелька не влияют на место при равенстве показателей. Участники с полностью одинаковым результатом **делят поровну суммарный призовой фонд занимаемых ими мест**. Бесплатные тренировочные заезды доступны без ограничений.
+**7. Contest of skill.** Every ranked attempt drives the same Event route (one seed for the route, obstacles and weather). Rank depends on driving performance: the share of the route completed before the first mistake, then fewer corrections at a clean finish. There are no random draws and no submission-time or wallet-address tie-breakers. Results that are fully equal **share the combined prize amounts of the places they occupy equally**. Unlimited free training rides are available.
 
-**8. Призовой фонд.** Общий призовой фонд составляет **500 долларов США в токенах USDC** (в основной сети Solana mainnet) из личных средств Организатора:
+**8. Prizes.** Total **USD 500 in USDC** (Solana mainnet), funded by the Organizer:
 
-| Место | Приз (USDC) |
+| Place | Prize |
 |---|---:|
 | 1 | $100 |
 | 2 | $70 |
 | 3 | $50 |
-| 4–5 | по $30 |
-| 6–10 | по $20 |
-| 11–20 | по $12 |
+| 4–5 | $30 each |
+| 6–10 | $20 each |
+| 11–20 | $12 each |
 
-Один человек может получить не более одного приза. Призы выплачиваются на тот же адрес кошелька Solana, с которого был совершён заезд. При дисквалификации или отказе от верификации участника из топ-20 допущенные финишировавшие участники ниже по таблице поднимаются вверх (сдвиг мест). Если общее число допущенных участников, завершивших заезд и прошедших проверку, окажется меньше 20, нераспределённые места не выплачиваются и остаются у Организатора.
+One prize per person. Prizes are paid to the wallet address you played with. If a player in the Top 20 is disqualified or fails verification, eligible verified finishers below move up. Places that remain unawarded (fewer than 20 eligible finishers after review) are not paid out and remain with the Organizer.
 
-**9. Проверка перед выплатой.** Для получения приза победитель обязан:
-- подтвердить свою страну проживания и возраст (18+);
-- пройти ручную проверку Организатором (привязанные аккаунты Telegram и X, сетевые сигналы, запись и телеметрия заезда); документы, удостоверяющие личность, по умолчанию не запрашиваются (если не объявлено дополнительно до 9 ноября 2026 г.);
-- пройти санкционную проверку адреса кошелька (Chainalysis) и имени;
-- сохранять привязку аккаунта Telegram и членство в канале/чате.
-Победитель, не прошедший проверку или не ответивший на запрос Организатора в течение **14 дней** с момента уведомления, утрачивает право на приз.
+**9. Verification before payout.** Winners must: confirm their country of residence and age (18+); pass the Organizer's manual review of their accounts and entry (linked Telegram and X accounts, network signals, ride replay and telemetry); identity documents are not collected by default [optional: an identity check may be added if announced before 9 November 2026]; pass a sanctions screening of their wallet (Chainalysis) and name; and keep their Telegram account linked and their membership in the channel and chat. A winner who does not complete verification or does not respond to the Organizer's request within **14 days** of notice forfeits the prize.
 
-**10. Налоги.** Победители самостоятельно несут полную ответственность за декларирование и уплату любых налогов со своих призов в стране своего налогового резидентства. Организатор не выступает налоговым агентом и не выдаёт налоговых справок `[LAWYER: подтвердить режим Porez na dohodak građana в Сербии согласно docs/plan/research/operator_entity_options.md §7.5]`.
+**10. Taxes.** Winners are solely responsible for any taxes on their prizes in their country. The Organizer does not withhold tax or issue tax forms [LAWYER: confirm the Porez na dohodak građana regime in Serbia under `docs/plan/research/operator_entity_options.md` §7.5].
 
-**11. Выплата призов.** Призы отправляются с заранее объявленного призового кошелька Организатора `[PLACEHOLDER: адрес кошелька Solana mainnet]`. Ссылки на транзакции выплат в Solana mainnet публикуются в открытом отчёте после завершения выплат. Транзакции в блокчейне окончательны и необратимы; Организатор не несёт ответственности за потерю вами доступа к кошельку, компрометацию ключей или комиссии сети.
+**11. Payout.** Prizes are sent from the Organizer's announced prize wallet [PLACEHOLDER: Solana mainnet wallet address]. Links to the Solana mainnet payout transactions are published in a public report after payout. Blockchain transactions are final and irreversible; the Organizer is not responsible for loss of access to your wallet, compromised keys, or network fees.
 
-**12. Проверка, апелляции и дисквалификация.** Организатор проверяет результаты топ-20 (повторы заездов, телеметрию 10 Гц, привязки соцсетей, сетевые и кластерные сигналы). Подать апелляцию можно через `[PLACEHOLDER: форма / email / Telegram-контакт для апелляций]` до вторника, 17 ноября 2026 г., 12:00 UTC. Организатор вправе дисквалифицировать участников, нарушивших настоящие Правила, и аннулировать результаты, искажённые нечестной игрой или техническим сбоем.
+**12. Review, appeals and disqualification.** The Organizer reviews the Top 20 (ride replays, 10 Hz telemetry, account links, network and cluster signals). Appeals: [PLACEHOLDER: form / email / Telegram contact for appeals] until Tuesday 17 November 12:00 UTC. The Organizer may disqualify entries that break these Rules and void results affected by cheating or technical failure.
 
-**13. Технические сбои.** Если сбой сервера на нашей стороне продолжительностью более **30 минут** прервёт вашу зачётную попытку, вам может быть выдана повторная попытка либо призовая неделя может быть продлена; об этом публикуется объявление в официальном Telegram-канале.
+**13. Outages.** If a server outage on our side longer than **30 minutes** interrupts your ranked attempt, you may receive a replacement attempt or the prize week may be extended; this will be announced in the Telegram channel.
 
-**14. Права Организатора.** Организатор вправе изменить, приостановить, продлить или отменить Событие по техническим, юридическим причинам, соображениям безопасности или честной игры, объявив об этом в Telegram-канале. Если Событие отменяется до того, как хотя бы одна зачётная попытка завершена, призы не выплачиваются; если Событие отменяется после завершения зачётных попыток по независящим от игроков причинам, призы распределяются по подтверждённой таблице на момент отмены (либо призовая неделя переносится на новые даты). Решения Организатора по вопросам допуска, проверки и дисквалификации, принятые добросовестно, являются окончательными.
+**14. Organizer's discretion.** The Organizer may modify, suspend, extend or cancel the Event for technical, security, fair-play or legal reasons, announced in the Telegram channel. If the Event is cancelled before any ranked attempt is completed, no prizes are paid; if cancelled after ranked attempts have been completed for reasons outside players' control, prizes are awarded on verified standings at the time of cancellation (or the prize week is rescheduled). The Organizer's decisions on eligibility, verification and disqualification are final, acting in good faith.
 
-**15. Ограничение ответственности.** В максимальной степени, допускаемой применимым правом, Организатор не несёт ответственности за любые косвенные убытки, потерю доступа к кошельку, сбои сети Solana или сторонних платформ, за исключением обязанности выплатить призы, честно выигранные и подтверждённые в соответствии с настоящими Правилами.
+**15. Liability.** To the maximum extent permitted by applicable law, the Organizer is not liable for any indirect losses, loss of access to a wallet, failures of the Solana network, or third-party platforms, except for the duty to pay prizes honestly won and confirmed under these Rules.
 
-**16. Публичность результатов.** Адреса кошельков (или публичные никнеймы), занятые места, записи заездов и ссылки на транзакции выплат победителей публикуются в открытом доступе.
+**16. Publicity.** Wallet addresses (or public handles), places, ride recordings, and links to winners' payout transactions are published.
 
-**16a. Зрители, донаты и повторы.** **[NEW 2026-10-17]** Зачётные попытки **нельзя смотреть вживую**. Повторы зачётных попыток становятся публичными только **после окончания проверки** (`[PLACEHOLDER: понедельник, 16 ноября 2026 г., 12:00 UTC]`, то есть по окончании окна проверки пула). Донаты, чаевые и любые другие действия зрителя **никогда не влияют на попытку** (ни на препятствия, ямы, погоду, день или ночь, урон, скорость и ни на что иное), не являются заявкой на участие, не дают преимущества в призах и не связаны с местом в таблице. У События нет платного входа (раздел 2). Чат повтора и донаты включены на время События для тестирования; на devnet они не имеют денежной стоимости.
+**16a. Viewers, donations and replays.** **[NEW 2026-10-17]** Ranked attempts are **not watchable live**. Replays of ranked attempts become public only **after the review ends** ([PLACEHOLDER: Monday, 16 November 2026, 12:00 UTC], i.e. the end of the pool's validation window). Donations, tips or any other viewer action **never affect any attempt** (no obstacles, holes, weather, day/night, damage, speed or anything else), are not an entry, give no prize advantage and are not linked to ranking. The Event has no paid entry (Section 2). Replay chat and donations are enabled during the Event for testing; on devnet they have no monetary value.
 
-**17. Контакты.** `[PLACEHOLDER: Telegram @handle / email Организатора]`.
+**17. Contact.** [PLACEHOLDER: Organizer's Telegram @handle / email].
 
 ---
 
-## Часть B — Уведомление о конфиденциальности Pre-season
+## Part B — Pre-season Privacy Notice
 
-**Кто отвечает за обработку данных:** Организатор, указанный в Части A (физическое лицо), контакт: `[PLACEHOLDER: Telegram @handle / email]`.
+**Who is responsible:** the Organizer named in Part A (an individual), contact [PLACEHOLDER: Telegram @handle / email].
 
-**Какие данные собираются и зачем:**
+**What is collected and why:**
 
-| Категория данных | Зачем используется | Срок хранения |
+| Data | Why | Kept |
 |---|---|---|
-| Адрес кошелька Solana, подпись входа | Аккаунт игрока, таблица лидеров, выплата приза | До **12 месяцев** после окончания События; данные в блокчейне хранятся бессрочно |
-| Telegram user ID, username, статус подписки на канал и чат | Проверка обязательных заданий, правило «один человек — один аккаунт» | До **12 месяцев** после окончания События |
-| Профиль X (handle, ID) и ссылка на пост с кодом (обязательное задание); Discord handle/ID (необязательное задание) | Проверка обязательного задания в X; начисление очков будущего аирдропа за Discord | До **12 месяцев** после окончания События |
-| Хеш префикса IP-адреса с секретной солью (HMAC `/24` для IPv4, `/48` для IPv6 — без сохранения «сырого» IP в базе), страна/регион от Cloudflare | Проверка географического допуска, выявление мультиаккаунтов | **90 дней** (логи веб-сервера — **30 дней**) |
-| Игровая телеметрия (10 Гц) и записи заездов (replays) | Расчёт результата, античит-проверка, разбор апелляций | **90 дней** для обычных заездов; до **12 месяцев** для призовых и спорных заездов |
-| Результаты ручной проверки и санкционного скрининга победителей (документы, удостоверяющие личность, по умолчанию не собираются) | Подтверждение возраста и страны, защита от ботов/ферм, соблюдение санкционных требований | До **12 месяцев** после окончания События |
-| Сообщения в чате заездов и Telegram-чате | Общение участников и модерация | Чат заездов в игре — **90 дней**; в Telegram — по правилам Telegram |
+| Wallet address, sign-in signature | Account, leaderboard, prize payout | Until **12 months** after the Event; on-chain data is permanent |
+| Telegram user ID, username, channel/chat membership | Mandatory tasks, one account per person | Until **12 months** after the Event |
+| X profile (handle and ID) and link to the post with the code (mandatory task); Discord handle and ID (optional task) | Mandatory X entry task; Discord points for a future airdrop | Until **12 months** after the Event |
+| Keyed hash of your IP address prefix with a secret salt (HMAC `/24` for IPv4, `/48` for IPv6 — the raw IP is not stored in the database), country/region from Cloudflare | Eligibility by location, detecting multi-accounting | **90 days** (web server logs 30 days) |
+| Gameplay telemetry (10 Hz) and ride replays | Scoring, anti-cheat, review of appeals | **90 days** for ordinary rides; up to **12 months** for prize and disputed rides |
+| Manual verification & sanctions screening result for winners (no ID documents collected by default) | Age/country self-confirmation, anti-sybil review, sanctions compliance | Until **12 months** after the Event |
+| Messages in the ride chat and the Telegram chat | Community and moderation | In-game ride chat — **90 days**; Telegram — Telegram's own rules |
 
-**Сторонние сервисы (обработчики):** Cloudflare (сетевая защита, определение страны/региона), Telegram (Login Widget и проверка подписки через Bot API), twitterapi.io (чтение публичных постов X для проверки задания — мы не запрашиваем доступ к вашему аккаунту X и паролю), Chainalysis (санкционный скрининг кошельков), `[PLACEHOLDER: хостинг-провайдер]`, PostHog (собственная продуктовая аналитика в регионе EU — можно отключить в любой момент переключателем в настройках игры).
+**Service providers (processors):** Cloudflare (network security, location), Telegram (Login Widget and a subscription check via the Bot API), twitterapi.io (reading public X posts to verify the task — we do not request access to your X account or password), Chainalysis (sanctions screening), [PLACEHOLDER: hosting provider], PostHog (first-party analytics in the EU region — you can turn it off at any time with a switch in the game settings).
 
-**Чего мы НЕ делаем:** мы не продаём персональные данные, не используем рекламные трекеры и не применяем браузерный фингерпринтинг (browser fingerprinting).
+**Not done:** no sale of data, no advertising trackers, no browser fingerprinting.
 
-**Ваши права и выбор:** вы можете отключить аналитику в настройках игры, а также запросить удаление ваших внецепочечных (off-chain) данных, написав на `[PLACEHOLDER: контакт Организатора]` и подтвердив запрос подписью кошелька (удаление данных до окончания События прекращает ваше участие и аннулирует результат). Данные, записанные в публичный блокчейн, удалению не подлежат.
+**Your rights and choices:** you may turn analytics off in the game settings, and you may ask the Organizer to delete your off-chain data by writing to [PLACEHOLDER: Organizer's contact] and confirming the request with a wallet signature (deleting the data before the end of the Event ends your participation and voids your result). Data recorded on the public blockchain cannot be deleted.
 
 ---
 
-## Часть C — Краткое резюме полных Условий (`TERMS.md`) и Политики конфиденциальности (`PRIVACY.md`) для Сезона 1+
+## Part C — Short summary of the full Terms (`TERMS.md`) and Privacy Policy (`PRIVACY.md`) for Season 1+
 
-> Полные документы на английском языке (`docs/legal/TERMS.md`, `docs/legal/PRIVACY.md`, `docs/legal/OFFICIAL_RULES.md`) вступают в силу с **Сезона 1 в основной сети (mainnet)** после регистрации компании-оператора. Ниже приведено их краткое информационное резюме на русском языке:
+> The full documents in English (`docs/legal/TERMS.md`, `docs/legal/PRIVACY.md`, `docs/legal/OFFICIAL_RULES.md`) take effect from **Season 1 on mainnet** after the operator company is registered. A short informational summary is set out below:
 
-1. **Возраст и география:** Сервис предназначен строго для лиц **18+** (или старше по закону штата/страны). Сервис недоступен в Великобритании (UK), ЕС/ЕЭЗ (EU/EEA) и подсанкционных юрисдикциях. Платные функции и призы также недоступны в 7 штатах США (AZ, AR, DE, LA, MT, SC, TN) и при использовании VPN/прокси.
-2. **Самостоятельное хранение ключей (Self-custody):** Ваш аккаунт — это ваш кошелёк Solana. Мы никогда не запрашиваем сид-фразу или приватные ключи и не можем восстановить утерянный доступ или отменить транзакцию в блокчейне.
-3. **Соревнование на мастерство (Skill Contest):** Призовые таблицы 1h, 4h и 8h в Сезоне 1 оценивают исключительно мастерство вождения. Призовые пулы формируются из базового взноса оператора и спонсоров (доля бонуса от билетов прошлой недели никогда не превышает 47,4% пула). Тренировки всегда бесплатны, а для участия в рейтинге предусмотрен бесплатный способ входа (еженедельный бесплатный билет и промокоды, с лимитом 30% призового пула на бесплатные билеты).
-4. **Билеты и возвраты:** Покупка билета через Solana Pay даёт цифровую лицензию на одну поездку и не подлежит возврату, за исключением случаев технического сбоя на нашей стороне (в этом случае билет восстанавливается или возмещается).
-5. **Выплаты, KYC и налоги в Сезоне 1:** Перед выплатой призов в Сезоне 1 проводится санкционный скрининг кошелька, проверка личности (KYC через провайдера Didit — для любого приза с бесплатного билета и при сумме призов от $50 за сезон с платных билетов) и заполнение налоговой формы США (W-8BEN для нерезидентов США или W-9 для резидентов США). При годовой сумме призов от $2 000 оформляется форма 1099-MISC. Все налоги победитель уплачивает самостоятельно.
-6. **Токен TEN4 и программа Convoy:** TEN4 — внутриигровой утилитарный токен (фиксированная эмиссия 100 млн, без продажи токенов / ICO / пресейла). TEN4 не является ценной бумагой, инвестицией или обещанием дохода. Реферальная программа Convoy одноуровневая и начисляет только внутриигровые бонусы в TEN4 за реальную игру приглашённых друзей (при соблюдении лимитов и Trust Score).
-7. **Честная игра и конфиденциальность:** Мультиаккаунтинг, боты и читы ведут к дисквалификации и конфискации наград. Для защиты честной игры используются серверная верификация заездов (10 Гц), Trust Score и хеш префикса IP (срок хранения 90 дней), без продажи данных третьим лицам и без браузерного фингерпринтинга.
+1. **Age and geography.** The Service is strictly for persons **18+** (or older where the law of the state or country so requires). The Service is unavailable in the United Kingdom (UK), the EU/EEA, and sanctioned jurisdictions. Paid features and prizes are also unavailable in 7 US states (AZ, AR, DE, LA, MT, SC, TN) and when a VPN or proxy is used.
+2. **Self-custody.** Your account is your Solana wallet. We never ask for a seed phrase or private keys, and we cannot restore lost access or reverse a blockchain transaction.
+3. **Contest of skill.** The 1h, 4h and 8h prize boards in Season 1 judge driving skill only. Prize pools are formed from the operator's base contribution and from sponsors (the bonus share taken from the previous week's tickets never exceeds 47.4% of the pool). Training is always free, and a free way to enter ranked play is provided (a weekly free ticket and promo codes, with a limit of 30% of the prize pool for free tickets).
+4. **Tickets and refunds.** Buying a ticket through Solana Pay gives a digital license for one ride and is non-refundable, except where there is a technical failure on our side (in that case the ticket is restored or refunded).
+5. **Payouts, KYC and taxes in Season 1.** Before prizes are paid in Season 1 there is a sanctions screening of the wallet, an identity check (KYC through the provider Didit — for any prize from a free ticket, and when prizes from paid tickets in a season are $50 or more), and a US tax form (W-8BEN for non-residents of the United States, or W-9 for residents of the United States). If prizes in a year are $2,000 or more, Form 1099-MISC is issued. The winner pays all taxes themselves.
+6. **The TEN4 token and the Convoy program.** TEN4 is an in-game utility token (a fixed supply of 100 million, with no token sale / ICO / presale). TEN4 is not a security, an investment, or a promise of income. The Convoy referral program is single-level and pays only in-game bonuses in TEN4 for real play by invited friends (subject to the limits and Trust Score).
+7. **Fair play and privacy.** Multi-accounting, bots and cheats lead to disqualification and forfeiture of rewards. Fair play is protected by server-side ride verification (10 Hz), a Trust Score, and a hash of the IP prefix (kept for 90 days), with no sale of data to third parties and no browser fingerprinting.

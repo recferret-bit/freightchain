@@ -24,7 +24,7 @@ The code wins an argument about as-built. A decision wins an argument about what
 - Read `PRODUCT.md` for the area, the matching `docs/agents/` file, and any target `MUST` before editing.
 - A behavior change updates the as-built row in the same change. A new target updates the decision and the area file, and stays marked target until the code matches.
 - Do not delete or rewrite a test of shipped behavior because a target forbids that behavior. The target lands with its own tests.
-- Ids in the Russian files (`RID-T-*`, `RPL-T-*`, `POOL-T-*`, `API-T-*`, `ADM-T-*`, `MGM-T-*`) are a catalog of tests to write. "Без теста — 0" means every `MUST` has a planned id. It does not mean the test exists or has run.
+- Ids (`RID-T-*`, `RPL-T-*`, `POOL-T-*`, `API-T-*`, `ADM-T-*`, `MGM-T-*`) are a catalog of tests to write. "No test means zero" means every `MUST` has a planned id. It does not mean the test exists or has run.
 - The happy-dom suite (`npm run test:e2e:block1`, `test:e2e:block2`, `test:e2e:pages`) is a fast module check. It is not the end-to-end bar. The bar is [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
 - A contradiction inside decisions 1–66 is listed in `PRODUCT.md` and is not resolved by picking a side in code. The owner picks. The open pair is recorded, not silently implemented.
 - Shipping a feature that `PRODUCT.md` does not name is a spec bug. Add the row in the same change.

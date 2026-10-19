@@ -1,298 +1,297 @@
-# Мини-запуск на devnet (ноябрь 2026): план, спецификация и ранбук
+# Devnet mini-launch (November 2026): plan, specification, and runbook
 
-Версия 17.10.2026, **решения D1–D13 приняты владельцем (все ⭐)**. **Раунд 19: владелец идёт без юрлица, без консультации юриста и без Didit до Pre-season — принятый риск ([`../spec/OPEN.md`](../spec/OPEN.md), [`MASTER_PLAN.md`](MASTER_PLAN.md) §12). Призы для Украины (без оккупированных регионов) — как в плане, принятый риск.** **Раунд 17: Pre-season проводит владелец как физлицо-организатор (налоговый резидент и ВНЖ Сербии, гражданин РФ — см. [`research/operator_entity_options.md`](research/operator_entity_options.md) §6–7) и платит призы лично; юрлицо — до Season 1.** Основа: [`MASTER_PLAN.md`](MASTER_PLAN.md), [`../spec/OPEN.md`](../spec/OPEN.md), [`research/operator_entity_options.md`](research/operator_entity_options.md), `../legal/*`. Пометка **[не проверено]** — факт не подтверждён источником или кодом. **[LAWYER]** — нужен юрист.
+Version 17.10.2026, **decisions D1–D13 adopted by the owner (all ⭐)**. **Round 19: the owner proceeds without a legal entity, without a lawyer consultation, and without Didit until Pre-season — an accepted risk ([`../spec/OPEN.md`](../spec/OPEN.md), [`MASTER_PLAN.md`](MASTER_PLAN.md) §12). Prizes for Ukraine (excluding the occupied regions) — as in the plan, an accepted risk.** **Round 17: the owner runs Pre-season as a natural-person organizer (a tax resident of Serbia, with a Serbian residence permit, a citizen of the RF — see [`research/operator_entity_options.md`](research/operator_entity_options.md) §6–7) and pays the prizes personally; a legal entity — before Season 1.** Basis: [`MASTER_PLAN.md`](MASTER_PLAN.md), [`../spec/OPEN.md`](../spec/OPEN.md), [`research/operator_entity_options.md`](research/operator_entity_options.md), `../legal/*`. Mark **[not verified]** — a fact not confirmed by a source or by code. **[LAWYER]** — a lawyer is needed.
 
-**Запрос владельца:** мини-запуск на devnet в первую неделю ноября 2026 или около неё:
-- призовой фонд $500 полностью от владельца;
-- платных билетов нет;
-- у каждого ровно 1 призовая попытка после выполнения шагов аирдропа;
-- аудитория — СНГ.
+**Owner's request:** a mini-launch on devnet in the first week of November 2026, or around it:
+- a prize fund of $500 entirely from the owner;
+- no paid tickets;
+- each person has exactly 1 prize attempt after completing the airdrop steps;
+- the audience is the CIS.
 
 ---
 
-## 0. Что уже есть в коде (проверено по `a486c350`)
+## 0. What is already in the code (verified against `a486c350`)
 
-| Нужно мини-запуску | Есть? | Где / что делать |
+| What the mini-launch needs | Present? | Where / what to do |
 |---|---|---|
-| Недельный конкурс мастерства, доски 1h/4h/8h, счёт `cleanBps`, проверка и апелляции | Да | `server/src/domain/prize/prize-rules.ts`, `docs/spec/pool.md` |
-| Лимит рейтинговых стартов: 1 промо + 5 платных в неделю | Да | `PROMO_RANKED_STARTS = 1`, `PAID_RANKED_STARTS = 5` |
-| Промо-поездка 1h (эффект `ride`, один раз на кошелёк, не минтит TEN4) | Да | `promo.types.ts`, `PromoRideGrant` — основа для «1 попытки» |
-| Платные тарифы выключены по умолчанию | Да | `ride-tier.ts`: `onSale: false` у 1h/4h/8h |
-| Недельный выданный билет с флагами | Да | `weekly_ticket_{1h,4h,8h}_enabled` |
-| Гео по стране и штату, 18+, KYC-флаг для выплаты | Частично | `prizeAccess()`: списки — константы в коде, не настройки; СНГ не заблокировано. RU и BY в списках нет |
-| Задания аирдропа (соцсети, шаги) | **Нет** | Спроектировано в [`../spec/ten4.md`](../spec/ten4.md) §4.2 и **§11** ниже |
-| Telegram (бот, Login Widget, проверка подписки) | **Нет** | Новое (**§11.2**) |
-| Локализация (i18n) | **Нет** | Везде `<html lang="en">`, словарей нет (**§13**) |
-| Didit KYC, санкционная проверка, налоговые формы | **Нет** | В Pre-season ручная проверка топ-20 + Chainalysis (**§14**) |
-| Отдельная «доска события» | **Нет** | Доска 1h с правилами события (**§10, §12**) |
-| Подпись транзакций игроком | Только сжигание TEN4 и покупка деталей | Рейтинговая поездка и промо — off-chain, газ не нужен (**§16**) |
-| Devnet RPC | Публичный `api.devnet.solana.com` в `.env.example` | Заменить на выделенный Helius devnet RPC |
+| A weekly skill contest, 1h/4h/8h boards, a `cleanBps` score, review and appeals | Yes | `server/src/domain/prize/prize-rules.ts`, `docs/spec/pool.md` |
+| Ranked-start limit: 1 promo + 5 paid per week | Yes | `PROMO_RANKED_STARTS = 1`, `PAID_RANKED_STARTS = 5` |
+| A 1h promo ride (effect `ride`, once per wallet, does not mint TEN4) | Yes | `promo.types.ts`, `PromoRideGrant` — the basis for "1 attempt" |
+| Paid tiers off by default | Yes | `ride-tier.ts`: `onSale: false` on 1h/4h/8h |
+| A weekly issued ticket with flags | Yes | `weekly_ticket_{1h,4h,8h}_enabled` |
+| Geo by country and state, 18+, a KYC flag for payout | Partial | `prizeAccess()`: the lists are constants in code, not settings; the CIS is not blocked. RU and BY are not in the lists |
+| Airdrop tasks (social networks, steps) | **No** | Designed in [`../spec/ten4.md`](../spec/ten4.md) §4.2 and **§11** below |
+| Telegram (bot, Login Widget, subscription check) | **No** | New (**§11.2**) |
+| Localization (i18n) | **No** | `<html lang="en">` everywhere, no dictionaries (**§13**) |
+| Didit KYC, sanctions screening, tax forms | **No** | In Pre-season, a manual review of the top 20 + Chainalysis (**§14**) |
+| A separate "event board" | **No** | The 1h board with event rules (**§10, §12**) |
+| Player transaction signing | Only the TEN4 burn and the parts purchase | The ranked ride and the promo are off-chain, no gas is needed (**§16**) |
+| Devnet RPC | Public `api.devnet.solana.com` in `.env.example` | Replace with a dedicated Helius devnet RPC |
 
-Вывод: доски, правила попыток и промо-поездка уже есть. Новые работы — шаги кампании (Telegram + X), русский язык, проверка топ-20 и санкций, режим события (`C2–C8` в **§7** и **Части II** ниже).
+Conclusion: the boards, the attempt rules, and the promo ride already exist. New work — campaign steps (Telegram + X), the Russian language, the top-20 and sanctions review, event mode (`C2–C8` in **§7** and **Part II** below).
 
-## 1. Связь с Season 1 на mainnet и флаги режима (`D1–D3, D11`)
+## 1. Relation to Season 1 on mainnet and the mode flags (`D1–D3, D11`)
 
-Делать полноценный запуск Season 1 на mainnet (платные пулы v5, Solana Pay, Didit KYC, проверка юристом) параллельно с мини-запуском за две недели нереально. Поэтому приняты решения (**сводная таблица всех вариантов A/B/C — в §9**):
-- **D1 (`✅ A`) — место мини-запуска:** мини-запуск проводится **вместо старта** Season 1 как «Pre-season» на devnet.
-- **D2 (`✅ A`) — даты Pre-season:** регистрация и задания с **пн 02.11.2026**; призовая неделя **пн 09.11 00:00 – вс 15.11 12:00 UTC**; проверка до пн 16.11 12:00, апелляции до вт 17.11 12:00, выплаты с **вт 17.11**.
-- **D3 (`✅ A`) — новая дата Season 1 (mainnet):** **пн 11.01.2027** (7 недель, финал 22–28.02.2027, перерыв 01–14.03, Season 2 с 15.03.2027, TGE не раньше марта 2027 — см. [`MASTER_PLAN.md`](MASTER_PLAN.md) §1 и §4). Очки за шаги Pre-season засчитываются в аирдроп Season 1 (`D10`).
-- **D11 (`✅`) — флаги функций для Pre-season:** платные билеты (`onSale: false`), Solana Pay, недельный бесплатный билет (`weekly_ticket_1h_enabled = 0`), промокоды на поездки, подарок другу (`referral_referee_promo_enabled = 0`), TEN4 за вехи Convoy (`referral_ten4_enabled = 0`) и SOL-доли рефералки v1 **выключены** (чтобы ни у кого не было второй попытки). Включены: привязка и рейтинг Convoy, теневой расчёт TrustScore, обязательный прокси Cloudflare (`G1`) и модалка 18+/Terms (`TermsGuard`). **Полная таблица ключей `player.GameSetting` для Pre-season — в §10.**
+A full Season 1 launch on mainnet (paid v5 pools, Solana Pay, Didit KYC, a lawyer review) in parallel with the mini-launch, inside two weeks, is not realistic. Decisions are therefore adopted (**the summary table of all A/B/C options — in §9**):
+- **D1 (`✅ A`) — place of the mini-launch:** the mini-launch is held **instead of the start** of Season 1, as "Pre-season" on devnet.
+- **D2 (`✅ A`) — Pre-season dates:** registration and tasks from **Mon 02.11.2026**; the prize week **Mon 09.11 00:00 – Sun 15.11 12:00 UTC**; review until Mon 16.11 12:00, appeals until Tue 17.11 12:00, payouts from **Tue 17.11**.
+- **D3 (`✅ A`) — the new Season 1 date (mainnet):** **Mon 11.01.2027** (7 weeks, the final 22–28.02.2027, a break 01–14.03, Season 2 from 15.03.2027, TGE no earlier than March 2027 — see [`MASTER_PLAN.md`](MASTER_PLAN.md) §1 and §4). Points for Pre-season steps count toward the Season 1 airdrop (`D10`).
+- **D11 (`✅`) — feature flags for Pre-season:** paid tickets (`onSale: false`), Solana Pay, the weekly free ticket (`weekly_ticket_1h_enabled = 0`), ride promo codes, a gift to a friend (`referral_referee_promo_enabled = 0`), TEN4 for Convoy milestones (`referral_ten4_enabled = 0`), and v1 referral SOL shares **are off** (so that no one has a second attempt). On: Convoy linking and the Convoy rating, a shadow TrustScore calculation, the mandatory Cloudflare proxy (`G1`), and the 18+/Terms modal (`TermsGuard`). **The full table of `player.GameSetting` keys for Pre-season — in §10.**
 
-## 2. Призовая механика при одной попытке (`D4–D6`)
+## 2. Prize mechanics with one attempt (`D4–D6`)
 
-- **D4 (`✅ A`) — доска:** одна доска события на тарифе **1h** (один маршрут недели, один `seed`, ровно 1 рейтинговая попытка после выполнения обязательных шагов; тренировки безлимитны).
-- **D5 (`✅ A`) — распределение $500:** фиксированная таблица **топ-20** (`1: $100, 2: $70, 3: $50, 4–5: 2×$30, 6–10: 5×$20, 11–20: 10×$12 = $500`). Если квалифицированных участников меньше 20, невыплаченные места остаются у владельца; переносов между неделями нет. Лимит 30% для бесплатных билетов (`free_prize_board_cap_bps`) отключён (`0`), так как все попытки бесплатные.
-- **D6 (`✅ A`) — ничьи:** равные результаты делят сумму занятых мест поровну без тай-брейка по адресу кошелька (**алгоритм и примеры — в §12**).
-- **Позиционирование и бесплатный вход (раунды 18–19):** покупок нет вообще, фонд оплачивает владелец; эффекты зрителей на рейтинговой поездке отклоняются. Призовая попытка выдаётся **только** за выполнение обязательных заданий кампании (**§11**). Риск квалификации обязательных соцзаданий как неденежного consideration вынесен в вопросы сербскому юристу ([`../spec/OPEN.md`](../spec/OPEN.md) §2.1).
-- **Оценка бюджета `twitterapi.io` (раунд 19, X обязателен):** точечная проверка `check_follow_relationship` + проверка поста-цитаты по ID при выдаче попытки и при проверке топ-20 (с запасом ×2 на повторы) стоит ~460 кредитов ≈ **`$0.005` на участника** (`1,000` участников ≈ `$5`, `5,000` ≈ `$23`, `20,000` ≈ `$92` — укладывается в `airdrop_twitterapi_budget_usd = 100`).
+- **D4 (`✅ A`) — board:** one event board on the **1h** tier (one route of the week, one `seed`, exactly 1 ranked attempt after the mandatory steps are completed; training is unlimited).
+- **D5 (`✅ A`) — distribution of $500:** a fixed **top-20** table (`1: $100, 2: $70, 3: $50, 4–5: 2×$30, 6–10: 5×$20, 11–20: 10×$12 = $500`). If there are fewer than 20 qualified participants, unpaid places stay with the owner; there is no carryover between weeks. The 30% cap for free tickets (`free_prize_board_cap_bps`) is off (`0`), because every attempt is free.
+- **D6 (`✅ A`) — ties:** equal results split the sum of the occupied places equally, with no tie-break by wallet address (**algorithm and examples — in §12**).
+- **Positioning and free entry (rounds 18–19):** there are no purchases at all, the owner pays the fund; spectator effects on the ranked ride are rejected. The prize attempt is issued **only** for completing the mandatory campaign tasks (**§11**). The risk of the mandatory social tasks qualifying as non-monetary consideration is referred to the questions for a Serbian lawyer ([`../spec/OPEN.md`](../spec/OPEN.md) §2.1).
+- **`twitterapi.io` budget estimate (round 19, X is mandatory):** a point check of `check_follow_relationship` + a check of the quote post by ID, at attempt issuance and at the top-20 review (with a ×2 margin for repeats), costs ~460 credits ≈ **`$0.005` per participant** (`1,000` participants ≈ `$5`, `5,000` ≈ `$23`, `20,000` ≈ `$92` — fits in `airdrop_twitterapi_budget_usd = 100`).
 
-## 3. Выплата реальных $500 и проверка топ-20 (`D7, D13`)
+## 3. Payout of the real $500 and the top-20 review (`D7, D13`)
 
-- **D7 (`✅ A`, раунд 17) — чем и откуда платить:** **USDC на Solana mainnet** на тот же адрес кошелька, с которым победитель играл на devnet, из личных средств владельца через **отдельный горячий кошелёк события** (пополненный на `$500 USDC + ~0.15 SOL` на комиссии; адрес и хэши выплат публикуются в отчёте события). Налоговые формы W-9/W-8BEN в Pre-season не собираются (организатор не US person).
-- **D13 (`✅`, раунд 19) — проверка топ-20 без юрлица:** Didit до Pre-season не подключается (принятый риск владельца). Перед выплатой проводится строгий анти-сибил и ручная проверка каждого из топ-20 (Telegram/X 1:1, IP-кластеры `≤ 1` призовое место на кластер, повтор поездки и телеметрия, санкционная проверка Chainalysis + OFAC SDN, удержание 72 ч). **Пошаговый ранбук проверки и выплаты — в §14 и §15.**
+- **D7 (`✅ A`, round 17) — what to pay with and from where:** **USDC on Solana mainnet**, to the same wallet address the winner played with on devnet, from the owner's personal funds, through a **separate event hot wallet** (funded with `$500 USDC + ~0.15 SOL` for fees; the address and the payout hashes are published in the event report). Tax forms W-9/W-8BEN are not collected in Pre-season (the organizer is not a US person).
+- **D13 (`✅`, round 19) — top-20 review without a legal entity:** Didit is not connected before Pre-season (an accepted risk of the owner). Before payout, a strict anti-sybil check and a manual review of each of the top 20 are carried out (Telegram/X 1:1, IP clusters `≤ 1` prize place per cluster, a re-check of the ride and the telemetry, a Chainalysis + OFAC SDN sanctions check, a 72 h hold). **The step-by-step review and payout runbook — in §14 and §15.**
 
-## 4. Специфика СНГ (`D8, D12`)
+## 4. CIS specifics (`D8, D12`)
 
-### 4.1 Санкции и право — что подтверждено источниками
+### 4.1 Sanctions and law — what the sources confirm
 
-| Режим | Что запрещает | Касается ли нас |
+| Regime | What it prohibits | Does it apply to us |
 |---|---|---|
-| ЕС, Рег. 833/2014 ст. 5b(2) (8-й пакет 2022 снял порог; с 19-го пакета формулировка расширена) | Поставщикам из ЕС — оказывать гражданам и резидентам РФ любые криптоуслуги по MiCA, услуги кошелька и хранения, платёжные услуги, выпуск e-money. Исключение — граждане и резиденты ЕС/ЕЭЗ/Швейцарии | Организатор — физлицо, налоговый резидент Сербии ([`research/operator_entity_options.md`](research/operator_entity_options.md) §6–7), не субъект ЕС; однако призы для RU/BY закрыты до заключения юриста (`D8`) |
-| ЕС, Рег. 765/2006 ст. 1u (Беларусь) | Аналогичный запрет криптоуслуг гражданам и резидентам РБ | То же |
-| США, EO 14071 / EO 14024 (SDN) | Американским лицам — консалтинг/IT-услуги в РФ; запрет расчётов с лицами из списков SDN и заблокированными регионами | Проверка каждого кошелька через Chainalysis + OFAC SDN перед выплатой (**§14.1**); заблокированные регионы (`UA-43`, `UA-14`, `UA-09`) исключены |
-| РФ, 259-ФЗ ст. 14 и закон о лотереях / стимулирующих мероприятиях | Запрет резидентам РФ принимать цифровую валюту в оплату товаров/услуг; требования к стимулирующим мероприятиям | RU и BY играют бесплатно без права на денежные призы (`D8`), пока юрист не даст заключение ([`../spec/OPEN.md`](../spec/OPEN.md) §2) |
-| Украина | Оккупированные регионы (`UA-43`, `UA-14`, `UA-09`) заблокированы (`451`) | Остальная Украина допущена к призам (принятый риск раунда 19) |
+| EU, Reg. 833/2014 Art. 5b(2) (the 8th package of 2022 removed the threshold; from the 19th package the wording is expanded) | EU providers — from providing citizens and residents of the RF any crypto services under MiCA, wallet and custody services, payment services, e-money issuance. Exception — citizens and residents of the EU/EEA/Switzerland | The organizer is a natural person, a tax resident of Serbia ([`research/operator_entity_options.md`](research/operator_entity_options.md) §6–7), not an EU person; however, prizes for RU/BY are closed until a lawyer's opinion (`D8`) |
+| EU, Reg. 765/2006 Art. 1u (Belarus) | An analogous ban on crypto services for citizens and residents of the RB | The same |
+| US, EO 14071 / EO 14024 (SDN) | US persons — consulting/IT services in the RF; a ban on settlements with persons on the SDN lists and with blocked regions | A check of each wallet through Chainalysis + OFAC SDN before payout (**§14.1**); blocked regions (`UA-43`, `UA-14`, `UA-09`) are excluded |
+| RF, 259-FZ Art. 14 and the law on lotteries / promotional events | A ban on residents of the RF accepting digital currency as payment for goods/services; requirements for promotional events | RU and BY play for free with no right to monetary prizes (`D8`), until a lawyer gives an opinion ([`../spec/OPEN.md`](../spec/OPEN.md) §2) |
+| Ukraine | Occupied regions (`UA-43`, `UA-14`, `UA-09`) are blocked (`451`) | The rest of Ukraine is admitted to prizes (accepted risk of round 19) |
 
-- **D8 (`✅ A`) — допуск стран:** призы доступны для **KZ, UZ, KG, AM, AZ, GE, MD, UA** (без `UA-43/14/09`) и остальных открытых стран (вне ЕС/ЕЭЗ/UK и санкционных списков). Игроки из **RU и BY** могут проходить тренировки и ездить на доске, но **без права на денежные призы** (явно указывается в UI и в [`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md)). Для рейтинговой поездки VPN должен быть отключён.
+- **D8 (`✅ A`) — country admission:** prizes are available for **KZ, UZ, KG, AM, AZ, GE, MD, UA** (excluding `UA-43/14/09`) and for the other open countries (outside the EU/EEA/UK and the sanctions lists). Players from **RU and BY** may do training and ride on the board, but **with no right to monetary prizes** (stated explicitly in the UI and in [`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md)). For the ranked ride the VPN MUST be off.
 
-### 4.2 Локализация и каналы (`D12`)
+### 4.2 Localization and channels (`D12`)
 
-- **D12 (`✅ A`) — локализация UI и правил:** легковесный словарь `client/site/i18n.js` (`RU + EN`, переключатель в шапке, автоопределение по `navigator.language`) для лендинга, лобби, страниц аирдропа/события и модалки 18+/Terms; HUD самой 3D-игры остаётся на английском. Правила события опубликованы на EN ([`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md)) и RU ([`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md)). **Полная спецификация `i18n.js` и список ключей перевода — в §13.**
-- **Каналы:** Telegram — основной канал (канал анонсов RU + чат RU с модераторами); X — обязательный шаг верификации и виральности (`@FreightChainSol`).
+- **D12 (`✅ A`) — localization of the UI and the rules:** a lightweight dictionary `client/site/i18n.js` (`RU + EN`, a switcher in the header, auto-detection from `navigator.language`) for the landing, the lobby, the airdrop/event pages, and the 18+/Terms modal; the HUD of the 3D game itself stays in English. The event rules are published in EN ([`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md)) and in RU ([`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md)). **The full specification of `i18n.js` and the list of translation keys — in §13.**
+- **Channels:** Telegram is the main channel (an RU announcements channel + an RU chat with moderators); X is a mandatory step for verification and virality (`@FreightChainSol`).
 
-## 5. Шаги кампании и защита от мультиаккаунтов (`D9, D10`)
+## 5. Campaign steps and protection against multi-accounts (`D9, D10`)
 
-- **D9 (`✅`, раунд 19) — обязательные шаги кампании Pre-season:** (1) верифицированная тестовая поездка MEDIUM или HARD (`free-2c` / `free-3c`), (2) привязка Telegram и вступление в официальный канал и чат (`getChatMember`), (3) подписка на `@FreightChainSol` в X и публикация поста-цитаты с личным кодом `FC-XXXX` (проверка через `twitterapi.io`). Discord — опционально. Выполнение всех трёх обязательных шагов автоматически выдаёт ровно 1 `PromoRideGrant` (`source = 'event'`). **Техническая спецификация пайплайна и БД — в §11.**
-- **D10 (`✅ A`) — анти-сибил:** связь 1:1 `wallet ↔ telegramUserId ↔ xUserId`, Cloudflare Turnstile на привязке и выдаче попытки, лимит `≤ 1` призового места на IP-кластер (`/24` IPv4 / `/48` IPv6) при втором сигнале, аннулирование всех кошельков при обнаружении мультиаккаунта одного человека и ручная проверка топ-20 (**§14**).
+- **D9 (`✅`, round 19) — mandatory Pre-season campaign steps:** (1) a verified MEDIUM or HARD test ride (`free-2c` / `free-3c`), (2) Telegram linking and joining the official channel and chat (`getChatMember`), (3) a follow of `@FreightChainSol` on X and publication of a quote post with a personal code `FC-XXXX` (a check through `twitterapi.io`). Discord is optional. Completing all three mandatory steps automatically issues exactly 1 `PromoRideGrant` (`source = 'event'`). **The technical specification of the pipeline and the DB — in §11.**
+- **D10 (`✅ A`) — anti-sybil:** a 1:1 link `wallet ↔ telegramUserId ↔ xUserId`, Cloudflare Turnstile on linking and on attempt issuance, a limit of `≤ 1` prize place per IP cluster (`/24` IPv4 / `/48` IPv6) on a second signal, annulment of all wallets when one person's multi-account is found, and a manual review of the top 20 (**§14**).
 
-## 6. Особенности devnet
+## 6. Devnet specifics
 
-- **Без пользовательского газа на devnet:** вход по подписи сообщения (SIWS), тестовая и рейтинговая 1h-поездки работают off-chain через серверную телеметрию; кнопки, требующие devnet SOL (покупка деталей за TEN4, сжигание в чате, донаты SOL), в режиме `event_mode_enabled = 1` скрываются в UI (**детали и запасной кран — в §16**).
-- **Выделенный RPC и хранение в БД:** для devnet используется выделенный эндпоинт Helius вместо публичного `api.devnet.solana.com`; все результаты поездок, шаги кампании и таблица лидеров хранятся в PostgreSQL и не зависят от сбросов devnet. Деплой `freightchain_pools` v5 на devnet не блокирует проведение Pre-season.
+- **No user gas on devnet:** entry is by a message signature (SIWS); the test ride and the ranked 1h ride run off-chain through server telemetry; buttons that require devnet SOL (buying parts for TEN4, burning in the chat, SOL donations) are hidden in the UI when `event_mode_enabled = 1` (**details and the backup faucet — in §16**).
+- **A dedicated RPC and storage in the DB:** devnet uses a dedicated Helius endpoint instead of the public `api.devnet.solana.com`; all ride results, campaign steps, and the leaderboard are stored in PostgreSQL and do not depend on devnet resets. A deploy of `freightchain_pools` v5 to devnet does not block running Pre-season.
 
-## 7. План работ и оценки (сегодня сб 17.10; регистрация пн 02.11; призовая неделя 09–15.11)
+## 7. Work plan and estimates (today Sat 17.10; registration Mon 02.11; prize week 09–15.11)
 
-| # | Задача | Оценка (чел.-дни) | Зависит от |
+| # | Task | Estimate (person-days) | Depends on |
 |---|---|---:|---|
-| C1 | ✅ Слияние PR #3 в `main` выполнено (с равным делением ничьих в `prize-pool.ts`), флаги v1 рефералки выключены | 0 (готово) | — |
-| C2 | Режим события: ключи `event_*` (§10), выдача 1 попытки (`PromoRideGrant`, источник `event`) после обязательных шагов, правило «1 счётная попытка», ничьи с делением (§12), экспорт топ-20 в админке | 2–3 | C1 |
-| C3 | Шаги кампании (§11): модель «кампания → шаги», тестовая поездка, Telegram (бот, Login Widget, `getChatMember`), X обязателен (подписка + пост с кодом через twitterapi.io), Turnstile, страница заданий | 4–5 | C1 |
-| C4 | RU-локализация (§13: словарь `client/site/i18n.js`, лендинг, лобби, аирдроп, событие, модалки) | 3–4 | C2, C3 (тексты) |
-| C5 | Гео (§10): списки из настроек, RU/BY «без призов», регионы UA, причина в UI | 1 | C1 |
-| C6 | 18+ и согласие с Terms по версии (`TermsGuard`, [`../spec/legal.md`](../spec/legal.md) `LEG-M-04`) | 1 | C1 |
-| C7 | Победители (§14): проверка личности по D13 (вручную), Chainalysis + SDN, удержание 72 ч, флаги проверки; налоговых форм нет | 1–1.5 | C1 |
-| C8 | Выплаты (§15): ручной USDC с горячего кошелька события, запись tx в админке, публичный отчёт | 0.5 | C7 |
-| I1 | Telegram-бот: хостинг, токен, бот — админ канала и чата | 0.5 | Владелец |
-| I2 | Turnstile + прокси Cloudflare (4g — **обязателен, P0, см. [`MASTER_PLAN.md`](MASTER_PLAN.md) §12 G1**) | 1.5–2.5 | Владелец (DNS) |
+| C1 | ✅ The merge of PR #3 into `main` is done (with an equal split of ties in `prize-pool.ts`), v1 referral flags are off | 0 (done) | — |
+| C2 | Event mode: `event_*` keys (§10), issuance of 1 attempt (`PromoRideGrant`, source `event`) after the mandatory steps, the "1 scored attempt" rule, ties with a split (§12), top-20 export in admin | 2–3 | C1 |
+| C3 | Campaign steps (§11): a "campaign → steps" model, a test ride, Telegram (bot, Login Widget, `getChatMember`), X is mandatory (a follow + a post with a code through twitterapi.io), Turnstile, a tasks page | 4–5 | C1 |
+| C4 | RU localization (§13: the `client/site/i18n.js` dictionary, the landing, the lobby, the airdrop, the event, the modals) | 3–4 | C2, C3 (texts) |
+| C5 | Geo (§10): lists from settings, RU/BY "no prizes", UA regions, the reason in the UI | 1 | C1 |
+| C6 | 18+ and agreement to the Terms by version (`TermsGuard`, [`../spec/legal.md`](../spec/legal.md) `LEG-M-04`) | 1 | C1 |
+| C7 | Winners (§14): an identity check per D13 (manual), Chainalysis + SDN, a 72 h hold, review flags; no tax forms | 1–1.5 | C1 |
+| C8 | Payouts (§15): manual USDC from the event hot wallet, recording the tx in admin, a public report | 0.5 | C7 |
+| I1 | Telegram bot: hosting, a token, the bot — admin of the channel and the chat | 0.5 | Owner |
+| I2 | Turnstile + a Cloudflare proxy (4g — **MUST, P0, see [`MASTER_PLAN.md`](MASTER_PLAN.md) §12 G1**) | 1.5–2.5 | Owner (DNS) |
 | I3 | Helius devnet RPC, `.env` | 0.2 | — |
-| I4 | Очистка devnet + v5 (по команде; код v5 уже в репо) | 0.5 | C1 |
-| D1 | Правила события RU/EN — ✅ черновики EN ([`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md)) и RU ([`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md)) готовы; осталось подставить внешние `[PLACEHOLDER]` владельца ([`OWNER_TASKS.md`](OWNER_TASKS.md) §1.1) | 0 | D-решения |
-| D2 | Terms/Privacy: дополнения + русская выжимка — ✅ готово ([`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md) Часть C, [`../legal/TERMS.md`](../legal/TERMS.md), [`../legal/PRIVACY.md`](../legal/PRIVACY.md), [`../legal/OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md)) | 0 | — |
-| M1 | Telegram: канал и чат RU, модераторы, анонсы, правила чата; лендинг RU | Владелец | — |
-| O1 | Владелец: $500 USDC + SOL на кошельке события, аккаунты Telegram, Cloudflare (прокси + Turnstile), Helius, twitterapi.io ([`OWNER_TASKS.md`](OWNER_TASKS.md)) | — | — |
+| I4 | Devnet cleanup + v5 (on command; the v5 code is already in the repo) | 0.5 | C1 |
+| D1 | Event rules RU/EN — ✅ the EN draft ([`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md)) and the RU draft ([`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md)) are ready; it remains to fill in the owner's external `[PLACEHOLDER]`s ([`OWNER_TASKS.md`](OWNER_TASKS.md) §1.1) | 0 | D-decisions |
+| D2 | Terms/Privacy: additions + the Russian summary — ✅ done ([`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md) Part C, [`../legal/TERMS.md`](../legal/TERMS.md), [`../legal/PRIVACY.md`](../legal/PRIVACY.md), [`../legal/OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md)) | 0 | — |
+| M1 | Telegram: an RU channel and chat, moderators, announcements, chat rules; an RU landing | Owner | — |
+| O1 | Owner: $500 USDC + SOL on the event wallet, Telegram accounts, Cloudflare (proxy + Turnstile), Helius, twitterapi.io ([`OWNER_TASKS.md`](OWNER_TASKS.md)) | — | — |
 
-**Итого разработка:** ~19–24 чел.-дня. В двухнедельный срок укладывается только при 2 параллельных исполнителях и урезанном объёме. Техническая спецификация и операционный ранбук приведены ниже в **Части II (§10–17)**.
+**Development total:** ~19–24 person-days. It fits the two-week deadline only with 2 parallel implementers and a reduced scope. The technical specification and the operational runbook are given below in **Part II (§10–17)**.
 
-**Критический путь:** C1 → C3 (Telegram + X) → C4 → готовность регистрации к 02.11. C2 и C7 должны быть готовы к 09.11 (старт недели) и к 16.11 (выплаты) соответственно. Это даёт ещё неделю запаса на C7 и C8.
+**Critical path:** C1 → C3 (Telegram + X) → C4 → registration readiness by 02.11. C2 and C7 MUST be ready by 09.11 (the week start) and by 16.11 (the payouts), respectively. This gives one more week of margin on C7 and C8.
 
-**Урезание, если не успеваем (⭐ порядок):**
-1. Сезоны в админке — заменить ключами `event_*`.
-2. Convoy — только привязка, без рейтинга.
-3. HUD игры — остаётся на английском.
-4. X — перевести в необязательные (только по решению владельца; в раунде 19 X сделан обязательным).
+**Cuts if we do not make it (⭐ order):**
+1. Seasons in admin — replace with `event_*` keys.
+2. Convoy — linking only, with no rating.
+3. The game HUD — stays in English.
+4. X — move it to optional (only by an owner decision; in round 19 X was made mandatory).
 
-**Риски:**
+**Risks:**
 
-| Риск | Мера |
+| Risk | Measure |
 |---|---|
-| Слияние PR #3 затягивается | Выполнено в `main` |
-| Фермы кошельков | D10, правило «один человек — одна попытка», ручная проверка топ-20 (Telegram/X 1:1, IP-кластеры) — без документов это принятый риск |
-| Юрист не успевает по RU/BY | ⭐ D8 A (RU/BY без призов) |
-| VPN массово в РФ | Понятный текст, рейтинг без VPN |
-| Нестабильность devnet | Выделенный RPC, критичных on-chain шагов нет |
-| Пиковая нагрузка на 1h-поездки в последний день | Ограничение «старт до вс 10:45 / 11:00 UTC» (см. [`../spec/pool.md`](../spec/pool.md) `POOL-M-04`) |
-| Модерация RU-чата | 2+ модератора, антиспам-бот |
+| The PR #3 merge drags on | Done in `main` |
+| Wallet farms | D10, the "one person — one attempt" rule, a manual review of the top 20 (Telegram/X 1:1, IP clusters) — without documents this is an accepted risk |
+| The lawyer is not in time on RU/BY | ⭐ D8 A (RU/BY with no prizes) |
+| Widespread VPN use in the RF | Clear copy, ranking with no VPN |
+| Devnet instability | A dedicated RPC, no critical on-chain steps |
+| Peak load on 1h rides on the last day | A limit of "start before Sun 10:45 / 11:00 UTC" (see [`../spec/pool.md`](../spec/pool.md) `POOL-M-04`) |
+| RU-chat moderation | 2+ moderators, an anti-spam bot |
 
-## 8. Внешние задачи владельца и открытые вопросы
+## 8. External owner tasks and open questions
 
-- **Внешние задачи владельца по дедлайнам (02.11 / 09.11 / 15–17.11 / к Season 1):** [`OWNER_TASKS.md`](OWNER_TASKS.md) (ранее дублировались здесь как Q1, Q3, Q5, Q8, Q13, Q15).
-- **Открытые юридические и налоговые вопросы:** [`../spec/OPEN.md`](../spec/OPEN.md) (Q2, консультация сербского и международного юриста отложена владельцем на после Pre-season).
-- Все продуктовые вопросы Pre-season (Q4, Q6, Q7, Q9, Q10, Q11, Q12, Q14, Q16) решены и вошли в таблицу §9 и техническую спецификацию Части II ниже.
+- **External owner tasks by deadline (02.11 / 09.11 / 15–17.11 / by Season 1):** [`OWNER_TASKS.md`](OWNER_TASKS.md) (previously duplicated here as Q1, Q3, Q5, Q8, Q13, Q15).
+- **Open legal and tax questions:** [`../spec/OPEN.md`](../spec/OPEN.md) (Q2; a consultation with a Serbian lawyer and an international lawyer is deferred by the owner until after Pre-season).
+- All Pre-season product questions (Q4, Q6, Q7, Q9, Q10, Q11, Q12, Q14, Q16) are decided and are included in the §9 table and in the Part II technical specification below.
 
-## 9. Список решений — ✅ РЕШЕНО 17.10.2026 (все ⭐ приняты)
+## 9. Decision list — ✅ DECIDED 17.10.2026 (all ⭐ adopted)
 
-| # | Вопрос | Варианты | ⭐ = решение |
+| # | Question | Options | ⭐ = decision |
 |---|---|---|---|
-| D1 | Место мини-запуска | A вместо старта S1 / B перед S1 (02.11) / C параллельно | ✅ A |
-| D2 | Даты | A регистрация 02.11, неделя 09–15.11 / B неделя 02–08.11 / C 16–22.11 | ✅ A |
-| D3 | Season 1 mainnet | A 11.01.2027 / B 16.11 (5 недель) / C 30.11 | ✅ A |
-| D4 | Доска | A одна 1h / B 1h+4h+8h / C новый короткий режим | ✅ A |
-| D5 | Распределение $500 | A топ-20 таблица / B кривая PR #3 + пул финишёров / C топ-10 по $50 | ✅ A |
-| D6 | Ничьи | A деление поровну, без тай-брейка по адресу / B как в PR #3 / C вторая метрика | ✅ A |
-| D7 | Выплата | A USDC mainnet с кошелька события / B USDT или выбор / C банк / D личный кошелёк | ✅ A |
-| D8 | Страны | A СНГ без RU/BY для призов, RU/BY играют без призов / B полный допуск RU/BY / C блок RU/BY | ✅ A |
-| D9 | Шаги кампании | A тест + Telegram обязательны, X и Discord по желанию / B все обязательны / C только тест | ✅ раунд 19: тест + Telegram + X (подписка + пост с кодом); Discord по желанию |
-| D10 | Анти-сибил | A Telegram 1:1, Turnstile, IP-кластер ≤ 1 место, ручная проверка топ-20 (раунд 19: без Didit) / B + trust ≥ 50 / C KYC всем | ✅ A |
-| D11 | Флаги | Платное, Solana Pay, недельный билет, промокоды, подарок другу, TEN4 Convoy, SOL-доли v1 — выкл.; Convoy-привязка вкл. | ✅ см. §1 и §10 |
-| D12 | Локализация | A словарь RU/EN без HUD / B полная, включая игру / C только лендинг | ✅ A (§13) |
-| D13 | Проверка личности без юрлица | A Didit (если доступен физлицу) / B только liveness + анти-сибил / C без KYC + лимит / D видео-проверка | ✅ строгий анти-сибил + ручная проверка (§14; Didit по желанию позже) |
+| D1 | Place of the mini-launch | A instead of the S1 start / B before S1 (02.11) / C in parallel | ✅ A |
+| D2 | Dates | A registration 02.11, week 09–15.11 / B week 02–08.11 / C 16–22.11 | ✅ A |
+| D3 | Season 1 mainnet | A 11.01.2027 / B 16.11 (5 weeks) / C 30.11 | ✅ A |
+| D4 | Board | A one 1h / B 1h+4h+8h / C a new short mode | ✅ A |
+| D5 | Distribution of $500 | A a top-20 table / B the PR #3 curve + a finishers' pool / C top 10 at $50 | ✅ A |
+| D6 | Ties | A an equal split, with no tie-break by address / B as in PR #3 / C a second metric | ✅ A |
+| D7 | Payout | A USDC mainnet from the event wallet / B USDT or a choice / C a bank / D a personal wallet | ✅ A |
+| D8 | Countries | A CIS without RU/BY for prizes, RU/BY play with no prizes / B full admission of RU/BY / C a block of RU/BY | ✅ A |
+| D9 | Campaign steps | A a test + Telegram are mandatory, X and Discord are optional / B all are mandatory / C the test only | ✅ round 19: a test + Telegram + X (a follow + a post with a code); Discord is optional |
+| D10 | Anti-sybil | A Telegram 1:1, Turnstile, an IP cluster ≤ 1 place, a manual review of the top 20 (round 19: no Didit) / B + trust ≥ 50 / C KYC for everyone | ✅ A |
+| D11 | Flags | Paid, Solana Pay, the weekly ticket, promo codes, a gift to a friend, TEN4 Convoy, v1 SOL shares — off; Convoy linking on | ✅ see §1 and §10 |
+| D12 | Localization | A a RU/EN dictionary without the HUD / B full, including the game / C the landing only | ✅ A (§13) |
+| D13 | An identity check without a legal entity | A Didit (if available to a natural person) / B liveness only + anti-sybil / C no KYC + a limit / D a video check | ✅ strict anti-sybil + a manual review (§14; Didit optionally later) |
 
 ---
 
-# Часть II. Техническая спецификация и операционный ранбук (C2–C8)
+# Part II. Technical specification and operational runbook (C2–C8)
 
-> Закрывает спецификации G2, G6–G11, G13–G14, G16 из [`MASTER_PLAN.md`](MASTER_PLAN.md) §12. Юридические тексты: [`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md) (EN) и [`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md) (RU).
+> Closes specifications G2, G6–G11, G13–G14, G16 from [`MASTER_PLAN.md`](MASTER_PLAN.md) §12. Legal texts: [`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md) (EN) and [`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md) (RU).
 
-## 10. Ключи конфигурации режима Pre-season (`player.GameSetting`)
+## 10. Configuration keys of Pre-season mode (`player.GameSetting`)
 
-Все параметры управляются через подписанный Admin Settings API (без жёсткого хардкода в коде):
+All parameters are controlled through the signed Admin Settings API (without hardcoding in the code):
 
-| Ключ | Значение для Pre-season | Описание |
+| Key | Value for Pre-season | Description |
 |---|---|---|
-| `event_mode_enabled` | `1` | Включает режим события Pre-season (одна попытка 1h, фиксированная таблица $500) |
-| `event_id` | `preseason-2026-11` | Идентификатор кампании / события |
-| `event_registration_start_utc` | `2026-11-02T00:00:00Z` | Открытие страницы заданий и привязки Telegram / X |
-| `event_week_start_utc` | `2026-11-09T00:00:00Z` | Открытие старта рейтинговой 1h-попытки |
-| `event_last_start_utc` | `2026-11-15T11:00:00Z` | Последний допустимый момент старта 1h-попытки (за 1 ч до закрытия окна; по решению 36 в [`../spec/pool.md`](../spec/pool.md) `POOL-M-04` целевое правило — за 1 ч 15 мин) |
-| `event_week_end_utc` | `2026-11-15T12:00:00Z` | Закрытие призового окна (попытка должна завершиться до этого момента) |
-| `event_review_end_utc` | `2026-11-16T12:00:00Z` | Публикация предварительного топ-20 |
-| `event_appeals_end_utc` | `2026-11-17T12:00:00Z` | Закрытие окна апелляций и начало выплат |
-| `event_tier` | `1h` | Единственный рейтинговый тариф события |
-| `event_prize_table_cents` | `10000,7000,5000,3000,3000,2000,2000,2000,2000,2000,1200,1200,1200,1200,1200,1200,1200,1200,1200,1200` | Таблица призов мест 1–20 в центах США (сумма = `50000` = $500.00) |
-| `weekly_ticket_1h_enabled` | `0` | Выключает автоматический еженедельный билет 1h (чтобы не было второй попытки) |
-| `weekly_ticket_4h_enabled` | `0` | Выключено |
-| `weekly_ticket_8h_enabled` | `0` | Выключено |
-| `referral_referee_promo_enabled` | `0` | Выключает подарочную 1h-промо-поездку другу (иначе вторая попытка) |
-| `referral_ten4_enabled` | `0` | Выключает начисление вех TEN4 Convoy на время devnet-события |
-| `referral_pool_share_bps` | `0` | Выключает SOL-долю рефералки v1 из пулов |
-| `referral_donation_share_bps` | `0` | Выключает SOL-долю рефералки v1 из донатов (`LEG-M-02`) |
-| `turnstile_enabled` | `1` | Включает Cloudflare Turnstile на привязке соцсетей и выдаче попытки |
-| `geo_prize_play_only_countries` | `RU,BY` | Страны, допущенные к бесплатной игре, заданиям и таблице лидеров, но **без права на денежные призы** |
-| `geo_block_countries` | `CU,IR,KP,SY` | Полный блок |
-| `geo_block_regions` | `UA-43,UA-14,UA-09` | Полный блок (Крым, ДНР, ЛНР) |
-| `geo_block_us_states_paid` | `SC,AZ,LA,AR,DE,MT,TN` | Штаты США без допуска к призам |
+| `event_mode_enabled` | `1` | Turns on Pre-season event mode (one 1h attempt, a fixed $500 table) |
+| `event_id` | `preseason-2026-11` | Identifier of the campaign / event |
+| `event_registration_start_utc` | `2026-11-02T00:00:00Z` | Opening of the tasks page and of Telegram / X linking |
+| `event_week_start_utc` | `2026-11-09T00:00:00Z` | Opening of the start of the ranked 1h attempt |
+| `event_last_start_utc` | `2026-11-15T11:00:00Z` | The last allowed moment to start the 1h attempt (1 h before the window closes; per decision 36 in [`../spec/pool.md`](../spec/pool.md) `POOL-M-04` the target rule is 1 h 15 min before) |
+| `event_week_end_utc` | `2026-11-15T12:00:00Z` | Closing of the prize window (the attempt MUST finish before this moment) |
+| `event_review_end_utc` | `2026-11-16T12:00:00Z` | Publication of the preliminary top 20 |
+| `event_appeals_end_utc` | `2026-11-17T12:00:00Z` | Closing of the appeals window and the start of payouts |
+| `event_tier` | `1h` | The only ranked tier of the event |
+| `event_prize_table_cents` | `10000,7000,5000,3000,3000,2000,2000,2000,2000,2000,1200,1200,1200,1200,1200,1200,1200,1200,1200,1200` | The prize table for places 1–20 in US cents (the sum = `50000` = $500.00) |
+| `weekly_ticket_1h_enabled` | `0` | Turns off the automatic weekly 1h ticket (so that there is no second attempt) |
+| `weekly_ticket_4h_enabled` | `0` | Off |
+| `weekly_ticket_8h_enabled` | `0` | Off |
+| `referral_referee_promo_enabled` | `0` | Turns off the gifted 1h promo ride to a friend (otherwise a second attempt) |
+| `referral_ten4_enabled` | `0` | Turns off accrual of Convoy TEN4 milestones for the duration of the devnet event |
+| `referral_pool_share_bps` | `0` | Turns off the v1 referral SOL share from pools |
+| `referral_donation_share_bps` | `0` | Turns off the v1 referral SOL share from donations (`LEG-M-02`) |
+| `turnstile_enabled` | `1` | Turns on Cloudflare Turnstile on social linking and on attempt issuance |
+| `geo_prize_play_only_countries` | `RU,BY` | Countries admitted to free play, to the tasks, and to the leaderboard, but **with no right to monetary prizes** |
+| `geo_block_countries` | `CU,IR,KP,SY` | A full block |
+| `geo_block_regions` | `UA-43,UA-14,UA-09` | A full block (Crimea, DPR, LPR) |
+| `geo_block_us_states_paid` | `SC,AZ,LA,AR,DE,MT,TN` | US states not admitted to prizes |
 
-## 11. Спецификация выдачи единственной попытки и кампании заданий (C2, C3 — G2, G6)
+## 11. Specification of issuing the single attempt and of the task campaign (C2, C3 — G2, G6)
 
-### 11.1 Обязательные шаги кампании `preseason-2026-11` (раунд 19)
-Для получения единственной призовой попытки 1h участник должен выполнить все 4 обязательных шага:
-1. **Возраст 18+ и согласие с правилами:** `PUT /api/profile/agreements` (`age18: true`, `termsVersion: '2026-10-17'`, `preseasonRulesAccepted: true`).
-2. **Квалификационная тренировка:** минимум 1 завершённая онлайн-поездка со статусом `verified` на уровне **MEDIUM (`level = 2`, `free-2c`)** или **HARD (`level = 3`, `free-3c`)**.
-3. **Telegram (привязка 1:1 + подписка + участие в чате):**
-   - Вход через официальный Telegram Login Widget (`POST /api/airdrop/telegram/link`), проверка HMAC-SHA256 подписи виджета токеном `TELEGRAM_BOT_TOKEN`.
-   - Уникальное ограничение в БД: один `telegramUserId` может быть привязан только к одному кошельку за всё время кампании (`UNIQUE (telegram_user_id)`). Отвязка или перенос на другой кошелёк запрещены.
-   - Проверка через Bot API `getChatMember(chat_id, user_id)` в канале `TELEGRAM_CHANNEL_ID` и группе `TELEGRAM_GROUP_ID`: статус должен быть `member`, `administrator` или `creator` (не `left` и не `kicked`).
-   - В группе бот также фиксирует наличие хотя бы 1 осмысленного сообщения от `telegram_user_id` (`telegram_chat_active = true`).
-4. **X (Twitter) — обязательный шаг (раунд 19):**
-   - Участник публикует публичный пост (или цитату анонса кампании) с текстом об участии, упоминанием `@FreightChainSol` и своим уникальным кодом вида `FC-XXXX` и отправляет URL/ID поста в `POST /api/airdrop/x/verify`.
-   - Сервер запрашивает пост по ID через `twitterapi.io`, проверяет наличие кода `FC-XXXX`, привязывает `xUserId` к кошельку (`UNIQUE (x_user_id)`, 1:1) и проверяет подписку на `@FreightChainSol` вызовом `check_follow_relationship`.
-   - Кэширование результата: повторный запрос к `twitterapi.io` разрешён не чаще 1 раза в 10 минут на кошелёк; общий расход ограничен счётчиком `airdrop_twitterapi_budget_usd = 100`.
-5. **Необязательный шаг (бонус к очкам аирдропа Season 1):** привязка Discord (OAuth2 `identify`).
+### 11.1 Mandatory steps of campaign `preseason-2026-11` (round 19)
+To receive the single 1h prize attempt, a participant MUST complete all 4 mandatory steps:
+1. **Age 18+ and agreement to the rules:** `PUT /api/profile/agreements` (`age18: true`, `termsVersion: '2026-10-17'`, `preseasonRulesAccepted: true`).
+2. **Qualifying training:** at least 1 completed online ride with status `verified` at level **MEDIUM (`level = 2`, `free-2c`)** or **HARD (`level = 3`, `free-3c`)**.
+3. **Telegram (1:1 linking + a subscription + participation in the chat):**
+   - Sign-in through the official Telegram Login Widget (`POST /api/airdrop/telegram/link`), an HMAC-SHA256 check of the widget signature with the `TELEGRAM_BOT_TOKEN` token.
+   - A unique constraint in the DB: one `telegramUserId` can be linked to only one wallet for the whole time of the campaign (`UNIQUE (telegram_user_id)`). Unlinking or a transfer to another wallet is forbidden.
+   - A check through the Bot API `getChatMember(chat_id, user_id)` in the channel `TELEGRAM_CHANNEL_ID` and in the group `TELEGRAM_GROUP_ID`: the status MUST be `member`, `administrator`, or `creator` (not `left` and not `kicked`).
+   - In the group the bot also records at least 1 meaningful message from `telegram_user_id` (`telegram_chat_active = true`).
+4. **X (Twitter) — a mandatory step (round 19):**
+   - The participant publishes a public post (or a quote of the campaign announcement) with text about participation, a mention of `@FreightChainSol`, and their unique code of the form `FC-XXXX`, and submits the post URL/ID to `POST /api/airdrop/x/verify`.
+   - The server fetches the post by ID through `twitterapi.io`, checks that the code `FC-XXXX` is present, links `xUserId` to the wallet (`UNIQUE (x_user_id)`, 1:1), and checks the follow of `@FreightChainSol` by calling `check_follow_relationship`.
+   - Caching of the result: a repeat request to `twitterapi.io` is allowed no more than once per 10 minutes per wallet; total spend is limited by the counter `airdrop_twitterapi_budget_usd = 100`.
+5. **An optional step (a bonus to Season 1 airdrop points):** Discord linking (OAuth2 `identify`).
 
-### 11.2 Выдача попытки и блокировка повторных попыток
-- Как только шаги 1–4 выполнены и токен Cloudflare Turnstile проверен, вызов `POST /api/airdrop/preseason/claim-attempt` (под `findByWalletForUpdate`) создаёт ровно одну запись `PromoRideGrant` с `source = 'event:preseason-2026-11'`, `tier = '1h'`, `rankedEligible = true`.
-- Одновременно начисляются очки шагов кампании в таблицу `airdrop.Participant` (засчитываются в пул 2M TEN4 Season 1, потолок 2,000 TEN4 на кошелёк).
-- В период `event_week_start_utc .. event_last_start_utc` при `event_mode_enabled = 1`:
-  - `POST /api/rides` с `{ tier: '1h', ranked: true }` разрешён **только** при наличии неиспользованного гранта `source = 'event:preseason-2026-11'` и `rankedStartsThisWeek == 0`.
-  - Любые промокоды вида `ride` и `tickets` на время `event_mode_enabled = 1` заблокированы для рейтингового старта.
-  - Бесплатные тренировки (`tier: 'free'`, уровни 1–3) остаются безлимитными и никогда не тратят призовую попытку.
+### 11.2 Issuance of the attempt and blocking of repeat attempts
+- As soon as steps 1–4 are done and the Cloudflare Turnstile token is checked, the call `POST /api/airdrop/preseason/claim-attempt` (under `findByWalletForUpdate`) creates exactly one `PromoRideGrant` record with `source = 'event:preseason-2026-11'`, `tier = '1h'`, `rankedEligible = true`.
+- At the same time, points for the campaign steps are credited into the `airdrop.Participant` table (they count toward the Season 1 pool of 2M TEN4, with a ceiling of 2,000 TEN4 per wallet).
+- During `event_week_start_utc .. event_last_start_utc`, when `event_mode_enabled = 1`:
+  - `POST /api/rides` with `{ tier: '1h', ranked: true }` is allowed **only** when there is an unused grant `source = 'event:preseason-2026-11'` and `rankedStartsThisWeek == 0`.
+  - Any promo codes of the `ride` and `tickets` kinds are blocked for a ranked start for the duration of `event_mode_enabled = 1`.
+  - Free training (`tier: 'free'`, levels 1–3) stays unlimited and never spends the prize attempt.
 
-## 12. Спецификация расчёта призов и ничьих для фиксированной таблицы $500 (C2 — G2, G14)
+## 12. Specification of the prize and tie calculation for the fixed $500 table (C2 — G2, G14)
 
-В `server/src/domain/prize/prize-pool.ts` добавляется чистая функция `settleFixedTableBoard(entries, prizeTableCents)`:
-1. На вход подаются все верифицированные попытки события (`verdict = 'verified'`, `ranked = true`, не дисквалифицированные и из стран, допущенных к призам) и массив `prizeTableCents` из 20 значений (`[10000, 7000, 5000, 3000, 3000, 2000×5, 1200×10]`).
-2. Сортировка по мастерству: по убыванию `cleanBps` (`round(cleanMetres * 10000 / completeDist)`).
-3. **Правило ничьих (D6 / раунд 15):** участники с одинаковым `cleanBps` образуют группу ничьей на местах `k .. k + m - 1` и делят сумму призов этих мест поровну:
-   - `eachCents = Math.floor(sum(prizeTableCents[k .. k + m - 1]) / m)`, остаток от деления в центах (< `m` центов) остаётся нераспределённым.
-   - Тай-брейк по времени отправки или адресу кошелька **не используется**.
-4. **Невостребованные места (Q11):** если допущенных к призам верифицированных финишёров `F < 20`, места `F + 1 .. 20` не выплачиваются и остаются у Организатора.
-5. **Сдвиг при дисквалификации (Q11):** если участник из топ-20 дисквалифицирован или резидент `RU/BY`, он исключается из призового расчёта до распределения мест (или помечается `prizeEligible = false`), а допущенные участники ниже сдвигаются вверх.
+A pure function `settleFixedTableBoard(entries, prizeTableCents)` is added in `server/src/domain/prize/prize-pool.ts`:
+1. The input is all verified attempts of the event (`verdict = 'verified'`, `ranked = true`, not disqualified, and from countries admitted to prizes) and a `prizeTableCents` array of 20 values (`[10000, 7000, 5000, 3000, 3000, 2000×5, 1200×10]`).
+2. Sort by skill: descending `cleanBps` (`round(cleanMetres * 10000 / completeDist)`).
+3. **Tie rule (D6 / round 15):** participants with the same `cleanBps` form a tie group on places `k .. k + m - 1` and split the prize sum of those places equally:
+   - `eachCents = Math.floor(sum(prizeTableCents[k .. k + m - 1]) / m)`, the division remainder in cents (< `m` cents) stays unallocated.
+   - A tie-break by submission time or by wallet address **is not used**.
+4. **Unclaimed places (Q11):** if verified finishers admitted to prizes are `F < 20`, places `F + 1 .. 20` are not paid and stay with the Organizer.
+5. **A shift on disqualification (Q11):** if a participant from the top 20 is disqualified or is a resident of `RU/BY`, they are excluded from the prize calculation before places are distributed (or marked `prizeEligible = false`), and admitted participants below shift up.
 
-## 13. Спецификация RU/EN локализации и гео-статуса в UI (C4, C5 — G8, G9, G10)
+## 13. Specification of RU/EN localization and of geo status in the UI (C4, C5 — G8, G9, G10)
 
-### 13.1 Словарь `client/site/i18n.js`
-- Экспортирует `getLang()`, `setLang(lang)` (`'ru' | 'en'`, сохраняется в `store('fc_lang')`, по умолчанию определяется из `navigator.language`: если начинается с `ru`, `uk`, `be`, `kk`, `uz`, `ky` — `'ru'`, иначе `'en'`) и чистую функцию `t(key, vars)`.
-- Применяется через `data-i18n="key"` и `textContent` (никакого `innerHTML`, соблюдается тест безопасности `landing/test/pools.test.js`).
-- HUD внутри `play.html` остаётся на английском (короткие приборные метки `SPD`, `RPM`, `GEAR`, `HULL`, `COOLANT`).
+### 13.1 Dictionary `client/site/i18n.js`
+- It exports `getLang()`, `setLang(lang)` (`'ru' | 'en'`, stored in `store('fc_lang')`, the default is taken from `navigator.language`: if it starts with `ru`, `uk`, `be`, `kk`, `uz`, `ky` — `'ru'`, otherwise `'en'`) and a pure function `t(key, vars)`.
+- Applied through `data-i18n="key"` and `textContent` (no `innerHTML`; the security test `landing/test/pools.test.js` is complied with).
+- The HUD inside `play.html` stays in English (short instrument labels `SPD`, `RPM`, `GEAR`, `HULL`, `COOLANT`).
 
-### 13.2 Отображение гео-статуса (`GET /api/me` → `geo`)
-`GET /api/me` возвращает объект `geo: { country, region, access: 'eligible' | 'play_only_no_prizes' | 'blocked', reason }`:
-- `'eligible'` (KZ, UZ, KG, AM, AZ, GE, MD, UA кроме оккупированных регионов и др.): зелёный бейдж `Допущен к призам Pre-season / Eligible for Pre-season prizes`.
-- `'play_only_no_prizes'` (`RU`, `BY`, а также 7 штатов США): жёлтый баннер на странице события и перед стартом рейтинговой попытки:
-  - RU: *«Ваш регион (RU/BY) допущен к бесплатным тренировкам, заданиям аирдропа Season 1 и таблице лидеров, но не участвует в распределении денежных призов USDC (п. 3 Правил Pre-season)»*.
-- `'blocked'` (`CU, IR, KP, SY`, `UA-43, UA-14, UA-09`) или `vpnDetected = true`: красный баннер; при VPN — *«Отключите VPN/прокси для выполнения заданий и старта зачётной попытки»*.
+### 13.2 Display of geo status (`GET /api/me` → `geo`)
+`GET /api/me` returns the object `geo: { country, region, access: 'eligible' | 'play_only_no_prizes' | 'blocked', reason }`:
+- `'eligible'` (KZ, UZ, KG, AM, AZ, GE, MD, UA except the occupied regions, and others): a green badge `Eligible for Pre-season prizes` (also shipped in the Russian locale).
+- `'play_only_no_prizes'` (`RU`, `BY`, and also the 7 US states): a yellow banner on the event page and before the start of the ranked attempt:
+  - RU: *"Your region (RU/BY) is admitted to free training, Season 1 airdrop tasks, and the leaderboard, but does not take part in the distribution of USDC monetary prizes (Pre-season Rules, clause 3)"* (also shipped in the Russian locale).
+- `'blocked'` (`CU, IR, KP, SY`, `UA-43, UA-14, UA-09`) or `vpnDetected = true`: a red banner; on VPN — *"Turn off VPN/proxy to complete the tasks and start the qualifying attempt"* (also shipped in the Russian locale).
 
-### 13.3 Модальное окно 18+ и принятия правил (C6 — G11)
-- При первом подключении кошелька в лобби и перед получением попытки открывается модальное окно с двумя чекбоксами:
-  1. `Мне исполнилось 18 лет (или возраст совершеннолетия в моей стране)`.
-  2. `Я прочитал(а) и принимаю Условия использования, Политику конфиденциальности и Правила Pre-season` (со ссылками на `/terms`, `/privacy`, `/preseason-rules` и русскую выжимку).
-- Отправка сохраняет запись в `player.TermsAcceptance` (`wallet`, `termsVersion`, `acceptedAt`, `ipHash`).
+### 13.3 Modal for 18+ and for acceptance of the rules (C6 — G11)
+- On the first wallet connection in the lobby, and before the attempt is received, a modal opens with two checkboxes:
+  1. `I am 18 (or the age of majority in my country)` (also shipped in the Russian locale).
+  2. `I have read and accept the Terms of Use, the Privacy Policy, and the Pre-season Rules` (with links to `/terms`, `/privacy`, `/preseason-rules`, and the Russian summary; also shipped in the Russian locale).
+- Submission stores a record in `player.TermsAcceptance` (`wallet`, `termsVersion`, `acceptedAt`, `ipHash`).
 
-## 14. Ранбук ручной проверки топ-20 (15.11 12:00 UTC – 16.11 12:00 UTC, задача C7 — G7)
+## 14. Runbook for the manual review of the top 20 (15.11 12:00 UTC – 16.11 12:00 UTC, task C7 — G7)
 
-Сразу после закрытия призовой недели (вс 15.11 12:00 UTC) администратор открывает вкладку `EVENT TOP-20` в админке (или выгружает отчёт кандидатов с запасом топ-35 на случай сдвигов) и проходит чек-лист для каждого кандидата сверху вниз:
+Immediately after the prize week closes (Sun 15.11 12:00 UTC), the administrator opens the `EVENT TOP-20` tab in admin (or exports a candidate report with a top-35 margin in case of shifts) and goes through the checklist for each candidate from the top down:
 
-1. **Гео и отсутствие VPN:**
-   - Проверить страну по всем записям `SignIn` и стартам поездок кандидата. Если страна `RU` или `BY` — статус `play_only_no_prizes` (остаётся в таблице лидеров со значком «вне зачёта призов», приз переходит следующему).
-   - Проверить отсутствие флагов VPN/datacenter ASN на зачётной поездке.
-2. **Проверка поездки и телеметрии (`ride-audit`):**
-   - Запустить `bash .claude/skills/ride-audit/run.sh <rideId> --prod`. Должен вернуть `OK` (`verdict = verified`, совпадение всех батчей, дороги и 10 Hz `ReplayEngine`).
-   - Открыть реплей в админке и визуально просмотреть ключевые участки (старт, обгоны, ямы, финиш).
-3. **Проверка соцсетей (Telegram и X 1:1):**
-   - Убедиться, что Telegram-аккаунт по-прежнему состоит в канале и чате (`getChatMember`), имеет фото/историю и не является пустым ботом, созданным в один день с пачкой других финалистов.
-   - Открыть ссылку на квалификационный пост в X: пост не удалён, код `FC-XXXX` совпадает, аккаунт подписан на `@FreightChainSol`.
-4. **Проверка IP-кластеров и графа связей (анти-сибил без документов, D13):**
-   - Проверить `ipPrefixHmac` кандидата: есть ли пересечения с другими участниками топ-35 или с его собственными рефералами.
-   - По правилу D10: **не более 1 призового места на IP-кластер** при наличии второго сигнала (схожее время регистрации/поездки, общий источник пополнения кошелька Helius `funded-by`, однотипные хэндлы).
-   - Если выявлено, что один человек управлял несколькими кошельками в событии — **все** кошельки этого человека дисквалифицируются (`PRESEASON_RULES.md` §4, §6), а допущенные финишёры ниже сдвигаются вверх.
-5. **Санкционный скрининг кошелька (Chainalysis):**
-   - Выполнить проверку адреса `GET https://public.chainalysis.com/api/v1/address/<wallet>` с заголовком `X-API-Key: $CHAINALYSIS_API_KEY`. Ответ должен иметь `"identifications": []`. Лог проверки сохраняется в БД (`sanctions_checked_at`, `sanctions_clean = true`).
-6. **Публикация предварительного списка (пн 16.11 12:00 UTC):**
-   - Опубликовать предварительный топ-20 в лобби и в Telegram-канале.
-   - Принимать апелляции 24 часа (до вт 17.11 12:00 UTC) через тикет/форму с подписью кошелька.
+1. **Geo and absence of a VPN:**
+   - Check the country on all of the candidate's `SignIn` records and ride starts. If the country is `RU` or `BY` — status `play_only_no_prizes` (stays on the leaderboard with a badge "outside the prize standings", also shipped in the Russian locale; the prize passes to the next one).
+   - Check that there are no VPN/datacenter ASN flags on the qualifying ride.
+2. **A check of the ride and the telemetry (`ride-audit`):**
+   - Run `bash .claude/skills/ride-audit/run.sh <rideId> --prod`. It MUST return `OK` (`verdict = verified`, a match of all batches, of the road, and of the 10 Hz `ReplayEngine`).
+   - Open the replay in admin and visually review the key stretches (the start, overtakes, holes, the finish).
+3. **A check of the social accounts (Telegram and X 1:1):**
+   - Make sure the Telegram account is still in the channel and in the chat (`getChatMember`), has a photo/history, and is not an empty bot created on the same day as a batch of other finalists.
+   - Open the link to the qualifying post on X: the post is not deleted, the code `FC-XXXX` matches, the account follows `@FreightChainSol`.
+4. **A check of IP clusters and of the link graph (anti-sybil without documents, D13):**
+   - Check the candidate's `ipPrefixHmac`: whether there are overlaps with other participants of the top 35 or with their own referrals.
+   - Per rule D10: **no more than 1 prize place per IP cluster** when a second signal is present (a similar registration/ride time, a shared wallet-funding source Helius `funded-by`, same-type handles).
+   - If it is found that one person controlled several wallets in the event — **all** wallets of that person are disqualified (`PRESEASON_RULES.md` §4, §6), and admitted finishers below shift up.
+5. **Sanctions screening of the wallet (Chainalysis):**
+   - Run an address check `GET https://public.chainalysis.com/api/v1/address/<wallet>` with the header `X-API-Key: $CHAINALYSIS_API_KEY`. The response MUST have `"identifications": []`. The check log is stored in the DB (`sanctions_checked_at`, `sanctions_clean = true`).
+6. **Publication of the preliminary list (Mon 16.11 12:00 UTC):**
+   - Publish the preliminary top 20 in the lobby and in the Telegram channel.
+   - Take appeals for 24 hours (until Tue 17.11 12:00 UTC) through a ticket/form with a wallet signature.
 
-## 15. Ранбук выплаты $500 USDC и публичного отчёта (вт 17.11 с 12:00 UTC, задача C8 — G13)
+## 15. Runbook for the $500 USDC payout and the public report (Tue 17.11 from 12:00 UTC, task C8 — G13)
 
-1. После закрытия всех апелляций (вт 17.11 12:00 UTC) зафиксировать финальный список победителей (места 1–20) и суммы в USDC (по таблице §2 или с равным делением при ничьей).
-2. Повторно убедиться, что для каждого адреса из финального топ-20 `sanctions_clean = true` (проверка не старше 24 ч).
-3. С выделенного кошелька события на **Solana mainnet** (`<EVENT_PRIZE_WALLET_MAINNET>`, на балансе ровно `500.00 USDC` + `~0.15 SOL`) отправить SPL-переводы USDC (`EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`) каждому победителю на его игровой адрес Solana.
-4. Для каждой транзакции записать `txSignature` в админке (`POST /api/admin/event/payouts`).
-5. Опубликовать итоговую таблицу на странице события, в Telegram-канале и в X:
-   - Место · Кошелёк (сокращённый) · Очки `cleanBps` · Сумма USDC · Ссылка `https://solscan.io/tx/<signature>`.
+1. After all appeals close (Tue 17.11 12:00 UTC), lock in the final list of winners (places 1–20) and the USDC amounts (per the table in §2, or with an equal split on a tie).
+2. Re-confirm that, for every address in the final top 20, `sanctions_clean = true` (the check is not older than 24 h).
+3. From the dedicated event wallet on **Solana mainnet** (`<EVENT_PRIZE_WALLET_MAINNET>`, with a balance of exactly `500.00 USDC` + `~0.15 SOL`), send SPL transfers of USDC (`EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`) to each winner, to their Solana play address.
+4. For each transaction, record `txSignature` in admin (`POST /api/admin/event/payouts`).
+5. Publish the final table on the event page, in the Telegram channel, and on X:
+   - Place · Wallet (shortened) · `cleanBps` points · USDC amount · Link `https://solscan.io/tx/<signature>`.
 
-## 16. Встроенный кран devnet SOL (на случай необходимости — G16)
+## 16. Built-in devnet SOL faucet (in case it is needed — G16)
 
-Вход в игру (SIWS), привязка соцсетей, выдача попытки и сама зачётная 1h-поездка работают **полностью off-chain** (подпись сообщения без транзакции и без траты devnet SOL). Кран devnet SOL нужен только если игрок захочет протестировать опциональные on-chain функции на devnet:
-- На время `event_mode_enabled = 1` кнопки покупки деталей за SOL и сжигания TEN4 в панели зрителя по умолчанию скрыты или помечены `Devnet test only`.
-- В профиле добавляется ссылка на официальный кран `https://faucet.solana.com/` с автоподстановкой адреса игрока.
+Sign-in to the game (SIWS), social linking, issuance of the attempt, and the qualifying 1h ride itself run **fully off-chain** (a message signature, with no transaction and no spend of devnet SOL). The devnet SOL faucet is needed only if a player wants to test optional on-chain functions on devnet:
+- While `event_mode_enabled = 1`, the buttons for buying parts with SOL and for burning TEN4 on the spectator panel are hidden by default, or labeled `Devnet test only`.
+- A link to the official faucet `https://faucet.solana.com/` is added in the profile, with the player's address filled in automatically.
 
-## 17. План пост-мортема и решение по декабрьскому devnet-событию (24.11.2026)
+## 17. Post-mortem plan and the decision on the December devnet event (24.11.2026)
 
-Через неделю после выплат (пн 24.11.2026) проводится разбор итогов Pre-season:
-1. Воронка: визиты лендинга → подключение кошелька → тренировка MEDIUM/HARD → привязка Telegram → проверка X → получение попытки → финиш 1h.
-2. Доля отсева по гео (`RU/BY` без призов, отказы из-за VPN) и расход кредитов `twitterapi.io`.
-3. Количество срабатываний анти-сибил правил в топ-35 и число апелляций.
-4. По итогам владелец принимает решение: проводить ли второй devnet-раунд в декабре (переключением `event_id = 'preseason-2026-12'` и дат `event_*`) или сосредоточить все ресурсы на подготовке **Season 1 на mainnet к 11.01.2027**.
+One week after the payouts (Mon 24.11.2026), a review of the Pre-season results is held:
+1. Funnel: landing visits → wallet connection → MEDIUM/HARD training → Telegram linking → an X check → receiving the attempt → the 1h finish.
+2. The share of drop-off by geo (`RU/BY` with no prizes, refusals because of a VPN) and the spend of `twitterapi.io` credits.
+3. The number of anti-sybil rule hits in the top 35, and the number of appeals.
+4. On the results, the owner decides whether to run a second devnet round in December (by switching `event_id = 'preseason-2026-12'` and the `event_*` dates) or to put all resources into preparing **Season 1 on mainnet for 11.01.2027**.
 
 ---
 
-## Источники (проверено 17.10.2026)
+## Sources (checked 17.10.2026)
 
-- ЕС, Рег. 833/2014 ст. 5b: https://service.betterregulation.com/document/566141 ; FAQ Еврокомиссии по платёжным услугам и 5b(2): https://finance.ec.europa.eu/document/download/8b0e76f4-6a5e-4fd3-a85e-04d7ecdfe340_en ; 8-й пакет: https://finance.ec.europa.eu/news/eu-agrees-eighth-package-sanctions-against-russia-2022-10-06_en
-- ЕС, Рег. 765/2006 ст. 1u (Беларусь): https://sip.lex.pl/akty-prawne/dzienniki-UE/rozporzadzenie-765-2006-dotyczace-srodkow-ograniczajacych-w-zwiazku-67607987/art-1-u ; 21-й пакет: https://www.mayerbrown.com/en/insights/publications/2026/07/european-union-adopts-21st-package-against-russia-and-parallel-sanctions-on-belarus
-- США, EO 14071 — определения и категории: https://ofac.treasury.gov/faqs/1128 , https://ofac.treasury.gov/faqs/1034 , https://ofac.treasury.gov/system/files/126/determination_05082022_eo14071.pdf
-- РФ, 259-ФЗ ст. 14: https://www.consultant.ru/document/cons_doc_LAW_358753/176562423610280f8b2578ab3480887bf7707562/
-- Didit: страны и документы — https://didit.me/solutions/countries/ , https://didit.me/solutions/countries/kazakhstan/ , https://docs.didit.me/business-verification/supported-countries
-- Telegram `getChatMember`: https://core.telegram.org/bots/api/methods/getchatmember.md ; дата регистрации недоступна: https://github.com/python-telegram-bot/python-telegram-bot/issues/3138
+- EU, Reg. 833/2014 Art. 5b: https://service.betterregulation.com/document/566141 ; European Commission FAQ on payment services and 5b(2): https://finance.ec.europa.eu/document/download/8b0e76f4-6a5e-4fd3-a85e-04d7ecdfe340_en ; 8th package: https://finance.ec.europa.eu/news/eu-agrees-eighth-package-sanctions-against-russia-2022-10-06_en
+- EU, Reg. 765/2006 Art. 1u (Belarus): https://sip.lex.pl/akty-prawne/dzienniki-UE/rozporzadzenie-765-2006-dotyczace-srodkow-ograniczajacych-w-zwiazku-67607987/art-1-u ; 21st package: https://www.mayerbrown.com/en/insights/publications/2026/07/european-union-adopts-21st-package-against-russia-and-parallel-sanctions-on-belarus
+- US, EO 14071 — definitions and categories: https://ofac.treasury.gov/faqs/1128 , https://ofac.treasury.gov/faqs/1034 , https://ofac.treasury.gov/system/files/126/determination_05082022_eo14071.pdf
+- RF, 259-FZ Art. 14: https://www.consultant.ru/document/cons_doc_LAW_358753/176562423610280f8b2578ab3480887bf7707562/
+- Didit: countries and documents — https://didit.me/solutions/countries/ , https://didit.me/solutions/countries/kazakhstan/ , https://docs.didit.me/business-verification/supported-countries
+- Telegram `getChatMember`: https://core.telegram.org/bots/api/methods/getchatmember.md ; the registration date is unavailable: https://github.com/python-telegram-bot/python-telegram-bot/issues/3138
 - Solana devnet faucet: https://faucet.solana.com/ , https://solana.com/docs/rpc/http/requestairdrop
-

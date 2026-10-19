@@ -1,46 +1,46 @@
-# Открытые вопросы и решения на рассмотрении
+# Open questions and decisions under consideration
 
-> Единый источник правды по открытым вопросам (заменяет удалённый `docs/plan/OPEN_QUESTIONS.md` и [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §14). Принятые решения 1–68 зафиксированы в [`DECISIONS.md`](DECISIONS.md) и [`README.md`](README.md). Внешние операционные задачи владельца с дедлайнами сведены в [`../plan/OWNER_TASKS.md`](../plan/OWNER_TASKS.md).
+> The single source of truth for open questions (replaces the removed `docs/plan/OPEN_QUESTIONS.md` and [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §14). Accepted decisions 1–68 are recorded in [`DECISIONS.md`](DECISIONS.md) and [`README.md`](README.md). The owner's external operational tasks with deadlines are collected in [`../plan/OWNER_TASKS.md`](../plan/OWNER_TASKS.md).
 
-## 1. Сводная таблица открытых вопросов
+## 1. Summary table of open questions
 
-| # | Вопрос | Статус / Кто решает | Связанный документ |
+| # | Question | Status / Who decides | Related document |
 |---|---|---|---|
-| **1** | Проверка `OFFICIAL_RULES.md`, промо-механики рефералки, аирдропа и рисков неофициального API X (`twitterapi.io`) | ⏳ Юрист к Season 1 | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §4.3 |
-| **2** | Финализация [`PRIVACY.md`](../legal/PRIVACY.md), [`TERMS.md`](../legal/TERMS.md), [`OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md) (реквизиты юрлица, адрес, контакты, даты, биометрия Didit / BIPA) | ⏳ Юрист + владелец к Season 1 | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §4.1, §4.3 |
-| **2а** | Объём гео-блока в 7 штатах США (`SC, AZ, LA, AR, DE, MT, TN`): принят блок только платных билетов, призов, аирдропа и реферальных наград (`geo_block_us_states_paid`) | ✅ Решено (финально подтверждает юрист к S1) | [`TERMS.md`](../legal/TERMS.md) §3 |
-| **2б** | Санкционный список стран и регионов к Season 1 (`CU, IR, KP, SY` + `UA-43, UA-14, UA-09`; статус RU, BY, VE и др.) | ⏳ Юрист к Season 1 | [`DEVNET_PRESEASON.md`](../plan/DEVNET_PRESEASON.md) §4.1 |
-| **2в** | 15 пунктов `[LAWYER]` в [`TERMS.md`](../legal/TERMS.md) (возраст 19/21, исключённые лица, санкции, 7 штатов, возвраты при гео-блоке, лимит 30%, удержание у нерезидентов, окно приза, Convoy, TEN4, отмена сезона, потолок ответственности, право/суд, арбитраж/class-action waiver, twitterapi.io) | ⏳ Юрист к Season 1 | [`TERMS.md`](../legal/TERMS.md), [`legal.md`](legal.md) |
-| **2г** | Черновик Official Rules Season 1 под единую модель пулов и динамическую таблицу финала | ✅ Написан в [`OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md) → проверка юристом к S1 | [`pool.md`](pool.md) |
-| **3** | Налоговый консультант США (1099-MISC box 3 vs W-2G / §4401, нерезиденты 30% / 1042-S, FTIN vs ITIN, gross vs net, FMV TEN4, FinCEN / VASP) | ⏳ Налоговый консультант к Season 1 | [`tax_thresholds.md`](../plan/research/tax_thresholds.md) §5–6 |
-| **4** | Суммы плат World ID (для Season 2) | ⏳ Позже (к Season 2) | [`anticheat.md`](anticheat.md) Приложение D |
-| **7** | Доля ответов 404 у Helius `funded-by` на живом трафике | ⏳ Замер после запуска | [`anticheat.md`](anticheat.md) Приложение D |
-| **8** | Калибровка порогов телеметрии и анти-сибил после 2 недель в теневом режиме | ⏳ Команда после запуска | [`anticheat.md`](anticheat.md) |
-| **9** | Режим денег несыгранных билетов в платном пуле Season 1 (выручка `R` при Solana Pay vs банк пула при on-chain `buy_ticket`) | ⏳ До открытия платных пулов (`POOL-M-11`) | [`pool.md`](pool.md), [`legal.md`](legal.md) `LEG-M-08` |
-| **10** | Адреса мультисигов Squads казны и команды (`team_recipient`) до `initialize` на mainnet | ⏳ Владелец до mainnet | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §4.1 |
-| **P1** | Организатор Pre-season — владелец-физлицо (решено); выбор юрлица для Season 1 — до **01.12.2026**, регистрация — до 20.12.2026 | ⏳ Владелец | [`operator_entity_options.md`](../plan/research/operator_entity_options.md), [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §4.1 |
-| **P2 / P9** | Консультация юриста по Pre-season (СНГ и Сербия: обязательные соц-задания как consideration, налоги и ответственность физлица) | ⏸ Отложено владельцем до Season 1 (принятый риск) | Раздел 2 ниже, [`operator_entity_options.md`](../plan/research/operator_entity_options.md) §6–7 |
-| **P3** | Кошелёк события Pre-season на Solana mainnet ($500 USDC + ~0.15 SOL, публикация адреса в правилах) | ⏳ Владелец до 09.11.2026 | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §2.1 |
-| **P5** | Назначение модераторов и антиспам-бота в RU Telegram-канал и чат, подстановка `[PLACEHOLDER]` в правила | ⏳ Владелец до 02.11.2026 | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §1.1 |
+| **1** | Review of `OFFICIAL_RULES.md`, the referral promo mechanic, the airdrop, and the risks of the unofficial X API (`twitterapi.io`) | ⏳ Lawyer by Season 1 | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §4.3 |
+| **2** | Finalizing [`PRIVACY.md`](../legal/PRIVACY.md), [`TERMS.md`](../legal/TERMS.md), [`OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md) (legal-entity details, address, contacts, dates, Didit / BIPA biometrics) | ⏳ Lawyer + owner by Season 1 | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §4.1, §4.3 |
+| **2a** | Scope of the geo-block in 7 US states (`SC, AZ, LA, AR, DE, MT, TN`): a block of paid tickets, prizes, the airdrop, and referral rewards only is accepted (`geo_block_us_states_paid`) | ✅ Decided (a lawyer confirms it finally by S1) | [`TERMS.md`](../legal/TERMS.md) §3 |
+| **2b** | Sanctions list of countries and regions by Season 1 (`CU, IR, KP, SY` + `UA-43, UA-14, UA-09`; status of RU, BY, VE, and others) | ⏳ Lawyer by Season 1 | [`DEVNET_PRESEASON.md`](../plan/DEVNET_PRESEASON.md) §4.1 |
+| **2c** | 15 `[LAWYER]` items in [`TERMS.md`](../legal/TERMS.md) (age 19/21, excluded persons, sanctions, 7 states, refunds on a geo-block, the 30% limit, withholding for non-residents, the prize window, Convoy, TEN4, season cancellation, the liability cap, law/court, arbitration/class-action waiver, twitterapi.io) | ⏳ Lawyer by Season 1 | [`TERMS.md`](../legal/TERMS.md), [`legal.md`](legal.md) |
+| **2d** | Season 1 Official Rules draft for the unified pool model and the dynamic final table | ✅ Written in [`OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md) → lawyer review by S1 | [`pool.md`](pool.md) |
+| **3** | A US tax adviser (1099-MISC box 3 vs W-2G / §4401, non-residents 30% / 1042-S, FTIN vs ITIN, gross vs net, FMV TEN4, FinCEN / VASP) | ⏳ Tax adviser by Season 1 | [`tax_thresholds.md`](../plan/research/tax_thresholds.md) §5–6 |
+| **4** | World ID fee amounts (for Season 2) | ⏳ Later (by Season 2) | [`anticheat.md`](anticheat.md) Appendix D |
+| **7** | The share of 404 responses from Helius `funded-by` on live traffic | ⏳ Measurement after launch | [`anticheat.md`](anticheat.md) Appendix D |
+| **8** | Calibration of telemetry and anti-sybil thresholds after 2 weeks in shadow mode | ⏳ Team after launch | [`anticheat.md`](anticheat.md) |
+| **9** | The money mode for unplayed tickets in the Season 1 paid pool (revenue `R` under Solana Pay vs the pool bank under on-chain `buy_ticket`) | ⏳ Before paid pools open (`POOL-M-11`) | [`pool.md`](pool.md), [`legal.md`](legal.md) `LEG-M-08` |
+| **10** | Squads multisig addresses of the treasury and the team (`team_recipient`) before `initialize` on mainnet | ⏳ Owner before mainnet | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §4.1 |
+| **P1** | The Pre-season organizer is the owner as a natural person (decided); the choice of a legal entity for Season 1 — by **01.12.2026**, registration — by 20.12.2026 | ⏳ Owner | [`operator_entity_options.md`](../plan/research/operator_entity_options.md), [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §4.1 |
+| **P2 / P9** | A lawyer consultation on the Pre-season (the CIS and Serbia: mandatory social tasks as consideration, taxes, and a natural person's liability) | ⏸ Deferred by the owner until Season 1 (accepted risk) | Section 2 below, [`operator_entity_options.md`](../plan/research/operator_entity_options.md) §6–7 |
+| **P3** | The Pre-season event wallet on Solana mainnet ($500 USDC + ~0.15 SOL, the address published in the rules) | ⏳ Owner by 09.11.2026 | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §2.1 |
+| **P5** | Appointing moderators and an anti-spam bot in the RU Telegram channel and chat, substituting `[PLACEHOLDER]` into the rules | ⏳ Owner by 02.11.2026 | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §1.1 |
 
-> Закрытые вопросы Pre-season (**P4** — очки шагов в аирдроп S1; **P6** — только RU+EN, второй devnet-ивент опционален после 24.11; **P7** — топ-20 проверяется анти-сибил + вручную + Chainalysis без Didit; **P8** — обязательны тест MEDIUM/HARD + Telegram + X с кодом) зафиксированы в [`DEVNET_PRESEASON.md`](../plan/DEVNET_PRESEASON.md) §9.
+> Closed Pre-season questions (**P4** — step points into the S1 airdrop; **P6** — RU+EN only, a second devnet event is optional after 24.11; **P7** — the top 20 is checked by anti-sybil + manually + Chainalysis, without Didit; **P8** — a MEDIUM/HARD test + Telegram + X with a code are mandatory) are recorded in [`DEVNET_PRESEASON.md`](../plan/DEVNET_PRESEASON.md) §9.
 
-## 2. Вопросы юристу и налоговому консультанту к Season 1
+## 2. Questions for the lawyer and the tax adviser by Season 1
 
-### 2.1 Сербский юрист / консультант (по резидентству владельца)
-Консультация отложена владельцем на после Pre-season (раунд 19); подробный разбор — [`operator_entity_options.md`](../plan/research/operator_entity_options.md) §6–7:
-1. Считаются ли обязательные действия в соцсетях (подписка на Telegram-канал, участие в чате, пост с кодом в X) как единственное условие входа неденежным встречным предоставлением (*consideration*), и меняет ли это квалификацию бесплатного конкурса мастерства с призами по праву Сербии и стран участников (KZ, UZ, KG, AM, AZ, GE, MD, UA).
-2. Налоговые и валютные обязательства налогового резидента Сербии (с ВНЖ) при выплате призов физлицам в USDC из собственных средств и при последующем учреждении иностранного юрлица к Season 1.
+### 2.1 Serbian lawyer / adviser (per the owner's residency)
+The consultation is deferred by the owner until after the Pre-season (round 19); the detailed analysis — [`operator_entity_options.md`](../plan/research/operator_entity_options.md) §6–7:
+1. Whether mandatory social-network actions (subscribing to the Telegram channel, taking part in the chat, a post with a code on X), as the sole condition of entry, count as non-monetary consideration (*consideration*), and whether that changes the classification of a free skill contest with prizes under the law of Serbia and of the participants' countries (KZ, UZ, KG, AM, AZ, GE, MD, UA).
+2. The tax and foreign-exchange obligations of a Serbian tax resident (with a residence permit) when paying prizes to natural persons in USDC from their own funds and when later establishing a foreign legal entity for Season 1.
 
-### 2.2 Международный / американский юрист (Terms, Privacy, Official Rules)
-1. **Official Rules, рефералка и аирдроп:** проверка [`OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md), промо-механики Convoy (фиксированные награды TEN4 не зависят от покупок друга) и условий TGE/аирдропа.
-2. **Неофициальный API X (`twitterapi.io`):** оценка договорного/репутационного риска скрейпинга публичных постов и подписок без официального Enterprise API X, формулировки в [`TERMS.md`](../legal/TERMS.md) и [`PRIVACY.md`](../legal/PRIVACY.md).
-3. **15 пунктов `[LAWYER]` в [`TERMS.md`](../legal/TERMS.md) и биометрия в [`PRIVACY.md`](../legal/PRIVACY.md):** подтверждение формулировок BIPA / GDPR по провайдеру KYC Didit, праву на отказ от дистанционной покупки билета (`LEG-M-07`) и арбитражной оговорки.
+### 2.2 International / US lawyer (Terms, Privacy, Official Rules)
+1. **Official Rules, referral, and the airdrop:** a review of [`OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md), the Convoy promo mechanic (fixed TEN4 rewards do not depend on a friend's purchases), and the TGE/airdrop terms.
+2. **Unofficial X API (`twitterapi.io`):** an assessment of the contractual/reputational risk of scraping public posts and follows without the official X Enterprise API, and of the wording in [`TERMS.md`](../legal/TERMS.md) and [`PRIVACY.md`](../legal/PRIVACY.md).
+3. **15 `[LAWYER]` items in [`TERMS.md`](../legal/TERMS.md) and biometrics in [`PRIVACY.md`](../legal/PRIVACY.md):** confirmation of the BIPA / GDPR wording for the Didit KYC provider, of the right to withdraw from a distance ticket purchase (`LEG-M-07`), and of the arbitration clause.
 
-### 2.3 Налоговый консультант США
-Полный перечень — [`tax_thresholds.md`](../plan/research/tax_thresholds.md) §6:
-1. Квалификация выплат: призы конкурса мастерства (1099-MISC box 3, порог $2,000 с 2026 г.) vs W-2G и акциз IRC §4401/§4411 (по аналогии с IRS AM 2020-009 по DFS).
-2. Призы нерезидентам США (NRA): возникает ли U.S.-source FDAP при иностранном или американском операторе, нужно ли 30% удержание и форма 1042-S, достаточно ли иностранного ИНН (FTIN) в W-8BEN.
-3. Считать ли порог $2,000 по gross-выплатам или net (за вычетом стоимости билетов), и как учитывать FMV токенов TEN4 при клейме на TGE.
-4. Отсутствие статуса FinCEN money transmitter / VASP при некастодиальном смарт-контракте эскроу и при казначейской модели Solana Pay.
+### 2.3 US tax adviser
+The full list — [`tax_thresholds.md`](../plan/research/tax_thresholds.md) §6:
+1. Classification of payouts: skill-contest prizes (1099-MISC box 3, a $2,000 threshold from 2026) vs W-2G and the IRC §4401/§4411 excise tax (by analogy with IRS AM 2020-009 on DFS).
+2. Prizes to US non-residents (NRA): whether U.S.-source FDAP arises with a foreign or a US operator, whether 30% withholding and form 1042-S are required, and whether a foreign TIN (FTIN) in W-8BEN is enough.
+3. Whether to count the $2,000 threshold on gross payouts or net (after deducting the ticket cost), and how to account for the FMV of TEN4 tokens on a claim at TGE.
+4. The absence of FinCEN money transmitter / VASP status for a non-custodial escrow smart contract and for the Solana Pay treasury model.
 

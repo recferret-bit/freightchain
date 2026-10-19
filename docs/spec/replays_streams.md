@@ -1,327 +1,327 @@
-# Реплеи и стримы — манифест и план тестирования
+# Replays and streams — spec and test plan
 
-> Источник правды по реплеям, «стримам» (просмотр реплея с чатом и донатами), донатам, чату и лобби (REPLAYS / LIVE). Решения: 18, 33, 34, 45–58 (все ✅ 17.10.2026), 9 (бэкенд), решение владельца 17.10.2026 «только реплеи нетренировочных заездов». Код сверен после мержа PR #3 (`origin/main` `e8f338ad`). Тикер — TEN4; HONK в тексте ниже — глагол чата и старые имена маршрутов. Решения не менялись.
-> Термин **«стрим»** = просмотр **реплея** уже завершённой поездки, с чатом и донатами водителю. Прямой трансляции текущей поездки нет (решение 18). Донат во время текущей поездки не делается: донат только при просмотре реплея, деньги сразу на кошелёк водителя, водитель видит их после поездки (решение 45, ✅ 17.10.2026).
+> Source of truth for replays, "streams" (watching a replay with chat and donations), donations, chat, and the lobby (REPLAYS / LIVE). Decisions: 18, 33, 34, 45–58 (all ✅ 17.10.2026), 9 (backend), the owner's decision of 17.10.2026 "replays of non-training rides only". Code checked after the merge of PR #3 (`origin/main` `e8f338ad`). The ticker is TEN4; HONK in the text below is the chat verb and the old route names. Decisions are unchanged.
+> The term **"stream"** = watching a **replay** of an already finished ride, with chat and donations to the driver. There is no live broadcast of the current ride (decision 18). A donation is not made during the current ride: a donation only while watching a replay, the money goes straight to the driver's wallet, and the driver sees it after the ride (decision 45, ✅ 17.10.2026).
 
-## Часть 1. Манифест (как должно работать)
+## Part 1. Spec (how it must work)
 
-### 1.1 Что сейчас в коде (`origin/main`)
-| Что | Где | Сейчас |
+### 1.1 What is in the code now (`origin/main`)
+| What | Where | Now |
 |---|---|---|
-| Просмотр поездки | `GET /api/watch/:id` (`server/src/presentation/live/live.http.controller.ts:37`, `watch-ride.handler.ts`) | **PUBLIC**: любая начатая поездка, в том числе **текущая** («live, or a replay of a finished one»). Бесплатная **текущая** → `403 free_ride_no_stream`. Бесплатная **завершённая** открывается как реплей |
-| План дороги | `GET /api/watch/:id/road` (`:44`, `get-road-plan.handler.ts`) | **PUBLIC**, в том числе во время поездки |
-| Список реплеев | `GET /api/replays` (`get-replays.handler.ts`), лобби `client/site/lobby-replays.js` | все завершённые поездки (`completed / abandoned / failed`), **включая `tier = free` (тренировочные)**, фильтры EVERYONE/MINE и по исходу, `LOAD MORE` |
-| LIVE в лобби | `client/site/lobby-live.js`, `/api/live` | карточки «TRUCKS ON THE ROAD» с `▶ WATCH`, `▶ WATCH A RANDOM ONE`, сортировка и фильтр маршрута; free скрыты |
-| Чат | `POST /api/watch/:id/messages` (`:49`) | только **текущая** поездка (`live-access.service.ts`: `ride_not_live`), не своя, не free, не muted. `cleanText`, ≤ 140 символов (`live-rules.ts` `MESSAGE_MAX_LENGTH`), 1 строка / 3 с на кошелёк (`LINE_WINDOW_MS`) |
-| Донаты (mock) | `POST /api/watch/:id/donations` (`:55`) | `LIVE_FREE_DONATIONS=on` → ничего не списывается; эффекты `tip, night, day, potholes, trench, sinkhole` (`live-rules.ts:8`) **меняют поездку** |
-| Донаты (chain) | `POST …/donation-orders` (`:61`), `…/confirm` (`:67`), `…/reconcile` (`:73`) | неподписанный перевод SOL зрителя → **кошелёк водителя** (`ride.wallet`), memo `fc-donation:<id>`, reference-ключ; проверка on-chain; повтор подписи → `409 signature_reused`; не та транзакция → `400 bad_donation_payment`; ещё не видно → `{status:'pending'}` |
-| Доля рефералу | `create-donation-order.handler.ts:74`, `game-settings.ts:31` `referral_donation_share_bps: 1000` | **10 % доната уходит рефералу водителя** (второй перевод в той же транзакции) — противоречит «100 % водителю» (TERMS 14.3, [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §3) |
-| Сжигание TEN4 (маршрут `/honk`, глагол чата HONK) | `server/src/presentation/honk/honk.http.controller.ts:48/54/60` (`watch/:id/honk`, `/honk/time`, `/honk/weather`) | сжечь 1 TEN4 — строка в чате; 10 TEN4 — **день/ночь у водителя**; 25 TEN4 — **снег/ясно** (меняют поездку) |
-| Пледжи | `client/js/ui/watch-pledges.js`, `pledges.http.controller.ts`, программа `pledge.rs` | зритель блокирует SOL «за км» на билетной поездке, после проверки пула водитель получает ставка × проверенные км |
-| Инбокс водителя | `GET /api/rides/:id/inbox` (`:78`), `client/js/ui/live-feed.js` (CB-рация) | водитель **во время поездки** видит чат и донаты, применяет эффекты (`effects/:eventId/applied`, `:89`), кнопка `mute` (`POST rides/:id/mutes`, `:84`) |
-| Реплей — что показывается | `client/js/watch.js` | **запись клиента** (сэмплы 10 Гц, батчи ≈ 15 с) + колонка ввода `SAMPLE_INPUT_COL` (какие органы управления нажаты в каждые 100 мс, мигающая рамка, `input-bits.js`) + трафик 2 Гц + ROAD CHECK по серверному плану ям. Ничего не симулируется |
-| Хранение | `TELEMETRY_RETENTION_DAYS = 90` (`env.schema.ts:140`) | запись хранится 90 дней. Удаления чата (`live.RideEvent`) через 90 дней в коде **нет** |
-| Флаги | `env.schema.ts:144–150` | `LIVE_CHAT` all/free/off, `LIVE_DONATIONS` on/off, `LIVE_FREE_DONATIONS` on/off, `LIVE_EFFECTS` all/free/off (по умолчанию в коде `all / on / on / all`; в прод-компоузе `all / on / off / free`) |
-| Ссылки | `/r/:id` (`configure-app.ts:43`, OG-карточка), blink `POST /api/actions/ride/:id/watch` | публичные |
+| Watching a ride | `GET /api/watch/:id` (`server/src/presentation/live/live.http.controller.ts:37`, `watch-ride.handler.ts`) | **PUBLIC**: any started ride, including a **current** one ("live, or a replay of a finished one"). A free **current** one → `403 free_ride_no_stream`. A free **finished** one opens as a replay |
+| Road plan | `GET /api/watch/:id/road` (`:44`, `get-road-plan.handler.ts`) | **PUBLIC**, including during the ride |
+| Replay list | `GET /api/replays` (`get-replays.handler.ts`), lobby `client/site/lobby-replays.js` | all finished rides (`completed / abandoned / failed`), **including `tier = free` (training)**, EVERYONE/MINE filters and an outcome filter, `LOAD MORE` |
+| LIVE in the lobby | `client/site/lobby-live.js`, `/api/live` | "TRUCKS ON THE ROAD" cards with `▶ WATCH`, `▶ WATCH A RANDOM ONE`, sorting and a route filter; free ones are hidden |
+| Chat | `POST /api/watch/:id/messages` (`:49`) | a **current** ride only (`live-access.service.ts`: `ride_not_live`), not one's own, not free, not muted. `cleanText`, ≤ 140 characters (`live-rules.ts` `MESSAGE_MAX_LENGTH`), 1 line / 3 s per wallet (`LINE_WINDOW_MS`) |
+| Donations (mock) | `POST /api/watch/:id/donations` (`:55`) | `LIVE_FREE_DONATIONS=on` → nothing is charged; effects `tip, night, day, potholes, trench, sinkhole` (`live-rules.ts:8`) **change the ride** |
+| Donations (chain) | `POST …/donation-orders` (`:61`), `…/confirm` (`:67`), `…/reconcile` (`:73`) | an unsigned SOL transfer from the viewer → the **driver's wallet** (`ride.wallet`), memo `fc-donation:<id>`, a reference key; an on-chain check; reusing the signature → `409 signature_reused`; the wrong transaction → `400 bad_donation_payment`; not yet visible → `{status:'pending'}` |
+| Referral share | `create-donation-order.handler.ts:74`, `game-settings.ts:31` `referral_donation_share_bps: 1000` | **10% of the donation goes to the driver's referrer** (a second transfer in the same transaction) — contradicts "100% to the driver" (TERMS 14.3, [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §3) |
+| Burning TEN4 (the `/honk` route, the HONK chat verb) | `server/src/presentation/honk/honk.http.controller.ts:48/54/60` (`watch/:id/honk`, `/honk/time`, `/honk/weather`) | burn 1 TEN4 — a line in chat; 10 TEN4 — **day/night for the driver**; 25 TEN4 — **snow/clear** (they change the ride) |
+| Pledges | `client/js/ui/watch-pledges.js`, `pledges.http.controller.ts`, program `pledge.rs` | the viewer locks SOL "per km" on a ticketed ride; after the pool review the driver receives stake × verified km |
+| Driver inbox | `GET /api/rides/:id/inbox` (`:78`), `client/js/ui/live-feed.js` (CB radio) | **during the ride** the driver sees chat and donations, applies effects (`effects/:eventId/applied`, `:89`), a `mute` button (`POST rides/:id/mutes`, `:84`) |
+| Replay — what is shown | `client/js/watch.js` | a **client recording** (10 Hz samples, batches ≈ 15 s) + the input column `SAMPLE_INPUT_COL` (which controls are pressed every 100 ms, a flashing frame, `input-bits.js`) + 2 Hz traffic + ROAD CHECK against the server hole plan. Nothing is simulated |
+| Storage | `TELEMETRY_RETENTION_DAYS = 90` (`env.schema.ts:140`) | the recording is kept for 90 days. There is **no** deletion of chat (`live.RideEvent`) after 90 days in the code |
+| Flags | `env.schema.ts:144–150` | `LIVE_CHAT` all/free/off, `LIVE_DONATIONS` on/off, `LIVE_FREE_DONATIONS` on/off, `LIVE_EFFECTS` all/free/off (code defaults `all / on / on / all`; in the prod compose `all / on / off / free`) |
+| Links | `/r/:id` (`configure-app.ts:43`, OG card), blink `POST /api/actions/ride/:id/watch` | public |
 
-### 1.1a Операционные детали реализации на `main` (присутствие, закрытие вкладки, сэмплы `watch.js`, воркеры и E2E)
-- **Присутствие на сайте и зрители (`client/site/presence.js`, `GET /api/live`)**:
-  - Лендинг и лобби опрашивают `/api/live?visitor=<id>&page=landing|lobby`, а при уходе со страницы (`pagehide`) `leaveOnClose()` отправляет маяк с `&leave=1`, чтобы счётчики присутствия и зрителей освобождались сразу, не дожидаясь истечения TTL.
-- **Закрытие игровой вкладки и уборка зависших поездок (`online.js`, `StaleRideScheduler`)**:
-  - При закрытии вкладки с игрой (`pagehide`) `client/js/online.js` отправляет `navigator.sendBeacon('/api/rides/:id/end', ...)` (парсится `beaconBodyMiddleware` на сервере), а при возврате из bfcache (`pageshow` с `e.persisted`) перезагружает страницу, чтобы не продолжать уже завершённую поездку.
-  - Если вкладка пропала без маяка и молчит дольше `HB_TIMEOUT_MS = 150 000 мс` (150 с), фоновый `StaleRideScheduler` (`SweepStaleRidesCommand`) переводит поездку из `running` в `failed` (`heartbeat lost`, аналитика `ended_by = 'stale_sweep'`) и вызывает `StatsService.recordRideEnded`. Поездка никогда не остаётся висеть в `running`.
-- **Формат сэмплов реплея и 2 Гц трафик в `client/js/watch.js` (`client/js/replay-end.js`)**:
-  - Колонки `0..11` сэмпла 10 Гц: `[t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch]`.
-  - Колонки `12..15`:
-    - `12`: игровой час суток (`clock`, `0..24`);
-    - `13`: битовая маска состояний кабины (`FLAGS`: печка `heater = 32`, охлаждение `cooling = 2048`, телефон открыт `phone = 4096`);
-    - `14`: `SAMPLE_INPUT_COL` (`client/js/input-bits.js`, биты зажатых клавиш + `MOUSE = 1 << 25`, кнопки телефона `map = 1 << 26`, `cold = 1 << 27`, `share = 1 << 28`);
-    - `15`: `SAMPLE_FORK_COL` (выбранная ветвь развилки, передаётся в `roads.setBranch`).
-  - Трафик для отображения реплея (`trafficSnapshot()` в `client/js/sim/traffic.js`): снимается с частотой **2 Гц** для `<= 16` ближайших машин в радиусе `400 м` от грузовика.
-  - Длительность реплея (`replayEnd()` в `client/js/watch.js`, диалог конца реплея в `client/js/replay-end.js`): точка пересечения финиша `+ 3 с` (или конец записи).
-  - Косметика кабины в реплее: `ride.loadout` применяется через `setLoadout()` при загрузке `watch.js`.
-- **Блокировка окна эффектов и E2E-скрипты**:
-  - Скользящий 20-секундный интервал между эффектами на одну поездку сериализуется транзакционной `pg_advisory_xact_lock` по `rideId`.
-  - Скрипты и навыки проверки: `node server/scripts/sim-rides.mjs`, `node server/scripts/e2e-live-board.mjs` (навык `live-board-test`), `node server/scripts/e2e-close.mjs`, `node server/scripts/e2e-watch.mjs`, `node server/scripts/e2e-replay.mjs`, `node server/scripts/e2e-live-flags.mjs` (навык `replay-test`).
+### 1.1a Operational implementation details on `main` (presence, closing a tab, `watch.js` samples, workers, and E2E)
+- **Site presence and viewers (`client/site/presence.js`, `GET /api/live`)**:
+  - The landing and the lobby poll `/api/live?visitor=<id>&page=landing|lobby`, and on leaving the page (`pagehide`) `leaveOnClose()` sends a beacon with `&leave=1`, so the presence and viewer counters are released at once, without waiting for the TTL to expire.
+- **Closing the game tab and sweeping stuck rides (`online.js`, `StaleRideScheduler`)**:
+  - On closing the game tab (`pagehide`) `client/js/online.js` sends `navigator.sendBeacon('/api/rides/:id/end', ...)` (parsed by `beaconBodyMiddleware` on the server), and on return from bfcache (`pageshow` with `e.persisted`) reloads the page, so as not to continue an already finished ride.
+  - If the tab vanished without a beacon and stays silent longer than `HB_TIMEOUT_MS = 150 000 ms` (150 s), the background `StaleRideScheduler` (`SweepStaleRidesCommand`) moves the ride from `running` to `failed` (`heartbeat lost`, analytics `ended_by = 'stale_sweep'`) and calls `StatsService.recordRideEnded`. A ride never stays hanging in `running`.
+- **Replay sample format and 2 Hz traffic in `client/js/watch.js` (`client/js/replay-end.js`)**:
+  - Columns `0..11` of a 10 Hz sample: `[t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch]`.
+  - Columns `12..15`:
+    - `12`: the in-game hour of the day (`clock`, `0..24`);
+    - `13`: a bit mask of cabin states (`FLAGS`: the heater `heater = 32`, cooling `cooling = 2048`, phone open `phone = 4096`);
+    - `14`: `SAMPLE_INPUT_COL` (`client/js/input-bits.js`, bits of held keys + `MOUSE = 1 << 25`, phone buttons `map = 1 << 26`, `cold = 1 << 27`, `share = 1 << 28`);
+    - `15`: `SAMPLE_FORK_COL` (the chosen fork branch, passed to `roads.setBranch`).
+  - Traffic for the replay display (`trafficSnapshot()` in `client/js/sim/traffic.js`): sampled at **2 Hz** for the `<= 16` nearest vehicles within `400 m` of the truck.
+  - Replay length (`replayEnd()` in `client/js/watch.js`, the end-of-replay dialog in `client/js/replay-end.js`): the finish-crossing point `+ 3 s` (or the end of the recording).
+  - Cabin cosmetics in the replay: `ride.loadout` is applied through `setLoadout()` when `watch.js` loads.
+- **Effect-window lock and E2E scripts**:
+  - A sliding 20-second interval between effects on one ride is serialized by a transactional `pg_advisory_xact_lock` on `rideId`.
+  - Check scripts and skills: `node server/scripts/sim-rides.mjs`, `node server/scripts/e2e-live-board.mjs` (skill `live-board-test`), `node server/scripts/e2e-close.mjs`, `node server/scripts/e2e-watch.mjs`, `node server/scripts/e2e-replay.mjs`, `node server/scripts/e2e-live-flags.mjs` (skill `replay-test`).
 
-### 1.2 Что можно смотреть
-- **RPL-M-01** MUST: публично смотреть можно **только реплей завершённой нетренировочной поездки**. «Завершённая» = статус `completed`, `abandoned` или `failed`, финальный вердикт есть и он не `rejected` (решение 55). Поездка в `review` открывается после ручного решения.
-- **RPL-M-02** MUST NOT (решение 56): **тренировочные** поездки в реплеях не появляются вообще. Это `tier = free` (уровни `free-1c` / `free-2c` / `free-3c`, замороженный `free-3b` и старые `free-*`), гостевой офлайн `free-g`, сессия `POST /api/auth/guest` и любая поездка с `tutorial` или `assist`. Для них:
-  - `GET /api/replays` не возвращает их ни в EVERYONE, ни в MINE;
-  - `GET /api/watch/:id`, `GET /api/watch/:id/road`, `/r/:id` и blink → `404` (решение бэкенда 9);
-  - запись хранится только для вердикта и админки (`GET /api/admin/replays`).
-- **RPL-M-03** MUST NOT: **текущая** поездка не видна никому, кроме её клиента. `GET /api/watch/:id` для `running` → `404` всем, в том числе другим игрокам и неавторизованным. `GET /api/watch/:id/road` для `running` → `404`. План дороги водитель получает своим маршрутом поездки (решение 18).
-- **RPL-M-04** MUST: реплей и план дороги **пуловой** поездки публичны только после `payout_at` (окончание проверки пула, решение 34). До этого чужим → `404`.
-- **RPL-M-05** MUST (решение 57): водитель видит **свой** реплей сразу после вердикта, в том числе пуловый (только с авторизацией владельца поездки). Для всех остальных действует RPL-M-04.
-- **RPL-M-06** MUST: бесплатная **нетренировочная** поездка открывается после вердикта. Это попытка devnet-запуска за задания аирдропа ([`PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md) §2), промо-поездка 1h и недельный выданный билет (оба на main). Если она пуловая, действует RPL-M-04.
-- **RPL-M-07** MUST: реплей показывает **позы из серверного пересчёта** (v2, 30 Гц, решение 12). Сырые события ввода, их тайминг и колонку ввода по 100 мс публично отдавать нельзя. Подсветку органов управления (`input-bits.js`) в публичном реплее убрать, оставить только в админке (решение 48). В ответе `GET /api/watch/:id` колонки ввода нет.
-- **RPL-M-08** MUST: реплей доступен, пока хранится запись (`TELEMETRY_RETENTION_DAYS`, по умолчанию 90 дней). После удаления строка в списке — «no recording», а `GET /api/watch/:id` → `404`.
-- **RPL-M-09** MUST: админ видит все поездки (тренировочные, `rejected`, до `payout_at`) через `GET /api/admin/replays` и админский просмотр. Публичные правила видимости на админку не распространяются.
+### 1.2 What can be watched
+- **RPL-M-01** MUST: the public may watch **only a replay of a finished non-training ride**. "Finished" = status `completed`, `abandoned`, or `failed`, a final verdict exists and it is not `rejected` (decision 55). A ride in `review` opens after a manual decision.
+- **RPL-M-02** MUST NOT (decision 56): **training** rides do not appear in replays at all. That is `tier = free` (levels `free-1c` / `free-2c` / `free-3c`, the frozen `free-3b`, and the old `free-*`), the guest offline `free-g`, a `POST /api/auth/guest` session, and any ride with `tutorial` or `assist`. For them:
+  - `GET /api/replays` does not return them in EVERYONE or in MINE;
+  - `GET /api/watch/:id`, `GET /api/watch/:id/road`, `/r/:id`, and blink → `404` (backend decision 9);
+  - the recording is kept only for the verdict and for admin (`GET /api/admin/replays`).
+- **RPL-M-03** MUST NOT: the **current** ride is visible to nobody except its client. `GET /api/watch/:id` for `running` → `404` to everyone, including other players and the unauthenticated. `GET /api/watch/:id/road` for `running` → `404`. The driver gets the road plan through their own ride route (decision 18).
+- **RPL-M-04** MUST: the replay and the road plan of a **pool** ride are public only after `payout_at` (the end of the pool review, decision 34). Before that, to others → `404`.
+- **RPL-M-05** MUST (decision 57): the driver sees **their own** replay right after the verdict, including a pool one (only with the ride owner's authorization). RPL-M-04 applies to everyone else.
+- **RPL-M-06** MUST: a free **non-training** ride opens after the verdict. This is a devnet-launch attempt for airdrop tasks ([`PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md) §2), a 1h promo ride, and an issued weekly ticket (both on main). If it is a pool ride, RPL-M-04 applies.
+- **RPL-M-07** MUST: the replay shows **poses from the server recompute** (v2, 30 Hz, decision 12). Raw input events, their timing, and the input column per 100 ms must not be given out publicly. Remove control highlighting (`input-bits.js`) from the public replay; leave it only in admin (decision 48). The `GET /api/watch/:id` response has no input column.
+- **RPL-M-08** MUST: a replay is available while the recording is kept (`TELEMETRY_RETENTION_DAYS`, 90 days by default). After deletion the list row is "no recording", and `GET /api/watch/:id` → `404`.
+- **RPL-M-09** MUST: the admin sees every ride (training, `rejected`, before `payout_at`) through `GET /api/admin/replays` and the admin view. Public visibility rules do not apply to admin.
 
-### 1.3 Лобби
-- **RPL-M-10** MUST: в лобби тренировочная поездка ясно помечена «не попадает в реплеи». Тексты ниже — **на EN и RU с первого дня** (devnet-запуск рассчитан и на RU/СНГ-аудиторию; решение 58).
+### 1.3 Lobby
+- **RPL-M-10** MUST: in the lobby a training ride is clearly marked "not included in replays". The texts below are **in EN and RU from day one** (the devnet launch is also aimed at an RU/CIS audience; decision 58).
 
-| Где | EN | RU |
+| Where | EN | RU |
 |---|---|---|
-| бейдж на карточке free / уровня (`lobby-new.js` `freeCard`, `levelPicker`) | `TRAINING · NOT IN REPLAYS` | `ТРЕНИРОВКА · НЕ ПОПАДАЕТ В РЕПЛЕИ` |
-| подсказка под кнопкой START | `Training rides are private: not ranked, no TEN4, never shown in replays.` | `Тренировочные заезды приватны: без рейтинга, без TEN4, в реплеи не попадают.` |
-| название тира (`lobby.js:28` `TIER_NAME.free = 'TEST RIDE'`, `ui.js:17` `'Free ride'`, `watch-panel.js:19`) | `TRAINING` | `ТРЕНИРОВКА` |
-| итог тренировочной поездки (`ui/game.js`, онлайн-меню) | `Training ride – no replay is published.` | `Тренировочный заезд — реплей не публикуется.` |
-| подвал вкладки REPLAYS (`lobby-replays.js`) | `Replays of finished 1-hour rides. Training rides are never shown. Pool rides appear after the pool's review ends.` | `Реплеи завершённых часовых заездов. Тренировочных здесь нет. Заезды пула появляются после окончания проверки пула.` |
-| пустой MINE | `No replays yet. Your training rides are not shown here.` | `Реплеев пока нет. Тренировочные заезды здесь не показываются.` |
-| пуловая поездка в MINE до `payout_at` | `Public after the review · <date>` | `Станет публичным после проверки · <дата>` |
+| badge on a free / level card (`lobby-new.js` `freeCard`, `levelPicker`) | `TRAINING · NOT IN REPLAYS` | `TRAINING · DOES NOT APPEAR IN REPLAYS` |
+| hint under the START button | `Training rides are private: not ranked, no TEN4, never shown in replays.` | `Training rides are private: no ranking, no TEN4, they do not appear in replays.` |
+| tier name (`lobby.js:28` `TIER_NAME.free = 'TEST RIDE'`, `ui.js:17` `'Free ride'`, `watch-panel.js:19`) | `TRAINING` | `TRAINING` |
+| training-ride result (`ui/game.js`, online menu) | `Training ride – no replay is published.` | `Training ride — the replay is not published.` |
+| footer of the REPLAYS tab (`lobby-replays.js`) | `Replays of finished 1-hour rides. Training rides are never shown. Pool rides appear after the pool's review ends.` | `Replays of finished hour-long rides. There are no training rides here. Pool rides appear after the pool review ends.` |
+| empty MINE | `No replays yet. Your training rides are not shown here.` | `No replays yet. Training rides are not shown here.` |
+| a pool ride in MINE before `payout_at` | `Public after the review · <date>` | `Becomes public after the review · <date>` |
 
-- **RPL-M-10a** MUST (решение 58): лобби и панель реплея работают на **EN и RU с devnet-запуска**:
-  - язык — по `navigator.language` (`ru*` → RU, иначе EN), переключатель EN/RU в шапке лобби и панели, выбор хранится (`freightchain.lang`) и поддерживает `?lang=ru|en`;
-  - все строки интерфейса лобби, панели реплея и итоговых окон — из словарей `en` / `ru` с одинаковым набором ключей;
-  - тексты сервера (`ProblemDetails.detail`), которые показываются игроку, — через код ошибки и словарь клиента;
-  - даты — в локали игрока.
+- **RPL-M-10a** MUST (decision 58): the lobby and the replay panel run in **EN and RU from the devnet launch**:
+  - the language follows `navigator.language` (`ru*` → RU, otherwise EN), an EN/RU switch in the lobby header and on the panel, the choice is stored (`freightchain.lang`) and `?lang=ru|en` is supported;
+  - every UI string of the lobby, the replay panel, and the result windows comes from `en` / `ru` dictionaries with the same set of keys;
+  - server texts (`ProblemDetails.detail`) shown to the player go through an error code and the client dictionary;
+  - dates are in the player's locale.
 
-- **RPL-M-11** MUST: вкладка **LIVE** не даёт смотреть текущие поездки: убрать `▶ WATCH`, `▶ WATCH A RANDOM ONE` и текст «WATCH replays a ride about 25 s behind…». Остаётся только счётчик «N on the road» / «N в пути», без карточек, прогресса и ссылок (решение 46). На реплее показывается честный счётчик «смотрят сейчас» (RPL-M-32).
-- **RPL-M-12** MUST: во вкладке REPLAYS только то, что разрешают RPL-M-01…06. Фильтры EVERYONE/MINE и ALL/COMPLETED/ABANDONED/FAILED и `LOAD MORE` сохраняются.
+- **RPL-M-11** MUST: the **LIVE** tab does not let anyone watch current rides: remove `▶ WATCH`, `▶ WATCH A RANDOM ONE`, and the text "WATCH replays a ride about 25 s behind…". Only the counter "N on the road" / the Russian for "N on the road" remains, with no cards, progress, or links (decision 46). A replay shows an honest "watching now" counter (RPL-M-32).
+- **RPL-M-12** MUST: the REPLAYS tab shows only what RPL-M-01…06 allow. The EVERYONE/MINE and ALL/COMPLETED/ABANDONED/FAILED filters and `LOAD MORE` remain.
 
-### 1.4 Плеер реплея — элементы управления
-Инвентарь по коду (`client/js/ui/watch-panel.js`, `client/js/watch.js`, `client/js/ui/input.js`, `client/js/replay-end.js`). **Есть** — в main; **убрать** — противоречит решениям 18/33; **сделать** — нет в коде, обязательно к реализации (решение 47). Первая очередь: C8 шаги ±5/±30, C6/C7 события, C18 `&t=`, C3 0,5× / 2×; остальные «сделать» — следом, до закрытия devnet-запуска.
+### 1.4 Replay player — controls
+Inventory from the code (`client/js/ui/watch-panel.js`, `client/js/watch.js`, `client/js/ui/input.js`, `client/js/replay-end.js`). **Present** — on main; **remove** — contradicts decisions 18/33; **build** — not in the code, required to implement (decision 47). First priority: C8 steps ±5/±30, C6/C7 events, C18 `&t=`, C3 0.5× / 2×; the other "build" items follow, before the devnet launch closes.
 
-| # | Элемент | id / клавиша | Статус | Поведение (норма) |
+| # | Element | id / key | Status | Behavior (norm) |
 |---|---|---|---|---|
-| C1 | Play / Pause | `#w-play` (❚❚ / ▶) | есть | переключает `watch.playing`; на конце реплея ▶ начинает с начала (план: сейчас стоит на последнем кадре) |
-| C2 | Скорости 1× / 4× / 16× | `.spd[data-x]` | есть | выбирает `watch.speed`, включает воспроизведение; активная кнопка подсвечена `sel` |
-| C3 | Скорости 0,5× / 2× | — | сделать | добавить в ряд скоростей |
-| C4 | Ползунок времени | `#w-seek` (range, шаг 1 с, `max = replayEnd()`) | есть | `seek(t)` с ограничением `0 … replayEnd()`; незагруженный участок держит цель («loading…», `watch.seeking`) |
-| C5 | Метки на таймлайне — ямы | `#w-marks .w-mark.hit/.ignored` | есть | клик → `seek(t − 6)` и play; цвета: hit — янтарный, ignored — красный («NO IMPACT») |
-| C6 | Метки событий: аварии, красный свет, мини-игры, финиш, старт | — | сделать | из `RideResult` / `RideReplayFlag` (`atSecond`); клик → `seek(t − 6)` |
-| C7 | Предыдущее / следующее событие | — | сделать | кнопки ⏮ / ⏭ и клавиши `[` / `]` |
-| C8 | Шаг назад / вперёд | — | сделать | `←` / `→` ±5 с, `Shift+←/→` ±30 с, кнопки ⟲5 / 5⟳ |
-| C9 | ● LIVE (догнать прямой эфир) | `#w-live` | **убрать** | прямого эфира нет (RPL-M-03) |
-| C10 | Звук двигателя | `#w-sound` (🔇/🔊), клавиша `M` | есть | `audio.start()` при первом нажатии, потом mute/unmute |
-| C11 | Карта (телефон) | клавиша `N`, кнопка `map` на панели | есть | `toggleMap()`; в поле ввода чата не срабатывает |
-| C12 | Затенение формы | `F8` | есть | переключатель вида, не записывается |
-| C13 | Свернуть / развернуть панель | `.w-fold` (⇥ / ⇤) | есть | класс `folded` у `#watch` |
-| C14 | Выход | `#watch-yard` «I MISS THE YARD» → лобби, `#watch-done` «I'M DONE» → лендинг | есть | переход по `SITE_BASE` |
-| C15 | Камера (кабина / снаружи) | `C` (`toggleCab`) — только в режиме вождения | сделать | разрешить `C` в реплее |
-| C16 | Полный экран | — | сделать | `F` / кнопка ⛶, Fullscreen API |
-| C17 | Скрыть HUD | — | сделать | `H` / кнопка; панель и рация скрываются, ползунок остаётся при наведении |
-| C18 | Ссылка с меткой времени | — | сделать | «Share» копирует `play.html?watch=<id>&t=<s>`; поддержка `&t=` при открытии (глубокая ссылка) |
-| C19 | Пробел = Play/Pause | — | сделать | не в поле ввода |
-| C20 | Бейджи и статистика | `#w-state`, `#w-viewers`, `#w-time`, `#w-dist`, `#w-hull`, `#w-note`, `#w-route` | есть | `REPLAY · <статус>`; `#w-viewers` только для live → для реплея показывать «смотрят сейчас» или скрыть (решение 46) |
-| C21 | ROAD CHECK | `#w-road`, штамп `#w-stamp` «NO IMPACT» | есть | строка по серверным ямам; в v2 заменяется метками пересчёта |
-| C22 | Лента чата и донатов | `#w-feed` (`aria-live`) | есть | строки только как текст (`el` / `textContent`), ссылка `paid ↗` на explorer, `(mock)`; до 200 строк |
-| C23 | Войти | `CONNECT WALLET` в `#w-me` | есть | `signIn()`; сейчас показывается только у live → показывать у реплея |
-| C24 | Поле чата + SEND / Enter | `#w-text` (maxlength 140), кнопка SEND | есть (только live) | перенести на реплей (RPL-M-15) |
-| C25 | HONK в чат | `#w-honk` (10 с) | есть | сжечь 1 HONK, строка в чате, на поездку не влияет — оставить на реплее как косметику (решение 49, RPL-M-34) |
-| C26 | HONK день / ночь / снег / ясно | `#w-honk-day/night/snow/clear` | **убрать** | меняют поездку (решение 33) |
-| C27 | Кнопки доната с эффектами | `.w-fx` из `EFFECT_INFO` (night, day, potholes, trench, sinkhole) | **убрать** | эффекты на поездку запрещены (решение 33) |
-| C28 | Кнопка доната `tip` | `.w-fx` `tip` | есть → реплей | донат водителю, без эффекта |
-| C29 | Заметка к донату | `#w-note-in` (maxlength 80) | есть | |
-| C30 | QR Solana Pay для телефона | `#w-qr` | есть | `solanaPayUrl(…, donationPayPath(order.id))`, опрос `reconcile` 90 с |
-| C31 | Строка статуса | `#w-msg` | есть | тексты сервера |
-| C32 | Пледжи | `#w-pledges`, `pledgeForm` | есть (пул) | **выключить на devnet-запуске** (решение 51, RPL-M-33) |
-| C33 | Окно конца реплея | `paintEnd()`: SHIFT COMPLETE / ABANDONED / RIDE FAILED + `#lobby` BACK TO THE LOBBY | есть | показывается на последнем кадре (`replayHeld`), скрывается при перемотке назад |
-| C34 | Ошибка | «NOTHING TO WATCH» + ссылка «← trucks on the road» | есть | ссылку вести на `#replays` |
-| C35 | Рация водителя (CB): лента, `mute`, скрыть | `client/js/ui/live-feed.js` (`.cb-mute`, `freightchain.cb`) | есть (live) | во время поездки донатов и чата нет; mute переносится на страницу своего реплея (RPL-M-18) |
-| C36 | Косметические реакции | — | сделать | 👍 🔥 🚚 и т. п., только на реплее, без денег (решение 33) |
+| C1 | Play / Pause | `#w-play` (❚❚ / ▶) | present | toggles `watch.playing`; at the end of the replay ▶ starts from the beginning (plan: it currently stays on the last frame) |
+| C2 | Speeds 1× / 4× / 16× | `.spd[data-x]` | present | selects `watch.speed`, starts playback; the active button is highlighted `sel` |
+| C3 | Speeds 0.5× / 2× | — | build | add to the speed row |
+| C4 | Time slider | `#w-seek` (range, step 1 s, `max = replayEnd()`) | present | `seek(t)` clamped to `0 … replayEnd()`; an unloaded span holds the target ("loading…", `watch.seeking`) |
+| C5 | Timeline marks — holes | `#w-marks .w-mark.hit/.ignored` | present | click → `seek(t − 6)` and play; colors: hit — amber, ignored — red ("NO IMPACT") |
+| C6 | Event marks: crashes, red light, minigames, finish, start | — | build | from `RideResult` / `RideReplayFlag` (`atSecond`); click → `seek(t − 6)` |
+| C7 | Previous / next event | — | build | buttons ⏮ / ⏭ and keys `[` / `]` |
+| C8 | Step back / forward | — | build | `←` / `→` ±5 s, `Shift+←/→` ±30 s, buttons ⟲5 / 5⟳ |
+| C9 | ● LIVE (catch up to the live broadcast) | `#w-live` | **remove** | there is no live broadcast (RPL-M-03) |
+| C10 | Engine sound | `#w-sound` (🔇/🔊), key `M` | present | `audio.start()` on the first press, then mute/unmute |
+| C11 | Map (phone) | key `N`, the `map` button on the panel | present | `toggleMap()`; does not fire in the chat input |
+| C12 | Form shade | `F8` | present | a view toggle, not recorded |
+| C13 | Collapse / expand the panel | `.w-fold` (⇥ / ⇤) | present | the `folded` class on `#watch` |
+| C14 | Exit | `#watch-yard` "I MISS THE YARD" → lobby, `#watch-done` "I'M DONE" → landing | present | navigation via `SITE_BASE` |
+| C15 | Camera (cab / outside) | `C` (`toggleCab`) — driving mode only | build | allow `C` in the replay |
+| C16 | Full screen | — | build | `F` / button ⛶, Fullscreen API |
+| C17 | Hide HUD | — | build | `H` / button; the panel and the radio hide, the slider remains on hover |
+| C18 | Link with a time mark | — | build | "Share" copies `play.html?watch=<id>&t=<s>`; `&t=` is supported on open (a deep link) |
+| C19 | Space = Play/Pause | — | build | not in an input field |
+| C20 | Badges and stats | `#w-state`, `#w-viewers`, `#w-time`, `#w-dist`, `#w-hull`, `#w-note`, `#w-route` | present | `REPLAY · <status>`; `#w-viewers` is live-only → for a replay show "watching now" or hide it (decision 46) |
+| C21 | ROAD CHECK | `#w-road`, stamp `#w-stamp` "NO IMPACT" | present | a line from the server holes; in v2 it is replaced by recompute marks |
+| C22 | Chat and donation feed | `#w-feed` (`aria-live`) | present | lines as text only (`el` / `textContent`), a `paid ↗` link to the explorer, `(mock)`; up to 200 lines |
+| C23 | Sign in | `CONNECT WALLET` in `#w-me` | present | `signIn()`; shown only for live now → show it for a replay |
+| C24 | Chat field + SEND / Enter | `#w-text` (maxlength 140), SEND button | present (live only) | move it onto the replay (RPL-M-15) |
+| C25 | HONK into chat | `#w-honk` (10 s) | present | burn 1 HONK, a line in chat, no effect on the ride — keep it on the replay as cosmetics (decision 49, RPL-M-34) |
+| C26 | HONK day / night / snow / clear | `#w-honk-day/night/snow/clear` | **remove** | they change the ride (decision 33) |
+| C27 | Donation buttons with effects | `.w-fx` from `EFFECT_INFO` (night, day, potholes, trench, sinkhole) | **remove** | effects on the ride are forbidden (decision 33) |
+| C28 | Donation button `tip` | `.w-fx` `tip` | present → replay | a donation to the driver, with no effect |
+| C29 | Donation note | `#w-note-in` (maxlength 80) | present | |
+| C30 | QR Solana Pay for a phone | `#w-qr` | present | `solanaPayUrl(…, donationPayPath(order.id))`, poll `reconcile` for 90 s |
+| C31 | Status line | `#w-msg` | present | server texts |
+| C32 | Pledges | `#w-pledges`, `pledgeForm` | present (pool) | **turn off for the devnet launch** (decision 51, RPL-M-33) |
+| C33 | Replay-end window | `paintEnd()`: SHIFT COMPLETE / ABANDONED / RIDE FAILED + `#lobby` BACK TO THE LOBBY | present | shown on the last frame (`replayHeld`), hidden on a seek backward |
+| C34 | Error | "NOTHING TO WATCH" + link "← trucks on the road" | present | point the link at `#replays` |
+| C35 | Driver radio (CB): feed, `mute`, hide | `client/js/ui/live-feed.js` (`.cb-mute`, `freightchain.cb`) | present (live) | during the ride there are no donations and no chat; mute moves to one's own replay page (RPL-M-18) |
+| C36 | Cosmetic reactions | — | build | 👍 🔥 🚚 and the like, on the replay only, no money (decision 33) |
 
-- **RPL-M-13** MUST: каждый элемент из таблицы со статусом «есть» или «сделать» работает по описанию и покрыт тестом (часть 2). Элементы «убрать» удаляются из UI и API (тест на отсутствие).
+- **RPL-M-13** MUST: every element in the table with status "present" or "build" works as described and is covered by a test (Part 2). "Remove" elements are deleted from the UI and the API (an absence test).
 
-### 1.5 Стрим = реплей + чат + донаты
-- **RPL-M-14** MUST: донат, отправленный во время просмотра реплея, уходит **водителю этой поездки** (`ride.wallet`), прямым переводом с кошелька зрителя. Сервер деньги не держит.
-- **RPL-M-15** MUST: чат и донаты доступны **только на реплее** публичной поездки (RPL-M-01…06). На текущей поездке API возвращает `404` (поездка не видна). На тренировочной — `404`. На своей — `403 own_ride`, как сейчас.
-- **RPL-M-16** MUST: **100 % доната — водителю.** Комиссию сети платит отправитель. Доли рефералу нет: `referral_donation_share_bps = 0` и ветка `also` в `create-donation-order` удаляется (решение 50). Настройка `referral_donation_share_bps` удаляется из `game-settings.ts` (или фиксируется в 0: админ не может поставить > 0 → `400`). Текст лобби о доле рефералов с донатов убирается.
-- **RPL-M-17** MUST NOT: донат, чаевые, HONK, реакция или сообщение никогда не меняют поездку, её вердикт, `RideResult`, рейтинг или приз (решение 33, TERMS 14.1/14.5). Эффекты `night/day/potholes/trench/sinkhole`, `effects/:eventId/applied`, `inbox` для эффектов и HONK time/weather удаляются (`anticheat_test_plan` (superseded, merged into docs/spec) §20.1).
-- **RPL-M-18** MUST: водитель видит полученные донаты **после поездки**: список «Donations received» в лобби (профиль) и уведомление. Новый маршрут `GET /api/me/donations` (решение 45) — зритель, сумма, заметка, поездка, подпись. Плюс `PlayerStats.donations` / `donationLamports`. Деньги видны и в балансе кошелька. На странице своего реплея водитель может отключить зрителя (`mute`).
-- **RPL-M-19** MUST: оплата — заказ (`donation-orders`) → неподписанный перевод (memo `fc-donation:<id>`, reference) → подпись и отправка кошельком → `confirm` (или `reconcile` для телефона):
-  - один перевод оплачивает один заказ, повтор той же подписи → `409 signature_reused`, повторный `confirm` того же заказа той же подписью → тот же результат (идемпотентно);
-  - перевод не тому получателю, не на ту сумму, без memo или с чужим reference → `400 bad_donation_payment`;
-  - транзакция с ошибкой (`meta.err`) → `400`, заказ остаётся `pending`;
-  - ещё не подтверждена → `{status:'pending'}`;
-  - просроченный blockhash, перевод не дошёл → заказ остаётся `pending`, через **15 мин** — `expired` (решение 52; сейчас истечения заказа нет).
-- **RPL-M-20** MUST (решение 52): чаевые — фиксированные варианты **0,01 / 0,05 / 0,1 SOL** (сейчас только `tip` 0,01, `live-rules.ts`). Границы-параметры: минимум **0,001 SOL** (ниже — `400 donation_too_small`), максимум **1 SOL** за донат (выше — `400 donation_too_large`).
-- **RPL-M-21** MUST: лимиты частоты: чат — 1 строка / 3 с на кошелёк на поездку (`LINE_WINDOW_MS`, `429 live_rate_limited` с `Retry-After`). Донаты: не чаще 1 заказа / 3 с на кошелёк и не больше **3** незакрытых заказов на кошелёк (`429`; решение 52).
-- **RPL-M-22** MUST: режим оплаты задаётся флагом. На devnet-запуске донаты и чат реплея **включены для теста** ([`OPEN.md`](OPEN.md) раунд 22 п. 3), оплата — devnet SOL (`LIVE_FREE_DONATIONS=off`) или mock. Режим виден на кнопке («devnet SOL» / «mock SOL – nothing is charged»).
-- **RPL-M-23** MUST: в ленте донат показывает отправителя, сумму, заметку и ссылку на explorer (`paid ↗`) для оплаченного или `(mock)`.
+### 1.5 Stream = replay + chat + donations
+- **RPL-M-14** MUST: a donation sent while watching a replay goes to **the driver of that ride** (`ride.wallet`), by a direct transfer from the viewer's wallet. The server does not hold the money.
+- **RPL-M-15** MUST: chat and donations are available **only on the replay** of a public ride (RPL-M-01…06). On the current ride the API returns `404` (the ride is not visible). On a training ride — `404`. On one's own — `403 own_ride`, as now.
+- **RPL-M-16** MUST: **100% of the donation — to the driver.** The sender pays the network fee. There is no referral share: `referral_donation_share_bps = 0` and the `also` branch in `create-donation-order` is removed (decision 50). The `referral_donation_share_bps` setting is removed from `game-settings.ts` (or fixed at 0: the admin cannot set > 0 → `400`). The lobby text about the referral share of donations is removed.
+- **RPL-M-17** MUST NOT: a donation, a tip, HONK, a reaction, or a message never changes the ride, its verdict, `RideResult`, the ranking, or the prize (decision 33, TERMS 14.1/14.5). Effects `night/day/potholes/trench/sinkhole`, `effects/:eventId/applied`, the `inbox` for effects, and HONK time/weather are removed (`anticheat_test_plan` (superseded, merged into docs/spec) §20.1).
+- **RPL-M-18** MUST: the driver sees received donations **after the ride**: a "Donations received" list in the lobby (profile) and a notification. A new route `GET /api/me/donations` (decision 45) — viewer, amount, note, ride, signature. Plus `PlayerStats.donations` / `donationLamports`. The money is also visible in the wallet balance. On their own replay page the driver can mute a viewer (`mute`).
+- **RPL-M-19** MUST: payment is an order (`donation-orders`) → an unsigned transfer (memo `fc-donation:<id>`, reference) → the wallet signs and sends → `confirm` (or `reconcile` for the phone):
+  - one transfer pays one order, reusing the same signature → `409 signature_reused`, a repeat `confirm` of the same order with the same signature → the same result (idempotent);
+  - a transfer to the wrong recipient, for the wrong amount, with no memo, or with someone else's reference → `400 bad_donation_payment`;
+  - a transaction with an error (`meta.err`) → `400`, the order stays `pending`;
+  - not yet confirmed → `{status:'pending'}`;
+  - an expired blockhash, the transfer did not arrive → the order stays `pending`, after **15 min** — `expired` (decision 52; there is no order expiry now).
+- **RPL-M-20** MUST (decision 52): tips are the fixed options **0.01 / 0.05 / 0.1 SOL** (now only `tip` 0.01, `live-rules.ts`). Bounds as parameters: minimum **0.001 SOL** (below — `400 donation_too_small`), maximum **1 SOL** per donation (above — `400 donation_too_large`).
+- **RPL-M-21** MUST: rate limits: chat — 1 line / 3 s per wallet per ride (`LINE_WINDOW_MS`, `429 live_rate_limited` with `Retry-After`). Donations: no more often than 1 order / 3 s per wallet and no more than **3** unclosed orders per wallet (`429`; decision 52).
+- **RPL-M-22** MUST: the payment mode is set by a flag. On the devnet launch, replay donations and chat are **enabled for the test** ([`OPEN.md`](OPEN.md) round 22 item 3), payment is devnet SOL (`LIVE_FREE_DONATIONS=off`) or mock. The mode is visible on the button ("devnet SOL" / "mock SOL – nothing is charged").
+- **RPL-M-23** MUST: in the feed a donation shows the sender, the amount, the note, and an explorer link (`paid ↗`) for a paid one, or `(mock)`.
 
-### 1.6 Чат
-- **RPL-M-24** MUST: читать чат реплея может любой, кто видит реплей. Писать — только после входа кошельком (`PlayerAuthGuard`, иначе `401`).
-- **RPL-M-25** MUST: текст очищается (`cleanText`: управляющие и bidi-символы → пробел, пробелы схлопываются), длина ≤ 140 после очистки, пустой → `400`. Заметка доната ≤ 80. Клиент выводит только как текст, HTML не интерпретирует (XSS).
-- **RPL-M-26** MUST: порядок — по `id` события (монотонный). Клиент не дублирует строку, которую уже показал сам (`addOwn` + следующий опрос).
-- **RPL-M-27** MUST: модерация:
-  - водитель отключает зрителя на своей поездке (`POST /api/rides/:id/mutes`): его строки пропадают из всех лент, писать он больше не может (`403 muted`);
-  - админ скрывает сообщение и блокирует кошелёк для чата глобально (`POST /api/admin/chat/:eventId/hide`, `chat_banned` у игрока → `403 chat_banned`);
-  - ссылки в чате запрещены (`400 chat_link_forbidden`), кроме explorer-ссылки оплаченного доната, которую ставит сервер;
-  - список запрещённых слов EN/RU — параметр, совпадение → `400 chat_word_forbidden` (решение 53).
-- **RPL-M-28** MUST: сообщения чата удаляются через **90 дней** (TERMS 16.4, PRIVACY). Нужен планировщик удаления `live.RideEvent` kind=`message` (сейчас его нет). Записи об оплаченных донатах хранятся как платёжные.
-- **RPL-M-29** MUST (решение 54): сообщение реплея привязано к моменту реплея (`replayT`, секунда поездки) и показывается при проигрывании этого момента. Клиент передаёт текущую секунду реплея при отправке, а сообщение видно и в общей ленте.
+### 1.6 Chat
+- **RPL-M-24** MUST: anyone who can see the replay can read its chat. Writing — only after a wallet sign-in (`PlayerAuthGuard`, otherwise `401`).
+- **RPL-M-25** MUST: the text is cleaned (`cleanText`: control and bidi characters → a space, spaces collapse), length ≤ 140 after cleaning, empty → `400`. A donation note is ≤ 80. The client renders it only as text and does not interpret HTML (XSS).
+- **RPL-M-26** MUST: order is by event `id` (monotonic). The client does not duplicate a line it has already shown itself (`addOwn` + the next poll).
+- **RPL-M-27** MUST: moderation:
+  - the driver mutes a viewer on their own ride (`POST /api/rides/:id/mutes`): that viewer's lines disappear from every feed, and they can no longer write (`403 muted`);
+  - the admin hides a message and blocks the wallet from chat globally (`POST /api/admin/chat/:eventId/hide`, `chat_banned` on the player → `403 chat_banned`);
+  - links in chat are forbidden (`400 chat_link_forbidden`), except the explorer link of a paid donation, which the server sets;
+  - the EN/RU forbidden-word list is a parameter, a match → `400 chat_word_forbidden` (decision 53).
+- **RPL-M-28** MUST: chat messages are deleted after **90 days** (TERMS 16.4, PRIVACY). A scheduler is required that deletes `live.RideEvent` kind=`message` (there is none now). Records of paid donations are kept as payment records.
+- **RPL-M-29** MUST (decision 54): a replay message is tied to a moment of the replay (`replayT`, a second of the ride) and is shown when that moment plays. The client sends the current replay second on submit, and the message is also visible in the shared feed.
 
-### 1.7 Связанные ссылки и счётчики
-- **RPL-M-30** MUST: `/r/:id` (OG-карточка), blink `POST /api/actions/ride/:id/watch`, `GET /api/solana-pay/donations/:id` подчиняются тем же правилам видимости. Скрытая поездка → `404`, без утечки статуса, сида и кошелька.
-- **RPL-M-31** MUST: `GET /api/watch/:id` не отдаёт причину окончания, платежи, сырые события ввода и `featureScores` (как сейчас, плюс RPL-M-07).
-- **RPL-M-32** MUST: счётчик «смотрят сейчас» не накручивается: не больше 3 viewer id на IP (`VIEWERS_PER_SOURCE`), окно 20 с (`VIEWER_WINDOW_MS`).
-- **RPL-M-33** MUST (решение 51): пледжи «за км» на devnet-запуске выключены: нет `#w-pledges` и формы, `POST /api/pledges` → `403 pledges_disabled`. Позже — отдельное решение (пледж только до старта, расчёт после проверки, `[LAWYER]`).
-- **RPL-M-34** MUST (решение 49): HONK-сжигание в чат на реплее — только косметика (строка в чате, интервал 10 с). HONK time/weather удалены (→ RPL-M-17).
+### 1.7 Related links and counters
+- **RPL-M-30** MUST: `/r/:id` (OG card), blink `POST /api/actions/ride/:id/watch`, and `GET /api/solana-pay/donations/:id` follow the same visibility rules. A hidden ride → `404`, with no leak of the status, the seed, or the wallet.
+- **RPL-M-31** MUST: `GET /api/watch/:id` does not return the end reason, payments, raw input events, or `featureScores` (as now, plus RPL-M-07).
+- **RPL-M-32** MUST: the "watching now" counter is not inflated: no more than 3 viewer id per IP (`VIEWERS_PER_SOURCE`), a 20 s window (`VIEWER_WINDOW_MS`).
+- **RPL-M-33** MUST (decision 51): "per km" pledges are off for the devnet launch: no `#w-pledges` and no form, `POST /api/pledges` → `403 pledges_disabled`. Later — a separate decision (a pledge only before the start, the calculation after the review, `[LAWYER]`).
+- **RPL-M-34** MUST (decision 49): an HONK burn into chat on a replay is cosmetics only (a line in chat, a 10 s interval). HONK time/weather are removed (→ RPL-M-17).
 
-## Часть 2. План тестирования
+## Part 2. Test plan
 
-Уровни: **U** — unit (vitest), **S** — HTTP-сценарий (`server/test/scenarios/live.scenarios.ts` и новые, `FakeChain`), **C** — контрактный реестр ([`backend_contract.md`](backend_contract.md)), **E1** — e2e блок 1 из PR #5 (happy-dom + реальный сервер на compose), **E1M** — блок 1 с **mock Solana RPC** (§2.4), **E2** — блок 2 (локальный валидатор), **M** — ручной тест с настоящим кошельком.
+Levels: **U** — unit (vitest), **S** — an HTTP scenario (`server/test/scenarios/live.scenarios.ts` and new ones, `FakeChain`), **C** — the contract registry ([`backend_contract.md`](backend_contract.md)), **E1** — e2e block 1 from PR #5 (happy-dom + a real server on compose), **E1M** — block 1 with a **mock Solana RPC** (§2.4), **E2** — block 2 (a local validator), **M** — a manual test with a real wallet.
 
-### 2.1 Видимость и лобби
-| id | Правило | Уровень | Сценарий | Ожидание |
+### 2.1 Visibility and the lobby
+| id | Rule | Level | Scenario | Expected |
 |---|---|---|---|---|
-| RPL-T-01 | M-01 | S, E1 | завершённая verified 1h-поездка | `GET /api/watch/:id` 200, есть в `GET /api/replays` |
-| RPL-T-02 | M-01 | S | поездка `rejected` | публично `404` и не в списке; админ видит |
-| RPL-T-03 | M-01 | S | поездка в `review`, затем ручное «verified» | до решения `404`, после — 200 |
-| RPL-T-04 | M-02 | S, E1 | тренировочная `free-1c` завершена | нет в EVERYONE и MINE; `watch`, `watch/:id/road`, `/r/:id`, blink → `404` |
-| RPL-T-05 | M-02 | S | `tutorial=true` / `assist=true` | как RPL-T-04 |
-| RPL-T-06 | M-02 | E1 | офлайн-гость `free-g` | поездки на сервере нет; на клиенте нет кнопки «replay» |
-| RPL-T-07 | M-03 | S, E1 | чужая `running` 1h-поездка | `watch` → `404`, `watch/:id/road` → `404` (и для гостя, и для другого игрока) |
-| RPL-T-08 | M-03 | S | владелец своей `running` | план дороги — только через маршрут поездки водителя; `watch` → `404` |
-| RPL-T-09 | M-04 | S, E1 | пуловая поездка, чужой до `payout_at` | `404` (в том числе для другого участника пула); после `payout_at` (фиктивные часы) — 200 |
-| RPL-T-10 | M-04 | S | `payout_at` изменён в конфиге пула | видимость следует on-chain `payout_at` ([`pool.md`](pool.md) POOL-M-02) |
-| RPL-T-11 | M-05 | S | водитель — свой пуловый реплей до `payout_at` | 200 с его сессией; без сессии — `404` |
-| RPL-T-12 | M-06 | S | бесплатная попытка devnet (не training) | после вердикта 200; если пуловая — по RPL-T-09 |
-| RPL-T-13 | M-07 | U, S | ответ `watch` | нет `inputs`, нет `SAMPLE_INPUT_COL` (или он обнулён), позы из пересчёта (`simHz = 30`); в UI нет подсветки ввода |
-| RPL-T-14 | M-08 | S | запись старше `TELEMETRY_RETENTION_DAYS` | в списке `replay:false` («no recording»), `watch` → `404` |
-| RPL-T-15 | M-09 | S | админ — тренировочная и `rejected` | `GET /api/admin/replays` показывает, с пометкой типа |
-| RPL-T-16 | M-10 | E1 | лобби NEW RIDE | бейдж `TRAINING · NOT IN REPLAYS` на карточке free и уровнях; подсказка под START |
-| RPL-T-17 | M-10 | E1 | итог тренировочной поездки | текст «Training ride – no replay is published.» |
-| RPL-T-18 | M-10 | E1 | вкладка REPLAYS: подвал, пустой MINE, пуловая до `payout_at` в MINE | тексты из таблицы RPL-M-10 на EN и RU |
-| RPL-T-19 | M-10 | U | `TIER_NAME.free` в `lobby.js`, `ui.js`, `watch-panel.js` | `TRAINING` везде |
-| RPL-T-20 | M-11 | E1 | вкладка LIVE | нет `▶ WATCH`, нет `#live-random`, есть счётчик |
-| RPL-T-21 | M-12 | E1 | фильтры EVERYONE/MINE × ALL/COMPLETED/ABANDONED/FAILED, LOAD MORE | правильные запросы (`wallet=`, `status=`, `before=`); training нет ни в одной комбинации; двойной LOAD MORE — один запрос |
-| RPL-T-22 | M-12 | S | пагинация `before=<endedAt>_<seq>` при одинаковых `endedAt` | без пропусков и дублей |
-| RPL-T-23 | M-30 | S | `/r/:id`, blink, `solana-pay/donations/:id` для скрытой поездки | `404`, без OG-данных |
-| RPL-T-24 | M-31 | C | схема `WatchDto` | нет `reason`, платежей, ввода; `.strict` на ответ |
-| RPL-T-26 | M-10a | E1 | `navigator.language = 'ru-RU'`, затем `en-US`, затем `?lang=en` | RU-тексты; EN-тексты; параметр важнее языка браузера |
-| RPL-T-27 | M-10a | E1 | переключатель EN/RU в лобби и на панели реплея, перезагрузка | язык сохранён (`freightchain.lang`), перерисовка без перезагрузки |
-| RPL-T-28 | M-10a | U | словари `en` и `ru` | одинаковый набор ключей, нет пустых значений; в DOM лобби и панели нет строк вне словаря (сканирование `textContent` при RU) |
-| RPL-T-29 | M-10a | U, E1 | ошибка сервера `429 live_rate_limited` при RU | сообщение из RU-словаря по коду, дата в локали `ru` |
-| RPL-T-25 | M-32 | U, S | 10 viewer id с одного IP | счётчик ≤ 3 |
+| RPL-T-01 | M-01 | S, E1 | a finished verified 1h ride | `GET /api/watch/:id` 200, present in `GET /api/replays` |
+| RPL-T-02 | M-01 | S | a `rejected` ride | publicly `404` and not in the list; the admin sees it |
+| RPL-T-03 | M-01 | S | a ride in `review`, then a manual "verified" | `404` before the decision, 200 after |
+| RPL-T-04 | M-02 | S, E1 | a training `free-1c` is finished | absent from EVERYONE and from MINE; `watch`, `watch/:id/road`, `/r/:id`, blink → `404` |
+| RPL-T-05 | M-02 | S | `tutorial=true` / `assist=true` | same as RPL-T-04 |
+| RPL-T-06 | M-02 | E1 | offline guest `free-g` | there is no ride on the server; the client has no "replay" button |
+| RPL-T-07 | M-03 | S, E1 | someone else's `running` 1h ride | `watch` → `404`, `watch/:id/road` → `404` (both for a guest and for another player) |
+| RPL-T-08 | M-03 | S | the owner of their own `running` | the road plan — only through the driver's ride route; `watch` → `404` |
+| RPL-T-09 | M-04 | S, E1 | a pool ride, someone else before `payout_at` | `404` (including another pool participant); after `payout_at` (a fake clock) — 200 |
+| RPL-T-10 | M-04 | S | `payout_at` changed in the pool config | visibility follows the on-chain `payout_at` ([`pool.md`](pool.md) POOL-M-02) |
+| RPL-T-11 | M-05 | S | the driver — their own pool replay before `payout_at` | 200 with their session; without a session — `404` |
+| RPL-T-12 | M-06 | S | a free devnet attempt (not training) | 200 after the verdict; if it is a pool ride — per RPL-T-09 |
+| RPL-T-13 | M-07 | U, S | the `watch` response | no `inputs`, no `SAMPLE_INPUT_COL` (or it is zeroed), poses from the recompute (`simHz = 30`); no input highlighting in the UI |
+| RPL-T-14 | M-08 | S | a recording older than `TELEMETRY_RETENTION_DAYS` | in the list `replay:false` ("no recording"), `watch` → `404` |
+| RPL-T-15 | M-09 | S | admin — a training ride and a `rejected` one | `GET /api/admin/replays` shows them, with a type mark |
+| RPL-T-16 | M-10 | E1 | the NEW RIDE lobby | the `TRAINING · NOT IN REPLAYS` badge on the free card and on the levels; a hint under START |
+| RPL-T-17 | M-10 | E1 | the training-ride result | the text "Training ride – no replay is published." |
+| RPL-T-18 | M-10 | E1 | the REPLAYS tab: footer, empty MINE, a pool ride before `payout_at` in MINE | the texts from the RPL-M-10 table in EN and in RU |
+| RPL-T-19 | M-10 | U | `TIER_NAME.free` in `lobby.js`, `ui.js`, `watch-panel.js` | `TRAINING` everywhere |
+| RPL-T-20 | M-11 | E1 | the LIVE tab | no `▶ WATCH`, no `#live-random`, a counter is present |
+| RPL-T-21 | M-12 | E1 | filters EVERYONE/MINE × ALL/COMPLETED/ABANDONED/FAILED, LOAD MORE | the correct requests (`wallet=`, `status=`, `before=`); training is in no combination; a double LOAD MORE — one request |
+| RPL-T-22 | M-12 | S | pagination `before=<endedAt>_<seq>` when `endedAt` values are equal | no gaps and no duplicates |
+| RPL-T-23 | M-30 | S | `/r/:id`, blink, `solana-pay/donations/:id` for a hidden ride | `404`, with no OG data |
+| RPL-T-24 | M-31 | C | the `WatchDto` schema | no `reason`, no payments, no input; `.strict` on the response |
+| RPL-T-26 | M-10a | E1 | `navigator.language = 'ru-RU'`, then `en-US`, then `?lang=en` | RU texts; EN texts; the parameter overrides the browser language |
+| RPL-T-27 | M-10a | E1 | the EN/RU switch in the lobby and on the replay panel, a reload | the language is kept (`freightchain.lang`), a redraw without a reload |
+| RPL-T-28 | M-10a | U | the `en` and `ru` dictionaries | the same set of keys, no empty values; the lobby and panel DOM have no strings outside the dictionary (a `textContent` scan under RU) |
+| RPL-T-29 | M-10a | U, E1 | server error `429 live_rate_limited` under RU | the message from the RU dictionary by code, the date in the `ru` locale |
+| RPL-T-25 | M-32 | U, S | 10 viewer id from one IP | the counter ≤ 3 |
 
-### 2.2 Плеер реплея (каждый элемент)
-Среда: E1 (`watch-panel.js` и `watch.js` под happy-dom, `fetch` замокан на записанный ответ `GET /api/watch/:id`) + golden-реплей из фикстуры (короткий 3 мин и полный 1h) + M для ощущений и полного экрана.
-| id | Элемент | Позитив | Край | Негатив |
+### 2.2 Replay player (every element)
+Environment: E1 (`watch-panel.js` and `watch.js` under happy-dom, `fetch` mocked to a recorded `GET /api/watch/:id` response) + a golden replay from a fixture (a short 3 min one and a full 1h) + M for feel and for full screen.
+| id | Element | Positive | Edge | Negative |
 |---|---|---|---|---|
-| RPL-T-30 | C1 Play/Pause | ▶ → `playing=true`, ❚❚ → false, иконка меняется | 20 быстрых нажатий подряд — состояние = чётность нажатий; на последнем кадре ▶ — с начала (решение 47) | пустой реплей: кнопка недоступна |
-| RPL-T-31 | C2 скорости 1/4/16 | `watch.speed` = x, `sel` у нажатой, воспроизведение включается | смена скорости во время незагруженного seek (`seeking`) — цель сохраняется, скорость применяется после загрузки; 16× до конца — окно конца появляется | — |
-| RPL-T-32 | C3 0,5× / 2× | как RPL-T-31 | 0,5× на последних 2 с | — |
-| RPL-T-33 | C4 ползунок | `seek(120)` → `wt = 120`, «loading…» до загрузки батча, затем кадр | seek за конец → `replayEnd()`; seek < 0 → 0; seek в незагруженную середину 1h → запрос `from=<seq>` и удержание цели; быстрые 10 seek — только последняя цель | реплей без записи: ползунок `max = 1`, текст «no recording kept» |
-| RPL-T-34 | C5 метки ям | клик по `ignored` → `seek(t − 6)` и play; штамп NO IMPACT на месте | метка в первые 6 с → seek(0) | нет ям — меток нет, строка «no planned hole reached yet» |
-| RPL-T-35 | C6 метки событий | аварии, красный, мини-игры, финиш из `RideResult` | два события в одну секунду — две метки, клик — первое | поездка без событий — только старт/финиш |
-| RPL-T-36 | C7 пред./след. событие | `]` → следующее, `[` → предыдущее | на последнем событии `]` — ничего | — |
-| RPL-T-37 | C8 шаги ±5/±30 | `→` +5 с, `Shift+→` +30 с | у начала/конца — ограничение | фокус в поле чата — клавиши не перематывают |
-| RPL-T-38 | C9 LIVE убран | — | — | `#w-live` нет в DOM ни для какого реплея |
-| RPL-T-39 | C10 звук | первое нажатие запускает `audio`, второе — mute; `M` то же | `M` в поле чата не срабатывает | — |
-| RPL-T-40 | C11 карта | `N` и кнопка `map` открывают и закрывают карту | `N` с автоповтором (`e.repeat`) — один раз | `N` в поле чата — нет |
-| RPL-T-41 | C12 F8 | переключает затенение, тост | — | не пишется в телеметрию (реплей ничего не пишет) |
-| RPL-T-42 | C13 fold | класс `folded`, иконка ⇤/⇥ | — | — |
-| RPL-T-43 | C14 выход | `#watch-yard` → `/lobby.html`, `#watch-done` → `/` | при `SITE_BASE` ≠ origin | — |
-| RPL-T-44 | C15 камера | `C` переключает кабину/вид снаружи в реплее | во время seek | — |
-| RPL-T-45 | C16 полный экран | `F` → `requestFullscreen`, Esc выходит | — | happy-dom: проверяем вызов; реальный — M |
-| RPL-T-46 | C17 HUD | `H` скрывает панель и рацию | ползунок при наведении | — |
-| RPL-T-47 | C18 ссылка с `&t=` | открыть `?watch=<id>&t=600` → старт с 600 с, без прыжка в 0 | `t` > длины → конец; `t=abc` → 0 | ссылка на скрытую поездку → «NOTHING TO WATCH» (`404`) |
-| RPL-T-48 | C19 пробел | Play/Pause | в поле чата — пробел печатается | — |
-| RPL-T-49 | C20 бейджи | `REPLAY · COMPLETED` и т. п., время `t / длина`, км `s / finishS`, hull | смена статуса после rejudge — перерисовка при следующем опросе | — |
-| RPL-T-50 | C21 ROAD CHECK | счётчики hit/avoided/ignored совпадают с `road` батчей | — | — |
-| RPL-T-51 | C22 лента | строки чата и донатов, explorer-ссылка у оплаченных, `(mock)` у mock | 250 строк → в DOM 200; новая строка прокручивает вниз, только если пользователь был внизу | текст `<img src=x onerror=…>` выводится буквально |
-| RPL-T-52 | C23–C24 вход и чат | CONNECT → `signIn` (мок-кошелёк tweetnacl) → поле чата; Enter = SEND | пустая строка — запроса нет; 141 символ — `maxlength` режет, сервер проверяет сам | `401` → `refreshMe()` и кнопка CONNECT |
-| RPL-T-53 | C25 HONK в чат | строка HONK, кнопка неактивна 10 с | двойной клик — один запрос | нет баланса HONK → текст сервера `409 honk_balance` |
-| RPL-T-54 | C26–C27 убраны | — | — | нет `#w-honk-day/night/snow/clear` и кнопок эффектов; API `honk/time`, `honk/weather`, `donations` с `effect≠tip` → `404`/`400` |
-| RPL-T-55 | C28–C31 донат tip | §2.3 | — | — |
-| RPL-T-56 | C32 пледжи | — | — | devnet-запуск: нет `#w-pledges`, `POST /api/pledges` → `403 pledges_disabled` (RPL-M-33) |
-| RPL-T-57 | C33 окно конца | на последнем кадре показывается окно с исходом, временем, км, hull; «BACK TO THE LOBBY» | seek назад скрывает окно, повторный конец снова показывает (`replay-end.test.mjs` уже есть) | реплей failed — «RIDE FAILED» |
-| RPL-T-58 | C34 ошибка | `404` → «NOTHING TO WATCH», ссылка на `#replays` | сеть упала после загрузки — `watch.error`, кадр стоит | — |
-| RPL-T-59 | C36 реакции | реакция видна в ленте, денег нет | лимит 1 / 3 с | на тренировочной — `404` |
-| RPL-T-60 | короткий и пустой реплей | реплей 5 с: play → конец → окно | поездка `failed` на 2-й секунде | запись удалена → «no recording kept for this ride» |
+| RPL-T-30 | C1 Play/Pause | ▶ → `playing=true`, ❚❚ → false, the icon changes | 20 rapid presses in a row — the state equals the parity of the presses; on the last frame ▶ — from the beginning (decision 47) | an empty replay: the button is unavailable |
+| RPL-T-31 | C2 speeds 1/4/16 | `watch.speed` = x, `sel` on the one pressed, playback starts | a speed change during an unloaded seek (`seeking`) — the target is kept, the speed applies after the load; 16× to the end — the end window appears | — |
+| RPL-T-32 | C3 0.5× / 2× | same as RPL-T-31 | 0.5× on the last 2 s | — |
+| RPL-T-33 | C4 slider | `seek(120)` → `wt = 120`, "loading…" until the batch loads, then the frame | seek past the end → `replayEnd()`; seek < 0 → 0; seek into an unloaded middle of the 1h → a `from=<seq>` request and the target is held; 10 rapid seeks — only the last target | a replay with no recording: the slider `max = 1`, the text "no recording kept" |
+| RPL-T-34 | C5 hole marks | a click on `ignored` → `seek(t − 6)` and play; the NO IMPACT stamp in place | a mark in the first 6 s → seek(0) | no holes — no marks, the line "no planned hole reached yet" |
+| RPL-T-35 | C6 event marks | crashes, red, minigames, the finish from `RideResult` | two events in one second — two marks, a click — the first | a ride with no events — start/finish only |
+| RPL-T-36 | C7 prev./next event | `]` → the next, `[` → the previous | on the last event `]` — nothing | — |
+| RPL-T-37 | C8 steps ±5/±30 | `→` +5 s, `Shift+→` +30 s | at the start/end — clamped | focus in the chat field — the keys do not seek |
+| RPL-T-38 | C9 LIVE removed | — | — | `#w-live` is not in the DOM for any replay |
+| RPL-T-39 | C10 sound | the first press starts `audio`, the second — mute; `M` does the same | `M` does not fire in the chat field | — |
+| RPL-T-40 | C11 map | `N` and the `map` button open and close the map | `N` with autorepeat (`e.repeat`) — once | `N` in the chat field — no |
+| RPL-T-41 | C12 F8 | toggles the form shade, a toast | — | it is not written to telemetry (a replay writes nothing) |
+| RPL-T-42 | C13 fold | the `folded` class, icon ⇤/⇥ | — | — |
+| RPL-T-43 | C14 exit | `#watch-yard` → `/lobby.html`, `#watch-done` → `/` | when `SITE_BASE` ≠ origin | — |
+| RPL-T-44 | C15 camera | `C` toggles cab / outside view in the replay | during a seek | — |
+| RPL-T-45 | C16 full screen | `F` → `requestFullscreen`, Esc exits | — | happy-dom: check the call; the real one — M |
+| RPL-T-46 | C17 HUD | `H` hides the panel and the radio | the slider on hover | — |
+| RPL-T-47 | C18 link with `&t=` | open `?watch=<id>&t=600` → start at 600 s, with no jump to 0 | `t` > the length → the end; `t=abc` → 0 | a link to a hidden ride → "NOTHING TO WATCH" (`404`) |
+| RPL-T-48 | C19 space | Play/Pause | in the chat field — a space is typed | — |
+| RPL-T-49 | C20 badges | `REPLAY · COMPLETED` and the like, time `t / length`, km `s / finishS`, hull | a status change after rejudge — a redraw on the next poll | — |
+| RPL-T-50 | C21 ROAD CHECK | the hit/avoided/ignored counters match the batches' `road` | — | — |
+| RPL-T-51 | C22 feed | chat and donation lines, an explorer link on paid ones, `(mock)` on mock | 250 lines → 200 in the DOM; a new line scrolls down only if the user was at the bottom | the text `<img src=x onerror=…>` is shown literally |
+| RPL-T-52 | C23–C24 sign-in and chat | CONNECT → `signIn` (a tweetnacl mock wallet) → the chat field; Enter = SEND | an empty line — no request; 141 characters — `maxlength` cuts it, the server checks on its own | `401` → `refreshMe()` and the CONNECT button |
+| RPL-T-53 | C25 HONK into chat | an HONK line, the button inactive for 10 s | a double click — one request | no HONK balance → the server text `409 honk_balance` |
+| RPL-T-54 | C26–C27 removed | — | — | no `#w-honk-day/night/snow/clear` and no effect buttons; API `honk/time`, `honk/weather`, `donations` with `effect≠tip` → `404`/`400` |
+| RPL-T-55 | C28–C31 tip donation | §2.3 | — | — |
+| RPL-T-56 | C32 pledges | — | — | devnet launch: no `#w-pledges`, `POST /api/pledges` → `403 pledges_disabled` (RPL-M-33) |
+| RPL-T-57 | C33 end window | on the last frame a window shows the outcome, the time, km, hull; "BACK TO THE LOBBY" | a seek backward hides the window, reaching the end again shows it (`replay-end.test.mjs` already exists) | a failed replay — "RIDE FAILED" |
+| RPL-T-58 | C34 error | `404` → "NOTHING TO WATCH", a link to `#replays` | the network dropped after the load — `watch.error`, the frame stays | — |
+| RPL-T-59 | C36 reactions | the reaction is visible in the feed, no money | a limit of 1 / 3 s | on a training ride — `404` |
+| RPL-T-60 | a short replay and an empty one | a 5 s replay: play → the end → the window | a ride `failed` on the 2nd second | the recording was deleted → "no recording kept for this ride" |
 
-### 2.3 Донаты и чат с mock-блокчейном
-Среда: **E1M** (§2.4), сервер с `SOLANA_RPC=http://mock-rpc:8899`, `LIVE_DONATIONS=on`, `LIVE_FREE_DONATIONS=off`, `LIVE_CHAT=all`. Плюс S-копии на `FakeChain`. Кошельки: `viewerA`, `viewerB`, `driverD`, `refR` (реферал D), `attackerX` — фиксированные сиды.
-| id | Правило | Сценарий | Ожидание |
+### 2.3 Donations and chat with a mock blockchain
+Environment: **E1M** (§2.4), a server with `SOLANA_RPC=http://mock-rpc:8899`, `LIVE_DONATIONS=on`, `LIVE_FREE_DONATIONS=off`, `LIVE_CHAT=all`. Plus S copies on `FakeChain`. Wallets: `viewerA`, `viewerB`, `driverD`, `refR` (D's referrer), `attackerX` — fixed seeds.
+| id | Rule | Scenario | Expected |
 |---|---|---|---|
-| RPL-T-70 | M-14, M-16 | A донатит `tip` на реплей D: order → подпись мок-кошельком → `sendTransaction` в mock RPC → `confirm` | `{status:'paid'}`; баланс D в mock-реестре **+ ровно `order.lamports`**; A − (lamports + 5 000 комиссии); у `refR` +0; в ленте строка с `paid ↗` |
-| RPL-T-71 | M-18 | после RPL-T-70 | `GET /api/me/donations` у D — строка (A, сумма, заметка, rideId, подпись); `PlayerStats.donationLamports` +сумма; уведомление в лобби |
-| RPL-T-72 | M-19 | тот же `confirm` ещё раз | тот же ответ `paid`, второй строки в ленте нет, статистика не удвоилась |
-| RPL-T-73 | M-19 | та же подпись для **другого** заказа | `409 signature_reused` |
-| RPL-T-74 | M-19 | mock в режиме `pending:3` | первые 3 `confirm` → `pending`, 4-й → `paid` |
-| RPL-T-75 | M-19 | mock `fail` (`meta.err`) | `400 bad_donation_payment`, заказ `pending`, денег у D нет |
-| RPL-T-76 | M-19 | mock `drop` (транзакция не дошла), blockhash истёк | `pending`, затем по TTL `expired` (решение 52); новый заказ работает |
-| RPL-T-77 | M-19 | `inject`: перевод на `attackerX` с memo заказа | `400`; D не получил; заказ не закрыт |
-| RPL-T-78 | M-19 | сумма на 1 lamport меньше; без memo; чужой reference | `400` в каждом случае |
-| RPL-T-79 | M-19 | `reconcile` (телефон): перевод найден по reference | `paid`; гонка `confirm` с десктопа и `reconcile` с телефона — одна строка в ленте |
-| RPL-T-80 | M-20 | заказ на 0,0009 SOL; на 1,0001 SOL; кнопки 0,01 / 0,05 / 0,1 | `400 donation_too_small`; `400 donation_too_large`; три варианта, каждый проходит RPL-T-70 |
-| RPL-T-81 | M-21 | 5 заказов за 3 с; 4-й незакрытый заказ | `429 live_rate_limited` с `Retry-After` |
-| RPL-T-82 | M-15 | донат на тренировочную, на `running`, на пуловую до `payout_at` | `404` |
-| RPL-T-83 | M-15 | донат на свою поездку | `403 own_ride` |
-| RPL-T-84 | M-17 | донат, реакция, сообщение, HONK на реплей D | `RideResult`, `RideVerdict`, рейтинг пула (`GET /api/pools/:id/results`) побайтно не изменились |
-| RPL-T-85 | M-17 | старые маршруты эффектов | `effects/:eventId/applied` → `404`; `effect: 'potholes'` → `400` |
-| RPL-T-86 | M-16 | у D есть реферал `refR` | транзакция заказа содержит **один** перевод (без `also`); `refR` +0 в реестре mock; `sumShare` не растёт |
-| RPL-T-100 | M-16 | админ ставит `referral_donation_share_bps = 1000` | `400` (настройки нет или зафиксирована в 0); значение по умолчанию 0 |
-| RPL-T-87 | M-22 | `LIVE_FREE_DONATIONS=on` (mock-режим) | `POST donations` `tip` → строка `(mock)`, денег нет; `donation-orders` → `409 payment_not_needed` |
-| RPL-T-88 | M-22 | `LIVE_DONATIONS=off` | кнопок нет; API → `403 live_feature_off` |
-| RPL-T-89 | M-23 | лента после оплаты | отправитель, сумма, заметка, ссылка explorer на подпись |
-| RPL-T-90 | M-24 | чат без входа | `401`; чтение реплея без входа — 200 |
-| RPL-T-91 | M-25 | `\u202Eabc`, `\u0000`, 141 символ после очистки, только пробелы, `<script>` | bidi/управляющие → пробел; >140 → `400 bad_message`; пустое → `400`; `<script>` хранится и выводится как текст |
-| RPL-T-92 | M-21 | 2 сообщения за 1 с; на границе 3-с окна | второе `429`; через границу — два прошли (известная особенность «across a bucket edge») |
-| RPL-T-93 | M-26 | A и B пишут вперемешку 50 строк | порядок по `id` у обоих зрителей одинаковый; нет дублей своих строк |
-| RPL-T-94 | M-27 | D отключает A на своём реплее | строки A пропали у B; новая строка A → `403 muted`; включение обратно |
-| RPL-T-95 | M-27 | админ скрывает строку; `chat_banned` | строка пропала везде; бан → `403 chat_banned` |
-| RPL-T-101 | M-27 | сообщение с `https://…`, с `t.me/…`, со словом из списка (EN и RU) | `400 chat_link_forbidden` / `400 chat_word_forbidden`; explorer-ссылка доната остаётся |
-| RPL-T-102 | M-33, M-34 | HONK в чат на реплее; `honk/time` | строка в чате, `RideResult` не изменился; `honk/time` → `404` |
-| RPL-T-96 | M-28 | фиктивные часы +91 день, планировщик | сообщения удалены, оплаченные донаты остались |
-| RPL-T-97 | M-29 | сообщение с `replayT = 300` | показывается при проходе 300 с; при seek за 300 — в ленте |
-| RPL-T-98 | M-15 | чат на `running` / тренировочной | `404` |
-| RPL-T-99 | M-14 | E2: тот же донат через `solana-test-validator` (блок 2) | реальный перевод, баланс D +сумма (smoke, 1 тест) |
+| RPL-T-70 | M-14, M-16 | A donates a `tip` on D's replay: order → sign with the mock wallet → `sendTransaction` to the mock RPC → `confirm` | `{status:'paid'}`; D's balance in the mock ledger **+ exactly `order.lamports`**; A − (lamports + a 5 000 fee); `refR` +0; a feed line with `paid ↗` |
+| RPL-T-71 | M-18 | after RPL-T-70 | `GET /api/me/donations` for D — a row (A, amount, note, rideId, signature); `PlayerStats.donationLamports` + the amount; a notification in the lobby |
+| RPL-T-72 | M-19 | the same `confirm` again | the same `paid` response, no second line in the feed, the stats did not double |
+| RPL-T-73 | M-19 | the same signature for a **different** order | `409 signature_reused` |
+| RPL-T-74 | M-19 | the mock in mode `pending:3` | the first 3 `confirm` → `pending`, the 4th → `paid` |
+| RPL-T-75 | M-19 | mock `fail` (`meta.err`) | `400 bad_donation_payment`, the order `pending`, D has no money |
+| RPL-T-76 | M-19 | mock `drop` (the transaction did not arrive), the blockhash expired | `pending`, then `expired` by TTL (decision 52); a new order works |
+| RPL-T-77 | M-19 | `inject`: a transfer to `attackerX` with the order's memo | `400`; D did not receive it; the order is not closed |
+| RPL-T-78 | M-19 | the amount is 1 lamport short; no memo; someone else's reference | `400` in each case |
+| RPL-T-79 | M-19 | `reconcile` (phone): the transfer is found by reference | `paid`; a race of `confirm` from the desktop and `reconcile` from the phone — one line in the feed |
+| RPL-T-80 | M-20 | an order for 0.0009 SOL; for 1.0001 SOL; buttons 0.01 / 0.05 / 0.1 | `400 donation_too_small`; `400 donation_too_large`; three options, each passes RPL-T-70 |
+| RPL-T-81 | M-21 | 5 orders in 3 s; a 4th unclosed order | `429 live_rate_limited` with `Retry-After` |
+| RPL-T-82 | M-15 | a donation on a training ride, on `running`, on a pool ride before `payout_at` | `404` |
+| RPL-T-83 | M-15 | a donation on one's own ride | `403 own_ride` |
+| RPL-T-84 | M-17 | a donation, a reaction, a message, HONK on D's replay | `RideResult`, `RideVerdict`, the pool ranking (`GET /api/pools/:id/results`) are unchanged byte for byte |
+| RPL-T-85 | M-17 | the old effect routes | `effects/:eventId/applied` → `404`; `effect: 'potholes'` → `400` |
+| RPL-T-86 | M-16 | D has a referrer `refR` | the order transaction contains **one** transfer (no `also`); `refR` +0 in the mock ledger; `sumShare` does not grow |
+| RPL-T-100 | M-16 | the admin sets `referral_donation_share_bps = 1000` | `400` (the setting is absent or fixed at 0); the default is 0 |
+| RPL-T-87 | M-22 | `LIVE_FREE_DONATIONS=on` (mock mode) | `POST donations` `tip` → a `(mock)` line, no money; `donation-orders` → `409 payment_not_needed` |
+| RPL-T-88 | M-22 | `LIVE_DONATIONS=off` | no buttons; the API → `403 live_feature_off` |
+| RPL-T-89 | M-23 | the feed after payment | the sender, the amount, the note, an explorer link to the signature |
+| RPL-T-90 | M-24 | chat without signing in | `401`; reading the replay without signing in — 200 |
+| RPL-T-91 | M-25 | `\u202Eabc`, `\u0000`, 141 characters after cleaning, spaces only, `<script>` | bidi/control → a space; >140 → `400 bad_message`; empty → `400`; `<script>` is stored and shown as text |
+| RPL-T-92 | M-21 | 2 messages in 1 s; at the edge of the 3 s window | the second is `429`; past the edge — both went through (a known behavior "across a bucket edge") |
+| RPL-T-93 | M-26 | A and B write 50 lines interleaved | the order by `id` is the same for both viewers; no duplicates of their own lines |
+| RPL-T-94 | M-27 | D mutes A on their own replay | A's lines are gone for B; a new line from A → `403 muted`; turning it back on |
+| RPL-T-95 | M-27 | the admin hides a line; `chat_banned` | the line is gone everywhere; a ban → `403 chat_banned` |
+| RPL-T-101 | M-27 | a message with `https://…`, with `t.me/…`, with a word from the list (EN and RU) | `400 chat_link_forbidden` / `400 chat_word_forbidden`; the donation's explorer link remains |
+| RPL-T-102 | M-33, M-34 | HONK into chat on a replay; `honk/time` | a line in chat, `RideResult` did not change; `honk/time` → `404` |
+| RPL-T-96 | M-28 | a fake clock +91 days, the scheduler | messages are deleted, paid donations remain |
+| RPL-T-97 | M-29 | a message with `replayT = 300` | shown when playback passes 300 s; on a seek past 300 — in the feed |
+| RPL-T-98 | M-15 | chat on `running` / a training ride | `404` |
+| RPL-T-99 | M-14 | E2: the same donation through `solana-test-validator` (block 2) | a real transfer, D's balance + the amount (smoke, 1 test) |
 
-### 2.4 Mock-блокчейн (дизайн)
-Без браузера, в Docker, по подходу PR #5 (код + compose, кошелёк — ключ tweetnacl).
-1. **Сервис `mock-rpc`** в `docker-compose.e2e.yml`, профиль `mockchain`: `node:22-alpine`, `e2e/mockchain/rpc.mjs`, порт `127.0.0.1:18899`. Отвечает на JSON-RPC, которым пользуется сервер (`server/src/infrastructure/solana/solana-chain.adapter.ts`):
-   - `getLatestBlockhash` — детерминированный blockhash `bs58(sha256(seed ‖ slot))`, `lastValidBlockHeight = slot + 150`;
-   - `getParsedTransaction` — системный перевод (jsonParsed), memo, `accountKeys` с reference, `meta.err`, `meta.fee = 5000`;
-   - `getSignaturesForAddress` — по reference и по кошельку, новые первыми;
-   - `sendTransaction` (base64) — разбирает сообщение, проверяет подпись ed25519 и blockhash, переносит lamports в реестре, `slot++`;
-   - `getSignatureStatuses`, `getBalance`, `getAccountInfo` (минимально), `requestAirdrop` (начальные балансы), `getHealth`.
-2. **Подписи детерминированы.** Ed25519 детерминирован по ключу и сообщению, а ключи и blockhash фиксированы, поэтому подпись одна и та же при каждом прогоне. Golden-файлы содержат подписи.
-3. **Управление (только тест):**
+### 2.4 Mock blockchain (design)
+No browser, in Docker, following the PR #5 approach (code + compose, the wallet is a tweetnacl key).
+1. **The `mock-rpc` service** in `docker-compose.e2e.yml`, profile `mockchain`: `node:22-alpine`, `e2e/mockchain/rpc.mjs`, port `127.0.0.1:18899`. It answers the JSON-RPC the server uses (`server/src/infrastructure/solana/solana-chain.adapter.ts`):
+   - `getLatestBlockhash` — a deterministic blockhash `bs58(sha256(seed ‖ slot))`, `lastValidBlockHeight = slot + 150`;
+   - `getParsedTransaction` — a system transfer (jsonParsed), a memo, `accountKeys` with a reference, `meta.err`, `meta.fee = 5000`;
+   - `getSignaturesForAddress` — by reference and by wallet, newest first;
+   - `sendTransaction` (base64) — parses the message, checks the ed25519 signature and the blockhash, moves lamports in the ledger, `slot++`;
+   - `getSignatureStatuses`, `getBalance`, `getAccountInfo` (minimally), `requestAirdrop` (starting balances), `getHealth`.
+2. **Signatures are deterministic.** Ed25519 is deterministic in the key and the message, and the keys and the blockhash are fixed, so the signature is the same on every run. Golden files contain the signatures.
+3. **Control (test only):**
    - `POST /__mock/reset`;
    - `POST /__mock/fund {wallet, lamports}`;
    - `POST /__mock/mode {next: 'confirm' | 'pending:N' | 'fail' | 'drop' | 'expire'}`;
-   - `POST /__mock/inject {payer, to, lamports, memo, reference}` — неправильные переводы;
-   - `GET /__mock/ledger` — балансы и список транзакций.
+   - `POST /__mock/inject {payer, to, lamports, memo, reference}` — incorrect transfers;
+   - `GET /__mock/ledger` — balances and the list of transactions.
    
-   Порт управления не публикуется наружу compose-сети.
-4. **Кошелёк в тестах** `e2e/harness/wallet.mjs`: `Keypair` из фиксированного сида (`tweetnacl`, `bs58` — уже в `e2e/package.json`; для разбора транзакции добавить `@solana/web3.js`). Делает:
-   - вход: nonce + verify, как `B1-LAND-11`;
-   - `signTransaction(base64)` — подписывает сообщение заказа;
-   - `signAndSend` — подпись + `sendTransaction` в mock;
-   - стандартный кошелёк для happy-dom `window.phantom` — как `FAKE` в `server/scripts/e2e-tickets-stub.mjs`, только подписывает по-настоящему.
-5. **Сервер** — реальный `SolanaChainAdapter` с `SOLANA_RPC=http://mock-rpc:8899`, `SOLANA_RPC_FALLBACKS=''`, без изменений кода. Так проверяется и разбор ответов RPC. Для S-уровня остаётся `FakeChain` (`server/test/support/fake-chain.ts`).
-6. **Чего mock не проверяет** (→ M и E2): настоящие Phantom/Solflare, QR Solana Pay на телефоне, explorer devnet, реальные комиссии и задержки.
+   The control port is not published outside the compose network.
+4. **The wallet in tests** `e2e/harness/wallet.mjs`: a `Keypair` from a fixed seed (`tweetnacl`, `bs58` — already in `e2e/package.json`; add `@solana/web3.js` to parse a transaction). It does:
+   - sign-in: nonce + verify, as in `B1-LAND-11`;
+   - `signTransaction(base64)` — signs the order message;
+   - `signAndSend` — the signature + `sendTransaction` to the mock;
+   - a standard wallet for happy-dom `window.phantom` — like `FAKE` in `server/scripts/e2e-tickets-stub.mjs`, except it signs for real.
+5. **The server** — the real `SolanaChainAdapter` with `SOLANA_RPC=http://mock-rpc:8899`, `SOLANA_RPC_FALLBACKS=''`, with no code changes. This also checks parsing of the RPC responses. The S level keeps `FakeChain` (`server/test/support/fake-chain.ts`).
+6. **What the mock does not check** (→ M and E2): real Phantom/Solflare, QR Solana Pay on a phone, the devnet explorer, real fees and delays.
 
-### 2.5 Ручные тесты (нужен настоящий кошелёк), продолжение [`docs/testing/MANUAL_TESTS.md`](../testing/MANUAL_TESTS.md) (PR #5)
-| id | Что | Шаги | Ожидание |
+### 2.5 Manual tests (a real wallet is required), a continuation of [`docs/testing/MANUAL_TESTS.md`](../testing/MANUAL_TESTS.md) (PR #5)
+| id | What | Steps | Expected |
 |---|---|---|---|
-| M-RPL-01 | Донат из Phantom (devnet) на реплей | открыть публичный реплей, CONNECT, `tip`, подтвердить в Phantom | строка `paid ↗`, explorer показывает перевод водителю на всю сумму |
-| M-RPL-02 | Донат с телефона по QR | без расширения, сканировать `#w-qr` телефонным кошельком | `reconcile` находит перевод ≤ 90 с |
-| M-RPL-03 | Водитель видит донат | войти водителем, профиль → Donations received | строка и баланс кошелька |
-| M-RPL-04 | Полный экран и камера | `F`, `C`, Esc | работает в Chrome и Firefox |
-| M-RPL-05 | Ощущение перемотки на 1h-реплее | seek по всей длине, 16×, метки событий | без зависаний > 2 с |
-| M-RPL-06 | Тексты лобби и плеера RU/EN (решение 58) | NEW RIDE, REPLAYS, итог тренировки | тексты из RPL-M-10 |
+| M-RPL-01 | A donation from Phantom (devnet) on a replay | open a public replay, CONNECT, `tip`, confirm in Phantom | a `paid ↗` line, the explorer shows a transfer to the driver for the whole amount |
+| M-RPL-02 | A donation from a phone by QR | no extension, scan `#w-qr` with a phone wallet | `reconcile` finds the transfer in ≤ 90 s |
+| M-RPL-03 | The driver sees the donation | sign in as the driver, profile → Donations received | the row and the wallet balance |
+| M-RPL-04 | Full screen and the camera | `F`, `C`, Esc | works in Chrome and Firefox |
+| M-RPL-05 | How seeking feels on a 1h replay | seek along the whole length, 16×, event marks | no stalls > 2 s |
+| M-RPL-06 | Lobby and player texts RU/EN (decision 58) | NEW RIDE, REPLAYS, the training result | the texts from RPL-M-10 |
 
-### 2.6 Соответствие PR #5 и сценариям бэкенда
-- **Блок 1 (PR #5):** `B1-LOBBY-03` (LIVE) и `B1-LOBBY-04/09` (REPLAYS, MINE) **меняются** под RPL-T-20/21. `B1-LOBBY-21` (кнопки watch и share в квитанции) — проверить, что `watch` не ведёт на текущую поездку. `B1-LAND-26` (загрузка live и replays на лендинге) — `dash-live.js` без ссылок на текущие поездки. Новые файлы:
+### 2.6 Mapping to PR #5 and the backend scenarios
+- **Block 1 (PR #5):** `B1-LOBBY-03` (LIVE) and `B1-LOBBY-04/09` (REPLAYS, MINE) **change** to fit RPL-T-20/21. `B1-LOBBY-21` (the watch and share buttons on the receipt) — check that `watch` does not lead to the current ride. `B1-LAND-26` (loading live and replays on the landing) — `dash-live.js` with no links to current rides. New files:
   - `e2e/block1-offchain/watch/player.test.mjs` (RPL-T-30…60);
   - `e2e/block1-offchain/watch/visibility.test.mjs` (RPL-T-01…25);
   - `e2e/block1-offchain/lobby/training-label.test.mjs`;
-  - `e2e/block1-offchain/streams/*.test.mjs` (RPL-T-70…98, профиль `mockchain`).
-- **Блок 2:** `e2e/block2-chain/streams/donation.test.mjs` (RPL-T-99).
-- **Сценарии сервера:** `server/test/scenarios/live.scenarios.ts` (перестроить под реплей), `pledges.scenarios.ts`, `promos-abuse`; маршруты 106–117, 120, 130, 144–145 из реестра [`backend_contract.md`](backend_contract.md) получают кейсы матрицы B (чужой → `404`, решение 9).
-- **Существующие Chrome-скрипты** (не вызываются happy-dom блоками и не удаляются): `server/scripts/e2e-watch.mjs`, `e2e-replay.mjs`, `e2e-live-board.mjs`, `e2e-live-flags.mjs`, `client/tools/e2e-viewer.mjs`, навыки `.claude/skills/replay-test`, `live-board-test`. Они фиксируют собранный живой просмотр ([`PRODUCT.md`](PRODUCT.md)). Решение 68 отменило E2E-M-06. Под RPL-M-03/11 их меняют только вместе с кодом, когда владелец отдельно примет отказ от live watch.
-- **Скрипты npm (план):**
-  - корень: `test:e2e:replays` = `bash e2e/scripts/run.sh replays`; `test:e2e:streams` = `bash e2e/scripts/run.sh streams` (поднимает `--profile mockchain`);
+  - `e2e/block1-offchain/streams/*.test.mjs` (RPL-T-70…98, profile `mockchain`).
+- **Block 2:** `e2e/block2-chain/streams/donation.test.mjs` (RPL-T-99).
+- **Server scenarios:** `server/test/scenarios/live.scenarios.ts` (rebuild for the replay), `pledges.scenarios.ts`, `promos-abuse`; routes 106–117, 120, 130, 144–145 from the [`backend_contract.md`](backend_contract.md) registry get matrix B cases (someone else → `404`, decision 9).
+- **Existing Chrome scripts** (not called by the happy-dom blocks and not deleted): `server/scripts/e2e-watch.mjs`, `e2e-replay.mjs`, `e2e-live-board.mjs`, `e2e-live-flags.mjs`, `client/tools/e2e-viewer.mjs`, skills `.claude/skills/replay-test`, `live-board-test`. They pin the built live view ([`PRODUCT.md`](PRODUCT.md)). Decision 68 cancelled E2E-M-06. Under RPL-M-03/11 they change only together with the code, when the owner separately accepts dropping live watch.
+- **npm scripts (plan):**
+  - root: `test:e2e:replays` = `bash e2e/scripts/run.sh replays`; `test:e2e:streams` = `bash e2e/scripts/run.sh streams` (brings up `--profile mockchain`);
   - `e2e/package.json`: `test:replays`, `test:streams`, `mockchain` (`node mockchain/rpc.mjs`);
-  - сервер: `test -- live` / `test -- watch` (vitest-фильтр), `test:integration -- donation`.
+  - server: `test -- live` / `test -- watch` (a vitest filter), `test:integration -- donation`.
 
-## Часть 3. Трассируемость
-| Правило | Тесты | Пробел |
+## Part 3. Traceability
+| Rule | Tests | Gap |
 |---|---|---|
 | RPL-M-01 | T-01, T-02, T-03 | — |
 | RPL-M-02 | T-04, T-05, T-06, T-15, T-21 | — |
@@ -329,20 +329,20 @@
 | RPL-M-04 | T-09, T-10 | — |
 | RPL-M-05 | T-11 | — |
 | RPL-M-06 | T-12 | — |
-| RPL-M-07 | T-13 | зависит от пересчёта v2 (Ф1) |
+| RPL-M-07 | T-13 | depends on the v2 recompute (Ph1) |
 | RPL-M-08 | T-14 | — |
 | RPL-M-09 | T-15 | — |
 | RPL-M-10 | T-16, T-17, T-18, T-19, M-RPL-06 | — |
-| RPL-M-10a | T-26, T-27, T-28, T-29 | локализации лобби нет — новое |
+| RPL-M-10a | T-26, T-27, T-28, T-29 | no lobby localization — new |
 | RPL-M-11 | T-20 | — |
 | RPL-M-12 | T-21, T-22 | — |
-| RPL-M-13 | T-30 … T-60, M-RPL-04/05 | элементы «сделать» — новый код (решение 47) |
+| RPL-M-13 | T-30 … T-60, M-RPL-04/05 | "build" elements — new code (decision 47) |
 | RPL-M-14 | T-70, T-99, M-RPL-01 | — |
 | RPL-M-15 | T-82, T-83, T-98 | — |
-| RPL-M-16 | T-70, T-86, T-100 | удалить долю в коде (`create-donation-order.handler.ts:74`, `game-settings.ts:31`) |
+| RPL-M-16 | T-70, T-86, T-100 | remove the share in the code (`create-donation-order.handler.ts:74`, `game-settings.ts:31`) |
 | RPL-M-17 | T-84, T-85, T-54 | — |
-| RPL-M-18 | T-71, M-RPL-03 | маршрута `GET /api/me/donations` нет — новый |
-| RPL-M-19 | T-72 … T-79 | истечение заказа — новое (решение 52) |
+| RPL-M-18 | T-71, M-RPL-03 | no `GET /api/me/donations` route — new |
+| RPL-M-19 | T-72 … T-79 | order expiry — new (decision 52) |
 | RPL-M-20 | T-80 | — |
 | RPL-M-21 | T-81, T-92 | — |
 | RPL-M-22 | T-87, T-88 | — |
@@ -350,8 +350,8 @@
 | RPL-M-24 | T-90 | — |
 | RPL-M-25 | T-91, T-51 | — |
 | RPL-M-26 | T-93 | — |
-| RPL-M-27 | T-94, T-95, T-101 | админ-модерации и фильтра нет — новое |
-| RPL-M-28 | T-96 | удаления нет — новое |
+| RPL-M-27 | T-94, T-95, T-101 | no admin moderation or filter — new |
+| RPL-M-28 | T-96 | no deletion — new |
 | RPL-M-29 | T-97 | — |
 | RPL-M-30 | T-23 | — |
 | RPL-M-31 | T-24 | — |
@@ -359,4 +359,4 @@
 | RPL-M-33 | T-56 | — |
 | RPL-M-34 | T-53, T-102 | — |
 
-Итого: 35 правил, все MUST / MUST NOT (решения 45–58 приняты 17.10.2026). Запланированные id: RPL-T-01…29, 30…60, 70…102 и 6 ручных M-RPL-01…06. Id — не написанный тест. Часть этих правил расходится с собранным продуктом ([`PRODUCT.md`](PRODUCT.md), конфликты). Исполняемая планка — [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
+Total: 35 rules, all MUST / MUST NOT (decisions 45–58 accepted 17.10.2026). Planned ids: RPL-T-01…29, 30…60, 70…102 and 6 manual M-RPL-01…06. An id is not a written test. Some of these rules diverge from the built product ([`PRODUCT.md`](PRODUCT.md), conflicts). The executable bar is [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).

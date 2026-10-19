@@ -15,7 +15,7 @@ Fill in the remaining `[PLACEHOLDER: …]` values in `docs/legal/PRESEASON_RULES
   - Create the official public Telegram announcement channel (e.g. `@freightchain_news`) and community group chat (e.g. `@freightchain_chat`).
   - Pin the EN + RU Pre-season Rules in the channel before 2 November.
 - [ ] **X Account:** Confirm `@FreightChainSol` is active and publish the pinned **Pre-season Campaign Post** that players will quote/reference with their personal code (`FC-<code>`).
-- [ ] **Hosting Provider Name:** Fill in `[PLACEHOLDER: hosting provider]` in `PRESEASON_RULES.md` Part B / `PRESEASON_RULES_RU.md` Часть B (e.g. Hetzner / DigitalOcean / AWS).
+- [ ] **Hosting Provider Name:** Fill in `[PLACEHOLDER: hosting provider]` in `PRESEASON_RULES.md` Part B / `PRESEASON_RULES_RU.md` Part B (e.g. Hetzner / DigitalOcean / AWS).
 
 ### 1.2 External API Keys & Bot Credentials (Pre-season Server `.env`)
 Provision the following external credentials and add them to production `.env` (never commit real secrets to git):
@@ -99,7 +99,7 @@ Provision the following external credentials and add them to production `.env` (
 ### 4.3 Legal Sign-off on `[LAWYER]` Annotations ([`../spec/OPEN.md`](../spec/OPEN.md) §1–2)
 Before turning on paid tickets in Season 1, have a gaming/contest & crypto lawyer review and remove the `[LAWYER]` annotations in `docs/legal/TERMS.md`, `docs/legal/PRIVACY.md`, and `docs/legal/OFFICIAL_RULES.md`:
 1. **`twitterapi.io` Terms Risk ([`../spec/OPEN.md`](../spec/OPEN.md) #1):** Confirm acceptable risk or fallback for reading public X posts without official X Enterprise API.
-2. **US State Skill-Contest & Free-Entry Review ([`../spec/OPEN.md`](../spec/OPEN.md) #2а, #2в):** Confirm the 7-state paid block (`AZ, AR, DE, LA, MT, SC, TN`), the weekly free-ticket entry route, and the 30% free-ticket prize cap (`free_prize_board_cap_bps = 3000`).
-3. **Final Sanctions & RU/BY Policy for Season 1 ([`../spec/OPEN.md`](../spec/OPEN.md) #2б):** Decide whether the foreign operator entity in Season 1 keeps `RU`/`BY` excluded from prizes or allows non-sanctioned players after KYC + Chainalysis screening.
+2. **US State Skill-Contest & Free-Entry Review ([`../spec/OPEN.md`](../spec/OPEN.md) #2a, #2c):** Confirm the 7-state paid block (`AZ, AR, DE, LA, MT, SC, TN`), the weekly free-ticket entry route, and the 30% free-ticket prize cap (`free_prize_board_cap_bps = 3000`).
+3. **Final Sanctions & RU/BY Policy for Season 1 ([`../spec/OPEN.md`](../spec/OPEN.md) #2b):** Decide whether the foreign operator entity in Season 1 keeps `RU`/`BY` excluded from prizes or allows non-sanctioned players after KYC + Chainalysis screening.
 4. **TEN4 Utility Token & No-Sale Framing (`TERMS.md` §13):** Confirm jurisdictions where the Season 1 airdrop claim must be geo-blocked.
 5. **Dispute Resolution (`TERMS.md` §25–26):** Choose Governing Law and Option A (individual arbitration + batching + 30-day opt-out) vs. Option B (courts only).

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Docs · Freight Chain</title>
+<meta name="description" content="A reading copy of the Freight Chain docs: every folder and page, with the headings, tables, and section breaks kept.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+<a class="skip" href="#title">Skip to the page</a>
+<header class="bar">
+  <button type="button" class="menu" id="nav-toggle" aria-expanded="true" aria-controls="nav">Contents</button>
+  <button type="button" class="menu" id="toc-toggle" hidden aria-expanded="true">Outline</button>
+  <a class="brand" href="#/">
+    <span class="eyebrow">Freight Chain</span>
+    <span class="word">Docs</span>
+  </a>
+  <form class="find" role="search">
+    <label class="vh" for="q">Search the docs</label>
+    <input id="q" type="search" placeholder="Search pages and text" autocomplete="off" enterkeyhint="search">
+  </form>
+</header>
+<div class="backdrop" hidden></div>
+<div class="shell">
+  <nav id="nav" class="tree" aria-label="Pages"></nav>
+  <main id="main"></main>
+</div>
+<noscript><p class="noscript">This wiki needs JavaScript to lay out the pages.</p></noscript>
+<script src="wiki-render.js" defer></script>
+<script src="wiki-catalog.js" defer></script>
+<script src="wiki.js" defer></script>
+</body>
+</html>

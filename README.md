@@ -588,6 +588,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `honk-suite` | The full local TEN4 coin suite: program tests, catalog drift, the headless session, then one verified ride whose chain mint matches the ledger | `bash .claude/skills/honk-suite/run.sh` |
 | `analytics-review` | Three passes over the landing, whitepaper, lobby, and the online ride: new controls get events, removed ones lose them, and the explainer stays in step. Each pass writes `docs/insights/analytics/updates/<n>.html`. Does not call PostHog | `node .claude/skills/analytics-review/inventory.mjs` |
 | `whitepaper-update` | Three passes on the whitepaper: claims against the code, cut duplication and AI-sounding prose, add charts and real cab frames inside the gzip budget. Does not deploy | `npm --prefix frontend/landing test` · `npm run landing:build` |
+| `update-wiki` | Rebuild the docs wiki after a docs edit. "rebuild" or "update wiki" with no other target means this | `node docs/build-wiki.mjs` |
 | `posthog-prod` | Product analytics on production: the boot line, one public probe, the flush log. Read-only | `bash .claude/skills/posthog-prod/check.sh` |
 | `posthog-test` | Local analytics smoke: the relay, and one batch accepted by the EU ingest | `bash .claude/skills/posthog-test/smoke.sh` |
 | `posthog-map` | Landing, whitepaper, lobby, and game checks, then a visual map of every event | `bash .claude/skills/posthog-map/run.sh` |

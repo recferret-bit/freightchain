@@ -1,104 +1,104 @@
-# FreightChain — налоговые пороги и KYC при выплатах призов (ресёрч)
+# FreightChain — tax thresholds and KYC on prize payouts (research)
 
-Статус: черновик, в git не отправлялся. **Это не налоговая и не юридическая консультация.** Решения владельца — п. 5 (17.10.2026). **[не проверено]** — не нашёл первоисточник или он неоднозначен. Дата ресёрча: 17.10.2026.
+Status: draft, not committed to git. **This is not tax or legal advice.** Owner decisions — sec. 5 (17.10.2026). **[unverified]** — I did not find a primary source, or it is ambiguous. Research date: 17.10.2026.
 
-## 0. Коротко
-- **США, 2026.** OBBBA (P.L. 119-21, §70433) подняла порог для 1099-MISC (призы и прочий доход, box 3) и для 1099-NEC с **$600 до $2 000** на получателя за календарный год, для выплат с 2026 года. С 2027 порог индексируется на инфляцию. Тот же $2 000 действует и для backup withholding 24%.
-- Пороги отвечают только на вопрос, **когда платящий обязан подать форму**. Налог победитель должен в любом случае, даже с приза в $50 (Schedule 1).
-- Нерезидентам США форма 1099 не нужна. Им оформляют **W-8BEN → 1042-S**, удержание по умолчанию **30%** (ниже — по налоговому договору). Тут **порога нет** (общее правило NRA-withholding, подробности — у налоговика).
-- Большинство конкурентов собирают налоговую форму **до первой выплаты** (Epic, Riot, FACEIT, Triumph KYC) или с **$600 net за год** (Skillz, PrizePicks, DraftKings/FanDuel, Underdog; формулировки в ToS — ещё до OBBBA).
-- Главный риск для нас: IRS в AM 2020-009 признал **DFS ставками (wagering)** для акцизов §4401/§4411. Как будет квалифицирован платный билет на навыковый контест — **вопрос №1 к налоговику**.
+## 0. In short
+- **United States, 2026.** OBBBA (P.L. 119-21, §70433) raised the threshold for 1099-MISC (prizes and other income, box 3) and for 1099-NEC from **$600 to $2 000** per payee per calendar year, for payments from 2026. From 2027 the threshold is indexed for inflation. The same $2 000 also applies to 24% backup withholding.
+- Thresholds answer only **when the payer must file the form**. The winner owes the tax in any case, even on a $50 prize (Schedule 1).
+- Nonresidents of the United States do not need Form 1099. They are issued **W-8BEN → 1042-S**, default withholding **30%** (lower under a tax treaty). There is **no threshold** here (the general NRA-withholding rule; the details are for the tax adviser).
+- Most competitors collect a tax form **before the first payout** (Epic, Riot, FACEIT, Triumph KYC) or from **$600 net per year** (Skillz, PrizePicks, DraftKings/FanDuel, Underdog; the ToS wording is still pre-OBBBA).
+- The main risk for us: in AM 2020-009 the IRS treated **DFS as wagering** for the excise taxes under §4401/§4411. How a paid ticket to a skill contest will be classified is **question no. 1 for the tax adviser**.
 
-## 1. Таблица порогов (США)
+## 1. Threshold table (United States)
 
-| Что | Порог | Форма | Почему существует | Источник |
+| What | Threshold | Form | Why it exists | Source |
 |---|---|---|---|---|
-| Призы и награды не за услуги (box 3 «Other income»), включая sweepstakes без ставки | **$2 000+ за 2026** (до 2026 было $600), с 2027 — с индексацией | 1099-MISC | Информирование IRS о доходе получателя. Для этого нужен TIN → **W-9** | https://www.irs.gov/instructions/i1099mec , https://www.irs.gov/publications/p1099 , https://www.irs.gov/pub/foia/ig/spder/sbse-04-0426-0432.pdf |
-| Призы за услуги нерезидента-подрядчика (например, награда лучшему продавцу) | $2 000 (2026) | 1099-NEC box 1a | Это не наш случай, если приз не за услуги (стримеры/контент-награды могут быть NEC!) | там же |
-| Пример IRS: призы конкурсов (powwow) | $2 000 за год с 2026 с индексацией, W-9; нерезидентам 1042-S, W-8BEN, обычно 30% | 1099-MISC / 1042-S | Самый близкий аналог «конкурс с призом» прямо от IRS | https://www.irs.gov/government-entities/indian-tribal-governments/powwow-prizes |
-| Backup withholding | 24%, если нет корректного TIN, при выплате выше порога | 945 + 1099 | Нет TIN — нельзя сопоставить доход, IRS требует удерживать. Если платящий не удержал, сумма взыскивается с него | https://www.irs.gov/individuals/international-taxpayers/tax-withholding-types , https://www.irs.gov/instructions/iw9 |
-| Нерезидент (NRA), доход из источника в США | Порога нет; 30% или ставка договора | W-8BEN → 1042-S, 1042 | Удержание у источника: иначе налог не собрать. Для льготы по договору нужен TIN или FTIN | https://www.irs.gov/individuals/international-taxpayers/information-reporting-for-form-1042-s , https://www.irs.gov/publications/p515 |
-| Гемблинг: прочие ставки | Исторически $600 и ≥300× ставки; для 2026 вторичные источники пишут $2 000 и 300× **[не проверено]** | W-2G | Режим для **ставок**, к призам за навык без ставки не применяется | https://www.irs.gov/instructions/iw2g |
-| Гемблинг: бинго/слоты | Исторически $1 200; для 2026 предположительно $2 000 **[не проверено]** | W-2G | там же | там же |
-| Гемблинг: покерные турниры | Исторически $5 000 net от бай-ина; для 2026 сводка поиска даёт $2 000 **[не проверено, уточнить в Pub. 1099]** | W-2G | там же | там же |
-| Регулярное удержание по гемблингу | 24%, если выигрыш минус ставка > $5 000 (лотереи, sweepstakes, пулы, ставки ≥300×) | W-2G | | https://www.irs.gov/instructions/iw2g |
-| Крипта: брокеры | Gross proceeds за 2025, basis с 2026 (covered) | 1099-DA | Только **кастодиальные брокеры**. DeFi broker rule отменён (H.J.Res.25, апрель 2025) | https://www.irs.gov/newsroom/final-regulations-and-related-irs-guidance-for-reporting-by-brokers-on-sales-and-exchanges-of-digital-assets , https://waysandmeans.house.gov/2025/04/10/president-trump-signs-ways-means-resolution-overturning-biden-administrations-burdensome-irs-defi-broker-rule/ |
-| Крипта: стейкинг-награды | Доход по FMV в момент контроля над активом | — (сам плательщик) | Rev. Rul. 2023-14 | https://www.irs.gov/pub/irs-drop/rr-23-14.pdf |
-| Крипта: аирдроп после хардфорка | Доход по FMV, когда токены можно распорядиться | — | Rev. Rul. 2019-24. Прямого правила для «маркетингового» аирдропа нет, по аналогии — доход при получении **[интерпретация]** | https://www.irs.gov/pub/irs-drop/rr-19-24.pdf |
-| FATF Travel Rule | USD/EUR 1 000 de-minimis. Обязанности лежат на **VASP**; P2P между некастодиальными кошельками сам по себе не охвачен | — | Противодействие отмыванию денег (AML) при переводах | https://www.fatf-gafi.org/en/publications/Fatfrecommendations/update-Recommendation-16-payment-transparency-june-2025.html , https://www.fatf-gafi.org/content/dam/fatf-gafi/publications/targeted-report-on-stablecoins-and-unhosted-wallets.pdf |
-| Санкции (OFAC) | **Нет порога**, проверка на каждую выплату | — | Запрет сделок с SDN и санкционными юрисдикциями, строгая ответственность **[общая практика, уточнить]** | https://ofac.treasury.gov/faqs |
+| Prizes and awards not for services (box 3 "Other income"), including sweepstakes with no wager | **$2 000+ for 2026** (before 2026 it was $600), from 2027 with indexation | 1099-MISC | Telling the IRS about the payee's income. That requires a TIN → **W-9** | https://www.irs.gov/instructions/i1099mec , https://www.irs.gov/publications/p1099 , https://www.irs.gov/pub/foia/ig/spder/sbse-04-0426-0432.pdf |
+| Prizes for services of a nonresident contractor (for example, an award to the top salesperson) | $2 000 (2026) | 1099-NEC box 1a | Not our case if the prize is not for services (streamer/content awards can be NEC!) | same |
+| IRS example: contest prizes (powwow) | $2 000 per year from 2026, with indexation; W-9; nonresidents get 1042-S, W-8BEN, usually 30% | 1099-MISC / 1042-S | The closest "contest with a prize" analogue, straight from the IRS | https://www.irs.gov/government-entities/indian-tribal-governments/powwow-prizes |
+| Backup withholding | 24% if there is no correct TIN, on a payment above the threshold | 945 + 1099 | No TIN — the income cannot be matched, and the IRS requires withholding. If the payer did not withhold, the amount is collected from the payer | https://www.irs.gov/individuals/international-taxpayers/tax-withholding-types , https://www.irs.gov/instructions/iw9 |
+| Nonresident (NRA), US-source income | No threshold; 30% or the treaty rate | W-8BEN → 1042-S, 1042 | Withholding at source: otherwise the tax cannot be collected. A treaty benefit requires a TIN or an FTIN | https://www.irs.gov/individuals/international-taxpayers/information-reporting-for-form-1042-s , https://www.irs.gov/publications/p515 |
+| Gambling: other wagers | Historically $600 and ≥300× the wager; for 2026 secondary sources say $2 000 and 300× **[unverified]** | W-2G | A regime for **wagers**; it does not apply to skill prizes with no wager | https://www.irs.gov/instructions/iw2g |
+| Gambling: bingo/slots | Historically $1 200; for 2026 presumably $2 000 **[unverified]** | W-2G | same | same |
+| Gambling: poker tournaments | Historically $5 000 net of the buy-in; for 2026 the search summary gives $2 000 **[unverified, confirm in Pub. 1099]** | W-2G | same | same |
+| Regular gambling withholding | 24% if winnings minus the wager > $5 000 (lotteries, sweepstakes, pools, wagers ≥300×) | W-2G | | https://www.irs.gov/instructions/iw2g |
+| Crypto: brokers | Gross proceeds for 2025, basis from 2026 (covered) | 1099-DA | **Custodial brokers** only. The DeFi broker rule was repealed (H.J.Res.25, April 2025) | https://www.irs.gov/newsroom/final-regulations-and-related-irs-guidance-for-reporting-by-brokers-on-sales-and-exchanges-of-digital-assets , https://waysandmeans.house.gov/2025/04/10/president-trump-signs-ways-means-resolution-overturning-biden-administrations-burdensome-irs-defi-broker-rule/ |
+| Crypto: staking rewards | Income at FMV at the moment of control over the asset | — (the taxpayer) | Rev. Rul. 2023-14 | https://www.irs.gov/pub/irs-drop/rr-23-14.pdf |
+| Crypto: airdrop after a hard fork | Income at FMV when the tokens can be disposed of | — | Rev. Rul. 2019-24. There is no direct rule for a "marketing" airdrop; by analogy, income on receipt **[interpretation]** | https://www.irs.gov/pub/irs-drop/rr-19-24.pdf |
+| FATF Travel Rule | USD/EUR 1 000 de-minimis. The duties sit on the **VASP**; P2P between non-custodial wallets is not covered on its own | — | Anti-money laundering (AML) on transfers | https://www.fatf-gafi.org/en/publications/Fatfrecommendations/update-Recommendation-16-payment-transparency-june-2025.html , https://www.fatf-gafi.org/content/dam/fatf-gafi/publications/targeted-report-on-stablecoins-and-unhosted-wallets.pdf |
+| Sanctions (OFAC) | **No threshold**, a check on every payout | — | A ban on dealings with an SDN and with sanctioned jurisdictions; strict liability **[general practice, confirm]** | https://ofac.treasury.gov/faqs |
 
-### Почему W-2G к нам, скорее всего, не относится и где подвох
-- W-2G — форма для **ставок** (wager). В инструкции к 1099-MISC прямо сказано: sweepstakes **без ставки** идут в box 3, а «если ставка сделана — W-2G».
-- Призовой фонд у нас формирует оператор или спонсор, бесплатный путь участия есть. Это аргументы за «приз, а не выигрыш по ставке».
-- **Но:** в AM 2020-009 (07.2020) Chief Counsel решил, что DFS-операторы платят **акциз на ставки §4401 и §4411**, то есть entry fee в DFS — это ставка. Аргумент был в том, что исход зависит от реальных спортсменов, а не от участника. Наш контест — чистый навык игрока, это аргумент в нашу пользу, но **формального решения IRS по видеоигровым навыковым контестам я не нашёл**. https://www.irs.gov/pub/lanoa/am-2020-009.pdf
-- При этом DFS-операторы на практике выдают **1099-MISC по net winnings**, а не W-2G (см. п. 2).
+### Why W-2G most likely does not apply to us, and where the catch is
+- W-2G is the form for **wagers**. The 1099-MISC instructions say it outright: sweepstakes **with no wager** go in box 3, and "if a wager was made — W-2G".
+- Our prize fund is put up by the operator or a sponsor, and there is a free way to enter. Those are arguments for "a prize, not winnings on a wager".
+- **But:** in AM 2020-009 (07.2020) the Chief Counsel decided that DFS operators pay the **wagering excise under §4401 and §4411**, so a DFS entry fee is a wager. The argument was that the outcome depends on real athletes, not on the entrant. Our contest is pure player skill, which is an argument in our favor, but **I did not find a formal IRS decision on video-game skill contests**. https://www.irs.gov/pub/lanoa/am-2020-009.pdf
+- At the same time, DFS operators in practice issue **1099-MISC on net winnings**, not W-2G (see sec. 2).
 
-## 2. Что делают сопоставимые платформы
+## 2. What comparable platforms do
 
-| Платформа | Порог налоговой формы | KYC / документы | Источник |
+| Platform | Tax-form threshold | KYC / documents | Source |
 |---|---|---|---|
-| **Skillz** | ToS: «may send W-9 и 1099-MISC, если Winnings ≥ $600 за год», возможно удержание при незаполненных формах. Формулировка до OBBBA | Может заморозить вывод до проверки eligibility | https://www.skillz.com/legal/ , https://support.skillz.com/hc/en-us/articles/29421158470420 |
-| **Triumph** | Выводы могут приостанавливаться после $600 за год до заполнения налоговых данных | **KYC до любого вывода** (Footprint: ID + liveness), 18+, минимальный вывод $6 | https://docs.triumpharcade.com/tax-information-usa , https://docs.triumpharcade.com/frequently-asked-questions-tcg |
-| **Papaya Gaming** | В ToS упомянуты налоговые формы, порог не указан **[не проверено]** | ID и платёжные данные для вывода | https://www.papaya.com/terms-of-use |
-| **PrizePicks** | 1099-MISC при **net winnings ≥ $600** за год | KYC при регистрации/выводе **[детали не проверял]** | https://www.prizepicks.com/help-center/taxes |
-| **DraftKings / FanDuel (DFS)** | 1099-MISC при net ≥ $600 (по вторичным источникам) | KYC (лицензируемые операторы) | https://turbotax.intuit.com/tax-tips/general/tax-considerations-for-fantasy-sports-fans/L75xYecdS |
-| **Underdog** | SSN/налоговые данные, когда net profit > $600 за год | | https://help.underdogfantasy.com/en/articles/10779024-why-do-i-need-to-provide-my-ssn |
-| **Epic (Fortnite Competitive)** | «Tax interview» **до получения любого приза**: W-9 для США, W-8BEN для остальных. Без данных удержание 24% / 30%. Выплаты через Hyperwallet | 2FA для соревновательной игры | https://www.epicgames.com/help/en-US/c-Category_Fortnite/c-Fortnite_Competitive/how-do-i-claim-my-prize-a000084710 , https://www.epicgames.com/help/en-US/fortnite-battle-royale-c-202300000001636/competitive-c-202300000001722/competitive-payment-tax-withholding-a202300000011707 |
-| **Riot (VALORANT)** | Налоговые формы (W-9 / W-8BEN / W-8BEN-E) до выплаты, иначе приз может сгореть | Affidavit об eligibility | https://liquipedia.net/commons/images/0/0a/VCT_Global_Competition_Policy_V1.3_-_2021.pdf |
-| **DreamHack (США)** | Отдельная политика призовых для США **[содержимое не изучал]** | | https://dreamhack.com/prize-money-us/ |
-| **FACEIT / ESEA** | Налоговый статус собирается через Matcherino до выплаты | | https://support.faceit.com/hc/en-us/articles/9718204637596 |
-| **Battlefy** | Публичной политики не нашёл **[не проверено]** | | — |
-| **Galxe / Layer3** | Налоговой политики по наградам квестов не нашёл. Награды в токенах, ответственность на пользователе **[не проверено]**. Galxe Passport (KYC через Sumsub) опционален для проектов | | https://docs.galxe.com/galxe-id/galxe-passport/introduction |
-| **Gods Unchained / Immutable** | Награды в $GODS на кошелёк, задержки для fraud review. KYC «может потребоваться» по privacy policy | | https://immutable.zendesk.com/hc/en-us/articles/15427597198223 , https://www.immutable.com/legal/privacy-policy |
-| **Star Atlas** | Промо-правила: e-mail, адрес, кошелёк; ATMTA может удерживать налоги по закону; отчётность на получателе | | https://experience.staratlas.com/promotional-terms-and-conditions |
-| **Aurory (турнир с KuCoin)** | KYC обязателен для получения наград (KYC на стороне KuCoin как CEX) | | https://www.kucoin.com/announcement/en-aurory-launches-early-access |
-| **Honeyland** | Публичных правил не нашёл **[не проверено]** | | — |
+| **Skillz** | ToS: "may send W-9 and 1099-MISC if Winnings ≥ $600 per year"; withholding is possible if the forms are not filled in. Wording is pre-OBBBA | May freeze a withdrawal until eligibility is checked | https://www.skillz.com/legal/ , https://support.skillz.com/hc/en-us/articles/29421158470420 |
+| **Triumph** | Withdrawals may be paused after $600 per year until tax information is filled in | **KYC before any withdrawal** (Footprint: ID + liveness), 18+, minimum withdrawal $6 | https://docs.triumpharcade.com/tax-information-usa , https://docs.triumpharcade.com/frequently-asked-questions-tcg |
+| **Papaya Gaming** | Tax forms are mentioned in the ToS; no threshold is stated **[unverified]** | ID and payment details for a withdrawal | https://www.papaya.com/terms-of-use |
+| **PrizePicks** | 1099-MISC at **net winnings ≥ $600** per year | KYC at signup/withdrawal **[details not checked]** | https://www.prizepicks.com/help-center/taxes |
+| **DraftKings / FanDuel (DFS)** | 1099-MISC at net ≥ $600 (per secondary sources) | KYC (licensed operators) | https://turbotax.intuit.com/tax-tips/general/tax-considerations-for-fantasy-sports-fans/L75xYecdS |
+| **Underdog** | SSN/tax information when net profit > $600 per year | | https://help.underdogfantasy.com/en/articles/10779024-why-do-i-need-to-provide-my-ssn |
+| **Epic (Fortnite Competitive)** | A "Tax interview" **before any prize is received**: W-9 for the US, W-8BEN for everyone else. Without the data, withholding is 24% / 30%. Payouts through Hyperwallet | 2FA for competitive play | https://www.epicgames.com/help/en-US/c-Category_Fortnite/c-Fortnite_Competitive/how-do-i-claim-my-prize-a000084710 , https://www.epicgames.com/help/en-US/fortnite-battle-royale-c-202300000001636/competitive-c-202300000001722/competitive-payment-tax-withholding-a202300000011707 |
+| **Riot (VALORANT)** | Tax forms (W-9 / W-8BEN / W-8BEN-E) before payout, otherwise the prize may be forfeited | Affidavit of eligibility | https://liquipedia.net/commons/images/0/0a/VCT_Global_Competition_Policy_V1.3_-_2021.pdf |
+| **DreamHack (US)** | A separate US prize policy **[contents not reviewed]** | | https://dreamhack.com/prize-money-us/ |
+| **FACEIT / ESEA** | Tax status is collected through Matcherino before payout | | https://support.faceit.com/hc/en-us/articles/9718204637596 |
+| **Battlefy** | I did not find a public policy **[unverified]** | | — |
+| **Galxe / Layer3** | I did not find a tax policy for quest rewards. Rewards are in tokens, and the responsibility sits with the user **[unverified]**. Galxe Passport (KYC through Sumsub) is optional for projects | | https://docs.galxe.com/galxe-id/galxe-passport/introduction |
+| **Gods Unchained / Immutable** | Rewards in $GODS to a wallet, with delays for fraud review. KYC "may be required" under the privacy policy | | https://immutable.zendesk.com/hc/en-us/articles/15427597198223 , https://www.immutable.com/legal/privacy-policy |
+| **Star Atlas** | Promo rules: e-mail, address, wallet; ATMTA may withhold taxes as required by law; reporting sits with the recipient | | https://experience.staratlas.com/promotional-terms-and-conditions |
+| **Aurory (tournament with KuCoin)** | KYC is required to receive rewards (KYC on KuCoin's side, as a CEX) | | https://www.kucoin.com/announcement/en-aurory-launches-early-access |
+| **Honeyland** | I did not find public rules **[unverified]** | | — |
 
-**Почему делают именно так:**
-1. **Сбор TIN до первой выплаты** (Epic, Riot, FACEIT): заранее неизвестно, перевалит ли игрок порог за год, а постфактум TIN не добыть. Без TIN начинается backup withholding, и отвечает за него платящий.
-2. **Порог $600 net за год** (Skillz, DFS) — это просто федеральный порог 1099 до 2026 года. «Net» = выигрыши минус взносы, практика DFS.
-3. **KYC до любого вывода** (Triumph): сразу проверяет возраст, гео, AML, санкции и мультиаккаунты.
-4. **Крипто-проекты** (Galxe, GU, Star Atlas) обычно перекладывают налог на пользователя и делают KYC выборочно. Это работает, пока призы маленькие и в токенах. Для **USDC-призов от US-оператора** это слабая модель.
+**Why they do it this way:**
+1. **Collecting a TIN before the first payout** (Epic, Riot, FACEIT): it is not known in advance whether the player will cross the yearly threshold, and a TIN cannot be obtained after the fact. Without a TIN, backup withholding starts, and the payer is on the hook for it.
+2. **A $600 net per year threshold** (Skillz, DFS) is simply the federal 1099 threshold before 2026. "Net" = winnings minus entry fees, DFS practice.
+3. **KYC before any withdrawal** (Triumph): it checks age, geo, AML, sanctions, and multi-accounts at once.
+4. **Crypto projects** (Galxe, GU, Star Atlas) usually put the tax on the user and do KYC selectively. That works while prizes are small and paid in tokens. For **USDC prizes from a US operator** this is a weak model.
 
-## 3. Не-США
-- UK и ЕС у нас заблокированы, как и санкционные страны.
-- В остальных странах налог обычно платит сам победитель по законам своей страны. Но если оператор — US-лицо, то с приза нерезиденту из источника в США **в общем случае удерживается 30%** (1042-S), если не применить договор. От того, где зарегистрирована наша компания и откуда считается «источник» приза, зависит всё. **Вопрос к налоговику.**
-- FATF Travel Rule ($/€1 000) касается VASP. Мы выплачиваем USDC с собственного кошелька на некастодиальный кошелёк победителя, и это, скорее всего, не VASP-to-VASP перевод. Но если мы сами квалифицируемся как VASP или money transmitter (FinCEN), картина меняется **[вопрос юристу]**.
+## 3. Non-US
+- The UK and the EU are blocked for us, as are sanctioned countries.
+- In the other countries the winner usually pays the tax under the laws of their own country. But if the operator is a US person, a prize to a nonresident from a US source is **in general subject to 30% withholding** (1042-S), unless a treaty is applied. Everything turns on where our company is registered and where the "source" of the prize is treated as located. **A question for the tax adviser.**
+- The FATF Travel Rule ($/€1 000) concerns VASPs. We pay USDC from our own wallet to the winner's non-custodial wallet, and that is most likely not a VASP-to-VASP transfer. But if we ourselves qualify as a VASP or a money transmitter (FinCEN), the picture changes **[a question for a lawyer]**.
 
-## 4. TEN4 (аирдроп, рефералка, награды за поездки)
-- По аналогии с Rev. Rul. 2019-24 и 2023-14 получатель, скорее всего, должен признать доход по FMV в момент, когда может распорядиться токенами. Отчитывается он сам.
-- Обязан ли эмитент подавать 1099-MISC на токены, выданные как **приз/награда** (≥ $2 000 FMV за год на получателя)? Скорее да, если это «prize/award» от US-лица **[не проверено, ключевой вопрос]**. 1099-DA к нам не относится: мы не кастодиальный брокер.
-- Практически: лимиты TEN4 (1 000/месяц на реферала и т. п.) при низкой цене токена держат FMV далеко ниже $2 000. Но нужно мониторить FMV на дату начисления.
+## 4. TEN4 (airdrop, referrals, rewards for rides)
+- By analogy with Rev. Rul. 2019-24 and 2023-14, the recipient most likely must recognize income at FMV at the moment they can dispose of the tokens. They report it themselves.
+- Must the issuer file a 1099-MISC on tokens issued as a **prize/award** (≥ $2 000 FMV per year per payee)? Probably yes, if it is a "prize/award" from a US person **[unverified, a key question]**. 1099-DA does not apply to us: we are not a custodial broker.
+- In practice: the TEN4 caps (1 000/month per referral, and so on) at a low token price keep FMV far below $2 000. But FMV has to be monitored on the accrual date.
 
-## 5. Решение для FreightChain (принято владельцем 17.10.2026)
+## 5. Decision for FreightChain (adopted by the owner on 17.10.2026)
 
-Принято: W-9/W-8BEN при первой выплате вместе с Didit KYC; годовой учёт по получателю, включая TEN4 по FMV; 1099-MISC от $2,000; удержание 30% у нерезидентов — ключ, по умолчанию выключен. Пп. 4, 6–8 ниже и срок 90 дней — до ответа налоговика и юриста.
+Adopted: W-9/W-8BEN on the first payout, together with Didit KYC; yearly accounting per payee, including TEN4 at FMV; 1099-MISC from $2,000; 30% withholding on nonresidents is a switch, off by default. Items 4 and 6–8 below, and the 90-day period, are pending an answer from the tax adviser and the lawyer.
 
-Уже решено: KYC через Didit — для любого приза по бесплатному билету; для платных билетов — при ≥ $50 за сезон; санкционная проверка — всегда.
+Already decided: KYC through Didit — for any prize on a free ticket; for paid tickets — at ≥ $50 per season; a sanctions check — always.
 
-Добавить:
-1. **Налоговая анкета при первой выплате любого размера**, как у Epic и Riot, в том же флоу, что и Didit:
-   - US-лица (по KYC: гражданство или резидентство США): **W-9** (электронная подпись, TIN). Без W-9 выплату не делаем: это проще, чем удерживать 24%.
-   - Остальные: **W-8BEN** (сертификация не-US статуса, страна, FTIN по возможности). Без W-8BEN выплату не делаем.
-2. **Учёт сумм по получателю за календарный год** (в USD по курсу на дату выплаты, USDC ≈ $1). При ≥ `tax_1099_threshold_usd` (2026: **2000**; на 2027 — значение после публикации IRS) готовим 1099-MISC box 3 к 31 января (за 2026 — 1 февраля 2027).
-3. **Нерезиденты:** до консультации считать, что может понадобиться **30% удержание и 1042-S**. Возможно, это перевесит разницу юрисдикций. Настройка `nra_withholding_rate` (0.30) и флаг `nra_withholding_enabled`, **значение решает налоговик**.
-4. **Gross, а не net.** У нас призовой пул — деньги оператора, а билет — отдельная покупка. Поэтому сумму для 1099 логично считать по **выплаченным призам (gross)**, а не «выигрыш минус билеты», как в DFS. **Подтвердить у налоговика.**
-5. **Приз в TEN4/NFT:** вести FMV на дату выдачи и учитывать в той же годовой сумме.
-6. **Стримерам и контент-наградам** (если появятся выплаты за услуги) — 1099-NEC, отдельная категория.
-7. **Хранение:** W-9 и W-8BEN — минимум 4 года **[общая рекомендация IRS по записям, уточнить]**. Didit-данные — по DPA.
-8. **В Official Rules:** «Победитель сам отвечает за налоги; мы можем запросить W-9/W-8BEN и удержать налог, если этого требует закон; без форм приз не выплачивается и через 90 дней аннулируется» [срок 90 дней — согласовать с юристом].
+Add:
+1. **A tax questionnaire on the first payout of any amount**, as Epic and Riot do it, in the same flow as Didit:
+   - US persons (per KYC: US citizenship or US residence): **W-9** (electronic signature, TIN). We do not pay without a W-9: that is simpler than withholding 24%.
+   - Everyone else: **W-8BEN** (certification of non-US status, country, an FTIN where possible). We do not pay without a W-8BEN.
+2. **A running total per payee for the calendar year** (in USD at the rate on the payout date; USDC ≈ $1). At ≥ `tax_1099_threshold_usd` (2026: **2000**; for 2027, the figure after the IRS publishes it) we prepare 1099-MISC box 3 by 31 January (for 2026, 1 February 2027).
+3. **Nonresidents:** until the consultation, assume that **30% withholding and a 1042-S** may be required. That may outweigh the difference between jurisdictions. The setting `nra_withholding_rate` (0.30) and the flag `nra_withholding_enabled`; **the tax adviser decides the value**.
+4. **Gross, not net.** Our prize pool is the operator's money, and the ticket is a separate purchase. So the 1099 amount is logically counted on **prizes paid (gross)**, not "winnings minus tickets", as in DFS. **Confirm with the tax adviser.**
+5. **A prize in TEN4/an NFT:** record FMV on the issue date and count it in the same yearly total.
+6. **Streamers and content awards** (if payments for services appear) — 1099-NEC, a separate category.
+7. **Retention:** W-9 and W-8BEN for at least 4 years **[the general IRS recommendation on records; confirm]**. Didit data — under the DPA.
+8. **In the Official Rules:** "The winner is responsible for their own taxes; we may request a W-9/W-8BEN and withhold tax if the law requires it; without the forms the prize is not paid and is voided after 90 days" [the 90-day period — agree it with a lawyer].
 
-Конфиг (принят; `tax_amount_basis` и `nra_withholding_enabled` — до консультации): `tax_include_ten4_fmv=1`, `tax_form_required_on_first_payout=1`, `tax_1099_threshold_usd=2000`, `tax_year_basis=calendar`, `tax_amount_basis=gross`, `nra_withholding_enabled=0` (до консультации), `nra_withholding_rate=0.30`, `prize_unclaimed_days=90` (срок — с юристом).
+Config (adopted; `tax_amount_basis` and `nra_withholding_enabled` are pending consultation): `tax_include_ten4_fmv=1`, `tax_form_required_on_first_payout=1`, `tax_1099_threshold_usd=2000`, `tax_year_basis=calendar`, `tax_amount_basis=gross`, `nra_withholding_enabled=0` (pending consultation), `nra_withholding_rate=0.30`, `prize_unclaimed_days=90` (the period — with a lawyer).
 
-## 6. Вопросы налоговому консультанту
-1. Как квалифицируется наш контест: prize/award (1099-MISC box 3) или wagering (W-2G, акциз §4401/§4411 по аналогии с AM 2020-009 о DFS)? Важно ли, что фонд от оператора и спонсора, есть бесплатный путь и исход определяет навык?
-2. Где регистрировать оператора и считается ли приз нерезиденту «доходом из источника в США»? Нужно ли 30% удержание и 1042-S, и можно ли применять договоры по W-8BEN без ITIN (только FTIN)?
-3. Gross или net (призы минус купленные билеты) для порога $2 000?
-4. TEN4 за поездки, аирдроп и рефералку: нужен ли 1099-MISC при FMV ≥ $2 000 за год? Как считать FMV у низколиквидного токена? Не будет ли реферальный TEN4 считаться NEC (вознаграждение за услуги по привлечению)?
-5. Штатные пороги и формы (state 1099, удержания) для разрешённых штатов.
-6. Попадаем ли мы под FinCEN money transmitter или FATF VASP, если принимаем USDC/SOL за билеты и выплачиваем USDC?
-7. Можно ли отказывать в выплате без W-9/W-8BEN вместо backup withholding? Сроки хранения документов?
-8. Нужен ли 1099 за промо-призы и спонсорские призы (merch по FMV)?
-9. Как учитывать ставку курса для USDC (1:1) и SOL на дату выплаты?
-10. Нужны ли отдельные правила для несовершеннолетних? У нас 18+, но по некоторым штатам 19/21 **[уточнить]**.
+## 6. Questions for the tax adviser
+1. How is our contest classified: a prize/award (1099-MISC box 3) or wagering (W-2G, and the excise under §4401/§4411 by analogy with AM 2020-009 on DFS)? Does it matter that the fund comes from the operator and a sponsor, that there is a free path, and that skill determines the outcome?
+2. Where should the operator be registered, and is a prize to a nonresident "US-source income"? Is 30% withholding and a 1042-S required, and can treaties be applied on a W-8BEN without an ITIN (an FTIN only)?
+3. Gross or net (prizes minus tickets bought) for the $2 000 threshold?
+4. TEN4 for rides, the airdrop, and referrals: is a 1099-MISC required at an FMV ≥ $2 000 per year? How is FMV measured for a low-liquidity token? Could referral TEN4 be treated as NEC (payment for a referral service)?
+5. State thresholds and forms (a state 1099, withholding) for the permitted states.
+6. Do we fall under FinCEN as a money transmitter, or under the FATF as a VASP, if we take USDC/SOL for tickets and pay out USDC?
+7. Can we refuse a payout without a W-9/W-8BEN instead of backup withholding? What are the document-retention periods?
+8. Is a 1099 required for promo prizes and sponsor prizes (merch at FMV)?
+9. How should the exchange rate be taken for USDC (1:1) and for SOL on the payout date?
+10. Are separate rules needed for minors? We are 18+, but some states are 19/21 **[confirm]**.

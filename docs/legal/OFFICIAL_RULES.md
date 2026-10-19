@@ -153,7 +153,7 @@
 
 9.2. **Season Final Format & Pool (`Pool_Final`).** Week 7 (`LIVE_FINAL_WEEK = 7`) runs the regular weekly boards plus the Season 1 Final (with spectator road effects off). The Season Final Prize Pool (`Pool_Final`) equals the accumulated 10% weekly reserves from Weeks 1–7, plus the Operator Final Base (`B_final = $1,000`), plus any rollover excess (`toSeasonCents`) and announced Sponsor Final bonus.
 
-9.3. **Dynamic `N`-Finalist Prize Distribution (Closing G21 / 2г).** Every qualified finalist who **completes** a verified championship ride in Week 7 wins a share of their Final board pool. Let `M` be the number of qualified finalists who complete a verified ride in the Final (`1 ≤ M ≤ N`):
+9.3. **Dynamic `N`-Finalist Prize Distribution (Closing G21 / 2d).** Every qualified finalist who **completes** a verified championship ride in Week 7 wins a share of their Final board pool. Let `M` be the number of qualified finalists who complete a verified ride in the Final (`1 ≤ M ≤ N`):
 - **Base Weights for Places 1 to 8 (`W_1 … W_8`):**
   - Place 1: `30`
   - Place 2: `20`

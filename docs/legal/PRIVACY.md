@@ -255,7 +255,7 @@ Request form: [PLACEHOLDER: URL]
 
 ## Notes for the team (delete before publishing)
 
-**Scope (17.10.2026):** this Policy applies from Season 1 (mainnet, 11.01.2027) once the operator entity exists. The devnet Pre-season (November 2026) is run by an individual organizer under the short notice in `docs/legal/PRESEASON_RULES.md` (Part B, EN) and `docs/legal/PRESEASON_RULES_RU.md` (Часть B, RU).
+**Scope (17.10.2026):** this Policy applies from Season 1 (mainnet, 11.01.2027) once the operator entity exists. The devnet Pre-season (November 2026) is run by an individual organizer under the short notice in `docs/legal/PRESEASON_RULES.md` (Part B, EN) and `docs/legal/PRESEASON_RULES_RU.md` (Part B, RU).
 
 
 ### Data practices found in code (`main` 75ed4a06) — decisions 17.10.2026
