@@ -19,10 +19,10 @@ psql_admin() { docker exec freightchain-postgres psql -U freight -d postgres -v 
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})'; }
 
 find_src() {
-  if [ -n "${FREIGHTCHAIN_POSTHOG_ROOT:-}" ] && [ -f "$FREIGHTCHAIN_POSTHOG_ROOT/server/src/infrastructure/analytics/posthog-analytics.adapter.ts" ]; then
+  if [ -n "${FREIGHTCHAIN_POSTHOG_ROOT:-}" ] && [ -f "$FREIGHTCHAIN_POSTHOG_ROOT/backend/server/src/infrastructure/analytics/posthog-analytics.adapter.ts" ]; then
     printf '%s\n' "$FREIGHTCHAIN_POSTHOG_ROOT"; return
   fi
-  if [ -f "$MAIN/server/src/infrastructure/analytics/posthog-analytics.adapter.ts" ]; then
+  if [ -f "$MAIN/backend/server/src/infrastructure/analytics/posthog-analytics.adapter.ts" ]; then
     printf '%s\n' "$MAIN"; return
   fi
   local wt
@@ -30,7 +30,7 @@ find_src() {
     /^worktree / { p = substr($0, 10) }
     /^branch refs\/heads\/plan\/posthog-integration$/ { print p }
   ')"
-  if [ -n "$wt" ] && [ -f "$wt/server/src/infrastructure/analytics/posthog-analytics.adapter.ts" ]; then
+  if [ -n "$wt" ] && [ -f "$wt/backend/server/src/infrastructure/analytics/posthog-analytics.adapter.ts" ]; then
     printf '%s\n' "$wt"; return
   fi
   echo "capture code not found. Set FREIGHTCHAIN_POSTHOG_ROOT to a checkout that has the adapter." >&2
@@ -38,13 +38,13 @@ find_src() {
 }
 
 SRC="$(find_src)"
-SERVER="$SRC/server"
+SERVER="$SRC/backend/server"
 stop() { if [ -n "$PID" ]; then kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; fi; PID=""; }
 # The plan worktree's server/node_modules is often a symlink into the main checkout, so its
 # `prisma generate` writes the branch client over main. Put this checkout's client back.
 restore_client() {
-  if [ "$SRC" != "$MAIN" ] && [ -x "$MAIN/server/node_modules/.bin/prisma" ]; then
-    (cd "$MAIN/server" && ./node_modules/.bin/prisma generate >/dev/null) || true
+  if [ "$SRC" != "$MAIN" ] && [ -x "$MAIN/backend/server/node_modules/.bin/prisma" ]; then
+    (cd "$MAIN/backend/server" && ./node_modules/.bin/prisma generate >/dev/null) || true
   fi
 }
 cleanup() { stop; restore_client; psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null 2>&1 || true; }

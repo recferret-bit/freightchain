@@ -1,0 +1,104 @@
+{
+  "name": "server",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "prebuild": "prisma generate",
+    "build": "nest build",
+    "postinstall": "prisma generate",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "oxlint --type-aware src/ test/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:stack": "npm run db:up && npm run test:integration",
+    "test:tickets-stub": "node scripts/e2e-tickets-stub.mjs",
+    "db:up": "docker compose -f ../../infra/docker-compose.yml up -d --wait postgres",
+    "db:down": "docker compose -f ../../infra/docker-compose.yml down",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "cli": "node dist/cli/index.js",
+    "cli:migrate": "node dist/cli/index.js migrate",
+    "db:reset": "node dist/cli/index.js db:reset",
+    "entities:export": "node dist/cli/index.js entities:export",
+    "treasury:init": "node scripts/treasury-init.mjs",
+    "editor:worker": "node dist/app/editor-worker.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.134.0",
+    "@metaplex-foundation/mpl-bubblegum": "^6.0.0",
+    "@metaplex-foundation/mpl-core": "^1.10.0",
+    "@metaplex-foundation/umi": "^1.6.0",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.6.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@nestjs/common": "^12.0.1",
+    "@nestjs/core": "^12.0.1",
+    "@nestjs/cqrs": "^12.1.0",
+    "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/serve-static": "^12.0.0",
+    "@nestjs/throttler": "^6.7.1",
+    "@prisma/client": "^6.19.3",
+    "@solana/spl-token": "0.4.15",
+    "@solana/web3.js": "^1.99.0",
+    "bs58": "^6.0.0",
+    "compression": "^1.8.2",
+    "ioredis": "^6.0.0",
+    "jose": "^6.2.10",
+    "openai": "7.34.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "tweetnacl": "^1.0.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@irys/upload": "0.0.15",
+    "@irys/upload-solana": "0.1.8",
+    "@nestjs/cli": "^12.0.0",
+    "@nestjs/mau": "^0.2.6",
+    "@nestjs/schematics": "^12.0.0",
+    "@nestjs/testing": "^12.0.1",
+    "@types/compression": "^1.8.1",
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "@types/supertest": "^7.0.0",
+    "@vitest/coverage-v8": "^4.1.2",
+    "oxlint": "^1.58.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "prettier": "^3.4.2",
+    "prisma": "^6.19.3",
+    "source-map-support": "^0.5.21",
+    "supertest": "^7.0.0",
+    "typescript": "^6.0.2",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.2"
+  },
+  "prisma": {
+    "schema": "./prisma"
+  },
+  "overrides": {
+    "undici": "6.28.1",
+    "ethjs-unit": {
+      "bn.js": "4.12.5"
+    },
+    "number-to-bn": {
+      "bn.js": "4.12.5"
+    },
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.0"
+    },
+    "@solana/web3.js": {
+      "jayson": "5.0.0"
+    }
+  }
+}

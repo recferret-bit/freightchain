@@ -4,10 +4,10 @@
 // and puts the captions / finger / end card in a screen-space overlay. Sound: make.mjs social/pitchdeck-video/pitchdeck-donate.json --add-audio <mp4> (the cue times below are the spec's).
 //   node social/pitchdeck-video/pitchdeck.mjs [out dir]   (needs `npm --prefix landing run build`, or DECK=<a vite --outDir>; GPU=0 for software GL)
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url'; import { spawnSync } from 'node:child_process';
-import ffmpeg from '../../media/node_modules/ffmpeg-static/index.js';
-import { launch, sleep } from '../../client/tools/cdp.mjs';
+import ffmpeg from '../media/node_modules/ffmpeg-static/index.js';
+import { launch, sleep } from '../../frontend/client/tools/cdp.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
-const DECK = process.env.DECK || path.resolve(here, '../../landing/dist'), OUT = path.resolve(process.argv[2] || path.join(here, 'out'));
+const DECK = process.env.DECK || path.resolve(here, '../../frontend/landing/dist'), OUT = path.resolve(process.argv[2] || path.join(here, 'out'));
 const FPS = 30, W = 1080, H = 1920, TOTAL = 9, N = FPS * TOTAL, Y0 = 656, K = 1080 / 1920;   // Y0: the 16:9 stage (1080×607 on this width) sits mid-frame; K: stage px → page px
 const CLICKS = [0.45, 0.85, 1.25, 1.65], GRAB = 3.1, THROW = 4.3, ADOPT = 5.6, CARD = 8.25;   // seconds: the audio cues in pitchdeck-donate.json (next to this file) follow these
 const SLOW = [4.3, 5.0, 0.5], FAST = [5.7, 8.25, 3.0];   // [from, to, game seconds per video second]

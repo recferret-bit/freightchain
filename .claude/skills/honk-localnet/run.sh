@@ -7,7 +7,7 @@
 #   KEEP=1           leave the scratch dir
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-SERVER="$ROOT/server"
+SERVER="$ROOT/backend/server"
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
 SCENARIO="${SCENARIO:-all}"
 case "$SCENARIO" in chain|session|all) ;; *) echo "✗ SCENARIO must be chain, session or all"; exit 2 ;; esac
@@ -18,9 +18,9 @@ if [ "$SCENARIO" = session ]; then
   exit $?
 fi
 command -v solana-test-validator >/dev/null || fail "solana-test-validator missing"
-[ -d "$SERVER/node_modules" ] || fail "server/node_modules missing – npm ci --prefix server"
-SO="$ROOT/programs/target/deploy/freightchain_honk.so"
-[ -f "$SO" ] || fail "missing $SO – from programs run: anchor build --arch v0 -p freightchain_honk"
+[ -d "$SERVER/node_modules" ] || fail "backend/server/node_modules missing – npm ci --prefix backend/server"
+SO="$ROOT/backend/programs/target/deploy/freightchain_honk.so"
+[ -f "$SO" ] || fail "missing $SO – from backend/programs run: anchor build --arch v0 -p freightchain_honk"
 TMP="$(mktemp -d -t fc-honk-XXXXXX)"
 DB="freightchain_honk_local_$$"
 URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"

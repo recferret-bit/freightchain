@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..'), CLIENT = join(ROOT, 'client');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..'), CLIENT = join(ROOT, 'frontend/client');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i < 0 ? d : process.argv[i + 1]; };
 const flag = k => process.argv.includes('--' + k);
 const SEEDS = +arg('seeds', 5), KM = +arg('km', 6), SECONDS = arg('seconds', null), K = arg('k', null), DRIVE_ROUTE = arg('drive-route', 'route66');

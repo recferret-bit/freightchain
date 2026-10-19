@@ -7,7 +7,7 @@
 # the ride-audit skill's tool). Exit: 0 nothing waits for an admin · 1 rides are (or would be) under review · 2 usage / loading error. Never writes anywhere.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-SERVER="$ROOT/server"
+SERVER="$ROOT/backend/server"
 BUILD=".review-build-$$"; TSCONFIG=".review-tsconfig-$$.json"
 cleanup() { rm -rf "$SERVER/$BUILD" "$SERVER/$TSCONFIG"; }
 trap cleanup EXIT

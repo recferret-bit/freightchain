@@ -16,7 +16,7 @@ export const FEATURES = [
   {
     id: 'auth', title: 'Sign-in + session',
     server: /^(application\/use-cases\/auth\/|domain\/auth\/|infrastructure\/auth\/(jose\.token-signer|nacl\.signature-verifier)|infrastructure\/http\/(guards\/(player-auth|optional-session)|interceptors\/session-cookie)|infrastructure\/prisma\/repositories\/(challenge|sign-in)\.|application\/services\/player-session|domain\/players\/wallet-address)/,
-    client: /^client\/(site\/(wallet|dev-wallet)|js\/(hosts|wallet))\.js$/,
+    client: /^(?:frontend\/)?client\/(site\/(wallet|dev-wallet)|js\/(hosts|wallet))\.js$/,
     routes: /^(POST \/api\/auth\/|GET \/api\/me$)/,
     words: /sign[- ]?in|session|nonce|cookie|SIWS/i,
     e2e: ['e2e-wallet.mjs', 'e2e-browser.mjs', 'e2e-lobby.mjs', 'e2e-close.mjs'],
@@ -32,7 +32,7 @@ export const FEATURES = [
   {
     id: 'verified-play', title: 'Verified play (recording, verdict, prompts)',
     server: /^(domain\/(telemetry|verdict)\/|domain\/rides\/ride-challenge|application\/use-cases\/(telemetry\/(upload-batch|sweep-telemetry)|verdict\/(get-ride-replays|process-replay-queue))\/|application\/use-cases\/admin\/rejudge-rides\/|application\/services\/verdict|infrastructure\/prisma\/repositories\/(ride-batch|ride-verdict|ride-replay)\.|infrastructure\/verdict\/|infrastructure\/scheduling\/(telemetry-retention|replay-verification))/,
-    client: /^client\/js\/(telemetry|prompt|input-bits)\.js$/,
+    client: /^(?:frontend\/)?client\/js\/(telemetry|prompt|input-bits)\.js$/,
     routes: /^(POST \/api\/rides\/:id\/batches|GET \/api\/rides\/:id\/replays)$/,
     tests: /(verdict|replay-engine|replay-verification|replay-queue|get-ride-replays|process-replay-queue|shared\.test)/,
     words: /verdict|batch|recording|prompt|challenge|re-?judge|retention|sweep|replay/i,
@@ -42,7 +42,7 @@ export const FEATURES = [
   {
     id: 'server-road', title: 'The server\'s road (obstacle plan, road checks, ride audit)',
     server: /^(domain\/road\/|domain\/telemetry\/world-facts|domain\/verdict\/(world-checks|ride-audit)|application\/use-cases\/live\/get-road-plan\/)/,
-    client: /^client\/js\/(road-plan|net\/obstacles)\.js$/,
+    client: /^(?:frontend\/)?client\/js\/(road-plan|net\/obstacles)\.js$/,
     routes: /^GET \/api\/watch\/:id\/road$/,
     words: /road plan|obstacle|planned hole|sinkhole|no impact|ignored|world|off-?road|gas pedal|audit/i,
     e2e: ['e2e-road-check.mjs'], skills: ['ride-audit', 'verified-play-test'],
@@ -58,7 +58,7 @@ export const FEATURES = [
   {
     id: 'rides', title: 'Ride lifecycle (order, start, heartbeat, end, stale sweep)',
     server: /^(application\/use-cases\/rides\/|domain\/rides\/|infrastructure\/prisma\/repositories\/ride\.|application\/services\/ride-lookup|infrastructure\/scheduling\/stale-ride|infrastructure\/http\/middleware\/beacon-body)/,
-    client: /^client\/js\/online\.js$/,
+    client: /^(?:frontend\/)?client\/js\/online\.js$/,
     routes: /^(POST \/api\/rides$|GET \/api\/rides\/(pending|:id)$|POST \/api\/rides\/:id\/(start|heartbeat|end)$)/,
     words: /\bride\b|heartbeat|stale|abandon|end ride|\/end/i,
     e2e: ['e2e-browser.mjs', 'e2e-close.mjs', 'e2e-lobby.mjs'], skills: ['run-tests', 'live-board-test'],
@@ -66,7 +66,7 @@ export const FEATURES = [
   {
     id: 'escrow-buy', title: 'Escrow: pools on sale + ticket purchase',
     server: /^(application\/use-cases\/tickets\/|application\/use-cases\/pools\/(list-pools|get-prize-pool|register-pool|register-pool-from-chain)\/|domain\/economy\/(pool\.|pool\.types|ticket|vault-split|chain\.dto)|domain\/players\/ride-ticket|application\/services\/(pool-registry|pool-tickets)|infrastructure\/prisma\/repositories\/(pool|ticket-order|ride-ticket)\.|infrastructure\/solana\/(program-chain\.adapter|pool-program|borsh|chain-transaction\.mapper|solana-rpc)|application\/use-cases\/players\/grant-tickets\/)/,
-    client: /^client\/site\/(pay|tickets-api|pools|lobby-pools)\.js$/,
+    client: /^(?:frontend\/)?client\/site\/(pay|tickets-api|pools|lobby-pools)\.js$/,
     routes: /^(POST \/api\/tickets$|(GET|POST) \/api\/tickets\/|GET \/api\/pools(\/:id)?$)/,
     words: /ticket|pool|sponsor|order/i,
     e2e: ['e2e-lobby.mjs', 'e2e-tickets-stub.mjs', 'e2e-localnet.mjs'], skills: ['localnet-e2e', 'run-tests'],
@@ -89,13 +89,13 @@ export const FEATURES = [
   },
   {
     id: 'escrow-program', title: 'Escrow program (on-chain, Rust)',
-    server: null, client: /^programs\//, routes: null,
+    server: null, client: /^(?:backend\/)?programs\//, routes: null,
     e2e: ['e2e-localnet.mjs'], skills: ['program-check', 'localnet-e2e'],
   },
   {
     id: 'promo', title: 'Promo codes (admin creates, players redeem)',
     server: /(promo|application\/use-cases\/players\/(redeem-promo|get-my-promos)\/)/,
-    client: /^client\/site\/(lobby-promo|admin-promos)\.js$/,
+    client: /^(?:frontend\/)?client\/site\/(lobby-promo|admin-promos)\.js$/,
     routes: /^(POST \/api\/promo\/redeem|GET \/api\/promo\/mine|(GET|POST) \/api\/admin\/promos)/,
     tests: /promos?(-abuse)?\.(scenarios|test|spec)/,
     words: /promo|redeem|redemption/i,
@@ -104,7 +104,7 @@ export const FEATURES = [
   {
     id: 'garage', title: 'Garage + cosmetics',
     server: /(cosmetic|garage|wardrobe)/,
-    client: /^client\/(js\/cosmetics|site\/(lobby-garage|garage-cab))\.js$/,
+    client: /^(?:frontend\/)?client\/(js\/cosmetics|site\/(lobby-garage|garage-cab))\.js$/,
     routes: /^((GET|POST) \/api\/garage|(GET|POST) \/api\/wardrobe)/,
     words: /garage|loadout|cosmetic|wardrobe|equip/i,
     headless: /loadout|= the original|every item of every slot/i,
@@ -113,7 +113,7 @@ export const FEATURES = [
   {
     id: 'statistics', title: 'Statistics (rides, time, km, crashes, donations – per rider + global, cached)',
     server: /^(application\/(services\/stats\.service|use-cases\/stats\/)|domain\/stats\/|infrastructure\/(cache\/|prisma\/repositories\/stats))/,
-    client: /^client\/site\/lobby-career\.js$/,
+    client: /^(?:frontend\/)?client\/site\/lobby-career\.js$/,
     routes: /^GET \/api\/stats(\/daily)?$/,
     words: /statistic|career|crash|driven, all time/i,
     headless: /contact with a vehicle is counted|no crashes counted/i,
@@ -122,7 +122,7 @@ export const FEATURES = [
   {
     id: 'live-board', title: 'Live board (online, on the road, history)',
     server: /^(application\/use-cases\/lobby\/(get-live|get-replays)\/|infrastructure\/live\/site-presence)/,
-    client: /^client\/site\/(presence|lobby-replays)\.js$/,
+    client: /^(?:frontend\/)?client\/site\/(presence|lobby-replays)\.js$/,
     routes: /^GET \/api\/(live|replays)$/,
     words: /online|presence|on the road|replays history|history/i,
     e2e: ['e2e-live-board.mjs', 'e2e-close.mjs'], skills: ['live-board-test'],
@@ -130,7 +130,7 @@ export const FEATURES = [
   {
     id: 'watch', title: 'Live streams: watch + replay',
     server: /^(application\/use-cases\/live\/watch-ride\/|infrastructure\/live\/viewer-presence|domain\/live\/live\.dto)/,
-    client: /^client\/js\/(watch|ui\/watch-panel|cockpit\/inputs)\.js$/,
+    client: /^(?:frontend\/)?client\/js\/(watch|ui\/watch-panel|cockpit\/inputs)\.js$/,
     routes: /^GET \/api\/watch\/:id$/,
     words: /watch|replay|viewer|spectator/i,
     e2e: ['e2e-watch.mjs', 'e2e-replay.mjs'], skills: ['replay-test'],
@@ -138,7 +138,7 @@ export const FEATURES = [
   {
     id: 'live-interact', title: 'Live streams: chat, mutes, donations, effects',
     server: /^(application\/use-cases\/live\/|domain\/live\/|application\/services\/live-access|infrastructure\/prisma\/repositories\/(ride-event|ride-mute|donation-order)\.)/,
-    client: /^client\/js\/(live-effects|ui\/live-feed)\.js$/,
+    client: /^(?:frontend\/)?client\/js\/(live-effects|ui\/live-feed)\.js$/,
     routes: /^(POST \/api\/watch\/:id\/|GET \/api\/rides\/:id\/inbox|POST \/api\/rides\/:id\/(mutes|effects))/,
     words: /chat|mute|donation|effect|tip|inbox|LIVE_/i,
     e2e: ['e2e-watch.mjs', 'e2e-live-flags.mjs', 'e2e-replay.mjs'], skills: ['replay-test'],
@@ -146,7 +146,7 @@ export const FEATURES = [
   {
     id: 'lobby', title: 'Lobby: tiers, pool, leaderboard, profile',
     server: /^(application\/use-cases\/(economy|lobby)\/|domain\/(lobby|economy\/economy\.dto|economy\/prize-pool|achievements)\/?|application\/services\/achievement|infrastructure\/prisma\/repositories\/(ride-query|achievement)\.|domain\/rides\/ride-tier)/,
-    client: /^client\/site\/(lobby|dom)\.js$/,
+    client: /^(?:frontend\/)?client\/site\/(lobby|dom)\.js$/,
     routes: /^GET \/api\/(tiers|pool|leaderboard|profile)$/,
     words: /leaderboard|profile|tier|board|achievement/i,
     e2e: ['e2e-lobby.mjs'], skills: ['run-tests'],
@@ -154,7 +154,7 @@ export const FEATURES = [
   {
     id: 'admin', title: 'Admin page (sign-in, review queue, audit)',
     server: /^(application\/use-cases\/admin\/|domain\/admin\/|application\/services\/admin-proof|infrastructure\/http\/(guards\/admin|interceptors\/admin-cookie)|infrastructure\/auth\/jose\.admin-token|infrastructure\/prisma\/repositories\/admin-)/,
-    client: /^client\/site\/admin\.js$/,
+    client: /^(?:frontend\/)?client\/site\/admin\.js$/,
     routes: /^(GET|POST) \/api\/admin\//,
     words: /admin|override|audit/i,
     e2e: ['e2e-admin.mjs', 'e2e-promo.mjs', 'e2e-verified-play.mjs', 'e2e-verified-deep.mjs'], skills: ['run-tests'],
@@ -162,7 +162,7 @@ export const FEATURES = [
   {
     id: 'analytics', title: 'Product analytics relay',
     server: /(analytics|application\/use-cases\/telemetry\/record-telemetry\/)/,
-    client: /^client\/js\/(analytics|web-vitals)\.js$/,
+    client: /^(?:frontend\/)?client\/js\/(analytics|web-vitals)\.js$/,
     routes: /^POST \/api\/telemetry$/,
     words: /analytics|posthog|web vital|telemetry relay/i,
     e2e: [], skills: ['posthog-test'],
@@ -172,14 +172,14 @@ export const FEATURES = [
     server: /^(main\.ts|app\/|cli\/|domain\/(shared|ops)\/|infrastructure\/(config|http|logging|time|crypto|health|prisma)\/|application\/use-cases\/health\/|application\/services\/(version-retry|demo))/,
     client: null,
     routes: /^GET \/api\/health\//,
-    tests: /^server\/test\/unit\/support\//,
+    tests: /^(?:backend\/)?server\/test\/unit\/support\//,
     words: /problem|request id|rate|throttle|cors|env|health|log|migration/i,
     e2e: ['e2e-browser.mjs'], skills: ['run-tests'],
   },
   {
     id: 'drive-sim', title: 'Game: driving sim (drivetrain, brakes, battery, climate)',
     server: null,
-    client: /^client\/js\/(sim\/(physics|battery|climate|damage|shake|audio|radio)|state|config|util)\.js$/,
+    client: /^(?:frontend\/)?client\/js\/(sim\/(physics|battery|climate|damage|shake|audio|radio)|state|config|util)\.js$/,
     routes: null,
     headless: /launch|stall|brake|clutch|battery|crank|alternator|cab light|engine|revs|heal|drain/i,
     e2e: ['e2e-chrome.mjs', 'e2e-browser.mjs'], skills: ['gameplay-balance'],
@@ -187,7 +187,7 @@ export const FEATURES = [
   {
     id: 'road', title: 'Game: endless road, junctions, traffic',
     server: null,
-    client: /^client\/js\/(net\/|road\.js|sim\/traffic\.js|world\/(chunks|junctions|depot|spacing|holes|roadmesh|pool)\.js)/,
+    client: /^(?:frontend\/)?client\/js\/(net\/|road\.js|sim\/traffic\.js|world\/(chunks|junctions|depot|spacing|holes|roadmesh|pool)\.js)/,
     routes: null,
     headless: /road|turn|signal|traffic|junction|crossroads|seed|endless|depot|60 km/i,
     e2e: ['e2e-chrome.mjs'], skills: ['gameplay-balance'],
@@ -195,30 +195,30 @@ export const FEATURES = [
   {
     id: 'cockpit', title: 'Game: cockpit, scenery, routes, 3D models',
     server: null,
-    client: /^client\/js\/(cockpit\/|world\/|themes\/|ui\/|main\.js|viewer\.js)/,
+    client: /^(?:frontend\/)?client\/js\/(cockpit\/|world\/|themes\/|ui\/|main\.js|viewer\.js)/,
     routes: null,
     e2e: ['e2e-chrome.mjs', 'e2e-viewer.mjs'], skills: ['storybook-models'],
   },
   {
     id: 'landing', title: 'Landing page',
     server: null,
-    client: /^landing\/src\/(main|format|dash-live|dash-scenes)\.js$/,
+    client: /^(?:frontend\/)?landing\/src\/(main|format|dash-live|dash-scenes)\.js$/,
     routes: null,
-    tests: /^landing\/test\/(page|budget|format|dash-scenes)\.test\.js$/,
+    tests: /^(?:frontend\/)?landing\/test\/(page|budget|format|dash-scenes)\.test\.js$/,
     e2e: ['e2e-wallet.mjs', 'e2e-replay.mjs', 'e2e-live-board.mjs'], skills: ['run-tests'],
   },
   {
     id: 'whitepaper', title: 'Whitepaper',
     server: null,
-    client: /^landing\/src\/(whitepaper|wp-scenes)\.js$/,
+    client: /^(?:frontend\/)?landing\/src\/(whitepaper|wp-scenes)\.js$/,
     routes: null,
-    tests: /^landing\/test\/(whitepaper|wp-scenes)\.test\.js$/,
+    tests: /^(?:frontend\/)?landing\/test\/(whitepaper|wp-scenes)\.test\.js$/,
     e2e: [], skills: [],
   },
   {
     id: 'media', title: 'Promo clips + sound',
-    server: null, client: /^media\//, routes: null,
-    tests: /^media\/test\//,
+    server: null, client: /^(?:social\/)?media\//, routes: null,
+    tests: /^(?:social\/)?media\/test\//,
     e2e: [], skills: ['gameplay-video', 'game-audio'],
   },
 ];

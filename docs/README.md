@@ -1,5 +1,7 @@
 # Freight Chain — Documentation Index
 
+Read the same tree as a book: [Docs wiki](./wiki.html). It opens every folder and page, and keeps the headings, tables, and section breaks.
+
 This directory is organized into seven top-level categories:
 
 | Category | Directory | Purpose |

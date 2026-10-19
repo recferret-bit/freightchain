@@ -4,7 +4,7 @@
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-SERVER="$ROOT/server"
+SERVER="$ROOT/backend/server"
 SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats blinks traffic editor)
 DB="freightchain_e2e_$$"
 PG_CONTAINER="${E2E_POSTGRES_CONTAINER:-freightchain-postgres}"
@@ -13,11 +13,11 @@ URL="postgresql://freight:freight_dev_password@localhost:$PG_PORT/$DB"
 TREASURY=GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn   # any valid address: paid clicks never reach the chain here
 ADMIN_KP="$(mktemp -t fc-admin-XXXXXX).json"
 # A PRIVATE build of the server and the landing: other checkouts / sessions build into server/dist + landing/dist while this runs (nest's deleteOutDir
-# empties dist/ mid-run – "Cannot find module dist/main.js"). Same depth as dist/, so the server's ../../../../client still finds the repo; a dot
+# empties dist/ mid-run – "Cannot find module dist/main.js"). Same depth as dist/, so the server's ../../../../frontend/client still finds the repo; a dot
 # directory, so the server's own tsc (no include list) never type-checks it.
 BUILD=".e2e-build-$$"; TSCONFIG=".e2e-tsconfig-$$.json"; LANDING_OUT="$(mktemp -d "${TMPDIR:-/tmp}/fc-landing-XXXXXX")"
 CLIENT_OUT="$(mktemp -d "${TMPDIR:-/tmp}/fc-client-XXXXXX")"
-cp -R "$ROOT/client/." "$CLIENT_OUT/"
+cp -R "$ROOT/frontend/client/." "$CLIENT_OUT/"
 PID=""; EDITOR_WORKER_PID=""; MCP_PID=""
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,()=>{console.log(s.address().port);s.close()})'; }
 psql_admin() { docker exec "$PG_CONTAINER" psql -U freight -d postgres -v ON_ERROR_STOP=1 -tAc "$1"; }
@@ -39,7 +39,7 @@ fi
 psql_admin "CREATE DATABASE \"$DB\"" >/dev/null
 (cd "$SERVER" && DATABASE_URL="$URL" ./node_modules/.bin/prisma migrate deploy >/dev/null)
 echo "▸ building the landing and the server (private copies: $LANDING_OUT, server/$BUILD)"
-(cd "$ROOT/landing" && ./node_modules/.bin/vite build --outDir "$LANDING_OUT" --emptyOutDir >/dev/null)
+(cd "$ROOT/frontend/landing" && ./node_modules/.bin/vite build --outDir "$LANDING_OUT" --emptyOutDir >/dev/null)
 printf '{ "extends": "./tsconfig.build.json", "compilerOptions": { "outDir": "./%s" } }\n' "$BUILD" > "$SERVER/$TSCONFIG"
 (cd "$SERVER" && ./node_modules/.bin/nest build -p "$TSCONFIG" >/dev/null)
 
@@ -70,10 +70,10 @@ for suite in "${SUITES[@]}"; do
     flags)   # the LIVE_* flags in a real browser: production's (paid donations, effects on free rides only), then chat + donations off
       EXTRA_ENV="LIVE_FREE_DONATIONS=off LIVE_EFFECTS=free" start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" MODE=paid node scripts/e2e-live-flags.mjs) || fails=$((fails + 1)); stop
       EXTRA_ENV="LIVE_CHAT=off LIVE_DONATIONS=off" start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" MODE=off node scripts/e2e-live-flags.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
-    wallet)  start 3;  (cd "$ROOT" && BASE="http://localhost:$PORT" PORT="$(free_port)" node landing/tools/e2e-wallet.mjs) || fails=$((fails + 1)) ;;   # the landing's sign-in + the promo invite, one origin
+    wallet)  start 3;  (cd "$ROOT" && BASE="http://localhost:$PORT" PORT="$(free_port)" node frontend/landing/tools/e2e-wallet.mjs) || fails=$((fails + 1)) ;;   # the landing's sign-in + the promo invite, one origin
     wallet-split)   # the same on split hosts: landing on app.localhost, API on api.app.localhost, one cookie on the apex (Chrome resolves *.localhost, see the script's header)
       APP_DOMAIN=app.localhost COOKIE_DOMAIN=app.localhost CORS_ORIGINS=http://app.localhost,http://ride.app.localhost start 3
-      (cd "$ROOT" && RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP api.app.localhost 127.0.0.1:$PORT" BASE=http://app.localhost API=http://api.app.localhost PORT="$(free_port)" node landing/tools/e2e-wallet.mjs) || fails=$((fails + 1)) ;;
+      (cd "$ROOT" && RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP api.app.localhost 127.0.0.1:$PORT" BASE=http://app.localhost API=http://api.app.localhost PORT="$(free_port)" node frontend/landing/tools/e2e-wallet.mjs) || fails=$((fails + 1)) ;;
     close)   start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-close.mjs) || fails=$((fails + 1)) ;;   # a closed landing / lobby / watch page / game tab leaves the board at once
     close-split)   # the same on split hosts (the cookie on the apex, the beacons cross-subdomain to api.*) – what production does
       APP_DOMAIN=app.localhost COOKIE_DOMAIN=app.localhost CORS_ORIGINS=http://app.localhost,http://ride.app.localhost start 20
@@ -101,7 +101,7 @@ for suite in "${SUITES[@]}"; do
     editor)  # the model editor (storybook viewer): the REAL entity MCP (mcp/src/http.js) + the server's scripted model (EDITOR_FAKE_LLM=1) – no AI key needed
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
       FIXED_PORT="$(free_port)"; MCP_PORT="$(free_port)"; MCP_TOKEN="e2e-mcp-$$-$(node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))')"
-      (cd "$ROOT/mcp" && EDITOR_MCP_PORT="$MCP_PORT" EDITOR_MCP_TOKEN="$MCP_TOKEN" FC_APP_URL="http://localhost:$FIXED_PORT" exec node src/http.js > "/tmp/fc-e2e-mcp-$DB.log" 2>&1) & MCP_PID=$!
+      (cd "$ROOT/backend/mcp" && EDITOR_MCP_PORT="$MCP_PORT" EDITOR_MCP_TOKEN="$MCP_TOKEN" FC_APP_URL="http://localhost:$FIXED_PORT" exec node src/http.js > "/tmp/fc-e2e-mcp-$DB.log" 2>&1) & MCP_PID=$!
       EDITOR_TEST_JWT="e2e-editor-jwt-$$-shared-between-processes"
       EXTRA_ENV="JWT_SECRET=$EDITOR_TEST_JWT EDITOR_WALLETS=$wallet EDITOR_FAKE_LLM=1 EDITOR_MCP_URL=http://127.0.0.1:$MCP_PORT EDITOR_MCP_TOKEN=$MCP_TOKEN" start 3 "$wallet"   # the editor is the ADMIN wallet too (the owner's setup)
       (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" node scripts/e2e-editor-worker.mjs queue "$BUILD/editor-worker-job.txt")

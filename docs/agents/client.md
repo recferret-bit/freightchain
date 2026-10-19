@@ -1,11 +1,11 @@
-# The game (client/) – run, layout, conventions, caveats
+# The game (frontend/client/) – run, layout, conventions, caveats
 
-Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session); an "In short" block, where there is one, is a summary. Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current"). Paths are relative to `client/` unless they start with `server/`, `landing/` or `media/`.
+Agent reference, moved verbatim out of `AGENTS.md` (which keeps only the map and the hard rules and is loaded into every agent session); an "In short" block, where there is one, is a summary. Read the file for a topic before changing it; keep it current like AGENTS.md ("Maps stay current"). Paths are relative to `frontend/client/` unless they start with `backend/`, `frontend/`, `infra/`, `tests/` or `social/`.
 
 ## Run it
 
 ```sh
-# from client/
+# from frontend/client/
 ./serve.sh                       # python http server on :8765 + opens the browser (or: python3 -m http.server 8765)
 node tools/build-standalone.mjs  # optional: one self-contained dist/freightchain.html that works when double-clicked
 ```

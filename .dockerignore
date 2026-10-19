@@ -1,18 +1,23 @@
-# Docker build context = the repo root (the image holds the server AND the site served from client/)
+# Docker build context = the repo root (the image holds the server AND the site served from frontend/client/)
 **/node_modules
 **/dist
 .git
 .claude
 docs
-# the landing image runs the whitepaper number checks, which read these two files; the rest of deploy/ stays out
-deploy/*
-!deploy/docker-compose.prod.yml
-!deploy/Dockerfile
+social
+tests
+backend/programs/target
+# the landing image runs the whitepaper number checks, which read these two files; the rest of infra/ stays out
+infra/*
+!infra/deploy
+infra/deploy/*
+!infra/deploy/docker-compose.prod.yml
+!infra/deploy/Dockerfile
 **/.env
 **/.env.*
-server/data
-server/test
-server/scripts
-client/tools
-client/css/*.map
+backend/server/data
+backend/server/test
+backend/server/scripts
+frontend/client/tools
+frontend/client/css/*.map
 *.log

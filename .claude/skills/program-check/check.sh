@@ -7,7 +7,7 @@
 # The hash is solana-verify's executable hash (sha256 of the .so without its trailing zero padding) – not `sha256sum` of the file.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-WS="$ROOT/programs"
+WS="$ROOT/backend/programs"
 LIB=freightchain_pools
 SO="$WS/target/deploy/$LIB.so"
 PIN="$WS/verifiable-build.hash"   # committed: the verifiable build of this commit = the bytes a deploy must ship

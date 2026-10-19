@@ -38,7 +38,7 @@ function decoratorRuns(src) {   // → [{ names: [{ name, args }], end }] in sou
 }
 const firstLiteral = args => { const t = args.trim(); return t[0] === '{' ? t.match(/path\s*:\s*(['"`])([^'"`]*)\1/)?.[2] : literalAfter(t, 0)?.text; };
 const routes = [];
-for (const file of walk('server/src/presentation').filter(f => f.endsWith('.controller.ts'))) {
+for (const file of walk('backend/server/src/presentation').filter(f => f.endsWith('.controller.ts'))) {
   const src = read(file);
   const runs = decoratorRuns(src);
   let base = null, classGuarded = false;
@@ -73,7 +73,7 @@ function literalAfter(src, i) {   // the literal that starts at src[i], with nes
 }
 const normalise = t => t.split('?')[0].replace(/(^|\/)\u0000(?=\/|$)/g, '$1:p').replace(/\u0000/g, '').replace(/\/$/, '');   // a whole-segment placeholder = a path parameter; one glued to text (`promos${state ? …}`) is a query string
 const calls = [];
-for (const file of walk('client/site').filter(f => /\/admin[^/]*\.js$/.test(f))) {
+for (const file of walk('frontend/client/site').filter(f => /\/admin[^/]*\.js$/.test(f))) {
   const src = read(file).replace(/\/\*[\s\S]*?\*\//g, c => c.replace(/[^\n]/g, ' ')).replace(/^(\s*)\/\/.*$/gm, '$1');   // comments out, offsets kept
   for (const m of src.matchAll(/\b(api|signAt)\(\s*/g)) {
     const lit = literalAfter(src, m.index + m[0].length);
@@ -90,17 +90,17 @@ const sameRoute = (a, b) => { const [av, ap] = a.split(' '), [bv, bp] = b.split(
 
 const problems = [];
 for (const r of routes) if (!r.guarded && !r.public) problems.push(`unguarded: ${r.key} (${r.file}) – no AdminGuard on the class or the method and no @AdminPublic()`);
-for (const r of routes) if (!calls.some(c => sameRoute(c.key, r.key))) problems.push(`not in the admin page: ${r.key} (${r.file}) – add a view / control to client/site/admin*.js`);
+for (const r of routes) if (!calls.some(c => sameRoute(c.key, r.key))) problems.push(`not in the admin page: ${r.key} (${r.file}) – add a view / control to frontend/client/site/admin*.js`);
 for (const c of calls) if (!routes.some(r => sameRoute(c.key, r.key))) problems.push(`dead call: ${c.key} (${c.file}:${c.line}) – no admin route answers it`);
 
 /* ── tabs ── */
-const html = read('client/admin.html').match(/data-tab="([\w-]+)"/g)?.map(s => s.slice(10, -1)) ?? [];
-const TABS = (read('client/site/admin.js').match(/const TABS = \[([^\]]*)\]/)?.[1].match(/'([\w-]+)'/g) ?? []).map(s => s.slice(1, -1));
+const html = read('frontend/client/admin.html').match(/data-tab="([\w-]+)"/g)?.map(s => s.slice(10, -1)) ?? [];
+const TABS = (read('frontend/client/site/admin.js').match(/const TABS = \[([^\]]*)\]/)?.[1].match(/'([\w-]+)'/g) ?? []).map(s => s.slice(1, -1));
 for (const t of html) if (!TABS.includes(t)) problems.push(`tab link without a view: data-tab="${t}" in admin.html is not in TABS (admin.js)`);
 for (const t of TABS) if (!html.includes(t)) problems.push(`view without a tab link: "${t}" is in TABS (admin.js) but admin.html has no data-tab="${t}"`);
 
 /* ── info: the browser suite ── */
-const e2e = read('server/scripts/e2e-admin.mjs');
+const e2e = read('backend/server/scripts/e2e-admin.mjs');
 const untested = routes.filter(r => { const tail = r.key.split(' ')[1].replace(/^api\/admin\/?/, '').split('/').filter(s => !s.startsWith(':')); return !tail.length || !tail.every(s => e2e.includes(s)); }).map(r => r.key);
 
 const report = { routes: routes.length, calls: calls.length, tabs: TABS, problems, notInE2e: untested };
@@ -108,7 +108,7 @@ if (process.argv.includes('--json')) console.log(JSON.stringify(report, null, 2)
 else {
   console.log(`${routes.length} admin routes · ${calls.length} calls from the page · tabs: ${TABS.join(', ')}`);
   for (const r of routes) console.log(`  ${calls.some(c => sameRoute(c.key, r.key)) ? 'ok  ' : 'MISS'} ${r.key}${r.public ? '  (public: sign-in)' : ''}`);
-  if (untested.length) console.log(`info: never named in ${relative(ROOT, join(ROOT, 'server/scripts/e2e-admin.mjs'))}: ${untested.join(', ')}`);
+  if (untested.length) console.log(`info: never named in ${relative(ROOT, join(ROOT, 'backend/server/scripts/e2e-admin.mjs'))}: ${untested.join(', ')}`);
   console.log(problems.length ? `\n${problems.length} problem(s):\n${problems.map(p => `  - ${p}`).join('\n')}` : '\nadmin page covers every admin API');
 }
 process.exit(problems.length ? 1 : 0);

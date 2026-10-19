@@ -73,7 +73,7 @@ function walk(dir, rel, acc) {
     try { st = statSync(full); } catch { continue; }
     if (st.isDirectory()) {
       // .claude holds skills plus other checkouts under worktrees. Those copies are not this tree's suite.
-      if (SKIP_DIR.has(name) || name === '.claude' || (name === 'out' && rel === 'media')) continue;
+      if (SKIP_DIR.has(name) || name === '.claude' || (name === 'out' && (rel === 'media' || rel === 'social/media'))) continue;
       walk(full, child, acc);
     } else if (st.size < 1_500_000) acc.push(child);
   }
@@ -147,37 +147,37 @@ function countCalls(rel, text) {
 }
 
 function layerOf(rel) {
-  if (rel.startsWith('server/test/unit/domain/')) return 'server-domain';
-  if (rel.startsWith('server/test/unit/application/use-cases/')) return 'server-handlers';
-  if (rel.startsWith('server/test/unit/application/services/')) return 'server-services';
-  if (rel.startsWith('server/test/unit/presentation/')) return 'server-controllers';
-  if (rel.startsWith('server/test/unit/infrastructure/')) return 'server-infrastructure';
-  if (rel.startsWith('server/test/unit/') && rel.endsWith('.spec.ts')) return 'server-other-unit';
-  if ((rel.startsWith('server/test/architecture/') || rel.startsWith('server/test/migrations/')) && rel.endsWith('.spec.ts')) return 'server-audits';
-  if (rel.startsWith('server/test/scenarios/') && rel.endsWith('.ts')) return 'server-scenarios';
-  if (rel.startsWith('server/test/http/') && rel.endsWith('.spec.ts')) return 'server-http';
-  if (rel.startsWith('server/test/integration/repositories/') && rel.endsWith('.spec.ts')) return 'server-repositories';
+  if (rel.startsWith('backend/server/test/unit/domain/')) return 'server-domain';
+  if (rel.startsWith('backend/server/test/unit/application/use-cases/')) return 'server-handlers';
+  if (rel.startsWith('backend/server/test/unit/application/services/')) return 'server-services';
+  if (rel.startsWith('backend/server/test/unit/presentation/')) return 'server-controllers';
+  if (rel.startsWith('backend/server/test/unit/infrastructure/')) return 'server-infrastructure';
+  if (rel.startsWith('backend/server/test/unit/') && rel.endsWith('.spec.ts')) return 'server-other-unit';
+  if ((rel.startsWith('backend/server/test/architecture/') || rel.startsWith('backend/server/test/migrations/')) && rel.endsWith('.spec.ts')) return 'server-audits';
+  if (rel.startsWith('backend/server/test/scenarios/') && rel.endsWith('.ts')) return 'server-scenarios';
+  if (rel.startsWith('backend/server/test/http/') && rel.endsWith('.spec.ts')) return 'server-http';
+  if (rel.startsWith('backend/server/test/integration/repositories/') && rel.endsWith('.spec.ts')) return 'server-repositories';
   if (rel.endsWith('concurrency.integration.spec.ts')) return 'server-concurrency';
   if (rel.endsWith('migrations.integration.spec.ts')) return 'server-migration-drift';
   if (rel.endsWith('flows.integration.spec.ts')) return 'server-http-postgres';
-  if (rel.startsWith('server/test/integration/') && rel.endsWith('.spec.ts')) return 'server-integration-other';
-  if (rel.startsWith('client/test/') && rel.endsWith('.test.mjs')) return 'client-unit';
-  if (rel === 'client/tools/headless-test.mjs') return 'client-headless';
-  if (/^(client\/tools|landing\/tools|server\/scripts)\/e2e-.*\.mjs$/.test(rel)) return 'browser-e2e';
-  if (rel.startsWith('landing/test/') && rel.endsWith('.test.js')) return 'landing-unit';
-  if (rel.startsWith('media/test/') && rel.endsWith('.test.mjs')) return 'media-unit';
-  if (rel.startsWith('programs/') && rel.endsWith('.rs')) return 'program';
+  if (rel.startsWith('backend/server/test/integration/') && rel.endsWith('.spec.ts')) return 'server-integration-other';
+  if (rel.startsWith('frontend/client/test/') && rel.endsWith('.test.mjs')) return 'client-unit';
+  if (rel === 'frontend/client/tools/headless-test.mjs') return 'client-headless';
+  if (/^(frontend\/client\/tools|frontend\/landing\/tools|backend\/server\/scripts)\/e2e-.*\.mjs$/.test(rel)) return 'browser-e2e';
+  if (rel.startsWith('frontend/landing/test/') && rel.endsWith('.test.js')) return 'landing-unit';
+  if (rel.startsWith('social/media/test/') && rel.endsWith('.test.mjs')) return 'media-unit';
+  if (rel.startsWith('backend/programs/') && rel.endsWith('.rs')) return 'program';
   return null;
 }
 
 function interesting(rel) {
-  if (rel.startsWith('server/test/') && (rel.endsWith('.spec.ts') || rel.startsWith('server/test/scenarios/'))) return rel.endsWith('.ts');
-  if (rel.startsWith('client/test/') && rel.endsWith('.test.mjs')) return true;
-  if (rel === 'client/tools/headless-test.mjs') return true;
-  if (/^(client\/tools|landing\/tools|server\/scripts)\/e2e-.*\.mjs$/.test(rel)) return true;
-  if (rel.startsWith('landing/test/') && rel.endsWith('.test.js')) return true;
-  if (rel.startsWith('media/test/') && rel.endsWith('.test.mjs')) return true;
-  if (rel.startsWith('programs/') && rel.endsWith('.rs') && !rel.includes('/target/')) return true;
+  if (rel.startsWith('backend/server/test/') && (rel.endsWith('.spec.ts') || rel.startsWith('backend/server/test/scenarios/'))) return rel.endsWith('.ts');
+  if (rel.startsWith('frontend/client/test/') && rel.endsWith('.test.mjs')) return true;
+  if (rel === 'frontend/client/tools/headless-test.mjs') return true;
+  if (/^(frontend\/client\/tools|frontend\/landing\/tools|backend\/server\/scripts)\/e2e-.*\.mjs$/.test(rel)) return true;
+  if (rel.startsWith('frontend/landing/test/') && rel.endsWith('.test.js')) return true;
+  if (rel.startsWith('social/media/test/') && rel.endsWith('.test.mjs')) return true;
+  if (rel.startsWith('backend/programs/') && rel.endsWith('.rs') && !rel.includes('/target/')) return true;
   return false;
 }
 
@@ -197,7 +197,7 @@ function basenamesUnder(relDir) {
 
 function srcFiles() {
   const acc = [];
-  const src = join(ROOT, 'server/src');
+  const src = join(ROOT, 'backend/server/src');
   const walkSrc = (dir) => {
     for (const name of readdirSync(dir)) {
       const full = join(dir, name);
@@ -314,9 +314,9 @@ function runnerFor(base) {
     if (!statSync(dir).isDirectory()) continue;
     if (dirHas(dir, base, /\.sh$/)) return name;
   }
-  for (const rel of ['package.json', 'client/package.json', 'server/package.json', 'landing/package.json', 'media/package.json']) {
+  for (const rel of ['package.json', 'frontend/client/package.json', 'backend/server/package.json', 'frontend/landing/package.json', 'social/media/package.json']) {
     const pkg = JSON.parse(read(rel));
-    const prefix = rel === 'package.json' ? 'npm run' : `npm --prefix ${rel.split('/')[0]} run`;
+    const prefix = rel === 'package.json' ? 'npm run' : `npm --prefix ${rel.replace(/\/package\.json$/, '')} run`;
     for (const [script, cmd] of Object.entries(pkg.scripts || {})) {
       if (String(cmd).includes(base)) return `${prefix} ${script}`;
     }
@@ -358,11 +358,11 @@ function inventory() {
     };
   });
   const unclassified = files.filter((f) => !f.layer).map((f) => f.rel);
-  const specText = read('server/test/architecture/test-pyramid.spec.ts');
+  const specText = read('backend/server/test/architecture/test-pyramid.spec.ts');
   const pure = pureModulePaths(specText);
-  const gaps = pyramidGaps(srcFiles(), basenamesUnder('server/test/unit'), basenamesUnder('server/test/integration'), pure || []);
-  const memory = read('server/test/http/flows.spec.ts');
-  const postgres = read('server/test/integration/flows.integration.spec.ts');
+  const gaps = pyramidGaps(srcFiles(), basenamesUnder('backend/server/test/unit'), basenamesUnder('backend/server/test/integration'), pure || []);
+  const memory = read('backend/server/test/http/flows.spec.ts');
+  const postgres = read('backend/server/test/integration/flows.integration.spec.ts');
   const scenarioFiles = files.filter((f) => f.layer === 'server-scenarios');
   const fns = scenarioFiles.flatMap((f) => scenarioFns(read(f.rel)));
   const scenarioSides = fns.map((name) => ({
@@ -375,7 +375,7 @@ function inventory() {
     checks: f.checks,
     runner: runnerFor(f.rel.split('/').pop()),
   }));
-  const unitSpecRels = files.filter((f) => f.rel.startsWith('server/test/unit/') && f.rel.endsWith('.spec.ts')).map((f) => f.rel);
+  const unitSpecRels = files.filter((f) => f.rel.startsWith('backend/server/test/unit/') && f.rel.endsWith('.spec.ts')).map((f) => f.rel);
   return {
     countedAt: new Date().toISOString(),
     layers,
@@ -728,20 +728,20 @@ function cargoOnPath() {
 
 function stagePlan(id) {
   const node = process.execPath;
-  const vitest = join(ROOT, 'server/node_modules/.bin/vitest');
+  const vitest = join(ROOT, 'backend/server/node_modules/.bin/vitest');
   const jsonOut = (name) => join(tmpdir(), `fc-census-${name}-${process.pid}.json`);
   const tap = (cwd, files) => ({ cwd, cmd: node, args: ['--test', '--test-reporter=tap', ...files], parse: 'tap', timeout: 15 * 60 * 1000 });
-  if (id === 'client-unit') return tap(join(ROOT, 'client'), flatTests('client/test', '.test.mjs'));
-  if (id === 'landing') return tap(join(ROOT, 'landing'), flatTests('landing/test', '.test.js'));
-  if (id === 'media') return tap(join(ROOT, 'media'), flatTests('media/test', '.test.mjs'));
-  if (id === 'client-headless') return { cwd: join(ROOT, 'client'), cmd: 'sh', args: ['tools/trace.sh', 'run'], parse: 'checks', timeout: 15 * 60 * 1000 };
+  if (id === 'client-unit') return tap(join(ROOT, 'frontend/client'), flatTests('frontend/client/test', '.test.mjs'));
+  if (id === 'landing') return tap(join(ROOT, 'frontend/landing'), flatTests('frontend/landing/test', '.test.js'));
+  if (id === 'media') return tap(join(ROOT, 'social/media'), flatTests('social/media/test', '.test.mjs'));
+  if (id === 'client-headless') return { cwd: join(ROOT, 'frontend/client'), cmd: 'sh', args: ['tools/trace.sh', 'run'], parse: 'checks', timeout: 15 * 60 * 1000 };
   if (id === 'server-unit') {
-    return { cwd: join(ROOT, 'server'), cmd: vitest, args: ['run', '--reporter=json', '--outputFile', jsonOut('server-unit')], parse: 'vitest', timeout: 15 * 60 * 1000, json: jsonOut('server-unit') };
+    return { cwd: join(ROOT, 'backend/server'), cmd: vitest, args: ['run', '--reporter=json', '--outputFile', jsonOut('server-unit')], parse: 'vitest', timeout: 15 * 60 * 1000, json: jsonOut('server-unit') };
   }
   if (id === 'server-integration') {
-    return { cwd: join(ROOT, 'server'), cmd: vitest, args: ['run', '--config', 'vitest.integration.config.ts', '--reporter=json', '--outputFile', jsonOut('server-integration')], parse: 'vitest', timeout: 20 * 60 * 1000, json: jsonOut('server-integration'), dbUp: true };
+    return { cwd: join(ROOT, 'backend/server'), cmd: vitest, args: ['run', '--config', 'vitest.integration.config.ts', '--reporter=json', '--outputFile', jsonOut('server-integration')], parse: 'vitest', timeout: 20 * 60 * 1000, json: jsonOut('server-integration'), dbUp: true };
   }
-  if (id === 'program-test') return { cwd: join(ROOT, 'programs'), cmd: 'cargo', args: ['test'], parse: 'cargo', timeout: 20 * 60 * 1000, cargo: true };
+  if (id === 'program-test') return { cwd: join(ROOT, 'backend/programs'), cmd: 'cargo', args: ['test'], parse: 'cargo', timeout: 20 * 60 * 1000, cargo: true };
   if (id === 'e2e') return withRouteLog(bash(join(ROOT, '.claude/skills/run-tests/e2e.sh'), [], 50));
   if (id.startsWith('e2e:')) {
     const suite = id.slice(4);
@@ -1087,7 +1087,7 @@ function writeReadme() {
 // landing and media, and the headless playthrough (its esbuild bundle carries a source map, so lines land on js/…). Writes coverage.json.
 async function lineCoverage(withIntegration) {
   const dir = mkdtempSync(join(tmpdir(), 'fc-census-cov-'));
-  const server = join(ROOT, 'server');
+  const server = join(ROOT, 'backend/server');
   const vitest = join(server, 'node_modules/.bin/vitest');
   const vitestCov = (sub, extra) => ({
     cwd: server, cmd: vitest, timeout: 25 * 60 * 1000,
@@ -1095,22 +1095,22 @@ async function lineCoverage(withIntegration) {
   });
   const nodeCov = (pkg, files) => ({
     cwd: join(ROOT, pkg), cmd: process.execPath, timeout: 15 * 60 * 1000,
-    args: ['--test', '--experimental-test-coverage', '--test-reporter=lcov', `--test-reporter-destination=${join(dir, `${pkg}.lcov`)}`, '--test-reporter=dot', '--test-reporter-destination=stdout', ...files],
+    args: ['--test', '--experimental-test-coverage', '--test-reporter=lcov', `--test-reporter-destination=${join(dir, `${pkg.split('/').pop()}.lcov`)}`, '--test-reporter=dot', '--test-reporter-destination=stdout', ...files],
   });
   // The headless bundle must sit inside client/: node:test leaves files outside the working directory out of the report.
-  const bundleDir = join(ROOT, 'client', `.census-cov-${process.pid}`);
+  const bundleDir = join(ROOT, 'frontend/client', `.census-cov-${process.pid}`);
   mkdirSync(bundleDir, { recursive: true });
   writeFileSync(join(bundleDir, 'headless.cov.mjs'), `process.argv[2] = ${JSON.stringify(join(bundleDir, 'fc-test.js'))};\nawait import('../tools/headless-test.mjs');\n`);
-  const esbuild = { cwd: join(ROOT, 'client'), cmd: 'npx', timeout: 5 * 60 * 1000, args: ['esbuild', 'js/main.js', '--bundle', '--format=esm', '--alias:three=./tools/stub-three.mjs', '--sourcemap', `--outfile=${join(bundleDir, 'fc-test.js')}`, '--log-level=error'] };
-  const headless = nodeCov('client', [join(bundleDir, 'headless.cov.mjs')]);
+  const esbuild = { cwd: join(ROOT, 'frontend/client'), cmd: 'npx', timeout: 5 * 60 * 1000, args: ['esbuild', 'js/main.js', '--bundle', '--format=esm', '--alias:three=./tools/stub-three.mjs', '--sourcemap', `--outfile=${join(bundleDir, 'fc-test.js')}`, '--log-level=error'] };
+  const headless = nodeCov('frontend/client', [join(bundleDir, 'headless.cov.mjs')]);
   headless.args = ['--enable-source-maps', ...headless.args.map((a) => a.replace('client.lcov', 'headless.lcov'))];
   const jobs = [
     ['server unit + HTTP', vitestCov('unit', [])],
     ['client headless bundle', esbuild],
     ['client headless playthrough', headless],
-    ['client unit', nodeCov('client', flatTests('client/test', '.test.mjs'))],
-    ['landing', nodeCov('landing', flatTests('landing/test', '.test.js'))],
-    ['media', nodeCov('media', flatTests('media/test', '.test.mjs'))],
+    ['client unit', nodeCov('frontend/client', flatTests('frontend/client/test', '.test.mjs'))],
+    ['landing', nodeCov('frontend/landing', flatTests('frontend/landing/test', '.test.js'))],
+    ['media', nodeCov('social/media', flatTests('social/media/test', '.test.mjs'))],
   ];
   if (withIntegration) {
     const refused = unsafeTestDatabase(process.env.TEST_DATABASE_URL);
@@ -1133,7 +1133,7 @@ async function lineCoverage(withIntegration) {
   const readJson = (sub) => { try { return JSON.parse(readFileSync(join(dir, sub, 'coverage-final.json'), 'utf8')); } catch { return {}; } };
   const files = linesFromIstanbul(mergeIstanbul(readJson('unit'), readJson('integration')), ROOT);
   const acc = {};
-  for (const [name, pkg] of [['client', 'client'], ['headless', 'client'], ['landing', 'landing'], ['media', 'media']]) {
+  for (const [name, pkg] of [['client', 'frontend/client'], ['headless', 'frontend/client'], ['landing', 'frontend/landing'], ['media', 'social/media']]) {
     const lcov = join(dir, `${name}.lcov`);
     if (existsSync(lcov)) addLcov(acc, readFileSync(lcov, 'utf8'), ROOT, join(ROOT, pkg));
   }
@@ -1193,7 +1193,7 @@ async function selfTest() {
   assert(inv.skills.some((s) => s.name === 'game-audio' && s.kind === 'other'), 'game-audio kind');
   assert(inv.skills.some((s) => s.name === 'test-census' && s.kind === 'census'), 'census kind');
   assert(inv.harnesses.some((h) => h.rel.endsWith('e2e-browser.mjs') && h.runner === 'e2e.sh'), 'browser wired');
-  assert(inv.harnesses.some((h) => h.rel.endsWith('e2e-tickets-stub.mjs') && h.runner === 'npm --prefix server run test:tickets-stub'), 'tickets stub wired');
+  assert(inv.harnesses.some((h) => h.rel.endsWith('e2e-tickets-stub.mjs') && h.runner === 'npm --prefix backend/server run test:tickets-stub'), 'tickets stub wired');
   assert(unsafeTestDatabase('') === '' && unsafeTestDatabase('postgresql://u:p@localhost:5432/freightchain_branch_test') === '' && unsafeTestDatabase('postgresql://u:p@localhost:5432/freightchain').includes('_test'), 'test database guard');
   assert(inv.scenarioSides.some((s) => s.name === 'analyticsScenarios' && s.memory === 2 && s.postgres === 2), 'analytics registered twice');
   assert(inv.pureReadable, 'pure list');

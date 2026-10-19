@@ -2,8 +2,8 @@
 # Full TEN4 coin suite on one local validator. Does not deploy.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-SERVER="$ROOT/server"
-PROGRAMS="$ROOT/programs"
+SERVER="$ROOT/backend/server"
+PROGRAMS="$ROOT/backend/programs"
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
 SO="$PROGRAMS/target/deploy/freightchain_honk.so"
 fail() { echo "✗ $*"; exit 1; }

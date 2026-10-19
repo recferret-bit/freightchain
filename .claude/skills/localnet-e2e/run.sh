@@ -18,11 +18,11 @@
 # Needs: the compose PostgreSQL (npm run db:up), server/ dependencies, Chrome, solana-test-validator (Agave 4.1.2), internet once (web3.js + three.js CDNs).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-SERVER="$ROOT/server"
+SERVER="$ROOT/backend/server"
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.avm/bin:$PATH"
-SO="${SO:-$ROOT/programs/target/deploy/freightchain_pools.so}"
-PIN="$ROOT/programs/verifiable-build.hash"
-PROGRAM_ID="$(node -p 'require(process.argv[1]).address' "$ROOT/programs/idl/freightchain_pools.json")"
+SO="${SO:-$ROOT/backend/programs/target/deploy/freightchain_pools.so}"
+PIN="$ROOT/backend/programs/verifiable-build.hash"
+PROGRAM_ID="$(node -p 'require(process.argv[1]).address' "$ROOT/backend/programs/idl/freightchain_pools.json")"
 TMP="$(mktemp -d -t fc-localnet-XXXXXX)"
 DB="freightchain_localnet_$$"; DB_DAY="freightchain_localnet_$$_day"
 URL="postgresql://freight:freight_dev_password@localhost:15433/$DB"; URL_DAY="postgresql://freight:freight_dev_password@localhost:15433/$DB_DAY"
@@ -49,17 +49,17 @@ trap cleanup EXIT
 
 TARGET="${TARGET:-localnet}"
 if [ "$TARGET" = devnet ]; then
-  ENVF="$SERVER/.env.devnet"; [ -f "$ENVF" ] || fail "no server/.env.devnet – bash server/scripts/devnet.sh env"
+  ENVF="$SERVER/.env.devnet"; [ -f "$ENVF" ] || fail "no backend/server/.env.devnet – bash backend/server/scripts/devnet.sh env"
   envkey() { grep -E "^$1=" "$ENVF" | head -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//'; }   # by key name, never printed
-  MAIN="$(cd "$(dirname "$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)")" && pwd)"; DKEYS="${KEYS_DIR:-$MAIN/deploy/secrets/devnet}"
+  MAIN="$(cd "$(dirname "$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)")" && pwd)"; DKEYS="${KEYS_DIR:-$MAIN/infra/deploy/secrets/devnet}"
   RPC="$(envkey SOLANA_RPC)"; WS="$(envkey SOLANA_WS)"; DEV_PROGRAM="$(envkey TICKET_PROGRAM_ID)"
-  [ -n "$RPC" ] && [ -n "$DEV_PROGRAM" ] || fail "SOLANA_RPC and TICKET_PROGRAM_ID must be set in server/.env.devnet (Phase 1: deploy + devnet.sh env)"
+  [ -n "$RPC" ] && [ -n "$DEV_PROGRAM" ] || fail "SOLANA_RPC and TICKET_PROGRAM_ID must be set in backend/server/.env.devnet (Phase 1: deploy + devnet.sh env)"
   [ "$DEV_PROGRAM" = "$PROGRAM_ID" ] || fail "the code is built for $PROGRAM_ID but .env.devnet says $DEV_PROGRAM – run anchor keys sync + rebuild (program-deploy.md step 1–3)"
   genesis="$(curl -sS -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getGenesisHash"}' "$RPC" | node -pe 'JSON.parse(require("fs").readFileSync(0)).result')"
   [ "$genesis" = EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG ] || fail "SOLANA_RPC is not devnet (genesis $genesis) – refusing"
   mkdir -p "$TMP/keys"; for r in admin crank fee seed plat; do cp "$DKEYS/$r.json" "$TMP/keys/$r.json"; done; cp "$DKEYS/funder.json" "$TMP/keys/mint.json"
   pub() { solana-keygen pubkey "$TMP/keys/$1.json"; }
-  echo "▸ devnet: program $PROGRAM_ID (RPC from server/.env.devnet), keys from $DKEYS"
+  echo "▸ devnet: program $PROGRAM_ID (RPC from backend/server/.env.devnet), keys from $DKEYS"
   (cd "$SERVER" && npm run --silent build >/dev/null)
   (cd "$SERVER" && node scripts/pool-admin.mjs show --url "$RPC" | node -e 'const j=JSON.parse(require("fs").readFileSync(0)); if (!j.config) { console.error("the program is not initialized on devnet (Phase 1)"); process.exit(1) } if (j.config.authority !== process.argv[1]) { console.error("Config.authority is not the devnet admin key"); process.exit(1) }' "$(pub admin)") || fail "devnet program not ready"
   FIXTURES=""
@@ -70,7 +70,7 @@ if command -v solana-verify >/dev/null; then
   got="$(solana-verify get-executable-hash "$SO" 2>/dev/null | tail -1 || true)"
   [ "$got" = "$(cut -c1-64 "$PIN")" ] && echo "✓ program = the pinned verifiable build (${got:0:12}…)" || echo "! $SO is not the pinned verifiable build (${got:0:12}…) – testing other bytes than a deploy would ship"
 fi
-[ -d "$SERVER/node_modules" ] || fail "server/node_modules missing – npm ci --prefix server"
+[ -d "$SERVER/node_modules" ] || fail "backend/server/node_modules missing – npm ci --prefix backend/server"
 
 echo "▸ keys (scratch, throwaway)"
 mkdir -p "$TMP/keys"
@@ -159,8 +159,8 @@ elif [ "$TARGET" != devnet ]; then
   (cd "$SERVER" && node scripts/localnet-coverage.mjs scan "$COV" "$RPC" "phase 2 (scenario validator)") || fail "coverage scan of phase 2"
 fi
 
-echo "▸ deploy smoke (deploy/scripts/smoke.mjs) against this program-mode server – its escrow checks"
-node "$ROOT/deploy/scripts/smoke.mjs" "$BASE" --no-signin || fail "smoke"
+echo "▸ deploy smoke (infra/deploy/scripts/smoke.mjs) against this program-mode server – its escrow checks"
+node "$ROOT/infra/deploy/scripts/smoke.mjs" "$BASE" --no-signin || fail "smoke"
 fi   # PHASE2
 
 if [ "$PHASE3" = 1 ]; then
@@ -181,7 +181,7 @@ if [ "$PHASE3" = 1 ]; then
   echo "▸ scenario – the autonomous day: the crank opens the 1h pools on their slots, riders buy and ride, the review window, the payout key pays"
   (cd "$SERVER" && env "${DAY_ENV[@]}" DATABASE_URL="$URL_DAY" BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" COVERAGE="$COV" DAY="$TMP/accounts/day/day.json" CHROME_PORT="$(free_port)" node scripts/e2e-localnet-day.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server-day.log"; exit 1; }
   (cd "$SERVER" && node scripts/localnet-coverage.mjs scan "$COV" "$RPC" "phase 3 (the autonomous day)") || fail "coverage scan of phase 3"
-  if [ "$PHASE2" = 0 ]; then echo "▸ deploy smoke against the day's server"; node "$ROOT/deploy/scripts/smoke.mjs" "$BASE" --no-signin || fail "smoke"; fi
+  if [ "$PHASE2" = 0 ]; then echo "▸ deploy smoke against the day's server"; node "$ROOT/infra/deploy/scripts/smoke.mjs" "$BASE" --no-signin || fail "smoke"; fi
 fi
 
 if [ "$SCENARIO" != chaos ] && [ "$TARGET" != devnet ]; then

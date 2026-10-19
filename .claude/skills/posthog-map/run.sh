@@ -11,7 +11,7 @@ redact() { sed -E 's/phc_[A-Za-z0-9]+/phc_REDACTED/g; s/phx_[A-Za-z0-9]+/phx_RED
 landing_log="$OUT/landing-test.log"
 e2e_log="$OUT/e2e.log"
 echo "▸ landing tests (whitepaper + landing page)"
-(cd "$ROOT/landing" && npm test) >"$landing_log" 2>&1 && landing_ok=1 || landing_ok=0
+(cd "$ROOT/frontend/landing" && npm test) >"$landing_log" 2>&1 && landing_ok=1 || landing_ok=0
 redact <"$landing_log" | tail -20
 echo "▸ existing e2e: game (browser), lobby, landing sign-in (wallet)"
 bash "$ROOT/.claude/skills/run-tests/e2e.sh" browser lobby wallet >"$e2e_log" 2>&1 && e2e_ok=1 || e2e_ok=0

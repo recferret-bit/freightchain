@@ -8,7 +8,7 @@ export function comma(n) {
   return n.toLocaleString('en-US');
 }
 
-const BANNER = '<img src="landing/public/media/day.webp"';
+const BANNER = '<img src="frontend/landing/public/media/day.webp"';
 
 /** The Traction heading sits on the line after the game banner. */
 export function placeTraction(readme) {
@@ -16,7 +16,7 @@ export function placeTraction(readme) {
   const endMark = '<!-- traction:end -->';
   const start = readme.indexOf(heading);
   const end = readme.indexOf(endMark);
-  const img = readme.indexOf(BANNER);
+  const img = readme.indexOf(BANNER) >= 0 ? readme.indexOf(BANNER) : readme.indexOf('<img src="landing/public/media/day.webp"');
   if (start < 0 || end < start || img < 0) return readme;
   const block = readme.slice(start, end + endMark.length).trim();
   const lineEnd = readme.indexOf('\n', img);

@@ -76,9 +76,9 @@ function hasUnnegatedMatch(text, pattern, negationRe = /\b(?:no|not|never|withou
 
 // Inspect the main repository so project-fit checks reference actual code & architecture.
 function loadProjectContext() {
-  const hasPools = existsSync(join(REPO_ROOT, "programs/freightchain_pools"));
-  const hasVerdict = existsSync(join(REPO_ROOT, "server/src/domain/verdict/replay-engine.ts"));
-  const hasSharedPhysics = existsSync(join(REPO_ROOT, "client/shared/physics.js"));
+  const hasPools = existsSync(join(REPO_ROOT, "backend/programs/freightchain_pools"));
+  const hasVerdict = existsSync(join(REPO_ROOT, "backend/server/src/domain/verdict/replay-engine.ts"));
+  const hasSharedPhysics = existsSync(join(REPO_ROOT, "frontend/client/shared/physics.js"));
   return {
     projectName: "Freight Chain",
     isFreightChainRepo: hasPools && hasVerdict && hasSharedPhysics,

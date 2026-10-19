@@ -5,7 +5,7 @@
 // win (a free run reaching its line – `finish`) and the red fail for comparison (win-stamp.png, fail-stamp.png). Exits 1 on a page exception.
 // Usage: serve the game first (cd client && ./serve.sh), then from the repo root:
 //   node .claude/skills/trip-design/shots.mjs            env: BASE (http://localhost:8765)  PORT (DevTools, 9338)  SHOTS (dir)  TRIPS  ROUTES
-import { launch, sleep, withEntities } from '../../../client/tools/cdp.mjs';
+import { launch, sleep, withEntities } from '../../../frontend/client/tools/cdp.mjs';
 
 const BASE = process.env.BASE || 'http://localhost:8765', PORT = +process.env.PORT || 9338, SEED = 4242;
 const TRIPS = (process.env.TRIPS || 'free,1h,4h,8h').split(','), ROUTES = (process.env.ROUTES || 'route66,brenner').split(',');

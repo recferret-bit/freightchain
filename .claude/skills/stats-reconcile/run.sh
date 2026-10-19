@@ -29,6 +29,6 @@ WHERE COALESCE(s.rides,0) <> COALESCE(t.rides,0) OR abs(COALESCE(s.metres,0) - C
    OR COALESCE(s.\"crashesVehicle\",0) <> COALESCE(t.cv,0) OR COALESCE(s.\"crashesBuilding\",0) <> COALESCE(t.cb,0)
    OR COALESCE(s.donations,0) <> COALESCE(g.donations,0) OR COALESCE(s.\"donationLamports\",0) <> COALESCE(g.lamports,0)"
 fi
-cd "$ROOT/server"
+cd "$ROOT/backend/server"
 [ -f dist/cli/index.js ] || npm run --silent build
 exec node dist/cli/index.js stats:reconcile "$@"

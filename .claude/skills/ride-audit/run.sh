@@ -8,7 +8,7 @@
 # Exit: 0 every audited ride OK · 1 at least one NOT OK · 2 usage / loading error. Never writes anywhere.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-SERVER="$ROOT/server"
+SERVER="$ROOT/backend/server"
 BUILD=".audit-build-$$"; TSCONFIG=".audit-tsconfig-$$.json"
 cleanup() { rm -rf "$SERVER/$BUILD" "$SERVER/$TSCONFIG"; }
 trap cleanup EXIT

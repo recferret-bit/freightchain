@@ -1,0 +1,167 @@
+// Real-Chrome end-to-end check: launches headless Chrome (software WebGL), drives the game over the DevTools protocol
+// (start ride, engine start, gears, washer, off-road, a screenshot of every route), records JS exceptions / console errors, and saves screenshots.
+//   node tools/e2e-chrome.mjs [url]       default url http://localhost:8765/play.html?sim=1 (run ./serve.sh first)
+//   env: CHROME=/path/to/chrome  SHOTS=/dir/for/screenshots (default: <tmp>/fc-shots)
+// Exits 1 if anything threw. Needs Node >= 22 (global WebSocket/fetch). Look at the screenshots – the script can't judge visuals.
+import fs from 'node:fs';
+import { launch, sleep, withEntities } from './cdp.mjs';
+const PORT=+process.env.PORT||9333, URL=await withEntities(process.argv[2]||'http://localhost:8765/play.html?sim=1');
+const { send, ev, shot, filt, problems, SHOTS, finish } = await launch({ port: PORT, shotsDir: 'fc-shots', args: ['--autoplay-policy=no-user-gesture-required'], evalProblems: true });
+const key=async(code,type)=>{ const map={KeyW:87,KeyS:83,KeyA:65,KeyD:68,KeyE:69,KeyQ:81,KeyI:73,KeyB:66,KeyR:82,KeyX:88,KeyV:86,KeyN:78,KeyL:76,KeyG:71,KeyC:67,KeyH:72,ShiftLeft:16}; await send('Input.dispatchKeyEvent',{type:type==='up'?'keyUp':'keyDown',code,key:code.replace('Key','').toLowerCase(),windowsVirtualKeyCode:map[code]}); };
+await send('Page.navigate',{url:URL}); await sleep(3500);
+console.log('title:',await ev('document.title'),'| __game:',await ev('typeof window.__game'));
+await shot('01-menu');
+if(await ev('typeof window.__game')==='object'){
+  await ev('window.__game.devRun(); window.__game.startRide()');   // ?sim=1 keeps the local sim; devRun: the classic road + depot, no helpers
+  // the scripted driver pops the clutch: use the pre-weight handling and a warm engine, or the truck stalls on launch (cold engine / MASS 2.5 are exercised by the climate checks below)
+  await ev('Object.assign(__game.CFG.TRUCK,{MASS:1,BRAKE:9,STEER_RATE:1.8,STEER_RETURN:3.5,YAW_LAG:0,CENTRIF:.03}); __game.st.temp=__game.CFG.ENGINE_WARM+5');
+  await sleep(500); await key('KeyI'); await sleep(3500); if(await ev('__game.st.park')) await key('KeyB'); await shot('02-engine-running');
+  console.log('after start:',await ev('JSON.stringify({eng:__game.st.engineOn,rpm:Math.round(__game.st.rpm),mode:__game.st.mode})'));
+  // sound effects: the samples (client/audio/sfx, manifest + fingerprinted mp3) download + decode in the background and then play; a failed one stays silent
+  { const man=JSON.parse(await ev(`fetch('audio/sfx/manifest.json').then(r=>r.text())`)).items, n=Object.keys(man).length;
+    for(let i=0;i<40&&(await ev('Object.keys(__game.audio.bufs).length'))<n;i++) await sleep(250);
+    const got=await ev('Object.keys(__game.audio.bufs).length'); console.log('sfx samples decoded:',got,'/',n);
+    if(got!==n) problems.push('sfx: '+got+' of '+n+' samples decoded');
+    const cc=await ev(`fetch('audio/sfx/'+${JSON.stringify(Object.values(man)[0].file)}).then(r=>r.headers.get('content-type')+' '+r.headers.get('cache-control'))`); console.log('sfx headers:',cc);
+    if(!await ev(`__game.audio.play('switch')`)) problems.push('sfx: play(switch) did not play'); }
+  await key('ShiftLeft'); await sleep(300); await key('KeyE'); await key('KeyW'); await sleep(300); await key('ShiftLeft','up'); await sleep(4000);
+  console.log('moving:',await ev('JSON.stringify({v:+__game.st.v.toFixed(1),gear:__game.st.gear,d:+__game.st.d.toFixed(1),s:Math.round(__game.st.s)})')); await shot('03-driving');
+  await key('KeyR'); await key('KeyX'); await sleep(1500); await shot('04-washer'); await key('KeyX','up'); await sleep(1500);
+  await key('KeyN'); await key('KeyL'); await key('KeyC'); { const k=JSON.parse(await ev('JSON.stringify({map:__game.phone.open,head:__game.dn.head,cab:__game.dn.cab})')); console.log('N/L/C keys ->',JSON.stringify(k)); if(!k.map) problems.push('N did not open the phone map'); }   // N = the phone map (not night any more)
+  await key('KeyN'); await key('KeyL'); await key('KeyC'); if(await ev('__game.phone.open')) problems.push('N did not close the phone map');
+  await ev('__game.st.d=8.5'); await sleep(2500); await shot('05-offroad');
+  console.log('final:',await ev('JSON.stringify({v:+__game.st.v.toFixed(1),hull:+__game.st.hull.toFixed(1),mode:__game.st.mode,d:+__game.st.d.toFixed(1)})'));
+}
+// reverse: stop on the road, clutch in, G = reverse, gas, ease the clutch out -> the truck must roll BACKWARDS (s decreases), slowly
+if(await ev('typeof window.__game')==='object'){
+  await ev('__game.st.mode="drive"; __game.st.s=__game.net.Sm+300; __game.st.d=2.4; __game.st.psi=0; document.getElementById("overlay").classList.add("hide")');
+  if(await ev('__game.st.park')) await key('KeyB');
+  await key('KeyW','up'); await key('ShiftLeft'); await key('KeyS'); await sleep(3000); await key('KeyS','up'); await key('ShiftLeft','up');
+  if(!(await ev('__game.st.engineOn'))){ await key('ShiftLeft'); await key('KeyI'); await sleep(3500); await key('ShiftLeft','up'); }
+  await key('ShiftLeft'); await sleep(600); await key('KeyG'); await key('KeyW'); await sleep(300); await key('ShiftLeft','up'); await sleep(3500);
+  console.log('reverse:',await ev('JSON.stringify({gear:__game.st.gear,rev:__game.st.rev,v:+__game.st.v.toFixed(2),vel:+__game.st.vel.toFixed(2),s:Math.round(__game.st.s),eng:__game.st.engineOn,tyaw:+__game.st.tyaw.toFixed(2)})'));
+  await shot('reverse'); await key('KeyW','up'); await key('KeyS'); await sleep(1500); await key('KeyS','up');
+}
+// route tour: every theme, one screenshot each (route-<id>.png) – look at them, the script can't judge visuals
+if(await ev('typeof window.__game')==='object' && await ev('Array.isArray(__game.THEMES)')){
+  for(const t of await ev('__game.THEMES.map(t=>t.id)')){
+    await ev(`__game.selectTheme('${t}', false); __game.st.mode='drive'; __game.st.s=__game.net.Sm+260; __game.st.d=2.6; __game.st.v=14; document.getElementById('overlay').classList.add('hide')`);
+    await sleep(1800); await shot('route-'+t);
+  }
+}
+// cosmetics (promo wardrobe): every colour of the wheel, the truck paint and the shifter (cosmetic-<slot>-<item>.png; the wheel is cut off by the 1280x633 viewport but its ring shows) – look at them
+if(await ev('typeof window.__game')==='object' && await ev('typeof __game.cosmetics')==='object'){
+  await ev(`__game.selectTheme('route66', false); __game.st.mode='drive'; __game.st.s=__game.net.Sm+260; __game.st.d=2.6; __game.st.v=0; __game.st.gear=3; document.getElementById('overlay').classList.add('hide')`);
+  const C=await ev('__game.cosmetics.COSMETICS');
+  for(const slot of Object.keys(C)) for(const id of C[slot]){ await ev(`__game.cosmetics.setLoadout({${slot}:${JSON.stringify(id)}})`); await sleep(450); await shot(`cosmetic-${slot}-${id}`); }
+  await ev(`__game.cosmetics.setLoadout({wheel:'gold',truck_color:'black',gearbox:'gold'})`); await sleep(500); await shot('cosmetic-set-gold-black');
+  await ev(`__game.cosmetics.setLoadout({wheel:'ocean',truck_color:'blue',gearbox:'chrome'}); __game.setNight(true,true,false)`); await sleep(1200); await shot('cosmetic-set-blue-night');
+  await ev(`__game.setNight(false,true,false); __game.cosmetics.setLoadout(null)`);
+  console.log('cosmetics worn:',await ev('JSON.stringify(__game.cosmetics.loadout)'));
+}
+// road network: the depot (start), waiting at the depot exit with main-road traffic, a signalled crossroads, a multi-lane stretch (net-*.png) – look at them
+if(await ev('typeof window.__game')==='object' && await ev('typeof __game.net')==='object'){
+  const hold=s=>`clearInterval(window.__hold2); window.__hold2=setInterval(()=>{ const g=__game; g.st.v=0; g.st.hull=100; g.st.offT=0; ${s} },50)`;
+  await ev(`__game.CFG.TRAFFIC=true; __game.selectTheme('route66', false); __game.setNight(false,true,false); __game.st.mode='done'; __game.startRide(); document.getElementById('overlay').classList.add('hide')`);
+  await sleep(1500); await shot('net-depot');
+  await ev(`${hold("")}; __game.st.s=__game.net.sA-2; __game.st.d=2.4; __game.st.psi=-0.35`); await sleep(2500); await shot('net-depot-exit');
+  console.log('depot exit:',await ev('JSON.stringify({road:__game.roads.status().road, cars:__game.traffic.filter(a=>a.road.main).length, off:__game.st.off})'));
+  const j=await ev('(()=>{ const j=__game.net.nextJunction(__game.net.Sm,1,40000,q=>q.signal&&q.kind==="cross"); return j&&{s:j.s,id:j.id}; })()');
+  if(j){ await ev(`__game.st.s=${j.s}-70; __game.st.d=2.4; __game.st.psi=0`); await sleep(3000); await shot('net-crossroads');
+    console.log('crossroads',j.id,':',await ev(`JSON.stringify({sig:__game.net.signal(__game.net.nextJunction(__game.st.s,1,200,q=>q.signal),'main'), cross:__game.traffic.filter(a=>a.road.j&&a.road.j.id==='${j.id}').length, heads:__game.roads.status()})`));
+    await ev('__game.setNight(true,true,false)'); await sleep(1500); await shot('net-crossroads-night'); await ev('__game.setNight(false,true,false)'); }
+  const h=await ev('(()=>{ const s=__game.net.segs.find(q=>q.nR>=3&&q.s0>__game.net.Sm); return s&&s.s0+200; })()');
+  if(h){ await ev(`__game.st.s=${h}; __game.st.d=2.4; __game.st.psi=0`); await sleep(2500); await shot('net-multilane'); console.log('multi-lane:',await ev('__game.roads.status().road')); }
+  await ev('clearInterval(window.__hold2)');
+}
+// free levels + forks + the phone map: the EASY four-lane road, a fork's split (both roads), its middle, the phone on the dash and the phone map open (level-*.png, fork-*.png, map-*.png) – look at them
+if(await ev('typeof window.__game')==='object' && await ev('typeof __game.toggleMap')==='function'){
+  const hold=s=>`clearInterval(window.__hold3); window.__hold3=setInterval(()=>{ const g=__game; g.st.v=0; g.st.hull=100; g.st.offT=0; ${s} },50)`;
+  await ev(`__game.setTrip('free-1c'); __game.st.mode='done'; __game.startRide(); document.getElementById('overlay').classList.add('hide'); ${hold('')}; __game.st.s=__game.net.Sm+300; __game.st.d=2.4; __game.st.psi=0`); await sleep(2500); await shot('level-easy');
+  await ev(`__game.setTrip('free-2c'); __game.st.mode='done'; __game.startRide(); document.getElementById('overlay').classList.add('hide')`);
+  const f=await ev('(()=>{ __game.net.ensure(8000); const f=__game.net.forks[0]; return f&&{f0:f.f0,f1:f.f1}; })()');
+  if(f){ await ev(`${hold('')}; __game.st.s=${f.f0}-40; __game.st.d=2.4; __game.st.psi=0`); await sleep(2500); await shot('fork-split');
+    await ev(`__game.st.s=${f.f0}+120; __game.st.d=2.4; __game.st.psi=-0.05`); await sleep(2000); await shot('fork-apron');
+    await ev(`__game.st.s=${(f.f0+f.f1)/2}; __game.st.d=2.4; __game.st.psi=0`); await sleep(2000); await shot('fork-middle');
+    await ev(`__game.st.s=${f.f0}-300; __game.st.d=2.4; __game.st.psi=0`); await sleep(1500); await shot('map-dash');
+    await ev('__game.toggleMap(true)'); await sleep(1500); await shot('map-open');
+    console.log('map:',await ev('JSON.stringify({open:__game.phone.open, forks:__game.net.forks.length, el:!!document.getElementById("phone")})'));
+    { const r=JSON.parse(await ev('(()=>{const b=document.querySelector("#phone .phone-screen").getBoundingClientRect(); return JSON.stringify({x:b.x,y:b.y,w:b.width,h:b.height})})()')); const cx=r.x+r.w/2, cy=r.y+r.h*.4, mouse=(type,x,y)=>send('Input.dispatchMouseEvent',{type,x,y,button:'left',buttons:type==='mouseReleased'?0:1,clickCount:1});   // drag the map: it stays where it was left, with the recenter button
+      await mouse('mousePressed',cx,cy); for(let i=1;i<=10;i++) await mouse('mouseMoved',cx,cy+i*18); await mouse('mouseReleased',cx,cy+180); await sleep(600); await shot('map-dragged'); }
+    await ev('__game.setNight(true,true,false)'); await sleep(1500); await shot('map-open-night'); await ev('__game.setNight(false,true,false); __game.toggleMap(false)'); }
+  await ev(`clearInterval(window.__hold3); __game.setTrip('1h'); __game.st.mode='done'; __game.startRide(); document.getElementById('overlay').classList.add('hide')`);
+}
+// cold tour: Siberia (-22 °C, heavy snow) – frosted glass with the heater off, then a warm engine + heater on (cold-frost.png / cold-heater.png / cold-night.png) – look at them
+if(await ev('typeof window.__game')==='object'){
+  await ev(`__game.selectTheme('siberia', false); __game.setNight(false,true,false); __game.CFG.TRAFFIC=false; __game.startRide(); const g=__game; g.st.engineOn=true; g.st.keyOn=true; g.st.rpm=1500; g.st.v=14; g.st.s=g.net.Sm+260; window.__hold=setInterval(()=>{ g.st.v=14; g.st.rpm=1500; g.st.engineOn=true; g.st.hull=100; g.st.d=2.4; g.st.psi=0; },50); document.getElementById('overlay').classList.add('hide')`);
+  await sleep(14000); await shot('cold-frost');
+  console.log('cold, heater off:',await ev('JSON.stringify({temp:Math.round(__game.st.temp),eff:+__game.st.heatEff.toFixed(2),amb:__game.weather.ambient})'));
+  await ev('__game.st.temp=80'); await key('KeyH'); await sleep(9000); await shot('cold-heater');
+  console.log('warm, heater on:',await ev('JSON.stringify({temp:Math.round(__game.st.temp),eff:+__game.st.heatEff.toFixed(2),heater:__game.st.heater})'));
+  await ev('__game.setNight(true,true,false)'); await ev('__game.st.temp=-20; __game.st.heater=false'); await sleep(9000); await shot('cold-night'); await ev('__game.setNight(false,true,false)');
+  await ev('clearInterval(window.__hold)');
+}
+// night tour: every theme at night with the instant switch (night-<id>.png), then the cab light + a menu shot – look at them
+if(await ev('typeof window.__game')==='object' && await ev('typeof __game.setNight')==='function'){
+  await ev('__game.setNight(true,true,false)');
+  for(const t of await ev('__game.THEMES.map(t=>t.id)')){
+    await ev(`__game.selectTheme('${t}', false); __game.st.mode='drive'; __game.st.s=__game.net.Sm+260; __game.st.d=2.6; __game.st.v=14; document.getElementById('overlay').classList.add('hide')`);
+    await sleep(1800); await shot('night-'+t);
+  }
+  await ev(`__game.selectTheme('route66', false); __game.st.s=__game.net.Sm+260; __game.st.v=14; __game.spawn('sedan','cruise','oncoming',70); __game.spawn('sedan','cruise','oncoming',130); __game.spawn('truck','cruise','ahead',45); __game.spawn('sedan','overtake','ahead',30)`); await sleep(1200); await shot('night-traffic'); await sleep(1500); await shot('night-traffic2');
+  await ev('__game.dn.cab=true'); await sleep(500); await shot('night-cablight'); await ev('__game.dn.cab=false');
+  await ev("__game.st.mode='menu'; document.getElementById('overlay').classList.remove('hide')"); await ev('__game.setNight(true,true,false)'); await sleep(300); await shot('night-menu');
+  await ev('__game.setNight(false,true,false)');
+  // dark-night tour: no lights (must be black), then headlights on, then at a lamp post; dusk + dawn on two routes; the clock must advance by itself
+  await ev(`__game.CFG.TRAFFIC=false; __game.setNight(true,true,false); __game.dn.run=false; __game.selectTheme('route66', false); __game.st.mode='drive'; document.getElementById('overlay').classList.add('hide'); __game.st.s=__game.net.Sm+250; __game.st.d=2.4; __game.st.v=14; __game.dn.head=false`);
+  await sleep(1200); await shot('dark-nolights'); await ev('__game.dn.head=true'); await sleep(1200); await shot('dark-headlights');
+  await ev(`__game.selectTheme('siberia', false); __game.st.s=__game.net.Sm+300`); await sleep(1500); await shot('dark-siberia-lamps');
+  for(const r of ['route66','brenner']) for(const ph of ['dusk','dawn']){ await ev(`__game.selectTheme('${r}', false); __game.setPhase('${ph}',true,false); __game.st.s=__game.net.Sm+260`); await sleep(1200); await shot(ph+'-'+r); }
+  await ev(`__game.dn.run=true; __game.dn.scale=600; __game.setClock(5.5,true,false)`); const t0=await ev('__game.dn.t'); await sleep(2500); console.log('clock x600 5.5 ->',t0,await ev('__game.dn.t'),await ev('__game.dn.phase')); await ev('__game.dn.scale=20; __game.setNight(false,true,false)');
+  // menu cards: click NIGHT, check the state flipped and the .sel class followed; then the N key must move it back
+  await ev("__game.st.mode='menu'; document.getElementById('overlay').classList.remove('hide'); __game.startRide&&0"); 
+}
+// a TICKET ride's ON CHAIN strip (ui/cab-chain.js) with the API and the public RPC stubbed: the program's own recorded pool 0 (server/test/fixtures/chain/
+// pool-program.json) – the seal is re-hashed AND matched against the account bytes; then the RPC down = "server copy"; a pledge locked mid-ride = a toast
+async function chainSection(){   // → false when the page reloaded under it (swiftshader under load has restarted the renderer once; no game code reloads here)
+  const mark=Math.random(); await ev(`window.__chainRun=${mark}`); const p0=problems.length;
+  const fx=JSON.parse(fs.readFileSync(new globalThis.URL('../../../backend/server/test/fixtures/chain/pool-program.json',import.meta.url),'utf8')).accounts.find(a=>a.decoded?.seedSlotHash&&a.decoded.poolId===0);
+  const ride={id:'e2e-ticket',tier:'1h',poolId:0,seed:2083655259,slot:1008,blockhash:'5KovAGoer61Vvo1Uv7sod2PpdATt74wUm7ezjKsLpKeF',seedCommitment:fx.decoded.seedCommitment};
+  await ev(`(() => { const A='A1ice11111111111111111111111111111111111111', W='Me1111111111111111111111111111111111111111';
+    window.__pl=[{id:'p1',status:'active',sponsor:A,driver:W,lamportsPerKm:'500000',targetKm:50,maxLamports:'25000000',createSignature:'5'.repeat(88)}]; window.__rpcUp=true;
+    const R={me:{wallet:W},'pools/0':{id:0,address:'Poo1Addr3ss11111111111111111111111111111111',buyers:3,potLamports:3e9},'pools/0/standings':{prizeLamports:2.1e9,ranks:[{rank:1,wallet:'L',distance:41230}]}};
+    window.__f0=window.__f0||window.fetch;
+    window.fetch=(u,o)=>{ u=String(u);
+      if(u.includes('solana.com')) return window.__rpcUp?Promise.resolve(new Response(JSON.stringify({result:{value:{owner:'8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p',data:[${JSON.stringify(fx.data)},'base64']}}}))):Promise.reject(new TypeError('Failed to fetch'));
+      const m=u.match(/\\/api\\/(.*)$/); if(!m) return window.__f0(u,o); const k=m[1].split('?')[0], b=k.endsWith('/pledges')?window.__pl:k.endsWith('/inbox')?{viewers:0,events:[],now:Date.now()}:R[k];
+      return Promise.resolve(new Response(JSON.stringify(b??{}),{status:b?200:404,headers:{'content-type':'application/json'}})); };
+    window.__toasts=[]; new MutationObserver(()=>window.__toasts.push(document.getElementById('toast').textContent)).observe(document.getElementById('toast'),{childList:true,characterData:true,subtree:true});   // every toast, not only the last: the game's own hints overwrite it
+    __game.CFG.CHAIN_PLEDGE_POLL_MS=1500; __game.online.ride=${JSON.stringify(ride)};
+    __game.st.mode='drive'; document.getElementById('overlay').classList.add('hide');
+    return import('./js/ui/cab-chain.js').then(m=>{ window.__cc=m; m.startCabChain(); }); })()`);
+  await sleep(2500); await shot('chain-strip');
+  const strip=await ev(`document.getElementById('chain')?.innerText||''`); console.log('ON CHAIN strip:',JSON.stringify(strip));
+  if(!/ROAD SEALED .*✓ on chain/.test(strip)) problems.push('chain strip: the seal is not "on chain": '+strip);
+  if(!/PRIZES 2\.10 SOL · 3 riders · LEADER 41\.2 km · YOU not ranked yet/.test(strip)) problems.push('chain strip: the pool line: '+strip);
+  if(!/PLEDGES 1 · 0\.0005 SOL\/km/.test(strip)) problems.push('chain strip: the pledge line: '+strip);
+  if(await ev(`window.__toasts.some(t=>/locked/.test(t))`)) problems.push('chain strip: a pledge locked before START was toasted');
+  await ev(`window.__pl.push({id:'p2',status:'active',sponsor:'B0b11111111111111111111111111111111111111111',lamportsPerKm:'1000000',targetKm:20,maxLamports:'20000000',createSignature:'6'.repeat(88)})`);
+  await sleep(2200); const tst=await ev(`window.__toasts.find(t=>/locked/.test(t))||''`); console.log('pledge toast:',tst);
+  if(!/B0b1…1111 locked 0\.001 SOL\/km for you on chain/.test(tst)) problems.push('chain strip: no toast for a new pledge: '+tst);
+  // the RPC down: the seal is still re-hashed, but says "server copy" (amber) – on the strip and on the panel row
+  await ev(`window.__cc.stopCabChain(); Object.assign(__game.cabChain,{seal:null,sealv:null}); window.__rpcUp=false; window.__cc.startCabChain()`); await sleep(2000);
+  const down=await ev(`document.getElementById('chain')?.innerText||''`); if(!/✓ server copy/.test(down)) problems.push('chain strip: RPC down not shown as "server copy": '+down);
+  await ev(`import('./js/ui/game.js').then(m=>{ __game.st.mode='menu'; m.showMenu('FREIGHT CHAIN','Long-haul truck simulator'); })`); await sleep(1500); await shot('chain-seal-row');
+  const row=await ev(`document.querySelector('.seal')?.innerText||''`); console.log('seal row (RPC down):',JSON.stringify(row));
+  if(!/sealed ✓ \(server copy – the chain could not be reached\) · pool #0 · slot 1008/.test(row)) problems.push('seal row: '+row);
+  await ev(`window.__cc.stopCabChain(); __game.online.ride=null; window.fetch=window.__f0`);
+  if(await ev(`window.__chainRun`)!==mark){ problems.splice(p0); return false; }
+  return true;
+}
+if(await ev('typeof window.__game')==='object' && !await chainSection()){
+  console.log('the page reloaded during the ON CHAIN section – once more on a fresh page');
+  await ev(`window.__game.devRun(); window.__game.startRide()`); await sleep(1500);
+  if(!await chainSection()) problems.push('ON CHAIN section: the page reloaded twice');
+}
+console.log('PROBLEMS ('+problems.length+'):'); for(const p of [...new Set(problems)].slice(0,25)) console.log(' -',p.slice(0,300));
+console.log('screenshots in',SHOTS); finish(filt().length?1:0,500);

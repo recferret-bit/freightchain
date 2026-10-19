@@ -4,19 +4,19 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-export const keyPath = join(root, 'deploy/secrets/posthog-personal.key');
+export const keyPath = join(root, 'infra/deploy/secrets/posthog-personal.key');
 
 /** The personal key. Throws without echoing the file. */
 export function loadKey() {
   let ignored = false;
   try {
-    execFileSync('git', ['check-ignore', '-q', 'deploy/secrets/posthog-personal.key'], { cwd: root });
+    execFileSync('git', ['check-ignore', '-q', 'infra/deploy/secrets/posthog-personal.key'], { cwd: root });
     ignored = true;
   } catch { /* not ignored */ }
-  if (!ignored) throw new Error('deploy/secrets/posthog-personal.key is not gitignored');
+  if (!ignored) throw new Error('infra/deploy/secrets/posthog-personal.key is not gitignored');
   let raw = '';
   try { raw = readFileSync(keyPath, 'utf8').trim(); } catch { raw = ''; }
-  if (!raw.startsWith('phx_') || raw.length < 20) throw new Error('personal key missing or not a phx_ key at deploy/secrets/posthog-personal.key');
+  if (!raw.startsWith('phx_') || raw.length < 20) throw new Error('personal key missing or not a phx_ key at infra/deploy/secrets/posthog-personal.key');
   return raw;
 }
 

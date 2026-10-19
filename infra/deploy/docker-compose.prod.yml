@@ -1,0 +1,331 @@
+# Production stack: API, replay worker, AI worker, MCP, PostgreSQL and Redis. Started by deploy/scripts/remote/release.sh – not by hand.
+#   docker compose --env-file /srv/freightchain/.env -f releases/<release>/deploy/docker-compose.prod.yml …
+# Every value comes from the server's /srv/freightchain/.env (uploaded by `npm run deploy`, chmod 600); RELEASE is the image tag of the release.
+name: freightchain-prod
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    # the container log is the durable log (JSON lines, `npm run ops -- logs`): rotated so it can never fill the disk – 5 × 50 MB per service
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # no `ports:`: the database is reachable only by the app, over the compose network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  # the cache for the public statistics (docs/spec/platform_services.md): nothing in it is the source of truth, so no persistence – a restart only costs one cold read.
+  # Locked down: a PASSWORD (REDIS_PASSWORD in deploy/.env, hex), NO published port, and it sits ONLY on the `cache` network, which is `internal` (no route to or from
+  # the internet) and shared with the app alone – postgres cannot even see it. Unprivileged user, read-only filesystem.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    user: redis
+    read_only: true
+    tmpfs:
+      - /data
+    security_opt:
+      - no-new-privileges:true
+    # A hash in the ACL keeps arbitrary token characters out of its rule syntax. fc-mcp has no access to app keys.
+    command: ["sh", "-c", 'mcp_hash=$$(printf %s "$$EDITOR_MCP_TOKEN" | sha256sum | cut -d " " -f1); exec redis-server --requirepass "$$REDIS_PASSWORD" --user fc-mcp on "#$$mcp_hash" "~fc:mcp-rl:*" +eval +incr +pexpire +pttl +ping +quit "+client|setinfo" --save "" --appendonly no --maxmemory 64mb --maxmemory-policy noeviction']
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is empty - add REDIS_PASSWORD=<hex> to deploy/.env}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}   # lets the healthcheck's redis-cli authenticate without a password on its command line
+      EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}   # only its SHA-256 is used to configure the restricted fc-mcp Redis user
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    networks: [cache]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    image: freightchain-server:${RELEASE:-latest}
+    build:
+      context: ../..
+      dockerfile: infra/deploy/Dockerfile
+    restart: unless-stopped
+    # the container log is the durable log (JSON lines, `npm run ops -- logs`): rotated so it can never fill the disk – 5 × 50 MB per service
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started   # the app answers from PostgreSQL when the cache is down, so it never waits for it
+    networks: [default, cache, editor]   # editor: the mcp service calls back /api/editor/mcp/* (no nginx in between)
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is empty - add REDIS_PASSWORD=<hex> to deploy/.env}@redis:6379   # the compose service above (hex password: no URL escaping); the statistics API is cached there
+      JWT_SECRET: ${JWT_SECRET}
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
+      APP_DOMAIN: ${APP_DOMAIN}
+      APP_ORIGIN: ${APP_ORIGIN}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-600}
+      THROTTLE_AUTH_LIMIT: ${THROTTLE_AUTH_LIMIT:-30}
+      THROTTLE_PROMO_LIMIT: ${THROTTLE_PROMO_LIMIT:-30}
+      THROTTLE_ENTITIES_LIMIT: ${THROTTLE_ENTITIES_LIMIT:-120}
+      THROTTLE_EDITOR_LIMIT: ${THROTTLE_EDITOR_LIMIT:-240}
+      THROTTLE_AUTH_RPS: ${THROTTLE_AUTH_RPS:-5}
+      THROTTLE_ENTITIES_RPS: ${THROTTLE_ENTITIES_RPS:-5}
+      THROTTLE_EDITOR_RPS: ${THROTTLE_EDITOR_RPS:-10}
+      THROTTLE_MCP_LIMIT: ${THROTTLE_MCP_LIMIT:-600}
+      THROTTLE_MCP_RPS: ${THROTTLE_MCP_RPS:-20}
+      FREE_RIDE_SECONDS: ${FREE_RIDE_SECONDS:-180}
+      TREASURY_PUBKEY: ${TREASURY_PUBKEY}
+      SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
+      SNS_RPC: ${SNS_RPC:-https://api.mainnet-beta.solana.com}
+      SNS_RPC_FALLBACKS: ${SNS_RPC_FALLBACKS:-}
+      SNS_CACHE_TTL_SECONDS: ${SNS_CACHE_TTL_SECONDS:-86400}
+      SNS_NEGATIVE_CACHE_TTL_SECONDS: ${SNS_NEGATIVE_CACHE_TTL_SECONDS:-1800}
+      SOL_USD: ${SOL_USD:-}
+      DEMO_WALLETS: ${DEMO_WALLETS:-}
+      DEMO_SCALE: ${DEMO_SCALE:-60}
+      INITIAL_SEED_SOL: ${INITIAL_SEED_SOL:-0}
+      # escrowed pools (docs/spec/pool.md) – all optional: unset TICKET_PROGRAM_ID = the legacy transfer mode
+      PAYMENT_MODE: ${PAYMENT_MODE:-}
+      TICKET_PROGRAM_ID: ${TICKET_PROGRAM_ID:-}
+      FEE_TREASURY: ${FEE_TREASURY:-}
+      SEED_TREASURY: ${SEED_TREASURY:-}
+      SOLANA_WS: ${SOLANA_WS:-}
+      SOLANA_RPC_FALLBACKS: ${SOLANA_RPC_FALLBACKS:-}
+      SOLANA_COMMITMENT: ${SOLANA_COMMITMENT:-confirmed}
+      WATCH_INTERVAL_MS: ${WATCH_INTERVAL_MS:-15000}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
+      CRANK_SECRET: ${CRANK_SECRET:-}
+      CRANK_INTERVAL_MS: ${CRANK_INTERVAL_MS:-60000}
+      PAYOUT_SECRET: ${PAYOUT_SECRET:-}
+      PAYOUT_INTERVAL_MS: ${PAYOUT_INTERVAL_MS:-300000}
+      ACHIEVEMENT_MINT_SECRET: ${ACHIEVEMENT_MINT_SECRET:-}
+      HONK_PROGRAM_ID: ${HONK_PROGRAM_ID:-}
+      HONK_EMITTER_SECRET: ${HONK_EMITTER_SECRET:-}
+      ACHIEVEMENT_TREE: ${ACHIEVEMENT_TREE:-}
+      ACHIEVEMENT_COLLECTION: ${ACHIEVEMENT_COLLECTION:-}
+      ACHIEVEMENT_MINT_INTERVAL_MS: ${ACHIEVEMENT_MINT_INTERVAL_MS:-120000}
+      ACHIEVEMENT_MINT_DELAY_MS: ${ACHIEVEMENT_MINT_DELAY_MS:-3600000}
+      ACHIEVEMENT_MINT_BATCH: ${ACHIEVEMENT_MINT_BATCH:-10}
+      PRIORITY_FEE_PERCENTILE: ${PRIORITY_FEE_PERCENTILE:-75}
+      PRIORITY_FEE_MIN_MICROLAMPORTS: ${PRIORITY_FEE_MIN_MICROLAMPORTS:-0}
+      PRIORITY_FEE_MAX_MICROLAMPORTS: ${PRIORITY_FEE_MAX_MICROLAMPORTS:-50000}
+      TRAFFIC_PROOF_REQUIRED: ${TRAFFIC_PROOF_REQUIRED:-true}
+      VERDICT_ENFORCE: ${VERDICT_ENFORCE:-false}   # shadow mode unless deploy/.env opts in: rides from before verified play have no verdict and would drop off the paid boards
+      TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-90}
+      SIGNIN_RETENTION_DAYS: ${SIGNIN_RETENTION_DAYS:-180}
+      CHALLENGE_INTERVAL_SECONDS: ${CHALLENGE_INTERVAL_SECONDS:-240}
+      CHALLENGE_FREE_RIDES: ${CHALLENGE_FREE_RIDES:-off}
+      LIVE_CHAT: ${LIVE_CHAT:-all}                       # live streams: chat on every ride (all | free | off)
+      LIVE_DONATIONS: ${LIVE_DONATIONS:-on}              # donations on (on | off)
+      LIVE_FREE_DONATIONS: ${LIVE_FREE_DONATIONS:-off}   # no free mock donations in production: they must be a real SOL transfer to the driver
+      LIVE_EFFECTS: ${LIVE_EFFECTS:-free}                # ride-changing effects only on free test rides – never on paid ones (all | free | off)
+      PRIZE_SANCTIONED_COUNTRIES: ${PRIZE_SANCTIONED_COUNTRIES:-}
+      PRIZE_BLOCKED_COUNTRIES: ${PRIZE_BLOCKED_COUNTRIES:-}
+      PRIZE_BLOCKED_US_STATES: ${PRIZE_BLOCKED_US_STATES:-}
+      ORDER_TTL_MINUTES: ${ORDER_TTL_MINUTES:-60}
+      ONCHAIN_SESSION_TTL_HOURS: ${ONCHAIN_SESSION_TTL_HOURS:-24}
+      HB_MIN_INTERVAL_MS: ${HB_MIN_INTERVAL_MS:-1000}
+      HB_TIMEOUT_MS: ${HB_TIMEOUT_MS:-150000}            # the heartbeat timeout: off the live feed + ended by the stale-ride sweeper
+      ADMIN_WALLETS: ${ADMIN_WALLETS:-}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-}   # empty = derived from JWT_SECRET
+      ADMIN_SESSION_TTL_MINUTES: ${ADMIN_SESSION_TTL_MINUTES:-120}
+      EDITOR_WALLETS: ${EDITOR_WALLETS:-}
+      EDITOR_JWT_SECRET: ${EDITOR_JWT_SECRET:-}   # empty = derived from JWT_SECRET
+      EDITOR_SESSION_TTL_MINUTES: ${EDITOR_SESSION_TTL_MINUTES:-240}
+      EDITOR_IP_ALLOWLIST: ${EDITOR_IP_ALLOWLIST:-}
+      # the AI model editor (docs/spec/platform_services.md): a provider is offered when its key is set – SECRETS, never logged
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
+      ZAI_BASE_URL: ${ZAI_BASE_URL:-https://api.z.ai/api/paas/v4}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      XAI_BASE_URL: ${XAI_BASE_URL:-https://api.x.ai/v1}
+      EDITOR_DEFAULT_PROVIDER: ${EDITOR_DEFAULT_PROVIDER:-}
+      EDITOR_MODEL_ANTHROPIC: ${EDITOR_MODEL_ANTHROPIC:-}
+      EDITOR_MODEL_OPENAI: ${EDITOR_MODEL_OPENAI:-}
+      EDITOR_MODEL_GEMINI: ${EDITOR_MODEL_GEMINI:-}
+      EDITOR_MODEL_ZAI: ${EDITOR_MODEL_ZAI:-}
+      EDITOR_MODEL_XAI: ${EDITOR_MODEL_XAI:-}
+      EDITOR_MCP_URL: http://mcp:3100   # the mcp service below, on the internal `editor` network
+      EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}   # shared with the mcp service; empty = no AI editor
+      EDITOR_JOB_TIMEOUT_MS: ${EDITOR_JOB_TIMEOUT_MS:-600000}
+      EDITOR_FAKE_LLM: "0"   # test switch – the server refuses 1 in production
+      EDITOR_OPEN: "0"   # local switch – storybook without a wallet; the server refuses 1 in production
+      # Empty or 0 stays off; POSTHOG_DISABLED=1 still wins. Local compose and server/.env pin 0.
+      # main's schema strips these keys, so a deploy of main does not send. Listing them keeps a later merge from dropping the token.
+      POSTHOG_KEY: ${POSTHOG_KEY:-}
+      POSTHOG_HOST: ${POSTHOG_HOST:-https://eu.i.posthog.com}
+      POSTHOG_PROJECT_ID: ${POSTHOG_PROJECT_ID:-297915}
+      POSTHOG_ENABLED: ${POSTHOG_ENABLED:-}
+      POSTHOG_DISABLED: ${POSTHOG_DISABLED:-}
+    # loopback ONLY: ports Docker publishes bypass ufw, so a bare "3000:3000" would be open to the internet. nginx on the host is the public door.
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+
+  # Dedicated 10 Hz replay verification worker: pulls pending ride replays from Redis (`fc:replay-queue:*`) and `verdict.RideReplay` and runs `ReplayEngine` off the HTTP event loop.
+  worker:
+    image: freightchain-server:${RELEASE:-latest}
+    restart: unless-stopped
+    command: ["node", "dist/cli/index.js", "replay:worker"]
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks: [default, cache]
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    environment:
+      NODE_ENV: production
+      TRUST_PROXY: "0" # EnvModule requires an explicit value in production; the worker has no HTTP listener.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is empty - add REDIS_PASSWORD=<hex> to deploy/.env}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      APP_DOMAIN: ${APP_DOMAIN}
+      APP_ORIGIN: ${APP_ORIGIN}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      FREE_RIDE_SECONDS: ${FREE_RIDE_SECONDS:-180}
+      TREASURY_PUBKEY: ${TREASURY_PUBKEY}
+      SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
+      PAYMENT_MODE: ${PAYMENT_MODE:-}
+      TICKET_PROGRAM_ID: ${TICKET_PROGRAM_ID:-}
+      FEE_TREASURY: ${FEE_TREASURY:-}
+      SEED_TREASURY: ${SEED_TREASURY:-}
+      TRAFFIC_PROOF_REQUIRED: ${TRAFFIC_PROOF_REQUIRED:-true}
+      VERDICT_ENFORCE: ${VERDICT_ENFORCE:-false}
+      TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-90}
+      SIGNIN_RETENTION_DAYS: ${SIGNIN_RETENTION_DAYS:-180}
+      CHALLENGE_INTERVAL_SECONDS: ${CHALLENGE_INTERVAL_SECONDS:-240}
+      CHALLENGE_FREE_RIDES: ${CHALLENGE_FREE_RIDES:-off}
+      ADMIN_WALLETS: ${ADMIN_WALLETS:-}
+      POSTHOG_ENABLED: "0"
+      POSTHOG_DISABLED: "1"
+
+  # AI generation has its own process and memory budget. PostgreSQL owns the shared five-slot queue.
+  editor-worker:
+    image: freightchain-server:${RELEASE:-latest}
+    command: ["node", "dist/app/editor-worker.js"]
+    restart: unless-stopped
+    stop_grace_period: 20s
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "3" }
+    depends_on:
+      app:
+        condition: service_healthy
+      mcp:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [default, cache, editor]
+    healthcheck:
+      test: ["CMD", "node", "-e", "const h=JSON.parse(require('fs').readFileSync('/tmp/fc-editor-worker-health-1.json','utf8'));const age=Date.now()-h.checkedAt;process.exit(Number.isFinite(age)&&age>=0&&age<15000?0:1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is empty - add REDIS_PASSWORD=<hex> to deploy/.env}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}   # job capabilities must verify in the API process
+      TREASURY_PUBKEY: ${TREASURY_PUBKEY}
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      APP_DOMAIN: ${APP_DOMAIN}
+      APP_ORIGIN: ${APP_ORIGIN}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      POSTHOG_ENABLED: "0"
+      POSTHOG_DISABLED: "1"
+      # the AI model editor (docs/spec/platform_services.md): a provider is offered when its key is set – SECRETS, never logged
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
+      ZAI_BASE_URL: ${ZAI_BASE_URL:-https://api.z.ai/api/paas/v4}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      XAI_BASE_URL: ${XAI_BASE_URL:-https://api.x.ai/v1}
+      EDITOR_DEFAULT_PROVIDER: ${EDITOR_DEFAULT_PROVIDER:-}
+      EDITOR_MODEL_ANTHROPIC: ${EDITOR_MODEL_ANTHROPIC:-}
+      EDITOR_MODEL_OPENAI: ${EDITOR_MODEL_OPENAI:-}
+      EDITOR_MODEL_GEMINI: ${EDITOR_MODEL_GEMINI:-}
+      EDITOR_MODEL_ZAI: ${EDITOR_MODEL_ZAI:-}
+      EDITOR_MODEL_XAI: ${EDITOR_MODEL_XAI:-}
+      EDITOR_MCP_URL: http://mcp:3100   # the mcp service below, on the internal `editor` network
+      EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}   # shared with the mcp service; empty = no AI editor
+      EDITOR_JOB_TIMEOUT_MS: ${EDITOR_JOB_TIMEOUT_MS:-600000}
+      EDITOR_FAKE_LLM: "0"   # test switch – the server refuses 1 in production
+      EDITOR_OPEN: "0"   # local switch – the server refuses 1 in production
+
+  # The entity MCP (mcp/, docs/spec/platform_services.md): the 3d-assets skill as tools for the AI model editor. Internal network only, no published port,
+  # no AI or wallet key – only the shared EDITOR_MCP_TOKEN. Started by release.sh only when EDITOR_MCP_TOKEN is set (without it the process refuses to run).
+  mcp:
+    image: freightchain-mcp:${RELEASE:-latest}
+    build:
+      context: ../..
+      dockerfile: infra/deploy/Dockerfile.mcp
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "3" }
+    networks: [editor, cache]   # cache access is restricted to rate-limit counters by the fc-mcp Redis ACL
+    # nothing to write, nothing to escalate to: a read-only root, no capabilities, bounded memory and processes
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    pids_limit: 128
+    environment:
+      EDITOR_MCP_TOKEN: ${EDITOR_MCP_TOKEN:-}
+      FC_APP_URL: http://app:3000
+      EDITOR_MCP_PORT: "3100"
+      REDIS_URL: redis://fc-mcp@redis:6379
+
+networks:
+  cache:
+    internal: true   # no route to the internet, in or out
+  editor:
+    internal: true   # the app ⇄ the entity MCP only; the MCP has no other network
+
+volumes:
+  pgdata:

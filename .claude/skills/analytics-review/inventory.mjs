@@ -45,16 +45,16 @@ function jsFiles(rel) {
   return out;
 }
 
-const clientSrc = read('server/src/domain/analytics/client-events.ts');
-const serverSrc = read('server/src/domain/analytics/server-events.ts');
-const factorySrc = read('server/src/application/services/analytics-events.ts');
+const clientSrc = read('backend/server/src/domain/analytics/client-events.ts');
+const serverSrc = read('backend/server/src/domain/analytics/server-events.ts');
+const factorySrc = read('backend/server/src/application/services/analytics-events.ts');
 const explainer = read('docs/insights/analytics/index.html');
 
 const clientEvents = arrayNames(clientSrc, 'CLIENT_EVENTS');
 const serverEvents = arrayNames(serverSrc, 'SERVER_EVENTS');
 const allow = allowMap(clientSrc);
 
-const trees = ['client/js', 'client/site', 'landing/src'];
+const trees = ['frontend/client/js', 'frontend/client/site', 'frontend/landing/src'];
 const files = trees.flatMap(jsFiles);
 const calls = new Map();
 const droppedKeys = [];

@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+# The entity MCP (backend/mcp/): the 3d-assets skill as tools for the model editor's bridge. Build context = the REPOSITORY ROOT:
+#   docker build -f infra/deploy/Dockerfile.mcp .
+# Its own ignore file (infra/deploy/Dockerfile.mcp.dockerignore) lets in exactly what it serves: backend/mcp/, the entity core (frontend/client/shared/), and
+# .claude/skills/3d-assets/ (the main .dockerignore keeps .claude out of the app image). It holds no keys but EDITOR_MCP_TOKEN, talks only
+# to the app on the internal network, and never sees a wallet or an AI key.
+FROM node:24-bookworm-slim
+WORKDIR /app/backend/mcp
+COPY backend/mcp/package.json backend/mcp/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+COPY backend/mcp/src/ ./src/
+COPY frontend/client/shared/ /app/frontend/client/shared/
+COPY frontend/client/tools/entity-seed-index.mjs /app/frontend/client/tools/
+COPY .claude/skills/3d-assets/ /app/.claude/skills/3d-assets/
+ENV NODE_ENV=production FC_REPO=/app EDITOR_MCP_PORT=3100
+USER node
+EXPOSE 3100
+HEALTHCHECK --interval=30s --timeout=3s CMD node -e "fetch('http://127.0.0.1:3100/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+CMD ["node", "src/http.js"]

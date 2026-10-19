@@ -40,23 +40,23 @@ function jsFiles(rel) {
 }
 function surfaceOf(rel) {
   if (rel.includes('whitepaper')) return 'Whitepaper';
-  if (rel.startsWith('landing/')) return 'Landing';
+  if (rel.startsWith('frontend/landing/') || rel.startsWith('landing/')) return 'Landing';
   if (rel.includes('/lobby') || rel.endsWith('pay.js')) return 'Lobby';
   if (rel.endsWith('wallet.js')) return 'Sign-in';
   if (rel.includes('web-vitals')) return 'Shared';
-  if (rel.startsWith('client/')) return 'Game';
+  if (rel.startsWith('frontend/client/') || rel.startsWith('client/')) return 'Game';
   return 'Other';
 }
 function escape(s) {
   return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
 
-const clientSrc = read('server/src/domain/analytics/client-events.ts');
+const clientSrc = read('backend/server/src/domain/analytics/client-events.ts');
 const clientNames = arrayNames(clientSrc, 'CLIENT_EVENTS');
-const serverNames = arrayNames(read('server/src/domain/analytics/server-events.ts'), 'SERVER_EVENTS');
+const serverNames = arrayNames(read('backend/server/src/domain/analytics/server-events.ts'), 'SERVER_EVENTS');
 const allow = allowMap(clientSrc);
 const calls = new Map();
-for (const path of ['client/js', 'client/site', 'landing/src'].flatMap(jsFiles)) {
+for (const path of ['frontend/client/js', 'frontend/client/site', 'frontend/landing/src'].flatMap(jsFiles)) {
   const rel = path.slice(root.length + 1);
   const text = readFileSync(path, 'utf8');
   for (const m of text.matchAll(/track\(\s*['"]([a-z][a-z0-9_]*)['"]/g)) {
@@ -66,9 +66,9 @@ for (const path of ['client/js', 'client/site', 'landing/src'].flatMap(jsFiles))
   }
 }
 const serverFiles = new Map();
-const factory = read('server/src/application/services/analytics-events.ts');
+const factory = read('backend/server/src/application/services/analytics-events.ts');
 for (const m of factory.matchAll(/serverEvent\(\s*'([a-z][a-z0-9_]*)'/g)) {
-  serverFiles.set(m[1], 'server/src/application/services/analytics-events.ts');
+  serverFiles.set(m[1], 'backend/server/src/application/services/analytics-events.ts');
 }
 
 const surfaces = ['Landing', 'Whitepaper', 'Sign-in', 'Lobby', 'Game', 'Shared', 'Server'];

@@ -1,0 +1,68 @@
+name: freightchain
+
+# Local infrastructure for the server: PostgreSQL (+ an optional Redis for the statistics cache).
+#   docker compose up -d --wait postgres        (or: npm run db:up)
+# Unique project / container / volume / port so it runs beside other projects' databases.
+# PostHog stays off here. This file does not run the API and must not set POSTHOG_ENABLED.
+# `npm run server:dev` reads server/.env, which pins POSTHOG_ENABLED=0.
+# Production capture is deploy/.env (POSTHOG_ENABLED=1) through deploy/docker-compose.prod.yml.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: freightchain-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${FREIGHT_POSTGRES_USER:-freight}
+      POSTGRES_PASSWORD: ${FREIGHT_POSTGRES_PASSWORD:-freight_dev_password}
+      POSTGRES_DB: ${FREIGHT_POSTGRES_DB:-freightchain}
+    ports:
+      - "127.0.0.1:${FREIGHT_POSTGRES_PORT:-15433}:5432"
+    volumes:
+      - freightchain_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+
+  # cache for the public statistics and the replay verification queue (`fc:replay-queue:*`), optional (without REDIS_URL the server uses in-memory equivalents). Loopback only + a password, like everything here:
+  #   REDIS_URL=redis://:freight_dev_redis@127.0.0.1:16380 in server/.env
+  redis:
+    image: redis:7-alpine
+    container_name: freightchain-redis
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${FREIGHT_REDIS_PASSWORD:-freight_dev_redis}
+      REDISCLI_AUTH: ${FREIGHT_REDIS_PASSWORD:-freight_dev_redis}
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD" --save "" --appendonly no']
+    ports:
+      - "127.0.0.1:${FREIGHT_REDIS_PORT:-16380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # dedicated 10 Hz replay verification worker (optional locally via `docker compose --profile worker up -d`):
+  worker:
+    profiles: ["worker"]
+    build:
+      context: ..
+      dockerfile: infra/deploy/Dockerfile
+    container_name: freightchain-worker
+    restart: unless-stopped
+    command: ["node", "dist/cli/index.js", "replay:worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${FREIGHT_POSTGRES_USER:-freight}:${FREIGHT_POSTGRES_PASSWORD:-freight_dev_password}@postgres:5432/${FREIGHT_POSTGRES_DB:-freightchain}
+      REDIS_URL: redis://:${FREIGHT_REDIS_PASSWORD:-freight_dev_redis}@redis:6379
+
+volumes:
+  freightchain_pg_data:
+    name: freightchain_pg_data

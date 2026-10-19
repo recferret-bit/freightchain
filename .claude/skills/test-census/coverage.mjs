@@ -159,7 +159,7 @@ export function caseRoutes(text, routes, globalHelpers) {
 // ---- attribution --------------------------------------------------------------------------------------------------
 
 function serverRel(repoRel) {
-  return repoRel.startsWith('server/src/') ? repoRel.slice('server/src/'.length) : null;
+  return repoRel.startsWith('backend/server/src/') ? repoRel.slice('backend/server/src/'.length) : repoRel.startsWith('server/src/') ? repoRel.slice('server/src/'.length) : null;
 }
 
 export function featureOfFile(repoRel) {
@@ -189,23 +189,23 @@ function countedSource(repoRel) {
     return s.endsWith('.ts') && !s.endsWith('.d.ts') && !/^(application\/ports|presentation)\//.test(s)
       && !/\.(dto|types|command|query|module)\.ts$/.test(s) && !/(^|\/)index\.ts$/.test(s);
   }
-  if (/^client\/(js|site)\/.*\.js$/.test(repoRel)) return true;
-  if (/^landing\/src\/.*\.js$/.test(repoRel)) return true;
-  if (/^media\/(audio|video)\/.*\.(m?js)$/.test(repoRel) || repoRel === 'media/make.mjs') return true;
-  if (/^programs\/.*\/src\/.*\.rs$/.test(repoRel)) return true;
+  if (/^(?:frontend\/)?client\/(js|site)\/.*\.js$/.test(repoRel)) return true;
+  if (/^(?:frontend\/)?landing\/src\/.*\.js$/.test(repoRel)) return true;
+  if (/^(?:social\/)?media\/(audio|video)\/.*\.(m?js)$/.test(repoRel) || repoRel === 'social/media/make.mjs' || repoRel === 'media/make.mjs') return true;
+  if (/^(?:backend\/)?programs\/.*\/src\/.*\.rs$/.test(repoRel)) return true;
   return false;
 }
 
 function sourceInventory(ROOT) {
   const rels = [
-    ...listFiles(join(ROOT, 'server/src')).map((r) => `server/src/${r}`),
-    ...listFiles(join(ROOT, 'client/js')).map((r) => `client/js/${r}`),
-    ...listFiles(join(ROOT, 'client/site')).map((r) => `client/site/${r}`),
-    ...listFiles(join(ROOT, 'landing/src')).map((r) => `landing/src/${r}`),
-    ...listFiles(join(ROOT, 'media/audio')).map((r) => `media/audio/${r}`),
-    ...listFiles(join(ROOT, 'media/video')).map((r) => `media/video/${r}`),
-    'media/make.mjs',
-    ...listFiles(join(ROOT, 'programs')).map((r) => `programs/${r}`),
+    ...listFiles(join(ROOT, 'backend/server/src')).map((r) => `backend/server/src/${r}`),
+    ...listFiles(join(ROOT, 'frontend/client/js')).map((r) => `frontend/client/js/${r}`),
+    ...listFiles(join(ROOT, 'frontend/client/site')).map((r) => `frontend/client/site/${r}`),
+    ...listFiles(join(ROOT, 'frontend/landing/src')).map((r) => `frontend/landing/src/${r}`),
+    ...listFiles(join(ROOT, 'social/media/audio')).map((r) => `social/media/audio/${r}`),
+    ...listFiles(join(ROOT, 'social/media/video')).map((r) => `social/media/video/${r}`),
+    'social/media/make.mjs',
+    ...listFiles(join(ROOT, 'backend/programs')).map((r) => `backend/programs/${r}`),
   ];
   return rels.filter(countedSource);
 }
@@ -229,8 +229,9 @@ function stemOf(rel) {
 // audit's basename rule – handler / service specs reach their class through unitContext), else the first import of product code.
 export function subjectOf(rel, imports, byStem = new Map()) {
   const stem = stemOf(rel);
-  const product = imports.filter((p) => /^(server\/src|client\/(js|site)|landing\/src|media\/(audio|video|make))/.test(p));
-  const sameSide = (p) => (rel.startsWith('server/') ? p.startsWith('server/') : !p.startsWith('server/'));
+  const product = imports.filter((p) => /^((?:backend\/)?server\/src|(?:frontend\/)?client\/(js|site)|(?:frontend\/)?landing\/src|(?:social\/)?media\/(audio|video|make))/.test(p));
+  const isServer = (p) => p.startsWith('backend/server/') || p.startsWith('server/');
+  const sameSide = (p) => (isServer(rel) ? isServer(p) : !isServer(p));
   const named = (byStem.get(stem) || []).filter(sameSide);
   return product.find((p) => stemOf(p) === stem) || (named.length === 1 ? named[0] : null)
     || product.find((p) => !/\/(shared|support)\//.test(p) && !/\.(dto|types)\.ts$/.test(p)) || null;
@@ -301,15 +302,15 @@ export function recordE2eRoutes(ROOT, dir, at) {
 // ---- the report ---------------------------------------------------------------------------------------------------
 
 export function allRoutes(ROOT) {
-  const dir = join(ROOT, 'server/src/presentation');
+  const dir = join(ROOT, 'backend/server/src/presentation');
   return listFiles(dir).filter((r) => r.endsWith('.controller.ts'))
-    .flatMap((r) => parseController(`server/src/presentation/${r}`, readFileSync(join(dir, r), 'utf8')));
+    .flatMap((r) => parseController(`backend/server/src/presentation/${r}`, readFileSync(join(dir, r), 'utf8')));
 }
 
 function useCaseIndex(ROOT) {
-  const base = join(ROOT, 'server/src/application/use-cases');
+  const base = join(ROOT, 'backend/server/src/application/use-cases');
   const idx = new Map();
-  for (const rel of listFiles(base).filter((r) => r.endsWith('.handler.ts'))) idx.set(basename(rel, '.handler.ts').replace(/-/g, ''), `server/src/application/use-cases/${rel}`);
+  for (const rel of listFiles(base).filter((r) => r.endsWith('.handler.ts'))) idx.set(basename(rel, '.handler.ts').replace(/-/g, ''), `backend/server/src/application/use-cases/${rel}`);
   return idx;
 }
 
@@ -368,8 +369,8 @@ export function featureReport(ctx) {
 
   // Scenario / HTTP / integration cases → routes; concurrency cases by title when they request nothing.
   const globalHelpers = new Map();
-  for (const rel of listFiles(join(ROOT, 'server/test/support')).filter((r) => r.endsWith('.ts'))) {
-    for (const [k, v] of helperRoutes(codeOf(read(`server/test/support/${rel}`)), routes)) globalHelpers.set(k, v);
+  for (const rel of listFiles(join(ROOT, 'backend/server/test/support')).filter((r) => r.endsWith('.ts'))) {
+    for (const [k, v] of helperRoutes(codeOf(read(`backend/server/test/support/${rel}`)), routes)) globalHelpers.set(k, v);
   }
   const caseFeatures = []; // { file, layer, title, features:Set }
   for (const f of byLayer('server-scenarios', 'server-http', 'server-concurrency', 'server-integration-other', 'server-audits')) {
@@ -393,7 +394,7 @@ export function featureReport(ctx) {
   for (const [suite, rec] of suites) for (const k of Object.keys(rec.routes || {})) if (rowOf.has(k)) rowOf.get(k).e2eSuites.push(suite);
 
   // Headless checks.
-  const headless = headlessChecks(read('client/tools/headless-test.mjs')).map((c) => ({ text: c, feature: FEATURES.find((f) => f.headless && f.headless.test(c))?.id || null }));
+  const headless = headlessChecks(read('frontend/client/tools/headless-test.mjs')).map((c) => ({ text: c, feature: FEATURES.find((f) => f.headless && f.headless.test(c))?.id || null }));
 
   // Source files per feature.
   const sources = sourceInventory(ROOT);

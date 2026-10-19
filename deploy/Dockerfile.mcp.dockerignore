@@ -1,8 +1,0 @@
-# Only what deploy/Dockerfile.mcp copies (BuildKit uses this file instead of the root .dockerignore for that Dockerfile).
-*
-!mcp/package.json
-!mcp/package-lock.json
-!mcp/src/
-!client/shared/
-!client/tools/entity-seed-index.mjs
-!.claude/skills/3d-assets/

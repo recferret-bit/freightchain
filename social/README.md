@@ -1,15 +1,9 @@
-# FreightChain — материалы по продвижению
+# FreightChain — Social & Promo Materials
 
-Проект: браузерная игра-дальнобойщик на Solana (@FreightChainSol), еженедельный призовой фонд через escrow, devnet. Аудитория: только англоязычная. Собрано 16.10.2026.
-
-## Файлы
-- **x_accounts_v2.xlsx / x_accounts_v2.csv** — 167 проверенных аккаунтов X в 8 категориях, разбиты на когорты: крупные (100K–1M), средние (10K–100K), малые (1K–10K), меньше 1K. Есть колонка «Тегать/Писать». Подписчики на 16.10.2026.
-- **tag_vs_dm.md** — кого тегать, а кому писать в личку.
-- **outreach_streamers.md** — 7 сообщений стримерам (Desert Bus, ETS2).
-- **outreach_media_solana.md** — 11 сообщений медиа, хабам и Solana-людям.
-- **x_thread_business_model.md** — тред из 9 постов про бизнес-модель (для закрепа).
-- **colosseum.md** — всё про хакатон Colosseum: критерии, сроки, люди, прошлые победители, план действий.
-- **promo_recommendations.md** — с чего начать продвижение.
-- **build_xlsx.py** — скрипт сборки таблицы из TSV.
-
-Ничего не публиковалось и не отправлялось: все сообщения — черновики для ручной отправки.
+| Directory | Contents |
+|---|---|
+| `media/` | Promo video capture + chiptune audio synthesis & sound store (`npm run media`, `npm run media:test`, `npm run game-sfx`) |
+| `outreach/` | X/Twitter outreach lists, streamer/media templates, Colosseum notes, and business model thread (`build_xlsx.py`) |
+| `pitchdeck-video/` | 9 s vertical promo clip of the pitch deck (`node social/pitchdeck-video/pitchdeck.mjs`) |
+| `progress-thread/` | Progress thread cards and animated GIF renderer (`node social/progress-thread/render.mjs`) |
+| `editor-medic/` | 3D model editor demo thread and screenshots |
