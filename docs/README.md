@@ -25,7 +25,8 @@ This directory is organized into seven top-level categories:
 - Domain Specs: [Rides](./spec/rides.md) · [Pool & Escrow](./spec/pool.md) · [TEN4 Token & Garage](./spec/ten4.md) · [Promo Codes](./spec/promocodes.md) · [Referral](./spec/referral.md) · [Replays, Streams & Donations](./spec/replays_streams.md) · [Anti-Cheat](./spec/anticheat.md) · [Web3 & Solana](./spec/web3_solana.md) · [Platform Services](./spec/platform_services.md) · [Admin & Security](./spec/admin_security.md) · [Minigames](./spec/minigames.md) · [Backend Contract](./spec/backend_contract.md) · [E2E Spec](./spec/e2e.md) · [Legal & Compliance Spec](./spec/legal.md)
 
 ### 2. Launch Plans & Legal (`plan/`, `legal/`)
-- [Plan Index](./plan/README.md) · [Master Launch Plan & Gap Status (`MASTER_PLAN.md`)](./plan/MASTER_PLAN.md)
+- [Plan Index](./plan/README.md) · [Parallel Execution Orchestrator (Up to 4 Agents) (`EXECUTION_ORCHESTRATOR.md`)](./plan/EXECUTION_ORCHESTRATOR.md) · [Master Launch Plan & Gap Status (`MASTER_PLAN.md`)](./plan/MASTER_PLAN.md)
+- [Plan 1 — E2E Headless Tests (`E2E_HEADLESS_PLAN.md`)](./plan/E2E_HEADLESS_PLAN.md) ([Status Board](./plan/e2e-headless/STATUS.md)) · [Plan 2 — Spec Compliance (`SPEC_COMPLIANCE_PLAN.md`)](./plan/SPEC_COMPLIANCE_PLAN.md) ([Status Board](./plan/spec-compliance/STATUS.md))
 - [Devnet Preseason Plan, Spec & Runbook (`DEVNET_PRESEASON.md`)](./plan/DEVNET_PRESEASON.md)
 - [Owner Action Checklist (`OWNER_TASKS.md`)](./plan/OWNER_TASKS.md)
 - Research: [Operator Entity Options](./plan/research/operator_entity_options.md) · [Tax Thresholds](./plan/research/tax_thresholds.md)
