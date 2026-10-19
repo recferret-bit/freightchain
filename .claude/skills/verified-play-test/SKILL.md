@@ -5,7 +5,7 @@ description: Test Freight Chain's anti-bot / anti-cheat (verified play) end to e
 
 # Verified play – the anti-cheat, positive and negative
 
-What it covers (how the checks work: `docs/verified-play/index.html`; the thresholds: `server/src/domain/verdict/verdict-rules.ts`; the status page: `docs/spec/anticheat.md`):
+What it covers (how the checks work: `docs/tech/verified-play/index.html`; the thresholds: `server/src/domain/verdict/verdict-rules.ts`; the status page: `docs/spec/anticheat.md`):
 the recording (hash-chained batches, the server's own hashes, bounds, agreement with the ride, coverage, the per-ride time / batch / byte budgets),
 the human-timing statistics (flags only), the **dispatch prompts** – the server asks for a key through the heartbeat ("FLASH YOUR HEADLIGHTS · PRESS L"),
 the recording must show it pressed within 20 s; most prompts ignored rejects, instant answers flag – the admin's hand on the review queue, the retention sweep, and the CLI that re-judges old rides after a rules change – and **the server's road**: the road and its holes rebuilt from the ride seed
@@ -83,7 +83,7 @@ holes' damage like the game (`server/scripts/road-damage.mjs`) – a bot that di
 
 1. Read the `FAIL` line: it prints the status, the reason codes and the receipts. A cascade in D / F after a failing A case is usually the same root cause (the flagged ride is used downstream).
 2. Reproduce one case: `drive({ name, ...options })` in `e2e-verified-deep.mjs` is one shift; add a case to `SCENARIOS` = `[name, options, status, codes]`.
-3. If the harness is right and the rules changed on purpose: update `verdict-rules.ts` AND this table AND `docs/verified-play/index.html`, bump `RULES_VERSION`.
+3. If the harness is right and the rules changed on purpose: update `verdict-rules.ts` AND this table AND `docs/tech/verified-play/index.html`, bump `RULES_VERSION`.
 Sensitivity was proved by mutation: loosening `HOLD_CV_MIN` to 0 and `COVERAGE_REJECT` to 0.4 turns exactly the metronome and 45 %-coverage cases red (plus what depends on them). Do that again after adding a check.
 
 ## Tuning the thresholds

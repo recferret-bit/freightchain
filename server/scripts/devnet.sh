@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The LOCAL DEVNET profile (docs/escrow-open-items.md Phases 1–2): keys, the RPC check, the local database and this machine's server against the program
+# The LOCAL DEVNET profile (docs/tech/escrow-open-items.md Phases 1–2): keys, the RPC check, the local database and this machine's server against the program
 # on Solana DEVNET. Never touches production, the global Solana config or ~/.config/solana/id.json; never prints a secret.
 #   bash server/scripts/devnet.sh keys                generate the devnet keypairs (once) into deploy/secrets/devnet/ of the MAIN checkout, print their addresses
 #   bash server/scripts/devnet.sh balances            their devnet balances (needs server/.env.devnet or RPC=…)

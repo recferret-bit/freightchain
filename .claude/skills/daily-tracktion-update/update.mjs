@@ -9,7 +9,7 @@ import { api, redact, root } from '../posthog-audit/api.mjs';
 import { acceptStats, placeTraction, renderTraction, selfTest, spliceTraction } from './render.mjs';
 
 const readmePath = join(root, 'README.md');
-const outPath = join(root, 'docs/traction/latest.json');
+const outPath = join(root, 'docs/insights/traction/latest.json');
 const JUDGE_FROM = '2026-10-08 00:00:00';
 const JUDGE_TO = '2026-10-13 00:00:00';
 
@@ -105,7 +105,7 @@ async function oneWindow(from, to) {
 async function audit() {
   const result = await runNode(join(root, '.claude/skills/posthog-audit/audit.mjs'));
   let parsed = null;
-  try { parsed = JSON.parse(readFileSync(join(root, 'docs/analytics/generated/audit.json'), 'utf8')); } catch { /* missing */ }
+  try { parsed = JSON.parse(readFileSync(join(root, 'docs/insights/analytics/generated/audit.json'), 'utf8')); } catch { /* missing */ }
   return {
     exitCode: result.status,
     fixes: parsed?.fixes?.length ?? null,

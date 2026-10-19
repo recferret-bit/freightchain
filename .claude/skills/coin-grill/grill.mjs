@@ -2087,7 +2087,7 @@ function main() {
   const slug = basename(inputPath, extname(inputPath)).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "token";
   const finalOut = outPath
     ? resolve(process.cwd(), outPath)
-    : join(REPO_ROOT, "docs", "coin-grill", `${slug}-grill.html`);
+    : join(REPO_ROOT, "docs", "insights", "reviews", `${slug}-grill.html`);
 
   mkdirSync(dirname(finalOut), { recursive: true });
   writeFileSync(finalOut, html, "utf8");

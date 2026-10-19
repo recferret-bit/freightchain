@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Replays and Donations</title>
+<meta name="description" content="How Freight Chain lets anyone watch a ride live or as a replay, and how spectators' chat and (mock) donations reach the driver's game – in detail.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">Freight Chain · live streams</span>
+  <h1>Replays &amp; Donations</h1>
+  <p class="lede">Any ride can be watched – live while it is on the road, or as a replay once it has ended. Nothing is filmed: the watch page rebuilds the driver's road from the ride's seed and replays the same 10-per-second recording that verified play already uploads. Signed-in spectators can write to the driver and send donations that change the driver's ride – night, day, or a hole in the road ahead.</p>
+  <div class="status">
+    <span class="pill">money <b>MOCK or devnet SOL</b> · a feature flag</span>
+    <span class="pill">live view <b>~25 s</b> behind the driver</span>
+    <span class="pill">effects <b>1 per 20 s</b> per ride · production: free rides only</span>
+    <span class="pill">replays kept <b>90 days</b> · the feed for good</span>
+    <span class="pill">transport <b>polling</b> · no WebSockets</span>
+  </div>
+
+  <figure class="chart" style="margin:0">
+    <svg viewBox="0 0 920 270" role="img" aria-label="Timeline: the driver records 15-second batches; the spectator's replay plays about 25 seconds behind; a NIGHT donation is applied by the driver and reaches the replay later">
+      <text x="60" y="22" class="t-ink">DRIVER · game time</text>
+      <line x1="60" x2="880" y1="70" y2="70" class="g-strong"/>
+      <rect x="60" y="52" width="136.5" height="36" rx="3" class="batch"/><rect x="196.5" y="52" width="136.5" height="36" rx="3" class="batch"/>
+      <rect x="333" y="52" width="136.5" height="36" rx="3" class="batch"/><rect x="469.5" y="52" width="136.5" height="36" rx="3" class="batch"/>
+      <rect x="606" y="52" width="136.5" height="36" rx="3" class="batch"/><rect x="742.5" y="52" width="136.5" height="36" rx="3" class="batch-wait"/>
+      <text x="128" y="75" text-anchor="middle">batch 0</text><text x="265" y="75" text-anchor="middle">batch 1</text><text x="401" y="75" text-anchor="middle">batch 2</text>
+      <text x="538" y="75" text-anchor="middle">batch 3</text><text x="674" y="75" text-anchor="middle">batch 4</text><text x="811" y="75" text-anchor="middle" class="t-pen">recording…</text>
+      <line x1="806" x2="806" y1="40" y2="98" class="end"/><text x="806" y="36" text-anchor="middle" class="t-ink">now</text>
+      <circle cx="697" cy="108" r="5" class="sign"/><text x="690" y="124" text-anchor="end" class="t-flag">NIGHT paid</text>
+      <circle cx="724" cy="108" r="5" class="hole"/><text x="731" y="124" class="t-limit">applied · stamped</text>
+      <path d="M742 92 C 742 140, 742 140, 742 150" class="arrow"/><path d="M736 143 L742 152 L748 143" class="arrow"/>
+      <text x="734" y="146" text-anchor="end">uploaded at the cut · fetched by the next poll (≤ 4 s)</text>
+
+      <text x="60" y="160" class="t-ink">SPECTATOR · replay of the same recording</text>
+      <line x1="60" x2="880" y1="200" y2="200" class="g-strong"/>
+      <rect x="60" y="184" width="682.5" height="32" rx="3" class="batch"/>
+      <text x="300" y="205" text-anchor="middle">loaded batches 0 – 4</text>
+      <line x1="579" x2="579" y1="174" y2="226" class="play"/><text x="579" y="240" text-anchor="middle" class="t-ok">playhead · now − 25 s</text>
+      <line x1="724" x2="724" y1="180" y2="220" class="limit"/><text x="724" y="240" text-anchor="middle" class="t-limit">night starts here</text>
+      <path d="M590 250 H714" class="arrow-ok"/><path d="M708 245 L716 250 L708 255" class="arrow-ok"/><text x="652" y="264" text-anchor="middle" class="t-ok">reached ~15 s later</text>
+      <g class="g"><line x1="60" x2="60" y1="96" y2="100"/><line x1="333" x2="333" y1="96" y2="100"/><line x1="606" x2="606" y1="96" y2="100"/></g>
+      <text x="60" y="112" text-anchor="middle">0 s</text><text x="333" y="112" text-anchor="middle">30 s</text><text x="606" y="112" text-anchor="middle">60 s</text>
+    </svg>
+    <figcaption>The driver's game cuts a recording batch every 15 seconds of driving and uploads it. The watch page polls every 4 seconds and plays 25 seconds behind the newest recorded second, so the next batch is always there before the playhead needs it. A donation reaches the driver at once (their game polls its inbox every 4 seconds) – spectators see its effect when the replay gets to that moment.</figcaption>
+  </figure>
+</header>
+
+<section aria-labelledby="s-path">
+  <div class="head">
+    <span class="eyebrow">The path of one watched ride</span>
+    <h2 id="s-path">From the driver's wheel to a spectator's screen</h2>
+  </div>
+  <div class="pipe">
+    <div class="step"><span class="n">1</span><span class="where">Driver's browser</span><h3>Record</h3><p>Every online ride records the truck 10 times a second (verified play). Four columns were added for spectators: the hour of the day, the cab's switches, the controls in use and which road of a fork the truck is on.</p></div>
+    <div class="step"><span class="n">2</span><span class="where">Every 15 s of driving</span><h3>Upload</h3><p>The batch is sealed, hashed, chained and stored by the server – the same upload the verdict judges. There is no second stream.</p></div>
+    <div class="step"><span class="n">3</span><span class="where">Watch page, every 4 s</span><h3>Poll</h3><p><code>GET /api/watch/:id</code> returns the ride, the next batches the playhead needs, and the feed since the last poll.</p></div>
+    <div class="step"><span class="n">4</span><span class="where">Every frame</span><h3>Replay</h3><p>The road is rebuilt from the seed + route, its holes come from the server's obstacle plan; the truck's state is interpolated from the samples. Nothing is simulated.</p></div>
+    <div class="step"><span class="n">5</span><span class="where">Signed in</span><h3>Talk &amp; donate</h3><p>Chat lines and donations go into the ride's feed; the driver's game picks them up, shows them and applies the effects.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="s-replay">
+  <div class="head">
+    <span class="eyebrow">What a replay is</span>
+    <h2 id="s-replay">A rebuilt road and a recorded truck</h2>
+    <p class="soft">The road is endless but deterministic: its whole layout – patterns, junctions, traffic lights, roadside props, the natural holes – is a pure function of the ride's seed, its route and its trip (the free levels have their own layout, forks included). The watch page gets all three from the server, builds its own copy of the driver's road – its natural holes taken from the server's own obstacle plan (<code>GET /api/watch/:id/road</code>), never from anything the driver's game reported – and then writes the truck's state every frame from the recording instead of running the physics. Gauges, sway, the trailer, wipers, dust and lights all react exactly as they do for the driver, because they read the same state.</p>
+  </div>
+  <div class="spec-grid">
+    <div class="spec">
+      <div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h3>One sample · 16 numbers</h3><span class="chip pen">10 per game second</span></div>
+      <div class="row r14" aria-label="one recorded sample">
+        <div class="cell"><span class="v">412.3</span><span class="k">t · s</span></div>
+        <div class="cell"><span class="v">9810</span><span class="k">road · m</span></div>
+        <div class="cell"><span class="v">2.41</span><span class="k">lane · m</span></div>
+        <div class="cell"><span class="v">0.01</span><span class="k">heading</span></div>
+        <div class="cell"><span class="v">24.6</span><span class="k">speed</span></div>
+        <div class="cell"><span class="v">1860</span><span class="k">rpm</span></div>
+        <div class="cell"><span class="v">6</span><span class="k">gear</span></div>
+        <div class="cell"><span class="v">97</span><span class="k">hull %</span></div>
+        <div class="cell"><span class="v">1</span><span class="k">gas</span></div>
+        <div class="cell"><span class="v">0</span><span class="k">brake</span></div>
+        <div class="cell"><span class="v">-0.2</span><span class="k">steer</span></div>
+        <div class="cell"><span class="v">0</span><span class="k">clutch</span></div>
+        <div class="cell new"><span class="v">21.5</span><span class="k">clock · h</span></div>
+        <div class="cell new"><span class="v">11</span><span class="k">switches</span></div>
+        <div class="cell new"><span class="v">65537</span><span class="k">inputs</span></div>
+        <div class="cell new"><span class="v">0</span><span class="k">fork road</span></div>
+      </div>
+      <p class="soft" style="font-size:14px">The first twelve are what the verdict judges. The last four (highlighted) were <b>appended</b> for replays and are never judged – old recordings without them still play, with lights guessed from the revs and no input display. The last one is which road of a <b>fork</b> the truck is on (0 / 1; 0 outside a fork): the two roads of a fork are mirror images of the same length, one road in road coordinates, so the judge never needs it – the replay draws the road the driver took and never blends a sample from one road into one from the other.</p>
+    </div>
+    <div class="spec">
+      <div class="top"><h3>The switches bitmask</h3></div>
+      <div class="tbl" style="border:0;background:none">
+        <table style="min-width:0;font-size:13.5px">
+          <tbody>
+            <tr><td>1 · 2 · 4</td><td>engine running · key on · parking brake</td></tr>
+            <tr><td>8 · 16</td><td>headlights · cab light</td></tr>
+            <tr><td>32 · 64</td><td>heater · washer spraying</td></tr>
+            <tr><td>128 · 256</td><td>wipers slow · fast</td></tr>
+            <tr><td>512 · 1024</td><td>radio on · reversing</td></tr>
+            <tr><td>2048</td><td>cooling on – the COLD button stays lit, and the windscreen fog follows it, the same way frost follows the heater</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <p class="soft">The <b>traffic</b> is replayed too: the driver's game records the nearest vehicles (up to 16 within 400 m – type, colour, position, heading, brake lights, sirens) twice a second beside each batch. That track sits <i>outside</i> the batch's fingerprint and is never judged; one that is too big or malformed is dropped, never refused. The replay draws the same vehicles and interpolates them. Recordings from before this have an empty road.</p>
+  <div class="notlist" aria-label="what a replay does not show">
+    <span class="no"><s>windscreen cracks, debris</s></span>
+    <span class="no"><s>the radio</s></span>
+    <span class="no"><s>the raw key presses</s> – their millisecond timing is what the verdict's human-timing check measures, so they are never published</span>
+  </div>
+  <p class="soft">What spectators DO see of the driver's hands is the <b>inputs</b> column: one bit per control (gas, brake, steer, clutch, gears, the key, the lights, wipers, washer, heater, cooling, radio, pause, mute, the phone map – W and ↑ are the same bit) plus one for <i>clicked on the dash</i>, set when the control was held at that sample or pressed since the one before, so a tap shorter than a tenth of a second still shows. The replay lights them as <b>flashing yellow borders</b>: a dash button is outlined where it sits (a click adds a pointer and a ring), keys show as caps in the lower left of the windscreen – Q W E / A S D / ⇧ always there, the others while lit. A fast replay never skips one: every sample the playhead passed in a frame counts, and a light fades over half a second of wall time. In the example, 65537 = gas held + the headlights switched. The bits never change meaning; new controls are appended (<code>client/js/input-bits.js</code>).</p>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>The holes are the server's</h3><span class="chip pen">GET /api/watch/:id/road</span></div>
+      <p class="soft">The server rebuilds every ride's road from its seed (<code>server/src/domain/road</code>, a port of the game's generator that a drift test holds to it) and serves the list of its sinkholes – the <b>obstacle plan</b> – once the ride has started, up to 10 km per request. The driver's game draws and drives over those holes (<code>client/js/road-plan.js</code>), and so does every replay: what a spectator sees in the road is the server's plan, not the driver's copy. A game that took its holes out shows an empty road to its driver – the replay still has the holes in it.</p>
+      <p class="soft">Each watched batch also carries <code>road</code>: what the recorded truck did at the planned holes in it – <i>hit</i>, <i>avoided</i>, <i>ignored</i> (driven through at speed with none of the damage the game takes) – with the hull the game takes there and the hull the recording lost. These are facts about public samples on a public plan; the verdict (<code>obstacle-ignored</code>) uses the same measurement.</p>
+    </div>
+    <div class="card">
+      <div class="top"><h3>ROAD CHECK in the panel</h3><span class="chip bad">NO IMPACT</span></div>
+      <div class="replay-mock" aria-label="a mock of the watch panel's road check line, its timeline marks and the on-screen stamp">
+        <div class="mock-line">ROAD CHECK · 3 planned holes · 2 hit · 1 avoided</div>
+        <div class="mock-track"><i style="left:22%"></i><i style="left:64%"></i></div>
+        <span class="mock-cap">an honest ride: amber marks where the truck hit a hole</span>
+        <div class="mock-line bad">ROAD CHECK · 2 planned holes · 0 hit · 0 avoided · 2 NO IMPACT</div>
+        <div class="mock-track"><i class="ig" style="left:30%"></i><i class="ig" style="left:85%"></i></div>
+        <span class="mock-cap">holes taken out of the game: a red mark per hole – a click jumps there</span>
+        <div class="mock-stamp"><b>NO IMPACT</b>the server's sinkhole at 0.61 km – this truck drove through it without a scratch (the game takes 19.0 % hull)</div>
+      </div>
+      <p class="soft" style="font-size:14px">An ignored hole is also ringed red on the road itself (self-lit, so it shows at night), and the stamp appears as the replay passes it.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="s-play">
+  <div class="head">
+    <span class="eyebrow">Playback</span>
+    <h2 id="s-play">Live, behind, and replay</h2>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>Following a live ride</h3><span class="chip ok">● live</span></div>
+      <ul class="checks">
+        <li><b>Target: 25 s behind the newest recorded second</b><span class="soft">One 15 s batch plus its upload, with room for a late one.</span><span class="c">LIVE_LAG = 25 · client/js/watch.js</span></li>
+        <li><b>It eases, it doesn't jump</b><span class="soft">Playback runs at 0.7× – 1.5× to settle on the target; only more than 60 s off makes it jump.</span></li>
+        <li><b>Waiting is honest</b><span class="soft">If the next batch is not there yet – the driver paused, backgrounded the tab, or their upload is slow – the last frame holds and the panel says so. A paused game records no game time, so a pause never shows as a gap.</span></li>
+        <li><b>Joining a long ride</b><span class="soft">The page fetches straight from the live edge (seq ≈ time ÷ 15 s) and holds until it is loaded.</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="top"><h3>Behind, or a finished ride</h3><span class="chip pen">replay</span></div>
+      <ul class="checks">
+        <li><b>Timeline and speeds</b><span class="soft">Drag anywhere in the recording; play at 1×, 4× or 16×. ● LIVE returns to the live edge.</span></li>
+        <li><b>A seek holds its target</b><span class="soft">Jumping to a part that is not loaded yet keeps the target and waits for it, then plays from there.</span></li>
+        <li><b>Loaded as it plays</b><span class="soft">Pages of 20 batches (≈ 5 min); 90 s are kept ahead of the playhead; at most ≈ 40 min stay in memory – batches more than 10 min away are dropped and fetched again on a seek.</span><span class="c">WATCH_BATCH_PAGE 20 · PREFETCH 90 s · KEEP_BATCHES 160</span></li>
+        <li><b>How long a replay exists</b><span class="soft">As long as its recording: 90 days (TELEMETRY_RETENTION_DAYS), flagged rides longer. The ride's chat and donations are kept with the ride for good.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="s-board">
+  <div class="head">
+    <span class="eyebrow">Online and history</span>
+    <h2 id="s-board">Who is here, what is on the road, what can be replayed</h2>
+    <p class="soft">The landing's chip and the lobby's header say <i>N online · M on the road</i>; LIVE NOW and the lobby's LIVE tab list every ride on the air; the lobby's REPLAYS tab and the landing's RECENT RIDES list every ride that ended.</p>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>On the road – accurately</h3></div>
+      <ul class="checks">
+        <li><b>On the air = a heartbeat in the last 150 s</b><span class="soft">The game beats every ~10 s (a paused or hidden tab keeps beating). Each ride shows how many watch it (👁) and its signal: live, PAUSED, or WEAK SIGNAL after 40 s without a beat.</span><span class="c">HB_TIMEOUT_MS · WEAK_SIGNAL_SECONDS</span></li>
+        <li><b>Abandoned rides are closed</b><span class="soft">A ride silent for the timeout can never resume – its next heartbeat would fail it – so the stale-ride sweeper ends it (every 30 s) as <i>failed · heartbeat lost</i>, shown as “signal lost”. It used to stay “running” until its wallet started another ride. Closing the game tab ends the ride at once (a beacon to <code>/end</code>: abandoned); the sweeper is the fallback for a crash or a lost network.</span></li>
+        <li><b>Join</b><span class="soft">▶ WATCH on any row, or WATCH A RANDOM ONE in the lobby – sorted newest / most watched / furthest, filtered by route.</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="top"><h3>Who is online – a soft number</h3></div>
+      <ul class="checks">
+        <li><b>Counted from the pages' own polls</b><span class="soft">The landing and the lobby send a random id with their live-feed poll, the watch page with its own; the server counts distinct ids for 30 s – browsing, watching, driving – and the signed-in wallets among them. A page that closes says so (<code>pagehide</code> → the same poll with <code>leave=1</code>), so it drops out at the next poll of the others, not 30 s later.</span></li>
+        <li><b>Hard to pump, easy to reset</b><span class="soft">At most 3 ids per address count (one office or family = up to 3). Kept in the app's memory: a deploy or restart starts from zero, and a second app instance would count separately.</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>The history</th><th>How</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /api/replays</code><span class="c">?before=&lt;cursor&gt;&amp;limit&amp;wallet&amp;status</span></td><td>Public. Every ride that started and ended – completed, abandoned, failed (a vanished tab included) – newest end first, paged by a stable cursor, filtered by driver or outcome. Each row carries the fail <i>code</i> (never the reason text) and <code>replay</code>: its recording is still kept, so ▶ REPLAY opens it on the watch page.</td></tr>
+        <tr><td>In the lobby</td><td>REPLAYS: everyone / mine, all / completed / abandoned / failed, LOAD MORE.</td></tr>
+        <tr><td>On the landing</td><td>RECENT RIDES: the last eight, a ▶ REPLAY link where a recording is kept.</td></tr>
+        <tr><td>Tested by</td><td><code>bash .claude/skills/live-board-test/run.sh</code> – the ride simulator (<code>server/scripts/sim-rides.mjs</code>: drivers that drive, pause, abandon or complete, visitors, watchers) against a fresh server, checked on the landing and in the lobby.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="s-don">
+  <div class="head">
+    <span class="eyebrow">Donations</span>
+    <h2 id="s-don">Six buttons, three kinds of effect</h2>
+    <p class="soft">How a donation is paid is a feature flag (<code>LIVE_FREE_DONATIONS</code>). <b>Mock</b>: the price is shown and added up, nothing is charged. <b>Paid</b> (production): every donation is a real <b>devnet SOL transfer from the spectator's wallet to the driver's</b> – the server builds it, the wallet signs and sends it, and the donation only exists once the server has seen it on chain. The platform never touches the money. A donation can carry a note of up to 80 characters.</p>
+  </div>
+  <div class="fx">
+    <div class="fxc tip"><h3>💰 Tip <small>0.01 SOL</small></h3><p>Money only. It shows on the driver's CB panel and in the feed. No effect on the ride.</p><span class="k">not limited by the effect window – one per wallet per 3 s</span></div>
+    <div class="fxc"><h3>🌙 Night <small>0.02 SOL</small></h3><p>The driver's clock jumps to night (it fades in; the ride's own start hour is the server's and is untouched). Headlights matter from here on.</p><span class="k">the replay follows from the clock column</span></div>
+    <div class="fxc"><h3>☀ Day <small>0.02 SOL</small></h3><p>The clock jumps back to day. Undoes a night – or a spectator's mercy.</p><span class="k">the replay follows from the clock column</span></div>
+    <div class="fxc hole"><h3>🕳 Potholes <small>0.02 SOL</small></h3><p>Three small pits across the driver's lane. Each costs up to 1.8 % hull per axle at full speed – straddle them or slow down.</p><span class="k">HOLES.cluster</span></div>
+    <div class="fxc hole"><h3>🚧 Trench <small>0.03 SOL</small></h3><p>A trench across the whole lane: up to 6 % hull per axle and 15 % of the speed at 100 km/h. Change lanes or slow right down.</p><span class="k">HOLES.trench</span></div>
+    <div class="fxc hole"><h3>⚠ Sinkhole <small>0.05 SOL</small></h3><p>A lane-wide sinkhole with cones: up to 14 % hull per axle and 35 % of the speed at 100 km/h. Three axles go over it – at full speed it can wreck a damaged truck.</p><span class="k">HOLES.sinkhole · damage ∝ (v / 28 m/s)², rear axles × 0.6</span></div>
+  </div>
+</section>
+
+<section aria-labelledby="s-life">
+  <div class="head">
+    <span class="eyebrow">The life of one donation</span>
+    <h2 id="s-life">Posted, applied, stamped, replayed</h2>
+  </div>
+  <div class="pipe p6">
+    <div class="step"><span class="n">1</span><span class="where">Spectator</span><h3>Post</h3><p>Signed in, clicks SINKHOLE. <code>POST /api/watch/:id/donations</code>.</p></div>
+    <div class="step"><span class="n">2</span><span class="where">Server</span><h3>Check</h3><p>Not your own ride, the ride is on the air, no other effect on it in the last 20 s. Stored in the ride's feed.</p></div>
+    <div class="step"><span class="n">3</span><span class="where">Driver, ≤ 4 s</span><h3>Pick up</h3><p>The game's inbox poll brings it; the CB panel shows who paid for what.</p></div>
+    <div class="step"><span class="n">4</span><span class="where">Driver, while driving</span><h3>Apply</h3><p>Night / day at once; a hole goes on the road ahead. Paused? It waits until the driver is back on the road.</p></div>
+    <div class="step"><span class="n">5</span><span class="where">Driver → server</span><h3>Stamp</h3><p>The game reports when and where: game time, road position, lane offset – or that there was no room.</p></div>
+    <div class="step"><span class="n">6</span><span class="where">Every spectator</span><h3>Replay</h3><p>The stamp reaches every watch page; the hole is put exactly there, so every replay – now or in a month – has it.</p></div>
+  </div>
+
+  <figure class="chart" style="margin:0">
+    <svg viewBox="0 0 920 200" role="img" aria-label="Where a paid hole goes: beyond the 820 metres of road already built, warning sign first, in the driver's lane about 940 metres ahead">
+      <rect x="40" y="70" width="705" height="80" class="built"/>
+      <text x="392" y="64" text-anchor="middle" class="t-pen">road already built around the truck · 820 m ahead</text>
+      <line x1="40" x2="900" y1="70" y2="70" class="edge"/><line x1="40" x2="900" y1="150" y2="150" class="edge"/>
+      <line x1="40" x2="900" y1="110" y2="110" class="lane"/>
+      <text x="48" y="98">oncoming lane</text><text x="48" y="144">the driver's lane</text>
+      <rect x="250" y="118" width="46" height="22" rx="3" class="truck"/><text x="273" y="168" text-anchor="middle" class="t-ink">truck · s</text>
+      <polygon points="771,40 783,52 771,64 759,52" class="sign"/><line x1="771" x2="771" y1="64" y2="78" class="edge"/>
+      <text x="771" y="30" text-anchor="middle" class="t-flag">warning sign · 90 m before</text>
+      <ellipse cx="848" cy="130" rx="16" ry="12" class="hole"/><text x="848" y="176" text-anchor="middle" class="t-limit">hole ≈ s + 940 m</text>
+      <path d="M300 190 H838" class="arrow"/><path d="M832 185 L840 190 L832 195" class="arrow"/>
+    </svg>
+    <figcaption>Where a paid hole goes: past the stretch of road that is already built (so it never pops into view), plus the warning sign's 90 m, plus one 32 m chunk – then the first chunk that is plain road: past the depot turn, not at a junction, not where the lanes change. It sits in the lane the truck is in at that moment. If there is no such chunk within 40 chunks (≈ 1.3 km), the effect fizzles and is stamped as <i>not placed</i>.</figcaption>
+  </figure>
+
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>Why the stamp matters</h3></div>
+      <p class="soft">A natural hole is a pure function of the road chunk it is in, so everyone who rebuilds the road gets it. A paid hole is not – it exists because someone paid while the driver was at a particular place. The driver's game therefore decides where it goes and reports it back once (<code>{t, s, lat}</code>, first report wins). Every watch page installs the same hole in the same chunk, next to that chunk's own roll – a paid hole is only ever put on a chunk without a natural hole, and never replaces one, so the server's plan stays whole – and rebuilds the chunk if it is already on screen. Paid holes are not part of the verdict: where they go is the driver's game's call. The other cars on the driver's road steer around it like any hole.</p>
+    </div>
+    <div class="card">
+      <div class="top"><h3>Night and day need no stamp in the replay</h3></div>
+      <p class="soft">The driver's clock is in every sample, so a replay simply shows the hour the driver had – including the jump a NIGHT donation caused. The stamp is still sent: it tells the spectator who paid that the driver's game really did it (<i>✓ on the road</i> in the feed), and when.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="s-paid">
+  <div class="head">
+    <span class="eyebrow">Paid donations</span>
+    <h2 id="s-paid">Money that moved is never refused</h2>
+    <p class="soft">With <code>LIVE_FREE_DONATIONS=off</code> a click doesn't post a donation – it opens an <b>order</b>. Nothing is in the feed until the transfer is seen on chain.</p>
+  </div>
+  <div class="pipe">
+    <div class="step"><span class="n">1</span><span class="where">Spectator</span><h3>Order</h3><p>Same checks as any post. The server answers with the price, the driver's wallet, a memo <code>fc-donation:&lt;order&gt;</code> and the unsigned transfer.</p></div>
+    <div class="step"><span class="n">2</span><span class="where">Wallet</span><h3>Pay</h3><p>Phantom signs and sends the transfer – spectator → driver, devnet SOL. The platform never holds it.</p></div>
+    <div class="step"><span class="n">3</span><span class="where">Server</span><h3>Verify</h3><p>From your wallet, to the driver, at least the price, the order's memo, signed, not failed. Not visible yet → “pending”, ask again.</p></div>
+    <div class="step"><span class="n">4</span><span class="where">Server</span><h3>Claim</h3><p>One conditional update marks the order paid by this transaction (signatures are unique) – two tabs confirming at once make one donation.</p></div>
+    <div class="step"><span class="n">5</span><span class="where">Feed</span><h3>Deliver</h3><p>A new feed event, with a link to the transfer on the explorer. If its effect can no longer happen, it arrives as a tip saying why.</p></div>
+  </div>
+  <ul class="limits">
+    <li><b>The effect window is checked twice.</b><span>When the order is made (so nobody pays for an effect that visibly can't happen – 429 with the wait) and again when it is confirmed. Another effect in between, effects switched off, or the ride ended: the money already reached the driver, so the donation is delivered as a <b>tip</b> and its text says what happened.</span></li>
+    <li><b>Why an order and not a pending feed line.</b><span>Feed cursors move past ids a few seconds old; a line that only became visible minutes later would be skipped. A paid order becomes a brand-new event when it is confirmed.</span></li>
+  </ul>
+</section>
+
+<section aria-labelledby="s-flags">
+  <div class="head">
+    <span class="eyebrow">Feature flags</span>
+    <h2 id="s-flags">Four switches, enforced by the server</h2>
+    <p class="soft">Server env (<code>docs/tech/configuration.md</code>). The server refuses what is off (403 <code>live_feature_off</code>) and sends each ride's resolved <code>features</code> with every watch poll and to the driver's game, so the panel and the CB only offer what is on. <i>free</i> = only on free test rides, never on paid ticket rides.</p>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Flag</th><th>Values · code default · <b>production default</b></th></tr></thead>
+      <tbody>
+        <tr><td><code>LIVE_CHAT</code><span class="c">spectators' chat</span></td><td>all · free · off — code <code>all</code> · <b>all</b></td></tr>
+        <tr><td><code>LIVE_DONATIONS</code><span class="c">any donation</span></td><td>on · off — code <code>on</code> · <b>on</b></td></tr>
+        <tr><td><code>LIVE_FREE_DONATIONS</code><span class="c">mock (on) or paid on chain (off)</span></td><td>on · off — code <code>on</code> · <b>off</b>: every donation is a real transfer to the driver</td></tr>
+        <tr><td><code>LIVE_EFFECTS</code><span class="c">night / day / holes</span></td><td>all · free · off — code <code>all</code> · <b>free</b>: never on a paid ride; <i>off</i> = tips only</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="s-chat">
+  <div class="head">
+    <span class="eyebrow">Chat</span>
+    <h2 id="s-chat">A CB radio in the cab</h2>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>Spectator side</h3></div>
+      <ul class="checks">
+        <li><b>Sign in with a Solana wallet on the watch page</b><span class="soft">The same sign-in as the landing and the lobby (one session for every page). On a split deployment the message names the game's host – <code>ride.&lt;domain&gt;</code> – so the wallet sees its own page's domain.</span></li>
+        <li><b>140 characters, one line per 3 s</b><span class="soft">Control and bidi characters are stripped and whitespace collapsed; everything is shown as text, never as HTML.</span></li>
+        <li><b>The feed is real time, the picture is delayed</b><span class="soft">Messages appear in everyone's feed within a poll (≤ 4 s); the replay itself trails by ~25 s – like any stream.</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="top"><h3>Driver side</h3></div>
+      <ul class="checks">
+        <li><b>The CB panel</b><span class="soft">Top left, out of the mirrors' way: the last four lines, each fading after 25 s, and a header with how many are watching, the message count and the total donated. <b>K</b> or a click on the header folds it away (remembered).</span></li>
+        <li><b>Mute</b><span class="soft">Every spectator line has a <i>mute</i> button. A muted wallet can't post on that ride any more, its chat lines vanish from every feed and its donation notes are blanked – an obstacle it already paid for stays on the road (replays need it).</span></li>
+        <li><b>Toasts for effects</b><span class="soft">“⚠ 7xKX…gAsU opened a sinkhole ahead – 1.0 km ahead, in your lane”, “🌙 … turned the day into night”.</span></li>
+        <li><b>Nothing to type</b><span class="soft">The driver cannot post into their own ride's feed (403) – their hands are on the wheel.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="s-rules">
+  <div class="head">
+    <span class="eyebrow">Rules, limits and what is public</span>
+    <h2 id="s-rules">What the server allows</h2>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Rule</th><th>How it is enforced</th></tr></thead>
+      <tbody>
+        <tr><td>Anyone may watch any ride that has started<span class="c">GET /api/watch/:id · public</span></td><td>A ride that has not started yet is a 404 – so no seed is ever handed out early. Ended rides stay watchable as replays.</td></tr>
+        <tr><td>Anyone may read a started ride's obstacle plan<span class="c">GET /api/watch/:id/road · public</span></td><td>The holes the server rebuilt from the seed, at most 10 km per request; a 404 before the start, like the watch page. The driver's game asks the same route.</td></tr>
+        <tr><td>Only a signed-in spectator writes<span class="c">401 without a session</span></td><td>Chat and donations need the player session cookie; the wallet is the author of every line.</td></tr>
+        <tr><td>Not your own ride<span class="c">403 own_ride</span></td><td>The driver cannot chat to or donate to themselves.</td></tr>
+        <tr><td>Only rides on the air<span class="c">409 ride_not_live</span></td><td>Running, with a heartbeat in the last 150 s. A post that races the ride's end lands on an ended ride, where nothing ever applies it.</td></tr>
+        <tr><td>One game effect per ride per 20 s<span class="c">429 live_rate_limited + Retry-After</span></td><td>A sliding window: the check and the insert run inside one short transaction holding a per-ride database advisory lock, so two spectators clicking at the same moment never both get through – the second is told how many seconds to wait. Keeps a paid ride drivable.</td></tr>
+        <tr><td>One chat line (or tip) per wallet per 3 s<span class="c">429</span></td><td>A unique 3-second bucket per wallet in the table – one insert, no lock. Spam control, so two lines may land close together across a bucket edge.</td></tr>
+        <tr><td>The applied stamp is the driver's, and final<span class="c">POST /api/rides/:id/effects/:eventId/applied</span></td><td>Only the ride's owner, only while it runs, under the owner's player row lock; the first stamp wins and a re-sent one changes nothing.</td></tr>
+        <tr><td>The feature flags<span class="c">403 live_feature_off</span></td><td>Chat, donations and effects can each be switched off, or limited to free test rides (see Feature flags). A paid server refuses mock donations (403 <code>payment_required</code>).</td></tr>
+        <tr><td>The driver can mute<span class="c">403 muted</span></td><td>Owner-only, under the owner's player row lock; idempotent; the muted wallet's lines are filtered by one function for the watch page and the driver's inbox alike.</td></tr>
+        <tr><td>One transfer, one donation<span class="c">409 signature_reused</span></td><td>A paid order is claimed by one conditional update and the signature is unique on orders and on events – racing confirms of one transfer make exactly one donation.</td></tr>
+        <tr><td>The viewer count can't be pumped<span class="c">👁 N watching</span></td><td>Counted per client IP, at most 3 viewer ids per address, over the last 20 s. Kept in memory: a server restart starts from zero.</td></tr>
+        <tr><td>What the public stream contains</td><td>The ride's seed, route, tier, status, distance, hull, the recording's samples, and the feed. Never: the raw key presses, the end reason, payment data.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="s-api">
+  <div class="head">
+    <span class="eyebrow">For developers</span>
+    <h2 id="s-api">The API</h2>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Route</th><th>Who · what</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /api/watch/:id</code><span class="c">?from=&lt;seq&gt; &amp;after=&lt;eventId&gt; &amp;since=&lt;ms&gt; &amp;viewer=&lt;id&gt;</span></td><td>Public. <code>{ now, ride, recording: { lastSeq, t1 }, batches: [{ seq, t0, t1, samples, traffic?, road? }], events, totals, viewers, features }</code> – <code>ride</code> carries the driver's <code>loadout</code> (wheel, truck colour, shifter, hanging dice, gauge needles: the cockpit the spectator and the replay draw; null = all classic), up to 20 batches from <code>from</code>, the feed after <code>after</code>, plus every event <b>stamped</b> after <code>since</code>.</td></tr>
+        <tr><td><code>GET /api/watch/:id/road</code><span class="c">?from=&lt;m&gt; &amp;to=&lt;m&gt;</span></td><td>Public once started. <code>{ rideId, seed, version, from, to, chunk, holes: [{ id, ci, type, s, lat }] }</code> – the natural holes of [from, to), chunk-aligned (32 m), at most 10 km; 400 for a bad window, 404 before the start.</td></tr>
+        <tr><td><code>POST /api/watch/:id/messages</code><span class="c">{ text }</span></td><td>Signed-in spectator. Returns the stored line.</td></tr>
+        <tr><td><code>POST /api/watch/:id/donations</code><span class="c">{ effect, note? }</span></td><td>Signed-in spectator. effect = tip · night · day · potholes · trench · sinkhole.</td></tr>
+        <tr><td><code>POST /api/watch/:id/donation-orders</code><span class="c">{ effect, note? }</span></td><td>Signed-in spectator, paid servers only: <code>{ order: { id, effect, lamports, to, memo }, transaction }</code> – the unsigned transfer to the driver.</td></tr>
+        <tr><td><code>POST /api/watch/:id/donation-orders/:orderId/confirm</code><span class="c">{ signature }</span></td><td><code>{ status: 'pending' }</code> (not on chain yet – ask again) or <code>{ status: 'paid', event }</code> · 400 the transfer doesn't pay this order · 409 already used.</td></tr>
+        <tr><td><code>POST /api/rides/:id/mutes</code><span class="c">{ wallet, muted }</span></td><td>The ride's owner mutes / unmutes a spectator.</td></tr>
+        <tr><td><code>GET /api/rides/:id/inbox</code><span class="c">?after=&lt;eventId&gt;</span></td><td>The ride's owner (the driver's game, every 4 s): <code>{ now, events, totals, viewers, features, muted }</code>.</td></tr>
+        <tr><td><code>POST /api/rides/:id/effects/:eventId/applied</code><span class="c">{ t, s, lat?, missed? }</span></td><td>The ride's owner. Stamps the effect; answers with the stored stamp (<code>applied: { t, s, lat, placed }</code>).</td></tr>
+        <tr><td><code>GET /api/live</code></td><td>The public live feed – its rides and recent finishes now carry the ride <code>id</code>: the ▶ WATCH / ▶ replay links on the landing ticker, the LIVE NOW board and the lobby's Live tab.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <div class="top"><h3>Feed cursors</h3></div>
+      <p class="soft">Event ids are numbered by the database at insert, and a slow insert can commit after a faster later one. So a client moves its <code>after</code> cursor only past events at least 3 s old, and drops repeats by id. Stamps arrive seconds or minutes after an event was posted – after the cursor has moved on – which is what <code>since</code> is for: each poll asks for stamps from 5 s before the previous poll's server time.</p>
+    </div>
+    <div class="card">
+      <div class="top"><h3>Stored per ride: <code>live.RideEvent</code></h3></div>
+      <pre class="code">id · rideId · wallet (the author)
+kind      message | donation
+text      the line, or the donation's note
+effect    tip | night | day | potholes | trench | sinkhole
+lamports  the MOCK amount
+slotKey · slot   the rate-limit bucket (unique per ride)
+createdAt
+appliedAt · appliedT · appliedS · appliedLat   the stamp
+signature   a paid donation's transfer (unique)
++ live.DonationOrder (a paid donation in flight) · live.RideMute</pre>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="s-code">
+  <div class="head">
+    <span class="eyebrow">Where it lives</span>
+    <h2 id="s-code">The code</h2>
+  </div>
+  <div class="tbl">
+    <table>
+      <tbody>
+        <tr><td>Spectator: replay engine</td><td><code>client/js/watch.js</code> – polling, loading, interpolation into the truck state, seeks, obstacles from stamps, the road outcomes (red rings, NO IMPACT)</td></tr>
+        <tr><td>Spectator: the panel</td><td><code>client/js/ui/watch-panel.js</code> – status, timeline, feed, chat box, donation buttons, wallet sign-in</td></tr>
+        <tr><td>Driver: inbox, CB panel (fold, mute), effects</td><td><code>client/js/ui/live-feed.js</code></td></tr>
+        <tr><td>Paid donations (client)</td><td><code>client/js/ui/watch-panel.js</code> <code>donate()</code> + <code>client/site/pay.js</code> <code>signAndSend</code></td></tr>
+        <tr><td>Recorded traffic</td><td><code>client/js/sim/traffic.js</code> <code>trafficSnapshot</code> → <code>client/js/telemetry.js</code> (beside each batch) → <code>client/js/watch.js</code> <code>drawTraffic</code></td></tr>
+        <tr><td>Feature flags</td><td><code>server/src/domain/live/live-features.ts</code> (resolved per ride) · <code>server/src/application/services/live-access.service.ts</code> (the one gate)</td></tr>
+        <tr><td>The effect table (both sides)</td><td><code>client/js/live-effects.js</code> ⇄ <code>server/src/domain/live/live-rules.ts</code> (prices, windows) – keep them in step</td></tr>
+        <tr><td>The server's holes</td><td><code>client/js/road-plan.js</code> (fetches the plan) · <code>client/js/net/obstacles.js</code> (installs it; the local roll is the fallback) · <code>server/src/domain/road</code> (the plan) · <code>world-facts.ts</code> / <code>world-checks.ts</code> (the measurement, <code>holeOutcomes</code>)</td></tr>
+        <tr><td>Placed holes</td><td><code>client/js/net/obstacles.js</code> <code>placeHole</code> / <code>obstacleSpot</code> (re-exported by <code>world/holes.js</code>), <code>client/js/world/chunks.js</code> <code>rebuild</code></td></tr>
+        <tr><td>The four replay columns</td><td><code>client/js/telemetry.js</code> (<code>FLAGS</code> filled in <code>client/js/ui/game.js</code>; the inputs from <code>recordInput</code>) · <code>client/js/input-bits.js</code> (the bit table, the lights) · <code>client/js/cockpit/inputs.js</code> (the yellow borders) · <code>server/src/domain/telemetry/telemetry-rules.ts</code> <code>SAMPLE_*_COL</code></td></tr>
+        <tr><td>Server</td><td><code>server/src/{domain,application,infrastructure,presentation}/**/live</code>, the table in <code>server/prisma/live/live.prisma</code></td></tr>
+        <tr><td>Tests</td><td>unit specs per handler, the repository's PostgreSQL spec, HTTP scenarios (<code>server/test/scenarios/live.scenarios.ts</code>), three races in the concurrency suite, <code>server/scripts/e2e-watch.mjs</code> – a driver and a spectator in two real Chromes on a live ride – and <code>server/scripts/e2e-replay.mjs</code> – a finished ride opened from the landing's ticker: speeds, seeks across a paid night, the paid hole from history, the end. and <code>server/scripts/e2e-live-flags.mjs</code> – the production flags (a paid donation signed by a fake wallet) and everything off. All three run with the <code>replay-test</code> skill: <code>bash .claude/skills/replay-test/run.sh</code>. The server's holes in a replay (red rings, timeline marks, the NO IMPACT stamp) are checked by <code>server/scripts/e2e-road-check.mjs</code> – <code>bash .claude/skills/run-tests/e2e.sh road</code>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="s-limits">
+  <div class="head">
+    <span class="eyebrow">Honest limits</span>
+    <h2 id="s-limits">What this build does not do yet</h2>
+  </div>
+  <ul class="limits">
+    <li><b>Paid donations are devnet SOL, confirmed by the spectator's own page.</b><span>If the page is closed between paying and confirming, the money reached the driver but the donation never shows: there is no chain watcher for donations yet (features plan F8) and no "reconcile" button. The order stays pending.</span></li>
+    <li><b>Mock donations still exist as a switch.</b><span><code>LIVE_FREE_DONATIONS=on</code> makes sabotage free again – keep it off wherever paid rides are played. Production's default is off, and effects are limited to free rides.</span></li>
+    <li><b>The traffic in a replay is recorded at 2 Hz.</b><span>Smooth enough to watch, not a physics record: the nearest 16 within 400 m, interpolated – a car further away or a very sharp manoeuvre can look simplified.</span></li>
+    <li><b>The seed of a live ride is public.</b><span>Spectators need it to rebuild the road. A future seed commitment (plan F6) would have to reveal at the start of a ride, not at its end.</span></li>
+    <li><b>Replays expire with their recording.</b><span>After 90 days (TELEMETRY_RETENTION_DAYS) the recording is swept; the feed stays, the replay says no recording was kept.</span></li>
+    <li><b>Not yet tried with a real Phantom on the live game host.</b><span>The sign-in message names <code>ride.&lt;domain&gt;</code> there (checked locally on split hosts); a real wallet's domain check on production is still to be seen.</span></li>
+  </ul>
+</section>
+
+<footer>
+  <span>Freight Chain · replays &amp; donations</span>
+  <span>see also: <a href="../verified-play/index.html">Verified Play</a> – how the same recording is judged</span>
+  <span>live lag 25 s · poll 4 s · effect window 20 s · chat 140 chars · traffic 2 Hz</span>
+</footer>
+
+</div>
+</body>
+</html>

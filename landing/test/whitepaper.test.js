@@ -133,7 +133,7 @@ test('numbers: verdict thresholds equal verdict-rules.ts', () => {
   assert.match(text, /captcha before a paid shift/); assert.match(text, /CHALLENGE CHANNEL/); assert.match(text, /table is empty today/); assert.doesNotMatch(text, /FLASH YOUR HEADLIGHTS/);
   assert.match(src('server/src/infrastructure/config/env.schema.ts'), /SIGNIN_RETENTION_DAYS: z\.coerce\.number\(\)\.int\(\)\.min\(0\)\.default\(180\)/); assert.match(text, /the sign-in log after 180 days/);
   assert.match(text, /Protocol-specific budgets/); assert.match(text, /larger byte and batch budget than historical recordings/);
-  assert.match(text, /NINE LAYERS, FROM CHEAPEST TO STRONGEST/); assert.equal((html.match(/NINE LAYERS[\s\S]*?<\/ol>/)[0].match(/<li>/g) ?? []).length, 9); assert.match(text, /docs\/anti-cheat\//);
+  assert.match(text, /NINE LAYERS, FROM CHEAPEST TO STRONGEST/); assert.equal((html.match(/NINE LAYERS[\s\S]*?<\/ol>/)[0].match(/<li>/g) ?? []).length, 9); assert.match(text, /docs\/tech\/anti-cheat\//);
 });
 
 test('numbers: the server\'s road – verdict-rules.ts, and the game\'s own constants (server/src/domain/road/road-rules.ts mirrors them; its road-drift.spec.ts holds the two together)', () => {

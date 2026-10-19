@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analytics review · pass 3 of 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../../tech/verified-play/style.css">
+<link rel="stylesheet" href="../analytics.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">Freight Chain · analytics review</span>
+  <h1>Pass 3 of 3</h1>
+  <p class="lede">File 3 · 10 Oct 2026. Confirm. The inventory is clean and the tests that cover this review passed. No further edit.</p>
+  <p class="soft"><a href="../index.html">Product analytics</a> · <a href="2.html">Pass 2</a></p>
+</header>
+
+<section>
+  <h2>What changed</h2>
+  <p>Nothing. This pass only ran the checks.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Surface</th><th>Found</th><th>Edited</th></tr></thead>
+      <tbody>
+        <tr><td>Landing</td><td>Covered in passes 1 and 2. No new control since.</td><td>No change.</td></tr>
+        <tr><td>Whitepaper</td><td><code>whitepaper_viewed</code>, PLAY, and the storybook link match the allowlist.</td><td>No change.</td></tr>
+        <tr><td>Lobby</td><td>Tab list, buy click, and the free-ride flags match the explainer.</td><td>No change.</td></tr>
+        <tr><td>Gameplay</td><td>Online ride events unchanged. Offline play and the watch page still send nothing.</td><td>No change.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <p><b>Added.</b> None this pass. The review as a whole added <code>whitepaper_viewed</code>.</p>
+  <p><b>Removed.</b> None this pass. The review as a whole removed <code>tier_selected</code>.</p>
+  <p><b>Explainer.</b> Not edited this pass. It already matches the lists: 38 client names, 24 server names.</p>
+</section>
+
+<section>
+  <h2>Checks</h2>
+  <ul>
+    <li><code>node .claude/skills/analytics-review/inventory.mjs</code> exited 0. Drift: none.</li>
+    <li><code>npm --prefix server run test -- test/unit/domain/analytics test/unit/infrastructure/analytics test/unit/application/use-cases/rides/create-ride.handler.spec.ts test/unit/application/use-cases/rides/start-ride.handler.spec.ts</code> — 5 files, 35 tests, all passed. The two ride-handler files are included because this review changed them; the skill’s analytics paths are the other three.</li>
+    <li><code>npm --prefix landing test</code> — 93 passed, 0 failed.</li>
+    <li>Client eslint was not run. This review did not edit a file under <code>client/</code>.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="callout">
+    <b>Production dashboards were not opened, edited, or sent a batch.</b>
+    <span><code>posthog-test</code> and <code>posthog-prod</code> were not run. No PostHog API call. Dashboard 1006663 was not touched.</span>
+  </div>
+</section>
+
+<section>
+  <h2>Still silent on purpose</h2>
+  <p>Offline <code>play.html</code>, <code>viewer.html</code>, verdicts, escrow ticket buys and refunds, live chat, donations, and effects. The admin page. Tutorial SKIP and END TUTORIAL (the shift’s <code>tutorial</code> flag is the stored fact). The original design log still mentions the old tier button.</p>
+</section>
+</div>
+</body>
+</html>

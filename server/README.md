@@ -1,6 +1,6 @@
 # Freight Chain server
 
-NestJS 12 · TypeScript (ESM) · Prisma 6 · **PostgreSQL** · Zod · CQRS. Layers, rules and the test pyramid: [`../docs/backend-architecture.md`](../docs/backend-architecture.md).
+NestJS 12 · TypeScript (ESM) · Prisma 6 · **PostgreSQL** · Zod · CQRS. Layers, rules and the test pyramid: [`../docs/tech/backend-architecture.md`](../docs/tech/backend-architecture.md).
 The server also serves `../client` (the site and the game) from the same origin in development, so the session cookie needs no CORS. In production (`deploy/`) the site is split over `freightchain.fun` (landing + lobby), `ride.*` (game) and `api.*` (API): then `COOKIE_DOMAIN` (the cookie is shared by the subdomains) and `CORS_ORIGINS` (exact origins, credentials) are set – both are derived by the deploy.
 
 ## Run it

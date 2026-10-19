@@ -10,7 +10,7 @@ import { FEATURES, FLOWS, SETUP_ROUTES } from './features.mjs';
 const HERE = dirname(new URL(import.meta.url).pathname);
 export const E2E_ROUTES = join(HERE, 'e2e-routes.json');
 export const LINES = join(HERE, 'coverage.json');
-export const REPORT_REL = 'docs/test-coverage.md';
+export const REPORT_REL = 'docs/testing/test-coverage.md';
 
 const CASE_RE = /(?<![.\w$])(?:it|test)(?:\.(?:each|skip|only|todo|fails|concurrent))?(?:\(\s*(?:['"`({\[]|async\b|function\b)|\([A-Za-z_$])/g;
 const METHODS = 'get|post|put|delete|patch';

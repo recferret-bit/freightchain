@@ -1,7 +1,7 @@
 // THE AUTONOMOUS DAY of the escrow program v2 on a LOCAL chain – phase 3 of .claude/skills/localnet-e2e/run.sh (SCENARIO=day, part of `all`). A fresh
 // validator holds the program + the 1h SERIES the admin wrote with the real set_series in phase 1 (its sale window – the cadence – shortened in the dump,
 // the only edit: a validator's clock cannot be moved); its own server + database with the payout key (PAYOUT_SECRET) and the crank on its SCHEDULE
-// (CRANK_INTERVAL_MS) – nobody runs the crank. Explained in docs/localnet-e2e/index.html ("The autonomous day").
+// (CRANK_INTERVAL_MS) – nobody runs the crank. Explained in docs/tech/localnet-e2e/index.html ("The autonomous day").
 //   0. before the slot: no pool, a hand-sent open_next_pool is TooEarly, the payout job refuses (the program names no payout key)
 //   1. the admin's last signatures: set_payout_authority (the payout key), a DISABLED 4h series (open_next_pool → SeriesDisabled); the payout key may not
 //      create_pool / set_series / cancel_pool (Unauthorized)

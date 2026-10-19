@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analytics review · pass 1 of 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../../tech/verified-play/style.css">
+<link rel="stylesheet" href="../analytics.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">Freight Chain · analytics review</span>
+  <h1>Pass 1 of 3</h1>
+  <p class="lede">File 4 · 12 Oct 2026. Coverage. The landing FAQ is a new control. One client event covers it. The inventory at the start of this pass was already clean (41 client, 27 server).</p>
+  <p class="soft"><a href="../index.html">Product analytics</a> · <a href="3.html">Previous review, pass 3</a></p>
+</header>
+
+<section>
+  <h2>What changed</h2>
+  <p>Each FAQ card now opens on a fine-pointer hover and on a click of the whole card. The chevron is not a control. <code>faq_item_opened</code> fires once per item per load.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Surface</th><th>Found</th><th>Edited</th></tr></thead>
+      <tbody>
+        <tr><td>Landing</td><td>Chapters, sign-in, practice, demo, storybook, socials, invite, and the hood cards already had events. The ten FAQ cards did not. A whitepaper or escrow link is the whitepaper page view, not a second event. The wallet card starts open and that paint is not an open.</td><td>Added <code>faq_item_opened</code> (<code>item</code>, <code>via</code>: hover after 0.6 s, or click / key at once).</td></tr>
+        <tr><td>Whitepaper</td><td><code>whitepaper_viewed</code>, PLAY, and the storybook link. A contents anchor is not an event.</td><td>No change.</td></tr>
+        <tr><td>Lobby</td><td>Tabs, buy, agreements, garage, promo, sign-out, the waiting ride, and the board filter already have events. Ticket quantity, buy, and refund stay with the escrow, which this review does not measure. Replay filters and LOAD MORE only page a list. LIVE’s random ride opens the watch page.</td><td>No change.</td></tr>
+        <tr><td>Gameplay</td><td>Online start, start failure, pause, unpause, and end already have events. Offline play and the watch page send nothing. The corner leave control pauses with <code>source=bail</code>, which the explainer did not name.</td><td>No event added. The explainer row is corrected in pass 2.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <p><b>Added.</b> <code>faq_item_opened</code>. Browser count 41 → 42. Server count stays 27.</p>
+  <p><b>Removed.</b> None.</p>
+  <p><b>Explainer.</b> <a href="../index.html">docs/insights/analytics/index.html</a>: the new browser row, the eyebrow, and the footer date (12 Oct 2026). <code>landing_chapter_viewed</code> still names <code>faq</code> and was not duplicated.</p>
+</section>
+
+<section>
+  <div class="callout">
+    <b>Production dashboards were not opened, edited, or sent a batch.</b>
+    <span><code>posthog-test</code> and <code>posthog-prod</code> were not run. No PostHog API call. Dashboard 1006663 was not touched.</span>
+  </div>
+</section>
+
+<section>
+  <h2>Next pass</h2>
+  <p>Check the allowlist against the literals <code>track()</code> sends, including <code>faq_item_opened</code>’s <code>item</code> and <code>via</code>, and the pause <code>source</code> value <code>bail</code>. Confirm server emits still sit after the commit and that no funnel names a removed event.</p>
+</section>
+</div>
+</body>
+</html>

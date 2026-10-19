@@ -1,7 +1,7 @@
 # FreightChain Pre-season (devnet) — Event Rules and Privacy Notice — TEMPLATE
 
 > **DRAFT — NOT LEGAL ADVICE.** Short rules for one free promotional skill event run by an **individual organizer** (no company). Full `TERMS.md` / `PRIVACY.md` apply from Season 1, once an operator entity exists.
-> Replace every `[PLACEHOLDER: …]` (see `docs/plan/OWNER_TASKS.md` §1.1). Research on individual-organizer risks, Didit availability, and residency/sanctions is recorded in `docs/plan/research/operator_entity_options.md` §6–7. **[LAWYER]** = legal choice to confirm (deferred by owner for Pre-season as an accepted risk; tracked in `docs/plan/OPEN_QUESTIONS.md`).
+> Replace every `[PLACEHOLDER: …]` (see `docs/plan/OWNER_TASKS.md` §1.1). Research on individual-organizer risks, Didit availability, and residency/sanctions is recorded in `docs/plan/research/operator_entity_options.md` §6–7. **[LAWYER]** = legal choice to confirm (deferred by owner for Pre-season as an accepted risk; tracked in `docs/spec/OPEN.md`).
 > Russian translation (RU) is in `docs/legal/PRESEASON_RULES_RU.md`; if versions differ, the English version controls [LAWYER: confirm language priority].
 > Status: drafted 17.10.2026 from `docs/plan/DEVNET_PRESEASON.md` (D1–D13, Round 19).
 
@@ -87,6 +87,6 @@ One prize per person. Prizes are paid to the wallet address you played with. If 
 
 ## Notes for the team (delete before publishing)
 
-- Resolved in `docs/plan/research/operator_entity_options.md` §6–7 & Round 19: Organizer is a Serbian tax resident (temporary residence) and RF citizen; Didit is not used in Pre-season (Didit requires a legal entity); RU/BY remain play-only without prizes; Serbian lawyer / tax questions are tracked in `docs/plan/OPEN_QUESTIONS.md`. Fill external `[PLACEHOLDER: …]` values listed in `docs/plan/OWNER_TASKS.md` §1.1 before publishing.
+- Resolved in `docs/plan/research/operator_entity_options.md` §6–7 & Round 19: Organizer is a Serbian tax resident (temporary residence) and RF citizen; Didit is not used in Pre-season (Didit requires a legal entity); RU/BY remain play-only without prizes; Serbian lawyer / tax questions are tracked in `docs/spec/OPEN.md`. Fill external `[PLACEHOLDER: …]` values listed in `docs/plan/OWNER_TASKS.md` §1.1 before publishing.
 - Publish Rules and Notice in English (`docs/legal/PRESEASON_RULES.md`) and Russian (`docs/legal/PRESEASON_RULES_RU.md`) on the Event page and pin them in the Telegram channel.
 - Full `TERMS.md` / `PRIVACY.md` / `OFFICIAL_RULES.md` apply from Season 1 when the operator entity exists.

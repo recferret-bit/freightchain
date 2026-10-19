@@ -304,8 +304,8 @@ Support: [PLACEHOLDER: support email] · Legal notices and arbitration opt-out: 
 **[LAWYER] items to decide:**
 1. Age: 18+ everywhere, or 19/21 where the age of majority is higher (prize features) — §2.1.
 2. Ineligible persons scope (employees, family, sponsor staff) — §2.3.
-3. Sanctions list: CU, IR, KP, SY + Crimea/Donetsk/Luhansk; add RU, BY, VE, others? — §3.1 (OPEN_QUESTIONS 2б).
-4. Seven US states: paid/prize features blocked (`geo_block_us_states_paid`), free training/EASY allowed; confirm whether any additional state must be added (Skillz lists AR, CT, DE, LA, SD; Triumph excludes AZ, CT, DE, LA, ME, MI, MT, NV, SD, TN) — §3.2 (OPEN_QUESTIONS 2а).
+3. Sanctions list: CU, IR, KP, SY + Crimea/Donetsk/Luhansk; add RU, BY, VE, others? — §3.1 (`docs/spec/OPEN.md` 2б).
+4. Seven US states: paid/prize features blocked (`geo_block_us_states_paid`), free training/EASY allowed; confirm whether any additional state must be added (Skillz lists AR, CT, DE, LA, SD; Triumph excludes AZ, CT, DE, LA, ME, MI, MT, NV, SD, TN) — §3.2 (`docs/spec/OPEN.md` 2а).
 5. Refund of unused purchased tickets when a location becomes restricted or the Services end — §3.6, §23.2; consumer refund rights — §7.5.
 6. Free entry route and 30% free-ticket cap vs. state contest/sweepstakes laws — §8.3, §9.4.
 7. Non-resident withholding (30% / 1042-S) — §10.4 (tax adviser).
@@ -316,7 +316,7 @@ Support: [PLACEHOLDER: support email] · Legal notices and arbitration opt-out: 
 12. Liability cap amount — §21.
 13. Governing law and venue — §25.
 14. Arbitration vs. courts; provider; fees; mass-arbitration batching; 30-day opt-out; one-year limit; class waiver — §26.
-15. Unofficial X API (twitterapi.io) — terms risk (OPEN_QUESTIONS 1).
+15. Unofficial X API (twitterapi.io) — terms risk (`docs/spec/OPEN.md` 1).
 
 **Product facts this draft relies on (keep in sync):** 18+ gate with `Player.termsAcceptedAt` / `termsVersion`; geo lists from `MASTER_PLAN.md` §11; tickets via Solana Pay, weekly ticket `weekly_ticket_{1h,4h,8h}_*`, promo codes 1h/4h/8h, unlimited training, EASY; prize model `MASTER_PLAN.md` §3 (player share ≤ 47.4%, free-ticket cap 30%, min payout $5, boards ≥ 10); KYC Didit (free — any amount; purchased — $50/season), 72 h hold, sanctions every payout; tax W-9/W-8BEN first payout, 1099-MISC $2,000, gross; Convoy (`MASTER_PLAN.md` §5); TEN4 100M fixed, 2,000/day per wallet, airdrop cap 2,000 and 90-day claim; chat 90 days; donations 100% to driver; no streaming integration.
 

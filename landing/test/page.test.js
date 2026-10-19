@@ -128,7 +128,7 @@ test('promo invite: a form in its own band right after the hero (an <aside>, not
   assert.match(main, /const code = inviteIn\.value\.trim\(\) \|\| invite;/, 'a code typed but not submitted survives CONNECT');
   assert.match(main, /const CODE_SHAPE = \/\^\[A-Z0-9_-\]\{3,32\}\$\//, 'only a code-shaped string is tracked');
   assert.match(main, /\$\('invite'\)\.onsubmit/);
-  assert.match(main, /track\('promo_invite_viewed'/); assert.match(main, /track\('promo_invite_submitted'/);   // the funnel's first two steps (docs/analytics, funnel 9)
+  assert.match(main, /track\('promo_invite_viewed'/); assert.match(main, /track\('promo_invite_submitted'/);   // the funnel's first two steps (docs/insights/analytics, funnel 9)
   assert.match(main, /reportWebVitals\('landing'\)/);
   assert.doesNotMatch(main, /inviteMsg\.(innerHTML|insertAdjacentHTML)/);
 });

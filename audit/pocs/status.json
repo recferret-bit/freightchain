@@ -1,5 +1,5 @@
 {
-  "about": "Each audit PoC with its polarity and status. polarity: 'secure' = asserts the fixed behaviour (fails while the finding is open); 'vulnerable' = asserts today's bug (passes while open); 'control' = a control that held (must keep passing); 'controls' marks single control tests inside a PoC by a title substring. status: 'open' = finding not fixed (reported, never fails the run); 'fixed' = every item fixed, its tests promoted into the normal suites ('promoted' must pass, else the run exits 1). 'promoted' lists normal-suite specs (repo-relative) that replaced tests of this PoC – they are run on every pass, whatever the status. Items are the ids in docs/reviews/audit-2026-10/fix-plan.md. 'superseded' maps a PoC test (title substring) that cannot pass as written to the normal-suite spec that asserts the real property instead; it is not counted.",
+  "about": "Each audit PoC with its polarity and status. polarity: 'secure' = asserts the fixed behaviour (fails while the finding is open); 'vulnerable' = asserts today's bug (passes while open); 'control' = a control that held (must keep passing); 'controls' marks single control tests inside a PoC by a title substring. status: 'open' = finding not fixed (reported, never fails the run); 'fixed' = every item fixed, its tests promoted into the normal suites ('promoted' must pass, else the run exits 1). 'promoted' lists normal-suite specs (repo-relative) that replaced tests of this PoC – they are run on every pass, whatever the status. Items are the ids in docs/insights/reviews/audit-2026-10/fix-plan.md. 'superseded' maps a PoC test (title substring) that cannot pass as written to the normal-suite spec that asserts the real property instead; it is not counted.",
   "pocs": [
     {
       "file": "server/verdict-forge.spec.ts",
@@ -59,7 +59,7 @@
       "superseded": {
         "S4-04 cut every axle crossing onto a batch BOUNDARY": "server/test/unit/application/use-cases/telemetry/upload-batch.handler.spec.ts",
         "S4-07 the on-chain telemetry_root": "server/test/unit/domain/telemetry/telemetry-merkle.spec.ts",
-        "S4-06b and a whole paid shift with fewer than 8": "docs/reviews/audit-2026-10/fix-plan.md (decision: no press-density floor – holding W is honest play; liveness is follow-up F1)",
+        "S4-06b and a whole paid shift with fewer than 8": "docs/insights/reviews/audit-2026-10/fix-plan.md (decision: no press-density floor – holding W is honest play; liveness is follow-up F1)",
         "S4-03 a recording copied from another rider": "server/test/unit/application/services/pool-attention.service.spec.ts (a single-ride judge cannot see a copy; the pool check marks it and the payout waits)"
       },
       "note": "WP1 + WP3 done; S4-08 stays open for L2 (WP7)"

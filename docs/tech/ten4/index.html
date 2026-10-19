@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TEN4 — Freight Chain</title>
+<meta name="description" content="TEN4 is a capped coin. SOL still buys the ticket and pays the pool. TEN4 is minted only when a paid ride is verified, at distance checkpoints. HONK is the in-game verb.">
+<link rel="stylesheet" href="ten4.css">
+</head>
+<body>
+<div class="shell">
+<nav class="rail" aria-label="Contents">
+  <a class="brand" href="#what">TEN4<small>FREIGHT CHAIN · CAB</small></a>
+  <ol>
+    <li><a href="#what">What it is</a></li>
+    <li><a href="#supply">Supply</a></li>
+    <li><a href="#checkpoints">Checkpoints</a></li>
+    <li><a href="#cap">Rides to the cap</a></li>
+    <li><a href="#verification">Verification</a></li>
+    <li><a href="#burn">Stream burn</a></li>
+    <li><a href="#visuals">Cab visuals</a></li>
+    <li><a href="#prices">Upgrade prices</a></li>
+    <li><a href="#badges">Badges</a></li>
+    <li><a href="#marketing">Who it is for</a></li>
+    <li><a href="#pool">Liquidity pool</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="dash">
+  <p class="kicker">TRIP SHEET · NUMBERS LOCKED</p>
+  <h1>TEN4</h1>
+  <p class="lede">A capped coin, from the CB sign-off 10-4. SOL still buys the ticket and pays the pool. TEN4 is reserved only when a paid ride's verdict is verified, and only for the distance checkpoints that ride reached. HONK stays the word on the chat line. The ticker was checked against CoinGecko, DexScreener, and Jupiter on 2026-10-16; the live HONK mint is someone else's token. This page is not an offer, a listing, or an audit.</p>
+  <ul class="lamps">
+    <li><i></i>DEVNET SOL HAS NO VALUE</li>
+    <li><i></i>LEDGER IN THE GAME · NOT A CHAIN MINT</li>
+    <li><i></i>NOT A PRIZE</li>
+  </ul>
+</header>
+
+<section id="what">
+  <h2><span>01</span>What TEN4 is</h2>
+  <p>TEN4 is a coin with a hard cap. It is not the ticket and it is not the prize. Until launch the balance is points on the game ledger.</p>
+  <p>SOL buys the ticket. SOL pays the pool. A pool's prize maths do not change because TEN4 exists. HONK is the verb: burn 1 TEN4 to put HONK on the chat line.</p>
+  <p>Starting a ride mints nothing. A crash that never reached a checkpoint mints nothing. A free ride mints nothing. A flagged ride mints nothing. A rejected ride mints nothing.</p>
+  <p>The source of truth until TGE is the PostgreSQL ledger. The coin is not live on devnet. The numbers are in <a href="../../spec/ten4.md">docs/spec/ten4.md</a>.</p>
+</section>
+
+<section id="supply">
+  <h2><span>02</span>Supply</h2>
+  <p>Symbol TEN4. Six decimals. Mint authority is none after initialize. A burn does not raise a cap. A ride that does not fit is clipped to the tightest of the emission cap, the era left, the global day, and the wallet day.</p>
+  <div class="readout" aria-label="Supply split">
+    <div><span class="l">LIQUIDITY · 50 SOL</span><span class="n">15,000,000</span></div>
+    <div><span class="l">RIDE EMISSION</span><span class="n">55,000,000</span></div>
+  </div>
+  <div class="scroll">
+  <table class="wide">
+    <caption>Max supply is 100,000,000 TEN4 across six pre-minted vaults.</caption>
+    <thead><tr><th>Bucket</th><th class="num">TEN4</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td>Liquidity</td><td class="num">15,000,000</td><td>paired with 50 SOL; LP burned at initialize</td></tr>
+      <tr><td>Ride emission</td><td class="num">55,000,000</td><td>eras of 27.5M, 13.75M, 6.875M…</td></tr>
+      <tr><td>Airdrop</td><td class="num">8,000,000</td><td>merkle campaigns (90-day claim window; unclaimed burned; 2,000 wallet cap)</td></tr>
+      <tr><td>Referral (Convoy)</td><td class="num">4,000,000</td><td>milestone rewards (M1 = 100, M2 = 50; own 2M/1M/… eras; tail burned after era 8)</td></tr>
+      <tr><td>Treasury</td><td class="num">10,000,000</td><td>36 months linear</td></tr>
+      <tr><td>Team</td><td class="num">8,000,000</td><td>12-month cliff, then 24 months linear</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="checkpoints">
+  <h2><span>03</span>Checkpoints</h2>
+  <p>Three bands of that ride's <code>completeDist</code>: 20%, 50%, 100%. A band is reached when <code>distance + 1 &gt;= completeDist × pct / 100</code>. The extra metre keeps a finish the game calls complete on the 100% band.</p>
+  <p>Each band pays its own share of that tier's full mint. The shares are not cumulative weights. They sum to 100%.</p>
+  <div class="scroll">
+  <table>
+    <caption>Share of the tier's full mint, paid for each band reached.</caption>
+    <thead><tr><th>Band</th><th class="num">Share</th></tr></thead>
+    <tbody>
+      <tr><td>20%</td><td class="num">15%</td></tr>
+      <tr><td>50%</td><td class="num">25%</td></tr>
+      <tr><td>100%</td><td class="num">60%</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>A one-hour ride that reaches every band mints 100 TEN4. Era-1 finishes are 100, 500, and 1,200. Each later era pays half.</p>
+  <div class="scroll">
+  <table class="wide">
+    <caption>Era-1 checkpoint mint after a verified pass. The ticket column is the face price of that shift. 4h per dollar is 500 ÷ 15.</caption>
+    <thead><tr><th>Tier</th><th class="num">Ticket</th><th class="num">20%</th><th class="num">Through 50%</th><th class="num">Finish</th><th class="num">TEN4 / $</th></tr></thead>
+    <tbody>
+      <tr><td>1h</td><td class="num">$5</td><td class="num">15</td><td class="num">40</td><td class="num">100</td><td class="num">20</td></tr>
+      <tr><td>4h</td><td class="num">$15</td><td class="num">75</td><td class="num">200</td><td class="num">500</td><td class="num">33.3</td></tr>
+      <tr><td>8h</td><td class="num">$50</td><td class="num">180</td><td class="num">480</td><td class="num">1,200</td><td class="num">24</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>The same hours paid in proportion would finish at 100, 400, and 800. The cream tick is that line. The amber bar is this curve, scaled to an 8h finish.</p>
+  <p class="legend"><span><i></i>This curve</span><span><i class="hour"></i>Hour proportion, ×1 / ×4 / ×8</span></p>
+  <div class="bars" aria-label="Finish mint against an hour-proportion line">
+    <div class="bar"><span class="name">1h finish</span><span class="track" aria-hidden="true"><span class="fill" style="--w:5%"></span><span class="tick" style="--tick:5%"></span></span><span class="val">100</span></div>
+    <div class="bar"><span class="name">4h finish</span><span class="track" aria-hidden="true"><span class="fill" style="--w:25%"></span><span class="tick" style="--tick:20%"></span></span><span class="val">500</span></div>
+    <div class="bar"><span class="name">8h finish</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span><span class="tick" style="--tick:66.7%"></span></span><span class="val">1,200</span></div>
+  </div>
+  <div class="trip" aria-label="Worked mint examples">
+    <div><span class="l">1h · 20%</span><span class="n">15</span></div>
+    <div><span class="l">1h · THROUGH 50%</span><span class="n">40</span></div>
+    <div><span class="l">1h · FINISH</span><span class="n">100</span></div>
+    <div><span class="l">4h · THROUGH 50%</span><span class="n">200</span></div>
+    <div><span class="l">4h · FINISH</span><span class="n">500</span></div>
+    <div><span class="l">8h · THROUGH 50%</span><span class="n">480</span></div>
+    <div><span class="l">8h · FINISH</span><span class="n">1,200</span></div>
+    <div><span class="l">8 × 1h FINISH</span><span class="n">800</span></div>
+  </div>
+  <p>Eight verified 1h finishes mint 800. One verified 8h finish mints 1,200. Two verified 4h finishes mint 1,000. On a verified finish, TEN4 per ticket dollar is 20, then 33.3, then 24.</p>
+  <p>480 is an 8h ride through the 50% band. Free, an unknown tier, or <code>completeDist &lt;= 0</code> mints 0. Daily caps in era 1: 75,000 global, 2,000 per wallet. The global cap halves each era. The wallet cap does not.</p>
+</section>
+
+<section id="cap">
+  <h2><span>04</span>Rides to mint the cap</h2>
+  <p>Era 1 is 27,500,000 TEN4. These counts assume every ride verifies and reaches the band named, at the era-1 rate. A crash short of a band, a free ride, a flag, or a reject adds nothing. A burn does not put any of it back. Later eras pay half, so the same ride count does not fill the rest of the 55,000,000.</p>
+  <div class="scroll">
+  <table class="wide">
+    <caption>Face price of the tickets, if every ride is bought and verifies. That spend is the ticket. It is not a market price for TEN4.</caption>
+    <thead><tr><th>If every ride is</th><th class="num">TEN4</th><th class="num">Rides</th><th class="num">Tickets, face</th></tr></thead>
+    <tbody>
+      <tr><td>a 1h finish</td><td class="num">100</td><td class="num">275,000</td><td class="num">$1,375,000</td></tr>
+      <tr><td>a 4h finish</td><td class="num">500</td><td class="num">55,000</td><td class="num">$825,000</td></tr>
+      <tr><td>an 8h finish</td><td class="num">1,200</td><td class="num">22,916 + 800 left</td><td class="num">about $1,145,800</td></tr>
+      <tr><td>a 1h ride that stops at 50%</td><td class="num">40</td><td class="num">687,500</td><td class="num">$3,437,500</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Bar length is how many verified finishes it takes. An 8h finish is one twentieth of the ride count of a 1h finish.</p>
+  <div class="bars" aria-label="Verified finishes that emit the ride cap">
+    <div class="bar"><span class="name">1h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">275,000</span></div>
+    <div class="bar"><span class="name">4h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:20%"></span></span><span class="val">55,000</span></div>
+    <div class="bar"><span class="name">8h finishes</span><span class="track" aria-hidden="true"><span class="fill" style="--w:8.3%"></span></span><span class="val">22,917</span></div>
+  </div>
+  <p>22,916 full 8h finishes mint 27,499,200. One more ride in that era is clipped to the 800 left. The global cap of 75,000 a day makes era 1 last about 367 days if it is full every day.</p>
+</section>
+
+<section id="verification">
+  <h2><span>05</span>Verification</h2>
+  <p>TEN4 is reserved only when the verdict is <code>verified</code>. Flagged pays 0. Rejected pays 0. Flagged is not a pass. Rejected is not a pass.</p>
+  <p>The reservation runs inside the verdict transaction, under the player row lock, after the verdict is saved. One row per ride. A 1h or 4h finish credits immediately. An 8h finish waits 48 hours: the emission and that day's caps are reserved, and the wallet is credited by a later crank. A non-verified rejudge before that deletes the reservation. A second pass that is still verified does not mint again.</p>
+  <p class="note"><b>No clawback after credit.</b> If an admin later rejects a ride that already credited, the coins stay. An 8h ride that is still on hold can be taken back.</p>
+  <p>Before the verdict, a paid ride is a preview. A verified 8h that has not been released is pending. A released pass is minted. Flagged or rejected is withheld. A free ride is none.</p>
+  <p>Free rides mint nothing.</p>
+</section>
+
+<section id="burn">
+  <h2><span>06</span>Stream burn</h2>
+  <p>On a running paid ride that can be watched, a signed-in wallet may burn 1 TEN4 to HONK. The chat line is the word HONK. The truck does not change. No hole, no night, no hull change.</p>
+  <p>Once per wallet, per ride, per 10 seconds. A free ride is refused. If the chat window refuses the line, the burn does not land. Not enough TEN4 is an error, not a server failure. The answer is the new balance and a pay of 1.</p>
+  <p>The gap caps one wallet at 6 burns a minute and 360 an hour. A verified finish funds that many honks, and that many seconds of mashing at the cap.</p>
+  <div class="scroll">
+  <table class="wide">
+    <caption>Time at the cap is how long that mint lasts at one burn every 10 seconds.</caption>
+    <thead><tr><th>What was minted</th><th class="num">TEN4</th><th class="num">Honks it funds</th><th class="num">Time at the 10s cap</th></tr></thead>
+    <tbody>
+      <tr><td>1h finish</td><td class="num">100</td><td class="num">100</td><td class="num">16 min 40 s</td></tr>
+      <tr><td>4h finish</td><td class="num">500</td><td class="num">500</td><td class="num">1 h 23 min 20 s</td></tr>
+      <tr><td>8h finish</td><td class="num">1,200</td><td class="num">1,200</td><td class="num">3 h 20 min</td></tr>
+      <tr><td>one ordinary part</td><td class="num">65</td><td class="num">65</td><td class="num">10 min 50 s</td></tr>
+      <tr><td>one gold part</td><td class="num">260</td><td class="num">260</td><td class="num">43 min 20 s</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Over a ride that lasts its nominal shift, one wallet can burn 360 on a 1h, 1,440 on a 4h, and 2,880 on an 8h. The amber share is what a verified finish of that shift minted. The rest of the track is burns that have to come from other rides.</p>
+  <p class="legend"><span><i></i>Minted by a verified finish</span><span><i class="room"></i>Room for one wallet over the nominal shift</span></p>
+  <div class="bars" aria-label="Finish mint against one wallet burning for the whole nominal shift">
+    <div class="bar"><span class="name">1h · 100 / 360</span><span class="track burn" aria-hidden="true"><span class="fill" style="--w:27.8%"></span></span><span class="val">27.8%</span></div>
+    <div class="bar"><span class="name">4h · 500 / 1,440</span><span class="track burn" aria-hidden="true"><span class="fill" style="--w:34.7%"></span></span><span class="val">34.7%</span></div>
+    <div class="bar"><span class="name">8h · 1,200 / 2,880</span><span class="track burn" aria-hidden="true"><span class="fill" style="--w:41.7%"></span></span><span class="val">41.7%</span></div>
+  </div>
+  <p>The chat line is still the word HONK. It does not move the truck. Burning 10 TEN4 is separate: it posts a day or night change. Burning 25 TEN4 sets snow or clear. Neither is a donation. The switch that turns donation obstacles off does not turn these off. A spectator burn does not change the verdict or the prize rank.</p>
+  <div class="scroll">
+  <table>
+    <caption>Day or night on a live ride. Not the 1 TEN4 chat line.</caption>
+    <thead><tr><th>What it does</th><th class="num">TEN4</th><th>How often</th></tr></thead>
+    <tbody>
+      <tr><td>day or night</td><td class="num">10</td><td>one per effect window (20s)</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="visuals">
+  <h2><span>07</span>Cab visuals</h2>
+  <p>Burn 65 TEN4 to mint a soulbound cab visual. If the item is gold, the burn is 260 TEN4. This replaces promo-code colours. Tickets and extra free rides can still be promo codes. A promo that tries to grant a colour is refused.</p>
+  <p>The garage equips what the burn unlocked. Already owned burns nothing. Defaults stay free: the classic wheel, the red truck, the stick shifter, the white die, the orange needle, the hood spear, the stock dash, the amber lamps, and the black phone. Everybody owns them. An old promo unlock still fits. There is no transfer.</p>
+  <p>Four more slots use the same count: a hood ornament, the dash fascia, the warning-lamp bezels, and the phone frame. Six each. The shifter was already a slot. Its stick changes with the knob.</p>
+  <p class="note"><b>The game ledger is the cab.</b> A burn in the garage writes the entitlement in the game. A local program can also mint one frozen token for that part, supply 1, with no thaw. That program is not deployed, and the part is not live on devnet. It is not a cNFT.</p>
+</section>
+
+<section id="prices">
+  <h2><span>08</span>Upgrade prices</h2>
+  <p>The first five slots put 25 parts on sale. Twenty-one burn 65. Four golds burn 260: the wheel, the gearbox, the die, and the needle. That set burns 2,405, which is 30% above the first total of 1,850. The truck has no gold.</p>
+  <p>The ornament, the dash, the indicators, and the phone add 20 parts. Sixteen burn 65 and four golds burn 260, which is 2,080. The garage is then 45 parts and 4,485. Eight golds in all.</p>
+  <p class="legend"><span><i></i>Ordinary, 2,405</span><span><i class="gld"></i>Gold, 2,080</span></p>
+  <div class="stack" role="img" aria-label="Garage burn split, 2,405 ordinary and 2,080 gold, 4,485 in all"><span class="ord"></span><span class="gld"></span></div>
+  <div class="scroll">
+  <table class="wide">
+    <caption>Slot totals at 65 TEN4, or 260 when the part is gold. Defaults are absent.</caption>
+    <thead><tr><th>Slot</th><th>For sale</th><th class="num">Ordinary</th><th class="num">Gold</th><th class="num">Slot</th></tr></thead>
+    <tbody>
+      <tr><td>Wheel</td><td>crimson, ocean, moss, ivory, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Truck colour</td><td>blue, green, black, yellow, white</td><td class="num">5 × 65</td><td class="num">—</td><td class="num">325</td></tr>
+      <tr><td>Gearbox</td><td>chrome, wood, racing, carbon, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Dice</td><td>red, blue, pink, black, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Needle</td><td>red, lime, cyan, white, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Ornament</td><td>ball, star, bird, flag, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Dash</td><td>wood, carbon, red, ivory, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Indicators</td><td>red, green, ice, white, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Phone</td><td>silver, red, blue, clear, gold</td><td class="num">4 × 65</td><td class="num">260</td><td class="num">520</td></tr>
+      <tr><td>Garage</td><td>45 parts</td><td class="num">2,405</td><td class="num">2,080</td><td class="num">4,485</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Bar length is the slot burn, scaled to a gold slot at 520.</p>
+  <div class="bars" aria-label="Slot burn compared with a 520 TEN4 gold slot">
+    <div class="bar"><span class="name">Wheel</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Truck colour</span><span class="track" aria-hidden="true"><span class="fill" style="--w:62.5%"></span></span><span class="val">325</span></div>
+    <div class="bar"><span class="name">Gearbox</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Dice</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Needle</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Ornament</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Dash</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Indicators</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+    <div class="bar"><span class="name">Phone</span><span class="track" aria-hidden="true"><span class="fill" style="--w:100%"></span></span><span class="val">520</span></div>
+  </div>
+  <p>The Burn column is in TEN4. The ride column is what covers it after verification. The ticket column is the face price of those rides. A ride that misses the band mints less, so the ticket figure is the cover when the named band is reached. It is not a market price for TEN4.</p>
+  <div class="scroll">
+  <table>
+    <caption>The first five slots are 2,405. The full garage is 4,485. An era-1 8h finish mints 1,200. Four of those are 4,800. Three 8h plus two 4h are 4,600.</caption>
+    <thead><tr><th>Upgrade</th><th class="num">Burn</th><th>Verified rides that cover it</th><th>Tickets, face</th></tr></thead>
+    <tbody>
+      <tr><td>Ordinary part</td><td class="num">65</td><td>One 1h finish mints 100. A 4h ride at 20% mints 75.</td><td>One 1h ticket, $5.</td></tr>
+      <tr><td>Gold part</td><td class="num">260</td><td>Three 1h finishes mint 300. One 4h finish mints 500.</td><td>$15 in 1h tickets, or one $15 4h ticket.</td></tr>
+      <tr><td>One gold slot</td><td class="num">520</td><td>Six 1h finishes mint 600. A 4h finish plus a 1h ride through 50% mints 540.</td><td>$30 in 1h tickets, or $20 for that mix.</td></tr>
+      <tr><td>Truck colour</td><td class="num">325</td><td>Four 1h finishes mint 400. One 4h finish mints 500.</td><td>$20 in 1h tickets, or one $15 4h ticket.</td></tr>
+      <tr><td>Four gold parts</td><td class="num">1,040</td><td>Two 4h finishes plus a 1h ride through 50% mint 1,040. Eleven 1h finishes mint 1,100.</td><td>$35, or $55 in 1h tickets.</td></tr>
+      <tr><td>21 ordinary parts</td><td class="num">1,365</td><td>Fourteen 1h finishes mint 1,400. Three 4h finishes mint 1,500.</td><td>$70, or $45.</td></tr>
+      <tr><td>First five slots</td><td class="num">2,405</td><td>Two 8h finishes are 2,400, short by 5. Two 8h plus a 1h 20% band are 2,415. Five 4h finishes, or twenty-five 1h finishes, mint 2,500.</td><td>$105, $75, or $125.</td></tr>
+      <tr><td>Whole garage</td><td class="num">4,485</td><td>Four 8h finishes mint 4,800. Three 8h plus two 4h mint 4,600. Nine 4h finishes mint 4,500. Forty-five 1h finishes mint 4,500.</td><td>$200, $180, $135, or $225.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="badges">
+  <h2><span>09</span>Badges</h2>
+  <p>Three badges, family key <code>honk</code>, display name TEN4. The ids are not retuned. Only a released mint counts, so an 8h badge waits out the 48 hours. A rejected ride never has a released row.</p>
+  <div class="scroll">
+  <table>
+    <caption>New achievement ids. The description is the condition.</caption>
+    <thead><tr><th>Id</th><th>Name</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>honk-haul</code></td><td>First Mint</td><td>A verified paid ride mints TEN4.</td></tr>
+      <tr><td><code>honk-haul-2</code></td><td>Checkpoint Hauler</td><td>Five verified paid rides mint the finish band.</td></tr>
+      <tr><td><code>honk-haul-3</code></td><td>Long Haul Mint</td><td>Twenty-five verified paid rides mint the finish band.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="marketing">
+  <h2><span>10</span>Who it is for</h2>
+  <p>Two people already in the game. Someone watching a paid ride, who can burn 1 TEN4 to put HONK on the chat line. Someone who wants a cab colour, who burns TEN4 in the garage instead of redeeming a colour code.</p>
+  <p>Say what the cab does. SOL is the ticket and the prize. TEN4 is minted by verified paid checkpoints, up to a cap, and a missed checkpoint mints nothing. A honk on a stream burns 1 TEN4 and prints the word HONK. The truck does not move. A colour is a burn recorded in the garage. The quote is on the ride before the verdict. The mint is on the ride after a pass. Flagged and rejected pay 0.</p>
+  <p>Do not say it is a prize. Do not say it yields. Do not say "buy TEN4 to earn". Do not call it an ICO. Devnet SOL has no value. The coin is not launched on a DEX in this change. Do not claim an audit. Do not claim the coin or the cab visual is live on devnet.</p>
+  <p>The channels are the ones the game already has. The watch page, where the burn is a chat line. The garage, where the price is in TEN4 and the part equips. The end-of-ride line, where the quote and then the mint are stated. One clip of a honk on a stream is enough to show that the truck does not react.</p>
+  <p>Do not send people to a market. The local pool is not a listing. Until a paid ride has minted on the ledger, the TEN4 a player can point at in the game is a number in that ledger.</p>
+</section>
+
+<section id="pool">
+  <h2><span>11</span>Liquidity pool</h2>
+  <p>The local program pairs 15,000,000 TEN4 with 50 SOL. The fee is 0.25%. The LP is burned in the initialize transaction. There is no withdraw. 50 SOL is the opening deposit, not a dollar price.</p>
+  <p>The team bucket is locked at 12-month cliff plus 24 months linear. Emission, airdrop, referral, treasury, and team are separate vaults. A real launch should use a standard Raydium CPMM or Meteora DAMM v2 at 0.25–1% with the LP burned. This program is the local mirror.</p>
+  <p>That program is not deployed. There is no DEX listing. Until TGE the balance a player sees is ledger points.</p>
+</section>
+
+<footer class="foot">
+  <p>SOL remains the prize. TEN4 is not a prize and not an offer. Devnet SOL has no value. The local program has not been audited and is not deployed.</p>
+  <p>Locked spec: <a href="../../spec/ten4.md">docs/spec/ten4.md</a>.</p>
+</footer>
+</main>
+</div>
+</body>
+</html>

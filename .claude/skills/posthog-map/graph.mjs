@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Visual map of surfaces and events. Reads the allowlists, track() calls, and the audit spec.
- *  No network. Writes docs/analytics/generated/map.html */
+ *  No network. Writes docs/insights/analytics/generated/map.html */
 
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { insights } from '../posthog-audit/spec.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const outDir = join(root, 'docs/analytics/generated');
+const outDir = join(root, 'docs/insights/analytics/generated');
 
 function read(rel) { return readFileSync(join(root, rel), 'utf8'); }
 function arrayNames(src, exportName) {
@@ -149,4 +149,4 @@ ${checkHtml}</header>
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'map.html'), html);
 const total = [...columns.values()].reduce((n, list) => n + list.length, 0);
-console.log(`map: ${total} events across ${surfaces.length} surfaces → docs/analytics/generated/map.html`);
+console.log(`map: ${total} events across ${surfaces.length} surfaces → docs/insights/analytics/generated/map.html`);

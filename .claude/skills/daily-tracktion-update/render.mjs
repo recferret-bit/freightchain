@@ -159,7 +159,7 @@ export function renderTraction({ fetchedAt, stats, insights }) {
   } else if (insights?.error) lines.push(`Live insight counts were not written: ${insights.error}.`);
   if (insights?.disagreement) lines.push(insights.disagreement);
   lines.push('');
-  lines.push('Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/traction/latest.json`.');
+  lines.push('Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/insights/traction/latest.json`.');
   return lines.join('\n');
 }
 

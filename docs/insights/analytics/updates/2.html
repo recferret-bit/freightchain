@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analytics review · pass 2 of 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../../tech/verified-play/style.css">
+<link rel="stylesheet" href="../analytics.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">Freight Chain · analytics review</span>
+  <h1>Pass 2 of 3</h1>
+  <p class="lede">File 2 · 10 Oct 2026. Wiring. The new literals match the allowlist, the ride flags are copied from the snapshot after the commit, and a replaced or expired ride keeps <code>tutorial</code> and <code>assist</code>.</p>
+  <p class="soft"><a href="../index.html">Product analytics</a> · <a href="1.html">Pass 1</a></p>
+</header>
+
+<section>
+  <h2>What changed</h2>
+  <p><code>ride_expired</code> and <code>ride_cancelled</code> now carry the same two booleans as the order. The cancel row in the explainer also says the create path emits after its own commit, and a payment insert emits only when <code>settle().inserted</code> is true. No new event name.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Surface</th><th>Found</th><th>Edited</th></tr></thead>
+      <tbody>
+        <tr><td>Landing</td><td>No new literals. Existing <code>track()</code> keys are on the allowlist.</td><td>No change.</td></tr>
+        <tr><td>Whitepaper</td><td><code>whitepaper_viewed</code> sends <code>surface</code>, which is allowlisted. PLAY and the storybook link send no properties. Web vitals still register before the page view, so a leave flush includes them. The script does not call <code>fetch</code> itself.</td><td>No change.</td></tr>
+        <tr><td>Lobby</td><td>Funnels name events that still exist. <code>tier_selected</code> is gone from the explainer. Garage and replays are in the tab list. Ticket buys, refunds, and WATCH stay silent, as pass 1 decided.</td><td>No change.</td></tr>
+        <tr><td>Gameplay</td><td>Online start, pause, and end literals match the allowlist. <code>tutorial</code> and <code>assist</code> are read off the ride row inside the transaction and emitted after it returns. A replaced free ride was dropping those flags.</td><td><code>ride_cancelled</code> and <code>ride_expired</code> keep the flags. The create-ride unit test pins a tutorial ride that a paid order replaces.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <p><b>Added.</b> None.</p>
+  <p><b>Removed.</b> None.</p>
+  <p><b>Explainer.</b> <a href="../index.html">docs/insights/analytics/index.html</a>, the <code>ride_expired</code> and <code>ride_cancelled</code> rows. Eyebrow counts stay 38 client and 24 server. The original design log still describes the old tier button, not the allowlist.</p>
+</section>
+
+<section>
+  <div class="callout">
+    <b>Production dashboards were not opened, edited, or sent a batch.</b>
+    <span><code>posthog-test</code> and <code>posthog-prod</code> were not run. No PostHog API call. Dashboard 1006663 was not touched.</span>
+  </div>
+</section>
+
+<section>
+  <h2>Next pass</h2>
+  <p>Run the inventory until it exits 0, then the analytics unit specs, the landing tests, and eslint on the client files this review did not touch (the client game files were not edited). Change code only if one of those fails because of this review.</p>
+</section>
+</div>
+</body>
+</html>

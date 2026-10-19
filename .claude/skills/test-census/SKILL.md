@@ -1,11 +1,11 @@
 ---
 name: test-census
-description: Count Freight Chain's tests by pyramid layer, grade test coverage per feature, user flow, controller and route (static attribution, line + branch coverage, the routes each browser suite hits), name gaps, and rewrite the README Tests block and docs/test-coverage.md. Use when asked for a test inventory, how many tests, pyramid gaps, which features / flows / controllers / routes are tested well or badly, test coverage, test performance, or to refresh the README's test section, or /test-census.
+description: Count Freight Chain's tests by pyramid layer, grade test coverage per feature, user flow, controller and route (static attribution, line + branch coverage, the routes each browser suite hits), name gaps, and rewrite the README Tests block and docs/testing/test-coverage.md. Use when asked for a test inventory, how many tests, pyramid gaps, which features / flows / controllers / routes are tested well or badly, test coverage, test performance, or to refresh the README's test section, or /test-census.
 ---
 
 # Test census
 
-From the repo root. The harness is `.claude/skills/test-census/census.mjs`. The missing-spec rule is `server/test/architecture/test-pyramid.spec.ts`. If the report and that audit disagree, the audit is right: fix the harness. What each layer proves is `docs/backend-architecture.md` → "Tests – the pyramid".
+From the repo root. The harness is `.claude/skills/test-census/census.mjs`. The missing-spec rule is `server/test/architecture/test-pyramid.spec.ts`. If the report and that audit disagree, the audit is right: fix the harness. What each layer proves is `docs/tech/backend-architecture.md` → "Tests – the pyramid".
 
 ## Inventory
 
@@ -19,7 +19,7 @@ Prints the pyramid (files, static `it` / `test` / `#[test]` calls, `check()` cal
 
 ```sh
 npm run test:census -- features            # prints the full report
-npm run test:census -- features --write    # writes docs/test-coverage.md
+npm run test:census -- features --write    # writes docs/testing/test-coverage.md
 ```
 
 The map is `.claude/skills/test-census/features.mjs`: per feature the server / client source paths, the API routes it owns, the words that name it in a test title, the headless checks, the browser harnesses and test skills; per user flow the routes it walks. `coverage.mjs` only counts against it. First match wins, so narrow features come before wide ones. `SETUP_ROUTES` (sign-in, ride create / start) do not attribute a case that also requests something else.
@@ -70,7 +70,7 @@ npm run test:census -- readme
 npm run test:census -- run --readme
 ```
 
-Replaces the `<!-- test-census:start -->` block in `README.md` and rewrites `docs/test-coverage.md`. Leave the Tests intro and the command fence outside the markers. Commit `runs.json`, `coverage.json` and `e2e-routes.json` with that README block so the numbers have a source. The log keeps the last 12 runs of each stage.
+Replaces the `<!-- test-census:start -->` block in `README.md` and rewrites `docs/testing/test-coverage.md`. Leave the Tests intro and the command fence outside the markers. Commit `runs.json`, `coverage.json` and `e2e-routes.json` with that README block so the numbers have a source. The log keeps the last 12 runs of each stage.
 
 ## How to read it
 

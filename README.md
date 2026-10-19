@@ -56,7 +56,7 @@ Waiting: FC · Promo from an invite view; FC · Promo from a submitted code.
 | 8–12 Oct 2026 (judge board) | 106 | 0 | 6 | 54 |
 | 8 Oct 2026 through 2026-10-17 UTC | 230 | 0 | 6 | 75 |
 
-Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/traction/latest.json`.
+Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/insights/traction/latest.json`.
 
 <!-- traction:end -->
 
@@ -81,7 +81,7 @@ This is not a third-party audit. The program stays "not audited" until one is do
 | H5, H4, M6, M8, L4 · program: the payout key was the whole prize gate, pledges not bound to their ride, a review window that committed nothing, sponsorships kept by a failed pool, a road seed the opener could pick | Program v4/v5: a winners root public for the review before any prize is paid, per-ride attestations, sponsor refunds, `seal_road`, plus v5's `85 / 5 / 10` pool split (`8500 / 500 / 1000` bps), `< 50%` player-derived share cap (`max_player_share_bps <= 4999`, default `4740`), `set_pool_rules`, and `paid_tickets_enabled`. 154+ LiteSVM tests plus the localnet suites. **Not on devnet yet.** Devnet still runs v3, where these findings are open |
 | M1, M11, M12, M5, most lows · the blink page relays any action, no CSP / HSTS, no subresource integrity, verdict codes on public rides | Open (fix plan WP6 to WP8) |
 
-The original review supplied proof-of-concept reproductions that became regression tests. Its report and PoC status are archived at the reviewed commit. The current reusable audit tool keeps new reports and PoCs in gitignored run directories. Read: [the report](https://github.com/recferret-bit/freightchain/tree/16870e81) ([HTML](https://github.com/recferret-bit/freightchain/tree/16870e81)), [the fix plan with every decision](docs/reviews/audit-2026-10/fix-plan.md), [PoC status](https://github.com/recferret-bit/freightchain/tree/16870e81), and [whitepaper chapter 08](https://whitepaper.freightchain.fun/#audit). The suite itself is the `security-audit` skill.
+The original review supplied proof-of-concept reproductions that became regression tests. Its report and PoC status are archived at the reviewed commit. The current reusable audit tool keeps new reports and PoCs in gitignored run directories. Read: [the report](https://github.com/recferret-bit/freightchain/tree/16870e81) ([HTML](https://github.com/recferret-bit/freightchain/tree/16870e81)), [the fix plan with every decision](docs/insights/reviews/audit-2026-10/fix-plan.md), [PoC status](https://github.com/recferret-bit/freightchain/tree/16870e81), and [whitepaper chapter 08](https://whitepaper.freightchain.fun/#audit). The suite itself is the `security-audit` skill.
 
 ## Post-Colosseum hackathon updates
 
@@ -89,7 +89,7 @@ The submission went in on **12 Oct 2026**. Work continued after that snapshot. T
 
 ### Security review after submission
 
-On 13 Oct twelve AI auditors from four vendors reviewed six surfaces in blind pairs. Quorum adjudication reduced 69 raw findings to 7 high and 13 medium; 4 claims were corrected or refuted. Fixes for all 7 highs and 9 mediums are in source, with reproductions turned into regression tests. App fixes shipped on Oct 15; the program-v4/v5 fixes still need their separate devnet upgrade. This was our own review, not a third-party audit. See [the findings and their release state](#security-check-and-contracts-audit) and [the fix plan](docs/reviews/audit-2026-10/fix-plan.md).
+On 13 Oct twelve AI auditors from four vendors reviewed six surfaces in blind pairs. Quorum adjudication reduced 69 raw findings to 7 high and 13 medium; 4 claims were corrected or refuted. Fixes for all 7 highs and 9 mediums are in source, with reproductions turned into regression tests. App fixes shipped on Oct 15; the program-v4/v5 fixes still need their separate devnet upgrade. This was our own review, not a third-party audit. See [the findings and their release state](#security-check-and-contracts-audit) and [the fix plan](docs/insights/reviews/audit-2026-10/fix-plan.md).
 
 ### What changed
 
@@ -183,8 +183,8 @@ One minute: open the [landing](https://freightchain.fun) and press PLAY FREE RID
 3. Connect a devnet wallet (Phantom, Solflare, Backpack, any Wallet Standard wallet, or scan a QR code from a phone wallet). Sign-in is a message (`solana:signIn` or `signMessage`), not a transaction.
 4. Start the free ride. EASY is three minutes on four lanes with two crossroads, and it ends itself at 1512 m. Tutorial and assist are free-tier only. HARD has neither.
 5. Watch someone from LIVE, or open REPLAYS. The watch page draws the truck from the recording, about 25 seconds behind, on a road rebuilt from the ride seed.
-6. Open the [program](https://explorer.solana.com/address/8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p?cluster=devnet) and the [contract spec](docs/pool-program/index.html). When a pool is on sale, the lobby sells a ticket into it (`PAYMENT_MODE=program`) and shows a Solana Pay code for the same transaction on a phone. If the lobby says SOON, there is nothing to buy.
-7. From this repo, `npm run test:localnet` runs the program on a local validator and checks the lamports. Walkthrough: [`docs/localnet-e2e/index.html`](docs/localnet-e2e/index.html).
+6. Open the [program](https://explorer.solana.com/address/8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p?cluster=devnet) and the [contract spec](docs/tech/pool-program/index.html). When a pool is on sale, the lobby sells a ticket into it (`PAYMENT_MODE=program`) and shows a Solana Pay code for the same transaction on a phone. If the lobby says SOON, there is nothing to buy.
+7. From this repo, `npm run test:localnet` runs the program on a local validator and checks the lamports. Walkthrough: [`docs/tech/localnet-e2e/index.html`](docs/tech/localnet-e2e/index.html).
 8. Read [Security check and contracts audit](#security-check-and-contracts-audit): what twelve AI auditors found, what is fixed, and what is still open. `./audit/bin/audit pocs` reruns every proof of concept.
 
 A wallet listed in `DEMO_WALLETS` drives a paid shift `DEMO_SCALE` times shorter (default 60). The speed governor stays 28 m/s.
@@ -197,7 +197,7 @@ Each row is something a reviewer can open. The limit is in the same row as the c
 
 | What | Solana piece | What it does, and what it does not | Code |
 | --- | --- | --- | --- |
-| Road seed | Devnet v3: `create_pool` / `open_next_pool` read the newest SlotHashes entry. Source v4/v5: `seal_road` reads `SlotHashes` after `prep_deadline` once ticket sales close and stores `SHA-256(pool id as little-endian u32 ‖ slot hash ‖ slot as little-endian u64)` | No caller passes the seed. Everyone in the pool drives the road derived from that commitment. The program does not draw the road itself | [`seal_road.rs`](programs/freightchain_pools/src/instructions/seal_road.rs) · [`provable-seed.ts`](server/src/domain/road/provable-seed.ts) |
+| Road seed | Devnet v3: `create_pool` / `open_next_pool` read the newest SlotHashes entry. Source v4/v5: `seal_road` reads `SlotHashes` after `prep_deadline` once ticket sales close and stores `SHA-256(pool id as little-endian u32 ‖ slot hash ‖ slot as little-endian u64)` | No caller passes the seed. Everyone in the pool drives the road derived from that commitment. The program does not draw the road itself | [`road.rs`](programs/freightchain_pools/src/instructions/road.rs) · [`provable-seed.ts`](server/src/domain/road/provable-seed.ts) |
 | Recording root | RFC 6962 Merkle tree over the ride's accepted batch hashes | The attestation names which recording it covers. The program does not recompute the drive | [`telemetry-merkle.ts`](server/src/domain/telemetry/telemetry-merkle.ts) |
 | Prize gate | Devnet v3: `Attestation` PDA `[attestation, pool account, driver]`. Source v4/v5: `commit_winners` stores the 32-byte Merkle `winners_root` on `Pool` before the review window (`veto_winners`), and `pay_prize` verifies the winner's Merkle proof after `payout_at` (`PrizeClaim` PDA) | The admin or the payout key signs `commit_winners` (or `attest_ride` in v3); after the review lock, anyone may crank `pay_prize` in v4/v5. Program v5 enforces `8500 / 500 / 1000` bps (`85 / 5 / 10`) and `max_player_share_bps <= 4999` (`< 50%` player-derived share). It is the server's verdict, not a proof of the physics | [`settle.rs`](programs/freightchain_pools/src/instructions/settle.rs) |
 | Per-km pledge | `Pledge` `[pledge, ride_id, sponsor]`. The sponsor signs `create_pledge` | A VERIFIED attestation (`Attestation` in v3; per-ride `RideAttestation` `[ride_attestation, pool, ride_id]` in v4/v5) pays `cap × min(verified km, target) / target`. FLAGGED pays 0. If paying the driver would leave that account under rent, the sponsor gets the cap back. `refund_pledge` returns the cap when the pool is refunding, cancelled, or settled, or still active 14 days after `payout_at`. Both are permissionless | [`pledge.rs`](programs/freightchain_pools/src/instructions/pledge.rs) |
@@ -251,7 +251,7 @@ Who can move money:
 | `close_pool` before the 14-day grace | Admin or the payout key, after `payout_at` | Can close without paying prizes (in v3) or after the winners root is paid out (in v4/v5). Unpaid prize lamports roll to the seed treasury |
 | Crank key | The server, for `open_next_pool`, `seal_road`, `fail_pool`, `expire_pool`, `refund`, `close_pool` | It cannot send `commit_winners` or `veto_winners` |
 
-The program on devnet (v3) has 21 instructions, 18 events, and 32 errors. The source here is v5 (`0.5.0`: 30 instructions, 28 events, 50 errors; built on v4's 29, 27, 48), not deployed yet. The shared lamport table is [`vault-split.ts`](server/src/domain/economy/vault-split.ts), with the same cases in [`vault-split-cases.json`](server/test/fixtures/chain/vault-split-cases.json), and the unified weekly contest rules live in [`prize-rules.ts`](server/src/domain/prize/prize-rules.ts) and [`prize-pool.ts`](server/src/domain/prize/prize-pool.ts). Spec: [`programs/README.md`](programs/README.md), [`docs/spec/pool.md`](docs/spec/pool.md), and [`docs/pool-program/index.html`](docs/pool-program/index.html). Trust the id in `declare_id!`. The program README's first paragraph can lag it.
+The program on devnet (v3) has 21 instructions, 18 events, and 32 errors. The source here is v5 (`0.5.0`: 30 instructions, 28 events, 50 errors; built on v4's 29, 27, 48), not deployed yet. The shared lamport table is [`vault-split.ts`](server/src/domain/economy/vault-split.ts), with the same cases in [`vault-split-cases.json`](server/test/fixtures/chain/vault-split-cases.json), and the unified weekly contest rules live in [`prize-rules.ts`](server/src/domain/prize/prize-rules.ts) and [`prize-pool.ts`](server/src/domain/prize/prize-pool.ts). Spec: [`programs/README.md`](programs/README.md), [`docs/spec/pool.md`](docs/spec/pool.md), and [`docs/tech/pool-program/index.html`](docs/tech/pool-program/index.html). Trust the id in `declare_id!`. The program README's first paragraph can lag it.
 
 The local `TEN4` program ([`programs/freightchain_honk`](programs/freightchain_honk), [`tokenomics.ts`](server/src/domain/honk/tokenomics.ts), [`docs/spec/ten4.md`](docs/spec/ten4.md)) implements the fixed `100,000,000 TEN4` supply (`15M` LP, `55M` ride emission across halving eras, `8M` Merkle airdrop, `4M` Convoy referral vault, `10M` treasury 36m linear, `8M` team 12m cliff / 24m linear), checkpoint minting (`20% / 50% / 100%`), two-way liquidity pool and LP redeem, and on-chain burns (`1` stream HONK, `10` day/night, `25` weather, `65 / 260` cab visuals).
 
@@ -290,7 +290,7 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 - `close_ticket` is in the program. Nothing in the crank sends it, so settled-ticket rent stays put until someone does.
 - The seed treasury is not rolled into the next pool by a job.
 - The pinned build hash is not the explorer's verified badge. That badge is not submitted. A matching hash is not an audit.
-- [`docs/escrow-open-items.md`](docs/escrow-open-items.md) still opens with a "not deployed" paragraph. Ignore that paragraph.
+- [`docs/tech/escrow-open-items.md`](docs/tech/escrow-open-items.md) tracks open engineering items and the Program v5 cutover.
 - Browser frames use IEEE-754 floats and variable `dt`. New traffic evidence preserves that frame timing, but remains client-reported state. The 10 Hz physics reconstruction is approximate: acceleration bounds can reject; carried-coasting discrepancies only flag. Full replay from raw inputs alone is not built.
 - Float32 road vertices jitter past about 100 km.
 - Session keys are not built. Staking is not built.
@@ -300,13 +300,13 @@ Rollback for checkout is `PAYMENT_MODE=transfer` plus a redeploy. Mainnet waits 
 | Question | Open |
 | --- | --- |
 | How a player drives, and what a finish means | [Whitepaper 02–03](https://whitepaper.freightchain.fun/#drive) |
-| Where the money sits | [Whitepaper 05](https://whitepaper.freightchain.fun/#onchain) · [contract spec](docs/pool-program/index.html) |
-| What the server checks | [Anti-cheat](docs/anti-cheat/index.html) · [player page](docs/verified-play/index.html) |
+| Where the money sits | [Whitepaper 05](https://whitepaper.freightchain.fun/#onchain) · [contract spec](docs/tech/pool-program/index.html) |
+| What the server checks | [Anti-cheat](docs/tech/anti-cheat/index.html) · [player page](docs/tech/verified-play/index.html) |
 | One person, many wallets (planned) | [Anti-sybil and Convoy](docs/spec/anticheat.md#appendix-d-anti-sybil--multi-wallet-defense-layers) |
-| What a spectator sees | [Replays and donations](docs/replay-and-donations/index.html) |
-| Whether the money tests pass | [Localnet walkthrough](docs/localnet-e2e/index.html) |
+| What a spectator sees | [Replays and donations](docs/tech/replay-and-donations/index.html) |
+| Whether the money tests pass | [Localnet walkthrough](docs/tech/localnet-e2e/index.html) |
 | What the security check found, and what is fixed | [Security check and contracts audit](#security-check-and-contracts-audit) · [whitepaper 08](https://whitepaper.freightchain.fun/#audit) · [report](https://github.com/recferret-bit/freightchain/tree/16870e81) |
-| How the server is put together | [backend-architecture.md](docs/backend-architecture.md) |
+| How the server is put together | [backend-architecture.md](docs/tech/backend-architecture.md) |
 
 ## The truck
 
@@ -386,9 +386,9 @@ Run the browser matrix with `bash .claude/skills/run-tests/e2e.sh traffic`. Shar
 
 Paid boards require verified verdicts only when `VERDICT_ENFORCE` is on; production defaults to shadow mode. Prize settlement still requires a verified verdict. Devnet program v3 gates prizes with per-driver attestations; source program v4/v5 uses a reviewed winners root for prizes and per-ride attestations for pledges. The program enforces settlement, not driving physics.
 
-Codes and implementation: [anti-cheat explainer](docs/anti-cheat/index.html) · [verdict rules](server/src/domain/verdict/verdict-rules.ts) · [frame verifier](server/src/domain/verdict/traffic-proof.ts) · [replay engine](server/src/domain/verdict/replay-engine.ts). Recordings are kept for 90 days; flagged and never-judged completed rides are retained.
+Codes and implementation: [anti-cheat explainer](docs/tech/anti-cheat/index.html) · [verdict rules](server/src/domain/verdict/verdict-rules.ts) · [frame verifier](server/src/domain/verdict/traffic-proof.ts) · [replay engine](server/src/domain/verdict/replay-engine.ts). Recordings are kept for 90 days; flagged and never-judged completed rides are retained.
 
-Live watch uses the same batches, so a paid ride sits about 25 seconds behind. There are no WebSockets. A running free ride cannot be watched, chatted on, or tipped. A finished one can be replayed at 1×, 4×, and 16× while the recording is kept. A tip on a paid ride is a devnet SOL transfer from the spectator to the driver. The platform does not hold it. Game effects are off on the public site. A free ride has them forced off, and a paid ride only gets them when `LIVE_EFFECTS` is `all`. Production sets it to `free`. [`docs/replay-and-donations/index.html`](docs/replay-and-donations/index.html)
+Live watch uses the same batches, so a paid ride sits about 25 seconds behind. There are no WebSockets. A running free ride cannot be watched, chatted on, or tipped. A finished one can be replayed at 1×, 4×, and 16× while the recording is kept. A tip on a paid ride is a devnet SOL transfer from the spectator to the driver. The platform does not hold it. Game effects are off on the public site. A free ride has them forced off, and a paid ride only gets them when `LIVE_EFFECTS` is `all`. Production sets it to `free`. [`docs/tech/replay-and-donations/index.html`](docs/tech/replay-and-donations/index.html)
 
 Every online shift has a public page at `/r/:id`. The composed X post links that page, or the site home after a ticket buy. `/actions.json` maps those URLs to Actions.
 
@@ -410,7 +410,7 @@ Read: [`client/shared/`](client/shared) · [`network.js`](client/js/net/network.
 
 ## Money
 
-<img src="docs/readme/split.svg" alt="Chart: 85 percent weekly boards, 5 percent rollover, 10 percent Season Final. Player-derived share capped below 50 percent (max 47.4 percent). Inside each board, 80 percent top 10 places and 20 percent all clean finishers." width="720">
+<img src="docs/tech/assets/split.svg" alt="Chart: 85 percent weekly boards, 5 percent rollover, 10 percent Season Final. Player-derived share capped below 50 percent (max 47.4 percent). Inside each board, 80 percent top 10 places and 20 percent all clean finishers." width="720">
 
 The unified weekly contest pool (`T = F + P + C`, [`prize-pool.ts`](server/src/domain/prize/prize-pool.ts), [`prize-rules.ts`](server/src/domain/prize/prize-rules.ts), [`docs/spec/pool.md`](docs/spec/pool.md)) combines fixed non-player funding `F = B + S` (operator base `B` stepping `$300 → $750 → $1,500 → $3,000` plus external sponsor `S`), a capped player-derived performance bonus `P = min(40% × R_prev, $2,500, 90% × F)` from the prior week's net paid entry revenue `R_prev`, and incoming rollover `C ≤ 25% × F`. Because `P ≤ 0.90 × F`, player-derived funding is always **strictly below 50%** (`≤ 47.4%` of `F + P`), enforced on chain in Program v5 by `max_player_share_bps <= 4999` (default `4740`). A per-km sponsor pledge is a separate account and is not part of this pool split.
 
@@ -449,7 +449,7 @@ flowchart LR
   api --> chain["Solana devnet"]
 ```
 
-Layers point inward. Domain code does not read the clock or the environment. Time comes from `ClockPort`. Env comes from `EnvService`. A Prisma change ships with a SQL migration. [`docs/backend-architecture.md`](docs/backend-architecture.md)
+Layers point inward. Domain code does not read the clock or the environment. Time comes from `ClockPort`. Env comes from `EnvService`. A Prisma change ships with a SQL migration. [`docs/tech/backend-architecture.md`](docs/tech/backend-architecture.md)
 
 - **Landing.** [`landing/`](landing/index.html). Vite. The hero video loads after the page, and never on a phone.
 - **Lobby.** [`client/lobby.html`](client/lobby.html). New ride, Live, Replays, Leaderboard, Achievements, Garage, Profile. Promo codes and [referral invites](docs/spec/referral.md) are on the profile. `#promo` opens that tab.
@@ -467,7 +467,7 @@ The intro clip is real gameplay, 14.8 seconds, with the in-game synth: [`media/o
 
 ### Backend (`server/`)
 
-The backend is a strict native-ESM TypeScript service built on **NestJS 12**, **Prisma 6**, **PostgreSQL 17**, and **Redis 7**, structured around **Clean Architecture**, **Hexagonal Ports & Adapters**, and **CQRS**. Every architectural boundary, HTTP contract rule, line-count cap (`≤ 500` lines per file), and test-pyramid requirement is enforced at test time by source-level audits in [`server/test/architecture/`](server/test/architecture). Full specification: [`docs/backend-architecture.md`](docs/backend-architecture.md).
+The backend is a strict native-ESM TypeScript service built on **NestJS 12**, **Prisma 6**, **PostgreSQL 17**, and **Redis 7**, structured around **Clean Architecture**, **Hexagonal Ports & Adapters**, and **CQRS**. Every architectural boundary, HTTP contract rule, line-count cap (`≤ 500` lines per file), and test-pyramid requirement is enforced at test time by source-level audits in [`server/test/architecture/`](server/test/architecture). Full specification: [`docs/tech/backend-architecture.md`](docs/tech/backend-architecture.md).
 
 #### Architecture & Layers
 
@@ -555,7 +555,7 @@ flowchart TB
 - [`shared/`](shared) — workspace package (`@freightchain/shared`) re-exporting [`client/shared/`](client/shared) (`prng.js`, `road.js`, `traffic.js`, `physics.js`) for both browser client and backend `ReplayEngine`.
 - [`deploy/`](deploy/README.md) — Docker, nginx, certbot (`app`, `worker`, `editor-worker`, `postgres`, `redis`, `mcp`). `npm run deploy` ships `git archive HEAD`.
 - [`design/`](design) — icons, banners, badge art.
-- [`docs/`](docs) — explainers. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at. As-built product: [`docs/spec/PRODUCT.md`](docs/spec/PRODUCT.md). Coverage bar: [`docs/testing/COVERAGE_CONTRACT.md`](docs/testing/COVERAGE_CONTRACT.md). The happy-dom checklist is [`docs/testing/E2E_PLAN.md`](docs/testing/E2E_PLAN.md).
+- [`docs/`](docs/README.md) — documentation index across `spec/`, `plan/`, `tech/`, `testing/`, `insights/`, `legal/`, and `agents/`. [`docs/agents/`](docs/agents) is the detail [`AGENTS.md`](AGENTS.md) points at. As-built product: [`docs/spec/PRODUCT.md`](docs/spec/PRODUCT.md). Coverage bar: [`docs/testing/COVERAGE_CONTRACT.md`](docs/testing/COVERAGE_CONTRACT.md). The happy-dom checklist is [`docs/testing/E2E_PLAN.md`](docs/testing/E2E_PLAN.md).
 - [`e2e/`](e2e) — fast page-module checks (happy-dom + API). Not the browser bar. `npm run test:e2e:block1` and `npm run test:e2e:block2`.
 - [`landing/`](landing) — the `/` page, the whitepaper and the pitch deck. Vite.
 - [`mcp/`](mcp) — the entity MCP server: the `3d-assets` skill as tools for the AI model editor (Streamable HTTP for the server's bridge, stdio for Claude Code). Production HTTP counters are shared in Redis with a restricted MCP user; AI jobs use a shared PostgreSQL queue with atomic admission and claims; the bridge owns its tool policy, AI writes remain checked drafts, and publishing requires a wallet signature.
@@ -579,7 +579,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `localnet-e2e` | Real ticket buys, refunds, payouts, and the pool crank on a local Solana validator; ten riders paid by the program; the autonomous pool day (the crank opens the series' pools, the payout key pays after the review window); a 100 % program coverage gate | `npm run test:localnet` |
 | `honk-localnet` | The local TEN4 mint, swap, burn, soulbound part, and headless paid-ride session. The ledger stays the game balance | `bash .claude/skills/honk-localnet/run.sh` |
 | `honk-suite` | The full local TEN4 coin suite: program tests, catalog drift, the headless session, then one verified ride whose chain mint matches the ledger | `bash .claude/skills/honk-suite/run.sh` |
-| `analytics-review` | Three passes over the landing, whitepaper, lobby, and the online ride: new controls get events, removed ones lose them, and the explainer stays in step. Each pass writes `docs/analytics/updates/<n>.html`. Does not call PostHog | `node .claude/skills/analytics-review/inventory.mjs` |
+| `analytics-review` | Three passes over the landing, whitepaper, lobby, and the online ride: new controls get events, removed ones lose them, and the explainer stays in step. Each pass writes `docs/insights/analytics/updates/<n>.html`. Does not call PostHog | `node .claude/skills/analytics-review/inventory.mjs` |
 | `whitepaper-update` | Three passes on the whitepaper: claims against the code, cut duplication and AI-sounding prose, add charts and real cab frames inside the gzip budget. Does not deploy | `npm --prefix landing test` · `npm run landing:build` |
 | `posthog-prod` | Product analytics on production: the boot line, one public probe, the flush log. Read-only | `bash .claude/skills/posthog-prod/check.sh` |
 | `posthog-test` | Local analytics smoke: the relay, and one batch accepted by the EU ingest | `bash .claude/skills/posthog-test/smoke.sh` |
@@ -596,7 +596,7 @@ Skills live in `.claude/skills/<name>/`. A coding agent reads that folder's `SKI
 | `run-tests` | The whole local suite: lint and unit tests, PostgreSQL, then real-Chrome end-to-end. There is no CI | `npm run check`, then `npm run server:integration`, then `bash .claude/skills/run-tests/e2e.sh` |
 | `admin-coverage` | Check that the admin page uses every admin API (guarded, called, no dead calls, tabs match the views) and add what is missing | `node .claude/skills/admin-coverage/check.mjs` |
 | `stats-reconcile` | Check and repair the statistics (rides, time, km, crashes, stream donations – per rider and global) by recomputing them from the rides; production read-only | `bash .claude/skills/stats-reconcile/run.sh [--fix]` · `--prod` |
-| `test-census` | Count the tests by pyramid layer, grade test coverage per feature, user flow, controller and route (static attribution, line + branch coverage, the routes each browser suite hits), name gaps, and rewrite the Tests block below and docs/test-coverage.md | `npm run test:census` · `npm run test:census -- features` · `npm run test:census -- coverage` · `npm run test:census -- run` · `npm run test:census -- readme` |
+| `test-census` | Count the tests by pyramid layer, grade test coverage per feature, user flow, controller and route (static attribution, line + branch coverage, the routes each browser suite hits), name gaps, and rewrite the Tests block below and docs/testing/test-coverage.md | `npm run test:census` · `npm run test:census -- features` · `npm run test:census -- coverage` · `npm run test:census -- run` · `npm run test:census -- readme` |
 | `level-check` | Each free level (EASY / MEDIUM / HARD) is what it promises and passable by a human: the road each level's shift covers (junctions, forks, lanes, bends, sinkhole traps), then a human-paced driver on the real truck with ASSIST off on many seeds × all routes – finish rate, hull, vehicles hit, against the level's limits | `node .claude/skills/level-check/check.mjs` |
 | `trip-design` | The road per ride tier – the free run and the 1 h / 4 h / 8 h shifts: bends, traffic, roadside, whether it ends by itself at the line, its length and finish distance – measured with the real game modules and looked at in Chrome | `node .claude/skills/trip-design/measure.mjs` · `node .claude/skills/trip-design/shots.mjs` |
 | `verified-play-test` | The anti-bot / anti-cheat end to end, positive and negative: a person and a bot in Chrome (dispatch prompts answered / ignored), server traffic validation against removed cars / ignored damage / missing proof, API-level bots with hand-built recordings (every verdict code), the upload protocol, the admin's signed decisions, the profile in Chrome, retention + the CLI's bulk re-judge | `bash .claude/skills/verified-play-test/run.sh` (traffic only: `bash .claude/skills/run-tests/e2e.sh traffic`) |
@@ -628,7 +628,7 @@ npm run program:verify                                      # reproducible build
 npm run test:localnet                                       # the program on a local validator, lamports checked
 ```
 
-`npm run check` needs `npm run install:landing` and `npm run install:media` once. The program tools need the Solana toolchain on `PATH` ([`programs/README.md`](programs/README.md)). Deploy: [`deploy/README.md`](deploy/README.md). Env keys: [`docs/configuration.md`](docs/configuration.md). There is no CI.
+`npm run check` needs `npm run install:landing` and `npm run install:media` once. The program tools need the Solana toolchain on `PATH` ([`programs/README.md`](programs/README.md)). Deploy: [`deploy/README.md`](deploy/README.md). Env keys: [`docs/tech/configuration.md`](docs/tech/configuration.md). There is no CI.
 
 ## 3D entity editor and AI generation
 
@@ -675,7 +675,7 @@ Configure `server/.env`; keep it out of Git. API and worker must use the same da
 | `EDITOR_MCP_TOKEN` | A generated secret of at least 24 characters shared by API, worker and MCP; empty disables AI editing |
 | `EDITOR_MCP_URL` | `http://127.0.0.1:3100` locally |
 | Provider key | One or more of `XAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZAI_API_KEY`; a configured key makes that provider available |
-| Provider selection | Optional `EDITOR_DEFAULT_PROVIDER` and `EDITOR_MODEL_XAI`, `EDITOR_MODEL_ANTHROPIC`, `EDITOR_MODEL_OPENAI`, `EDITOR_MODEL_GEMINI`, `EDITOR_MODEL_ZAI`; see [configuration](docs/configuration.md) for defaults and the xAI / z.ai endpoints |
+| Provider selection | Optional `EDITOR_DEFAULT_PROVIDER` and `EDITOR_MODEL_XAI`, `EDITOR_MODEL_ANTHROPIC`, `EDITOR_MODEL_OPENAI`, `EDITOR_MODEL_GEMINI`, `EDITOR_MODEL_ZAI`; see [configuration](docs/tech/configuration.md) for defaults and the xAI / z.ai endpoints |
 | `EDITOR_FAKE_LLM` | `1` for a scripted local provider with no paid model calls; production refuses this setting |
 | `REDIS_URL` | Optional locally; required for production AI editing and shared rate limits |
 
@@ -759,7 +759,7 @@ TEST_DATABASE_URL=postgresql://freight:freight_dev_password@localhost:15433/frei
 bash .claude/skills/run-tests/e2e.sh editor
 ```
 
-Integration tests must use a dedicated test database. See the [security review and residual limitations](docs/reviews/entity-editor-security.md), [editor architecture and HTTP contract](docs/spec/platform_services.md), [entity format](docs/agents/world.md#entities-every-3d-model-is-data) and [configuration reference](docs/configuration.md).
+Integration tests must use a dedicated test database. See the [security review and residual limitations](docs/insights/reviews/entity-editor-security.md), [editor architecture and HTTP contract](docs/spec/platform_services.md), [entity format](docs/agents/world.md#entities-every-3d-model-is-data) and [configuration reference](docs/tech/configuration.md).
 
 ## Local code end-to-end
 
@@ -776,7 +776,7 @@ The stack is [`docker-compose.e2e.yml`](docker-compose.e2e.yml) (project `freigh
 
 ## Tests
 
-Full interactive test coverage report and audit dashboard: [`docs/test-coverage/index.html`](docs/test-coverage/index.html) (standalone single-file: [`docs/test-coverage.html`](docs/test-coverage.html); raw census: [`docs/test-coverage.md`](docs/test-coverage.md)).
+Full interactive test coverage report and audit dashboard: [`docs/testing/test-coverage/index.html`](docs/testing/test-coverage/index.html) (raw census: [`docs/testing/test-coverage.md`](docs/testing/test-coverage.md)).
 
 Comprehensive test audit conducted across all 7 workspaces, 17 pyramid layers, 601 test files and harnesses, 3,522 executed test cases, and 955 static checks.
 

@@ -2,7 +2,7 @@
 
 Decision 68 (2026-10-18). This is the bar for "tested." A line-coverage percentage is not the bar. [`docs/spec/e2e.md`](../spec/e2e.md) E2E-M-01 (no browser) and E2E-M-06 (delete the live-watch Chrome scripts) do not apply. The phased work is [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
-The audit behind the gap list is the 2026-10-18 page `docs/test-coverage/index.html` (and `test-coverage.css`) in the main checkout. That page is a snapshot. This file is the rule. Numbers below are from that snapshot plus the suites the repo already runs.
+The audit behind the gap list is the 2026-10-18 page [`docs/testing/test-coverage/index.html`](./test-coverage/index.html) (and `test-coverage.css`) in the main checkout. That page is a snapshot. This file is the rule. Numbers below are from that snapshot plus the suites the repo already runs.
 
 ## What 100% means
 

@@ -34,7 +34,7 @@ const GRACE_WARNING_MS = 3 * 86_400_000;
 const UNREVIEWED_LIMIT = 100;
 
 /**
- * The payout job (docs/escrow-open-items.md, programs/README.md "Payout key"; program v4 – audit H5-B): for every ACTIVE pool whose rides are over
+ * The payout job (docs/tech/escrow-open-items.md, programs/README.md "Payout key"; program v4 – audit H5-B): for every ACTIVE pool whose rides are over
  * (`playDeadline`, by the CHAIN clock), unless an admin holds it:
  *   1. the pool-level checks run first (PoolAttentionService.markPool: a distance outlier, two ranked wallets on one IP, a brand-new wallet in the top 3 – each
  *      puts its ride back under review); then every completed ride of the pool must have been decided – a verified verdict, or an admin's decision. One ride

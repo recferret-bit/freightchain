@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analytics review · pass 3 of 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../../tech/verified-play/style.css">
+<link rel="stylesheet" href="../analytics.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">Freight Chain · analytics review</span>
+  <h1>Pass 3 of 3</h1>
+  <p class="lede">File 6 · 12 Oct 2026. Confirm. The inventory is clean and the tests that cover this review passed. No further edit.</p>
+  <p class="soft"><a href="../index.html">Product analytics</a> · <a href="5.html">Pass 2</a></p>
+</header>
+
+<section>
+  <h2>What changed</h2>
+  <p>Nothing. This pass only ran the checks.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Surface</th><th>Found</th><th>Edited</th></tr></thead>
+      <tbody>
+        <tr><td>Landing</td><td><code>faq_item_opened</code> is on the allowlist, in the explainer, and at the card.</td><td>No change.</td></tr>
+        <tr><td>Whitepaper</td><td>Unchanged since pass 2.</td><td>No change.</td></tr>
+        <tr><td>Lobby</td><td>Unchanged since pass 2.</td><td>No change.</td></tr>
+        <tr><td>Gameplay</td><td>The pause row names <code>bail</code>. No new emit.</td><td>No change.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <p><b>Added.</b> None this pass. The review as a whole added <code>faq_item_opened</code>.</p>
+  <p><b>Removed.</b> None.</p>
+  <p><b>Explainer.</b> Not edited this pass. It matches the lists: 42 client names, 27 server names.</p>
+</section>
+
+<section>
+  <h2>Checks</h2>
+  <ul>
+    <li><code>node .claude/skills/analytics-review/inventory.mjs</code> exited 0. Drift: none. 42 client events, 27 server events.</li>
+    <li><code>npm --prefix server run test -- test/unit/domain/analytics test/unit/infrastructure/analytics</code> — 3 files, 10 tests, all passed.</li>
+    <li><code>npm --prefix landing test</code> — 122 passed, 0 failed. Landing HTML gzip 14.75 kB (cap 15). CSS of both pages 13.48 kB gzip (cap 14).</li>
+    <li><code>npm --prefix landing run lint</code> passed. Client eslint was not run. This review did not edit a file under <code>client/</code>.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="callout">
+    <b>Production dashboards were not opened, edited, or sent a batch.</b>
+    <span><code>posthog-test</code> and <code>posthog-prod</code> were not run. No PostHog API call. Dashboard 1006663 was not touched.</span>
+  </div>
+</section>
+
+<section>
+  <h2>Still silent on purpose</h2>
+  <p>Offline <code>play.html</code>, <code>viewer.html</code>, verdicts, escrow ticket buys and refunds, live chat, donations, and effects. The admin page. Tutorial SKIP and END TUTORIAL (the shift’s <code>tutorial</code> flag is the stored fact). A whitepaper contents link. Lobby replay filters and LOAD MORE. The watch page, including a random live ride.</p>
+</section>
+</div>
+</body>
+</html>

@@ -1,5 +1,5 @@
 // TEN riders, one escrowed pool, the whole money loop on a LOCAL chain – started by .claude/skills/localnet-e2e/run.sh after e2e-localnet.mjs (or alone:
-// SCENARIO=payout). Real program transactions, real lamports, every balance asserted; explained in docs/localnet-e2e/index.html ("Ten riders").
+// SCENARIO=payout). Real program transactions, real lamports, every balance asserted; explained in docs/tech/localnet-e2e/index.html ("Ten riders").
 //   1. pool D (1h, min 10, ≤ 2 per wallet) – 10 wallets buy 11 tickets: the lobby in headless Chrome and Node wallets (every wallet signs AND
 //      sends, pays its own fee and Ticket rent; /confirm), one wallet 2 at once; open at 9, live at 10+; a sponsorship
 //   2. the rides – the FINISHED RIDES are made through the same API the game uses (no admin back door: a server that let an admin write recordings would let
@@ -10,7 +10,7 @@
 //      `pool:crank` pass must leave the live pool alone
 //   4. after the play deadline: the payout job (devnet-payout.mjs – signs as the program authority what GET /api/pools/:id/payout builds): each ranked
 //      wallet gets exactly its share, the cheater and the crash get nothing, then close_pool: fee / platform / seed (= the next pool's seed) / creator legs
-//   5. every Ticket rent back to whoever advanced it (close_ticket – nothing in the server does this yet: docs/escrow-open-items.md)
+//   5. every Ticket rent back to whoever advanced it (close_ticket – nothing in the server does this yet: docs/tech/escrow-open-items.md)
 //   6. the seed rolls on: the seed treasury sponsors the next 1h pool with exactly what pool D left it; the lobby shows it
 //   7. the rest of the program on the validator: pause, sold out, cancel_pool + refunds, an unpaid pool closed by the admin, the authority handover and
 //      every error code the validator can reach – recorded into COVERAGE (scripts/localnet-coverage.mjs) for the 100 % report

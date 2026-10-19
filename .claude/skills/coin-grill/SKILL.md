@@ -24,7 +24,7 @@ node .claude/skills/coin-grill/grill.mjs --self-test
 ```
 
 - `<path-to-token-file>`: Required path to the token specification, whitepaper, JSON config, Markdown doc, or draft file to analyze.
-- `--out <report.html>`: Optional output path for the generated HTML report (defaults to `docs/coin-grill/<slug>-grill.html`).
+- `--out <report.html>`: Optional output path for the generated HTML report (defaults to `docs/insights/reviews/<slug>-grill.html`).
 - `--json`: Optional flag to print the structured 3-pass report JSON to stdout alongside writing the HTML file.
 
 ## Workflow for the Agent (3 Mandatory Iterations in a Row)

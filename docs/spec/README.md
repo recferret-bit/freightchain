@@ -9,9 +9,9 @@
 1. **`docs/spec/` главнее всех старых файлов плана.** Если старый файл противоречит `docs/spec/`, прав `docs/spec/`.
 2. Внутри `docs/spec/` правило-MUST в «Манифесте» главнее приложения. Приложения — перенесённый без изменений текст старых планов: история и подробности алгоритмов.
 3. Решения владельца (журнал ниже, полные тексты — [`DECISIONS.md`](DECISIONS.md)) главнее манифеста. Если они расходятся, манифест надо исправить.
-4. Старые файлы оставлены с шапкой `SUPERSEDED → docs/spec/…`:
-   - `anticheat_test_plan.md` (superseded, merged into docs/spec), `backend_test_plan.md` (superseded, merged into docs/spec), [`OPEN_QUESTIONS.md`](../plan/OPEN_QUESTIONS.md) — целиком;
-   - [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) — только §3 (пулы и рейтинг), §5 (билеты и поездки) и §14 (открытые вопросы), остальное в силе.
+4. Старые файлы консолидированы в `docs/spec/…`:
+   - `anticheat_test_plan.md` (merged into `docs/spec/`), `backend_test_plan.md` (merged into `docs/spec/`), `OPEN_QUESTIONS.md` (merged into [`OPEN.md`](OPEN.md)) — целиком;
+   - [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) — только §3 (пулы и рейтинг), §5 (билеты и поездки) и §14 (открытые вопросы → [`OPEN.md`](OPEN.md)), остальное в силе.
    
    Новые правки вносятся только в `docs/spec/`.
 

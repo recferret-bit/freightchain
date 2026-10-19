@@ -5,7 +5,7 @@ description: End-to-end test of the REAL money flows on a LOCAL Solana chain –
 
 # Money e2e on a local chain
 
-The walkthrough for people: `docs/localnet-e2e/index.html`. This file is the runbook.
+The walkthrough for people: `docs/tech/localnet-e2e/index.html`. This file is the runbook.
 
 ```sh
 npm run program:verify                           # once: the verifiable .so in target/deploy (the run warns when it is not the pinned build)
@@ -16,7 +16,7 @@ SCENARIO=money  bash .claude/skills/localnet-e2e/run.sh   # only the first scena
 SCENARIO=chaos  bash .claude/skills/localnet-e2e/run.sh   # the flaky-RPC + several-servers / crankers scenario (~5 min; local only, no coverage gate)
 KEEP=1 bash .claude/skills/localnet-e2e/run.sh   # keep the scratch dir: keys/, the ledgers + their logs, server.log, server-day.log, accounts/ (+ accounts/day/)
 LIKE_DEVNET=1 bash .claude/skills/localnet-e2e/run.sh   # the devnet settings on the local validator (funder + sweep, small prices, no baked pools)
-bash server/scripts/devnet.sh rehearse           # = TARGET=devnet: the same scenario against the program on DEVNET (Phase 2 of docs/escrow-open-items.md)
+bash server/scripts/devnet.sh rehearse           # = TARGET=devnet: the same scenario against the program on DEVNET (Phase 2 of docs/tech/escrow-open-items.md)
 ```
 
 **TARGET=devnet** needs the program deployed + initialized on devnet with the code built for its id, `server/.env.devnet` (`devnet.sh env`) and the funded keys
@@ -132,12 +132,12 @@ What it found (Oct 10, fixed): one refused ticket read threw out of the whole cr
 ## Admin CLI (`server/scripts/pool-admin.mjs`)
 
 `initialize`, `migrate-config`, `set-config` (`--min-review-secs` / `--min-finish-secs`), `create-pool` (`--payout`: the review window's end, default = `--play`), `set-series` (`--sale-secs` / `--play-secs` / `--review-secs` or hours), `open-next-pool`, `seal-road`, `set-payout-authority`, `sponsor`, `refund-sponsor`, `close-sponsor-receipt`, `buy`, `commit-winners` (`--winners wallet:lamports,…` or `none`), `veto-winners`, `pay-prize` (`--winners`, `--rank`: the proof is built from the list), `record-ride-attestation`, `close-ride-attestation`, `close-attestation` (v3), `create-pledge`, `settle-pledge`, `refund-pledge`, `fail-pool`, `expire-pool`, `refund`, `close-ticket`, `cancel-pool`, `propose-authority`, `accept-authority`, `close-pool`, `show` – keypair FILES, explicit `--url`
-(mainnet refused), `+secs` deadlines on the chain clock. Also usable for the owner's devnet setup (`docs/program-deploy.md`); no Phantom signing.
+(mainnet refused), `+secs` deadlines on the chain clock. Also usable for the owner's devnet setup (`docs/tech/program-deploy.md`); no Phantom signing.
 
 ## Not covered
 
 A real Phantom (popups, its RPC, transaction rewriting), a REAL congested cluster (the chaos proxy imitates its failure modes: refusals, 429s, swallowed and slow sends, lost answers – not its timing; `TARGET=devnet` is the only real one), a websocket fault (a dead websocket is covered, a flapping one is not), two servers that CRANK on a schedule at once (the crank CLIs race, the scheduler is the same handler), the payout and pledge jobs on their SCHEDULE (`PAYOUT_INTERVAL_MS` – the day runs the same handler from the CLI, so its states can be asserted pass by pass), a real-length day (24 h sale / 2 h play / 48 h review: the day's grid is compressed to 120 / 45 / 45 s by editing the series' `sale_secs` in its dump – `set_series` itself refuses a sale window under an hour), session keys. Nothing in the server reclaims Ticket rents after a settlement (the scenario does it with
-`pool-admin.mjs close-ticket` – docs/escrow-open-items.md), and nothing rolls the seed treasury into the next pool (the scenario's `sponsor` stands in for
+`pool-admin.mjs close-ticket` – docs/tech/escrow-open-items.md), and nothing rolls the seed treasury into the next pool (the scenario's `sponsor` stands in for
 the operator). The program is not audited; coverage here means "every instruction / event / error exercised", not line coverage of the Rust – and host-side `cargo llvm-cov` cannot give that: LiteSVM runs the compiled SBF `.so`, so the handlers are not instrumented. Slow machine:
 raise `PLAY_A` (seconds until pool A's play deadline; rides must finish before it) – also `PREP_A` / `PREP_B` / `PREP_C`, `PREP_D` / `PLAY_D` / `REVIEW_D` (150 / 270 / 20),
 and for the day `DAY_SALE` (120; the lobby buy + 7 Node buys + 7 rides must fit), `DAY_LEAD` (75; seconds from the retime to the first slot – the day takes

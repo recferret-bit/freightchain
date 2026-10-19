@@ -4,7 +4,7 @@
 # Does not read the PostHog personal key and does not send an event.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-OUT="$ROOT/docs/analytics/generated"
+OUT="$ROOT/docs/insights/analytics/generated"
 mkdir -p "$OUT"
 redact() { sed -E 's/phc_[A-Za-z0-9]+/phc_REDACTED/g; s/phx_[A-Za-z0-9]+/phx_REDACTED/g'; }
 
@@ -27,5 +27,5 @@ fs.writeFileSync(out, JSON.stringify([
 ' "$landing_ok" "$e2e_ok" "$OUT/checks.json"
 
 node "$ROOT/.claude/skills/posthog-map/graph.mjs"
-echo "map: docs/analytics/generated/map.html"
+echo "map: docs/insights/analytics/generated/map.html"
 [ "$landing_ok" = 1 ] && [ "$e2e_ok" = 1 ]

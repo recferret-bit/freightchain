@@ -48,7 +48,7 @@ function jsFiles(rel) {
 const clientSrc = read('server/src/domain/analytics/client-events.ts');
 const serverSrc = read('server/src/domain/analytics/server-events.ts');
 const factorySrc = read('server/src/application/services/analytics-events.ts');
-const explainer = read('docs/analytics/index.html');
+const explainer = read('docs/insights/analytics/index.html');
 
 const clientEvents = arrayNames(clientSrc, 'CLIENT_EVENTS');
 const serverEvents = arrayNames(serverSrc, 'SERVER_EVENTS');
@@ -93,7 +93,7 @@ note('track() name is not a client event', [...calls.keys()].filter((n) => !clie
 note('client event has no track() call', clientEvents.filter((n) => !calls.has(n)));
 note('factory name is not a server event', [...factorySet].filter((n) => !serverEvents.includes(n)).sort());
 note('server event has no factory call', serverEvents.filter((n) => !factorySet.has(n)));
-note('event name missing from docs/analytics/index.html', [...clientEvents, ...serverEvents].filter((n) => !explainer.includes(`<code>${n}</code>`)));
+note('event name missing from docs/insights/analytics/index.html', [...clientEvents, ...serverEvents].filter((n) => !explainer.includes(`<code>${n}</code>`)));
 note('literal property the relay would drop', droppedKeys);
 
 const browserEyebrow = explainer.match(/Browser events · (\d+)/);

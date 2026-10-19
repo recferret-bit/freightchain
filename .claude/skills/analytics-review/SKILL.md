@@ -3,15 +3,15 @@ name: analytics-review
 description: >
   Review the landing, whitepaper, lobby, and online ride against Freight Chain's
   PostHog analytics. Three passes: cover new controls, drop events whose UI is
-  gone, and keep docs/analytics/index.html in step with the allowlists. Each
-  pass writes docs/analytics/updates/<n>.html. Use when asked to review analytics
+  gone, and keep docs/insights/analytics/index.html in step with the allowlists. Each
+  pass writes docs/insights/analytics/updates/<n>.html. Use when asked to review analytics
   coverage, line those pages up with PostHog, or /analytics-review. Does not
   call PostHog and does not change production dashboards.
 ---
 
 # Analytics review
 
-Three passes over the four pages. Each pass edits the integration where it is wrong, then writes one report. The event rules live in `docs/spec/platform_services.md` (§3 "Product Analytics") and in `docs/analytics/index.html`. Follow those. This file is the pass, the report, and the production boundary.
+Three passes over the four pages. Each pass edits the integration where it is wrong, then writes one report. The event rules live in `docs/spec/platform_services.md` (§3 "Product Analytics") and in `docs/insights/analytics/index.html`. Follow those. This file is the pass, the report, and the production boundary.
 
 ```sh
 node .claude/skills/analytics-review/inventory.mjs
@@ -80,9 +80,9 @@ If a pass edited `landing/` or `client/`, also `npm --prefix landing test` and e
 
 ## The report
 
-After each pass, write `docs/analytics/updates/<n>.html`. `<n>` is the next integer not already used in that directory (`1.html`, then `2.html`). Never overwrite. Create the directory if it is missing.
+After each pass, write `docs/insights/analytics/updates/<n>.html`. `<n>` is the next integer not already used in that directory (`1.html`, then `2.html`). Never overwrite. Create the directory if it is missing.
 
-Use the explainer's styles: `../../verified-play/style.css` and `../analytics.css`, same fonts as `docs/analytics/index.html`. One page, these parts:
+Use the explainer's styles: `../../../tech/verified-play/style.css` and `../analytics.css`, same fonts as `docs/insights/analytics/index.html`. One page, these parts:
 
 - Eyebrow `Freight Chain · analytics review`, title `Pass k of 3`, file number, date.
 - One line on what this pass changed.

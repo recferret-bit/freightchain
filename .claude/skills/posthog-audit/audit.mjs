@@ -197,7 +197,7 @@ ${ok.length ? `<ul>${ok.map((row) => `<li><code>${escape(row.item.name)}</code> 
 <div class="invite"><b>Apply these fixes?</b><p>Say <b>apply the PostHog fixes</b>. That runs <code>node .claude/skills/posthog-audit/apply.mjs --apply</code>, which creates the missing <code>FC ·</code> insights and updates a matched insight in place. It does not delete the template dashboard, and it does not send an event.</p></div>
 </main></body></html>`;
 
-const dir = join(root, 'docs/analytics/generated');
+const dir = join(root, 'docs/insights/analytics/generated');
 mkdirSync(dir, { recursive: true });
 writeFileSync(join(dir, 'audit.html'), html);
 writeFileSync(join(dir, 'audit.json'), JSON.stringify({
@@ -205,5 +205,5 @@ writeFileSync(join(dir, 'audit.json'), JSON.stringify({
   fixes, stray, ok: ok.map((row) => row.item.name),
 }, null, 2));
 console.log(redact(`audit: ${fixes.length} fixes, ${ok.length} matching, ${stray.length} left alone`));
-console.log(redact(`report: docs/analytics/generated/audit.html`));
+console.log(redact(`report: docs/insights/analytics/generated/audit.html`));
 process.exit(fixes.length ? 1 : 0);

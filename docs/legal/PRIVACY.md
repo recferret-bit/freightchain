@@ -305,4 +305,4 @@ Items 1–5 decided by the owner and planned in `MASTER_PLAN.md` §11: (1) `Sign
 - Triumph Privacy Policy: https://docs.triumpharcade.com/privacy-policy-multi-product — skill tournaments with deposits/withdrawals.
 - Star Atlas Privacy Policy: https://experience.staratlas.com/privacy-policy — Solana game, wallet transaction history, international transfers.
 - Galxe, Layer3 and Aurory policies were not reachable from the fetch tool at drafting time; review them before finalizing if useful.
-- Internal: `decisions_trust.md`, `anti_sybil_wallet_checks.md`, `tax_thresholds.md`, `docs_drafts/airdrop/README.md`, `docs_drafts/referral/*`, `docs_drafts/prize/POOLS.md`.
+- Internal: [`docs/plan/MASTER_PLAN.md`](../plan/MASTER_PLAN.md), [`docs/spec/anticheat.md`](../spec/anticheat.md) (Appendix D), [`docs/plan/research/tax_thresholds.md`](../plan/research/tax_thresholds.md), [`docs/spec/ten4.md`](../spec/ten4.md) (§4.2), [`docs/spec/referral.md`](../spec/referral.md), [`docs/spec/pool.md`](../spec/pool.md).

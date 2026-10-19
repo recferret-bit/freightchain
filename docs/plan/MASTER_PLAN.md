@@ -21,8 +21,8 @@
 
 | Дата | Событие |
 |---|---|
-| ✅ выполнено | Мерж PR #3 в `main` (шаги 1 и 4; остальные шаги Season 1 — по `DEVNET_PRESEASON.md` §7 и `GAPS.md` G26/G27) |
-| по команде владельца (рекомендовано после Pre-season, см. `GAPS.md` G17) | Очистка devnet и деплой pool v5 с новым program id (код v5 уже в репо; для Pre-season не обязателен) |
+| ✅ выполнено | Мерж PR #3 в `main` (шаги 1 и 4; остальные шаги Season 1 — по [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §7 и §12 ниже) |
+| по команде владельца (рекомендовано после Pre-season, см. §12 G17) | Очистка devnet и деплой pool v5 с новым program id (код v5 уже в репо; для Pre-season не обязателен) |
 | пн 02.11.2026 | **Pre-season (devnet):** регистрация, обязательные шаги кампании (тестовая поездка + Telegram + X: подписка и пост с кодом) |
 | пн 09.11 – вс 15.11 12:00 | Pre-season: призовая неделя, одна доска 1h, 1 попытка, фонд $500 |
 | до пн 16.11 12:00 / до вт 17.11 12:00 | Pre-season: проверка / апелляции |
@@ -37,7 +37,7 @@
 
 ## 2. Токеномика TEN4 v2
 
-Детали: `ten4_tokenomics_v2.md`, черновик `docs_drafts/tokenomics/TEN4-v2.md`.
+Спецификация: [`../spec/ten4.md`](../spec/ten4.md) · публичная страница: [`../tech/ten4/index.html`](../tech/ten4/index.html).
 
 | Корзина | TEN4 | Механика |
 |---|---:|---|
@@ -49,15 +49,13 @@
 | Команда | 8,000,000 | **Включена**: клифф 12 мес + линейно 24 мес |
 | **Итого** | **100,000,000** | Mint authority отзывается в `initialize` |
 
-- **Вестинг команды:** встроенный в `freightchain_honk` (PR #3: `claim_team`, PDA `[b"team"]`, `TEAM_CLIFF_MONTHS = 12`, месяц = 30 дней, от `config.opened_at`, получатель неизменяемый, отмены нет). Вызов `initialize(team_enabled = true, team_linear_months = 24, team_recipient = мультисиг Squads команды)`. Streamflow и Squads Vesting не нужны.
+- **Вестинг команды:** встроенный в `freightchain_honk` (`claim_team`, PDA `[b"team"]`, `TEAM_CLIFF_MONTHS = 12`, месяц = 30 дней, от `config.opened_at`, получатель неизменяемый, отмены нет). Вызов `initialize(team_enabled = true, team_linear_months = 24, team_recipient = мультисиг Squads команды)`. Streamflow и Squads Vesting не нужны.
 - Переименование «Convoy goal 1,000» → **Depot Goal 1,000**.
 - TEN4 за покупки друга и онбординг Grant упразднены (раунд 9).
 
 ## 3. Пулы и призы
 
-> See [docs/spec](../spec/README.md): this section is superseded for pools, donations and ranking ([pool.md](../spec/pool.md), [replays_streams.md](../spec/replays_streams.md)). The text below is kept.
-
-Детали: `pool_unified_plan.md`, `docs_drafts/prize/POOLS.md`.
+> Целевой недельный формат пула (вт вечер → вс вечер + 1,5 дня проверки), отмена эффектов донатов и динамический рейтинг 1h-поездки зафиксированы в [`../spec/pool.md`](../spec/pool.md), [`../spec/rides.md`](../spec/rides.md) и [`../spec/replays_streams.md`](../spec/replays_streams.md). Текущая реализация доски призов на `main` (`server/src/domain/prize/prize-rules.ts`) описана в [`../spec/pool.md`](../spec/pool.md) Приложение C.
 
 | Параметр | Значение |
 |---|---|
@@ -78,31 +76,29 @@
 
 ## 4. Сезоны
 
-Детали: `docs_drafts/seasons/README.md`.
+Спецификация: [`../spec/pool.md`](../spec/pool.md) · план Pre-season: [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md).
 
-- **Pre-season (devnet):** регистрация с 02.11.2026, неделя 09–15.11, выплаты с 17.11; сезон `weeks = 1` без финала (или ключи `event_*`); фонд $500, топ-20 (100 / 70 / 50 / 2×30 / 5×20 / 10×12), ничьи делятся поровну. План — `devnet_mini_launch_plan.md`.
+- **Pre-season (devnet):** регистрация с 02.11.2026, неделя 09–15.11, выплаты с 17.11; сезон `weeks = 1` без финала (или ключи `event_*`); фонд $500, топ-20 (100 / 70 / 50 / 2×30 / 5×20 / 10×12), ничьи делятся поровну. План и ранбук — [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md).
 - Season 1 (mainnet): старт **11.01.2027**, `weeks = 7`, `finalWeek = 7` (22–28.02.2027), выплаты с 02.03, `breakUntil = 2027-03-15` (перерыв 01–14.03 — решено); Season 2 — 15.03.2027 (решено).
-- Неделя: пн 00:00 – вс 12:00 UTC; проверка до пн 12:00, апелляции до вт 12:00, затем выплаты.
+- Неделя: пн 00:00 – вс 12:00 UTC (целевое расписание вт–вс — см. [`../spec/pool.md`](../spec/pool.md) `POOL-M-01`); проверка до пн 12:00, апелляции до вт 12:00, затем выплаты.
 - Админка: CRUD сущности `prize.Season` + `prize.SeasonRulesVersion` (журнал и подпись); `SeasonService` заменяет `SEASON_EPOCH = '2026-10-12'`; рейтинговый старт вне сезона → 409.
 - Денежные параметры (B, потолки, доли) хранятся в Season.
 
 ## 5. Билеты и поездки
 
-> See [docs/spec/rides.md](../spec/rides.md): this section is superseded for ride types and tickets. The text below is kept.
-
-Уже сделано в PR #3, сохранить при мерже (`pr3_update_plan.md`, шаг 1):
+> Целевые правила типов поездок и билетов (только 1h в рейтинге) — [`../spec/rides.md`](../spec/rides.md) и [`../spec/promocodes.md`](../spec/promocodes.md). Реализовано на `main`:
 
 | Решение | Ключи / где |
 |---|---|
 | Недельный платный билет по тарифам | `weekly_ticket_1h_enabled = 1`, `weekly_ticket_1h_days = 7`; `weekly_ticket_4h_enabled = 0`, `_4h_days = 7`; `weekly_ticket_8h_enabled = 0`, `_8h_days = 7`. Неиспользованный сгорает в начале следующего интервала или в вс 12:00 UTC (что раньше). Коммит `a486c350` |
-| Промокоды | Один эффект на код: бесплатная смена 1h / 4h / 8h (`PromoRideGrant`) |
+| Промокоды | Один эффект на код: бесплатная смена 1h / 4h / 8h (`PromoRideGrant`, см. [`../spec/promocodes.md`](../spec/promocodes.md)) |
 | Тренировки | Безлимитные; не рейтинговые, без TEN4, без трансляции |
 | Офлайн-режим | Заменён настоящей поездкой EASY (`play.html` → `easy-entry.js`, гостевая сессия) |
 | Платные билеты | Solana Pay в казну (раздел 3) |
 
 ## 6. Рефералка (Convoy)
 
-Детали: `referral_plan.md`, `docs_drafts/referral/README.md`.
+Спецификация: [`../spec/referral.md`](../spec/referral.md) §2.
 
 | Элемент | Решение |
 |---|---|
@@ -118,7 +114,7 @@
 
 ## 7. Аирдроп
 
-Детали: `docs_drafts/airdrop/README.md`.
+Спецификация: [`../spec/ten4.md`](../spec/ten4.md) §4.2 · Pre-season задания: [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §11.
 
 - Season 1: 2M из 8M, потолок 2,000 TEN4 на кошелёк, клейм на TGE (merkle, квитанция `[b"airdrop", campaign, wallet]`, `burn_unclaimed` через 90 дней). Снимок после конца Season 1 (28.02.2027), TGE не раньше марта 2027.
 - **Набор обязательных шагов задаётся на кампанию** (`requiredTasks`). Pre-season (раунд 19): обязательны тестовая поездка + Telegram (канал и чат) + X (подписка на @FreightChainSol + пост об участии с личным кодом); Discord по желанию; очки Pre-season засчитываются в Season 1 (вопрос владельцу — подтвердить). Вехи Convoy M1/M2 требуют обязательный набор текущей кампании.
@@ -128,7 +124,7 @@
 
 ## 8. Anti-sybil и trust
 
-Детали: `decisions_trust.md`, `anti_sybil_wallet_checks.md`, `docs_drafts/referral/MULTI-ACCOUNT.md`.
+Спецификация: [`../spec/anticheat.md`](../spec/anticheat.md) (Приложение D) · проверка топ-20 Pre-season: [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §14.
 
 | Блок | Решение |
 |---|---|
@@ -144,11 +140,11 @@
 | Соцсети | X +20, Discord +15, Telegram +5, потолок 30 |
 | Телеметрия | Стартовые пороги, теневой режим 2 недели, калибровка после запуска |
 | IP | HMAC-SHA256(`IP_HASH_SECRET`, префикс /24 или /48), хранение 90 дней |
-| Отпечаток браузера | Отклонён (`MULTI-ACCOUNT.md`, строка 7) |
+| Отпечаток браузера | Отклонён ([`../spec/anticheat.md`](../spec/anticheat.md) Приложение D) |
 
 ## 9. KYC и налоги
 
-Детали: `tax_thresholds.md`, `decisions_trust.md` D.
+Исследование и расчёты: [`research/tax_thresholds.md`](research/tax_thresholds.md) · спецификация: [`../spec/legal.md`](../spec/legal.md).
 
 | Решение | Ключ |
 |---|---|
@@ -161,7 +157,7 @@
 
 ## 10. Приватность, данные, юридические тексты
 
-Детали: `docs_drafts/legal/PRIVACY.md`, `pr3_update_plan.md` шаг 4f.
+Спецификация: [`../spec/legal.md`](../spec/legal.md) · живые тексты: [`../legal/PRIVACY.md`](../legal/PRIVACY.md), [`../legal/TERMS.md`](../legal/TERMS.md), [`../legal/OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md), [`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md).
 
 | Тема | Решение |
 |---|---|
@@ -174,17 +170,17 @@
 | Возраст | 18+ (или возраст совершеннолетия в юрисдикции участника, если выше) |
 | Аудитория и язык | Англоязычная; для Pre-season добавлены СНГ и русский (RU/EN: лендинг, лобби, аирдроп, страница события; HUD игры — EN) |
 | Cookies | Уведомление без баннера согласия (нет рекламных cookie; ЕС/UK заблокированы) |
-| Terms | **Черновик готов**: `docs/legal/TERMS.md` (EN, шаблон, 28 разделов, 15 пунктов `[LAWYER]`, чек-лист, источники) — на проверку юристу |
+| Terms | **Черновик готов**: [`../legal/TERMS.md`](../legal/TERMS.md) (EN, шаблон, 28 разделов, 15 пунктов `[LAWYER]`, чек-лист, источники) — на проверку юристу |
 | Согласие | Модалка 18+ и Accept при первом подключении; `termsVersion` по кошельку + журнал `player.TermsAcceptance`; при смене версии — повторное согласие, до него 428 `terms_required` на платное, призы, награды и выплаты; тренировки и EASY без согласия |
 | Страницы | `/terms`, `/privacy`, `/rules` на apex (страницы Vite лендинга), ссылки в футере, на экране кошелька, в KYC и аирдропе |
 | Pre-season, вход | Решено: призовая попытка — **только** за обязательные задания аирдропа, другого бесплатного входа нет. Риск: обязательные действия в соцсетях могут считаться неденежным consideration — вопрос сербскому юристу. «Репост» = цитата с личным кодом; обязательный набор (раунд 19) — тест + Telegram (канал и чат) + X подписка + пост об участии с кодом; Discord по желанию |
-| Pre-season | Организатор — владелец-физлицо (без юрлица); короткие правила и уведомление о данных — `docs/legal/PRESEASON_RULES.md`; полные Terms/Privacy — с Season 1 |
-| Official Rules | ✅ Шаблон Season 1 готов в `docs/legal/OFFICIAL_RULES.md` (сверено с `server/src/domain/prize/` и `docs/spec/pool.md`) — на проверку юристу |
+| Pre-season | Организатор — владелец-физлицо (без юрлица); короткие правила и уведомление о данных — [`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md); полные Terms/Privacy — с Season 1 |
+| Official Rules | ✅ Шаблон Season 1 готов в [`../legal/OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md) (сверено с `server/src/domain/prize/` и [`../spec/pool.md`](../spec/pool.md)) — на проверку юристу |
 | Обработчики в политике | Cloudflare, twitterapi.io, Didit, Helius, ipinfo, Chainalysis, PostHog |
 
 ## 11. Инфраструктура
 
-Детали: `pr3_update_plan.md` шаг 4g и шаг 4f п. 6.
+Спецификация: [`../spec/admin_security.md`](../spec/admin_security.md), [`../spec/legal.md`](../spec/legal.md) (`LEG-M-01..03`), [`../tech/configuration.md`](../tech/configuration.md).
 
 | Тема | Решение |
 |---|---|
@@ -198,111 +194,76 @@
 | Bot Fight Mode | Выключен до теста на staging |
 | Сервисы | Helius Developer $49/мес, ipinfo Core, Chainalysis free API, Didit, twitterapi.io |
 
-## 12. План изменений кода
-
-Детали: `pr3_update_plan.md`. Каждый шаг — отдельный коммит (когда владелец разрешит git).
+## 12. План изменений кода и статус гэпов (G1–G21)
 
 | Шаг | Содержание |
 |---|---|
 | 1 | ✅ Влить PR #3 в `main`, сохранить решения из раздела 5 и согласовать `SEASON_WEEKS = 7` + равное деление ничьих в `server/src/domain/prize/` |
-| 2 | Переделка рефералки (`referral_plan.md`) |
+| 2 | Переделка рефералки ([`../spec/referral.md`](../spec/referral.md) §2) |
 | 3 | ✅ Корзина TEN4 8M аирдроп + 4M рефералка в `freightchain_honk` (`pay_referral`, `burn_referral_tail`, `set_airdrop_root`, `claim_airdrop`, `burn_unclaimed`); команда включена (`initialize` с `team_enabled = true`, 24 мес; 40 Rust-тестов + unit-тесты `tokenomics.spec.ts`) |
 | 4 | ✅ Pool v5 = v4 без рефералки (+ аудит `d5678764`, `abd24db7`), единая модель пулов (`unifiedWeekPool`, `capRolloverCents`, потолок 30% бесплатных билетов в `settleBoard`, динамический финал `settleSeasonFinal` на `N` финалистов — **реализовано и протестировано в `programs/freightchain_pools` и `server/src/domain/prize/`**); Solana Pay (`G26`) |
 | 4b–4g | Рейтинг Convoy; сезоны; аирдроп; trust; приватность и гео; Cloudflare |
 | 5 | Тексты и документация |
-| 6 | Тесты — владелец локально |
+| 6 | Тесты — локальный и браузерный контур ([`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md), [`../testing/IMPLEMENTATION_PLAN.md`](../testing/IMPLEMENTATION_PLAN.md)) |
 | 7 | ✅ PR #3 влит в `main` |
 
-**Миграции:** `20261104000000_referral_rework`, `20261104100000_referral_reward`, `20261104200000_seasons`, `20261105000000_prize_sponsor`, `20261105100000_ticket_orders`, `20261105200000_trust`, `20261105300000_tax`, `20261105400000_privacy` (+ `player.TermsAcceptance`), `20261107000000_airdrop`.
+**Запланированные миграции БД (Season 1 / реворк):** `20261104000000_referral_rework`, `20261104100000_referral_reward`, `20261104200000_seasons`, `20261105000000_prize_sponsor`, `20261105100000_ticket_orders`, `20261105200000_trust`, `20261105300000_tax`, `20261105400000_privacy` (+ `player.TermsAcceptance`), `20261107000000_airdrop`.
 
-**Основные ключи** (полные таблицы — `decisions_trust.md` «Итоговые ключи», `referral_plan.md`):
+**Сводка новых ключей `player.GameSetting` (детали в §§5–11 и [`../tech/configuration.md`](../tech/configuration.md)):**
 
 | Группа | Ключи и значения |
 |---|---|
-| Недельный билет | `weekly_ticket_{1h,4h,8h}_enabled` 1/0/0, `_days` 7/7/7 |
-| Рефералка | `referral_pending_ttl_hours` 72, `referral_qualify_window_days` 60, `referral_pending_base/_per_active/_max` 5/2/100, `referral_active_window_days` 30, `referral_ten4_m1_amount/_weeks` 100/2, `_m2_` 50/5, `referral_ten4_referrer_monthly` 1000, `referral_ten4_global_monthly` 60000, `referral_ten4_soft_start_monthly/_months` 30000/3, `referral_min_trust_referrer` 50, `referral_referee_promo_per_referrer_day/_week/_global_week` 3/10/500, `referral_referee_promo_ranked` 0, `referral_count_weekly_grant` 1 |
-| Trust | `trust_threshold` 100, `trust_finish_points/_cap` 15/100, `trust_finish_days_per_week` 2, `trust_fast_paths` `paid,sgt`, `trust_social_cap` 30, `trust_ip_cluster_penalty` 50, `trust_display_mode` `checklist` |
-| Anti-sybil | `antisybil_ip_retention_days` 90, `antisybil_ip_penalty_requires_second_signal` 1, `antisybil_ip_exclude_mobile_asn` 1, `antisybil_telemetry_shadow` 1 |
-| Призы и выплаты | `free_prize_board_cap_bps` 3000, `payout_hold_hours` 72, `payout_kyc_paid_season_cents` 5000 |
-| Аирдроп | `airdrop_min_trust` 50, `airdrop_twitterapi_budget_usd` 100 |
-| Гео и edge | `geo_block_countries`, `geo_block_regions`, `geo_block_us_states_paid`, `turnstile_enabled` 0 |
-| Приватность | `SIGNIN_RETENTION_DAYS=90`, `LOG_RETENTION_DAYS=30`, `LIVE_CHAT_RETENTION_DAYS=90`, `analytics_default_enabled` 1 |
+| Недельный билет (§5) | `weekly_ticket_{1h,4h,8h}_enabled` 1/0/0, `_days` 7/7/7 |
+| Рефералка (§6) | `referral_pending_ttl_hours` 72, `referral_qualify_window_days` 60, `referral_pending_base/_per_active/_max` 5/2/100, `referral_active_window_days` 30, `referral_ten4_m1_amount/_weeks` 100/2, `_m2_` 50/5, `referral_ten4_referrer_monthly` 1000, `referral_ten4_global_monthly` 60000, `referral_ten4_soft_start_monthly/_months` 30000/3, `referral_min_trust_referrer` 50, `referral_referee_promo_per_referrer_day/_week/_global_week` 3/10/500, `referral_referee_promo_ranked` 0, `referral_count_weekly_grant` 1 |
+| Trust и Anti-sybil (§8) | `trust_threshold` 100, `trust_finish_points/_cap` 15/100, `trust_finish_days_per_week` 2, `trust_fast_paths` `paid,sgt`, `trust_social_cap` 30, `trust_ip_cluster_penalty` 50, `trust_display_mode` `checklist`, `antisybil_ip_retention_days` 90, `antisybil_ip_penalty_requires_second_signal` 1, `antisybil_ip_exclude_mobile_asn` 1, `antisybil_telemetry_shadow` 1 |
+| Призы, выплаты и аирдроп (§3, §7, §9) | `free_prize_board_cap_bps` 3000, `payout_hold_hours` 72, `payout_kyc_paid_season_cents` 5000, `airdrop_min_trust` 50, `airdrop_twitterapi_budget_usd` 100 |
+| Гео и приватность (§10, §11) | `geo_block_countries`, `geo_block_regions`, `geo_block_us_states_paid`, `turnstile_enabled` 0, `SIGNIN_RETENTION_DAYS=90`, `LOG_RETENTION_DAYS=30`, `LIVE_CHAT_RETENTION_DAYS=90`, `analytics_default_enabled` 1 |
 
-**Контракты:**
-- pool v5 (**реализован в репо**): убраны `referral_bps`, `referral_share`, `payout_cap`; добавлены `set_pool_rules`, `max_player_share_bps <= 4999`, `paid_tickets_enabled`; `split` из трёх долей (`8500/500/1000`); IDL `metadata.version = 0.5.0`; `Config 167 B`, `Series 132 B`, `Pool 362 B`; деплой на devnet с новым program id — по команде владельца.
-- honk (**реализован в репо**): `AIRDROP = 8M`, `REFERRAL = 4M`, `TEAM_LINEAR_MONTHS = 24` (`team_enabled = true`), `pay_referral`, `burn_referral_tail`, `set_airdrop_root`, `claim_airdrop`, `burn_unclaimed`; `claim_team` и `claim_treasury` без изменений.
+### Сводка гэпов запуска (G1–G21)
 
-## 13. Документы для репозитория
+#### P0 — Блокеры запуска Pre-season (регистрация 02.11, призовая неделя 09–15.11.2026)
 
-| Черновик / Спецификация | Где в репо |
+| # | Где | Статус / Что нужно | Кто |
+|---|---|---|---|
+| **G1** | Инфра: `deploy/nginx/`, `server/src/main.ts` | **Включить прокси Cloudflare (оранжевое облако)**, `set_real_ip_from` только диапазоны Cloudflare, `real_ip_header CF-Connecting-IP`, передать `X-FC-Country: $http_cf_ipcountry` (иначе клиент может подделать `X-FC-Country`) | Код + Владелец (DNS, [`OWNER_TASKS.md`](OWNER_TASKS.md) §1.2) |
+| **G2–G3, G6–G11, G13–G14, G16** | Режим события, правила RU/EN, Telegram+X, ранбук топ-20, словарь RU/EN, гео-статус, 18+/Terms, выплаты USDC, кран devnet | ✅ **Специфицировано** в [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) Часть II (§10–16), [`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md), [`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md). Реализация кода — задачи C2–C8 в [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §7; внешние ключи — [`OWNER_TASKS.md`](OWNER_TASKS.md) §1–3 | Код (C2–C8) + Владелец |
+| **G4 / G4a** | Организатор и юрлицо | ✅ Pre-season проводит владелец как физлицо-организатор (принятый риск, [`research/operator_entity_options.md`](research/operator_entity_options.md) §6–7). К Season 1: выбор юрлица до **01.12.2026**, регистрация до **20.12.2026** | Владелец ([`OWNER_TASKS.md`](OWNER_TASKS.md) §4.1) |
+| **G5** | Юридическая проверка | ⏸ Отложено владельцем до Season 1 (принятый риск). Список вопросов юристу и налоговому консультанту — [`../spec/OPEN.md`](../spec/OPEN.md) §2 | Владелец → юрист к S1 |
+| **G12** | Devnet RPC и кошелёк события | Выделенный Helius devnet RPC (до 02.11) и отдельный кошелёк события на Solana mainnet с `$500 USDC + ~0.15 SOL` (до 09.11) | Владелец ([`OWNER_TASKS.md`](OWNER_TASKS.md) §1.3, §2.1) |
+
+#### P1 / P2 — Задачи к Season 1 (mainnet 11.01.2027) и согласование документации
+
+| # | Где | Статус / Что нужно |
+|---|---|---|
+| **G15** | Токеномика команды в БД | ✅ Контракт `freightchain_honk` готов (`team_enabled = true`, 24 мес); при подключении mainnet-индексатора добавить корзину `team` в `tokenomics.ts` |
+| **G17** | Деплой `freightchain_pools` v5 на devnet | ✅ Код v5 и 163 теста готовы в репо; деплой на devnet с новым program id — по команде владельца ([`../tech/program-deploy.md`](../tech/program-deploy.md)) |
+| **G18** | Расписание недели (вт–вс vs пн–вс) | В [`../spec/pool.md`](../spec/pool.md) `POOL-M-01` целевой формат — вт вечер → вс вечер + 1,5 дня проверки; перед Season 1 синхронизировать параметры пула и текст [`../legal/OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md) |
+| **G19–G20** | Счётчик 44 vs 34 значков cNFT и даты в питч-деке | Перед Season 1 синхронизировать число SVG-значков в `landing/src/pitchdeck/data.js` (`ACH`) и лендинге |
+| **G21** | Валидация секретов при включённых флагах | В `env.schema.ts` требовать секреты (`TURNSTILE_SECRET_KEY`, `TELEGRAM_BOT_TOKEN`, `TWITTERAPI_KEY`, `CHAINALYSIS_API_KEY`) когда соответствующий флаг включён |
+
+## 13. Документы в репозитории
+
+| Область | Актуальный файл в репо |
 |---|---|
-| `docs_drafts/tokenomics/TEN4-v2.md` | `docs/spec/ten4.md` + `docs/spec/tokenomics.md` |
-| `docs_drafts/prize/POOLS.md` | `docs/spec/pool.md` |
-| `docs_drafts/seasons/README.md` | `docs/spec/seasons.md` |
-| `docs_drafts/referral/README.md` | `docs/spec/referral.md` |
-| `docs_drafts/referral/MULTI-ACCOUNT.md` | **Отдельно**: внутренний документ по мультиаккаунтам (`docs/spec/anticheat.md` Приложение D; пороги не раскрываем) |
-| `docs_drafts/airdrop/README.md` | `docs/spec/airdrop.md` |
-| `docs/legal/PRIVACY.md` | Готов черновик → публичная страница `/privacy` после проверки юристом |
-| `docs/legal/TERMS.md` | Готов черновик → страница `/terms` после проверки юристом |
-| `docs/legal/OFFICIAL_RULES.md` | ✅ Готов черновик Season 1 под единую модель пулов и динамическую таблицу финала → `/rules` после проверки юристом |
-| `docs/legal/PRESEASON_RULES.md` + `docs/legal/PRESEASON_RULES_RU.md` | ✅ Готовы правила Pre-season (EN + RU + русская выжимка Terms/Privacy) |
-| `docs/plan/PRESEASON_SPEC_AND_RUNBOOK.md` | ✅ Техническая спецификация и операционный ранбук Pre-season (G2, G6–G11, G13–G14, G16) |
-| `docs/plan/OWNER_TASKS.md` | ✅ Единый чек-лист внешних аккаунтов, ключей, настроек и действий владельца |
+| Токеномика TEN4 и гараж | [`docs/spec/ten4.md`](../spec/ten4.md), [`docs/tech/ten4/index.html`](../tech/ten4/index.html) |
+| Пулы, призы и контракт эскроу | [`docs/spec/pool.md`](../spec/pool.md), [`docs/tech/pool-program/index.html`](../tech/pool-program/index.html), [`docs/tech/program-deploy.md`](../tech/program-deploy.md) |
+| Реферальная программа (Convoy) | [`docs/spec/referral.md`](../spec/referral.md) |
+| Античит, телеметрия и защита от сибил / TrustScore | [`docs/spec/anticheat.md`](../spec/anticheat.md) (вкл. Приложение D), [`docs/tech/anti-cheat/index.html`](../tech/anti-cheat/index.html) |
+| План, спецификация и ранбук Pre-season | [`docs/plan/DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) (Части I и II) |
+| Внешние задачи владельца | [`docs/plan/OWNER_TASKS.md`](OWNER_TASKS.md) |
+| Юридические документы и манифест | [`docs/spec/legal.md`](../spec/legal.md), [`docs/legal/PRIVACY.md`](../legal/PRIVACY.md), [`docs/legal/TERMS.md`](../legal/TERMS.md), [`docs/legal/OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md), [`docs/legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md), [`docs/legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md) |
 
 ## 14. Открытые вопросы и задачи владельца
 
-> See [docs/spec/OPEN.md](../spec/OPEN.md): this section is superseded. The text below is kept.
+- **Единый реестр открытых вопросов (юрист, налоги, калибровка после запуска):** [`docs/spec/OPEN.md`](../spec/OPEN.md) (заменяет прежний дублирующий список в этом разделе и удалённый `OPEN_QUESTIONS.md`).
+- **Единый чек-лист внешних задач владельца по дедлайнам:** [`docs/plan/OWNER_TASKS.md`](OWNER_TASKS.md).
 
-Полный список внешних задач владельца — **`docs/plan/OWNER_TASKS.md`**. Сводка по открытым вопросам — `docs/plan/OPEN_QUESTIONS.md`.
+## 15. Журнал аудита планов (раунды 12–19)
 
-| # | Вопрос | Статус / Кто решает |
-|---|---|---|
-| 1 | Official Rules, промо-механика рефералки, аирдроп, неофициальный API X (twitterapi.io) | ⏳ Юрист к Season 1 (`OWNER_TASKS.md` §4.3) |
-| 2 | Финализация `PRIVACY.md`, `TERMS.md`, `OFFICIAL_RULES.md` (реквизиты юрлица, адрес, контакты, даты) | ⏳ Юрист + владелец к Season 1 (`OWNER_TASKS.md` §4.1, §4.3) |
-| 2в | `TERMS.md`: 15 пунктов `[LAWYER]` | ⏳ Юрист к Season 1 (`OWNER_TASKS.md` §4.3) |
-| 2г | Official Rules под единую модель пулов и динамическую таблицу финала | ✅ Написано в `docs/legal/OFFICIAL_RULES.md` → проверка юристом к Season 1 |
-| P1 | ✅ Pre-season — без юрлица (организатор — владелец-физлицо). Выбор и регистрация юрлица для Season 1 — до 01.12.2026 | ⏳ Владелец (`OWNER_TASKS.md` §4.1) |
-| P2 | ⏸ Юрист по Pre-season отложен владельцем (принятый риск); к Season 1 — проверка правил и списка стран | ⏳ Владелец → юрист (`OWNER_TASKS.md` §4.3) |
-| P3 | Кошелёк события Pre-season: $500 USDC + ~0.15 SOL на Solana mainnet, адрес в правилах — до 09.11.2026 | ⏳ Владелец (`OWNER_TASKS.md` §2.1) |
-| P8 | ✅ Обязательный набор Pre-season: тест MEDIUM/HARD + Telegram (канал и чат) + X (подписка + пост с кодом) | Решено |
-| P9 | ⏸ Сербский юрист / налоговый консультант — отложено владельцем до Season 1 | ⏳ Владелец (`OWNER_TASKS.md` §3, §4.3) |
-| P7 | ✅ Проверка топ-20: строгий анти-сибил + ручная проверка по `PRESEASON_SPEC_AND_RUNBOOK.md` §5; Chainalysis перед выплатой | Решено |
-| P4 | ✅ Очки шагов Pre-season засчитываются в аирдроп Season 1 (пул 2M TEN4, потолок 2,000 TEN4 на кошелёк) | Решено |
-| P5 | Назначение модераторов и антиспам-бота в RU Telegram-канал и чат | ⏳ Владелец (`OWNER_TASKS.md` §1.1) |
-| P6 | ✅ В Pre-season только RU + EN; второй devnet-ивент в декабре опционален по итогам пост-мортема 24.11 | Решено |
-| 2а | ✅ В 7 штатах США блокируются только платные билеты, призы, аирдроп и реферальные награды (`geo_block_us_states_paid`) | Решено (финально юрист к S1) |
-| 2б | Санкционный список стран/регионов к Season 1 | ⏳ Юрист (`OWNER_TASKS.md` §4.3) |
-| 3 | Налоговый консультант США (1099-MISC vs W-2G, нерезиденты 30% / 1042-S, gross/net) | ⏳ Налоговый консультант к Season 1 (`OWNER_TASKS.md` §4.2–4.3) |
-| 4 | Суммы плат World ID (для Season 2) | Позже (Season 2) |
-| 7 | Доля 404 у Helius `funded-by` | Замер после запуска |
-| 8 | Калибровка порогов телеметрии после 2 недель тени | Команда после запуска |
-| — | Мультисиги Squads казны и команды (`team_recipient`) до `initialize` на mainnet | ⏳ Владелец (`OWNER_TASKS.md` §4.1) |
+- **Раунд 12:** в токеномике `freightchain_honk` зафиксированы 100M supply и корзина команды (клифф 12 мес + 24 мес линейно, `claim_team`), в `PRIVACY.md` зафиксировано отсутствие сторонних стриминг-интеграций, финальная неделя Season 1 = неделя 7, выбран Solana Pay вместо кассы.
+- **Раунд 13:** добавлен черновик [`docs/legal/TERMS.md`](../legal/TERMS.md), сверен с `PRIVACY.md` (гео, соцсети, античит, чат 90 дней, отсутствие браузерного отпечатка) и правилами пулов/рефералки.
+- **Раунд 14:** принят Pre-season на devnet ([`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) D1–D12); старт Season 1 на mainnet перенесён на **11.01–28.02.2027** (выплаты с 02.03, перерыв до 14.03, Season 2 с 15.03.2027); TGE не раньше марта 2027.
+- **Раунды 15–16:** ничьи на всех досках и в финале делятся поровну без тай-брейка по адресу кошелька; при равенстве суммы мест на границе отбора в финал проходят все (`settleSeasonFinal` на `N` финалистов).
+- **Раунд 17:** Pre-season проводит владелец как физлицо-организатор (налоговый резидент Сербии, см. [`research/operator_entity_options.md`](research/operator_entity_options.md) §6–7) с выплатой призов лично с выделенного кошелька события; налоговые формы США в Pre-season не собираются; санкционная проверка Chainalysis обязательна; выбор юрлица для Season 1 — до 01.12.2026.
+- **Раунды 18–19:** призовая попытка Pre-season выдаётся только за обязательный набор заданий кампании (тестовая поездка MEDIUM/HARD + Telegram канал/чат + X подписка и пост с кодом); без юрлица, юриста и Didit до Pre-season (принятый риск владельца); проверка топ-20 — строгий анти-сибил + ручная проверка по ранбуку [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §14.
 
-## 15. Журнал аудита (раунд 12)
-
-| # | Найдено | Исправлено |
-|---|---|---|
-| 1 | Команда «опционально», ветка supply 92M, «24 или 36 месяцев» | `ten4_tokenomics_v2.md`, `TEN4-v2.md`: включена, 12 + 24, 100M, механизм `claim_team` |
-| 2 | Тесты LiteSVM «100M и 92M» | `pr3_update_plan.md` шаг 3, `ten4_tokenomics_v2.md`: только 100M + тест `claim_team`; параметры `initialize` и проверка суммы с `REFERRAL` |
-| 3 | `[DECIDE]` о стримах в PRIVACY | П. 13: «интеграции стриминга нет, обновим при появлении»; заметка 12 |
-| 4 | В OPEN_QUESTIONS нет решений по команде и Twitch | Раздел «Решено, раунд 12»; строки п. 2 и итогов обновлены |
-| 5 | В плане не зафиксированы решения PR #3: недельный билет 1h/4h/8h + дни, конкурс без лотереи, промокоды, безлимитные тренировки, EASY вместо офлайна | Таблица в `pr3_update_plan.md` шаг 1 (сверено с `a486c350`) |
-| 6 | `pool_unified_plan.md`: «финал копится до недели 8» (Season 1 — 7) | Неделя N, Season 1 — 7; 10% финальной недели в финал той же недели |
-| 7 | `pool_unified_plan.md`: формулировки «если выбран» про кассу и Solana Pay | Отмечено как решено; «касса» отклонена |
-| 8 | `anti_sybil_wallet_checks.md`: упоминание библиотеки отпечатка и ложная ссылка на «разделы 1–3» | Заменено ссылкой на `MULTI-ACCOUNT.md`, строка 7 |
-
-Проверено без расхождений: эры и лимиты рефералки, слоты, 72 ч / 60 дней, M1/M2, пулы (0.4R, $2,500, 85/5/10, 25%, $1,000), Season 1 (7 недель; на момент раунда 12 — 02.11, финал 14–20.12, перерыв до 11.01; с раунда 14 — 11.01–28.02.2027), Solana Pay, Squads, Didit / $50 / 72 ч, налоговые ключи, IP HMAC 90 дней, Cloudflare (5 решений), twitterapi.io ($100), 18+, cookies. Слово «fingerprint» осталось только в `MULTI-ACCOUNT.md` строка 7 и в PRIVACY («не собираем»).
-
-**Раунд 13:** добавлен `docs_drafts/legal/TERMS.md`. Сверено с PRIVACY (гео, соцсети, античит, третьи стороны, чат 90 дней, без отпечатка) и с планами (билеты, лимит 30%, KYC $50, удержание 72 ч, 1099 $2,000, Convoy, TEN4 100M, аирдроп 2,000 и 90 дней). В `pr3_update_plan.md` шаг 4f п. 7 добавлены маршруты страниц, `TERMS_VERSION`, журнал согласий, API и `TermsGuard`; в PRIVACY заметка 13 обновлена; в `OPEN_QUESTIONS.md` — п. 2в.
-
-**Раунд 14:** принят Pre-season на devnet (D1–D12, `devnet_mini_launch_plan.md`). Season 1 перенесён на 11.01–28.02.2027 (выплаты с 02.03, перерыв до 15.03, Season 2 с 15.03.2027); TGE не раньше марта 2027. Обновлены: `docs_drafts/seasons/README.md`, `docs_drafts/airdrop/README.md`, `docs_drafts/prize/POOLS.md`, `docs_drafts/referral/README.md`, `docs_drafts/referral/MULTI-ACCOUNT.md`, `docs_drafts/tokenomics/TEN4-v2.md`, `pool_unified_plan.md`, `pr3_update_plan.md`, `referral_plan.md`, `ten4_tokenomics_v2.md`, `decisions_trust.md`, `OPEN_QUESTIONS.md`, `README.md`, дата в `TERMS.md` §15.1. «Все шаги аирдропа» теперь = обязательный набор кампании.
-
-**Раунд 15:** решено — перерыв Season 1 01–14.03.2027, Season 2 с 15.03.2027; ничьи делятся поровну без тай-брейка по адресу на всех досках (не только Pre-season).
-
-**Раунд 16:** решено — при равенстве суммы мест на границе отбора в финал проходят все; призы финала по местам финала, ничьи делятся поровну.
-
-**Раунд 17:** Pre-season — организатор владелец-физлицо, призы лично с кошелька события, налоговых форм нет, санкционная проверка остаётся; правила `PRESEASON_RULES.md`; юрлицо — до Season 1 (выбор до 01.12.2026).
-
-**Раунд 18:** решено — попытка только через задания аирдропа, без альтернативного входа; риск consideration — в вопросы сербскому юристу; обязательный набор Pre-season — подтвердить.
-
-**Раунд 19:** X в Pre-season обязателен (подписка + пост об участии с кодом; twitterapi.io ≈ $0.005 на участника); принятые владельцем риски — без юрлица, юриста и Didit до Pre-season; проверка топ-20 — анти-сибил + ручная; призы для Украины — как в плане.

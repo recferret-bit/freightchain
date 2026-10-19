@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analytics review · pass 1 of 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../../tech/verified-play/style.css">
+<link rel="stylesheet" href="../analytics.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">Freight Chain · analytics review</span>
+  <h1>Pass 1 of 3</h1>
+  <p class="lede">File 10 · 15 Oct 2026. Coverage. The four surfaces already had events. The pitch deck's 70/20/10 bar did not.</p>
+  <p class="soft"><a href="../index.html">Product analytics</a> · <a href="9.html">Previous review, pass 3</a></p>
+</header>
+
+<section>
+  <h2>What changed</h2>
+  <p>Opening the money slide's 70/20/10 bar now sends <code>pitchdeck_interaction</code> with <code>what=split</code>, once per load. Hover and tap both open the bar through <code>expand()</code>, so the click list never saw it.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Surface</th><th>Found</th><th>Edited</th></tr></thead>
+      <tbody>
+        <tr><td>Landing</td><td>Chapters, hero, demo, FAQ, socials, blink, storybook, wallet, invite, and the footer pitch-deck link already send. In-page anchors stay silent.</td><td>No change.</td></tr>
+        <tr><td>Whitepaper</td><td><code>whitepaper_viewed</code>, PLAY, the stream chapter's game link, and the model viewer. Contents anchors, the LANDING button, and the footer home link stay silent.</td><td>No change.</td></tr>
+        <tr><td>Lobby</td><td>Tabs, buy, redeem, garage, agreements, boards, sign-out, and the waiting-ride banner already send. Admin stays out of this review.</td><td>No change.</td></tr>
+        <tr><td>Gameplay</td><td>Online <code>?ride=</code> still sends the page, start, pause, end, share, and cab links. Offline play, the viewer, tutorial SKIP, and the watch page's chat, donations, and effects stay silent.</td><td>No change.</td></tr>
+        <tr><td>Pitch deck</td><td>Five events already on the allowlist. Toys in the click list match the explainer, except the 70/20/10 bar. The sneak peek is a <code>.fx .shot</code>, so it already counts as <code>card</code>. The header ticker and the turn-sideways skip are chrome.</td><td><code>what=split</code> from <code>expand()</code>. Explainer row updated.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <p><b>Added.</b> No new name. <code>split</code> is a new value of <code>pitchdeck_interaction.what</code>.</p>
+  <p><b>Removed.</b> None.</p>
+  <p><b>Explainer.</b> The <code>pitchdeck_interaction</code> row. Eyebrows stay 50 client and 27 server. The inventory at the start of this pass exited 0.</p>
+</section>
+
+<section>
+  <div class="callout">
+    <b>Production dashboards were not opened, edited, or sent a batch.</b>
+    <span><code>posthog-test</code> and <code>posthog-prod</code> were not run. No insight was created or pinned. Dashboard 1006663 was not touched.</span>
+  </div>
+</section>
+
+<section>
+  <h2>Next pass</h2>
+  <p>The relay stamps <code>source=client</code> on every browser event, and the adapter rewrites any other <code>source</code> to <code>server</code>. <code>pitchdeck_viewed</code> sends <code>source</code> as landing, whitepaper, homescreen, direct, or other. <code>ride_paused</code> and <code>ride_unpaused</code> send <code>source</code> as key, visibility, or bail. Those values do not survive. Pass 2 renames them so the plane marker stays <code>source</code>. It also checks that funnel 11 still names live events, and that the <code>web_vital</code> property cell lists <code>pitchdeck</code>.</p>
+</section>
+</div>
+</body>
+</html>

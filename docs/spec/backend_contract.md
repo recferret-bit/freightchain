@@ -116,7 +116,7 @@ API-M-01…13 → запланированные id API-T-01…13. 13 MUST. Id �
 #### 1.4 Схемы
 - **Вход проверяется полностью:** у 116 из 149 маршрутов zod-схемы на body, query или params. Остальные 33 входа не принимают: GET без параметров и 4 POST (`logout` ×3, `auth/pair`). Схемы лежат рядом с контроллерами (`presentation/*/dto/*.dto.ts`).
 - Лишние поля во входе **молча отбрасываются**: `.strict()` стоит только у `garage.loadout`.
-- **Выход ничем не проверяется:** ответы описаны TS-интерфейсами (`Promise<XxxDto>`, ≈ 87 интерфейсов `*Dto` в `domain/`). Во время работы их никто не сверяет, OpenAPI нет. В [`docs/backend-architecture.md`](../backend-architecture.md) прямо записано, что «OpenAPI/Yaak generators… deliberately not adopted».
+- **Выход ничем не проверяется:** ответы описаны TS-интерфейсами (`Promise<XxxDto>`, ≈ 87 интерфейсов `*Dto` в `domain/`). Во время работы их никто не сверяет, OpenAPI нет. В [`docs/tech/backend-architecture.md`](../tech/backend-architecture.md) прямо записано, что «OpenAPI/Yaak generators… deliberately not adopted».
 - Для каждого класса Nest обязателен unit-спек (`test/architecture/test-pyramid.spec.ts`): у всех 31 контроллера есть `*.http.controller.spec.ts`.
 
 

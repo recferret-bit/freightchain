@@ -1,4 +1,4 @@
-// Verified play, the DEEP pass – every check of the verdict (docs/verified-play/index.html), the upload protocol, the visibility of verdicts, the admin's hand on a
+// Verified play, the DEEP pass – every check of the verdict (docs/tech/verified-play/index.html), the upload protocol, the visibility of verdicts, the admin's hand on a
 // flagged ride, the profile in a real browser, the retention sweep and the bulk re-judge. The sibling e2e-verified-play.mjs covers the dispatch prompts (a person
 // and a bot in Chrome, instant answers); THIS one runs with the prompts OFF (CHALLENGE_INTERVAL_SECONDS=0) so each recording check is judged on its own.
 //   A. one driven shift per case, all at once, over the API (the game's own batch shape + hash chain, like scripts/sim-rides.mjs) → the exact reason codes:

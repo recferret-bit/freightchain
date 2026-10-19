@@ -1,6 +1,6 @@
 import { EFFECTS, type EffectId } from './live-rules.js';
 
-/** The live-streams feature flags as configured (server env LIVE_*; docs/configuration.md). 'free' = only on free test rides, never on paid ones. */
+/** The live-streams feature flags as configured (server env LIVE_*; docs/tech/configuration.md). 'free' = only on free test rides, never on paid ones. */
 export interface LiveFlags {
   chat: 'all' | 'free' | 'off';
   donations: boolean;

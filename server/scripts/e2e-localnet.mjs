@@ -1,6 +1,6 @@
 // The money flows end to end on a LOCAL chain – real program transactions, real lamports, every balance asserted. Started by .claude/skills/localnet-e2e/run.sh
 // (phase 1: fixtures made by the real program; phase 2: validator + program + the baked accounts + the server in program mode on a throwaway DB).
-// env: BASE, RPC, KEYS (scratch keypair dir), FIXTURES (phase 1's fixtures.json), CHROME_PORT. Explained in docs/localnet-e2e/index.html.
+// env: BASE, RPC, KEYS (scratch keypair dir), FIXTURES (phase 1's fixtures.json), CHROME_PORT. Explained in docs/tech/localnet-e2e/index.html.
 //   pool A (1h, min 3): lobby buy ×2 (the wallet signs AND sends, it pays its own fee + Ticket rent) → Node buy → live → a sponsorship → 3 verified rides → play deadline → ranked payouts → close (+ sponsorship)
 //   pool B (4h, min 5): two Node buys → missed goal, nobody failed it → lobby CLAIM REFUND (fail_pool + refund) → API refund → anyone closes →
 //                       the 4h tier is not on sale: SOON card, POST /api/rides 409 tier_not_on_sale

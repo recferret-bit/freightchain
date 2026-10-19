@@ -38,7 +38,7 @@ Console: `__game.trip`, `__game.setTrip('8h')` then `__game.startRide()`.
 | `finish` | `sim/physics.js` (the `st.complete` line) | the shift ends by itself as a WIN (green `winFx` stamp, `ui/fail-fx.js`) the moment it is complete; otherwise the road goes on until P → END SHIFT |
 
 The shift **length** and **finish line** are the server's, stored on the ride when it is created: `FREE_RIDE_SECONDS` (env, default 180 = the EASY level's length – four places, see
-`docs/configuration.md`; production's `deploy/.env` sets it too – it MUST read 180 there), the paid lengths in `server/src/domain/rides/ride-tier.ts`, the distance in
+`docs/tech/configuration.md`; production's `deploy/.env` sets it too – it MUST read 180 there), the paid lengths in `server/src/domain/rides/ride-tier.ts`, the distance in
 `server/src/domain/rides/ride-rules.ts` (`completeDist` = K × 28 m/s × seconds; `COMPLETE_DIST_K` 0.5 for paid, `FREE_COMPLETE_DIST_K` 0.25 for the old free run). A free LEVEL's shift is
 `FREE_RIDE_SECONDS` × its `multiple` and its K its own (`ride-trip.ts` `FREE_LEVELS`: EASY × 1 / 0.3 = 180 s · 1512 m, MEDIUM × 5⁄3 / 0.4 = 300 s · 3360 m, HARD × 10 / 0.4 = 1800 s · 20 160 m; `freeLevelSeconds` rounds to whole seconds). Level-check was not run for `free-3c`.
 `client/js/online.js` copies both onto `CFG`; `devRun(id)` keeps `CFG.RIDE_MIN_SECONDS` for a trip without `seconds`.

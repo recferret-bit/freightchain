@@ -2,13 +2,13 @@
 
 This workspace also contains `freightchain_honk` (local only, not the devnet prize program), tested with `cargo test -p freightchain_honk`.
 
-Escrowed prize pools on Solana: an assurance contract for skill prizes. Program id (devnet): `8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p`, the value in `declare_id!`, `Anchor.toml`, and the IDL `address`. Its keypair is `deploy/secrets/devnet/program-id.json` of the main checkout (gitignored; copied to `target/deploy/freightchain_pools-keypair.json` for `anchor keys sync`). A new id means `anchor keys sync`, a rebuild, and a new pin (`docs/program-deploy.md`). The v1 id `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx` is still on devnet. Its pools are finished, and the site does not sell into it.
+Escrowed prize pools on Solana: an assurance contract for skill prizes. Program id (devnet): `8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p`, the value in `declare_id!`, `Anchor.toml`, and the IDL `address`. Its keypair is `deploy/secrets/devnet/program-id.json` of the main checkout (gitignored; copied to `target/deploy/freightchain_pools-keypair.json` for `anchor keys sync`). A new id means `anchor keys sync`, a rebuild, and a new pin (`docs/tech/program-deploy.md`). The v1 id `9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx` is still on devnet. Its pools are finished, and the site does not sell into it.
 
 **This source is v5** (v4's audit fixes, with the referral leg removed and admin pool rules snapshotted per pool – section "v5" below): built, **not deployed**. It is a fresh program id, not an in-place upgrade of `8No42h…`. Devnet still runs v3. Do not deploy without the owner.
 
 Core instructions only; the phase-2 session / deposit instructions (plan 2.6 / 2.10) are not built.
 
-**v2 (Oct 10): the pool day.** Every pool has a SALE window (ends at `prep_deadline`, for an Open AND an Active pool – under the minimum the pool can only fail and refund), a PLAY window (`play_deadline`: rides count until then) and a REVIEW window (`payout_at`: no prize is paid and the pool is not closed before it – not even by the admin). A per-tier **series** written by the admin (`set_series`) lets anyone (the server's crank) open the next pool on a fixed grid (`open_next_pool`); the 1 h tier opens one a day: 24 h on sale, rides count 2 h more, 48 h of review. A **payout key** named by the admin (`set_payout_authority`) may only `pay_prize` and `close_pool` after `payout_at` (v4 changed its role: "The payout key" below) – the server's payout job holds it; the admin key stays off the server. Config and Pool grew (Config 146, Pool 200 bytes), so v1 accounts do not decode with v2: deploy v2 under a **fresh program id** (all devnet v1 pools are terminal) – `docs/program-deploy.md`.
+**v2 (Oct 10): the pool day.** Every pool has a SALE window (ends at `prep_deadline`, for an Open AND an Active pool – under the minimum the pool can only fail and refund), a PLAY window (`play_deadline`: rides count until then) and a REVIEW window (`payout_at`: no prize is paid and the pool is not closed before it – not even by the admin). A per-tier **series** written by the admin (`set_series`) lets anyone (the server's crank) open the next pool on a fixed grid (`open_next_pool`); the 1 h tier opens one a day: 24 h on sale, rides count 2 h more, 48 h of review. A **payout key** named by the admin (`set_payout_authority`) may only `pay_prize` and `close_pool` after `payout_at` (v4 changed its role: "The payout key" below) – the server's payout job holds it; the admin key stays off the server. Config and Pool grew (Config 146, Pool 200 bytes), so v1 accounts do not decode with v2: deploy v2 under a **fresh program id** (all devnet v1 pools are terminal) – `docs/tech/program-deploy.md`.
 
 ## Build and test
 
@@ -25,7 +25,7 @@ npm run program:idl        # copies target/idl/freightchain_pools.json -> idl/
 
 - **Deploy only that `.so`.** `anchor build --arch v0` on the host gives different bytes (a89fa844… vs 055e337c… for the same source on 2026-10-08, before the initialize fix) and would never verify.
 - A changed program, `Cargo.lock`, pinned Solana version or program id (`anchor keys sync`) changes the hash: rerun with `UPDATE_PIN=1` and commit the new pin with the change.
-- Deploying and operating it (keys, `initialize` by the upgrade authority naming the admin, upgrades, pause, authority rotation): `docs/program-deploy.md`.
+- Deploying and operating it (keys, `initialize` by the upgrade authority naming the admin, upgrades, pause, authority rotation): `docs/tech/program-deploy.md`.
 - Public verification (`solana-verify verify-from-repo … --mount-path programs --library-name freightchain_pools --commit-hash <sha>`) writes a PDA on chain signed by the upgrade authority and needs the repo public – the owner's step, after the deploy.
 
 **`--arch v0` is required.** `anchor build` 1.2.1 defaults to SBPF **v3**, which LiteSVM 0.10 (the newest version that compiles on Rust 1.89) refuses to load (`InvalidAccountData` from `add_program`; the plan's `anchor init` probe fails the same way). The tests assert the ELF flags and say so. v0 is accepted by every cluster; if the final deploy should be v3, build that artifact separately for the deploy only.
@@ -120,7 +120,7 @@ Emitted with `emit!` (`Program data: <base64>`: 8-byte IDL discriminator + borsh
 
 ## v3 – attestations, pledges, the road seed on chain
 
-An in-place upgrade of the v2 program id: `Config` and `Series` are unchanged, `Pool` grew (a v2 Pool account no longer deserializes – every v2 pool must be settled before the upgrade, see `docs/program-deploy.md` "v3").
+An in-place upgrade of the v2 program id: `Config` and `Series` are unchanged, `Pool` grew (a v2 Pool account no longer deserializes – every v2 pool must be settled before the upgrade, see `docs/tech/program-deploy.md` "v3").
 
 | account | PDA seeds | data bytes (+8) | notes |
 |---|---|---|---|
@@ -151,7 +151,7 @@ Trust, said plainly: an attestation is the server's verdict that the payout key 
 
 ## v4 – winners root, ride attestations, sponsor receipts, `seal_road`, floors (audit WP5)
 
-An in-place upgrade of the v3 id, **settle-first**: `Pool` grew (a v3 Pool no longer deserializes – every v3 pool terminal before the deploy; `close_ticket` / `close_attestation` read a v3 pool's status from its raw bytes so its rents still come back) and `Config` grew (`migrate_config_v4` once, right after the deploy; until then every step that relies on a floor refuses with `ConfigNotMigrated`). Design: `docs/reviews/audit-2026-10/fix-plan.md` "WP5 design"; runbook: `docs/program-deploy.md` "v4". Sizes below are computed from the structs (`INIT_SPACE`).
+An in-place upgrade of the v3 id, **settle-first**: `Pool` grew (a v3 Pool no longer deserializes – every v3 pool terminal before the deploy; `close_ticket` / `close_attestation` read a v3 pool's status from its raw bytes so its rents still come back) and `Config` grew (`migrate_config_v4` once, right after the deploy; until then every step that relies on a floor refuses with `ConfigNotMigrated`). Design: `docs/insights/reviews/audit-2026-10/fix-plan.md` "WP5 design"; runbook: `docs/tech/program-deploy.md` "v4". Sizes below are computed from the structs (`INIT_SPACE`).
 
 | account | PDA seeds | data bytes (+8) | notes |
 |---|---|---|---|

@@ -89,4 +89,4 @@ Each theme has `weather: { ambient °C (day), snow 0..1 }` (route66 26/0, stuart
 - Cockpit: `nightGrade()` in `cockpit/index.js` darkens only opaque cockpit pixels (`source-atop`; glass/mirror holes stay clear), brighter around the gauges; cab light (C) warms it. New single-sided materials still need the mirror flip list.
 
 
-Entity review safeguards: validation rejects malformed shapes and non-finite literals, checks resolved material slots and painter availability through referenced parts, caps facade grids at 32 × 32 and bounds glow/beam/banner sizes. The client diff falls back to a linear comparison above two million LCS cells. See `docs/reviews/entity-editor-security.md` for the three-pass security review.
+Entity review safeguards: validation rejects malformed shapes and non-finite literals, checks resolved material slots and painter availability through referenced parts, caps facade grids at 32 × 32 and bounds glow/beam/banner sizes. The client diff falls back to a linear comparison above two million LCS cells. See `docs/insights/reviews/entity-editor-security.md` for the three-pass security review.

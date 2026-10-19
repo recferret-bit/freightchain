@@ -5,7 +5,7 @@ description: Test Freight Chain's live streams, replays and their LIVE_* feature
 
 # Replays and live streams – end to end
 
-Everything this feature does is described in `docs/replay-and-donations/index.html` (read it first if the feature is new to you). This skill proves it works in a real browser.
+Everything this feature does is described in `docs/tech/replay-and-donations/index.html` (read it first if the feature is new to you). This skill proves it works in a real browser.
 
 ## Run
 
@@ -64,4 +64,4 @@ Say plainly: which checks passed (the `ok` lines), which failed (the `FAIL` line
 - `server did not start` – read the log path it prints; usually PostgreSQL is down (`npm run db:up`) or a migration failed.
 - The driver never uploads its first batch – the game didn't boot or START failed: look at the driver's page errors in the output.
 - A seek / night check flakes – headless frame rates vary; rerun once before digging. Real failures repeat.
-- Fixing the feature: the code map is at the end of `docs/replay-and-donations/index.html`; server unit / integration specs for it live under `server/test/**/live*`.
+- Fixing the feature: the code map is at the end of `docs/tech/replay-and-donations/index.html`; server unit / integration specs for it live under `server/test/**/live*`.

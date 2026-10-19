@@ -1,7 +1,7 @@
 # Owner Tasks: External Accounts, Configurations, Secrets & Manual Actions
 
 > **Purpose:** This is your single consolidated checklist of everything that **requires external accounts, third-party API keys, DNS/Cloudflare setup, wallets, legal/entity registration, or manual decisions/actions from you (the owner)**.
-> All internal product rules, math formulas, RU/EN legal templates (`PRESEASON_RULES.md`, `PRESEASON_RULES_RU.md`, `OFFICIAL_RULES.md`, `TERMS.md`, `PRIVACY.md`), and engineering/operational runbooks (`PRESEASON_SPEC_AND_RUNBOOK.md`) have been completed and reviewed in the repo.
+> All internal product rules, math formulas, RU/EN legal templates ([`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md), [`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md), [`../legal/OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md), [`../legal/TERMS.md`](../legal/TERMS.md), [`../legal/PRIVACY.md`](../legal/PRIVACY.md)), and engineering/operational runbooks ([`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) Part II) have been completed and reviewed in the repo.
 
 ---
 
@@ -33,7 +33,7 @@ Provision the following external credentials and add them to production `.env` (
 - [ ] **Optional Discord OAuth (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`):**
   - Only needed if you enable the optional Discord airdrop task during Pre-season; otherwise leave disabled until Season 1.
 
-### 1.3 Cloudflare & Infrastructure Setup (`G12`, `G13`)
+### 1.3 Cloudflare & Infrastructure Setup (`MASTER_PLAN.md` §12 `G1`, `G12`)
 - [ ] **Put Domain Behind Cloudflare Proxy (Orange Cloud):**
   1. Enable **IP Geolocation** in Cloudflare (`Network` → `IP Geolocation: ON`) so `CF-IPCountry` is sent on all requests.
   2. Enable **Managed Transforms → Add visitor location headers** so `cf-region-code` (US state code) is sent on all requests.
@@ -54,7 +54,7 @@ Provision the following external credentials and add them to production `.env` (
   3. Put the public wallet address into `PRESEASON_RULES.md` §11, `PRESEASON_RULES_RU.md` §11, and the Event page banner.
 
 ### 2.2 Runtime Admin Settings Verification
-- [ ] Sign in to `admin.<domain>` and verify the active `player.GameSetting` rows match `docs/plan/PRESEASON_SPEC_AND_RUNBOOK.md` §2 (`event_mode_enabled = 1`, `paid_tickets_enabled = 0`, `referral_referee_promo_enabled = 0`, `referral_ten4_enabled = 0`, `event_seed_override` set).
+- [ ] Sign in to `admin.<domain>` and verify the active `player.GameSetting` rows match [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §10 (`event_mode_enabled = 1`, `paid_tickets_enabled = 0`, `referral_referee_promo_enabled = 0`, `referral_ten4_enabled = 0`, `event_seed_override` set).
 
 ---
 
@@ -63,13 +63,13 @@ Provision the following external credentials and add them to production `.env` (
 - [ ] **Chainalysis API Key (`CHAINALYSIS_API_KEY`):**
   - Generate a free API key at `https://www.chainalysis.com/free-cryptocurrency-sanctions-screening-tools/` to screen the Top-20 winner wallets before payout.
 - [ ] **Manual Top-20 Review (Sun 15 Nov 12:00 UTC – Mon 16 Nov 12:00 UTC):**
-  - Follow `docs/plan/PRESEASON_SPEC_AND_RUNBOOK.md` §5 (check 10 Hz verdicts, watch Top-10 replays, check IP-prefix/funding clusters, re-verify TG & X tasks, publish provisional standings).
+  - Follow [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §14 (check 10 Hz verdicts, watch Top-10 replays, check IP-prefix/funding clusters, re-verify TG & X tasks, publish provisional standings).
 - [ ] **Handle Appeals (Mon 16 Nov 12:00 UTC – Tue 17 Nov 12:00 UTC):**
   - Review any player appeals submitted within the 24h window.
 - [ ] **Execute Mainnet `$500 USDC` Payouts & Publish Report (Tue 17 Nov 2026):**
-  - Follow `docs/plan/PRESEASON_SPEC_AND_RUNBOOK.md` §6 (send `$100 / $70 / $50 / 2×$30 / 5×$20 / 10×$12 USDC`, record tx signatures, and post the Public Payout Report on the site, Telegram, and X).
+  - Follow [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §15 (send `$100 / $70 / $50 / 2×$30 / 5×$20 / 10×$12 USDC`, record tx signatures, and post the Public Payout Report on the site, Telegram, and X).
 - [ ] **Serbian Tax Check (Optional / Recommended for Organizer):**
-  - Confirm with a local Serbian accountant (`knjigovođa`) the personal tax treatment of the `$500` promotional expense and future company distributions (`docs/plan/research/operator_entity_options.md` §7.5).
+  - Confirm with a local Serbian accountant (`knjigovođa`) the personal tax treatment of the `$500` promotional expense and future company distributions ([`research/operator_entity_options.md`](research/operator_entity_options.md) §7.5).
 
 ---
 
@@ -77,15 +77,15 @@ Provision the following external credentials and add them to production `.env` (
 
 > These items are **NOT** needed for the November Devnet Pre-season, but are required before turning on paid tickets (`paid_tickets_enabled = 1`), mainnet prize pools, and the TEN4 token in Season 1.
 
-### 4.1 Legal Entity & Banking / Multisig (`G1`, `G22`)
-- [ ] **Register the Operator Legal Entity** (target: by **1 December 2026**; see `docs/plan/research/operator_entity_options.md` — e.g. Wyoming/Delaware LLC or BVI/Panama depending on counsel advice for a Serbian tax resident & RF citizen).
+### 4.1 Legal Entity & Banking / Multisig (`MASTER_PLAN.md` §12 `G4a`)
+- [ ] **Register the Operator Legal Entity** (target: by **1 December 2026**; see [`research/operator_entity_options.md`](research/operator_entity_options.md) — e.g. Wyoming/Delaware LLC or BVI/Panama depending on counsel advice for a Serbian tax resident & RF citizen).
 - [ ] **Obtain EIN** (if US LLC, via IRS Form SS-4) so the entity can issue Form 1099-MISC (`$2,000` threshold) and sign enterprise DPAs.
 - [ ] **Create Squads v4 Multisig (`2-of-3`) on Solana Mainnet:**
   - Set up separate hardware-wallet signers for the Treasury / Prize Pool multisig and record its public address in `TERMS.md` §9.2 and `OFFICIAL_RULES.md`.
 - [ ] **Fill Entity Placeholders in `TERMS.md`, `PRIVACY.md`, and `OFFICIAL_RULES.md`:**
   - Replace `[PLACEHOLDER: Company legal name]`, `[PLACEHOLDER: entity type and jurisdiction]`, `[PLACEHOLDER: registered address]`, `[PLACEHOLDER: governing law / venue]`, and support/legal/privacy emails.
 
-### 4.2 External Compliance & Production Providers for Season 1 (`G18`, `G19`, `G20`)
+### 4.2 External Compliance & Production Providers for Season 1
 - [ ] **Didit KYC Account (`DIDIT_API_KEY`, `DIDIT_WEBHOOK_SECRET`, DPA):**
   1. Onboard the registered legal entity with `https://didit.me`.
   2. Sign Didit's Data Processing Agreement (DPA) and configure biometric consent + ID + liveness + AML/sanctions workflow.
@@ -96,10 +96,10 @@ Provision the following external credentials and add them to production `.env` (
 - [ ] **PostHog EU Data Processing Agreement:**
   - Sign the online PostHog DPA (EU region) and set project event retention to **12 months**.
 
-### 4.3 Legal Sign-off on `[LAWYER]` Annotations (`OPEN_QUESTIONS.md` §1–3)
+### 4.3 Legal Sign-off on `[LAWYER]` Annotations ([`../spec/OPEN.md`](../spec/OPEN.md) §1–2)
 Before turning on paid tickets in Season 1, have a gaming/contest & crypto lawyer review and remove the `[LAWYER]` annotations in `docs/legal/TERMS.md`, `docs/legal/PRIVACY.md`, and `docs/legal/OFFICIAL_RULES.md`:
-1. **`twitterapi.io` Terms Risk (`OPEN_QUESTIONS.md` #1):** Confirm acceptable risk or fallback for reading public X posts without official X Enterprise API.
-2. **US State Skill-Contest & Free-Entry Review (`OPEN_QUESTIONS.md` #2а, #2в):** Confirm the 7-state paid block (`AZ, AR, DE, LA, MT, SC, TN`), the weekly free-ticket entry route, and the 30% free-ticket prize cap (`free_prize_board_cap_bps = 3000`).
-3. **Final Sanctions & RU/BY Policy for Season 1 (`OPEN_QUESTIONS.md` #2б):** Decide whether the foreign operator entity in Season 1 keeps `RU`/`BY` excluded from prizes or allows non-sanctioned players after KYC + Chainalysis screening.
+1. **`twitterapi.io` Terms Risk ([`../spec/OPEN.md`](../spec/OPEN.md) #1):** Confirm acceptable risk or fallback for reading public X posts without official X Enterprise API.
+2. **US State Skill-Contest & Free-Entry Review ([`../spec/OPEN.md`](../spec/OPEN.md) #2а, #2в):** Confirm the 7-state paid block (`AZ, AR, DE, LA, MT, SC, TN`), the weekly free-ticket entry route, and the 30% free-ticket prize cap (`free_prize_board_cap_bps = 3000`).
+3. **Final Sanctions & RU/BY Policy for Season 1 ([`../spec/OPEN.md`](../spec/OPEN.md) #2б):** Decide whether the foreign operator entity in Season 1 keeps `RU`/`BY` excluded from prizes or allows non-sanctioned players after KYC + Chainalysis screening.
 4. **TEN4 Utility Token & No-Sale Framing (`TERMS.md` §13):** Confirm jurisdictions where the Season 1 airdrop claim must be geo-blocked.
 5. **Dispute Resolution (`TERMS.md` §25–26):** Choose Governing Law and Option A (individual arbitration + batching + 30-day opt-out) vs. Option B (courts only).

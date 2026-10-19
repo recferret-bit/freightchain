@@ -3,9 +3,14 @@
 > Где продукт обязан совпадать с текстами TERMS, PRIVACY и PRESEASON_RULES. Юридических выводов здесь нет; отмеченное `[LAWYER]` подтверждает юрист (консультация отложена владельцем — [`OPEN.md`](OPEN.md)). Тексты юридических документов остаются на своём языке (EN); план — RU.
 
 ## Часть 1. Манифест
-### 1.1 Документы
-- Черновики: [`docs/legal/TERMS.md`](../legal/TERMS.md), [`PRIVACY.md`](../legal/PRIVACY.md), [`PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md). Сводка правок 17.10 — [`docs/legal/CHANGES_donations_2026-10-17.md`](../legal/CHANGES_donations_2026-10-17.md).
-- В репозитории `docs/legal/{TERMS,PRIVACY,PRESEASON_RULES}.md` внесены помеченные клаузы 17.10 (донаты и реплеи). Остальной текст этих файлов уже отличался от черновиков, поэтому файлы целиком не заменялись. Пункт 16a есть и в [`PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md). В PRIVACY §4 пункт «Public game data» переписан под просмотр только реплея. Сводка: [`docs/legal/CHANGES_donations_2026-10-17.md`](../legal/CHANGES_donations_2026-10-17.md).
+### 1.1 Документы и сводка правок 17.10.2026 (донаты и реплеи)
+- Юридические документы: [`docs/legal/TERMS.md`](../legal/TERMS.md), [`PRIVACY.md`](../legal/PRIVACY.md), [`PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md), [`PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md), [`OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md).
+- В `docs/legal/{TERMS,PRIVACY,PRESEASON_RULES,PRESEASON_RULES_RU}.md` внесены помеченные клаузы `<!-- 2026-10-17: ... -->` по донатам и реплеям (без перезаписи остального текста черновиков):
+  - **14.1 (`TERMS.md` §14.1, `PRESEASON_RULES.md` 16a, `PRESEASON_RULES_RU.md` 16a)**: донаты и зрители не влияют на поездку и счёт; визуальные эффекты только косметические на реплее.
+  - **14.2 (`TERMS.md` §14.2, `PRIVACY.md` §4, `PRESEASON_RULES.md` 16a)**: публично доступны только реплеи завершённых поездок; live-просмотра текущей поездки нет; реплей и раскладка дороги пула открываются только после окна проверки.
+  - **14.3 (`TERMS.md` §14.3)**: 100 % доната идёт водителю (за вычетом сетевой комиссии Solana), реферальная программа на донаты не распространяется.
+  - **14.4 (`TERMS.md` §14.4)**: донаты окончательны и не возвращаются, не являются входом в конкурс и не дают преимуществ.
+  - **14.5 (`TERMS.md` §14.5, `PRESEASON_RULES.md` 16a)**: на Pre-season (Solana devnet) донаты и чат реплея включены в тестовом режиме (devnet SOL без денежной ценности).
 
 ### 1.2 Правила
 - **LEG-M-01** MUST: TERMS §14.1–14.5 совпадают с [`replays_streams.md`](replays_streams.md):
@@ -44,7 +49,7 @@
 | LEG-T-06 | M-06 | POOL-T-08 |
 | LEG-T-07 | M-07 | ревью TERMS 7.5 до включения `paid_tickets_enabled` |
 | LEG-T-08 | M-08 | POOL-T-13 |
-| LEG-T-09 | M-09 | diff помеченных клауз [`CHANGES_donations_2026-10-17.md`](../legal/CHANGES_donations_2026-10-17.md) ↔ `docs/legal` в PR документов; RU 16a ещё нет |
+| LEG-T-09 | M-09 | diff помеченных клауз §1.1 ↔ `docs/legal/*` в PR документов |
 | LEG-T-10 | M-10 | grep-тест по клиенту: нет строк «change their ride», «watch live», «LIVE ·», «pledge» (E1, `e2e/block1-offchain/legal/copy.test.mjs`); то же для RU-словаря («влияет на поездку», «смотреть вживую», «пледж») |
 | LEG-T-11 | M-11 | ревью-чек: таблица «строка EN ↔ строка RU ↔ пункт TERMS/16a RU» в PR локализации, подпись владельца + RPL-T-28 |
 

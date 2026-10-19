@@ -17,7 +17,7 @@ node .claude/skills/daily-tracktion-update/update.mjs
 node .claude/skills/daily-tracktion-update/update.mjs --self-test
 ```
 
-The command rewrites the block between `<!-- traction:start -->` and `<!-- traction:end -->` in `README.md`, and writes `docs/traction/latest.json`. The `## Traction` heading is placed on the line after the game banner (`landing/public/media/day.webp`). The headline has two rows: the public stats, then PostHog (landing people, whitepaper readers, real sign-ins, real starts, finishes split demo and real). The judge window and the through-today window both stay in the table under Analytics. X and YouTube are not read and are not written.
+The command rewrites the block between `<!-- traction:start -->` and `<!-- traction:end -->` in `README.md`, and writes `docs/insights/traction/latest.json`. The `## Traction` heading is placed on the line after the game banner (`landing/public/media/day.webp`). The headline has two rows: the public stats, then PostHog (landing people, whitepaper readers, real sign-ins, real starts, finishes split demo and real). The judge window and the through-today window both stay in the table under Analytics. X and YouTube are not read and are not written.
 
 Sources, in this order of what a headline is allowed to claim:
 
