@@ -6,6 +6,7 @@
 //   SEED=1 + the server's DATABASE_URL (optional; CLI=<path to cli/index.js>, default dist/cli/index.js): seeds a live 1h pool (id 901) for the HOLD → RELEASE round trip – dev-only, throwaway database
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { request as httpRequest } from 'node:http';
 import { execFileSync } from 'node:child_process';
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
@@ -39,6 +40,7 @@ const fakeWallet = kp => `(() => {
     async connect() { this.publicKey = { toString: () => pub }; return { publicKey: this.publicKey }; },
     async signMessage(msg) { window.__signed++; window.__lastMessage = new TextDecoder().decode(msg); return { signature: new Uint8Array(await crypto.subtle.sign('Ed25519', await key, msg)) }; },
     async disconnect() {} };
+  window.__fcDevWallet = window.solana;
   void b58;
 })();`;
 const until = async (fn, ms = 20000) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v) return v; if (Date.now() - t0 > ms) return false; await sleep(250); } };
@@ -72,9 +74,9 @@ const rider = await signIn(riderKp);
 
 // ── a flagged ride: full traffic proof, 2 s of samples across a 3 s free shift (coverage 67%).
 const { r: ordered, j: ride } = await post('rides', { tier: 'free' }, rider.cookie);
-if (!ordered.ok || ride.trafficVersion !== 1 || ride.minSeconds !== 3) throw new Error('admin fixture requires FREE_RIDE_SECONDS=3 and TRAFFIC_PROOF_REQUIRED=true');
+if (!ordered.ok || ride.minSeconds !== 3) throw new Error(`admin fixture requires FREE_RIDE_SECONDS=3 (status ${ordered.status}, minSeconds ${ride.minSeconds})`);
 const started = await post(`rides/${ride.id}/start`, {}, rider.cookie);
-if (!started.r.ok) throw new Error(`admin fixture could not start the ride: ${started.r.status}`);
+if (!started.r.ok || started.j.trafficVersion !== 1) throw new Error(`admin fixture requires TRAFFIC_PROOF_REQUIRED=true (start ${started.r.status}, trafficVersion ${started.j.trafficVersion})`);
 const began = Date.now();
 for (const b of recording(ride.id, 3, 42)) {
   await sleep(Math.max(0, began + b.t1 * 1000 + 100 - Date.now()));
@@ -125,6 +127,7 @@ check('queue: the flagged ride is listed with the rider', await until(async () =
 await A.shot('queue-desktop');
 await A.ev('document.querySelector("tr.click").click()');
 check('ride: reasons, batches and the decision buttons render', await until(async () => /recording-gaps/.test(await A.ev('document.querySelector(".reasons")?.textContent || ""')) && (await A.ev('document.querySelectorAll("tbody tr").length')) === 2));
+check('ride: sample inspection shows 10 samples in each uploaded batch', await A.ev(`(() => { const table = [...document.querySelectorAll('table')].find(t => /samples/.test(t.querySelector('thead')?.textContent || '')); return table ? [...table.querySelectorAll('tbody tr')].map(tr => tr.children[2]?.textContent).join(',') : ''; })()`) === '10,10');
 await A.shot('ride-desktop');
 await A.ev('document.getElementById("note").value = "e2e: accepted by the admin page"');
 await A.ev('[...document.querySelectorAll(".actions button")].find(b => /ACCEPT/.test(b.textContent)).click()');
@@ -141,18 +144,18 @@ await A.ev('location.hash = "#promos"');
 check('promos: the tab renders with the ACTIVE filter, the list (or its empty card – other suites may have seeded codes) and the form', await until(async () => (await A.ev('!!document.getElementById("promo-form")')) === true) && (await A.ev('document.querySelector("#promo-states .on")?.dataset.state')) === 'active' && ((await A.ev('!!document.getElementById("promo-table")')) || /No active promo codes/.test(await A.ev('document.getElementById("view").textContent'))));
 const setField = (id, v) => A.ev(`(() => { const e = document.getElementById(${JSON.stringify(id)}); e.value = ${JSON.stringify(v)}; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); })()`);
 const submitPromo = () => A.ev('document.getElementById("promo-form").requestSubmit()');
-await A.ev('[...document.querySelectorAll(".presets button")].find(b => /3 free rides/.test(b.textContent)).click()');
+await setField('pf-kind', 'ride'); await setField('pf-ride', '1h');
 await setField('pf-code', ' e2e three '); await setField('pf-desc', 'E2E: three rides'); await setField('pf-max', '5'); await setField('pf-end', '2099-01-01T00:00');
 const signedBefore = await A.ev('window.__signed');
 await submitPromo();
-check('promos: SIGN & CREATE → the code is listed ACTIVE with what it gives and its text', await until(async () => /E2ETHREE/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""'))) && /3 free rides/.test(await A.ev('document.getElementById("promo-table").textContent')) && /ACTIVE/.test(await A.ev('document.getElementById("promo-table").textContent')) && /E2E: three rides/.test(await A.ev('document.getElementById("promo-table").textContent')), await A.ev('document.getElementById("view").textContent.slice(0, 300)'));
-check('promos: the wallet signed the text of exactly this code (every field in one JSON line)', (await A.ev('window.__signed')) === signedBefore + 1 && (await A.ev(`(window.__lastMessage || '').includes('Action: CREATE promo code E2ETHREE') && (window.__lastMessage || '').includes('Gives: 3 free rides') && (window.__lastMessage || '').includes('"maxRedemptions":5')`)) === true);
+check('promos: SIGN & CREATE → the code is listed ACTIVE with what it gives and its text', await until(async () => /E2ETHREE/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""'))) && /one free 1h ride/.test(await A.ev('document.getElementById("promo-table").textContent')) && /ACTIVE/.test(await A.ev('document.getElementById("promo-table").textContent')) && /E2E: three rides/.test(await A.ev('document.getElementById("promo-table").textContent')), await A.ev('document.getElementById("view").textContent.slice(0, 300)'));
+check('promos: the wallet signed the text of exactly this code (every field in one JSON line)', (await A.ev('window.__signed')) === signedBefore + 1 && (await A.ev(`(window.__lastMessage || '').includes('Action: CREATE promo code E2ETHREE') && (window.__lastMessage || '').includes('Gives: one free 1h ride (not for sale)') && (window.__lastMessage || '').includes('"maxRedemptions":5')`)) === true);
 const promoRider = await signIn(nacl.sign.keyPair());
 const first = await post('promo/redeem', { code: 'e2e three' }, promoRider.cookie);
-check('promos: a player redeems it (+3 free rides)', first.r.status === 200 && first.j.kind === 'free_rides' && first.j.freeRides === 13, JSON.stringify(first.j));
+check('promos: a player redeems the ride code', first.r.status === 200 && first.j.kind === 'ride' && first.j.tier === '1h', JSON.stringify(first.j));
 await A.ev('document.getElementById("refresh").click()');   // reload the tab (a player redeemed meanwhile)
-check('promos: the list counts the use (1 / 5) and USED BY PLAYERS shows the wallet and what it got', await until(async () => /1 \/ 5/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && (await A.ev('document.getElementById("promo-used")?.textContent || ""')).includes(promoRider.short) && /3 free rides/.test(await A.ev('document.getElementById("promo-used").textContent'))));
-check('promos: only free rides and tickets can be created; cosmetic codes are not offered', (await A.ev('[...document.querySelectorAll("#pf-kind option")].map(o => o.value).join(",")')) === 'free_rides,tickets');
+check('promos: the list counts the use (1 / 5) and USED BY PLAYERS shows the wallet and what it got', await until(async () => /1 \/ 5/.test(await A.ev('document.getElementById("promo-table")?.textContent || ""')) && (await A.ev('document.getElementById("promo-used")?.textContent || ""')).includes(promoRider.short) && /one free 1h ride/.test(await A.ev('document.getElementById("promo-used").textContent'))));
+check('promos: only a ride code and tickets can be created; cosmetic codes are not offered', (await A.ev('[...document.querySelectorAll("#pf-kind option")].map(o => o.value).join(",")')) === 'ride,tickets');
 await setField('pf-code', 'E2E-TICKETS'); await setField('pf-kind', 'tickets'); await setField('pf-tier', '1h'); await setField('pf-credits', '2');
 await submitPromo();
 check('promos: a ticket code through the same signed form', await until(async () => /2 × 1h ride tickets/.test(await A.ev('document.querySelector("#promo-table tr[data-code=E2E-TICKETS]")?.textContent || ""'))));
@@ -252,6 +255,24 @@ await A.ev('location.hash = "#replays"');
 check('replays: the replay verification queue and sessions render', await until(async () => /REPLAY VERIFICATION · QUEUE/.test(await A.ev('document.querySelector("#view h2")?.textContent || ""')) && (await A.ev('document.getElementById("replay-table")?.textContent || ""')).includes(ride.id.slice(0, 8))));
 await size(A, 390, 844, true); await sleep(300); await A.shot('rides-phone');
 await A.ev(`location.hash = "#ride/${ride.id}"`); await sleep(800); await A.shot('ride-phone');
+
+// Host and signature, as the guard and AdminProofService actually answer. A split server (COOKIE_DOMAIN) 404s any host but admin.<apex>.
+// A single-origin server leaves the host check off. A rejudge whose wallet never signed an issued challenge is 401, even with X-FC-Admin.
+const hostStatus = (host, path) => new Promise((resolve, reject) => {
+  const u = new URL(BASE);
+  const req = httpRequest({ hostname: '127.0.0.1', port: u.port, path, method: 'GET', headers: { host, cookie: adminCookie } }, res => { res.resume(); resolve(res.statusCode ?? 0); });
+  req.on('error', reject); req.end();
+});
+const onApex = await hostStatus('freightchain.localhost', '/api/admin/overview');
+const onAdmin = await hostStatus('admin.freightchain.localhost', '/api/admin/overview');
+if (onAdmin === 200 && onApex === 404) check('wrong host is refused (AdminGuard 404, not 403)', true, `apex ${onApex} admin-host ${onAdmin}`);
+else if (onApex === 200 && onAdmin === 200) check('single-origin server does not enforce the admin host', true, 'COOKIE_DOMAIN unset — both hosts 200');
+else check('admin host check', false, `apex ${onApex} admin-host ${onAdmin}`);
+const unsigned = await fetch(`${BASE}/api/admin/rides/${ride.id}/rejudge`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fc-admin': '1', cookie: adminCookie }, body: JSON.stringify({ signature: 'not-a-signed-challenge' }) });
+check('a rejudge without an issued admin signature is 401', unsigned.status === 401, `${unsigned.status} ${await unsigned.text()}`);
+const omitted = await fetch(`${BASE}/api/admin/rides/${ride.id}/rejudge`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fc-admin': '1', cookie: adminCookie }, body: JSON.stringify({}) });
+check('a rejudge that omits the signature is refused before the change', omitted.status === 400 || omitted.status === 401, String(omitted.status));
+await omitted.text().catch(() => {});
 
 await A.ev('document.getElementById("signout").click()');
 check('SIGN OUT ends the admin session (the sign-in card again, the API 404)', await until(async () => !!(await A.ev('!!document.getElementById("admin-signin")'))));

@@ -1,4 +1,6 @@
 import { Controller, Get, Header } from '@nestjs/common';
+import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
+import { entityBundleResponse } from '../common/response/editor.response.js';
 import { QueryBus } from '@nestjs/cqrs';
 import { GetEntityBundleQuery, type EntityBundleDto } from '../../application/use-cases/entities/get-entity-bundle/get-entity-bundle.query.js';
 
@@ -11,6 +13,7 @@ export class EntitiesHttpController {
   constructor(private readonly queryBus: QueryBus) {}
 
   @Get('bundle') @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=600')
+  @ZodResponse(entityBundleResponse)
   bundle(): Promise<EntityBundleDto> {
     return this.queryBus.execute<GetEntityBundleQuery, EntityBundleDto>(new GetEntityBundleQuery());
   }

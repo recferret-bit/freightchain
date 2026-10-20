@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ConfirmPledgeCommand } from '../../../../../src/application/use-cases/pledges/confirm-pledge/confirm-pledge.command.js';
 import { ConfirmPledgeHandler } from '../../../../../src/application/use-cases/pledges/confirm-pledge/confirm-pledge.handler.js';
-import { BadRequestError, ForbiddenError, NotFoundError } from '../../../../../src/domain/shared/errors.js';
+import { BadRequestError, NotFoundError } from '../../../../../src/domain/shared/errors.js';
 import { unitContext } from '../../../../support/unit-context.js';
 import { newPoolSignature } from '../../../../support/fake-pool-chain.js';
 import { aPledge, createdEvent, wallet } from '../../../../support/pledges.js';
@@ -43,11 +43,15 @@ describe('ConfirmPledgeHandler – a pledge is active only when its transaction\
     expect((await ctx.pledges.findById(other.id))!.status).toBe('pending');
   });
 
-  it('only the sponsor confirms (403); an unknown pledge is 404', async () => {
+  it('someone else\'s pledge and a missing id are the same 404 not_found', async () => {
     const { ctx, sponsor, driver, confirm } = await setup();
     const { pledge, createSig } = await aPledge(ctx, { sponsor, driver, onChain: true });
-    await expect(confirm(driver, pledge.id, createSig!)).rejects.toThrow(ForbiddenError);
-    await expect(confirm(sponsor, '00000000-0000-4000-8000-000000000000', createSig!)).rejects.toThrow(NotFoundError);
+    const foreign = await confirm(driver, pledge.id, createSig!).then(() => null, (e) => e);
+    const missing = await confirm(sponsor, '00000000-0000-4000-8000-000000000000', createSig!).then(() => null, (e) => e);
+    expect(foreign).toBeInstanceOf(NotFoundError);
+    expect(missing).toBeInstanceOf(NotFoundError);
+    expect({ status: foreign.statusCode, code: foreign.errorCode, message: foreign.message }).toEqual({ status: 404, code: 'not_found', message: missing.message });
+    expect(foreign.errorCode).toBe(missing.errorCode);
   });
 
   it('a transaction that already settled it (create + settle seen together) leaves it settled', async () => {

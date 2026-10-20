@@ -110,7 +110,7 @@ test('a winners list exists once rides count, never while selling or for a faile
 test('split + rules copy come from the pool (never hard-coded)', () => {
   const odd = pool({ split: { prizeBps: 6550, seedBps: 2450, feeBps: 1000 }, minTickets: 4 });
   assert.deepEqual(splitParts(odd).map(s => s.bps), [6550, 2450, 1000]);
-  assert.equal(rulesText(odd), 'Your entry sits in the pool’s vault on chain – not with us. If fewer than 4 riders commit by 2026-10-14, every ticket is refunded in full. Live pool: 65.5% prizes, 24.5% seeds the next pool, 10% fees.');
+  assert.equal(rulesText(odd), 'We fund the major pool (> 50%), and paid tickets (< 50% cap) buy extra attempts in the pool’s vault on chain – not with us. Ticket purchases are final and non-refundable once bought, and unused tickets expire when starts close (2026-10-14). Live pool: 65.5% prizes, 24.5% seeds the next pool, 10% fees.');
   assert.equal(pct(7000), '70%'); assert.equal(sol(50_000_000), '0.050 SOL'); assert.equal(usd(50_000_000, 118), '≈ $5.90'); assert.equal(usd(1, null), '');
 });
 

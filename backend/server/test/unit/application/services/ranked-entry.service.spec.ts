@@ -1,6 +1,7 @@
 import { RankedEntryService } from '../../../../src/application/services/ranked-entry.service.js';
 import { PrizeGeoPort } from '../../../../src/application/ports/prize/prize-geo.port.js';
 import { HeaderGeoAdapter } from '../../../../src/infrastructure/prize/header-geo.adapter.js';
+import type { EnvService } from '../../../../src/infrastructure/config/env.service.js';
 import { DEFAULT_GEO, type PrizeGeoRules } from '../../../../src/domain/prize/prize-rules.js';
 import { Ride } from '../../../../src/domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../src/domain/rides/ride-status.js';
@@ -14,9 +15,9 @@ class Lists extends PrizeGeoPort {
 const CA = { 'cf-ipcountry': 'CA' };
 
 describe('RankedEntryService', () => {
-  const setup = (lists = new Lists()) => {
+  const setup = (lists = new Lists(), geo = new HeaderGeoAdapter()) => {
     const ctx = unitContext();
-    const entry = new RankedEntryService(ctx.rides, new HeaderGeoAdapter(), lists);
+    const entry = new RankedEntryService(ctx.rides, geo, lists);
     const claim = async (ride: Ride, headers: Record<string, string> = CA) => entry.claim(await ctx.storedPlayer(ride.wallet), ride, headers, ctx.now());
     return { ctx, claim };
   };
@@ -86,5 +87,26 @@ describe('RankedEntryService', () => {
     await ctx.players.save(player);
     await expect(claim(ride, CA)).rejects.toThrow(/sanctioned/);
     expect(await claim(ride, { 'cf-ipcountry': 'GB' })).toEqual({ country: 'GB', region: null });
+  });
+
+  it('a dev geo fallback lets XX start ranked as the default country; production still 409s, and a blocked code is not replaced', async () => {
+    const dev = setup(new Lists(), new HeaderGeoAdapter({ nodeEnv: 'test', prizeDevDefaultCountry: 'US' } as EnvService));
+    const ride = await dev.ctx.paidOrder('w', 50_000_000, { offer: false });
+    const player = await dev.ctx.storedPlayer('w');
+    player.setAgreements({ age18: true, loss: false }, dev.ctx.now());
+    await dev.ctx.players.save(player);
+    expect(await dev.claim(ride, {})).toEqual({ country: 'US', region: null });
+    expect(await dev.claim(ride, { 'cf-ipcountry': 'XX' })).toEqual({ country: 'US', region: null });
+    expect(await dev.claim(ride, { 'cf-ipcountry': 'T1' })).toEqual({ country: 'US', region: null });
+    await expect(dev.claim(ride, { 'cf-ipcountry': 'KP' })).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
+    await expect(dev.claim(ride, { 'cf-ipcountry': 'DE' })).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
+    const prod = setup(new Lists(), new HeaderGeoAdapter({ nodeEnv: 'production', prizeDevDefaultCountry: 'US' } as EnvService));
+    const late = await prod.ctx.paidOrder('w', 50_000_000, { offer: false });
+    const adult = await prod.ctx.storedPlayer('w');
+    adult.setAgreements({ age18: true, loss: false }, prod.ctx.now());
+    await prod.ctx.players.save(adult);
+    await expect(prod.claim(late, {})).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
+    await expect(prod.claim(late, { 'cf-ipcountry': 'XX' })).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
+    await expect(prod.claim(late, { 'cf-ipcountry': 'IR' })).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
   });
 });

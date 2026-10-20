@@ -13,7 +13,7 @@ import { BATCH_MAX_INPUTS, BATCH_MAX_SAMPLES, BATCH_MAX_SEQ, INPUT_CODE_MAX_LENG
 export const createRideBodySchema = z.object({
   tier: z.enum(RIDE_TIER_IDS), tutorial: z.boolean().optional(), assist: z.boolean().optional(),
   level: z.number().int().refine(isFreeLevel, `level must be one of ${FREE_LEVEL_IDS.join(', ')}`).optional(),
-});
+}).strict();
 export type CreateRideBody = z.infer<typeof createRideBodySchema>;
 
 /** `trip`: the trip id the game built its road from (GET /api/rides/:id → `trip`, null read as 'classic'). Optional – absent = not compared (older games).
@@ -22,10 +22,10 @@ export type CreateRideBody = z.infer<typeof createRideBodySchema>;
 export const startRideBodySchema = z.object({
   trip: z.string().min(1).max(TRIP_ID_MAX_LENGTH).optional(),
   ranked: z.boolean().optional(),
-});
+}).strict();
 export type StartRideBody = z.infer<typeof startRideBodySchema>;
 
-export const confirmPaymentBodySchema = z.object({ signature: z.string().refine(isTransactionSignature, TRANSACTION_SIGNATURE_MESSAGE) });
+export const confirmPaymentBodySchema = z.object({ signature: z.string().refine(isTransactionSignature, TRANSACTION_SIGNATURE_MESSAGE) }).strict();
 export type ConfirmPaymentBody = z.infer<typeof confirmPaymentBodySchema>;
 
 /* The game client sends progress reports. Heartbeats are STRICT (garbage → 400, the client just beats again); the final /end report is LENIENT
@@ -55,7 +55,11 @@ const strictMetres = z.unknown().transform((v, ctx) => {
 });
 
 export const heartbeatBodySchema = z
-  .object({ s: strictMetres, t: lenientNumber, hull: strictOptionalNumber, paused: flag, night: flag, crashesVehicle: lenientNumber, crashesBuilding: lenientNumber })
+  .object({
+    s: strictMetres, t: lenientNumber, hull: strictOptionalNumber, paused: flag, night: flag, crashesVehicle: lenientNumber, crashesBuilding: lenientNumber,
+    route: z.unknown().optional(), // the game echoes its live-feed route; the server assigns the route, so this key is accepted and dropped
+  })
+  .strict()
   .transform((b): RideReport => ({ s: b.s, t: b.t, hull: b.hull, paused: b.paused, night: b.night, crashesVehicle: b.crashesVehicle, crashesBuilding: b.crashesBuilding }));
 export type HeartbeatBody = z.infer<typeof heartbeatBodySchema>;
 
@@ -75,10 +79,16 @@ export const batchBodySchema = z
     // replays' traffic track: LENIENT – anything malformed is dropped (.catch), never a 400 (a refused batch would break the recording's chain)
     traffic: z.array(z.array(z.number().finite()).max(TRAFFIC_MAX_ROW)).max(TRAFFIC_MAX_FRAMES).optional().catch(undefined),
   })
+  .strict()
   .transform((b): BatchBody => ({ seq: b.seq, prevHash: b.prevHash, t0: b.t0, t1: b.t1, samples: b.samples, inputs: b.inputs, hash: b.hash ?? null, ...(b.trafficProof !== undefined ? { trafficProof: b.trafficProof } : {}), ...(b.traffic?.length ? { traffic: b.traffic } : {}) }));
 export type BatchBodyInput = z.infer<typeof batchBodySchema>;
 
 export const endRideBodySchema = z
-  .object({ outcome: z.enum(['shift', 'failed']), s: lenientMetres, t: lenientNumber, hull: lenientNumber, paused: flag, night: flag, crashesVehicle: lenientNumber, crashesBuilding: lenientNumber, reason: z.unknown().transform((v) => (typeof v === 'string' ? v.slice(0, REASON_MAX_LENGTH) : null)) })
+  .object({
+    outcome: z.enum(['shift', 'failed']), s: lenientMetres, t: lenientNumber, hull: lenientNumber, paused: flag, night: flag, crashesVehicle: lenientNumber, crashesBuilding: lenientNumber,
+    reason: z.unknown().transform((v) => (typeof v === 'string' ? v.slice(0, REASON_MAX_LENGTH) : null)),
+    route: z.unknown().optional(), // same live-feed echo as the heartbeat; not part of the end report
+  })
+  .strict()
   .transform((b) => ({ outcome: b.outcome, reason: b.reason, report: { s: b.s, t: b.t, hull: b.hull, paused: b.paused, night: b.night, crashesVehicle: b.crashesVehicle, crashesBuilding: b.crashesBuilding } satisfies RideReport }));
 export type EndRideBody = z.infer<typeof endRideBodySchema>;

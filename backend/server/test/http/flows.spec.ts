@@ -26,6 +26,12 @@ import { LIVE_ENV, LIVE_FLAGS_ENV, LIVE_OFF_ENV, liveFlagsScenarios, liveOffScen
 import { AGREEMENTS_ENV, agreementsScenarios } from '../scenarios/agreements.scenarios.js';
 import { ACTIONS_PROGRAM_ENV, actionsBuyScenarios, actionsScenarios } from '../scenarios/actions.scenarios.js';
 import { referralScenarios } from '../scenarios/referrals.scenarios.js';
+import { adminGapScenarios } from '../scenarios/http-gaps-admin.scenarios.js';
+import { editorGapScenarios, editorMcpGapScenarios } from '../scenarios/http-gaps-editor.scenarios.js';
+import { HOST_GAP_ENV, hostGapScenarios } from '../scenarios/http-gaps-host.scenarios.js';
+import { publicGapScenarios } from '../scenarios/http-gaps-public.scenarios.js';
+import { donationGapScenarios, liveGapScenarios } from '../scenarios/http-gaps-live.scenarios.js';
+import { economyGapScenarios } from '../scenarios/http-gaps-economy.scenarios.js';
 
 /* The whole HTTP surface on in-memory repositories (no Docker). test/integration/flows.integration.spec.ts runs these same scenarios on PostgreSQL. */
 for (const [name, env, scenarios] of [
@@ -59,6 +65,14 @@ for (const [name, env, scenarios] of [
   ['solana actions: discovery, shift card, ride blink', {}, actionsScenarios],
   ['solana actions: one program-mode ticket', ACTIONS_PROGRAM_ENV, actionsBuyScenarios],
   ['referrals: a code, one referrer, a gift colour', {}, referralScenarios],
+  ['http gaps: admin directory and signed changes', ADMIN_ENV, adminGapScenarios],
+  ['http gaps: editor logout and signed writes', EDITOR_ENV, editorGapScenarios],
+  ['http gaps: editor mcp entity head', EDITOR_JOBS_ENV, editorMcpGapScenarios],
+  ['http gaps: public, auth, blinks, sns, prize', {}, publicGapScenarios],
+  ['http gaps: storybook host refuses the rest of the API', HOST_GAP_ENV, hostGapScenarios],
+  ['http gaps: honk burns and mutes', LIVE_ENV, liveGapScenarios],
+  ['http gaps: paid donation reconcile and solana pay', LIVE_FLAGS_ENV, donationGapScenarios],
+  ['http gaps: tickets, pools, order solana pay', TICKET_ORDERS_ENV, economyGapScenarios],
 ] as const) {
   describe(`HTTP (in-memory) · ${name}`, () => {
     let harness: Harness;

@@ -24,6 +24,8 @@ export const envSchema = z
   .object({
     PORT: z.coerce.number().int().positive().default(3000),
     NODE_ENV: z.string().min(1).default('development'), // 'production' switches the strict checks on; anything else (staging, test, …) is accepted
+    /** lane2:RESPONSE_SCHEMA_CHECK — empty is unset. EnvService defaults strict (test/development) or warn (production). */
+    RESPONSE_SCHEMA_CHECK: optional(z.enum(['off', 'warn', 'strict'])),
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     JWT_SECRET: optional(z.string().min(32, 'JWT_SECRET must be at least 32 characters')),
     SESSION_TTL_DAYS: z.coerce.number().int().positive().default(7),
@@ -58,6 +60,7 @@ export const envSchema = z
     DEMO_WALLETS: z.string().default(''),
     DEMO_SCALE: z.coerce.number().positive().default(60),
     INITIAL_SEED_SOL: z.coerce.number().min(0).default(0),
+    PRIZE_DEV_DEFAULT_COUNTRY: z.string().regex(/^[A-Za-z]{2}$/).default('US'), // lane1:PRIZE_DEV_DEFAULT_COUNTRY dev/test only; other NODE_ENV stays fail-closed
     /** Project token (`phc_…`). Empty is unset. A non-token is refused by EnvService, not by this schema, so a pasted personal key cannot stop boot. */
     POSTHOG_KEY: optional(z.string()),
     POSTHOG_HOST: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().default('https://eu.i.posthog.com')),

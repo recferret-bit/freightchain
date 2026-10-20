@@ -28,57 +28,57 @@
 
 | Task ID | Title | Spec / Contract Ref | Track | Depends On | Status |
 |---|---|---|---|---|---|
-| `E2E-01.1` | Fix `veh\|medic` 21-mesh parity drift in `npm run test:parity` | `COVERAGE_CONTRACT` §2.5 | Track A | — | `[ ] Todo` |
-| `E2E-01.2` | Fix `npm run test:tickets-stub` (`POST /api/tickets/orders/:id/reconcile` & `GET /api/referrals`) | `COVERAGE_CONTRACT` §2.5 | Track A | — | `[ ] Todo` |
-| `E2E-01.3` | Map all 57 unmapped routes & 147 test files in `census.mjs` (`--self-test` green) | `COVERAGE_CONTRACT` §4.1 | Track A | — | `[ ] Todo` |
-| `E2E-01.4` | Wire `census.mjs --self-test`, `test:parity`, and `test:tickets-stub` into root `npm run check` | `COVERAGE_CONTRACT` §4 | Track A | `E2E-01.1..3` | `[ ] Todo` |
+| `E2E-01.1` | Fix `veh\|medic` 21-mesh parity drift in `npm run test:parity` | `COVERAGE_CONTRACT` §2.5 | Track A | — | `[x] Done` |
+| `E2E-01.2` | Fix `npm run test:tickets-stub` (`POST /api/tickets/orders/:id/reconcile` & `GET /api/referrals`) | `COVERAGE_CONTRACT` §2.5 | Track A | — | `[x] Done` |
+| `E2E-01.3` | Map all 57 unmapped routes & 147 test files in `census.mjs` (`--self-test` green) | `COVERAGE_CONTRACT` §4.1 | Track A | — | `[x] Done` |
+| `E2E-01.4` | Wire `census.mjs --self-test`, `test:parity`, and `test:tickets-stub` into root `npm run check` | `COVERAGE_CONTRACT` §4 | Track A | `E2E-01.1..3` | `[x] Done` |
 
 ### Epic E2E-02 — HTTP Contract, `@ZodResponse` & Negative Matrix ([`issues/E2E-02-http-contract-and-zod-schemas.md`](./issues/E2E-02-http-contract-and-zod-schemas.md))
 
 | Task ID | Title | Spec / Contract Ref | Track | Depends On | Status |
 |---|---|---|---|---|---|
-| `E2E-02.1` | Build `routes.manifest.ts` + meta-test asserting 100% NestJS controller route registration | `API-T-01`, `API-M-01` | Track A + B | `E2E-01.3` | `[ ] Todo` |
-| `E2E-02.2` | Enforce `@ZodResponse` schema validation (`RESPONSE_SCHEMA_CHECK=strict`) across all 151+ routes | `API-T-02..05`, `API-M-02` | Track A + B | `SPC-01.1`, `E2E-02.1` | `[ ] Todo` |
-| `E2E-02.3` | Implement `expectDbDelta(prisma, tables, fn)` helper and instrument mutating route tests | `COVERAGE_CONTRACT` §2.2 | Track A | `E2E-02.1` | `[ ] Todo` |
-| `E2E-02.4` | Build table-driven `negative-matrix.spec.ts` — Matrix A (unauth `401`, forbidden `403`, bad DTO `400`, `.strict()` unknown key `400`) | `API-T-06..09`, `API-M-04` | Track A + B | `SPC-01.3`, `E2E-02.1` | `[ ] Todo` |
-| `E2E-02.5` | Build table-driven `negative-matrix.spec.ts` — Matrix B (foreign resource `:id` returns `404` on all player-owned endpoints) | `API-T-10`, `API-M-05` | Track A + B | `SPC-01.4`, `E2E-02.4` | `[ ] Todo` |
-| `E2E-02.6` | Add `fast-check` DTO property fuzzing & OpenAPI `schemathesis` contract test | `API-T-11..13`, `API-M-03` | Track B | `SPC-01.2`, `E2E-02.2` | `[ ] Todo` |
+| `E2E-02.1` | Build `routes.manifest.ts` + meta-test asserting 100% NestJS controller route registration | `API-T-01`, `API-M-01` | Track A + B | `E2E-01.3` | `[x] Done` |
+| `E2E-02.2` | Enforce `@ZodResponse` schema validation (`RESPONSE_SCHEMA_CHECK=strict`) across all 151+ routes | `API-T-02..05`, `API-M-02` | Track A + B | `SPC-01.1`, `E2E-02.1` | `[x] Done` |
+| `E2E-02.3` | Implement `expectDbDelta(prisma, tables, fn)` helper and instrument mutating route tests | `COVERAGE_CONTRACT` §2.2 | Track A | `E2E-02.1` | `[x] Done` |
+| `E2E-02.4` | Build table-driven `negative-matrix.spec.ts` — Matrix A (unauth `401`, forbidden `403`, bad DTO `400`, `.strict()` unknown key `400`) | `API-T-06..09`, `API-M-04` | Track A + B | `SPC-01.3`, `E2E-02.1` | `[x] Done` |
+| `E2E-02.5` | Build table-driven `negative-matrix.spec.ts` — Matrix B (foreign resource `:id` returns `404` on all player-owned endpoints) | `API-T-10`, `API-M-05` | Track A + B | `SPC-01.4`, `E2E-02.4` | `[x] Done` |
+| `E2E-02.6` | Add `fast-check` DTO property fuzzing & OpenAPI `schemathesis` contract test | `API-T-11..13`, `API-M-03` | Track B | `SPC-01.2`, `E2E-02.2` | `[x] Done` |
 
 ### Epic E2E-03 — 17 Zero-Scenario & 47 Single-Scenario HTTP Routes ([`issues/E2E-03-http-zero-and-single-scenario-routes.md`](./issues/E2E-03-http-zero-and-single-scenario-routes.md))
 
 | Task ID | Title | Spec / Contract Ref | Track | Depends On | Status |
 |---|---|---|---|---|---|
-| `E2E-03.1` | Add positive + ≥2 negative scenarios for 5 zero-scenario Admin routes (`re-verify`, `audit-log`, `rides/:id/samples`, `settings`, `wallet-Lookup`) | `COVERAGE_CONTRACT` §2.1 | Track A | `E2E-02.3` | `[ ] Todo` |
-| `E2E-03.2` | Add positive + ≥2 negative scenarios for 8 zero-scenario Editor & Entity routes | `PLT-T-01..08` | Track A | `E2E-02.3` | `[ ] Todo` |
-| `E2E-03.3` | Add positive + ≥2 negative scenarios for 4 zero-scenario Player, Auth, Live & Dev routes | `COVERAGE_CONTRACT` §2.1 | Track A | `E2E-02.3` | `[ ] Todo` |
-| `E2E-03.4` | Add negative scenarios (`≥2` per route) for single-scenario Auth, Profile, Legal & Referral routes | `LEG-T-01..09`, `REF-T-01..06` | Track A | `E2E-02.3` | `[ ] Todo` |
-| `E2E-03.5` | Add negative scenarios (`≥2` per route) for single-scenario Rides, Telemetry, Tickets & Promo routes | `RID-T-01..04`, `PRM-T-01..08` | Track A | `E2E-02.3` | `[ ] Todo` |
-| `E2E-03.6` | Add negative scenarios (`≥2` per route) for single-scenario Pools, Replays, Watch, TEN4 & Blinks routes | `POOL-T-01..06`, `TEN-T-01..08` | Track A | `E2E-02.3` | `[ ] Todo` |
-| `E2E-03.7` | Mirror 100% of `flows.spec.ts` scenarios into `flows.integration.spec.ts` (real PostgreSQL parity gate) | `COVERAGE_CONTRACT` §2.1–2.2 | Track A | `E2E-03.1..6` | `[ ] Todo` |
+| `E2E-03.1` | Add positive + ≥2 negative scenarios for 5 zero-scenario Admin routes (`re-verify`, `audit-log`, `rides/:id/samples`, `settings`, `wallet-Lookup`) | `COVERAGE_CONTRACT` §2.1 | Track A | `E2E-02.3` | `[x] Done` |
+| `E2E-03.2` | Add positive + ≥2 negative scenarios for 8 zero-scenario Editor & Entity routes | `PLT-T-01..08` | Track A | `E2E-02.3` | `[x] Done` |
+| `E2E-03.3` | Add positive + ≥2 negative scenarios for 4 zero-scenario Player, Auth, Live & Dev routes | `COVERAGE_CONTRACT` §2.1 | Track A | `E2E-02.3` | `[x] Done` |
+| `E2E-03.4` | Add negative scenarios (`≥2` per route) for single-scenario Auth, Profile, Legal & Referral routes | `LEG-T-01..09`, `REF-T-01..06` | Track A | `E2E-02.3` | `[x] Done` |
+| `E2E-03.5` | Add negative scenarios (`≥2` per route) for single-scenario Rides, Telemetry, Tickets & Promo routes | `RID-T-01..04`, `PRM-T-01..08` | Track A | `E2E-02.3` | `[x] Done` |
+| `E2E-03.6` | Add negative scenarios (`≥2` per route) for single-scenario Pools, Replays, Watch, TEN4 & Blinks routes | `POOL-T-01..06`, `TEN-T-01..08` | Track A | `E2E-02.3` | `[x] Done` |
+| `E2E-03.7` | Mirror 100% of `flows.spec.ts` scenarios into `flows.integration.spec.ts` (real PostgreSQL parity gate) | `COVERAGE_CONTRACT` §2.1–2.2 | Track A | `E2E-03.1..6` | `[x] Done` |
 
 ### Epic E2E-04 — Headless Chrome As-Built Suite ([`issues/E2E-04-headless-chrome-as-built.md`](./issues/E2E-04-headless-chrome-as-built.md))
 
 | Task ID | Title | Spec / Contract Ref | Track | Depends On | Status |
 |---|---|---|---|---|---|
-| `E2E-04.1` | Headless Chrome: Guest ride completion (`tier='free'`) + `409 guest_free_only` & `409 training_tier_free_only` | `COVERAGE_CONTRACT` Phase 3.1 | Track A | `E2E-01.4` | `[ ] Todo` |
-| `E2E-04.2` | Headless Chrome: Weekly 1h free-ride ticket auto-grant (`source='weekly'`) + promo credit precedence | `COVERAGE_CONTRACT` Phase 3.2 | Track A | `E2E-01.4` | `[ ] Todo` |
-| `E2E-04.3` | Headless Chrome: `e2e-tickets.mjs` localnet reconcile (`POST /api/tickets/orders/:id/reconcile`) + foreign order `403/404` | `COVERAGE_CONTRACT` Phase 3.3 | Track A | `E2E-01.2` | `[ ] Todo` |
-| `E2E-04.4` | Headless Chrome: `e2e-solana-pay.mjs` browser-side wallet sign & confirm after QR order | `COVERAGE_CONTRACT` Phase 3.4 | Track A | `E2E-01.4` | `[ ] Todo` |
-| `E2E-04.5` | Headless Chrome: `e2e-live.mjs` negative checks (self-donate `400`, self-pledge `400`, rate-limit `429`) | `COVERAGE_CONTRACT` Phase 3.5 | Track A | `E2E-01.4` | `[ ] Todo` |
-| `E2E-04.6` | Headless Chrome: `e2e-referral.mjs` full invitee MEDIUM ride → `qualifyOnRideVerified` → `referrerRideGift=2` | `COVERAGE_CONTRACT` Phase 3.6 | Track A | `E2E-01.4` | `[ ] Todo` |
-| `E2E-04.7` | Headless Chrome: `e2e-honk-garage.mjs` Prize board tab (`GET /api/pools/:id/leaderboard`) & TEN4 catalog UI | `COVERAGE_CONTRACT` Phase 3.7 | Track A | `E2E-01.4` | `[ ] Todo` |
-| `E2E-04.8` | Headless Chrome: `e2e-whitepaper.mjs` dedicated harness (`whitepaper.html` zero errors, anchors, diagrams) | `COVERAGE_CONTRACT` Phase 3.8 | Track A | `E2E-01.4` | `[ ] Todo` |
-| `E2E-04.9` | Headless Chrome: `e2e-landing.mjs` empty-pool state (`GET /api/pools/current → null`, `paintHero` regression) | `COVERAGE_CONTRACT` Phase 3.9 | Track A | `SPC-01.6` | `[ ] Todo` |
-| `E2E-04.10` | Headless Chrome: `e2e-editor.mjs` `POST /api/editor/auth/logout` → cookie cleared → `401` on next write | `COVERAGE_CONTRACT` Phase 3.10 | Track A | `E2E-01.4` | `[ ] Todo` |
-| `E2E-04.11` | Headless Chrome: `e2e-achievements.mjs` multi-ride progress (`first-shift`, `100-miles`) + rejected ride skip | `COVERAGE_CONTRACT` Phase 3.11 | Track A | `E2E-01.4` | `[ ] Todo` |
-| `E2E-04.12` | Headless Chrome: `e2e-admin.mjs` wrong host `403`, missing `adminSig` `401`, re-verify & sample inspection | `COVERAGE_CONTRACT` Phase 3.12 | Track A | `E2E-01.4` | `[ ] Todo` |
+| `E2E-04.1` | Headless Chrome: Guest ride completion (`tier='free'`) + `409 guest_free_only` & `409 training_tier_free_only` | `COVERAGE_CONTRACT` Phase 3.1 | Track A | `E2E-01.4` | `[x] Done` |
+| `E2E-04.2` | Headless Chrome: Weekly 1h free-ride ticket auto-grant (`source='weekly'`) + promo credit precedence | `COVERAGE_CONTRACT` Phase 3.2 | Track A | `E2E-01.4` | `[x] Done` |
+| `E2E-04.3` | Headless Chrome: `e2e-tickets.mjs` localnet reconcile (`POST /api/tickets/orders/:id/reconcile`) + foreign order `403/404` | `COVERAGE_CONTRACT` Phase 3.3 | Track A | `E2E-01.2` | `[x] Done` |
+| `E2E-04.4` | Headless Chrome: `e2e-solana-pay.mjs` browser-side wallet sign & confirm after QR order | `COVERAGE_CONTRACT` Phase 3.4 | Track A | `E2E-01.4` | `[x] Done` |
+| `E2E-04.5` | Headless Chrome: `e2e-live.mjs` negative checks (self-donate `400`, self-pledge `400`, rate-limit `429`) | `COVERAGE_CONTRACT` Phase 3.5 | Track A | `E2E-01.4` | `[x] Done` |
+| `E2E-04.6` | Headless Chrome: `e2e-referral.mjs` full invitee MEDIUM ride → `qualifyOnRideVerified` → `referrerRideGift=2` | `COVERAGE_CONTRACT` Phase 3.6 | Track A | `E2E-01.4` | `[x] Done` |
+| `E2E-04.7` | Headless Chrome: `e2e-honk-garage.mjs` Prize board tab (`GET /api/pools/:id/leaderboard`) & TEN4 catalog UI | `COVERAGE_CONTRACT` Phase 3.7 | Track A | `E2E-01.4` | `[x] Done` |
+| `E2E-04.8` | Headless Chrome: `e2e-whitepaper.mjs` dedicated harness (`whitepaper.html` zero errors, anchors, diagrams) | `COVERAGE_CONTRACT` Phase 3.8 | Track A | `E2E-01.4` | `[x] Done` |
+| `E2E-04.9` | Headless Chrome: `e2e-landing.mjs` empty-pool state (`GET /api/pools/current → null`, `paintHero` regression) | `COVERAGE_CONTRACT` Phase 3.9 | Track A | `SPC-01.6` | `[x] Done` |
+| `E2E-04.10` | Headless Chrome: `e2e-editor.mjs` `POST /api/editor/auth/logout` → cookie cleared → `401` on next write | `COVERAGE_CONTRACT` Phase 3.10 | Track A | `E2E-01.4` | `[x] Done` |
+| `E2E-04.11` | Headless Chrome: `e2e-achievements.mjs` multi-ride progress (`first-shift`, `100-miles`) + rejected ride skip | `COVERAGE_CONTRACT` Phase 3.11 | Track A | `E2E-01.4` | `[x] Done` |
+| `E2E-04.12` | Headless Chrome: `e2e-admin.mjs` wrong host `403`, missing `adminSig` `401`, re-verify & sample inspection | `COVERAGE_CONTRACT` Phase 3.12 | Track A | `E2E-01.4` | `[x] Done` |
 
 ### Epic E2E-05 — Local Validator, Anchor Programs & Block 1/2 E2E ([`issues/E2E-05-local-validator-and-chain-e2e.md`](./issues/E2E-05-local-validator-and-chain-e2e.md))
 
 | Task ID | Title | Spec / Contract Ref | Track | Depends On | Status |
 |---|---|---|---|---|---|
-| `E2E-05.1` | Pin `freightchain_honk` IDL drift check in `anchor-idl-drift.spec.ts` (all 7 instructions) | `COVERAGE_CONTRACT` Phase 4.1 | Track A | — | `[ ] Todo` |
-| `E2E-05.2` | Extend `npm run test:localnet` with full SOL pool lifecycle + `pledge_ride` / `settle_pledge` / `refund_pledge` | `POOL-T-01..10`, `SOL-T-01..08` | Track A | `E2E-05.1` | `[ ] Todo` |
+| `E2E-05.1` | Pin `freightchain_honk` IDL drift check in `anchor-idl-drift.spec.ts` (all 7 instructions) | `COVERAGE_CONTRACT` Phase 4.1 | Track A | — | `[x] Done` |
+| `E2E-05.2` | Extend `npm run test:localnet` with full SOL pool lifecycle + `pledge_ride` / `settle_pledge` / `refund_pledge` | `POOL-T-01..10`, `SOL-T-01..08` | Track A | `E2E-05.1` | `[x] Done` |
 | `E2E-05.3` | Extend `honk-suite` with negative checks (`tier='free'` training ride & weekly grant ride mint `0` TEN4) | `TEN-T-01..15` | Track A | `E2E-05.1` | `[ ] Todo` |
 | `E2E-05.4` | Complete pending Block 1 & Block 2 tests (`B1-REF-04`, `B2-PROMO-02`, `B2-ADMIN-04`, `B2-API-06`, `B2-API-07`, `B2-HONK-02`) | `E2E-T-02..07`, `E2E_PLAN.md` | Track A | `E2E-05.1` | `[ ] Todo` |
 | `E2E-05.5` | Implement `SOL-T-01..16` (SIWS auth, `.sol` SNS resolution, Blink CORS/actions, soulbound cNFT outbox) | `SOL-T-01..16` | Track A + B | `E2E-05.2` | `[ ] Todo` |
@@ -121,7 +121,7 @@
 | `E2E-08.3` | Implement Minigame Schedule, Parking Pocket & Commit–Reveal E2E (`MGM-T-01..05`, `AC-M1..M10`: 1h only, `mgSalt`, 2–4 events, ≥8m gap, ≥300m hazard clearance, pocket stop) | `MGM-T-01..05`, `AC-M1..10`, `MGM-M-01..06` | Track B | `SPC-07.1..2` | `[ ] Todo` |
 | `E2E-08.4` | Implement Minigame Noisy Image, Catalog, Penalties & `×2` Accessibility E2E (`MGM-T-06..09`, `AC-M11..M20`: PNG challenge, +20s/+45s penalties, crypto safety gate) | `MGM-T-06..09`, `AC-M11..20`, `MGM-M-07..12` | Track B | `SPC-07.3..5` | `[ ] Todo` |
 | `E2E-08.5` | Implement Pool Schedule, `last_start_at` Cutoff, Ticket Burn UI & Appeals E2E (`POOL-T-01..16`: `409 pool_schedule_mismatch`, `409 pool_last_start_passed`, appeals workflow, v6 fields) | `POOL-T-01..16`, `POOL-M-01..14` | Track B | `SPC-05.1..5` | `[ ] Todo` |
-| `E2E-08.6` | Implement Platform Services E2E (`PLT-T-01..14`: PostHog opt-in, Redis fail-closed AI limits, dedicated editor worker, bundle revision signing) | `PLT-T-01..14`, `PLT-M-01..12` | Track A + B | `E2E-03.2` | `[ ] Todo` |
+| `E2E-08.6` | Implement Platform Services E2E (`PLT-T-01..14`: PostHog opt-in, Redis fail-closed AI limits, dedicated editor worker, bundle revision signing) | `PLT-T-01..14`, `PLT-M-01..12` | Track A + B | `E2E-03.2` | `[x] Done` |
 
 ### Epic E2E-09 — Admin Security Matrix & CI Pipeline ([`issues/E2E-09-admin-security-matrix-and-ci.md`](./issues/E2E-09-admin-security-matrix-and-ci.md))
 

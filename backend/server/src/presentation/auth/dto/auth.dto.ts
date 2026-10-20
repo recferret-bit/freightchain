@@ -5,13 +5,13 @@ import type { ChallengeDto } from '../../../application/use-cases/auth/request-c
 /** 1-click SIWS challenge request schema: wallet is optional prior to wallet connection. Accepts {} or { wallet }. */
 export const requestChallengeBodySchema = z.object({
   wallet: z.preprocess((v) => (v === '' ? undefined : v), walletAddressSchema.optional()),
-});
+}).strict();
 export type RequestChallengeBody = z.infer<typeof requestChallengeBodySchema>;
 
 /** Legacy challenge body schema: wallet is required (also consumed by AdminHttpController). */
 export const challengeBodySchema = z.object({
   wallet: walletAddressSchema,
-});
+}).strict();
 export type ChallengeBody = z.infer<typeof challengeBodySchema>;
 
 /**
@@ -25,10 +25,10 @@ export const verifyBodySchema = z.object({
   signature: z.string().min(1).max(200),
   message: z.string().min(1).max(2000).optional(),
   nonce: z.string().min(8).max(64).optional(),
-});
+}).strict();
 export type VerifyBody = z.infer<typeof verifyBodySchema>;
 
-export const pairParamsSchema = z.object({ id: z.string().regex(/^[0-9a-f]{32}$/, 'pair id') });
+export const pairParamsSchema = z.object({ id: z.string().regex(/^[0-9a-f]{32}$/, 'pair id') }).strict();
 export type PairParams = z.infer<typeof pairParamsSchema>;
 
 export type { ChallengeDto };

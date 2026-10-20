@@ -6,12 +6,12 @@ export const BASE = process.env.E2E_BASE || '';
 export const REQUIRE = process.env.E2E_REQUIRE === '1';
 export const SOLANA = process.env.E2E_SOLANA_RPC || '';
 
-export function apiTest(test, name, fn) {
+export function apiTest(test, name, fn, options = {}) {
   if (!BASE && REQUIRE) {
     test(name, () => { throw new Error('E2E_BASE is required (npm run test:e2e:block1)'); });
     return;
   }
-  test(name, { skip: BASE ? false : 'E2E_BASE is not set — npm run test:e2e:block1 starts the stack' }, fn);
+  test(name, { skip: BASE ? false : 'E2E_BASE is not set — npm run test:e2e:block1 starts the stack', ...options }, fn);
 }
 
 export function chainTest(test, name, fn) {

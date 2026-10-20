@@ -104,7 +104,7 @@ export const splitParts = p => [
 ];
 
 /** The rules copy on a pool card (§2.8). */
-export const rulesText = p => `Your entry sits in the pool’s vault on chain – not with us. If fewer than ${p.minTickets} riders commit by ${day(p.prepDeadline)}, every ticket is refunded in full. Live pool: ${pct(p.split.prizeBps)} prizes, ${pct(p.split.seedBps)} seeds the next pool, ${pct(p.split.feeBps)} fees.`;
+export const rulesText = p => `We fund the major pool (> 50%), and paid tickets (< 50% cap) buy extra attempts in the pool’s vault on chain – not with us. Ticket purchases are final and non-refundable once bought, and unused tickets expire when starts close (${day(p.prepDeadline)}). Live pool: ${pct(p.split.prizeBps)} prizes, ${pct(p.split.seedBps)} seeds the next pool, ${pct(p.split.feeBps)} fees.`;
 
 /** An unused ticket POST /api/rides can spend now: a live pool before its last start (`rideBy` – the sale end: no new rides after it; checked against this clock too – the list may be minutes old). */
 export const canRide = (t, now) => t.status === 'active' && t.ridable !== false && !(t.rideBy <= now);

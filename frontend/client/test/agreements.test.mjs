@@ -81,11 +81,17 @@ test('agreementsCard returns null if already accepted (disappears)', () => {
 test('agreementsCard paints card when not accepted, preserves other checkbox enabled on toggle (no flashing), and locks on both accepted', async () => {
   const me = { agreements: { age18: null, loss: null } };
   let putPayload = null;
-  globalThis.fetch = async (_url, opts) => {
-    putPayload = JSON.parse(opts.body);
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).includes('agreements')) {
+      putPayload = JSON.parse(opts.body);
+      return {
+        ok: true,
+        json: async () => ({ age18: putPayload.age18 ? 1000 : null, loss: putPayload.loss ? 2000 : null }),
+      };
+    }
     return {
       ok: true,
-      json: async () => ({ age18: putPayload.age18 ? 1000 : null, loss: putPayload.loss ? 2000 : null }),
+      json: async () => ({}),
     };
   };
 

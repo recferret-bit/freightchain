@@ -373,7 +373,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 | `B1-REF-01` | server/test/scenarios/referrals.scenarios.ts | tests/e2e/block1-offchain/api/referral.test.mjs | mock |
 | `B1-REF-02` | server/test/scenarios/referrals.scenarios.ts | tests/e2e/block1-offchain/api/referral.test.mjs | automated |
 | `B1-REF-03` | client/test/referral.test.mjs | tests/e2e/block1-offchain/api/referral.test.mjs | automated |
-| `B1-REF-04` | server/test/unit/application/services/referral.service.spec.ts | tests/e2e/block1-offchain/api/referral.test.mjs | pending |
+| `B1-REF-04` | server/test/unit/application/services/referral.service.spec.ts | tests/e2e/block1-offchain/api/referral.test.mjs | automated |
 | `B1-BOARD-01` | server/src/presentation/prize/prize.http.controller.ts | tests/e2e/block1-offchain/free/merged.test.mjs | automated |
 | `B1-HONK-01` | server/src/domain/honk/tokenomics.ts | tests/e2e/block1-offchain/free/merged.test.mjs | automated |
 | `B1-ADMIN-01` | server/scripts/e2e-admin.mjs | tests/e2e/block1-offchain/admin/signin.test.mjs | automated |

@@ -15,7 +15,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.1` — Headless Chrome: Guest ride completion (`tier='free'`) + `409 guest_free_only` & `409 training_tier_free_only`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.1
 - **Target Files:**
@@ -37,7 +37,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.2` — Headless Chrome: Weekly 1h free-ride ticket auto-grant (`source='weekly'`) + promo credit precedence
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.2
 - **Target Files:**
@@ -57,7 +57,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.3` — Headless Chrome: `e2e-tickets.mjs` localnet reconcile (`POST /api/tickets/orders/:id/reconcile`) + foreign order `403/404`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.3
 - **Target Files:**
@@ -77,7 +77,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.4` — Headless Chrome: `e2e-solana-pay.mjs` browser-side wallet sign & confirm after QR order
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.4
 - **Target Files:**
@@ -96,7 +96,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.5` — Headless Chrome: `e2e-live.mjs` negative checks (self-donate `400`, self-pledge `400`, rate-limit `429`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.5
 - **Target Files:**
@@ -115,7 +115,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.6` — Headless Chrome: `e2e-referral.mjs` full invitee MEDIUM ride → `qualifyOnRideVerified` → `referrerRideGift=2`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.6
 - **Target Files:**
@@ -134,7 +134,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.7` — Headless Chrome: `e2e-honk-garage.mjs` Prize board tab (`GET /api/pools/:id/leaderboard`) & TEN4 catalog UI
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.7
 - **Target Files:**
@@ -153,7 +153,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.8` — Headless Chrome: `e2e-whitepaper.mjs` dedicated harness (`whitepaper.html` zero errors, anchors, diagrams)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.8
 - **Target Files:**
@@ -173,7 +173,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.9` — Headless Chrome: `e2e-landing.mjs` empty-pool state (`GET /api/pools/current → null`, `paintHero` regression)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.9, `API-M-12`
 - **Target Files:**
@@ -192,7 +192,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.10` — Headless Chrome: `e2e-editor.mjs` `POST /api/editor/auth/logout` → cookie cleared → `401` on next write
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.10
 - **Target Files:**
@@ -211,7 +211,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.11` — Headless Chrome: `e2e-achievements.mjs` multi-ride progress (`first-shift`, `100-miles`) + rejected ride skip
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.11, `SOL-T-09..14`
 - **Target Files:**
@@ -230,7 +230,7 @@ Expands the real Headless Chrome suite (`backend/server/scripts/e2e-*.mjs`, `fro
 
 ### `E2E-04.12` — Headless Chrome: `e2e-admin.mjs` wrong host `403`, missing `adminSig` `401`, re-verify & sample inspection
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.3, `IMPLEMENTATION_PLAN.md` §Phase 3.12, `ADM-T-01..06`
 - **Target Files:**

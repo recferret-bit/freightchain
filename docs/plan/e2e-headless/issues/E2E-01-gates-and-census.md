@@ -15,7 +15,7 @@ Before expanding HTTP scenario matrices or headless Chrome scripts, the three ex
 
 ### `E2E-01.1` — Fix `veh|medic` 21-mesh parity drift in `npm run test:parity`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `docs/testing/COVERAGE_CONTRACT.md` §2.5, `docs/testing/IMPLEMENTATION_PLAN.md` §Phase 1.1
 - **Target Files:**
@@ -37,7 +37,7 @@ Before expanding HTTP scenario matrices or headless Chrome scripts, the three ex
 
 ### `E2E-01.2` — Fix `npm run test:tickets-stub` (`18/20` → `20/20`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `docs/testing/COVERAGE_CONTRACT.md` §2.5, `docs/testing/IMPLEMENTATION_PLAN.md` §Phase 1.2
 - **Target Files:**
@@ -58,7 +58,7 @@ Before expanding HTTP scenario matrices or headless Chrome scripts, the three ex
 
 ### `E2E-01.3` — Map all 57 unmapped routes & 147 test files in `census.mjs` (`--self-test` green)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `docs/testing/COVERAGE_CONTRACT.md` §4.1, `docs/testing/IMPLEMENTATION_PLAN.md` §Phase 1.3
 - **Target Files:**
@@ -78,7 +78,7 @@ Before expanding HTTP scenario matrices or headless Chrome scripts, the three ex
 
 ### `E2E-01.4` — Wire `census.mjs --self-test`, `test:parity`, and `test:tickets-stub` into root `npm run check`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `docs/testing/COVERAGE_CONTRACT.md` §4
 - **Target Files:**

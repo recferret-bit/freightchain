@@ -40,11 +40,27 @@ export async function launch({ port, shotsDir, args = [], evalProblems = false, 
     ws.send(JSON.stringify({ id: i, method, params }));
   });
   const ev = async expr => {
-    const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
-    if (evalProblems && r.exceptionDetails) problems.push('EVAL: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text) + ' in ' + expr.slice(0, 80));
-    return r.result?.value ?? r.exceptionDetails?.exception?.description;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
+        if (evalProblems && r.exceptionDetails) problems.push('EVAL: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text) + ' in ' + expr.slice(0, 80));
+        return r.result?.value ?? r.exceptionDetails?.exception?.description;
+      } catch (e) {
+        // Headless Chrome drops a debugger call while the game tab is busy. A missed poll is not a failed ride.
+        if (attempt === 2 || !/timed out/.test(String(e?.message))) throw e;
+      }
+    }
   };
-  const shot = async name => { const r = await send('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync(path.join(SHOTS, name + '.png'), Buffer.from(r.data, 'base64')); };
+  // A screenshot is a record of the page, not an assertion. Chrome sometimes never answers captureScreenshot; one retry, then the suite continues.
+  const shot = async name => {
+    for (let i = 0; i < 2; i++) {
+      try {
+        const r = await send('Page.captureScreenshot', { format: 'png' });
+        fs.writeFileSync(path.join(SHOTS, name + '.png'), Buffer.from(r.data, 'base64'));
+        return;
+      } catch (e) { if (i === 1) { console.log(`screenshot ${name} skipped: ${e.message}`); return; } await sleep(500); }
+    }
+  };
   const filt = () => problems.filter(p => !/favicon/.test(p));
   await send('Runtime.enable'); await send('Log.enable'); await send('Page.enable');
   let closing = null;

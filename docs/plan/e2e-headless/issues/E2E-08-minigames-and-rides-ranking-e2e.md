@@ -129,7 +129,7 @@ Verifies the target gameplay and pool rules: 1h-only shifts with dynamic `finish
 
 ### `E2E-08.6` — Implement Platform Services E2E (`PLT-T-01..14`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `PLT-T-01..14`, `PLT-M-01..12`
 - **Target Files:**

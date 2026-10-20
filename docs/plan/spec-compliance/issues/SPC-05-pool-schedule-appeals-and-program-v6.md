@@ -99,10 +99,10 @@ Updates the escrowed prize pool lifecycle and `freightchain_pools` Anchor progra
 
 ---
 
-### `SPC-05.5` — Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`)
+### `SPC-05.5` — Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`) + operator-funded pool activation (no `min_tickets` low-sales refund)
 
 - **Status:** `[ ] Todo`
-- **Spec Rules:** `POOL-M-10`, `POOL-M-13`, `POOL-M-14` (`docs/spec/pool.md` §5–6)
+- **Spec Rules:** `POOL-M-05`, `POOL-M-10`, `POOL-M-13`, `POOL-M-14`, `RPL-M-17` (`docs/spec/pool.md` §1.2, §20.3)
 - **Paired Plan 1 Task:** `E2E-08.5`
 - **Target Files:**
   - `backend/programs/freightchain_pools/src/`
@@ -111,11 +111,11 @@ Updates the escrowed prize pool lifecycle and `freightchain_pools` Anchor progra
 - **Depends On:** `SPC-05.1`
 
 #### Definition of Ready (DoR)
-- [ ] `freightchain_pools` Rust state and instruction constraints for `Config.min_finish_secs <= 7200` (`2h` ceiling) and `Pool` / `Series` schedule fields (`opens_at`, `last_start_at`, `period_secs`) in `docs/spec/pool.md` §5–6 are reviewed.
+- [ ] `freightchain_pools` Rust state and instruction constraints for `Config.min_finish_secs <= 7200` (`2h` ceiling), `Pool` / `Series` schedule fields (`opens_at`, `last_start_at`, `period_secs`), and operator-funded pool activation (pools open directly in `STATUS_ACTIVE` without requiring `tickets_sold >= min_tickets`, removing `fail_pool` for low ticket sales and disabling peer-to-peer `create_pledge`) in `docs/spec/pool.md` §20.3 are reviewed.
 - [ ] Reminder per `AGENTS.md`: build & test on local validator only; never deploy to devnet without explicit user instruction.
 
 #### Definition of Done (DoD)
-- [ ] `freightchain_pools` enforces `min_finish_secs <= 7200` and validates `opens_at < last_start_at < close_at` on-chain (`buy_ticket` and `seal_road` rejected after `last_start_at`).
+- [ ] `freightchain_pools` enforces `min_finish_secs <= 7200`, validates `opens_at < last_start_at < close_at` on-chain (`buy_ticket` and `seal_road` rejected after `last_start_at`), and opens operator-funded pools in `STATUS_ACTIVE` (`min_tickets = 0`, no low-sales `fail_pool` refund; only admin `cancel_pool` or 14-day unsettled `expire_pool` refunds).
 - [ ] `anchor-idl-drift.spec.ts` and `npm run test:localnet` pass on local validator.
 - [ ] `docs/tech/escrow-open-items.md` and `docs/spec/PRODUCT.md` updated; status marked `[x] Done` in [`docs/plan/spec-compliance/STATUS.md`](../STATUS.md).
 

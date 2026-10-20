@@ -112,6 +112,16 @@ export class TooManyRequestsError extends DomainError {
   }
 }
 
+/** The handler's JSON does not match the route's `@ZodResponse` schema. The problem filter renders it; controllers do not throw framework exceptions. */
+export class ResponseSchemaViolationError extends DomainError {
+  readonly statusCode = 500;
+  readonly errorCode = 'response_schema_violation';
+
+  constructor(message = 'Response did not match its schema') {
+    super(message);
+  }
+}
+
 export class ServiceUnavailableError extends DomainError {
   readonly statusCode = 503;
   readonly errorCode: string;

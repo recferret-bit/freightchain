@@ -11,6 +11,7 @@ import {
   addLcov, allRoutes, attributeCase, caseRoutes, gradeFeature, matchRoute, parseController, requestsIn, routesFromLog, subjectOf, controllerTable, featureReport, featureTable, flowTable, GRADE_RULE, linesFromIstanbul, linesFromLcov, mergeIstanbul,
   recordE2eRoutes, renderFull, REPORT_REL, saveLines, sourceLine, writeFull,
 } from './coverage.mjs';
+import { FEATURES } from './features.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..');
@@ -1043,7 +1044,8 @@ async function runLanes(list) {
 }
 
 async function main(argv) {
-  const [cmd = 'print', ...rest] = argv;
+  const [raw = 'print', ...rest] = argv;
+  const cmd = raw === '--self-test' ? 'self-test' : raw;
   const write = rest.includes('--readme') || cmd === 'readme';
   if (cmd === 'self-test') return selfTest();
   if (cmd === 'run') {
@@ -1069,7 +1071,7 @@ async function main(argv) {
     if (rest.includes('--readme')) writeReadme();
     return;
   }
-  if (cmd !== 'print' && cmd !== 'readme') throw new Error('use: census.mjs [print|readme|run|features [--write]|coverage [--no-integration] [--readme]|self-test]');
+  if (cmd !== 'print' && cmd !== 'readme') throw new Error('use: census.mjs [print|readme|run|features [--write]|coverage [--no-integration] [--readme]|self-test|--self-test]');
   if (write || cmd === 'readme') writeReadme();
   else process.stdout.write(`${render(inventory(), loadRuns().runs)}\n`);
 }
@@ -1285,6 +1287,10 @@ async function selfTest() {
   assert(rep.flows.every((f) => !f.unknown.length), `flow steps that are no route: ${rep.flows.flatMap((f) => f.unknown).join(', ')}`);
   assert(rep.routes.every((r) => r.feature), `routes no feature owns: ${rep.routes.filter((r) => !r.feature).map((r) => r.key).join(', ')}`);
   assert(!rep.unmapped.length, `source files no feature owns: ${rep.unmapped.join(', ')}`);
+  assert(!rep.unattributed.length, `tests attributed to no feature: ${rep.unattributed.join(', ')}`);
+  const named = new Set(FEATURES.flatMap((f) => f.e2e || []));
+  const loose = inv.harnesses.filter((h) => !named.has(h.rel.split('/').pop()));
+  assert(!loose.length, `e2e harnesses no feature lists: ${loose.map((h) => h.rel).join(', ')}`);
   assert(rep.controllers.length === new Set(routes.map((r) => r.controller)).size, 'controllers');
   process.stdout.write('self-test ok\n');
 }

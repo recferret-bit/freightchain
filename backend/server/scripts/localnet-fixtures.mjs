@@ -182,8 +182,10 @@ mkdirSync(`${OUT}/day`, { recursive: true });
   const data = Buffer.from(a.data); data.writeBigInt64LE(BigInt(DAY_SALE), SALE_SECS);
   const sr = codec.decodeAccount('Series', data);
   check(`series dump: decodes after the edit with a ${DAY_SALE} s slot, everything else as the program wrote it`, sr && secs(sr.saleSecs) === DAY_SALE && secs(sr.playSecs) === DAY_PLAY && secs(sr.verifySecs) === DAY_REVIEW && sr.minTickets === 4 && sr.maxPerWallet === 2 && sr.feeTreasury === pub('fee') && sr.seedTreasury === pub('seed') && sr.enabled, JSON.stringify(sr));
+  // set_series stores the live Config split. open_next_pool copies that onto the pool; the --split argument is not the pool's split.
+  check('series split is the Config snapshot (prize + seed + fee = 10000)', sr.prizeBps + sr.seedBps + sr.feeBps === 10000 && sr.prizeBps === ser.prizeBps, `${sr.prizeBps}/${sr.seedBps}/${sr.feeBps}`);
   writeFileSync(`${OUT}/day/series-1h.json`, JSON.stringify({ pubkey: codec.seriesPda(1).toBase58(), account: { lamports: a.lamports, data: [data.toString('base64'), 'base64'], owner: a.owner.toBase58(), executable: false, rentEpoch: 0, space: data.length } }));
-  writeFileSync(`${OUT}/day/day.json`, JSON.stringify({ tier: '1h', saleSecs: DAY_SALE, playSecs: DAY_PLAY, reviewSecs: DAY_REVIEW, minTickets: 4, maxPerWallet: 2, price: 100_000_000, split: [7000, 2000, 1000] }));
+  writeFileSync(`${OUT}/day/day.json`, JSON.stringify({ tier: '1h', saleSecs: DAY_SALE, playSecs: DAY_PLAY, reviewSecs: DAY_REVIEW, minTickets: 4, maxPerWallet: 2, price: 100_000_000, split: [sr.prizeBps, sr.seedBps, sr.feeBps] }));
 }
 if (cov) { const sc = await cov.scan(conn, 'phase 1 (fixtures validator)'); console.log(`coverage: ${sc.transactions} program transactions on the fixtures validator`); }
 process.exit(fails.length ? 1 : 0);

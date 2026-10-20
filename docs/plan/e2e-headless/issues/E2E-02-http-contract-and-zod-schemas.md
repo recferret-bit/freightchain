@@ -15,7 +15,7 @@ Establishes the automated HTTP contract harness across all 151+ backend endpoint
 
 ### `E2E-02.1` — Build `routes.manifest.ts` + meta-test asserting 100% NestJS controller route registration
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `API-T-01`, `API-M-01`, `COVERAGE_CONTRACT` §2.1
 - **Target Files:**
@@ -37,7 +37,7 @@ Establishes the automated HTTP contract harness across all 151+ backend endpoint
 
 ### `E2E-02.2` — Enforce `@ZodResponse` schema validation (`RESPONSE_SCHEMA_CHECK=strict`) across all 151+ routes
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `API-T-02`, `API-T-03`, `API-T-04`, `API-T-05`, `API-M-02`
 - **Target Files:**
@@ -62,7 +62,7 @@ Establishes the automated HTTP contract harness across all 151+ backend endpoint
 
 ### `E2E-02.3` — Implement `expectDbDelta(prisma, tables, fn)` helper and instrument mutating route tests
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.2, `IMPLEMENTATION_PLAN.md` §Phase 2.3
 - **Target Files:**
@@ -83,7 +83,7 @@ Establishes the automated HTTP contract harness across all 151+ backend endpoint
 
 ### `E2E-02.4` — Build table-driven `negative-matrix.spec.ts` — Matrix A (Auth, Host, Validation & `.strict()`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `API-T-06`, `API-T-07`, `API-T-08`, `API-T-09`, `API-M-04`
 - **Target Files:**
@@ -107,7 +107,7 @@ Establishes the automated HTTP contract harness across all 151+ backend endpoint
 
 ### `E2E-02.5` — Build table-driven `negative-matrix.spec.ts` — Matrix B (Foreign Resource `:id` → `404`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `API-T-10`, `API-M-05`
 - **Target Files:**
@@ -127,7 +127,7 @@ Establishes the automated HTTP contract harness across all 151+ backend endpoint
 
 ### `E2E-02.6` — Add `fast-check` DTO property fuzzing & OpenAPI `schemathesis` contract test
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track B
 - **Spec / Contract Ref:** `API-T-11`, `API-T-12`, `API-T-13`, `API-M-03`
 - **Target Files:**

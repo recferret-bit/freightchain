@@ -33,6 +33,11 @@ PHASE2=1; [ "$SCENARIO" = day ] && PHASE2=0
 PHASE3=0; { [ "$SCENARIO" = all ] || [ "$SCENARIO" = day ]; } && [ "${TARGET:-localnet}" != devnet ] && [ "${LIKE_DEVNET:-0}" != 1 ] && PHASE3=1
 COV="$TMP/coverage.json"
 fail() { echo "✗ $*"; exit 1; }
+# GET / is the landing build. A checkout without frontend/landing/dist/index.html answers 404 and the deploy smoke fails.
+if [ ! -f "$ROOT/frontend/landing/dist/index.html" ]; then
+  echo "▸ landing build (smoke requires GET /)"
+  (cd "$ROOT/frontend/landing" && npm run build) || fail "landing build"
+fi
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})'; }
 free_pair() { for _ in $(seq 1 40); do local p; p=$(( 20000 + RANDOM % 30000 )); nc -z 127.0.0.1 "$p" 2>/dev/null || nc -z 127.0.0.1 $((p + 1)) 2>/dev/null || { echo "$p"; return; }; done; fail "no free port pair"; }
 psql_admin() { docker exec freightchain-postgres psql -U freight -d postgres -v ON_ERROR_STOP=1 -tAc "$1"; }
@@ -133,7 +138,9 @@ stop_server() { [ -n "$SRV_PID" ] && { kill "$SRV_PID" 2>/dev/null || true; wait
 export DATABASE_URL="$URL" PAYMENT_MODE=program TICKET_PROGRAM_ID="$PROGRAM_ID" SOLANA_RPC="$RPC" SOLANA_WS="$WS" SOLANA_RPC_FALLBACKS="$([ "$TARGET" = devnet ] && echo https://api.devnet.solana.com)" SOLANA_COMMITMENT=confirmed \
   CRANK_SECRET="$(cat "$TMP/keys/crank.json")" CRANK_INTERVAL_MS=0 TREASURY_PUBKEY="$(pub admin)" FEE_TREASURY="$(pub fee)" SEED_TREASURY="$(pub seed)" \
   WEBHOOK_SECRET="$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')" WATCH_INTERVAL_MS="$([ "$SCENARIO" = chaos ] && echo 0 || { [ "$TARGET" = devnet ] && echo 5000 || echo 2000; })" SOL_USD=118 DEMO_WALLETS='*' DEMO_SCALE=1200 FREE_RIDE_SECONDS=3 VERDICT_ENFORCE=true POSTHOG_ENABLED=0 PRIORITY_FEE_MAX_MICROLAMPORTS="$([ "$TARGET" = devnet ] && echo 50000 || echo 0)" \
-  ADMIN_WALLETS="$(pub admin)" NODE_ENV=development PAYOUT_INTERVAL_MS=0   # the admin's signed ride review (payout scenario) – the program authority doubles as the site admin here
+  ADMIN_WALLETS="$(pub admin)" NODE_ENV=development PAYOUT_INTERVAL_MS=0 \
+  PRIZE_DEV_DEFAULT_COUNTRY=KP \
+  THROTTLE_LIMIT=10000 THROTTLE_AUTH_LIMIT=10000 THROTTLE_AUTH_RPS=1000   # the scenarios sign in a handful of wallets in one second; the default 5/s refuses the rest
 export PAYOUT_SECRET=   # phase 2 has no payout key (empty = unset for the schema, and a stray server/.env cannot fill it): the admin pays (devnet-payout.mjs); phase 3 sets one
 if [ "$PHASE2" = 1 ]; then
 start_server "$DB" "$TMP/server.log"

@@ -12,7 +12,12 @@ export function trafficProofScenarios(h: () => Harness): void {
   it.each(['honest', 'downgrade', 'malformed', 'unbound', 'rehash-without-proof'] as const)('server-stamped frame protocol: %s recording', async (mode) => {
     const who = await login();
     const ride = (await who.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
-    const started = (await who.agent.post(`/api/rides/${ride.id}/start`).send(mode === 'downgrade' ? { trafficVersion: 0 } : {}).expect(200)).body;
+    // A body field the start schema does not declare is a 400, so a client cannot downgrade trafficVersion.
+    if (mode === 'downgrade') {
+      await who.agent.post(`/api/rides/${ride.id}/start`).send({ trafficVersion: 0 }).expect(400);
+      return;
+    }
+    const started = (await who.agent.post(`/api/rides/${ride.id}/start`).send({}).expect(200)).body;
     expect(started.trafficVersion).toBe(1);
     const sim = new TrafficSimulator(ride.seed, ride.trip, undefined, ride.route), frames: number[][] = [], samples: number[][] = [];
     for (let i = 0; i < 120; i++) {
@@ -23,7 +28,7 @@ export function trafficProofScenarios(h: () => Harness): void {
       if (i % 2 === 1) samples.push([Math.round((t + .05) * 100) / 100, s, 2.4, 0, 20, 2000, 5, 100, 1, 0, 0, 0]);
     }
     const body: BatchBody = { seq: 0, prevHash: ride.id, t0: 0, t1: 6, samples, inputs: [[0, 'KeyW', 1], [5900, 'KeyW', 0]], hash: null, trafficProof: encodeTrafficProof(frames) };
-    if (mode === 'downgrade' || mode === 'rehash-without-proof') delete body.trafficProof;
+    if (mode === 'rehash-without-proof') delete body.trafficProof;
     if (mode === 'malformed') body.trafficProof = 'AAA=';
     if (mode === 'unbound') samples[10]![2] = 2.8;
     body.hash = hashBatch(body);

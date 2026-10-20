@@ -15,7 +15,7 @@ Brings all 151 HTTP routes up to the mandatory coverage bar in [`docs/testing/CO
 
 ### `E2E-03.1` — Add positive + ≥2 negative scenarios for 5 zero-scenario Admin routes
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.1, `IMPLEMENTATION_PLAN.md` §Phase 2.1
 - **Target Files:**
@@ -42,7 +42,7 @@ Brings all 151 HTTP routes up to the mandatory coverage bar in [`docs/testing/CO
 
 ### `E2E-03.2` — Add positive + ≥2 negative scenarios for 8 zero-scenario Editor & Entity routes
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `PLT-T-01..08`, `COVERAGE_CONTRACT` §2.1, `IMPLEMENTATION_PLAN.md` §Phase 2.1
 - **Target Files:**
@@ -72,7 +72,7 @@ Brings all 151 HTTP routes up to the mandatory coverage bar in [`docs/testing/CO
 
 ### `E2E-03.3` — Add positive + ≥2 negative scenarios for 4 zero-scenario Player, Auth, Live & Dev routes
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.1, `IMPLEMENTATION_PLAN.md` §Phase 2.1
 - **Target Files:**
@@ -97,7 +97,7 @@ Brings all 151 HTTP routes up to the mandatory coverage bar in [`docs/testing/CO
 
 ### `E2E-03.4` — Add negative scenarios (`≥2` per route) for single-scenario Auth, Profile, Legal & Referral routes
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `LEG-T-01..09`, `REF-T-01..06`, `COVERAGE_CONTRACT` §2.1
 - **Target Files:**
@@ -117,7 +117,7 @@ Brings all 151 HTTP routes up to the mandatory coverage bar in [`docs/testing/CO
 
 ### `E2E-03.5` — Add negative scenarios (`≥2` per route) for single-scenario Rides, Telemetry, Tickets & Promo routes
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `RID-T-01..04`, `PRM-T-01..08`, `COVERAGE_CONTRACT` §2.1
 - **Target Files:**
@@ -137,7 +137,7 @@ Brings all 151 HTTP routes up to the mandatory coverage bar in [`docs/testing/CO
 
 ### `E2E-03.6` — Add negative scenarios (`≥2` per route) for single-scenario Pools, Replays, Watch, TEN4 & Blinks routes
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `POOL-T-01..06`, `TEN-T-01..08`, `COVERAGE_CONTRACT` §2.1
 - **Target Files:**
@@ -157,7 +157,7 @@ Brings all 151 HTTP routes up to the mandatory coverage bar in [`docs/testing/CO
 
 ### `E2E-03.7` — Mirror 100% of `flows.spec.ts` scenarios into `flows.integration.spec.ts` (Real PostgreSQL Parity Gate)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.1–2.2, `IMPLEMENTATION_PLAN.md` §Phase 2.3
 - **Target Files:**

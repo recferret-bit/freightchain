@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { ConfirmPledgeCommand } from './confirm-pledge.command.js';
 import { toPledgeDto, type PledgeDto } from '../../../../domain/economy/pledge.dto.js';
-import { BadRequestError, ForbiddenError, NotFoundError } from '../../../../domain/shared/errors.js';
+import { BadRequestError, NotFoundError } from '../../../../domain/shared/errors.js';
 import { PledgeRepositoryPort } from '../../../ports/economy/pledge.repository.port.js';
 import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
 import { PoolChainPort } from '../../../ports/economy/pool-chain.port.js';
@@ -26,8 +26,8 @@ export class ConfirmPledgeHandler implements ICommandHandler<ConfirmPledgeComman
 
   async execute(c: ConfirmPledgeCommand): Promise<PledgeDto> {
     const before = await this.pledges.findById(c.pledgeId);
-    if (!before) throw new NotFoundError('pledge not found');
-    if (before.sponsor !== c.wallet) throw new ForbiddenError('only the sponsor confirms a pledge');
+    // Someone else's pledge is the same 404 as a missing id: confirming must not reveal that the row exists.
+    if (!before || before.sponsor !== c.wallet) throw new NotFoundError('pledge not found');
     const events = await this.chain.readPledgeEvents(c.signature);
     if (events === 'pending') return toPledgeDto(before);
     if (!Array.isArray(events)) throw new BadRequestError(`not a pledge transaction: ${events.invalid}`, 'pledge_tx_invalid');

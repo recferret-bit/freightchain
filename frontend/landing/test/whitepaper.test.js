@@ -97,7 +97,7 @@ test('numbers: tiers, governor and completion distance equal the server rules', 
   const tiers = src('backend/server/src/domain/rides/ride-tier.ts');
   for (const [id, usd] of [['1h', 5], ['4h', 15], ['8h', 50]]) { assert.match(tiers, new RegExp(`id: '${id}'[^}]*usd: ${usd}\\b`)); assert.match(text, new RegExp(`\\$${usd}\\b`)); }
   assert.match(tiers, /id: '1h'[^}]*minTickets: 20\b/); assert.match(tiers, /id: '4h'[^}]*minTickets: null/);
-  assert.match(text, /WHY 20 TICKETS AT \$5/); assert.match(text, /\$26/); assert.match(text, /\$13\.50/);
+  assert.match(text, /OPERATOR-FUNDED POOLS & EXTRA ATTEMPTS/); assert.match(text, /\$26/); assert.match(text, /\$13\.50/);
   const landing = readFileSync(join(root, 'index.html'), 'utf8'); assert.match(landing, /id="why-20"/); assert.match(landing, /20 tickets of \$5/); assert.match(landing, /\$26/);
   const rules = src('backend/server/src/domain/rides/ride-rules.ts'); assert.match(rules, /MAX_SPEED = 28/); assert.match(rules, /COMPLETE_DIST_K = 0\.5/);
   assert.match(text, /28 m\/s/); assert.match(text, /100\.8 km\/h/); assert.match(text, /50\.4 km/, '½ × 28 m/s × 3600 s');

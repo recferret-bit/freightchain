@@ -87,14 +87,13 @@ describe('PledgesHttpController', () => {
     expect(valid.lamportsPerKm).toBe(1_000_000n);
     expect(valid.targetKm).toBe(10);
 
-    // Extraneous sponsor field is stripped
-    const stripped = createPledgeBodySchema.parse({
+    // A client cannot name the sponsor. Unknown keys are rejected, not trusted.
+    expect(createPledgeBodySchema.safeParse({
       sponsor: 'SpoofedWallet111111111111111111111111111111',
       rideId: RIDE,
       lamportsPerKm: 1_000n,
       targetKm: 1,
-    }) as any;
-    expect(stripped.sponsor).toBeUndefined();
+    }).success).toBe(false);
 
     // a ride id is a uuid; at least 1 000 lamports a km, at most 1 SOL a km; 1..10 000 km
     expect(createPledgeBodySchema.safeParse({ rideId: 'r1', lamportsPerKm: 1_000, targetKm: 1 }).success).toBe(false);

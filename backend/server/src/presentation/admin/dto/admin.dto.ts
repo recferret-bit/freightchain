@@ -19,6 +19,7 @@ export const adminRidesQuerySchema = z
     pool: z.preprocess((v) => (v === '' ? undefined : v), z.coerce.number().int().min(0).max(0xffff_ffff).optional()),
     limit: limit(50),
   })
+  .strict()
   .transform((q): AdminRideFilter => ({
     limit: q.limit, ...(q.wallet ? { wallet: q.wallet } : {}), ...(q.status ? { status: q.status } : {}), ...(q.verdict ? { verdict: q.verdict } : {}),
     ...(q.review ? { review: q.review } : {}), ...(q.pool !== undefined ? { poolId: q.pool } : {}),
@@ -31,6 +32,7 @@ export const adminReplaysQuerySchema = z
     paid: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['true', 'false']).optional()),
     limit: limit(50),
   })
+  .strict()
   .transform((q): AdminReplayFilter => ({
     limit: q.limit,
     ...(q.status ? { status: q.status } : {}),
@@ -38,14 +40,15 @@ export const adminReplaysQuerySchema = z
   }));
 export type AdminReplaysQuery = z.infer<typeof adminReplaysQuerySchema>;
 
-export const signInsQuerySchema = z.object({ wallet: z.preprocess((v) => (v === '' ? undefined : v), walletAddressSchema.optional()), limit: limit(100) });
+export const signInsQuerySchema = z.object({ wallet: z.preprocess((v) => (v === '' ? undefined : v), walletAddressSchema.optional()), limit: limit(100) }).strict();
 export type SignInsQuery = z.infer<typeof signInsQuerySchema>;
 
-export const actionsQuerySchema = z.object({ limit: limit(100) });
+export const actionsQuerySchema = z.object({ limit: limit(100) }).strict();
 export type ActionsQuery = z.infer<typeof actionsQuerySchema>;
 
 export const logsQuerySchema = z
   .object({ level: z.preprocess((v) => (v === '' ? undefined : v), z.enum(LOG_LEVELS as unknown as [string, ...string[]]).optional()), q: optionalText(200), limit: limit(200) })
+  .strict()
   .transform((l): LogFilter => ({ limit: l.limit, ...(l.level ? { minLevel: l.level as LogFilter['minLevel'] } : {}), ...(l.q ? { text: l.q } : {}) }));
 export type LogsQuery = z.infer<typeof logsQuerySchema>;
 
@@ -55,15 +58,15 @@ const note = z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? und
 /** the wallet's signature (base58) – checked cryptographically by the handler (a wrong one is a 401, not a 400) */
 const signature = z.string().min(1).max(200);
 
-export const overrideBodySchema = z.object({ decision, note, signature });
+export const overrideBodySchema = z.object({ decision, note, signature }).strict();
 export type OverrideBody = z.infer<typeof overrideBodySchema>;
 
-export const rejudgeBodySchema = z.object({ signature });
+export const rejudgeBodySchema = z.object({ signature }).strict();
 export type RejudgeBody = z.infer<typeof rejudgeBodySchema>;
 
 /** POST rides/:id/challenge – which change the text to sign must describe */
 export const actionChallengeBodySchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('override'), decision, note }),
-  z.object({ action: z.literal('rejudge') }),
+  z.object({ action: z.literal('override'), decision, note }).strict(),
+  z.object({ action: z.literal('rejudge') }).strict(),
 ]);
 export type ActionChallengeBody = z.infer<typeof actionChallengeBodySchema>;

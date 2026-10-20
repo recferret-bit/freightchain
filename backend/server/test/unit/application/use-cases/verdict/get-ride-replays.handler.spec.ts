@@ -2,7 +2,7 @@ import { GetRideReplaysHandler } from '../../../../../src/application/use-cases/
 import { GetRideReplaysQuery } from '../../../../../src/application/use-cases/verdict/get-ride-replays/get-ride-replays.query.js';
 import { Ride } from '../../../../../src/domain/rides/ride.entity.js';
 import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
-import { ForbiddenError, NotFoundError } from '../../../../../src/domain/shared/errors.js';
+import { NotFoundError } from '../../../../../src/domain/shared/errors.js';
 import { unitContext } from '../../../../support/unit-context.js';
 
 describe('GetRideReplaysHandler', () => {
@@ -30,12 +30,15 @@ describe('GetRideReplaysHandler', () => {
     expect(adminRes.replays).toHaveLength(1);
   });
 
-  it('rejects a non-owner wallet with ForbiddenError and unknown rides with NotFoundError', async () => {
+  it('a non-owner wallet and a missing ride are the same 404 not_found', async () => {
     const ctx = unitContext();
     const r = await ctx.freeRide('W1', true);
     const handler = new GetRideReplaysHandler(ctx.rides, ctx.replayRepo);
-
-    await expect(handler.execute(new GetRideReplaysQuery('W2', r.id))).rejects.toBeInstanceOf(ForbiddenError);
-    await expect(handler.execute(new GetRideReplaysQuery('W1', 'missing'))).rejects.toBeInstanceOf(NotFoundError);
+    const foreign = await handler.execute(new GetRideReplaysQuery('W2', r.id)).then(() => null, (e) => e);
+    const missing = await handler.execute(new GetRideReplaysQuery('W1', 'missing')).then(() => null, (e) => e);
+    expect(foreign).toBeInstanceOf(NotFoundError);
+    expect(missing).toBeInstanceOf(NotFoundError);
+    expect({ status: foreign.statusCode, code: foreign.errorCode, message: foreign.message }).toEqual({ status: 404, code: 'not_found', message: missing.message });
+    expect(foreign.errorCode).toBe(missing.errorCode);
   });
 });

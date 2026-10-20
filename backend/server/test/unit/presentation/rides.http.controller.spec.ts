@@ -80,8 +80,8 @@ describe('RidesHttpController', () => {
       expect(rideIdParamsSchema.safeParse({ id: '' }).success).toBe(false);
       expect(rideIdParamsSchema.safeParse({ id: 'x'.repeat(65) }).success).toBe(false);
     });
-    it('heartbeat is STRICT: a missing / negative / huge distance or a garbage hull is a 400; extras are tolerated', () => {
-      for (const bad of [{}, { s: 'abc' }, { s: -1 }, { s: 1e8 }, { s: 1, hull: 'x' }]) expect(heartbeatBodySchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    it('heartbeat is STRICT: a missing / negative / huge distance or a garbage hull is a 400; route is ignored, other unknown keys are not', () => {
+      for (const bad of [{}, { s: 'abc' }, { s: -1 }, { s: 1e8 }, { s: 1, hull: 'x' }, { s: 1, __extra: true }]) expect(heartbeatBodySchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
       expect(heartbeatBodySchema.parse({ s: '12.5', t: 'later', hull: null, paused: 'yes', route: 42, night: 1 })).toEqual({ s: 12.5, t: null, hull: null, paused: false, night: false, crashesVehicle: null, crashesBuilding: null });   // a `route` in the body is not read: the server assigns it
       expect(heartbeatBodySchema.parse({ s: 1, crashesVehicle: '3', crashesBuilding: 'x' })).toMatchObject({ crashesVehicle: 3, crashesBuilding: null }); // the crash counters are lenient – statistics, never a 400
       expect(heartbeatBodySchema.parse({ s: 1, route: 'siberia' })).not.toHaveProperty('route');

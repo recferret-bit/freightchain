@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Logger, Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ServeStaticModule, type ServeStaticModuleOptions } from '@nestjs/serve-static';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { EnvModule } from '../infrastructure/config/env.module.js';
@@ -24,6 +24,7 @@ import { RateLimitStorage } from '../infrastructure/http/redis-throttler.storage
 import { TokenSignerPort } from '../application/ports/auth/token-signer.port.js';
 import { PresentationModule } from '../presentation/presentation.module.js';
 import { OriginGuard } from '../infrastructure/http/guards/origin.guard.js';
+import { ZodResponseInterceptor } from '../infrastructure/http/interceptors/zod-response.interceptor.js';
 
 /** The site roots, first match wins: the landing's Vite build (answers `/` and its own fingerprinted /assets, /media) in front of client/ (lobby, game, viewer). Without a landing build, `/` is client/index.html. */
 export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
@@ -45,7 +46,7 @@ export function siteRoots(env: EnvService): ServeStaticModuleOptions[] {
     ApplicationModule, // the scheduler dispatches on its bus
     PresentationModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: OriginGuard },   // OriginGuard: audit H7 (login CSRF, sibling hosts)
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: OriginGuard }, { provide: APP_INTERCEPTOR, useClass: ZodResponseInterceptor },   // OriginGuard: audit H7 (login CSRF, sibling hosts)
     TelemetryRetentionScheduler, StaleRideScheduler, ReplayVerificationScheduler, ProgramWatcher, PoolCrankScheduler, PoolPayoutScheduler, AchievementMintScheduler, HonkReleaseScheduler],
 })
 export class AppModule {}

@@ -24,6 +24,7 @@ const fakeWallet = kp => `(() => {
     async connect() { this.publicKey = { toString: () => pub }; return { publicKey: this.publicKey }; },
     async signMessage(msg) { window.__signed++; window.__lastMessage = new TextDecoder().decode(msg); return { signature: new Uint8Array(await crypto.subtle.sign('Ed25519', await key, msg)) }; },
     async disconnect() {} };
+  window.__fcDevWallet = window.solana;
 })();`;
 const bundle = async () => (await fetch(`${BASE}/api/entities/bundle`)).json();
 const bushOf = b => b.entities.find(e => e.id === 'bush');
@@ -109,7 +110,7 @@ await E.ev(`document.querySelector('#editor .ed-prompt').value = 'make the bush 
 await click('SEND');
 const done = await until(() => probe(E, `(() => { const t = document.querySelector('#editor .ed-log')?.textContent || ''; return /done – the result is a DRAFT/.test(t) ? t : /failed|cancelled/.test(t) && 'FAILED ' + t; })()`), 60000);
 check('a chat job runs through the MCP and saves a draft', !!done && !String(done).startsWith('FAILED'), String(done).slice(0, 300));
-check('… its tool calls are in the log (get_entity, check_entity, save_draft)', /get_entity[\s\S]*check_entity[\s\S]*save_draft/.test(String(done)));
+check('… its tool calls are in the log (read, check, save draft)', /Reading bush[\s\S]*Checking the edit[\s\S]*Saving a draft/.test(String(done)));
 await E.shot('05-chat-job');
 await tab('SOURCE');
 check('the job\'s draft is the new head (the fake model\'s note)', await until(() => probe(E, `document.querySelector('#editor .ed-src').value.includes("fake edit: make the bush look drier")`)));
@@ -119,6 +120,17 @@ await E.ev(`__viewer.select('sedan')`); await tab('CHAT');
 await E.ev(`document.querySelector('#editor .ed-prompt').value = 'a car with 2 wheels'`); await click('SEND');
 check('the 3d-assets spec gate refuses "a car with 2 wheels" before any model runs', await until(() => probe(E, `/wheels must be 4/.test(document.querySelector('#editor .ed-log')?.textContent || '')`)));
 await E.shot('06-spec-refused');
+
+// sign out: the httpOnly fc_editor cookie goes away, the drawer asks for a wallet again, and the next draft is refused
+await E.send('Network.enable');
+const cookiesOf = async () => (await E.send('Network.getAllCookies')).cookies ?? [];
+check('the editor cookie is set before sign out', (await cookiesOf()).some(c => c.name === 'fc_editor' || c.name === '__Host-fc_editor'));
+await E.ev(`[...document.querySelectorAll('#editor button')].find(b => b.textContent === 'sign out').click()`);
+check('sign out shows the editor sign-in again', await until(() => probe(E, `!!document.querySelector('#editor .ed-signin') && !document.querySelector('#editor .ed-signin').hidden && !!document.querySelector('#editor .ed-tabs').hidden`)));
+check('sign out clears the editor cookie', (await cookiesOf()).every(c => c.name !== 'fc_editor' && c.name !== '__Host-fc_editor'));
+const afterLogout = await E.ev(`(async () => { const r = await fetch('/api/editor/entities/bush/drafts', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json', 'x-fc-editor': '1' }, body: JSON.stringify({ source: "id: 'bush'\\n", message: 'after logout', baseRevisionId: null }) }); return r.status; })()`);
+check('the next draft write is refused once the editor cookie is gone', afterLogout === 404, String(afterLogout));
+await E.shot('08-signed-out');
 
 // the game draws what the API publishes
 await E.send('Page.navigate', { url: `${BASE}/play.html?sim=1` });

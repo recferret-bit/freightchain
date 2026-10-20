@@ -49,7 +49,9 @@ export function pledgeScenarios(h: () => Harness): void {
 
     // the sponsor's wallet signs AND sends it: the program creates the Pledge account and emits PledgeCreated
     const sig = h().poolChain.addPledgeTransaction([{ kind: 'PledgeCreated', rideId: ride.id, sponsor: sponsor.address, driver: driver.address, pool: 'pool1', maxLamports: 10_000_000n, lamportsPerKm: 1_000_000n, targetKm: 10 }]);
-    await driver.agent.post(`/api/pledges/${created.pledge.id}/confirm`).send({ signature: sig }).expect(403);
+    const missing = await driver.agent.post('/api/pledges/missing-pledge/confirm').send({ signature: sig }).expect(404);
+    const foreign = await driver.agent.post(`/api/pledges/${created.pledge.id}/confirm`).send({ signature: sig }).expect(404);
+    expect(foreign.body).toMatchObject({ status: 404, code: missing.body.code, detail: missing.body.detail });
     expect((await sponsor.agent.post(`/api/pledges/${created.pledge.id}/confirm`).send({ signature: sig }).expect(200)).body).toMatchObject({ status: 'active', createSignature: sig });
     expect((await anon().get(`/api/rides/${ride.id}/pledges`).expect(200)).body).toEqual([expect.objectContaining({ id: created.pledge.id, status: 'active', settled: false })]);
     await anon().post(`/api/pledges/${created.pledge.id}/settle`).send({}).expect(404); // no settle route: only the chain settles

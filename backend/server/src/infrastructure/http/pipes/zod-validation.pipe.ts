@@ -9,7 +9,7 @@ export interface ZodValidationPipeOptions {
 /** Parses with the schema; a ZodError propagates to the ProblemDetailsFilter (400 validation_error with per-field errors). */
 export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
   constructor(
-    private readonly schema: ZodType<T, ZodTypeDef, unknown>,
+    readonly schema: ZodType<T, ZodTypeDef, unknown>,
     private readonly options: ZodValidationPipeOptions = {},
   ) {}
 

@@ -3,7 +3,7 @@ import type { ProblemFieldError } from '../../../../src/domain/shared/problem-de
 import { BadRequestException, HttpException, NotFoundException } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
 import { z } from 'zod';
-import { BadRequestError, ConflictError, NotFoundError, ServiceUnavailableError, UnauthorizedError, VersionConflictError } from '../../../../src/domain/shared/errors.js';
+import { BadRequestError, ConflictError, NotFoundError, ResponseSchemaViolationError, ServiceUnavailableError, UnauthorizedError, VersionConflictError } from '../../../../src/domain/shared/errors.js';
 import { toProblem } from '../../../../src/infrastructure/http/filters/problem-mapping.js';
 
 const ctx = { requestId: 'req-12345678', instance: '/api/x' };
@@ -17,6 +17,7 @@ describe('toProblem (RFC 9457)', () => {
     expect(toProblem(new UnauthorizedError('bad signature'), ctx)).toMatchObject({ status: 401, code: 'unauthorized', detail: 'bad signature' });
     expect(toProblem(new VersionConflictError(), ctx)).toMatchObject({ status: 409, code: 'version_conflict' });
     expect(toProblem(new BadRequestError('x', 'custom_code'), ctx)).toMatchObject({ status: 400, code: 'custom_code' });
+    expect(toProblem(new ResponseSchemaViolationError('GET /api/x: ok: bad'), ctx)).toMatchObject({ status: 500, code: 'response_schema_violation', title: 'Response schema violation', detail: 'GET /api/x: ok: bad' });
   });
 
   it('carries the failing checks of a 503', () => {

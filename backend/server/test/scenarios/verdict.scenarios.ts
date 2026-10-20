@@ -259,6 +259,16 @@ export function verdictScenarios(h: () => Harness): void {
   });
 
   describe('backend replay engine & anti-fraud red flags (10 Hz simulation)', () => {
+    it('someone else\'s replays are the same 404 as a missing ride', async () => {
+      const owner = await login();
+      const other = await login();
+      const ride = (await owner.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body;
+      const foreign = await other.agent.get(`/api/rides/${ride.id}/replays`).expect(404);
+      const absent = await other.agent.get('/api/rides/missing-ride/replays').expect(404);
+      expect(foreign.body).toMatchObject({ status: 404, code: 'not_found', detail: absent.body.detail });
+      expect(foreign.body.code).toBe(absent.body.code);
+    });
+
     it('stores a 10 Hz RideReplay record on /end and exposes it at GET /api/rides/:id/replays', async () => {
       const d = await login(VERDICT_DEMO);
       const end = await paidShift(d, { replay: true });

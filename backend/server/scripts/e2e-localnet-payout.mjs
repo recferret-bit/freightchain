@@ -18,12 +18,12 @@
 import { createHash } from 'node:crypto';
 import nacl from 'tweetnacl'; import bs58 from 'bs58'; import { readFileSync, writeFileSync } from 'node:fs'; import { execFileSync } from 'node:child_process';
 import { Connection, Keypair, PublicKey, SYSVAR_CLOCK_PUBKEY, Transaction } from '@solana/web3.js';
-import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
+import { launch, sleep, driveHook } from '../../../frontend/client/tools/cdp.mjs';
 import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.codec.js';
 import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
 import { closeSplit, prizeBound } from '../dist/domain/economy/vault-split.js';
 import { poolPayouts } from '../dist/domain/economy/pool-payouts.js';
-import { honestRoad } from './road-damage.mjs';
+import { honestUntilClear, rechain, paceRecording, uploadBatches } from './honest-traffic.mjs';
 import { coverage } from './localnet-coverage.mjs';
 import { CU_LIMITS } from '../dist/infrastructure/solana/program-chain.adapter.js';
 import { sealRoad } from './localnet-seal.mjs';
@@ -67,7 +67,14 @@ const ms = v => (v instanceof Date ? v.getTime() : Date.parse(v));   // pool-adm
 
 // ── HTTP as a wallet
 // a socket the server closed while idle (its keep-alive timeout, 5 s – the crank / CLI steps leave such gaps) fails the next request before it is sent: once more
-const fetchy = (url, init) => fetch(url, init).catch(e => { if (!/fetch failed/.test(e?.message)) throw e; console.log(`     (retry ${url.replace(BASE, '')}: ${e.cause?.code ?? e.cause?.message ?? e.message})`); return fetch(url, init); });
+const fetchy = async (url, init) => {
+  let last;
+  for (let i = 0; i < 4; i++) {
+    try { return await fetch(url, init); }
+    catch (e) { last = e; if (!/fetch failed/.test(e?.message) || i === 3) throw e; await sleep(400 * (i + 1)); }
+  }
+  throw last;
+};
 const api = async (path, { body, cookie, method } = {}) => {
   const res = await fetchy(`${BASE}/api/${path}`, { method: method ?? (body ? 'POST' : 'GET'), headers: { 'content-type': 'application/json', ...(cookie && { cookie }) }, body: body ? JSON.stringify(body) : undefined });
   return { status: res.status, ok: res.ok, j: await res.json().catch(() => ({})) };
@@ -98,50 +105,32 @@ async function buySelf(p, poolId, qty = 1) {
   return { sig, paid: !!(await until(async () => (await api(`tickets/orders/${o.j.id}/confirm`, { body: { signature: sig }, cookie: p.cookie })).j.status === 'paid')) };
 }
 
-// ── a FINISHED RIDE made over the player API (the verified-play bots' recipe, scripts/e2e-verified-play.mjs apiDrive): the ticket is spent by POST /rides
-//    `mutate(batch)` edits a batch before it is hashed, `hashOf` overrides the hash (null = an unhashed batch), `crashAt` ends it as failed at that second
-// a finished ride drives `extra` metres past the finish line or past 1 km, whichever is further: program v3 attests whole verified km, and a winner needs at least 1
-async function apiRide(p, { seconds = 20, speed = 15, extra = 60, mutate = () => null, hashOf = (_b, text) => sha256(text), crashAt = 0 } = {}) {
+// ── a FINISHED RIDE over the player API. The frames are the server's traffic sim (trafficVersion 1), each wallet a different line
+//    so the pool's duplicate-recording mark stays quiet. `mutate` / `hashOf` run before the hash. A crash ends under the first TEN4 band, so it is not judged.
+const LANES = [0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.4, -0.15, 0.55];
+let laneSlot = 0;
+async function apiRide(p, { speed = 20, extra = 60, mutate = () => null, hashOf = (_b, text) => sha256(text), crashAt = 0 } = {}) {
   const made = await api('rides', { body: { tier: '1h' }, cookie: p.cookie });
   if (!made.ok) return { error: `${made.status} ${JSON.stringify(made.j).slice(0, 160)}` };
   const ride = made.j;
-  await api(`rides/${ride.id}/start`, { body: {}, cookie: p.cookie });
-  const d = { id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, prompts: [], road: honestRoad(BASE, ride.id) };
-  // each driver holds its own line across the road (a slow weave, its own phase and length): identical lines are what the pool's duplicate-recording mark catches
-  const ph = Math.random() * 2 * Math.PI, wl = 25 + Math.random() * 40, lane = s => 2.4 + 0.45 * Math.sin(s / wl + ph);
-  const row = (t, s, v) => [r(t, 2), r(s, 1), r(lane(s), 2), 0, r(v, 2), Math.round(900 + v * 50), 6, 100, 0.6, 0, 0, 0, 12, 1 | 2 | 8];
-  const cut = async () => {
-    await d.road.take(d.samples);
-    const base = { seq: d.seq++, prevHash: d.prevHash, t0: r(d.bt0, 2), t1: r(d.t, 2), samples: d.samples, inputs: d.inputs };
-    const body = mutate(base) ?? base;
-    const text = JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs });
-    const hash = hashOf(body, text);
-    d.prevHash = hash ?? `unhashed-${body.seq}`; d.samples = []; d.inputs = []; d.bt0 = d.t;
-    await api(`rides/${d.id}/batches`, { body: { ...body, hash }, cookie: p.cookie });
-  };
-  const heartbeat = async () => {   // a dispatch prompt in the response is answered like a person, ~0.5–1.2 s later
-    const { j } = await api(`rides/${d.id}/heartbeat`, { body: { s: d.s, t: d.t, hull: 100, paused: false, route: 'route66', night: false }, cookie: p.cookie });
-    const c = j?.challenge;
-    if (c && !d.prompts.some(x => x.id === c.id)) { d.prompts.push(c); const at = r(c.issuedMs + 450 + Math.random() * 700, 1); d.inputs.push([at, c.codes[0], 1], [r(at + 70 + Math.random() * 120, 1), c.codes[0], 0]); }
-  };
-  let wall = Date.now(), lastBeat = 0, gasDown = false, nextKey = 600;
-  for (;;) {
-    await sleep(100);
-    const now = Date.now(), dt = Math.min(0.1, (now - wall) / 1000); wall = now;   // the GAME clock: frames are clamped, one sample a 0.1 s – a stalled loop (an upload, a busy machine) is no gap in game time
-    d.t += dt; d.s += speed * dt;
-    d.samples.push(row(d.t, d.s, speed));
-    const ms = now - d.t0;
-    if (ms >= nextKey) {   // gas in long jittered holds, a steering tap now and then
-      if (!gasDown) { d.inputs.push([r(ms, 1), 'KeyW', 1]); gasDown = true; nextKey = ms + 1500 + Math.random() * 3000; }
-      else { d.inputs.push([r(ms, 1), 'KeyW', 0]); gasDown = false; const tap = Math.random() < .5 ? 'KeyA' : 'KeyD'; const at = r(ms + 100 + Math.random() * 300, 1); d.inputs.push([at, tap, 1], [r(at + 120 + Math.random() * 400, 1), tap, 0]); nextKey = ms + 400 + Math.random() * 900; }
-    }
-    if (d.t - d.bt0 >= 15) await cut();
-    if (now - lastBeat >= 5_000) { lastBeat = now; await heartbeat(); }
-    if (crashAt ? d.t >= crashAt : d.t >= seconds && d.s >= Math.max(ride.completeDist ?? 0, 1000) + extra) break;
+  const started = await api(`rides/${ride.id}/start`, { body: {}, cookie: p.cookie });
+  if (!started.ok) return { error: `start ${started.status} ${JSON.stringify(started.j).slice(0, 160)}` };
+  const call = async (method, path, body) => { const r = await api(path, { method, body, cookie: p.cookie }); return { status: r.status, json: r.j }; };
+  if (crashAt) {
+    const end = await api(`rides/${ride.id}/end`, { body: { outcome: 'failed', s: 4, t: 0.4, hull: 0, reason: 'direct hit – a bus' }, cookie: p.cookie });
+    return { id: ride.id, end: end.j };
   }
-  await cut(); await heartbeat();
-  const end = await api(`rides/${d.id}/end`, { body: crashAt ? { outcome: 'failed', s: d.s, t: d.t, hull: 0, reason: 'direct hit – a bus' } : { outcome: 'shift', s: d.s, t: d.t, hull: 100 }, cookie: p.cookie });
-  return { id: d.id, end: end.j };
+  const metres = Math.max(ride.completeDist ?? 0, 1000) + extra;
+  const built = honestUntilClear({ rideId: ride.id, seed: ride.seed, trip: ride.trip, route: ride.route, metres, speed, laneBias: LANES[laneSlot++ % LANES.length] });
+  if (built.fatal) return { error: `traffic ${built.fatal.hit} at ${Math.round(built.fatal.at)} m` };
+  if (built.metres + 1 < metres) return { error: `short ${Math.round(built.metres)} < ${Math.round(metres)}` };
+  const paced = await paceRecording(call, ride.id, built.batches, built.hull);
+  if (paced.status !== 200) return { error: `heartbeat ${paced.status} ${JSON.stringify(paced.json).slice(0, 180)}` };
+  const batches = rechain(ride.id, built.batches, mutate, hashOf);
+  const up = await uploadBatches(call, ride.id, batches);
+  if (up.status !== 200) return { error: `upload ${up.status} ${JSON.stringify(up.json).slice(0, 180)}` };
+  const end = await api(`rides/${ride.id}/end`, { body: { outcome: 'shift', s: built.metres, t: built.seconds, hull: built.hull }, cookie: p.cookie });
+  return { id: ride.id, end: end.j };
 }
 const teleport = b => (b.seq === 1 ? { ...b, samples: b.samples.map((row, i) => (i === 40 ? [row[0], row[1] + 500, ...row.slice(2)] : row)) } : null);
 const unhashed = (b, text) => (b.seq === 1 ? null : sha256(text));
@@ -172,14 +161,12 @@ async function gameRide(h, p) {
   await h.send('Page.navigate', { url: `${BASE}/play.html?ride=${made.j.id}` });
   await until(() => h.ev('!!window.__game'), 30000, 200);
   await h.ev('document.getElementById("go").click()'); await sleep(800);
-  await h.ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.st; if (g.mode === "drive") g.s += 20 * Math.max(0, g.t - last); last = g.t; }, 50); })()');
-  const KEYS_ = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];
+  // Same pin as the money scenario. input.gas alone is not a gas key; the verdict wants a KeyW down in the recording.
+  await h.ev(driveHook(20, '__game.st.park=false;__game.st.keyOn=true;__game.st.engineOn=true;__game.st.ign=null;__game.st.gear=7;__game.st.clutch=0;__game.st.brake=0;__game.input.gas=1;__game.input.brake=0;__game.input.clutch=0;__game.st.coldT=0;__game.st.strain=0;__game.st.noStall=2;'));
+  await h.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'KeyW', key: 'w' });
   const t0 = Date.now();
-  for (let i = 0; (i < 12 || !(await h.ev('__game.st.complete'))) && Date.now() - t0 < 60000; i++) {
-    const [code, k] = KEYS_[i % KEYS_.length];
-    await h.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key: k }); await sleep(60 + Math.floor(Math.random() * 140));
-    await h.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key: k }); await sleep(150 + Math.floor(Math.random() * 350));
-  }
+  while (!(await h.ev('__game.st.complete || __game.st.mode === "done" || __game.st.mode === "dead"')) && Date.now() - t0 < 90000) await sleep(200);
+  await h.send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'KeyW', key: 'w' });
   await h.ev('window.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true }))'); await sleep(500);
   await h.ev('document.getElementById("endshift")?.click()');
   const end = await until(async () => { const s = (await api(`rides/${made.j.id}`, { cookie: p.cookie })).j; return s.verdict ? s : null; }, 30000, 1000);
@@ -270,7 +257,7 @@ try {
   console.log('     … 11 rides: the real game in Chrome + 10 recordings over the API, each past 1 km (≈ 60 s)');
   const plan = {
     [R2.wallet]: [{ speed: 18, extra: 60 }], [R3.wallet]: [{ speed: 19, extra: 120 }], [R4.wallet]: [{ speed: 20, extra: 180 }], [R5.wallet]: [{ speed: 21, extra: 240 }], [R6.wallet]: [{ speed: 22, extra: 300 }],
-    [R7.wallet]: [{ speed: 20, crashAt: 4 }],                       // crashes: the ride fails, never completes
+    [R7.wallet]: [{ speed: 8, crashAt: 0.4 }],                     // crashes under the first TEN4 band: FAILED, never judged
     [R8.wallet]: [{ speed: 24, extra: 30 }, { speed: 25, extra: 40 }],   // two tickets, two rides – the ranking sums them
     [R9.wallet]: [{ speed: 23, extra: 360, hashOf: unhashed }],     // one batch the client "could not hash" → FLAGGED, the admin reviews it
     [R10.wallet]: [{ speed: 26, mutate: teleport }],                // +500 m in a tenth of a second → REJECTED

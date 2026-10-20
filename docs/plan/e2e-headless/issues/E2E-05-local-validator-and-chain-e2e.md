@@ -15,7 +15,7 @@ Completes the on-chain local validator suites (`freightchain_pools` and `freight
 
 ### `E2E-05.1` — Pin `freightchain_honk` IDL drift check in `anchor-idl-drift.spec.ts` (all 7 instructions)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2.4, `IMPLEMENTATION_PLAN.md` §Phase 4.1
 - **Target Files:**
@@ -34,7 +34,7 @@ Completes the on-chain local validator suites (`freightchain_pools` and `freight
 
 ### `E2E-05.2` — Extend `npm run test:localnet` with full SOL pool lifecycle + `pledge_ride` / `settle_pledge` / `refund_pledge`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `POOL-T-01..10`, `SOL-T-01..08`, `IMPLEMENTATION_PLAN.md` §Phase 4.2
 - **Target Files:**

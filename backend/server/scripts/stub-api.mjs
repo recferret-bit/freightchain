@@ -162,6 +162,13 @@ const R = [
   ['GET', /^tickets\/orders\/([\w-]+)\/payment$/, (m) => { const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order'); if (o.status !== 'awaiting_payment') return problem(409, 'order_closed', `the order is ${o.status}`);
     const p = pools.find(x => x.id === o.poolId), t = tx(o.lamports, new PublicKey(p.address), WALLET);   // the wallet pays its own fee
     return { body: { orderId: o.id, mode: 'program', programId: PROGRAM, poolId: p.id, lamports: o.lamports, transaction: t.transaction, message: t.message, feePayer: WALLET.toBase58(), computeUnits: 40_000, priorityMicrolamports: 0, blockhash: t.blockhash, lastValidBlockHeight: 1 } }; }],
+  ['GET', /^referrals$/, () => ({ body: { code: 'STUB2345', capacity: 0, used: 0, pending: 0, available: 0, max: 0, gift: 'convoy', referredBy: null, invites: [] } })],
+  ['POST', /^tickets\/orders\/([\w-]+)\/reconcile$/, m => {   // phone lookup by reference. No signature must not credit a ticket.
+    const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order');
+    if (o.status !== 'paid' && !o.signature) return { body: { status: 'not_found', order: o } };
+    if (o.status === 'awaiting_payment' && polls.get(o.id) >= PENDING) pay(o); else if (o.status !== 'paid') polls.set(o.id, polls.get(o.id) + 1);
+    return { body: { status: o.status === 'paid' ? 'paid' : 'pending', order: o } };
+  }],
   ['POST', /^tickets\/orders\/([\w-]+)\/confirm$/, (m, b) => {
     const o = orders.get(m[1]); if (!o) return problem(404, 'not_found', 'no such order');
     if (typeof b.signature !== 'string' || !b.signature) return problem(400, 'transaction_invalid', 'no signature');

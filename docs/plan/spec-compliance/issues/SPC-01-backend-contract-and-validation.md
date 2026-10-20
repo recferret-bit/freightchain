@@ -15,7 +15,7 @@ Brings the NestJS HTTP contract layer into 100% compliance with [`docs/spec/back
 
 ### `SPC-01.1` — Implement `@ZodResponse(schema)` decorator, `ZodResponseInterceptor` (`RESPONSE_SCHEMA_CHECK`), and attach schemas to all 151+ routes
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `API-M-01`, `API-M-02`, `API-M-06..09` (`docs/spec/backend_contract.md`)
 - **Paired Plan 1 Tasks:** `E2E-02.1`, `E2E-02.2`
 - **Target Files:**
@@ -40,7 +40,7 @@ Brings the NestJS HTTP contract layer into 100% compliance with [`docs/spec/back
 
 ### `SPC-01.2` — Build OpenAPI 3.1 generator (`openapi:generate` → `openapi.json`) from controller + Zod metadata
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `API-M-03` (`docs/spec/backend_contract.md`)
 - **Paired Plan 1 Task:** `E2E-02.6`
 - **Target Files:**
@@ -61,7 +61,7 @@ Brings the NestJS HTTP contract layer into 100% compliance with [`docs/spec/back
 
 ### `SPC-01.3` — Enforce `.strict()` on all Admin, Editor, Auth, Ticket, Pool, Promo, and Money request Zod schemas
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `API-M-04`, `ADM-M-12` (`docs/spec/backend_contract.md`, `docs/spec/admin_security.md`)
 - **Paired Plan 1 Task:** `E2E-02.4`
 - **Target Files:**
@@ -81,7 +81,7 @@ Brings the NestJS HTTP contract layer into 100% compliance with [`docs/spec/back
 
 ### `SPC-01.4` — Standardize foreign resource `:id` ownership checks to return `404` across all player-scoped endpoints
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `API-M-05`, `API-M-10` (`docs/spec/backend_contract.md`)
 - **Paired Plan 1 Task:** `E2E-02.5`
 - **Target Files:**
@@ -103,7 +103,7 @@ Brings the NestJS HTTP contract layer into 100% compliance with [`docs/spec/back
 
 ### `SPC-01.5` — Enforce fail-closed geo eligibility when `CF-IPCountry` is absent in production (`PRIZE_DEV_DEFAULT_COUNTRY` dev-only)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `API-M-11`, `LEG-M-04`, `LEG-M-05`, `LEG-M-06` (`docs/spec/backend_contract.md`, `docs/spec/legal.md`)
 - **Paired Plan 1 Task:** `E2E-06.3`
 - **Target Files:**
@@ -125,7 +125,7 @@ Brings the NestJS HTTP contract layer into 100% compliance with [`docs/spec/back
 
 ### `SPC-01.6` — Fix `frontend/landing` `paintHero` null-pool crash when `GET /api/pools/current` returns `null`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `API-M-12`, `API-M-13` (`docs/spec/backend_contract.md`, Bug in `IMPLEMENTATION_PLAN.md` §Phase 3.9)
 - **Paired Plan 1 Task:** `E2E-04.9`
 - **Target Files:**

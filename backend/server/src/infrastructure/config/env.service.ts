@@ -20,6 +20,10 @@ export class EnvService {
   get port(): number { return this.env.PORT; }
   get nodeEnv(): string { return this.env.NODE_ENV; }
   get isProduction(): boolean { return this.nodeEnv === 'production'; }
+  /** Unset (including `KEY=`): strict outside production, warn in production. */
+  get responseSchemaCheck(): 'off' | 'warn' | 'strict' {
+    return this.env.RESPONSE_SCHEMA_CHECK ?? (this.isProduction ? 'warn' : 'strict');
+  }
   get databaseUrl(): string { return this.env.DATABASE_URL; }
   /** Production REQUIRES JWT_SECRET (validated). Otherwise a RANDOM secret per boot – never a constant: a deploy that forgot NODE_ENV=production must not sign sessions with a publicly known key. */
   get hasStableJwtSecret(): boolean { return !!this.env.JWT_SECRET; }
@@ -188,6 +192,8 @@ export class EnvService {
 
   /** Empty = the code defaults in prize-rules.ts. A non-empty list replaces that default. */
   get prizeSanctionedCountries(): string { return this.env.PRIZE_SANCTIONED_COUNTRIES; }
+  /** ISO country used only when NODE_ENV is development or test and the edge country is missing. lane1:PRIZE_DEV_DEFAULT_COUNTRY */
+  get prizeDevDefaultCountry(): string { return this.env.PRIZE_DEV_DEFAULT_COUNTRY; }
   get prizeBlockedCountries(): string { return this.env.PRIZE_BLOCKED_COUNTRIES; }
   get prizeBlockedUsStates(): string { return this.env.PRIZE_BLOCKED_US_STATES; }
 

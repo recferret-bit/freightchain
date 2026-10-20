@@ -27,12 +27,12 @@
 
 | Task ID | Title | Spec Rules | Paired Plan 1 Test | Depends On | Status |
 |---|---|---|---|---|---|
-| `SPC-01.1` | Implement `@ZodResponse(schema)` decorator, `ZodResponseInterceptor` (`RESPONSE_SCHEMA_CHECK`), and attach schemas to all 151+ routes | `API-M-01`, `API-M-02`, `API-M-06..09` | `E2E-02.1`, `E2E-02.2` | — | `[ ] Todo` |
-| `SPC-01.2` | Build OpenAPI 3.1 generator (`npm --prefix backend/server run openapi:generate` → `openapi.json`) from controller + Zod metadata | `API-M-03` | `E2E-02.6` | `SPC-01.1` | `[ ] Todo` |
-| `SPC-01.3` | Enforce `.strict()` on all Admin, Editor, Auth, Ticket, Pool, Promo, and Money request Zod schemas | `API-M-04`, `ADM-M-12` | `E2E-02.4` | — | `[ ] Todo` |
-| `SPC-01.4` | Standardize foreign resource `:id` ownership checks to return `404` across all player-scoped endpoints | `API-M-05`, `API-M-10` | `E2E-02.5` | — | `[ ] Todo` |
-| `SPC-01.5` | Enforce fail-closed geo eligibility when `CF-IPCountry` is absent in production (`PRIZE_DEV_DEFAULT_COUNTRY` dev-only) | `API-M-11`, `LEG-M-04..06` | `E2E-06.3` | — | `[ ] Todo` |
-| `SPC-01.6` | Fix `frontend/landing` `paintHero` null-pool crash when `GET /api/pools/current` returns `null` | `API-M-12`, `API-M-13` | `E2E-04.9` | — | `[ ] Todo` |
+| `SPC-01.1` | Implement `@ZodResponse(schema)` decorator, `ZodResponseInterceptor` (`RESPONSE_SCHEMA_CHECK`), and attach schemas to all 151+ routes | `API-M-01`, `API-M-02`, `API-M-06..09` | `E2E-02.1`, `E2E-02.2` | — | `[x] Done` |
+| `SPC-01.2` | Build OpenAPI 3.1 generator (`npm --prefix backend/server run openapi:generate` → `openapi.json`) from controller + Zod metadata | `API-M-03` | `E2E-02.6` | `SPC-01.1` | `[x] Done` |
+| `SPC-01.3` | Enforce `.strict()` on all Admin, Editor, Auth, Ticket, Pool, Promo, and Money request Zod schemas | `API-M-04`, `ADM-M-12` | `E2E-02.4` | — | `[x] Done` |
+| `SPC-01.4` | Standardize foreign resource `:id` ownership checks to return `404` across all player-scoped endpoints | `API-M-05`, `API-M-10` | `E2E-02.5` | — | `[x] Done` |
+| `SPC-01.5` | Enforce fail-closed geo eligibility when `CF-IPCountry` is absent in production (`PRIZE_DEV_DEFAULT_COUNTRY` dev-only) | `API-M-11`, `LEG-M-04..06` | `E2E-06.3` | — | `[x] Done` |
+| `SPC-01.6` | Fix `frontend/landing` `paintHero` null-pool crash when `GET /api/pools/current` returns `null` | `API-M-12`, `API-M-13` | `E2E-04.9` | — | `[x] Done` |
 
 ### Epic SPC-02 — Admin & Privileged Security ([`issues/SPC-02-admin-and-privileged-security.md`](./issues/SPC-02-admin-and-privileged-security.md))
 

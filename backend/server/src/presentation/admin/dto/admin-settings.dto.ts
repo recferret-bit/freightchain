@@ -6,16 +6,16 @@ const signature = z.string().min(1).max(200);
 const settingKey = z.string().min(1).max(64);
 const settingValue = z.number().int();
 
-export const settingChallengeBodySchema = z.object({ action: z.literal('setting_update'), key: settingKey, value: settingValue });
+export const settingChallengeBodySchema = z.object({ action: z.literal('setting_update'), key: settingKey, value: settingValue }).strict();
 export type SettingChallengeBody = z.infer<typeof settingChallengeBodySchema>;
 
-export const updateSettingBodySchema = z.object({ key: settingKey, value: settingValue, signature });
+export const updateSettingBodySchema = z.object({ key: settingKey, value: settingValue, signature }).strict();
 export type UpdateSettingBody = z.infer<typeof updateSettingBodySchema>;
 
 const delta = z.number().int().min(-100_000).max(100_000).refine((n) => n !== 0);
 
-export const freeRidesChallengeBodySchema = z.object({ action: z.literal('free_rides_adjust'), wallet: walletAddressSchema, delta });
+export const freeRidesChallengeBodySchema = z.object({ action: z.literal('free_rides_adjust'), wallet: walletAddressSchema, delta }).strict();
 export type FreeRidesChallengeBody = z.infer<typeof freeRidesChallengeBodySchema>;
 
-export const adjustFreeRidesBodySchema = z.object({ wallet: walletAddressSchema, delta, signature });
+export const adjustFreeRidesBodySchema = z.object({ wallet: walletAddressSchema, delta, signature }).strict();
 export type AdjustFreeRidesBody = z.infer<typeof adjustFreeRidesBodySchema>;

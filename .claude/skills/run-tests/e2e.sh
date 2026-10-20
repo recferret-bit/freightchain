@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor ...]   (default: all nineteen)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor|honk-garage|whitepaper|landing|achievements ...]   (default: all twenty-three)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/backend/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats blinks traffic editor)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats blinks traffic editor honk-garage whitepaper landing achievements)
 DB="freightchain_e2e_$$"
 PG_CONTAINER="${E2E_POSTGRES_CONTAINER:-freightchain-postgres}"
 PG_PORT="${E2E_POSTGRES_PORT:-15433}"
@@ -110,7 +110,11 @@ for suite in "${SUITES[@]}"; do
       (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" node scripts/e2e-editor-worker.mjs wait "$BUILD/editor-worker-job.txt" "$EDITOR_WORKER_PID")
       (cd "$SERVER" && BASE="http://localhost:$PORT" EDITOR_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" node scripts/e2e-editor.mjs) || { fails=$((fails + 1)); tail -20 "/tmp/fc-e2e-mcp-$DB.log"; }
       stop_editor; stop; FIXED_PORT=""; EXTRA_ENV="" ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor)"; fails=$((fails + 1)) ;;
+    honk-garage) start 3; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" node scripts/e2e-honk-garage.mjs) || fails=$((fails + 1)) ;;
+    whitepaper) start 3; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-whitepaper.mjs) || fails=$((fails + 1)) ;;
+    landing) start 3; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-landing.mjs) || fails=$((fails + 1)) ;;
+    achievements) EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false CHALLENGE_INTERVAL_SECONDS=0" start 3; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" node scripts/e2e-achievements.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor | honk-garage | whitepaper | landing | achievements)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

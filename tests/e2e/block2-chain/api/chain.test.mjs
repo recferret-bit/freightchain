@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { apiTest, chainTest, session, signInPlayer, SOLANA } from '../../harness/api.mjs';
 import { REPO } from '../../harness/dom.mjs';
+import { ledgerMatchesChain, payWinners } from '../chain-flow.mjs';
 
 const POOL = '8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p';
 const HONK = 'GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx';
@@ -53,6 +54,6 @@ chainTest(test, 'B2-API-05 the local validator is healthy for a later ticket buy
   assert.equal(body.result, 'ok');
 });
 
-test.todo('B2-API-06 buy a paid ticket, finish a ride, settle and pay winners — reuse server/scripts/e2e-localnet.mjs and e2e-localnet-payout.mjs (Chrome); a code-level Merkle payout is not reimplemented here');
+chainTest(test, 'B2-API-06 buy a paid ticket, seal, commit a winner and pay it', payWinners);
 
-test.todo('B2-API-07 TEN4 mint on the local program matches the PostgreSQL ledger — reuse .claude/skills/honk-suite (Chrome + validator)');
+chainTest(test, 'B2-API-07 TEN4 mint on the local program matches the PostgreSQL ledger', ledgerMatchesChain);

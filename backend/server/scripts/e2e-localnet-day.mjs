@@ -28,13 +28,13 @@ import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.cod
 import { POOL_PROGRAM_IDL as IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
 import { closeSplit, prizeBound } from '../dist/domain/economy/vault-split.js';
 import { poolPayouts } from '../dist/domain/economy/pool-payouts.js';
-import { honestRoad } from './road-damage.mjs';
+import { honestUntilClear, rechain, paceRecording, uploadBatches } from './honest-traffic.mjs';
 import { coverage } from './localnet-coverage.mjs';
 
 const { BASE, RPC, KEYS, DAY } = process.env;
 if (!BASE || !RPC || !KEYS || !DAY) { console.error('run it through .claude/skills/localnet-e2e/run.sh (needs BASE, RPC, KEYS, DAY)'); process.exit(2); }
 const D = JSON.parse(readFileSync(DAY, 'utf8'));   // { saleSecs, playSecs, reviewSecs, minTickets, maxPerWallet, price, split }
-const PRICE = D.price, [PRIZE_BPS, SEED_BPS] = D.split;
+const PRICE = D.price;   // the pool's prize/seed bps come from Config at open, not from day.json's split
 const CDP = +(process.env.CHROME_PORT || 9411);
 const MIN_LEFT = +(process.env.DAY_MIN_LEFT || 100);   // seconds of sale the funded pool needs (buys + rides); a later pool is taken when the first slot is shorter
 const cov = coverage(process.env.COVERAGE || `${KEYS}/../coverage.json`);
@@ -82,7 +82,14 @@ const sealCu = [];
 const sigsOf = async a => (await conn.getSignaturesForAddress(new PublicKey(a), { limit: 100 }, 'confirmed')).reverse().map(x => x.signature);   // oldest first
 
 // ── HTTP as a wallet – each rider from its own address (TRUST_PROXY=1 on the day server), so the pool-level shared-IP mark only fires where it should
-const fetchy = (url, init) => fetch(url, init).catch(e => { if (!/fetch failed/.test(e?.message)) throw e; return fetch(url, init); });
+const fetchy = async (url, init) => {
+  let last;
+  for (let i = 0; i < 4; i++) {
+    try { return await fetch(url, init); }
+    catch (e) { last = e; if (!/fetch failed/.test(e?.message) || i === 3) throw e; await sleep(400 * (i + 1)); }
+  }
+  throw last;
+};
 const api = async (path, { body, cookie, method, ip } = {}) => {
   const res = await fetchy(`${BASE}/api/${path}`, { method: method ?? (body ? 'POST' : 'GET'), headers: { 'content-type': 'application/json', ...(cookie && { cookie }), ...(ip && { 'x-forwarded-for': ip }) }, body: body ? JSON.stringify(body) : undefined });
   return { status: res.status, ok: res.ok, j: await res.json().catch(() => ({})) };
@@ -133,53 +140,31 @@ function pledgeTo(S, rideId) {
   return (pledgeChain = pledgeChain.then(run, run));
 }
 
-// ── a FINISHED RIDE over the player API (the e2e-localnet-payout.mjs / e2e-verified-play.mjs recipe): hash-chained 10 Hz batches that take the planned holes' damage
+// ── a FINISHED RIDE over the player API. Frames come from the server's traffic sim. `onStart(rideId)` runs once the ride is on the road.
+//    `extra` metres past max(completeDist, 1 km): a pledge settles on whole verified km.
 const sha256 = text => createHash('sha256').update(text, 'utf8').digest('hex');
-const r = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
-// drives past the finish line (completeDist, 1 050 m at DEMO_SCALE=48) by `extra` m – program v3 attests whole verified km; `onStart(rideId)` runs once it is on the road
-async function apiRide(p, { seconds = 20, speed = 15, extra = 60, onStart = async () => {}, mutate = () => null, hashOf = (_b, text) => sha256(text) } = {}) {
+const LANES = [0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.4, -0.15, 0.55];
+let laneSlot = 0;
+async function apiRide(p, { speed = 20, extra = 60, onStart = async () => {}, mutate = () => null, hashOf = (_b, text) => sha256(text) } = {}) {
   const o = { cookie: p.cookie, ip: p.ip };
   const made = await api('rides', { body: { tier: '1h' }, ...o });
   if (!made.ok) return { error: `${made.status} ${JSON.stringify(made.j).slice(0, 160)}` };
   const ride = made.j;
-  await api(`rides/${ride.id}/start`, { body: {}, ...o });
+  const started = await api(`rides/${ride.id}/start`, { body: {}, ...o });
+  if (!started.ok) return { error: `start ${started.status} ${JSON.stringify(started.j).slice(0, 160)}` };
   await onStart(ride.id);
-  const d = { id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, prompts: [], road: honestRoad(BASE, ride.id) };
-  // each driver holds its own line across the road (a slow weave, its own phase and length): identical lines are what the pool's duplicate-recording mark catches
-  const ph = Math.random() * 2 * Math.PI, wl = 25 + Math.random() * 40, lane = s => 2.4 + 0.45 * Math.sin(s / wl + ph);
-  const row = (t, s, v) => [r(t, 2), r(s, 1), r(lane(s), 2), 0, r(v, 2), Math.round(900 + v * 50), 6, 100, 0.6, 0, 0, 0, 12, 1 | 2 | 8];
-  const cut = async () => {
-    await d.road.take(d.samples);
-    const base = { seq: d.seq++, prevHash: d.prevHash, t0: r(d.bt0, 2), t1: r(d.t, 2), samples: d.samples, inputs: d.inputs };
-    const body = mutate(base) ?? base;
-    const text = JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs });
-    const hash = hashOf(body, text);
-    d.prevHash = hash ?? `unhashed-${body.seq}`; d.samples = []; d.inputs = []; d.bt0 = d.t;
-    await api(`rides/${d.id}/batches`, { body: { ...body, hash }, ...o });
-  };
-  const heartbeat = async () => {
-    const { j } = await api(`rides/${d.id}/heartbeat`, { body: { s: d.s, t: d.t, hull: 100, paused: false, route: 'route66', night: false }, ...o });
-    const c = j?.challenge;
-    if (c && !d.prompts.some(x => x.id === c.id)) { d.prompts.push(c); const at = r(c.issuedMs + 450 + Math.random() * 700, 1); d.inputs.push([at, c.codes[0], 1], [r(at + 70 + Math.random() * 120, 1), c.codes[0], 0]); }
-  };
-  let wall = Date.now(), lastBeat = 0, gasDown = false, nextKey = 600;
-  for (;;) {
-    await sleep(100);
-    const now = Date.now(), dt = Math.min(0.1, (now - wall) / 1000); wall = now;   // the GAME clock: frames are clamped, one sample a 0.1 s – a stalled loop (an upload, a busy machine) is no gap in game time
-    d.t += dt; d.s += speed * dt;
-    d.samples.push(row(d.t, d.s, speed));
-    const ms = now - d.t0;
-    if (ms >= nextKey) {
-      if (!gasDown) { d.inputs.push([r(ms, 1), 'KeyW', 1]); gasDown = true; nextKey = ms + 1500 + Math.random() * 3000; }
-      else { d.inputs.push([r(ms, 1), 'KeyW', 0]); gasDown = false; const tap = Math.random() < .5 ? 'KeyA' : 'KeyD'; const at = r(ms + 100 + Math.random() * 300, 1); d.inputs.push([at, tap, 1], [r(at + 120 + Math.random() * 400, 1), tap, 0]); nextKey = ms + 400 + Math.random() * 900; }
-    }
-    if (d.t - d.bt0 >= 15) await cut();
-    if (now - lastBeat >= 5_000) { lastBeat = now; await heartbeat(); }
-    if (d.t >= seconds && d.s >= Math.max(ride.completeDist ?? 0, 1000) + extra) break;
-  }
-  await cut(); await heartbeat();
-  const end = await api(`rides/${d.id}/end`, { body: { outcome: 'shift', s: d.s, t: d.t, hull: 100 }, ...o });
-  return { id: d.id, end: end.j };
+  const metres = Math.max(ride.completeDist ?? 0, 1000) + extra;
+  const built = honestUntilClear({ rideId: ride.id, seed: ride.seed, trip: ride.trip, route: ride.route, metres, speed, laneBias: LANES[laneSlot++ % LANES.length] });
+  if (built.fatal) return { error: `traffic ${built.fatal.hit} at ${Math.round(built.fatal.at)} m` };
+  if (built.metres + 1 < metres) return { error: `short ${Math.round(built.metres)} < ${Math.round(metres)}` };
+  const call = async (method, path, body) => { const r = await api(path, { method, body, ...o }); return { status: r.status, json: r.j }; };
+  const paced = await paceRecording(call, ride.id, built.batches, built.hull);
+  if (paced.status !== 200) return { error: `heartbeat ${paced.status} ${JSON.stringify(paced.json).slice(0, 180)}` };
+  const batches = rechain(ride.id, built.batches, mutate, hashOf);
+  const up = await uploadBatches(call, ride.id, batches);
+  if (up.status !== 200) return { error: `upload ${up.status} ${JSON.stringify(up.json).slice(0, 180)}` };
+  const end = await api(`rides/${ride.id}/end`, { body: { outcome: 'shift', s: built.metres, t: built.seconds, hull: built.hull }, ...o });
+  return { id: ride.id, end: end.j };
 }
 const teleport = b => (b.seq === 1 ? { ...b, samples: b.samples.map((row, i) => (i === 40 ? [row[0], row[1] + 500, ...row.slice(2)] : row)) } : null);
 const unhashed = (b, text) => (b.seq === 1 ? null : sha256(text));
@@ -247,7 +232,9 @@ async function checkOpened(id, label) {
     JSON.stringify({ sealed: !!sealed, payer: sealTx?.t.feePayer?.slice(0, 6), target: ev?.seedSlot, slot: sealed?.seedSlot, cu: sealTx?.t.cu }));
   if (sealTx) { sealCu.push(sealTx.t.cu); console.log(`     seal_road compute units on this validator: ${sealTx.t.cu} (the crank's limit: CU_LIMITS.seal_road)`); }
   check(`${label}: the crank paid the Pool rent + the vault rent minimum + its fee, exactly; it is the pool's creator record`, open.change(addr('crank')) === -(POOL_RENT + RENT0 + open.fee) && p.authority === addr('crank') && open.change(codec.vaultPda(id).toBase58()) === RENT0, `${open.change(addr('crank'))} vs −${POOL_RENT + RENT0 + open.fee}`);
-  check(`${label}: rules + deadlines from the series (sale ${D.saleSecs} s on the grid, play +${D.playSecs} s, review +${D.reviewSecs} s)`, p.status === 0 && p.tier === 1 && p.priceLamports === PRICE && p.minTickets === D.minTickets && p.maxPerWallet === D.maxPerWallet && p.prizeBps === PRIZE_BPS
+  const live = await config();
+  // open_next_pool copies the Config split onto the pool. The series row keeps whatever set_series stored, which on this program is not that split.
+  check(`${label}: rules + deadlines from the series (sale ${D.saleSecs} s on the grid, play +${D.playSecs} s, review +${D.reviewSecs} s)`, p.status === 0 && p.tier === 1 && p.priceLamports === PRICE && p.minTickets === D.minTickets && p.maxPerWallet === D.maxPerWallet && p.prizeBps === live.prizeBps && p.seedBps === live.seedBps
     && secs(p.prepDeadline) === secs(sr.nextOpenAt) && secs(p.playDeadline) === secs(p.prepDeadline) + D.playSecs && secs(p.payoutAt) === secs(p.playDeadline) + D.reviewSecs && secs(p.createdAt) >= secs(p.prepDeadline) - D.saleSecs,
   JSON.stringify({ created: p.createdAt, prep: p.prepDeadline, play: p.playDeadline, payoutAt: p.payoutAt, nextOpenAt: sr.nextOpenAt }));
   const listed = await until(async () => (await api('pools')).j.pools?.find(x => x.id === id), 20000, 1000);
@@ -411,7 +398,7 @@ try {
   // ── 7. the payout job: first pass = the pledged rides' attestations + the COMMIT (no prize yet); second pass after pay_from = the prizes + close
   const want = [R1, R2, R3, R4, R5, R6].sort((a, b) => (rides[b.name].end?.distance ?? 0) - (rides[a.name].end?.distance ?? 0));
   pc = await poolAcc(P);
-  const bound = prizeBound({ priceLamports: PRICE, ticketsSold: 8, sponsored: SPONSOR_P, prizeBps: PRIZE_BPS, seedBps: SEED_BPS, ...(pc.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: pc.maxPlayerShareBps } : {}) });
+  const bound = prizeBound({ priceLamports: PRICE, ticketsSold: 8, sponsored: SPONSOR_P, prizeBps: pc.prizeBps, seedBps: pc.seedBps, ...(pc.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: pc.maxPlayerShareBps } : {}) });
   const payouts = poolPayouts(bound, want.map(p => p.wallet));
   const winnersArg = payouts.map(x => `${x.wallet}:${x.lamports}`).join(',');
   const pass1 = cli('pool:payout', '--pool', String(P));
@@ -450,7 +437,7 @@ try {
     && t.blockTime >= secs(pc.payFrom) && t.slot > commitTx.slot), JSON.stringify(prizeTx.map(t => [t.feePayer.slice(0, 6), t.ixs, t.events.find(e => e.name === 'PrizePaid')?.fields.rank, t.blockTime - secs(pc.payFrom)])));
   if (!res.closed) throw new Error('the payout pass did not close the pool – nothing more to check');
   const closeTx = await txInfo(res.closed);
-  const legs = closeSplit({ priceLamports: PRICE, ticketsSold: 8, sponsored: SPONSOR_P, prizeBps: PRIZE_BPS, seedBps: SEED_BPS, platformFeeBps: PLAT_BPS, ...(pc.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: pc.maxPlayerShareBps } : {}), prizesPaid: paid, vaultLamports: before.vault - paid, cancelled: false, rentMin: RENT0 });
+  const legs = closeSplit({ priceLamports: PRICE, ticketsSold: 8, sponsored: SPONSOR_P, prizeBps: pc.prizeBps, seedBps: pc.seedBps, platformFeeBps: PLAT_BPS, ...(pc.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: pc.maxPlayerShareBps } : {}), prizesPaid: paid, vaultLamports: before.vault - paid, cancelled: false, rentMin: RENT0 });
   pc = await poolAcc(P);
   check('prizes on chain = the plan, ≤ the prize share, every committed rank paid', pc.prizesPaid === paid && paid <= bound && legs.unclaimed === bound - paid && Number(pc.paidMask) === 63, `${pc.prizesPaid} / ${paid} / ${bound} mask ${pc.paidMask}`);
   check('close_pool by the payout key: fee / platform / seed legs = closeSplit, the creator (the crank) + the vault rent minimum', closeTx.feePayer === PAYOUT && closeTx.ixs.join() === 'close_pool' && closeTx.change(addr('fee')) === legs.fee && closeTx.change(addr('plat')) === legs.platformFee

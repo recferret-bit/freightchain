@@ -84,7 +84,9 @@ export function requestsIn(code) {
       s += code[i]; i += 1;
     }
     const at = s.indexOf('/api/');
-    if (at >= 0) out.push({ method: m[1].toUpperCase(), path: normPath(s.slice(at)) });
+    // actions.json is the one controller route that is not under /api (blinks discover it at the apex).
+    const path = at >= 0 ? normPath(s.slice(at)) : (normPath(s) === '/actions.json' ? '/actions.json' : '');
+    if (path) out.push({ method: m[1].toUpperCase(), path });
   }
   return out;
 }

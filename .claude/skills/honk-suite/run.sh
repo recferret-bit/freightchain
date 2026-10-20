@@ -19,5 +19,5 @@ echo "▸ program tests"
 echo "▸ catalog drift"
 (cd "$SERVER" && npx vitest run test/unit/domain/honk/catalog-drift.spec.ts --reporter=dot) || fail "catalog drift"
 
-echo "▸ validator, headless session, verified ride"
+echo "▸ validator, headless session, verified ride (paid mint; free and weekly grant mint nothing)"
 HONK_VERDICT=1 bash "$ROOT/.claude/skills/honk-localnet/run.sh"

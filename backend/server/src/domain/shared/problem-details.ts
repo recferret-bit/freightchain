@@ -38,6 +38,7 @@ export const PROBLEM_TITLES: Record<string, string> = {
   rate_limited: 'Rate limited',
   service_unavailable: 'Service unavailable',
   internal_error: 'Internal error',
+  response_schema_violation: 'Response schema violation',
 };
 
 export const titleForCode = (code: string): string => PROBLEM_TITLES[code] ?? 'Error';

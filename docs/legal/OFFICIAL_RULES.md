@@ -19,7 +19,7 @@
 
 1.1. **Skill Contest.** FreightChain Season 1 Weekly Contests and the Season 1 Final (each, a "**Contest**") are contests of **skill** governed by these Official Contest Rules ("**Official Rules**") and our [Terms of Service](TERMS.md) and [Privacy Policy](PRIVACY.md). If there is a conflict between these Official Rules and the Terms of Service on a Contest matter, these Official Rules control.
 
-1.2. **No Wagering; No Random Draws.** Rankings are determined exclusively by objective in-game driving performance verified by the server at 10 Hz (Section 7). There are no random draws, lotteries, dice rolls or chance-based prize allocations. Ticket purchase revenue is Operator revenue for access to a paid-tier ride and is **never** pooled directly into player stakes.
+1.2. **Not a Lottery; Not Gambling or Wagering; No Random Draws.** Rankings are determined exclusively by objective in-game driving performance verified by the server at 10 Hz (Section 7). There are **no random draws, lotteries, dice rolls, loot boxes, or chance-based prize allocations**. The Operator and announced Sponsors fund the majority (`> 50%`, at least `52.6%`) of every Prize Pool upfront, and any player-derived contribution is strictly capped below `50%` (`max_player_share_bps <= 4999`, default `47.4%`). Every eligible player receives a free weekly ranked entry (AMOE), and optional Paid Tickets purchase extra ranked attempts (up to the weekly start cap) rather than stakes or wagers. Spectator donations and tips occur only on completed ride replays and have zero effect on gameplay, scoring, or prizes.
 
 ---
 
@@ -69,13 +69,18 @@
 
 ## 5. How to Enter (Paid & Free Methods of Entry)
 
-5.1. **Paid Ticket Entry.** Eligible players may purchase a `1h`, `4h`, or `8h` Ticket via **Solana Pay** at the published price (`[PLACEHOLDER: e.g. $5 / $15 / $50 in USDC or SOL equivalent]`) and declare a ranked ride before start during the Prize Week.
+5.1. **Paid Ticket Entry (Optional Extra Attempts).** Because the Operator and Sponsors fund the major Prize Pool upfront (`> 50%`), every Contest Pool opens live without requiring a minimum number of player tickets to be sold. Eligible players may optionally purchase a `1h`, `4h`, or `8h` Paid Ticket via **Solana Pay** or the on-chain escrow program (`freightchain_pools`) at the published price (`[PLACEHOLDER: e.g. $5 / $15 / $50 in USDC or SOL equivalent]`, up to `max_per_wallet = 5`) to obtain an **extra ranked attempt** during the Prize Week.
 
-5.2. **Free Method of Entry (No Purchase Necessary).** Eligible players may enter without purchase by using:
-- **(a) Weekly Granted Ticket:** Every eligible wallet receives **one (1) free `1h` Ticket every 7 days** (`weekly_ticket_1h_enabled = 1`, `weekly_ticket_1h_days = 7`). An unused weekly granted ticket expires at the next 7-day grant or at Sunday `12:00 UTC`, whichever is earlier (tickets do not stack). Declaring a weekly granted ticket ranked uses one of the five weekly paid ranked slots and does not mint TEN4. The Operator may also enable periodic free `4h` or `8h` granted tickets (`weekly_ticket_4h_enabled`, `weekly_ticket_8h_enabled`).
+5.2. **Free Method of Entry (No Purchase Necessary / AMOE).** Eligible players may enter without purchase by using:
+- **(a) Weekly Granted Ticket:** Every eligible wallet receives **one (1) free `1h` Ticket every 7 days** (`weekly_ticket_1h_enabled = 1`, `weekly_ticket_1h_days = 7`). An unused weekly granted ticket expires at the next 7-day grant or at Sunday `11:00 UTC` (`last_start_at`), whichever is earlier (tickets do not stack). Declaring a weekly granted ticket ranked uses one of the five weekly paid ranked slots and does not mint TEN4. The Operator may also enable periodic free `4h` or `8h` granted tickets (`weekly_ticket_4h_enabled`, `weekly_ticket_8h_enabled`).
 - **(b) Promo Code Ticket:** Eligible players may redeem an official single-use promo code granting a `1h`, `4h`, or `8h` ride (`PromoRideGrant`), which uses the separate weekly promo ranked slot (`PROMO_RANKED_STARTS = 1`) and does not mint TEN4.
 
 5.3. **Equal Gameplay Rules.** Free-entry rides and purchased-ticket rides drive on identical road/weather generation rules and are judged by the exact same scoring and anti-cheat verification engine. Spectator road effects (obstacles, weather, day/night) are refused on all ranked rides (`rankedRoadEffects`). Prizes won using a free ticket (`source = 'weekly'` or `'promo'`) are subject to the **Free-Ticket Prize Cap** in Section 8.5 and require Didit KYC regardless of prize amount (Section 10.1).
+
+5.4. **All Paid Ticket Purchases Are Final — No Refunds; No Minimum-Ticket Refund; Expiration (Burn).**
+- **No Refunds Upon Purchase:** Once a Paid Ticket (extra attempt) is purchased, the purchase is **immediately final and non-refundable**.
+- **No "Minimum Tickets Sold" Safe Refund:** Because the Operator and Sponsors fund the major Prize Pool upfront (`F = B + S`), a Pool does **not** require a minimum number of player tickets (`min_tickets`) to open or activate, and **there is no refund if few or no other players purchase Tickets**.
+- **Consumption & Expiration (Burn):** A Ticket is consumed the moment a ride is started (`POST /api/rides`), with no refund if the ride is abandoned, failed, or unverified. Every Ticket is valid only for the specific Pool / Prize Week for which it was acquired and must be started before that board's **`last_start_at` cut-off** (Section 2.2); **any Ticket not started before `last_start_at` automatically expires (burns) with no refund, no credit, and no rollover**. The only exceptions are a verified server-side outage or administrative Contest cancellation under Section 11.3.
 
 ---
 
@@ -201,7 +206,7 @@
 
 ## 12. Convoy Referral Program Summary
 
-The **Convoy** referral program is governed by Section 12 of the [Terms of Service](TERMS.md). Convoy rewards consist solely of single-level **TEN4 utility token milestones** (`100 TEN4` at Milestone 1 + `50 TEN4` at Milestone 2, subject to era halving, referrer Trust Score ≥ 50 (`referral_min_trust_referrer = 50`), 48-hour hold, and monthly caps) earned when directly referred friends complete verification and play ranked rides across separate weeks. Convoy does **not** award cash, SOL, USDC or any share of ticket purchases or prize pools, and does not affect Contest leaderboard rankings.
+The **Convoy** referral program is governed by Section 12 of the [Terms of Service](TERMS.md). Convoy rewards consist solely of single-level **TEN4 utility token milestones** (`100 TEN4` at Milestone 1 + `50 TEN4` at Milestone 2, subject to era halving, referrer Trust Score ≥ 50 (`referral_min_trust_referrer = 50`), 48-hour hold, and monthly caps) earned when directly referred friends complete verification and play ranked rides across separate weeks. Convoy does **not** award cash, SOL, USDC, or any share of ticket purchases, prize pools, or spectator donations (`0%`), and does not affect Contest leaderboard rankings.
 
 ---
 

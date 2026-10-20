@@ -4,7 +4,9 @@ import { join } from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import { called, hashTo, settle } from '../../harness/dom.mjs';
 import { REPO } from '../../harness/dom.mjs';
+import { chainTest } from '../../harness/api.mjs';
 import { openAdmin } from '../../harness/sessions/admin.mjs';
+import { liveSetPoolRules } from '../chain-flow.mjs';
 
 const src = (rel) => readFileSync(join(REPO, rel), 'utf8');
 
@@ -34,4 +36,4 @@ test('B2-ADMIN-03 the operator CLI is server/scripts/pool-admin.mjs set-pool-rul
   assert.match(cli, /set-pool-rules/);
 });
 
-test.todo('B2-ADMIN-04 live set_pool_rules against the local validator (keypair, not a wallet popup) — see M-10');
+chainTest(test, 'B2-ADMIN-04 live set_pool_rules against the local validator (keypair, not a wallet popup)', liveSetPoolRules);

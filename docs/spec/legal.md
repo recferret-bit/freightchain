@@ -32,8 +32,8 @@
   
   §6 — one attempt, §7 — a shared route. If there are more attempts — the wording follows decision 35.
 - **LEG-M-06** MUST: TEN4 — points until TGE. There are no paid tickets on devnet. The organizer is a private individual.
-- **LEG-M-07** MUST: the ticket-burn rule (TERMS 7.5 + the [`pool.md`](pool.md) text POOL-M-05) — in TERMS before paid tickets go on sale. `[LAWYER]` — the right to withdraw from a distance purchase.
-- **LEG-M-08** MUST: the pool rules name the money mode for unplayed tickets (POOL-M-11) and publish the ranking formula (RID-M-17).
+- **LEG-M-07** MUST: the operator-funded skill-contest model (`> 50%` operator/sponsor base, `< 50%` optional player-paid extra attempts), the no-refund rule (no minimum-ticket-sale refund; all paid tickets final upon purchase), and the ticket-burn rule after `last_start_at` (`TERMS.md` §7.5, §8, §9; `OFFICIAL_RULES.md` §1.2, §5.4; [`pool.md`](pool.md) `POOL-M-05`) — in TERMS and OFFICIAL_RULES before paid tickets go on sale. `[LAWYER]` — the right to withdraw from a distance purchase.
+- **LEG-M-08** MUST: the pool rules name the money mode for unplayed tickets (POOL-M-11), state that paid tickets buy extra attempts with no minimum-ticket refund (`POOL-M-05`), and publish the ranking formula (RID-M-17).
 - **LEG-M-09** MUST: draft edits are carried into the repository's `docs/legal/*`, including the RU translation of 16a ([`PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md)).
 - **LEG-M-11** MUST (decision 58): the RU texts of the lobby and the replay panel match the EN and [`PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md) in meaning: "training does not appear in replays", "only replays can be watched", "a donation affects nothing", "pledges are off". Legal documents stay in their own language (EN; RU — the 16a translation only).
 - **LEG-M-10** MUST NOT: product texts (the lobby, the replay panel) do not promise what is not in TERMS. For example, "send donations that change their ride" (`lobby-live.js`, `watch-panel.js:180`) is removed.

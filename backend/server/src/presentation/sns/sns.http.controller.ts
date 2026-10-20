@@ -1,9 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
+import { snsReverseResponse, snsResolveResponse } from '../common/response/rest.response.js';
 import { QueryBus } from '@nestjs/cqrs';
 import type { SnsResolutionDto, SnsReverseDto } from '../../domain/sns/sns.dto.js';
 import { GetSnsReverseQuery } from '../../application/use-cases/sns/get-sns-reverse/get-sns-reverse.query.js';
 import { ResolveSnsQuery } from '../../application/use-cases/sns/resolve-sns/resolve-sns.query.js';
 import { ZodQuery } from '../../infrastructure/http/decorators/zod.js';
+import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import {
   snsReverseQuerySchema,
   snsResolveQuerySchema,
@@ -18,12 +20,14 @@ export class SnsHttpController {
 
   /** Reverse lookup: driver wallet public key -> primary .sol domain name (or null). */
   @Get('reverse')
+  @ZodResponse(snsReverseResponse)
   reverse(@ZodQuery(snsReverseQuerySchema) query: SnsReverseQuery): Promise<SnsReverseDto> {
     return this.queryBus.execute<GetSnsReverseQuery, SnsReverseDto>(new GetSnsReverseQuery(query.wallet));
   }
 
   /** Forward lookup: .sol domain name -> driver wallet public key (or null). */
   @Get('resolve')
+  @ZodResponse(snsResolveResponse)
   resolve(@ZodQuery(snsResolveQuerySchema) query: SnsResolveQuery): Promise<SnsResolutionDto> {
     return this.queryBus.execute<ResolveSnsQuery, SnsResolutionDto>(new ResolveSnsQuery(query.domain));
   }

@@ -1,4 +1,5 @@
 import { Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { poolPayoutsResponse, adminChallengeResponse, poolHoldResponse } from '../common/response/admin.response.js';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { ChallengeDto } from '../../application/use-cases/auth/request-challenge/request-challenge.command.js';
 import { HoldPoolPayoutCommand, type PoolHoldDto } from '../../application/use-cases/admin/hold-pool-payout/hold-pool-payout.command.js';
@@ -7,6 +8,7 @@ import { RequestActionChallengeCommand } from '../../application/use-cases/admin
 import { CurrentRequestId } from '../../infrastructure/http/decorators/client-info.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
+import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { AdminGuard } from '../../infrastructure/http/guards/admin.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import {
@@ -23,16 +25,19 @@ export class AdminPoolsHttpController {
   ) {}
 
   @Get('pool-payouts')
+  @ZodResponse(poolPayoutsResponse)
   payouts(): Promise<PoolPayoutsDto> {
     return this.queryBus.execute<ListPoolPayoutsQuery, PoolPayoutsDto>(new ListPoolPayoutsQuery());
   }
 
   @Post('pools/:id/hold/challenge') @HttpCode(200)
+  @ZodResponse(adminChallengeResponse)
   holdChallenge(@CurrentPlayer() admin: PlayerIdentity, @ZodParams(poolHoldParamsSchema) params: PoolHoldParams, @ZodBody(poolHoldChallengeBodySchema) body: PoolHoldChallengeBody): Promise<ChallengeDto> {
     return this.commandBus.execute<RequestActionChallengeCommand, ChallengeDto>(new RequestActionChallengeCommand(admin.wallet, { action: 'pool_hold', poolId: params.id, hold: body.hold, note: body.note }));
   }
 
   @Post('pools/:id/hold') @HttpCode(200)
+  @ZodResponse(poolHoldResponse)
   hold(@CurrentPlayer() admin: PlayerIdentity, @ZodParams(poolHoldParamsSchema) params: PoolHoldParams, @ZodBody(poolHoldBodySchema) body: PoolHoldBody, @CurrentRequestId() requestId: string): Promise<PoolHoldDto> {
     return this.commandBus.execute<HoldPoolPayoutCommand, PoolHoldDto>(new HoldPoolPayoutCommand(admin.wallet, params.id, body.hold, body.note, requestId, body.signature));
   }

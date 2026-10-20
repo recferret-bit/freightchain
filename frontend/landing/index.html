@@ -218,18 +218,18 @@
     <div class="card how">
       <h3>HOW THE ESCROW WORKS</h3>
       <ol class="esc" aria-label="how a ticket moves through an escrow pool">
-        <li class="esc-n"><b>RIDERS</b><span>buy a ticket</span></li>
-        <li class="esc-a" aria-hidden="true"><i></i><em>entry fee</em></li>
-        <li class="esc-v"><b>POOL VAULT</b><span>program-owned account – holds the entry fees until the pool pays out or refunds</span></li>
-        <li class="esc-a" aria-hidden="true"><i></i><em>deadline</em></li>
+        <li class="esc-n"><b>BASE + RIDERS</b><span>base &gt; 50%; paid tickets buy extra attempts (&lt; 50%)</span></li>
+        <li class="esc-a" aria-hidden="true"><i></i><em>escrow vault</em></li>
+        <li class="esc-v"><b>POOL VAULT</b><span>program-owned account – holds base funding and optional paid tickets until settlement</span></li>
+        <li class="esc-a" aria-hidden="true"><i></i><em>review &amp; root</em></li>
         <li class="esc-f">
-          <div class="miss"><b>GOAL MISSED</b><span>too few riders</span><strong>100% back</strong><small>anyone can trigger the refunds</small></div>
+          <div class="miss"><b>TICKETS ARE FINAL</b><span>no low-sales refund</span><strong>NO REFUND</strong><small>burn at cut-off; 14 d safety net if unsettled</small></div>
           <div class="hit"><b>POOL LIVE</b><span>split as declared</span>
             <div class="bar3" aria-hidden="true"><i style="flex:85"></i><i style="flex:5"></i><i style="flex:10"></i></div>
             <small><u>85%</u> prizes · <u>5%</u> next pool · <u>10%</u> season final</small></div>
         </li>
       </ol>
-      <p class="dim" id="escrow-status">Program v3 is on devnet; v5 (85 / 5 / 10 split, &lt; 50% player-derived share cap, Merkle winners root) is built and tested. Each pool seals its road seed from a slot hash and pays only verified rides.</p>
+      <p class="dim" id="escrow-status">Program v3 is on devnet; v5 (85 / 5 / 10 split, &gt; 50% base, &lt; 50% player cap, Merkle root) is built and tested. We fund the pool; tickets buy extra attempts (no refund).</p>
       <a class="link" id="escrow-link" href="https://whitepaper.freightchain.fun/#onchain">The whole escrow, with diagrams, in the whitepaper →</a>
     </div>
   </div>
@@ -275,10 +275,10 @@
   </div>
 
   <div class="card tiers why rv" id="why-20">
-    <h3>WHY 20 TICKETS AT $5</h3>
-    <p>In the single-tier devnet example, the 1 hour pool opens at 20 tickets of $5 ($100 pot; fewer than 20 sold by the deadline refunds every ticket). In the unified weekly contest (<code>T = F + P + C</code>), operator base + sponsor funding <code>F = B + S</code> pairs with a capped performance bonus <code>P = min(40% R_prev, $2,500, 90% F)</code> so player-derived funding is always <b>below 50%</b> (&le; 47.4%). The pot splits <b>85% weekly boards</b> (1 h 25% &middot; 4 h 30% &middot; 8 h 45%; 80% top-10 places + 20% clean finishers, equal tie-splitting, 30% free-ticket cap), <b>5% rollover</b>, and <b>10% Season Final</b> across a 7-week season.</p>
+    <h3>OPERATOR-FUNDED POOLS &amp; EXTRA ATTEMPTS</h3>
+    <p>We and sponsors fund the pool (<code>F = B + S &gt; 50%</code>), and paid tickets ($5 1 h · $15 4 h · $50 8 h) buy extra ranked attempts beside free weekly entry (AMOE). In the weekly contest (<code>T = F + P + C</code>), a capped bonus <code>P = min(40% R_prev, $2,500, 90% F)</code> keeps player funding <b>below 50%</b> (&le; 47.4%). We fund the pool, so it runs without a minimum ticket goal (unlike legacy devnet v3's 20 tickets of $5), and <b>paid tickets are non-refundable once bought</b> (unused expire at cut-off). The pot splits <b>85% weekly boards</b> (1 h 25% · 4 h 30% · 8 h 45%; 80% top-10 + 20% clean finishers, equal tie-splitting, 30% free-ticket cap), <b>5% rollover</b>, and <b>10% Season Final</b> across 7 weeks.</p>
     <table>
-      <thead><tr><th>IF 20 FINISH</th><th>GETS</th></tr></thead>
+      <thead><tr><th>$100 BOARD EXAMPLE (20 FINISHERS)</th><th>GETS</th></tr></thead>
       <tbody>
         <tr><td>1st</td><td>$26</td></tr>
         <tr><td>2nd</td><td>$16</td></tr>
@@ -287,7 +287,7 @@
         <tr><td>Unified v5 split</td><td>85% boards · 5% rollover · 10% Season Final</td></tr>
       </tbody>
     </table>
-    <p class="dim">At 10 tickets, 1st would win $13.50 for the hour, so the pool does not open. Places 4–20 get $1 back: the pool pays the podium. 1st’s $26 is the 25% place plus $1 from the shared slice. Verified paid shifts also mint capped <b>TEN4</b> (100M supply; 100 / 500 / 1,200 TEN4 at 20% / 50% / 100% checkpoints in Era 1), burned in the 9-slot Garage and on live streams. Ahead of Season 1 mainnet (Jan 11, 2027), the Nov 2–17, 2026 Devnet Pre-season pays $500 USDC on the 1 h board plus 100,000 TEN4 points.</p>
+    <p class="dim">On a $100 illustrative board with 20 clean finishers, 1st’s $26 is the 25% top-place share plus $1 from the finisher slice, and places 4–20 share the finisher slice. Verified paid shifts also mint capped <b>TEN4</b> (100M supply; 100 / 500 / 1,200 TEN4 at 20% / 50% / 100% checkpoints in Era 1), burned in the 9-slot Garage and on live streams. Ahead of Season 1 mainnet (Jan 11, 2027), the Nov 2–17, 2026 Devnet Pre-season pays $500 USDC on the 1 h board plus 100,000 TEN4 points.</p>
   </div>
 
   <div class="boards rv">
@@ -368,10 +368,10 @@
       <tbody>
         <tr><td>FREE RIDES</td><td>Unlimited training (EASY, MEDIUM, HARD), 1 weekly granted paid 1 h ticket (AMOE), plus promo ride grants. Its own boards and badges.</td><td>$0</td><td class="num" id="lb-drivers">–</td><td><em class="rolling">ROLLING</em></td></tr>
         <tr><td>PRE-SEASON</td><td>Nov 2–17, 2026 Devnet Pre-season on the 1 h board: $500 USDC organizer prize pool (Top 20 fixed table) + 100,000 TEN4 airdrop points.</td><td>$0 · tasks</td><td class="num" id="lb-tests">–</td><td><em class="bid">NOV 2</em></td></tr>
-        <tr><td>TICKETS</td><td>A paid shift ($5 1 h · $15 4 h · $50 8 h) is a ranked entry (up to 5 paid + 1 promo/wk). Too few sold by the deadline: 100% refunded on chain.</td><td>SOL / USDC</td><td class="num" id="lb-entries">–</td><td><em class="bid" id="lb-tickets-st">SOON</em></td></tr>
-        <tr><td>THE POOLS</td><td>Unified weekly pot (&lt; 50% player-derived share): 85% weekly boards (1 h 25% · 4 h 30% · 8 h 45%; 80% top 10 + 20% finishers), 5% rollover, 10% Season Final.</td><td>85/5/10</td><td class="num" id="lb-pot">–</td><td><em class="bid" id="lb-pools-st">SOON</em></td></tr>
+        <tr><td>TICKETS</td><td>Optional paid shifts ($5 1 h · $15 4 h · $50 8 h) buy extra ranked attempts (up to 5 paid + 1 promo/wk, &lt; 50% of the pool). Final &amp; non-refundable; unused tickets burn at start cut-off.</td><td>SOL / USDC</td><td class="num" id="lb-entries">–</td><td><em class="bid" id="lb-tickets-st">SOON</em></td></tr>
+        <tr><td>THE POOLS</td><td>Operator &amp; sponsor-funded weekly pot (&gt; 50% base, &lt; 50% player-derived share): 85% weekly boards (1 h 25% · 4 h 30% · 8 h 45%; 80% top 10 + 20% finishers), 5% rollover, 10% Season Final.</td><td>85/5/10</td><td class="num" id="lb-pot">–</td><td><em class="bid" id="lb-pools-st">SOON</em></td></tr>
         <tr><td>TEN4 COIN</td><td>100M fixed cap: 55M paid checkpoints (20% / 50% / 100%), 15M LP, 8M airdrop, 4M Convoy, 10M treasury, 8M team; burned for 9-slot Garage parts &amp; stream effects.</td><td>100M cap</td><td class="num">–</td><td><em class="bid">MAR 2027</em></td></tr>
-        <tr><td>CONVOY · ?REF=</td><td>Invite link gives free rides on first MEDIUM finish (2 to referrer, 3 to referee), 3 referral paints, capped tip share, and 100 / 50 TEN4 milestones.</td><td>4M TEN4</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
+        <tr><td>CONVOY · ?REF=</td><td>Single-level invite link gives free rides on first MEDIUM finish (2 to referrer, 3 to referee), 3 referral paints, and 100 / 50 TEN4 milestones (0% cut of pools or tips).</td><td>4M TEN4</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
         <tr><td>WATCH</td><td>No wallet needed: who is driving, 25 s behind, every finish replayable. A spectator talks on the CB and tips the driver by Solana Pay QR.</td><td>$0</td><td class="num" id="lb-live">–</td><td><em class="rolling">ROLLING</em></td></tr>
         <tr><td>REPLAY LINKS</td><td>One URL per ride is the share page: the watch link, with the route, the distance and the verdict.</td><td>a link</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
         <tr><td><a href="https://x.com/FreightChainSol" target="_blank" rel="noopener">X</a></td><td>@FreightChainSol: clips, pool numbers, Pre-season tasks, finishes as they happen.</td><td>time</td><td class="num">–</td><td><em class="rolling">ROLLING</em></td></tr>
@@ -449,7 +449,7 @@
     <article class="fq" data-item="vault">
       <button type="button" aria-expanded="false">Who holds the entry fees, and what if a pool does not fill?</button>
       <i class="chev" aria-hidden="true"></i>
-      <div class="fq-a"><div><p>The vault is an account the program owns. It holds the funds until the pool pays (85% weekly boards · 5% rollover · 10% Season Final, with player-derived funding capped below 50%) or refunds. Miss the ticket goal and every entry comes back. <a href="https://whitepaper.freightchain.fun/#onchain">The escrow, in the whitepaper</a>.</p></div></div>
+      <div class="fq-a"><div><p>The vault is a program-owned account. We &amp; sponsors fund the pool (&gt; 50% base) and optional tickets (&lt; 50% cap) buy extra attempts, so a pool never waits to fill a ticket goal (85% weekly boards · 5% rollover · 10% Season Final). Purchases are final &amp; non-refundable (unused expire at start cut-off; refunded only if cancelled or unsettled after 14 days). <a href="https://whitepaper.freightchain.fun/#onchain">The escrow, in the whitepaper</a>.</p></div></div>
     </article>
     <article class="fq" data-item="shift">
       <button type="button" aria-expanded="false">How long is a shift, and what ends it?</button>

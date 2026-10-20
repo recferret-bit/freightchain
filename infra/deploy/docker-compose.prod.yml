@@ -71,6 +71,7 @@ services:
     networks: [default, cache, editor]   # editor: the mcp service calls back /api/editor/mcp/* (no nginx in between)
     environment:
       NODE_ENV: production
+      RESPONSE_SCHEMA_CHECK: ${RESPONSE_SCHEMA_CHECK:-warn}
       PORT: "3000"
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is empty - add REDIS_PASSWORD=<hex> to deploy/.env}@redis:6379   # the compose service above (hex password: no URL escaping); the statistics API is cached there
@@ -102,6 +103,7 @@ services:
       DEMO_WALLETS: ${DEMO_WALLETS:-}
       DEMO_SCALE: ${DEMO_SCALE:-60}
       INITIAL_SEED_SOL: ${INITIAL_SEED_SOL:-0}
+      PRIZE_DEV_DEFAULT_COUNTRY: ${PRIZE_DEV_DEFAULT_COUNTRY:-US} # lane1:PRIZE_DEV_DEFAULT_COUNTRY
       # escrowed pools (docs/spec/pool.md) – all optional: unset TICKET_PROGRAM_ID = the legacy transfer mode
       PAYMENT_MODE: ${PAYMENT_MODE:-}
       TICKET_PROGRAM_ID: ${TICKET_PROGRAM_ID:-}

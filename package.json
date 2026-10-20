@@ -15,7 +15,7 @@
     "server:test": "npm --prefix backend/server test",
     "client:check": "npm --prefix frontend/client run check",
     "client:serve": "frontend/client/serve.sh",
-    "check": "npm run client:check && npm run landing:lint && npm run landing:build && npm run landing:test && npm run server:build && npm run server:typecheck && npm run server:test && npm run mcp:check && npm run media:check",
+    "check": "npm run client:check && npm --prefix frontend/client run test:parity && npm --prefix frontend/client run test:tickets-stub && node .claude/skills/test-census/census.mjs --self-test && npm run landing:lint && npm run landing:build && npm run landing:test && npm run server:build && npm run server:typecheck && npm run server:test && npm run mcp:check && npm run media:check",
     "db:up": "npm --prefix backend/server run db:up",
     "db:down": "npm --prefix backend/server run db:down",
     "db:migrate": "npm --prefix backend/server run prisma:deploy",

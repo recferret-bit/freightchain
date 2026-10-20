@@ -14,9 +14,9 @@ const CHAIN = [
   { c: '#14f195', st: 'LIVE LOOKUP', h: 'SIWS & SNS', big: 'YOU.SOL', p: '1-click Sign-In With Solana, QR phone pairing, and .sol name lookup on your profile instead of a wallet string.', small: 'CAIP-122 · 24 h SNS cache',
     why: 'A 44-character address means nothing to a rider. A .sol name is a handle people remember and share.',
     fit: 'Sign-in uses 1-click SIWS or QR pairing, reads your favourite .sol name from chain, and caches it for 24 h.' },
-  { c: '#ffcf5a', st: 'DEVNET · V5 BUILT', h: 'Escrow', big: '85 / 5 / 10', p: 'An Anchor program holds every pool (85% boards · 5% rollover · 10% Season Final) with player share capped < 50%.', small: '30 instructions · 28 events',
-    why: 'A skill pool only works if nobody can run off with it and base funding exceeds the player bonus (< 50% player share).',
-    fit: 'Funds sit in the vault. Winners are committed as a Merkle root after 48 h review, then paid by proof; a missed goal refunds.' },
+  { c: '#ffcf5a', st: 'DEVNET · V5 BUILT', h: 'Escrow', big: '85 / 5 / 10', p: 'An Anchor program holds every pool (85% boards · 5% rollover · 10% Final) with > 50% base and player share < 50%.', small: '30 instructions · 28 events',
+    why: 'A skill pool only works if nobody can run off with it and base funding exceeds player share (< 50%).',
+    fit: 'We fund the pool; tickets buy extra attempts (final, no refund). Winners commit as a Merkle root after 48 h review, paid by proof.' },
   { c: '#ff5a4d', st: 'LIVE · DEVNET SOL', h: 'Donations', big: 'NIGHT · SINKHOLE', p: 'Spectators of a live ride can chat, tip SOL, pledge per km, or on free rides turn day to night or open a hole ahead.', small: 'One effect per 20 s · per-km pledges',
     why: 'Watching should be a way to play. A donation turns a quiet stream into an event, and the stream is our ad.',
     fit: 'A donation reaches the driver in ~4 s; the replay shows it ~25 s behind. Ranked runs keep road effects off.' },
@@ -154,7 +154,7 @@ export const SLIDES = [
           <div style="--w:5"><b>5%</b><i class="desc">Of every pool: seeds the next pool</i><span>next pool</span></div>
           <div style="--w:10"><b>10%</b><i class="desc">Of every pool: Season Final &amp; fee</i><span>final · fee</span></div>
         </div>
-        ${pts(['Player share capped &lt; 50% on chain', 'Too few tickets · refund, without me', 'Pays only attested rides via Merkle root'])}
+        ${pts(['Operator base &gt; 50% · player share &lt; 50%', 'Paid tickets buy extra attempts (no low-sales refund)', 'Pays only attested rides via Merkle root'])}
         <div class="fine">DEVNET · V5 BUILT · &lt; 50% PLAYER SHARE</div>
       </div>
       <div class="vis">

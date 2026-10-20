@@ -25,7 +25,7 @@ The Conflicts table is the list the owner still has to pick. Tests lock the ship
 | Lobby language | English. | 58: English and Russian from the first public day. | Machine-translate the lobby as part of coverage. |
 | Admin power | One `ADMIN_WALLETS` list. Session max is 120 minutes. Logout does not revoke the token. Strict env checks run when `NODE_ENV` is production. | 59–66: three roles, 60 minutes, `jti` revoke, Telegram alerts, default-deny, IP allowlist on mainnet. | Treat the security manifesto as the current guard. |
 | Pledges | Built: create, confirm, attest, settle, refund, watch UI. | 51: pledges answer `403 pledges_disabled` on the devnet launch. | Disable them in the current server without that flag being the decision's PR. |
-| Program deploy | Pools v5 is built (`8500/500/1000`, `paid_tickets_enabled`, no on-chain referral leg). Devnet still runs pools v3. TEN4's program is local only. The PostgreSQL ledger is the TEN4 balance. | The spec often says "v5" as if it were the live program. | Deploy, or tell a player that devnet is v5. |
+| Program deploy | Pools v5 is built (`8500/500/1000`, `paid_tickets_enabled`, no on-chain referral leg; still contains legacy `STATUS_OPEN` / `min_tickets >= 1` / `fail_pool`). Devnet still runs pools v3. TEN4's program is local only. The PostgreSQL ledger is the TEN4 balance. | Operator-funded pools (> 50% base `F = B + S`, optional < 50% paid extra attempts) run without a minimum-ticket sale gate, and paid tickets are final and non-refundable once bought (v6 opens pools in `STATUS_ACTIVE` without `fail_pool`). | Deploy, or tell a player that devnet is v5. |
 
 ## Surfaces
 
@@ -52,7 +52,7 @@ Gap: guest and both SNS routes have no HTTP scenario. Phone-pair HTTP is already
 
 **Shipped, with a draft contest.** 4h and 8h grants default off (`weekly_ticket_4h_enabled` and `weekly_ticket_8h_enabled` are 0).
 
-A live 1h grant is issued only inside the ranked week (Monday 00:00 UTC through Sunday 12:00 UTC) to a non-guest who is 18+ and in an allowed country. It expires at the next interval or Sunday 12:00 UTC, whichever is earlier. An unspent 1h ride promo is claimed first: that POST creates a promo ride and leaves the grant unspent. With no promo, the first `POST /api/rides { tier: '1h' }` creates an unranked ride and spends the grant. A second `POST` while that ride is still `created` returns the same ride. `409 weekly_ticket_spent` is the lost-claim race, not the ordinary second order. After the grant ride has ended, another 1h with no pool and no promo is `409 tier_not_on_sale`. The grant does not mint TEN4. It can be watched. It consumes one of the five paid ranked slots only when `POST /api/rides/:id/start` sends `{ ranked: true }`.
+A live 1h grant is issued only inside the ranked week (Monday 00:00 UTC through Sunday 12:00 UTC) to a non-guest who is 18+ and in an allowed country. A missing, `XX`, or `T1` country is `409 ranked_ineligible` unless `NODE_ENV` is `development` or `test`, where `PRIZE_DEV_DEFAULT_COUNTRY` (default `US`) fills it in. A real country code is never replaced. The server unit and integration suites set that default to `KP` so a missing header stays ineligible. It expires at the next interval or Sunday 12:00 UTC, whichever is earlier. An unspent 1h ride promo is claimed first: that POST creates a promo ride and leaves the grant unspent. With no promo, the first `POST /api/rides { tier: '1h' }` creates an unranked ride and spends the grant. A second `POST` while that ride is still `created` returns the same ride. `409 weekly_ticket_spent` is the lost-claim race, not the ordinary second order. After the grant ride has ended, another 1h with no pool and no promo is `409 tier_not_on_sale`. The grant does not mint TEN4. It can be watched. It consumes one of the five paid ranked slots only when `POST /api/rides/:id/start` sends `{ ranked: true }`.
 
 `GET /api/prize/board` ranks ended rides that started ranked. The USDC contest in `docs/spec/pool.md` (Appendix C) is a draft. No USDC is sent. Spectator road effects are refused on ranked rides. Both profile stamps (`age18` and the loss acknowledgement) are required before a bought paid ride or a blink shift buy (`409 agreements_required`). A promo and a weekly grant skip that check.
 
@@ -68,7 +68,7 @@ A live 1h grant is issued only inside the ranked week (Monday 00:00 UTC through 
 
 ### Escrow program
 
-**Local v5, devnet v3.** [`docs/spec/pool.md`](pool.md). Default split for a new v5 pool is 85% / 5% / 10% (`8500/500/1000`). `max_player_share_bps` default 4740, program ceiling 4999. `paid_tickets_enabled` can be off. No on-chain referral leg. `seal_road`, winners root, per-ride attestations, sponsor refunds, and pledges are in the built program. Pledge routes answer normally today. `403 pledges_disabled` is decision 51, not the current server. The crank and the payout key are the server's only two keys. The cold admin can veto a root. Money stays in the program.
+**Local v5, devnet v3.** [`docs/spec/pool.md`](pool.md). Default split for a new v5 pool is 85% / 5% / 10% (`8500/500/1000`). `max_player_share_bps` default 4740, program ceiling 4999. `paid_tickets_enabled` can be off. No on-chain referral leg. `seal_road`, winners root, per-ride attestations, sponsor refunds, and pledges are in the built program. Pledge routes answer normally today. `POST /api/pledges/:id/confirm` for a wallet that is not the sponsor returns the same `404` `not_found` as a missing pledge. `403 pledges_disabled` is decision 51, not the current server. The crank and the payout key are the server's only two keys. The cold admin can veto a root. Money stays in the program.
 
 ### TEN4
 
@@ -114,13 +114,15 @@ One code and one referrer per wallet, bound before any ride has `startedAt`. Cod
 
 **Shipped.** [`docs/spec/replays_streams.md`](replays_streams.md).
 
-`GET /api/live` is heartbeats plus soft online counts. Running free rides are omitted. `GET /api/replays` is history, including finished free rides. Watch polls. There is no WebSocket. Chat, mutes, mock tips, and paid SOL tips to the driver are shipped. Feature flags: `LIVE_CHAT`, `LIVE_DONATIONS`, `LIVE_FREE_DONATIONS`, `LIVE_EFFECTS`. Code defaults all/on/on/all. Production compose all/on/off/free. With `LIVE_EFFECTS=free`, donation night, day, and holes do not change the ride. Replay draws the recording. It does not run the sim. Sample columns are append-only. Input bits are frozen.
+`GET /api/live` is heartbeats plus soft online counts. Running free rides are omitted. `GET /api/replays` is history, including finished free rides. `GET /api/rides/:id/replays` for another wallet returns the same `404` `not_found` as a missing ride. Watch polls. There is no WebSocket. Chat, mutes, mock tips, and paid SOL tips to the driver are shipped. Feature flags: `LIVE_CHAT`, `LIVE_DONATIONS`, `LIVE_FREE_DONATIONS`, `LIVE_EFFECTS`. Code defaults all/on/on/all. Production compose all/on/off/free. With `LIVE_EFFECTS=free`, donation night, day, and holes do not change the ride. Replay draws the recording. It does not run the sim. Sample columns are append-only. Input bits are frozen.
 
 This whole section is the shipped column of the first three conflicts.
 
 ### Lobby, landing, whitepaper, pitch deck
 
-**Shipped.**
+**Shipped.** A null current pool, `{ pool: null }`, or an empty pool with no `split` or `usd` paints the unpaid hero fallback and does not throw.
+
+Every JSON route has a `@ZodResponse` schema of the body the client receives. `RESPONSE_SCHEMA_CHECK` is `strict` in test and development (a mismatch is `500 response_schema_violation`) and `warn` in production. Admin, editor, auth, and money request objects reject unknown fields with `400 validation_error`. Telemetry and client-error still drop unknown fields. `npm run openapi:generate` writes `backend/server/openapi.json`.
 
 - Lobby: new ride, live, replays, leaderboard, achievements, profile, garage, referral block, promo redeem, age agreement, receipt.
 - Landing: Vite page, play control is bare `play.html`, pool and live boards, wallet connect, pitch-deck band, whitepaper link.

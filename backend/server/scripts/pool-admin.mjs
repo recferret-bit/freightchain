@@ -96,7 +96,12 @@ async function send(signer, ix, more = []) {
     const tx = new Transaction({ feePayer: signer.publicKey, blockhash, lastValidBlockHeight }).add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRIORITY }), ix);
     tx.sign(signer, ...more);
     const sim = await conn.simulateTransaction(tx);
-    if (sim.value.err) throw Object.assign(new Error(`simulation failed: ${JSON.stringify(sim.value.err)}`), { logs: sim.value.logs ?? [] });
+    if (sim.value.err) {
+      const err = JSON.stringify(sim.value.err);
+      const sig = bs58.encode(tx.signature);
+      if (/AlreadyProcessed/.test(err)) return sig;
+      throw Object.assign(new Error(`simulation failed: ${err}`), { logs: sim.value.logs ?? [] });
+    }
     const raw = tx.serialize(), sig = bs58.encode(tx.signature);
     for (;;) {
       await conn.sendRawTransaction(raw, { skipPreflight: true, maxRetries: 0 }).catch(() => undefined);

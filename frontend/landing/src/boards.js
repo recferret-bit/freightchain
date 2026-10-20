@@ -21,9 +21,18 @@ export function count(elm, target, fmt, reduced = false) {
   requestAnimationFrame(step);
 }
 
+/** `{ pool: null }` (GET /api/pools/current) and a body with no split and no escrow keep the static hero. */
+function heroPool(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (raw.pool === null && raw.split == null && !raw.pools?.length) return null;
+  return raw;
+}
+
+const POOL_FALLBACK = 'Free rides and practice are open. No prize has been paid.';
+
 /** Hero stats tiles + chapter 04/05 live cells. */
 export function paintHero(S, now, reduced) {
-  const p = S.pool, l = S.live;
+  const p = heroPool(S.pool), l = S.live;
   if (p) {
     const esc = p.pools?.length ? p.pools.reduce((a, x) => a + x.vaultLamports, 0) : null;
     if (esc != null) {
@@ -33,15 +42,16 @@ export function paintHero(S, now, reduced) {
       if ($('hero-pot-note')) $('hero-pot-note').hidden = true;
     } else {
       $('hero-pot-lbl').textContent = 'ACCRUED THIS WEEK · NOT PAID';
-      if (p.split.grand > 0) count($('hero-pot'), p.split.grand, v => sol(v), reduced);
+      const grand = Number(p.split?.grand) || 0;
+      if (grand > 0) count($('hero-pot'), grand, v => sol(v), reduced);
       else $('hero-pot').textContent = '–';
-      $('hero-usd').textContent = p.split.grand > 0 && p.usd.grand != null ? `≈ $${p.usd.grand}` : '';
+      $('hero-usd').textContent = grand > 0 && p.usd?.grand != null ? `≈ $${p.usd.grand}` : '';
       if ($('hero-pot-note')) {
         $('hero-pot-note').hidden = false;
-        $('hero-pot-note').textContent = 'Free rides and practice are open. No prize has been paid.';
+        $('hero-pot-note').textContent = POOL_FALLBACK;
       }
     }
-    $('hero-cd').textContent = left(p.round.endsAt - now());
+    $('hero-cd').textContent = p.round?.endsAt != null ? left(p.round.endsAt - now()) : '–';
     const hasEsc = p.pools?.length;
     $('lb-entries').textContent = hasEsc ? `${p.entries} this round` : 'devnet soon';
     $('lb-pot').textContent = hasEsc ? `${sol(p.pools.reduce((a, x) => a + x.vaultLamports, 0))} SOL` : '–';
@@ -63,8 +73,8 @@ export function paintHero(S, now, reduced) {
 
 /** Chapter 03 weekly pool split card (#poolbox). Returns .cd countdown nodes inside the card. */
 export function paintPool(S, now) {
-  const box = $('poolbox'), p = S.pool;
-  if (!p) { box.replaceChildren(el('span', { class: 'dim' }, 'Prize pool unavailable right now.')); return []; }
+  const box = $('poolbox'), p = heroPool(S.pool);
+  if (!p?.split || !p.usd) { box.replaceChildren(el('span', { class: 'dim' }, 'Prize pool unavailable right now.')); return []; }
   const s = p.split, parts = [s.grand, s.top20, s.nextSeed, s.fees], total = parts.reduce((x, y) => x + y, 0), pct = total ? parts.map(x => (x / total) * 100) : [50, 20, 20, 10];
   const splitRows = splitBarEl([['s-grand', '50% grand prize · accrued', s.grand], ['s-top', '20% top 20 · by distance', s.top20], ['s-seed', '20% seeds next week', s.nextSeed], ['s-fees', '10% platform', s.fees]].map(([cls, txt, l], i) => ({ cls, pct: pct[i], label: [`${txt} `, el('b', {}, `${sol(l)} SOL`)] })));
   const noteEl = el('div', { class: 'dim' }, 'Integer lamports, floored shares, remainder to fees. This round is accounted. It is not paid out.');

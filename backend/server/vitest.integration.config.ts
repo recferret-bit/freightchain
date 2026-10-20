@@ -11,5 +11,7 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: 30000,
     hookTimeout: 60000,
+    // Same reason as vitest.config.ts: a missing edge country must not become US and spend the weekly grant.
+    env: { PRIZE_DEV_DEFAULT_COUNTRY: 'KP' },
   },
 });

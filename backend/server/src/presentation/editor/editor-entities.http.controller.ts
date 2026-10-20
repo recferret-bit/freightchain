@@ -1,4 +1,5 @@
 import { Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { entityRowsResponse, entityHeadResponse, revisionsResponse, revisionResponse, editorChallengeResponse, publishedResponse } from '../common/response/editor.response.js';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { EntityHeadDto, EntityRowDto, PublishedDto, RevisionDto } from '../../domain/entities/entity.dto.js';
 import type { ChallengeDto } from '../../application/use-cases/auth/request-challenge/request-challenge.command.js';
@@ -13,6 +14,7 @@ import { PublishRevisionCommand } from '../../application/use-cases/entities/pub
 import { CurrentRequestId } from '../../infrastructure/http/decorators/client-info.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
+import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { EditorGuard } from '../../infrastructure/http/guards/editor.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import {
@@ -30,41 +32,49 @@ export class EditorEntitiesHttpController {
   ) {}
 
   @Get('entities')
+  @ZodResponse(entityRowsResponse)
   list(): Promise<EntityRowDto[]> {
     return this.queryBus.execute<ListEntitiesQuery, EntityRowDto[]>(new ListEntitiesQuery());
   }
 
   @Get('entities/:id')
+  @ZodResponse(entityHeadResponse)
   head(@ZodParams(entityIdParamsSchema) params: EntityIdParams): Promise<EntityHeadDto> {
     return this.queryBus.execute<GetEntityQuery, EntityHeadDto>(new GetEntityQuery(params.id));
   }
 
   @Get('entities/:id/revisions')
+  @ZodResponse(revisionsResponse)
   revisions(@ZodParams(entityIdParamsSchema) params: EntityIdParams): Promise<RevisionDto[]> {
     return this.queryBus.execute<ListRevisionsQuery, RevisionDto[]>(new ListRevisionsQuery(params.id));
   }
 
   @Get('revisions/:revId')
+  @ZodResponse(revisionResponse)
   revision(@ZodParams(revisionIdParamsSchema) params: RevisionIdParams): Promise<RevisionDto> {
     return this.queryBus.execute<GetRevisionQuery, RevisionDto>(new GetRevisionQuery(params.revId));
   }
 
   @Post('entities/:id/drafts') @HttpCode(200)
+  @ZodResponse(revisionResponse)
   draft(@CurrentPlayer() editor: PlayerIdentity, @ZodParams(entityIdParamsSchema) params: EntityIdParams, @ZodBody(draftBodySchema) body: DraftBody): Promise<RevisionDto> {
     return this.commandBus.execute<SaveDraftCommand, RevisionDto>(new SaveDraftCommand(editor.wallet, params.id, body.source, body.message, body.baseRevisionId));
   }
 
   @Post('entities/:id/restore') @HttpCode(200)
+  @ZodResponse(revisionResponse)
   restore(@CurrentPlayer() editor: PlayerIdentity, @ZodParams(entityIdParamsSchema) params: EntityIdParams, @ZodBody(restoreBodySchema) body: RestoreBody): Promise<RevisionDto> {
     return this.commandBus.execute<RestoreRevisionCommand, RevisionDto>(new RestoreRevisionCommand(editor.wallet, params.id, body.revisionId, body.baseRevisionId));
   }
 
   @Post('entities/:id/publish/challenge') @HttpCode(200)
+  @ZodResponse(editorChallengeResponse)
   publishChallenge(@CurrentPlayer() editor: PlayerIdentity, @ZodParams(entityIdParamsSchema) params: EntityIdParams, @ZodBody(publishChallengeBodySchema) body: PublishChallengeBody): Promise<ChallengeDto> {
     return this.commandBus.execute<RequestPublishChallengeCommand, ChallengeDto>(new RequestPublishChallengeCommand(editor.wallet, params.id, body.revisionId));
   }
 
   @Post('entities/:id/publish') @HttpCode(200)
+  @ZodResponse(publishedResponse)
   publish(@CurrentPlayer() editor: PlayerIdentity, @ZodParams(entityIdParamsSchema) params: EntityIdParams, @ZodBody(publishBodySchema) body: PublishBody, @CurrentRequestId() requestId: string): Promise<PublishedDto> {
     return this.commandBus.execute<PublishRevisionCommand, PublishedDto>(new PublishRevisionCommand(editor.wallet, params.id, body.revisionId, body.signature, requestId));
   }

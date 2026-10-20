@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { chainTest } from '../../harness/api.mjs';
 import { REPO } from '../../harness/dom.mjs';
+import { ledgerMatchesChain } from '../chain-flow.mjs';
 
 test('B2-HONK-01 the local TEN4 program id is the one the server documents', () => {
   const env = readFileSync(join(REPO, 'backend/server/src/infrastructure/config/env.schema.ts'), 'utf8');
@@ -13,4 +15,4 @@ test('B2-HONK-01 the local TEN4 program id is the one the server documents', () 
   assert.match(constants, /TOKEN_SYMBOL: &\[u8\] = b"TEN4"/);
 });
 
-test.todo('B2-HONK-02 compare Player honk balance with the chain mint after a local ride (pending; see B2-API-07)');
+chainTest(test, 'B2-HONK-02 compare Player honk balance with the chain mint after a local ride', ledgerMatchesChain);

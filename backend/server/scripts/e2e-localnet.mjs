@@ -47,8 +47,16 @@ const RENT0 = await conn.getMinimumBalanceForRentExemption(0);   // the vault's 
 const admintool = args => JSON.parse(execFileSync('node', ['scripts/pool-admin.mjs', ...args, '--url', RPC], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim().split('\n').pop());
 
 // ── HTTP as a wallet (the session cookie of a nacl sign-in, like the other e2e scripts)
+const fetchy = async (url, init) => {
+  let last;
+  for (let i = 0; i < 4; i++) {
+    try { return await fetch(url, init); }
+    catch (e) { last = e; if (!/fetch failed/.test(e?.message) || i === 3) throw e; await sleep(400 * (i + 1)); }
+  }
+  throw last;
+};
 const api = async (path, { body, cookie, method } = {}) => {
-  const r = await fetch(`${BASE}/api/${path}`, { method: method ?? (body ? 'POST' : 'GET'), headers: { 'content-type': 'application/json', ...(cookie && { cookie }) }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetchy(`${BASE}/api/${path}`, { method: method ?? (body ? 'POST' : 'GET'), headers: { 'content-type': 'application/json', ...(cookie && { cookie }) }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({}));
   return { status: r.status, ok: r.ok, j };
 };
@@ -111,17 +119,15 @@ async function ride(h, p, tier) {
   await h.send('Page.navigate', { url: `${BASE}/play.html?ride=${r.j.id}` });
   await until(() => h.ev('!!window.__game'), 30000, 200);
   await h.ev('document.getElementById("go").click()'); await sleep(800);
-  await h.ev(driveHook(20));
-  const KEYS_ = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];
+  // Speed stays pinned at 20. A pedal-up recording of that is coasting. The verdict also rejects a moved ride whose batches have no gas key (`no-throttle-input`), and setting input.gas does not write that key. Hold KeyW through CDP for the whole roll.
+  await h.ev(driveHook(20, '__game.st.park=false;__game.st.keyOn=true;__game.st.engineOn=true;__game.st.ign=null;__game.st.gear=7;__game.st.clutch=0;__game.st.brake=0;__game.input.gas=1;__game.input.brake=0;__game.input.clutch=0;__game.st.coldT=0;__game.st.strain=0;__game.st.noStall=2;'));
+  await h.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'KeyW', key: 'w' });
   const t0 = Date.now();
-  for (let i = 0; (i < 12 || !(await h.ev('__game.st.complete'))) && Date.now() - t0 < 60000; i++) {
-    const [code, k] = KEYS_[i % KEYS_.length];
-    await h.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key: k }); await sleep(60 + Math.floor(Math.random() * 140));
-    await h.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key: k }); await sleep(150 + Math.floor(Math.random() * 350));
-  }
+  while (!(await h.ev('__game.st.complete || __game.st.mode === "done" || __game.st.mode === "dead"')) && Date.now() - t0 < 90000) await sleep(250);
+  await h.send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'KeyW', key: 'w' });
   await h.ev('document.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true })); window.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true }))'); await sleep(500);
   await h.ev('document.getElementById("endshift")?.click()');
-  const done = await until(async () => { const s = (await api(`rides/${r.j.id}`, { cookie: p.cookie })).j; return s.verdict ? s : null; }, 30000, 1000);
+  const done = await until(async () => { const s = (await api(`rides/${r.j.id}`, { cookie: p.cookie })).j; return s.verdict ? s : null; }, 60000, 1000);
   check(`…ride completed and VERIFIED (${p.wallet.slice(0, 6)}…)`, done?.status === 'completed' && done?.verdict?.status === 'verified', JSON.stringify({ status: done?.status, verdict: done?.verdict?.status, reasons: done?.verdict?.reasons }));
   return r.j.id;
 }
@@ -136,7 +142,15 @@ async function buySelf(p, poolId, qty = 1) {
 }
 const crankPass = () => JSON.parse(execFileSync('node', ['dist/cli/index.js', 'pool:crank'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
 const cov = process.env.COVERAGE ? coverage(process.env.COVERAGE) : null;   // refusals never land: recorded for scripts/localnet-coverage.mjs
-const refuses = (args, re, step = args.join(' ')) => { try { admintool(args); return false; } catch (e) { cov?.refused(step, e); return re.test(String(e.stderr ?? e)); } };
+const refuses = (args, re, step = args.join(' ')) => {
+  try { admintool(args); return false; }
+  catch (e) {
+    cov?.refused(step, e);
+    const text = String(e.stderr ?? e);
+    if (!re.test(text)) console.log(`     refused, but not ${re}: ${text.slice(0, 500)}`);
+    return re.test(text);
+  }
+};
 
 try {
   // ── 0. the stack, the baked "three weeks old" pools (phase 1 of run.sh made them with the real program, then moved their deadlines back)
@@ -172,8 +186,16 @@ try {
   const h1 = await browser(P1, CDP);
   check('lobby: the pooled tier cards render', await h1.lobby());
   let before = await bals({ p1: P1.wallet, vault: vA });
-  await h1.ev('document.querySelector("#tier-1h .qty button:last-child").click()');
-  check(`lobby: BUY 2 TICKETS · ${solTxt(2 * PRICE_A)}`, (await h1.txt('#tier-1h .buyb')) === `BUY 2 TICKETS · ${solTxt(2 * PRICE_A)}`, await h1.txt('#tier-1h .buyb'));
+  // The + click re-renders the card. Reading the label in the same turn still sees "BUY 1 TICKET", and a second read while that render is in flight wedged Chrome.
+  const twoTickets = `BUY 2 TICKETS · ${solTxt(2 * PRICE_A)}`;
+  let buyLabel = '';
+  const qtyReady = await until(async () => {
+    buyLabel = await h1.txt('#tier-1h .buyb');
+    if (buyLabel === twoTickets) return true;
+    if (buyLabel.startsWith('BUY 1 TICKET')) await h1.ev('document.querySelector("#tier-1h .qty button:last-child")?.click()');
+    return false;
+  }, 20000);
+  check(`lobby: ${twoTickets}`, qtyReady === true, buyLabel);
   await h1.ev('document.querySelector("#tier-1h .buyb").click()');
   check('lobby: paid + 2 tickets credited', await until(async () => /Paid – 2 tickets credited/.test(await h1.txt('#msg-1h')), 60000), await h1.txt('#msg-1h'));
   check('…the wallet was asked to sign AND send (no fee sponsor: it pays its own fee)', (await h1.ev('JSON.stringify(__asked)')) === '["signAndSendTransaction"]', await h1.ev('JSON.stringify(__asked)'));
@@ -278,9 +300,11 @@ try {
   // ── 9. the CRANK (CRANK_SECRET, one pass from the CLI): fails pool C and refunds it (and on localnet expires the baked pool and refunds it), closes them
   await untilChain(Number((await poolAcc(C)).prepDeadline.getTime() / 1000), 'pool C prep deadline');
   if (FX) check('the baked unpaid pool: a stranger may not close it after the grace (MustExpire – it would sweep the prize share)', refuses(['close-pool', '--pool', String(FX.expirePool), '-k', Z.keyfile], /MustExpire|0x1787/, 'close_pool by a stranger of an unpaid pool after the grace'));
-  if (FX) check('the baked unpaid pool: a winners root committed now could not be paid before its grace (CommitTooLate, rule f)', refuses(['commit-winners', '--pool', String(FX.expirePool), '--winners', `${addr('expire-buyer-1')}:1000000`, '-k', `${KEYS}/admin.json`], /CommitTooLate|0x1794/, 'commit_winners on a pool past its settle grace'));
+  // an unsponsored pool's prize share is 0 under the player-share cap, so a positive total is PrizeExceedsShare before rule f. An empty root still has to be in time.
+  if (FX) check('the baked unpaid pool: a winners root committed now could not be paid before its grace (CommitTooLate, rule f)', refuses(['commit-winners', '--pool', String(FX.expirePool), '--winners', 'none', '-k', `${KEYS}/admin.json`], /CommitTooLate|0x1794/, 'commit_winners on a pool past its settle grace'));
   const xb = FX ? { e1: addr('expire-buyer-1'), e2: addr('expire-buyer-2') } : {};
   before = await bals({ crank: addr('crank'), p5: P5.wallet, p6: P6.wallet, seed: addr('seed'), admin: addr('admin'), s: S.wallet, ...xb });
+  const clockBefore = await chainNow();
   const pass = crankPass();
   after = await bals({ crank: addr('crank'), p5: P5.wallet, p6: P6.wallet, seed: addr('seed'), admin: addr('admin'), s: S.wallet, ...xb });
   const ours = new Set([C, ...(FX ? [FX.expirePool] : [])]);
@@ -289,7 +313,9 @@ try {
   check('crank pass: pool C fail + refund + refund_sponsor (v4, M8) + close' + (FX ? ', the baked pool expire + refund + close' : ''), stepsOf(C) === 'fail_pool refund refund_sponsor close_pool' && (!FX || stepsOf(FX.expirePool) === 'expire_pool refund close_pool')
     && pass.actions.every(a => !a.error && a.settled === 'done'), pass.actions.map(a => `${a.step}#${a.poolId}${a.error ? `✗ ${a.error.slice(0, 200)}` : ''}`).join(' '));
   if (others.length) console.log(`NOTE the crank also handled other pools on this cluster: ${others.map(a => `${a.step}#${a.poolId}`).join(' ')} – the balance checks below are skipped where they would mix in`);
-  check('…judged by the chain clock it reported', Math.abs(pass.chainNow / 1000 - (await chainNow())) < 30);
+  // chainNow is read at the start of the pass. The transactions that follow move the validator clock, so the stamp has to sit between the read before the pass and the read after it.
+  const clockAfter = await chainNow();
+  check('…judged by the chain clock it reported', pass.chainNow / 1000 >= clockBefore - 2 && pass.chainNow / 1000 <= clockAfter + 2, `${pass.chainNow / 1000} not in [${clockBefore}, ${clockAfter}]`);
   const crankFees = (await Promise.all(pass.actions.filter(a => a.signature).map(a => fee(a.signature)))).reduce((a, b) => a + b, 0);
   check('the crank key paid every fee and nothing else', before.crank - after.crank === crankFees, `${before.crank - after.crank} vs ${crankFees}`);
   check('pool C refunds: P5 and P6 each +price +their own rent', after.p5 - before.p5 === PRICE_B + ticketRent && after.p6 - before.p6 === PRICE_B + ticketRent);
