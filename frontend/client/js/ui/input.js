@@ -11,6 +11,7 @@ import { toggleCab } from '../sim/battery.js';
 import { recordInput, releaseInputs } from '../telemetry.js';
 import { answerPrompt } from '../prompt.js';
 import { toggleMap } from './map.js';
+import { mgCapture } from '../minigames/capture.js';
 import { toggleFormShade } from '../world/nightlight.js';
 import { online } from '../online.js';
 import { fmt } from '../util.js';
@@ -66,6 +67,7 @@ addEventListener('keydown', e => {
     if (e.code === 'KeyN' && !e.repeat && !inField) toggleMap();
     return;
   }
+  if (mgCapture.handles(e)) { e.preventDefault(); mgCapture.take(e); return; }   // a minigame owns these keys: they must not shift gears or enter the driving recording
   if (!e.repeat) { recordInput(e.code, 1, e.timeStamp); if (st.mode === 'drive') answerPrompt(e.code); }   // online rides only (no-op otherwise): the server's human-likeness check reads the timing; a dispatch prompt is answered by its key
   if (KEYS[e.code]) { input[KEYS[e.code]] = 1; e.preventDefault(); return; }
   if (e.repeat) return;
@@ -73,7 +75,11 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyJ') { if (st.mode === 'drive') toggleCooler(); return; }
   KEY_ACTIONS[e.code]?.();
 });
-addEventListener('keyup', e => { if (st.watch) return; recordInput(e.code, 0, e.timeStamp); if (KEYS[e.code]) { input[KEYS[e.code]] = 0; e.preventDefault(); } });
+addEventListener('keyup', e => {
+  if (st.watch) return;
+  if (mgCapture.handles(e)) { mgCapture.take(e); if (KEYS[e.code]) input[KEYS[e.code]] = 0; return; }   // release a control that was already held, but do not record the key as driving
+  recordInput(e.code, 0, e.timeStamp); if (KEYS[e.code]) { input[KEYS[e.code]] = 0; e.preventDefault(); }
+});
 addEventListener('blur', () => { for (const k in input) input[k] = 0; releaseInputs(); });
 
 /* clickable dash buttons (WIPER / WASH) – only for a pointer on the game itself (the 3D canvas / the page), never one on a panel over it

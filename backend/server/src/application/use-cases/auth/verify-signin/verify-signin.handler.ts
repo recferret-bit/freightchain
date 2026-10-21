@@ -3,6 +3,7 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { AuthChallenge, extractNonce, parseSignInMessage } from '../../../../domain/auth/auth-challenge.entity.js';
 import { isLocalSignInDomain } from '../../../../domain/auth/sign-in-host.js';
 import { parseWalletAddress } from '../../../../domain/players/wallet-address.js';
+import { maskIpSubnet } from '../../../../domain/shared/ip-mask.js';
 import { UnauthorizedError } from '../../../../domain/shared/errors.js';
 import { ChallengeRepositoryPort } from '../../../ports/auth/challenge.repository.port.js';
 import { SignInRepositoryPort } from '../../../ports/auth/sign-in.repository.port.js';
@@ -111,9 +112,9 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
 
     // 3. Player registration / daily credit grant & JWT session token issuance
     const session = await this.tokens.sign(wallet);
-    const player = await this.sessions.touch(wallet, now);
+    const player = await this.sessions.noteLogin(await this.sessions.touch(wallet, now));
 
-    this.logger.log({ event: 'signin', msg: `signed in ${wallet}`, wallet, ip: command.client.ip });
+    this.logger.log({ event: 'signin', msg: `signed in ${wallet}`, wallet, ip: maskIpSubnet(command.client.ip) });
     await this.signIns.insert({ wallet, at: now, ...command.client }).catch((error: unknown) => {
       this.logger.warn(`sign-in of ${wallet} not recorded: ${error instanceof Error ? error.message : String(error)}`);
     });

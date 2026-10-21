@@ -8,6 +8,7 @@ import { audio } from './audio.js';
 import { HOLES, holesNear } from '../world/holes.js';
 import { trip } from '../trips.js';
 import { createTrafficSimulation } from '../../shared/traffic-simulation.js';
+import { updateTolls } from '../world/toll.js';
 import { TRAFFIC_TYPES } from '../../shared/traffic.js';
 export { TRAFFIC_TYPES };
 
@@ -21,6 +22,7 @@ export function setTrafficRecorder(begin, end) { beginTrafficFrame = begin; endT
 export function updateTraffic(dt) {
   const frame = beginTrafficFrame(dt), fatal = simulation.updateTraffic(dt);
   endTrafficFrame(frame);
+  updateTolls(dt, cars);
   return fatal;
 }
 

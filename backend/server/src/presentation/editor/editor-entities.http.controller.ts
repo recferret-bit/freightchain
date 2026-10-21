@@ -16,6 +16,7 @@ import { CurrentPlayer } from '../../infrastructure/http/decorators/current-play
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { EditorGuard } from '../../infrastructure/http/guards/editor.guard.js';
+import { Roles } from '../../infrastructure/http/guards/privileged.decorator.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import {
   draftBodySchema, entityIdParamsSchema, publishBodySchema, publishChallengeBodySchema, restoreBodySchema, revisionIdParamsSchema,
@@ -25,6 +26,7 @@ import {
 /** The 3D model history (docs/spec/platform_services.md): read heads and revisions, save a draft, restore one, publish one (wallet-signed, audited). Editor session only. */
 @Controller('api/editor')
 @UseGuards(EditorGuard)
+@Roles('editor')
 export class EditorEntitiesHttpController {
   constructor(
     private readonly commandBus: CommandBus,

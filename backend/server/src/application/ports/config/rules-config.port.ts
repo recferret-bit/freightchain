@@ -60,6 +60,10 @@ export interface RulesConfig {
   live: LiveFlags;
   /** wallets that may sign in to the admin page (empty = nobody) */
   adminWallets: ReadonlySet<string>;
+  /** MODERATOR_WALLETS. Absent on older fixtures = nobody. */
+  moderatorWallets?: ReadonlySet<string>;
+  /** ADMIN_APPROVAL_MODE. Absent = single. */
+  approvalMode?: 'single' | 'dual';
   /** where the admin page lives – named in the admin sign-in message so the wallet can match it to the page (admin.<apex>; the app's own domain on a single origin) */
   adminDomain: string;
   adminOrigin: string;
@@ -70,6 +74,8 @@ export interface RulesConfig {
   editorOrigin: string;
   /** an AI editor job running longer is aborted (EDITOR_JOB_TIMEOUT_MS) */
   editorJobTimeoutMs: number;
+  /** per-km pledges. Off on the devnet launch (`PLEDGES_ENABLED=0`) unless a test opts in. */
+  pledgesEnabled?: boolean;
 }
 
 /** Game and economy tunables (environment-backed in production). */

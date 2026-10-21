@@ -16,7 +16,7 @@ describe('Player', () => {
   });
 
   it('registers with the signup credits and the cap on today', () => {
-    expect(Player.register('w', WED, 5, 5).snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2026-10-07', freeRidesMax: 5, createdAt: WED, tutorialPassedAt: null, age18At: null, lossAt: null, guest: false });
+    expect(Player.register('w', WED, 5, 5).snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2026-10-07', freeRidesMax: 5, createdAt: WED, tutorialPassedAt: null, age18At: null, lossAt: null, guest: false, trustScore: 60, termsVersion: 1, privacyVersion: 1, rejectedRides: 0 });
   });
 
   it('grants +1 free ride once per UTC day, no backlog', () => {

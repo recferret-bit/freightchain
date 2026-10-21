@@ -7,12 +7,13 @@ import { CurrentPlayer } from '../../infrastructure/http/decorators/current-play
 import { ZodBody } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { TermsGuard } from '../common/guards/terms.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { bindReferralBodySchema, giftReferralBodySchema, type BindReferralBody, type GiftReferralBody } from './dto/referrals.dto.js';
 
 /** The lobby's invite block. The signed-in wallet only. */
 @Controller('api/referrals')
-@UseGuards(PlayerAuthGuard)
+@UseGuards(PlayerAuthGuard, TermsGuard)
 export class ReferralsHttpController {
   constructor(
     private readonly commandBus: CommandBus,

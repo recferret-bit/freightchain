@@ -2,7 +2,9 @@ import { Optional } from '@nestjs/common';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import type { AdminRideDetailDto } from '../../../../domain/admin/admin.dto.js';
 import { NotFoundError } from '../../../../domain/shared/errors.js';
+import { AdminActionRepositoryPort } from '../../../ports/admin/admin-action.repository.port.js';
 import { AdminQueryPort } from '../../../ports/admin/admin-query.port.js';
+import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { PaymentRepositoryPort } from '../../../ports/economy/payment.repository.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { RideReplayRepositoryPort } from '../../../ports/verdict/ride-replay.repository.port.js';
@@ -19,9 +21,11 @@ export class GetAdminRideHandler implements IQueryHandler<GetAdminRideQuery, Adm
     private readonly admin: AdminQueryPort,
     private readonly payments: PaymentRepositoryPort,
     @Optional() private readonly replays?: RideReplayRepositoryPort,
+    @Optional() private readonly audit?: AdminActionRepositoryPort,
+    @Optional() private readonly clock?: ClockPort,
   ) {}
 
-  async execute({ rideId }: GetAdminRideQuery): Promise<AdminRideDetailDto> {
+  async execute({ rideId, actor }: GetAdminRideQuery): Promise<AdminRideDetailDto> {
     const ride = await this.rides.findById(rideId);
     if (!ride) throw new NotFoundError('ride not found');
     const [verdict, batches, payment, replayRows] = await Promise.all([
@@ -30,6 +34,12 @@ export class GetAdminRideHandler implements IQueryHandler<GetAdminRideQuery, Adm
       this.payments.findByRide(rideId),
       this.replays ? this.replays.listByRide(rideId) : Promise.resolve([]),
     ]);
+    if (actor && this.audit && this.clock) {
+      await this.audit.insert({
+        wallet: actor, action: 'read.telemetry', target: rideId, role: 'admin', requestId: null, at: this.clock.now(),
+        beforeState: null, afterState: { batches: batches.length }, detail: { samples: batches.reduce((n, b) => n + b.samples, 0) },
+      });
+    }
     const p = ride.snapshot(), v = verdict?.snapshot();
     return {
       ride: {

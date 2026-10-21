@@ -15,7 +15,7 @@ import type { PromoRedeemedDto } from '../use-cases/players/redeem-promo/redeem-
 export const SYSTEM_DISTINCT_ID = 'freightchain';
 
 type Props = Record<string, AnalyticsValue>;
-type EndedBy = 'end' | 'heartbeat' | 'stale_on_create' | 'stale_on_start' | 'stale_sweep';
+type EndedBy = 'end' | 'heartbeat' | 'stale_on_create' | 'stale_on_start' | 'stale_sweep' | 'timeout';
 
 const ms = (seconds: number): number => Math.round(seconds * 1000);
 const cents = (solUsd: number | null): number | null => (solUsd === null ? null : Math.round(solUsd * 100));

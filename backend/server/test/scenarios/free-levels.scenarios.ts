@@ -48,9 +48,10 @@ export function freeLevelScenarios(h: () => Harness): void {
     expect(ride).toMatchObject({ level: 2, trip: 'free-2c', route: 'route66', minSeconds: 100, completeDist: dist(0.4, 100) });
     expect((await w.agent.get(`/api/rides/${ride.id}`).expect(200)).body).toMatchObject({ level: 2, trip: 'free-2c', minSeconds: 100 });
     await w.agent.post(`/api/rides/${ride.id}/start`).expect(200);
-    await anon().get(`/api/watch/${ride.id}`).expect(403);
+    await anon().get(`/api/watch/${ride.id}`).expect(404);
     await w.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'failed', s: 10, t: 1 }).expect(200);
-    expect((await anon().get(`/api/watch/${ride.id}`).expect(200)).body.ride).toMatchObject({ level: 2, trip: 'free-2c', minSeconds: 100 });
+    expect((await anon().get(`/api/watch/${ride.id}`).expect(404)).body.code).toBe('replay_not_available');
+    expect((await w.agent.get(`/api/rides/${ride.id}`).expect(200)).body).toMatchObject({ level: 2, trip: 'free-2c', minSeconds: 100 });
   });
 
   it('HARD has no assist: level 3 with assist is a 409 and nothing is ordered; without it it is free-3c, 600 s, K .4', async () => {

@@ -24,6 +24,19 @@ import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.reposit
 import { HonkMintService } from './honk-mint.service.js';
 import { HonkEmissionPort } from '../ports/honk/honk-emission.port.js';
 import { ReferralService } from './referral.service.js';
+import { AirdropService } from '../airdrop/airdrop.service.js';
+import { ConvoyService } from '../referral/convoy.service.js';
+import { TelemetryConfigPort } from '../ports/telemetry/telemetry-config.port.js';
+import { classifyHumanness } from '../../domain/anticheat/humanness.js';
+import { applyTrust } from '../../domain/anticheat/trust-score.js';
+import { judgeWorldDigest } from '../../domain/shared/index.js';
+import { pauseVerdict, slowMotionVerdict } from '../../domain/rides/pause-bounds.js';
+import { HasherPort } from '../ports/shared/hasher.port.js';
+import { DeflatePort } from '../ports/telemetry/deflate.port.js';
+import { assessEnforceBatches } from '../telemetry/enforce-resim.js';
+import { RideResultRepositoryPort } from '../rides/ride-result.port.js';
+import { rideResultOf } from '../rides/ride-result-of.js';
+import type { ReplayVerificationOutput } from '../../domain/verdict/replay-engine.js';
 
 function canJudgeRide(ride: Ride): boolean {
   if (ride.isInStatus(RideStatus.Completed)) return true;
@@ -74,6 +87,12 @@ export class VerdictService {
     @Optional() private readonly replayQueue?: ReplayQueuePort,
     @Optional() private readonly entropy?: EntropyPort,
     @Optional() private readonly referral?: ReferralService,
+    @Optional() private readonly rideResults?: RideResultRepositoryPort,
+    @Optional() private readonly convoy?: ConvoyService,
+    @Optional() private readonly airdrop?: AirdropService,
+    @Optional() private readonly telemetry?: TelemetryConfigPort,
+    @Optional() private readonly hasher?: HasherPort,
+    @Optional() private readonly deflate?: DeflatePort,
   ) {}
 
   /** null = nothing to judge (completed shifts, ranked attempts with distance, or paid shifts that reached a TEN4 band). A verdict an admin decided is returned as is. */
@@ -205,6 +224,7 @@ export class VerdictService {
     const now = this.clock.now();
     let replayReasons: VerdictReason[] = [];
     let simDamageS: number | null = null;
+    let simOut: ReplayVerificationOutput | null = null;
     if (this.replays) {
       const latestReplay = await this.replays.findLatestByRide(rideId, tx);
       if (expectedPendingReplayId && latestReplay && latestReplay.id === expectedPendingReplayId && latestReplay.status !== VerdictStatus.Pending && existing) {
@@ -217,7 +237,7 @@ export class VerdictService {
         this.batches.listByRide(rideId, tx),
         this.rideEvents ? this.rideEvents.listAfter(rideId, 0, 500, tx) : Promise.resolve([]),
       ]);
-      const simOut = ReplayEngine.verify(ride, fullBatches, events);
+      simOut = ReplayEngine.verify(ride, fullBatches, events);
       for (const f of simOut.redFlags) {
         if (typeof f.atMetre === 'number' && (f.category === 'obstacle' || f.category === 'traffic' || f.code === 'donated-obstacle-ignored')) {
           simDamageS = simDamageS === null ? f.atMetre : Math.min(simDamageS, f.atMetre);
@@ -242,6 +262,36 @@ export class VerdictService {
       replayReasons = replay.toVerdictReasons();
     }
     const verdict = RideVerdict.judge(ride, batches, now, replayReasons);
+    const telemetryMode = this.telemetry?.mode();
+    if (telemetryMode === 'shadow' || telemetryMode === 'enforce') {
+      verdict.addReasons(pauseVerdict(telemetryMode, { count: ride.pauseCount, seconds: ride.pauseSeconds }));
+      const wallSec = ride.startedAt && ride.endedAt ? (ride.endedAt.getTime() - ride.startedAt.getTime()) / 1000 : 0;
+      const wallMs = Math.max(0, wallSec - ride.pauseSeconds) * 1000;
+      verdict.addReasons(slowMotionVerdict(telemetryMode, Math.round(ride.driveSeconds * 30), wallMs));
+    }
+    if (telemetryMode === 'enforce' && this.hasher && this.deflate) {
+      const full = await this.batches.listByRide(rideId, tx);
+      if (full.some((batch) => batch.body.named)) {
+        const others = await this.batches.otherRideIntervals(ride.id);
+        const assessed = assessEnforceBatches(this.hasher, ride, full.map((batch) => batch.body), (raw) => this.deflate!.inflateRaw(raw), others);
+        const digest = judgeWorldDigest(assessed.points);
+        const human = classifyHumanness(assessed.humanInput);
+        const reasons: VerdictReason[] = [];
+        if (digest === 'reject') reasons.push({ code: 'world-digest-mismatch', detail: 'mismatch lasted at least 10 s', severity: 'reject' });
+        else if (digest === 'flag') reasons.push({ code: 'world-digest-mismatch', detail: 'short mismatch', severity: 'flag' });
+        const severity = human.verdict === 'rejected' ? 'reject' as const : 'flag' as const;
+        if (human.verdict !== 'verified') {
+          for (const code of human.reasons) reasons.push({ code, detail: `humanness ${human.score}`, severity });
+        }
+        verdict.addReasons(reasons);
+      }
+    }
+    const player = await this.players.findByWalletForUpdate(ride.wallet, tx);
+    if (player && existing?.status !== verdict.status && (verdict.status === 'verified' || verdict.status === 'rejected')) {
+      if (verdict.status === 'verified') player.setTrustScore(applyTrust(player.trustScore, 'verified'));
+      else { player.setTrustScore(applyTrust(player.trustScore, 'rejected')); player.noteRejected(); }
+      await this.players.save(player, tx);
+    }
     if (ride.ranked) {
       const ordered = [...batches].sort((a, b) => a.seq - b.seq);
       const damaged = ordered.find((b) => typeof b.summary.firstDamageS === 'number');
@@ -256,6 +306,7 @@ export class VerdictService {
     // `clean-mismatch` is carried over too because clamping `ride.cleanMetres` above would otherwise hide the heartbeat discrepancy on a later re-judge.
     verdict.addReasons(existing?.reasons.filter((r) => isPoolMark(r.code) || r.code === 'clean-mismatch') ?? []);
     await this.verdicts.save(verdict, tx);
+    if (this.rideResults) await this.rideResults.upsert(rideResultOf(ride, verdict.status, simOut ? { damage: simOut.damage, redLights: simOut.redLights, offRoadSeconds: simOut.scores.maxOffroadSeconds } : null, now), tx);
     // TEN4 is reserved in this same transaction. 1h and 4h credit now. An 8h row waits; a later non-verified verdict returns that reservation. A released mint is not clawed back, and a second pass does not mint again.
     // A promo ride and the weekly granted ticket are not purchases, so they do not mint TEN4. A non-verified verdict returns an unreleased reservation.
     const minted = verdict.status === 'verified' && !ride.isPromo && !ride.isWeeklyGrant
@@ -319,8 +370,21 @@ export class VerdictService {
 
   /** After the verdict transaction commits. A referral failure is logged and retried on the next judge: qualifying locks the referrer, which cannot share the rider's lock. */
   private async afterVerified(rideId: string, status: string | null | undefined): Promise<void> {
-    if (status !== VerdictStatus.Verified || !this.referral) return;
-    await this.referral.onVerified(rideId).catch((error: unknown) => this.logger.warn(`referral qualify deferred: ${error instanceof Error ? error.message : String(error)}`));
+    if (status !== VerdictStatus.Verified) return;
+    if (this.referral) {
+      await this.referral.onVerified(rideId).catch((error: unknown) => this.logger.warn(`referral qualify deferred: ${error instanceof Error ? error.message : String(error)}`));
+    }
+    if (!this.convoy && !this.airdrop) return;
+    const ride = await this.rides.findById(rideId);
+    if (!ride) return;
+    if (this.convoy) {
+      await this.convoy.onVerifiedRide({ rideId, wallet: ride.wallet, status: ride.status, verdict: status, trip: ride.trip })
+        .catch((error: unknown) => this.logger.warn(`convoy progress deferred: ${error instanceof Error ? error.message : String(error)}`));
+    }
+    if (this.airdrop) {
+      await this.airdrop.recordVerifiedRide(ride.wallet, ride.trip)
+        .catch((error: unknown) => this.logger.warn(`airdrop ride gate deferred: ${error instanceof Error ? error.message : String(error)}`));
+    }
   }
 }
 

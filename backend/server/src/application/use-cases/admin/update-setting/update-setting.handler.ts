@@ -24,10 +24,12 @@ export class UpdateSettingHandler implements ICommandHandler<UpdateSettingComman
     assertSettingValue(key, value);
     const proof = await this.proofs.prove(admin, { action: 'setting_update', key, value }, signature);
     return this.transactions.run(async (tx) => {
+      const prior = (await this.settings.all(tx)).find((row) => row.key === key)?.value ?? null;
       await this.settings.upsert(key, value, tx);
       const resolved = await this.gameSettings.current(tx);
       await this.audit.insert({
-        wallet: admin, action: 'setting.update', target: key,
+        wallet: admin, action: 'setting.update', target: key, role: 'admin',
+        beforeState: { value: prior }, afterState: { value },
         detail: { value, signed: proof }, requestId, at: this.clock.now(),
       }, tx);
       return { key, value, settings: resolved };

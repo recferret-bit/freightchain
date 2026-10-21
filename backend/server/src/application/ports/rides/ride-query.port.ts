@@ -35,6 +35,9 @@ export interface FinishedRideRow {
   status: string;
   lastS: number;
   endedAt: Date | null;
+  poolId?: number | null;
+  /** the pool's review end, when `poolId` is set */
+  payoutAt?: Date | null;
 }
 
 /** One ended ride in the replays history. `seq` is the insertion order – with endedAt, the stable cursor. */
@@ -62,6 +65,8 @@ export interface HistoryFilter {
   limit: number;
   wallet: string | null;
   status: 'completed' | 'abandoned' | 'failed' | null;
+  /** the public board: finished 1h replays only. `viewerWallet` still sees their own pool ride before payout. */
+  board?: { now: Date; viewerWallet: string | null };
 }
 
 export interface RideStatsRow {
@@ -126,6 +131,8 @@ export abstract class RideQueryPort {
   abstract live(heartbeatSince: Date, limit: number): Promise<LiveRideRow[]>;
   /** Running rides whose last heartbeat is OLDER than `cutoff` (their tab vanished) – oldest first; the sweeper ends them. */
   abstract staleRunning(cutoff: Date, limit: number): Promise<{ id: string; wallet: string }[]>;
+  /** 1h rides still running whose start is older than the 90-minute cap. */
+  abstract overCapRunning(startedBefore: Date, limit: number): Promise<{ id: string; wallet: string }[]>;
   /** Paid rides that are bought but not started yet (free rides never queue), most recently paid first. */
   abstract upcoming(limit: number): Promise<UpcomingRideRow[]>;
   /** The last rides that started and then ended, newest first. */

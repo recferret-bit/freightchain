@@ -26,6 +26,8 @@ import { startGuide } from './assist.js';
 import { SITE_BASE } from '../hosts.js';
 import { ridePageUrl, rideShareText, xIntent } from './share.js';
 import { resetMap } from './map.js';
+import { resetGulp } from '../phone/gulp-state.js';
+import { resetPike } from '../phone/pike-state.js';
 import { phone } from '../phone.js';
 import { isMobileDevice, showMobileBlocker } from '../mobile.js';
 import { RIDE_MODES, canStartRide, canEndRide, canPauseRide, canResumeRide, transitionRideMode, failCode } from './ride-fsm.js';
@@ -39,6 +41,7 @@ let lastOutcome = null;
 export function resetRide(seed = online.ride?.seed) {   // seed: the server's for an online ride, the watched ride's for a replay (watch.js), random offline
   lastOutcome = null;
   Object.assign(st, rideStart({ rpm: CFG.START_ENGINE_OFF ? 0 : IDLE, engineOn: !CFG.START_ENGINE_OFF, temp: ambientC(), pull: 1 }));
+  resetGulp(); resetPike();
   resetDisp(); destroyed.clear(); clearDebris(); roads.newTrip(seed); resetScreen();   // new road layout, depot, traffic
   st.pull = mulberry32(roads.seed ^ 0x2545f491)() < .5 ? -1 : 1;   // a damaged truck's pull side comes from the road seed: every rider of a pool (one seed) gets the same one
   resetMap();   // the phone back on its mount, the map's view from scratch (an end / pause closes it too: ui/map.js)

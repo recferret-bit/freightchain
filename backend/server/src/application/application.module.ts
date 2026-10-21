@@ -17,7 +17,15 @@ import { AttestationService } from './services/attestation.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
 import { GameSettingsService } from './services/game-settings.service.js';
 import { ReferralService } from './services/referral.service.js';
+import { ConvoyService } from './referral/convoy.service.js';
+import { ReferralExpiryScheduler } from './referral/referral-expiry.scheduler.js';
+import { AirdropService } from './airdrop/airdrop.service.js';
+import { GetConvoyLeaderboardHandler, BindConvoyHandler, SetConvoyPrivacyHandler } from './referral/convoy.handler.js';
+import { GetAirdropStatusHandler, VerifyTelegramHandler, VerifyXHandler, ClaimAirdropHandler } from './airdrop/airdrop.handler.js';
 import { ReferralPayoutService } from './services/referral-payout.service.js';
+import { AdminApprovalService } from './services/admin-approval.service.js';
+import { AdminModerationHandler } from './use-cases/admin/moderate/admin-moderation.handler.js';
+import { ApproveAdminProposalHandler } from './use-cases/admin/approve-proposal/approve-admin-proposal.handler.js';
 import { GrantDailyFreeRidesHandler } from './use-cases/players/grant-daily-free-rides/grant-daily-free-rides.handler.js';
 import { RecordTelemetryHandler } from './use-cases/telemetry/record-telemetry/record-telemetry.handler.js';
 import { ReportClientErrorHandler } from './use-cases/telemetry/report-client-error/report-client-error.handler.js';
@@ -45,6 +53,9 @@ import { GetPublicRideHandler } from './use-cases/rides/get-public-ride/get-publ
 import { HeartbeatRideHandler } from './use-cases/rides/heartbeat-ride/heartbeat-ride.handler.js';
 import { ReconcilePaymentHandler } from './use-cases/rides/reconcile-payment/reconcile-payment.handler.js';
 import { StartRideHandler } from './use-cases/rides/start-ride/start-ride.handler.js';
+import { AnswerMinigameHandler, GetMinigameAssetHandler, OpenMinigameHandler } from './use-cases/rides/minigames/minigames.handler.js';
+import { MinigameRateService } from './services/minigame-rate.service.js';
+import { MinigameSessionService } from './services/minigame-session.service.js';
 import { UploadBatchHandler } from './use-cases/telemetry/upload-batch/upload-batch.handler.js';
 import { SweepTelemetryHandler } from './use-cases/telemetry/sweep-telemetry/sweep-telemetry.handler.js';
 import { SweepSignInsHandler } from './use-cases/auth/sweep-sign-ins/sweep-sign-ins.handler.js';
@@ -60,6 +71,12 @@ import { GetReplaysHandler } from './use-cases/lobby/get-replays/get-replays.han
 import { CreateDonationOrderHandler } from './use-cases/live/create-donation-order/create-donation-order.handler.js';
 import { ConfirmDonationHandler } from './use-cases/live/confirm-donation/confirm-donation.handler.js';
 import { LiveAccessService } from './services/live-access.service.js';
+import { ReplayAccessService } from './live/replay-access.service.js';
+import { LiveDonationService } from './live/live-donation.service.js';
+import { LiveChatService } from './live/live-chat.service.js';
+import { ChatRetentionScheduler } from './live/chat-retention.scheduler.js';
+import { PledgeService } from './live/pledge.service.js';
+import { GetMyDonationsHandler } from './live/get-my-donations.handler.js';
 import { GetAdminLogsHandler } from './use-cases/admin/get-admin-logs/get-admin-logs.handler.js';
 import { GetAdminOverviewHandler } from './use-cases/admin/get-admin-overview/get-admin-overview.handler.js';
 import { GetAdminRideHandler } from './use-cases/admin/get-admin-ride/get-admin-ride.handler.js';
@@ -79,6 +96,7 @@ import { VerifyAdminSignInHandler } from './use-cases/admin/verify-admin-signin/
 import { RequestActionChallengeHandler } from './use-cases/admin/request-action-challenge/request-action-challenge.handler.js';
 
 import { PoolTicketsService } from './services/pool-tickets.service.js';
+import { PoolScheduleService } from './services/pool-schedule.service.js';
 import { PromoCreationService } from './services/promo-creation.service.js';
 import { CreateAdminPromoHandler } from './use-cases/admin/create-admin-promo/create-admin-promo.handler.js';
 import { DisableAdminPromoHandler } from './use-cases/admin/disable-admin-promo/disable-admin-promo.handler.js';
@@ -96,9 +114,11 @@ import { ConfirmTicketOrderHandler } from './use-cases/tickets/confirm-ticket-or
 import { GetRefundTransactionHandler } from './use-cases/pools/get-refund-transaction/get-refund-transaction.handler.js';
 import { GetPayoutTransactionsHandler } from './use-cases/pools/get-payout-transactions/get-payout-transactions.handler.js';
 import { SettleChainSignatureHandler } from './use-cases/chain/settle-chain-signature/settle-chain-signature.handler.js';
-import { ListPoolsHandler } from './use-cases/pools/list-pools/list-pools.handler.js';
+import { GetCurrentPoolHandler, ListPoolsHandler } from './use-cases/pools/list-pools/list-pools.handler.js';
+import { ListRideAppealsHandler, ResolveRideAppealHandler, SubmitRideAppealHandler } from './use-cases/rides/ride-appeal/ride-appeal.handler.js';
 import { GetPrizePoolHandler } from './use-cases/pools/get-prize-pool/get-prize-pool.handler.js';
 import { GetPoolStandingsHandler } from './use-cases/pools/get-pool-standings/get-pool-standings.handler.js';
+import { GetPoolResultsHandler } from './rides/get-pool-results.handler.js';
 import { HoldPoolPayoutHandler } from './use-cases/admin/hold-pool-payout/hold-pool-payout.handler.js';
 import { ListAdminPoolsHandler } from './use-cases/admin/list-admin-pools/list-admin-pools.handler.js';
 import { ListPoolPayoutsHandler } from './use-cases/admin/list-pool-payouts/list-pool-payouts.handler.js';
@@ -148,8 +168,8 @@ import { GetPrizeBoardHandler } from './use-cases/prize/get-prize-board/get-priz
 const services: Provider[] = [
   EntityCatalogService, EntityWriteService,
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
-  PoolTicketsService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService, RankedEntryService, WeeklyTicketService,
-  ReferralService, ReferralPayoutService,
+  PoolTicketsService, PoolScheduleService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, ReplayAccessService, LiveDonationService, LiveChatService, ChatRetentionScheduler, PledgeService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService, RankedEntryService, WeeklyTicketService,
+  ReferralService, ReferralPayoutService, AdminApprovalService, ConvoyService, AirdropService, ReferralExpiryScheduler, MinigameRateService, MinigameSessionService,
 ];
 
 import { ReconcileStatsHandler } from './use-cases/stats/reconcile-stats/reconcile-stats.handler.js';
@@ -185,17 +205,18 @@ const handlers: Provider[] = [
   GetEntityBundleHandler, ListEntitiesHandler, GetEntityHandler, ListRevisionsHandler, GetRevisionHandler, SaveDraftHandler, RestoreRevisionHandler, RequestPublishChallengeHandler, PublishRevisionHandler, RequestEditorChallengeHandler, VerifyEditorSignInHandler, GetEditorMeHandler,
   GetStatsHandler, GetDailyStatsHandler, ReconcileStatsHandler,
   RequestChallengeHandler, VerifySignInHandler, StartGuestHandler, GetMeHandler, LogoutHandler, OpenPhonePairHandler, ClaimPhonePairHandler, PollPhonePairHandler,
-  CreateRideHandler, GetRideHandler, GetPendingRideHandler, GetPublicRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler,
+  CreateRideHandler, GetRideHandler, GetPendingRideHandler, GetPublicRideHandler, StartRideHandler, HeartbeatRideHandler, EndRideHandler, OpenMinigameHandler, AnswerMinigameHandler, GetMinigameAssetHandler,
+  SubmitRideAppealHandler, ListRideAppealsHandler, ResolveRideAppealHandler,
   GetPaymentInstructionsHandler, ConfirmPaymentHandler, ReconcilePaymentHandler,
   UploadBatchHandler, SweepTelemetryHandler, SweepSignInsHandler, RejudgeRidesHandler, GetRideReplaysHandler, ProcessReplayQueueHandler,
-  PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler, GetRoadPlanHandler, MuteWalletHandler, CreateDonationOrderHandler, ConfirmDonationHandler, GetDonationPaymentHandler, ReconcileDonationHandler, SweepStaleRidesHandler, GetReplaysHandler,
+  PostRideEventHandler, AckEffectHandler, GetInboxHandler, WatchRideHandler, GetRoadPlanHandler, MuteWalletHandler, CreateDonationOrderHandler, ConfirmDonationHandler, GetDonationPaymentHandler, ReconcileDonationHandler, GetMyDonationsHandler, SweepStaleRidesHandler, GetReplaysHandler,
   GetAdminQueueCountHandler, ListAdminPlayersHandler, GetAdminPlayerHandler, ListAdminPoolsHandler, GetAdminPoolHandler, GetAdminStatsHandler, ListAdminSessionsHandler, GetAdminOverviewHandler, ListAdminRidesHandler, ListAdminReplaysHandler, GetAdminRideHandler, ListSignInsHandler, ListAdminActionsHandler, GetAdminLogsHandler, OverrideVerdictHandler, RejudgeRideHandler, RequestAdminChallengeHandler, VerifyAdminSignInHandler, RequestActionChallengeHandler,
   GetTiersHandler, GetPoolHandler, GetLeaderboardHandler,
   GetLiveHandler, GetProfileHandler,
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
   RecordTelemetryHandler, ReportClientErrorHandler,
-  ListPoolsHandler, GetPrizePoolHandler, GetPoolStandingsHandler, HoldPoolPayoutHandler, ListPoolPayoutsHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler, AcceptAgreementsHandler, GetGarageHandler, SaveGarageHandler,
+  ListPoolsHandler, GetCurrentPoolHandler, GetPrizePoolHandler, GetPoolStandingsHandler, GetPoolResultsHandler, HoldPoolPayoutHandler, ListPoolPayoutsHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler, AcceptAgreementsHandler, GetGarageHandler, SaveGarageHandler,
   CreateAdminPromoHandler, DisableAdminPromoHandler, ListPromoRedemptionsHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,
@@ -204,18 +225,20 @@ const handlers: Provider[] = [
   GetRefundTransactionHandler, GetPayoutTransactionsHandler,
   GetChainFeesHandler,
   PollProgramHandler, SyncPoolsHandler, CrankPoolsHandler, PayPoolsHandler, MintAchievementsHandler, ReceiveChainWebhookHandler, RegisterPoolFromChainHandler,
-  AdjustFreeRidesHandler, GetSettingsHandler, UpdateSettingHandler,
+  AdjustFreeRidesHandler, GetSettingsHandler, UpdateSettingHandler, AdminModerationHandler, ApproveAdminProposalHandler,
   GetSnsReverseHandler, ResolveSnsHandler,
   GetActionsJsonHandler, GetHelloActionHandler, SayHelloActionHandler, GetShiftActionHandler, PrepareShiftActionHandler, OpenSiteActionHandler, GetRideActionHandler, OpenRideActionHandler,
   CreatePledgeHandler, ConfirmPledgeHandler, SyncPledgesHandler, GetRidePledgesHandler, GetPledgeHandler,
   BurnHonkHandler, BurnHonkTimeHandler, BurnHonkWeatherHandler, MintHonkVisualHandler, GetHonkHandler, GetHonkCatalogHandler, ReleaseHonkHandler,
   GetReferralsHandler, BindReferralHandler, SetReferralGiftHandler,
+  GetConvoyLeaderboardHandler, BindConvoyHandler, SetConvoyPrivacyHandler,
+  GetAirdropStatusHandler, VerifyTelegramHandler, VerifyXHandler, ClaimAirdropHandler,
   GetPrizeBoardHandler,
 ];
 
 @Module({
   imports: [CqrsModule.forRoot(), InfrastructureModule],
   providers: [...services, ...handlers],
-  exports: [CqrsModule, InfrastructureModule, PoolAttentionService], // PoolAttentionService: the payout job marks a pool before it pays
+  exports: [CqrsModule, InfrastructureModule, PoolAttentionService, AdminApprovalService], // PoolAttentionService: the payout job marks a pool before it pays
 })
 export class ApplicationModule {}

@@ -8,6 +8,7 @@ import { RECORDING_BYTES_SLACK } from '../../src/domain/telemetry/telemetry-rule
 import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
 import { ProcessReplayQueueCommand } from '../../src/application/use-cases/verdict/process-replay-queue/process-replay-queue.command.js';
 import { VerdictService } from '../../src/application/services/verdict.service.js';
+import { roadPlanFor } from '../../src/domain/road/road-plan.js';
 
 /* Verified play end to end: the game uploads its recording, /end judges it, only verified paid shifts rank. Nothing is simulated on the server –
    the verdict validates the recording and measures how human the input timing looks. Same scenarios on in-memory and PostgreSQL. */
@@ -163,7 +164,7 @@ export function verdictScenarios(h: () => Harness): void {
         if (hb.challenge && !prompts.some((p) => p.id === hb.challenge.id)) prompts.push(hb.challenge);
       }
       // the road plan the game was handed is public: the same holes the verdict uses
-      const plan = (await anon().get(`/api/watch/${r.id}/road`).query({ from: 0, to: distance }).expect(200)).body;
+      const plan = roadPlanFor(r.seed, r.trip).window(r.id, 0, distance);
       const answers = prompts.map((c, i) => ({ atMs: c.issuedMs + 450 + ((i * 173) % 600), code: c.codes[0] as string })); // a person's reactions vary (a long drive gets many prompts)
       await upload(d.agent, r.id, recording(r.id, { seconds, distance, answers, ...(honest ? { road: r.seed, trip: r.trip, route: r.route } : {}) }));
       const end = (await d.agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'shift', s: distance, t: seconds, hull: 100 }).expect(200)).body;

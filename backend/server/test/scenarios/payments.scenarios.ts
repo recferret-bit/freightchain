@@ -34,8 +34,8 @@ export function paymentScenarios(h: () => Harness): void {
       const { body } = await anon().get('/api/tiers').expect(200);
       expect(body.solUsd).toBe(100);
       expect(body.treasury).toBe(TREASURY);
-      expect(Object.fromEntries(body.tiers.map((x: { id: string; lamports: number | null }) => [x.id, x.lamports]))).toEqual({ free: null, '1h': null, '4h': null, '8h': null });
-      expect(body.tiers.map((x: { id: string; available: boolean; onSale: boolean }) => [x.id, x.available, x.onSale])).toEqual([['free', true, true], ['1h', false, false], ['4h', false, false], ['8h', false, false]]);
+      expect(Object.fromEntries(body.tiers.map((x: { id: string; lamports: number | null }) => [x.id, x.lamports]))).toEqual({ free: null, '1h': null });
+      expect(body.tiers.map((x: { id: string; available: boolean; onSale: boolean }) => [x.id, x.available, x.onSale])).toEqual([['free', true, true], ['1h', false, false]]);
     });
 
     it('POST /api/rides for the 1-hour shift with no pool is refused', async () => {
@@ -244,8 +244,8 @@ export function paymentScenarios(h: () => Harness): void {
     it('re-asking returns the same order; an off-sale tier leaves it; a lapsed quote is replaced; a paid unstarted ride is never lost', async () => {
       const a = await login(), r1 = await order(a, '1h');
       expect((await order(a, '1h')).id).toBe(r1.id);
-      expect((await a.agent.post('/api/rides').send({ tier: '4h' }).expect(409)).body.code).toBe('tier_not_on_sale');
-      expect((await a.agent.post('/api/rides').send({ tier: '8h' }).expect(409)).body.code).toBe('tier_not_on_sale');
+      expect((await a.agent.post('/api/rides').send({ tier: '4h' }).expect(400)).body.code).toBe('tier_retired');
+      expect((await a.agent.post('/api/rides').send({ tier: '8h' }).expect(400)).body.code).toBe('tier_retired');
       expect((await a.agent.get(`/api/rides/${r1.id}`)).body.status).toBe('awaiting_payment');
       sec(11 * 60);
       const r2 = await order(a, '1h');

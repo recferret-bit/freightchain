@@ -20,6 +20,7 @@ const isEntitiesRoute = (context: ExecutionContext): boolean => pathOf(context).
 const isMcpRoute = (context: ExecutionContext): boolean => pathOf(context).startsWith('/api/editor/mcp/');
 const isEditorRoute = (context: ExecutionContext): boolean => pathOf(context).startsWith('/api/editor/') && !isMcpRoute(context);
 const isEditorAuthRoute = (context: ExecutionContext): boolean => pathOf(context).startsWith('/api/editor/auth/');
+const isAdminAuthRoute = (context: ExecutionContext): boolean => pathOf(context).startsWith('/api/admin/auth/');
 
 /**
  * Per-minute budgets (counted per route and per tracker) plus a per-second cap on the routes a stranger can hammer:
@@ -58,6 +59,7 @@ export function throttlerOptions(env: EnvService, tokens: TokenSignerPort, edito
   const throttlers = [
     { name: 'default', ttl: THROTTLE_WINDOW_MS, limit: env.throttleLimit, getTracker: byWalletOrIp, skipIf: (context: ExecutionContext) => isHealthRoute(context) || isEntitiesRoute(context) || isEditorRoute(context) || isMcpRoute(context) },
     { name: 'auth', ttl: THROTTLE_WINDOW_MS, limit: env.throttleAuthLimit, getTracker: byIp, skipIf: (context: ExecutionContext) => !isAuthRoute(context) && !isEditorAuthRoute(context) },
+    { name: 'admin-auth', ttl: THROTTLE_WINDOW_MS, limit: env.throttleAdminAuthLimit, getTracker: byIp, skipIf: (context: ExecutionContext) => !isAdminAuthRoute(context) },
     { name: 'auth-rps', ttl: THROTTLE_RPS_WINDOW_MS, limit: env.throttleAuthRps ?? 5, getTracker: byIp, skipIf: (context: ExecutionContext) => !isAuthRoute(context) && !isEditorAuthRoute(context) },
     { name: 'entities', ttl: THROTTLE_WINDOW_MS, limit: env.throttleEntitiesLimit, getTracker: byIp, skipIf: (context: ExecutionContext) => !isEntitiesRoute(context) },
     { name: 'entities-rps', ttl: THROTTLE_RPS_WINDOW_MS, limit: env.throttleEntitiesRps ?? 5, getTracker: byIp, skipIf: (context: ExecutionContext) => !isEntitiesRoute(context) },

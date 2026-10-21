@@ -11,11 +11,13 @@ import { CurrentJob } from '../../infrastructure/http/decorators/current-job.js'
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { McpJobGuard } from '../../infrastructure/http/guards/mcp-job.guard.js';
+import { Roles } from '../../infrastructure/http/guards/privileged.decorator.js';
 import { entityIdParamsSchema, mcpDraftBodySchema, type EntityIdParams, type McpDraftBody } from './dto/editor.dto.js';
 
 /** The entity MCP's callbacks for one running job (x-fc-job, internal network only – McpJobGuard): read the catalogue, save a draft as the job. */
 @Controller('api/editor/mcp')
 @UseGuards(McpJobGuard)
+@Roles('editor')
 export class EditorMcpHttpController {
   constructor(
     private readonly commandBus: CommandBus,

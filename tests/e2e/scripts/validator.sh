@@ -14,9 +14,21 @@ if curl -sf -X POST -H 'content-type: application/json' \
   echo "validator already healthy on :${RPC_PORT}"
   exit 0
 fi
-mkdir -p "$LEDGER"
-solana-test-validator --ledger "$LEDGER" --reset --quiet --bind-address 127.0.0.1 \
-  --rpc-port "$RPC_PORT" --faucet-port "$((RPC_PORT + 1))" > "$LEDGER/validator.log" 2>&1 &
+# Keys live beside the ledger. --reset wipes the ledger directory and would otherwise replace the upgrade authority before initialize.
+mkdir -p "$LEDGER" "$ROOT/tests/e2e/.keys"
+PAYER="$ROOT/tests/e2e/.keys/payer.json"
+if [ ! -f "$PAYER" ]; then
+  solana-keygen new -s --no-bip39-passphrase -o "$PAYER" >/dev/null
+fi
+POOL_SO="$ROOT/backend/programs/target/deploy/freightchain_pools.so"
+POOL_ID="8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p"
+# bash 3.2 treats "${empty[@]}" as unbound under set -u. Always start from a non-empty argv.
+CMD=(solana-test-validator --ledger "$LEDGER" --reset --quiet --bind-address 127.0.0.1 --rpc-port "$RPC_PORT" --faucet-port "$((RPC_PORT + 1))")
+if [ -f "$POOL_SO" ]; then
+  # `solana program deploy` rejects this .so (SBPF version). The localnet suite loads it with the validator instead.
+  CMD+=(--upgradeable-program "$POOL_ID" "$POOL_SO" "$(solana-keygen pubkey "$PAYER")")
+fi
+"${CMD[@]}" > "$LEDGER/validator.log" 2>&1 &
 echo $! > "$LEDGER/validator.pid"
 for _ in $(seq 1 60); do
   curl -sf -X POST -H 'content-type: application/json' \

@@ -1,6 +1,6 @@
 import { CFG } from '../config.js';
 import { clamp, approach } from '../util.js';
-import { RATIOS, MAX_GEAR, REV_RATIO, K_RPM, IDLE, REDLINE, STALL_RPM, st, coldK } from '../state.js';
+import { RATIOS, MAX_GEAR, REV_RATIO, K_RPM, IDLE, REDLINE, STALL_RPM, st, coldK, driveHull } from '../state.js';
 import { toast } from '../ui/toast.js';
 import { SHAKE_START } from './shake.js';
 import { audio } from './audio.js';
@@ -71,7 +71,7 @@ export function toggleParkingBrake() { st.park = !st.park; audio.play(st.park ? 
 export function stepEngine(dt) {
   const T = CFG.TRUCK, g = st.gear, ratio = g < 0 ? REV_RATIO : RATIOS[g], c = 1 - st.clutch, wheelRpm = st.v * ratio * K_RPM;
   if (st.v < .05 && g !== 0) st.rev = g < 0;   // at a standstill the selected gear picks the direction of travel (st.v is the speed, st.vel its signed value)
-  const gas = st.gas, pw = (0.4 + 0.6 * st.hull / 100) * (1 - CFG.COLD_POWER * coldK());   // damaged or cold engine = less power
+  const gas = st.gas, pw = (0.4 + 0.6 * driveHull() / 100) * (1 - CFG.COLD_POWER * coldK());   // bodywork restores pull; recorded hull stays put
   // clutch slip: until the clutch has locked up (wheels caught up with the engine) the engine isn't dragged down to wheel speed but holds revs set by the gas
   // (less in tall gears, none while braking) – a gas-on launch pulls away; no gas, 6th/7th or the brake still stalls. Pressing the clutch / neutral re-arms it.
   if (g === 0 || st.clutch > .5) st.slip = true;

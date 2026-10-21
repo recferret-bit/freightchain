@@ -16,6 +16,9 @@ export class RideMapper {
       hull: row.hull, endedAt: row.endedAt, reason: row.reason, challenges: parseChallenges(row.challenges), nextChallengeAt: row.nextChallengeAt, version: row.version, paymentReference: row.paymentReference,
       seedCommitment: row.seedCommitment, blockhash: row.blockhash, slot: row.slot,
       ranked: row.ranked, cleanMetres: row.cleanMetres, prizeCountry: row.prizeCountry, prizeRegion: row.prizeRegion, promoCode: row.promoCode, weeklyGrant: row.weeklyGrant,
+      mgCommit: row.mgCommit, mgSaltVersion: row.mgSaltVersion, mgSaltRevealedAt: row.mgSaltRevealedAt, mgMode: row.mgMode === 'more-time' ? 'more-time' : row.mgMode === 'normal' ? 'normal' : null, mgLang: row.mgLang === 'ru' ? 'ru' : row.mgLang === 'en' ? 'en' : null,
+      sessionKey: row.sessionKey, pauseCount: row.pauseCount, pauseSeconds: row.pauseSeconds,
+      trafficSaltCommit: row.trafficSaltCommit, holeSaltCommit: row.holeSaltCommit,
     });
   }
 
@@ -33,6 +36,9 @@ export class RideMapper {
       startedAt: p.startedAt, lastHbAt: p.lastHbAt, lastS: p.lastS, lastT: p.lastT, driveSeconds: p.driveSeconds, hull: p.hull, endedAt: p.endedAt, reason: p.reason,
       challenges: p.challenges.length ? (p.challenges as unknown as Prisma.InputJsonValue) : Prisma.DbNull, nextChallengeAt: p.nextChallengeAt, paymentReference: p.paymentReference ?? null,
       ranked: p.ranked === true, cleanMetres: p.cleanMetres ?? null, prizeCountry: p.prizeCountry ?? null, prizeRegion: p.prizeRegion ?? null, promoCode: p.promoCode ?? null, weeklyGrant: p.weeklyGrant === true,
+      mgCommit: p.mgCommit ?? null, mgSaltVersion: p.mgSaltVersion ?? null, mgSaltRevealedAt: p.mgSaltRevealedAt ?? null, mgMode: p.mgMode ?? null, mgLang: p.mgLang ?? null,
+      sessionKey: p.sessionKey ?? null, pauseCount: p.pauseCount ?? 0, pauseSeconds: p.pauseSeconds ?? 0,
+      trafficSaltCommit: p.trafficSaltCommit ?? null, holeSaltCommit: p.holeSaltCommit ?? null,
     };
   }
 }

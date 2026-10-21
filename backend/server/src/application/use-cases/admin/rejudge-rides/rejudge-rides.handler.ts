@@ -33,7 +33,11 @@ export class RejudgeRidesHandler implements ICommandHandler<RejudgeRidesCommand,
       if (r.before !== r.after) result.changed.push({ id: row.id, from: r.before, to: r.after });
     }
     const at = this.clock.now();
-    await this.audit.insert({ wallet: by, action: 'verdict.rejudge-bulk', target: `${filter.verdict}${filter.since ? ` since ${filter.since.toISOString()}` : ''}`, detail: { ...result, changed: result.changed.slice(0, 200) }, requestId: null, at });
+    await this.audit.insert({
+      wallet: by, action: 'verdict.rejudge-bulk', target: `${filter.verdict}${filter.since ? ` since ${filter.since.toISOString()}` : ''}`, role: 'cli',
+      beforeState: { scanned: rows.length }, afterState: { judged: result.judged, changed: result.changed.length, skipped: result.skipped },
+      detail: { ...result, changed: result.changed.slice(0, 200) }, requestId: null, at,
+    });
     this.logger.log({ event: 'admin', msg: `bulk re-judge by ${by}: ${result.judged} judged, ${result.changed.length} changed, ${result.skipped} skipped`, action: 'verdict.rejudge-bulk', admin: by, ...result, changed: result.changed.length });
     return result;
   }

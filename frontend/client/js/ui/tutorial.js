@@ -1,6 +1,6 @@
 import { guide, cheer } from '../guide.js';
 import { CFG } from '../config.js';
-import { st, input, dn, powered } from '../state.js';
+import { st, input, dn, powered, driveHull } from '../state.js';
 import { wip } from '../cockpit/windscreen.js';
 import { audio } from '../sim/audio.js';
 
@@ -29,7 +29,7 @@ const STEPS = [
     track: () => { if (dn.head && !seen.head) { seen.head = true; cheer('HEADLIGHTS ON ✓'); } if ((wip.mode > 0 || st.washing) && !seen.wipe) { seen.wipe = true; cheer('WIPERS ON ✓'); } },
     tips: () => [seen.head ? null : K('head', 'Headlights on', 'L'), seen.wipe ? null : K('wiper', 'Wipers on', 'R'), seen.wipe ? null : K('wash', 'Hold to spray the screen', 'X')].filter(Boolean), win: 'LIGHTS AND WIPERS ON', done: () => !!(seen.head && seen.wipe), manual: 'NEXT' },
   { title: 'HULL & CRASHES', text: 'The HUL bar is your truck\'s health. Potholes, signs, rocks and cars all take hull; a head-on crash, a building or 0 % ends the ride. Watch for yellow warning signs, keep to your lane, slow down for holes.',
-    tips: () => [K('HUL', `Hull ${Math.round(st.hull)} % – 0 % ends the ride`), K('OFF ROAD', 'Lights up when you leave the road')], done: () => false, manual: 'GOT IT' },
+    tips: () => [K('HUL', `Hull ${Math.round(driveHull())} % – 0 % ends the ride`), K('OFF ROAD', 'Lights up when you leave the road')], done: () => false, manual: 'GOT IT' },
 ];
 export const stepCount = STEPS.length;
 
@@ -52,7 +52,7 @@ function trouble(i) {
   if (i >= 3 && (st.overrev || (st.rpm > 2600 && st.gear > 0 && st.gear < 7))) return { key: 'rev', title: 'REVS TOO HIGH', text: `Holding the engine near the redline fills the STRAIN lamp – too long and it blows. ${NEXT}hold SHIFT, press E for the next gear, release the clutch.`, tips: [K('RPM×100', 'Near the red'), K('STRAIN', 'Fills up'), K('SHIFTER', 'Gear up', 'E')] };
   if (i >= 3 && st.lug > .25) return { key: 'lug', title: 'ENGINE LUGGING', text: `The revs are too low for this gear – the engine shudders and will stall. ${NEXT}hold SHIFT and press Q for a lower gear, or give it more gas (W).`, tips: [K('RPM×100', 'Too low'), K('SHIFTER', 'Gear down', 'Q'), K('GAS', 'More gas', 'W')] };
   if (i >= 3 && st.off) return { key: 'off', title: 'OFF THE ROAD', text: `Too long off the tarmac ends the ride (20 s). ${NEXT}steer back onto the road with A / D and ease off the gas.`, tips: [K('OFF ROAD', 'You left the road'), K('WHEEL', 'Steer back', 'A D')] };
-  if (i >= 3 && st.hull < 60) return { key: 'hull', title: 'TRUCK DAMAGED', text: `The hull is at ${Math.round(st.hull)} % – less power, and the steering pulls to one side. ${NEXT}slow down, keep to your lane and steer round holes and signs; 0 % ends the ride.`, tips: [K('HUL', `Hull ${Math.round(st.hull)} %`)] };
+  if (i >= 3 && driveHull() < 60) return { key: 'hull', title: 'TRUCK DAMAGED', text: `The hull is at ${Math.round(driveHull())} % – less power, and the steering pulls to one side. ${NEXT}slow down, keep to your lane and steer round holes and signs; 0 % ends the ride.`, tips: [K('HUL', `Hull ${Math.round(driveHull())} %`)] };
   return null;
 }
 

@@ -1,7 +1,8 @@
 import { CFG } from '../config.js';
 import { longitudinalForces } from '../../shared/physics.js';
 import { clamp, approach } from '../util.js';
-import { st, input, brakeEff } from '../state.js';
+import { st, input, brakeEff, driveHull } from '../state.js';
+import { holdPike } from '../phone/pike-state.js';
 import { curv, roadAt } from '../road.js';
 import { net } from '../net/network.js';
 import { toast } from '../ui/toast.js';
@@ -62,10 +63,11 @@ export function update(dt) {
   const k = curv(st.s), gain = steerGain();
   st.ste += (st.steer - st.ste) * (T.YAW_LAG > 0 ? Math.min(1, dt / T.YAW_LAG) : 1);   // heavy truck: heading answers the wheel late
   const ds = st.vel * Math.cos(st.psi) / Math.max(.3, 1 - k * st.d) * dt;
-  st.psi += st.vel * (st.ste * gain + st.pull * (1 - st.hull / 100) * 0.003) * dt - k * ds;   // damaged steering pulls to one side
+  st.psi += st.vel * (st.ste * gain + st.pull * (1 - driveHull() / 100) * 0.003) * dt - k * ds;   // damaged steering pulls to one side; the ride still ends on recorded hull
   const windK = Math.min(1, st.v / 6);   // wind/drift only act on a moving truck
   st.d += (st.vel * Math.sin(st.psi) - st.v * st.v * k * T.CENTRIF + (0.12 + Math.sin(st.t / 6) * 0.08) * windK) * dt;   // centrifugal drift + steady side-wind
   st.s += ds;
+  holdPike();
   if (st.s < 0) { st.s = 0; st.v = st.vel = 0; toast('Loading dock – no further back'); }
   st.offT = off ? st.offT + dt : Math.max(0, st.offT - dt * 2);
   if (off && !st._offWarned) { audio.play('warn'); toast('OFF ROAD!'); st._offWarned = true; } if (!off) st._offWarned = false;

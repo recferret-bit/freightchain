@@ -1,3 +1,4 @@
+import { applyTrust, TRUST_INITIAL, type TrustEvent } from '../anticheat/trust-score.js';
 import { FREE_RIDES_HARD_MAX } from '../settings/game-settings.js';
 import { BadRequestError, ConflictError } from '../shared/errors.js';
 import { utcDay } from '../shared/time.js';
@@ -18,6 +19,11 @@ export interface PlayerProps {
   lossAt: Date | null;
   /** A throwaway session from POST /api/auth/guest. The secret was never stored. Progress does not merge into a later wallet. */
   guest?: boolean;
+  trustScore?: number;
+  /** Null or omitted on a row that never accepted the current notice. */
+  termsVersion?: number | null;
+  privacyVersion?: number | null;
+  rejectedRides?: number;
 }
 
 /** A rider, identified by the Solana wallet that signed in. Owns the free-ride credits. */
@@ -29,11 +35,18 @@ export class Player {
 
   /** First sight of a wallet. `freeOnSignup` is stored and unused: training rides are not counted. `guest` is only the anonymous EASY session. */
   static register(wallet: string, now: Date, freeOnSignup: number, freeRidesMax: number, guest = false): Player {
-    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), freeRidesMax, createdAt: now, tutorialPassedAt: null, age18At: null, lossAt: null, guest });
+    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), freeRidesMax, createdAt: now, tutorialPassedAt: null, age18At: null, lossAt: null, guest, trustScore: TRUST_INITIAL, termsVersion: 1, privacyVersion: 1, rejectedRides: 0 });
   }
 
   static restore(props: PlayerProps): Player {
-    return new Player({ ...props, guest: props.guest === true });
+    return new Player({
+      ...props,
+      guest: props.guest === true,
+      trustScore: props.trustScore ?? TRUST_INITIAL,
+      termsVersion: props.termsVersion === undefined ? 1 : props.termsVersion,
+      privacyVersion: props.privacyVersion === undefined ? 1 : props.privacyVersion,
+      rejectedRides: props.rejectedRides ?? 0,
+    });
   }
 
   get wallet(): string { return this.props.wallet; }
@@ -47,6 +60,22 @@ export class Player {
   get age18At(): Date | null { return this.props.age18At; }
   get lossAt(): Date | null { return this.props.lossAt; }
   get guest(): boolean { return this.props.guest === true; }
+  get trustScore(): number { return this.props.trustScore ?? TRUST_INITIAL; }
+  get termsVersion(): number | null { return this.props.termsVersion === undefined ? 1 : this.props.termsVersion; }
+  get privacyVersion(): number | null { return this.props.privacyVersion === undefined ? 1 : this.props.privacyVersion; }
+  get rejectedRides(): number { return this.props.rejectedRides ?? 0; }
+
+  /** Login, a verified ride, a rejected ride, or a social bind. No device fingerprint. */
+  applyTrustEvent(event: TrustEvent): void {
+    this.setTrustScore(applyTrust(this.trustScore, event));
+  }
+
+  /** Stores the score `applyTrust` already computed. Callers on login, verdict, and social bind own the delta. */
+  setTrustScore(score: number): void {
+    this.props.trustScore = score;
+  }
+
+  noteRejected(): void { this.props.rejectedRides = this.rejectedRides + 1; }
   /** Both boxes on. Free rides do not ask. */
   get paidPlayAllowed(): boolean { return this.props.age18At !== null && this.props.lossAt !== null; }
   /** True only when this process inserted the row on the touch that returned this instance. */

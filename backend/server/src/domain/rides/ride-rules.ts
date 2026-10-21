@@ -50,6 +50,8 @@ export const completeDistK = (tier: string, trip: string | null = null): number 
   return tier === 'free' ? FREE_COMPLETE_DIST_K : COMPLETE_DIST_K;
 };
 export const completeDist = (minSeconds: number, k: number = COMPLETE_DIST_K): number => k * MAX_SPEED * minSeconds;
+/** A 1h shift that is still running after this much wall-clock time is a timeout, not a finish (90 minutes). */
+export const T_CAP_SECONDS = 5400;
 
 /** Timing knobs the environment may tune (see RulesConfigPort). */
 export interface RideTimingRules {

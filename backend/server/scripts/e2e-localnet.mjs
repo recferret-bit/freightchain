@@ -123,7 +123,13 @@ async function ride(h, p, tier) {
   await h.ev(driveHook(20, '__game.st.park=false;__game.st.keyOn=true;__game.st.engineOn=true;__game.st.ign=null;__game.st.gear=7;__game.st.clutch=0;__game.st.brake=0;__game.input.gas=1;__game.input.brake=0;__game.input.clutch=0;__game.st.coldT=0;__game.st.strain=0;__game.st.noStall=2;'));
   await h.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'KeyW', key: 'w' });
   const t0 = Date.now();
-  while (!(await h.ev('__game.st.complete || __game.st.mode === "done" || __game.st.mode === "dead"')) && Date.now() - t0 < 90000) await sleep(250);
+  while (Date.now() - t0 < 90000) {
+    let done = false;
+    try { done = await h.ev('__game.st.complete || __game.st.mode === "done" || __game.st.mode === "dead"'); }
+    catch (e) { if (!/timed out/.test(String(e?.message))) throw e; }
+    if (done) break;
+    await sleep(250);
+  }
   await h.send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'KeyW', key: 'w' });
   await h.ev('document.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true })); window.dispatchEvent(new KeyboardEvent("keydown", { key: "p", code: "KeyP", bubbles: true }))'); await sleep(500);
   await h.ev('document.getElementById("endshift")?.click()');

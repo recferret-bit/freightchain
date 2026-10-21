@@ -1,70 +1,69 @@
 # Minigames — spec and test plan
 
-> 1h only. Decisions 14, 19–24, 28, 29, 31. The 15-id catalog and every detail are Appendix A (former §13, text unchanged). Minigame bot tests are Appendix B (former §17.1).
+> Normative rules are the phone build on branch `phone-minigames`, not Appendix A. Appendix A is a retired catalog. Do not build it.
 
 ## Part 1. Spec
-### 1.1 In the code now
-There are no minigames in the code. There are road challenges: `CHALLENGE_KINDS = []`, `Ride.challenges` Json, `ride-challenge.ts`. By decision 14 they are replaced by minigames.
 
-### 1.2 Rules
-- **MGM-M-01** MUST: minigames only on 1h rides (paid and pool), not on training rides (decision 19).
-- **MGM-M-02** MUST: 2–4 events per ride (3 by default). ≥ 8 min between them. Not in the first 5 min and not in the last 3 min. Not closer than 300 m to hazards (decision 20).
-- **MGM-M-03** MUST: the schedule and the parameters come from `mgSalt = HMAC(MG_SECRET, rideId‖wallet)`, with a commit at the start and a reveal after the verdict (decision 29).
-- **MGM-M-04** MUST: the catalog and the statuses (Appendix A §13.9.12):
-  - the base set is accepted by decision 21 (`phone-sms`, `fuel-station`, `weigh-station`, `toll-gate`, `cargo-seal` + `waybill` → `trailer-3d`, `dispatch-radio` + `radio-exit` → `exit`);
-  - the candidates `buy-shitcoin`, `address-check`, `sign-or-reject`, `seed-words`, `fuel-rugpull`, `gas-priority`, `tachograph`, `reverse-park`, `police-check` are "⏳ pending owner review".
-  
-  Only a game whose status is "accepted" enters play.
-- **MGM-M-05** MUST: phone games only in a safe state: a stop (a red light, a toll stretch, a station). If there is no stop for 5 min, the server places a parking pocket. There is no cruise control (decision 22). Exceptions are Appendix A §13.9.13.
-- **MGM-M-06** MUST: the penalty is wrong +20 s, skip +45 s, in separate fields (→ RID-M-16). ≥ 2 skips → flag `mg-missed`. The ride never fails, except on physical contact (decision 23).
-- **MGM-M-07** MUST: values (codes, masses, numbers) arrive as an image with noise. The correct answer is not on the client (decision 24).
-- **MGM-M-08** MUST: "more time" mode — window ×2, chosen before the start, a separate feature baseline (decision 28).
-- **MGM-M-09** MUST (crypto games, §13.9.0):
-  - fictional coins only, never real tickers;
-  - `$TEN4` cannot be bought in the game;
-  - no imitation of brands;
-  - a disclaimer;
-  - the goal is safety education.
-- **MGM-M-10** MUST: mouse and key traces in minigames are kept for 90 days, only for contest fairness. Clustering across wallets is only for the top-20 (decision 31, PRIVACY).
-- **MGM-M-11** MUST: the server checks answers on the `mg` stream (protocol v2.1). An answer before the reveal → `mg-answer-before-reveal`; a substituted timer → `mg-timer-tamper`.
-- **MGM-M-12** MUST NOT: donations and spectators do not affect minigames (decision 33).
+### 1.1 Where the code is
+
+The playable minigames are in this checkout, ported from branch `phone-minigames`. `MINIGAMES` is `off` | `shadow` | `enforce` and defaults to `off`. `MG_SECRET` is required only when the mode is not `off`, and is at least 32 bytes. `MG_SALT_VERSION` defaults to `mg:v1`. With the default, a ride stamps a null commit and no event is issued.
+
+GULP (a gas-bay stop) and PIKE (a toll arm) are local cab-phone tasks in that same tree. Their four digits are generated on the client and shown in Messages. They are not server minigames and they do not score a ride.
+
+### 1.2 What is issued
+
+`client/shared/minigame-kinds.js` is the catalog. Rules version `mg:1`.
+
+| Id | Issued on a live ride |
+|---|---|
+| `phone-sms` | Yes. The only accepted kind. |
+| `seed-words`, `buy-shitcoin`, `address-check`, `sign-or-reject`, `fuel-rugpull`, `gas-priority` | No. Generators and phone screens exist. `issuedKinds` drops anything that is not accepted. |
+
+`fuel-station`, `weigh-station`, `toll-gate`, `cargo-seal`, `trailer-3d`, `dispatch-radio`, `exit`, `tachograph`, `reverse-park`, and `police-check` are not in this catalog.
+
+### 1.3 Rules
+
+- **MGM-M-01** MUST: a ride is eligible only when `tier === '1h'` and it is not `tutorial` and not `assist`. Anything else, and `MINIGAMES=off`, stamps a null commit and creates no events.
+- **MGM-M-02** MUST: the schedule is 2, 3, or 4 `phone-sms` arms, with weights 0.25 / 0.5 / 0.25. The first arm is after `300 / timeScale` drive-seconds. Nothing is armed in the last `180 / timeScale` seconds. The gap is `480 / timeScale` seconds. A shift too short for two arms gets zero events. `slotS` stays null. There is no parking pocket and no road read. `shiftPastForbidden` (300 m) exists and is not called by the scheduler.
+- **MGM-M-03** MUST: `mgSalt` is HMAC-SHA256 of `MG_SECRET` over the concatenation `mg:v1` + `rideId` + `wallet`, with no extra separators. `mgCommit` is the hex SHA-256 of those raw salt bytes, not of the hex string. The salt is not stored. `GET` of the ride reveals the salt hex only after a verdict exists.
+- **MGM-M-04** MUST: only `phone-sms` is scheduled. A known kind that is not accepted is never armed.
+- **MGM-M-05** MUST: an armed event that is still unopened in the last `180 / timeScale` seconds becomes `cancelled`. That is not a score and not a penalty. Opening records the client's safe-stop claim. Pocket geometry is not built. The client may defer once by rolling away before the first touch.
+- **MGM-M-06** MUST: a code has 3 tries. A correct try passes with penalty 0, including a later try. Penalty `+20` seconds is stored only when all 3 tries are wrong. A revealed window that elapses with no answer becomes `missed` and does not add 45 seconds. Two misses do not flag `mg-missed`. Decision kinds, which are not issued, would be one try and penalty 0. A minigame never fails the ride. `MINIGAMES=enforce` may add verdict reason `mg-unsafe-open` when the client reported an unsafe stop. `off` and `shadow` add no verdict reasons.
+- **MGM-M-07** MUST: the open body is a layout of opaque asset ids. The expected code is not a JSON field. Pictures are SVG, not PNG, fetched at `GET /api/rides/:id/minigames/:eventId/assets/:assetId` (`image/svg+xml`, `no-store`). The dispatch picture is a mark with no digits. One of 5–7 cab slips repeats that mark beside the code. The other slips and any decoy threads use other marks and other codes. The code is 4, 5, or 6 digits. `more-time` paints no decoy threads. The yard-desk sentences in the source are not painted into the pictures.
+- **MGM-M-08** MUST: the window is 30 seconds in `normal` and 60 seconds in `more-time`. The mode and the language (`en` or `ru`) are stamped when the ride starts.
+- **MGM-M-09** MUST: the stored answer is `sha256(eventId + ":" + normalized)`, hex. The raw code is not stored. A repeated attempt with the same hash returns the stored outcome. A different answer at the same attempt number conflicts.
+- **MGM-M-10** MUST: open, answer, and asset reads are limited to 10 requests per ride per minute in process memory (`429`, code `mg_rate_limited`). The cap is not shared across replicas.
+- **MGM-M-11** MUST: the routes are `POST /api/rides/:id/minigames/:eventId/open`, `POST /api/rides/:id/minigames/:eventId/answer`, and the SVG GET above. A late answer on a missed or expired event is `410` `mg_expired`. A session mac is checked only for shape: 43 base64url characters. HMAC of that mac is not verified yet.
+- **MGM-M-12** MUST NOT: GULP and PIKE are not this system. Donations do not change a minigame row. The other six kinds stay unissued until their own change.
 
 ## Part 2. Test plan
-Existing: **AC-M1…M20** (Appendix B), catalog #50–58 ([`anticheat.md`](anticheat.md)). New:
+
+Lock the rules above against the phone-minigames tree. Appendix B is not this suite.
+
 | id | Rule | Scenario | Expected |
 |---|---|---|---|
-| MGM-T-01 | M-01 | a training ride | not a single `mg` event |
-| MGM-T-02 | M-02 | 10,000 `mgSalt` seeds | the count is 2–4, the gaps are ≥ 8 min, the start and end windows hold, ≥ 300 m to hazards |
-| MGM-T-03 | M-03 | reveal after the verdict | `HMAC` matches the commit |
-| MGM-T-04 | M-04 | an id with status "⏳" in the config | the server does not issue it (`mg-kind-disabled`) |
-| MGM-T-05 | M-07 | the client's DOM and memory | there is no correct answer (a search for the code string) |
-| MGM-T-06 | M-08 | "more time" chosen after the start | refusal |
-| MGM-T-07 | M-09 | a linter of crypto-game texts | no real tickers (the list), no `$TEN4` in a "buy" action, the disclaimer is in place |
-| MGM-T-08 | M-10 | a trace older than 90 days | deleted by the scheduler |
-| MGM-T-09 | M-12 | a donation on the ride's replay | `mgDetail` did not change |
+| MGM-T-01 | M-01 | a free, tutorial, or assist ride, or `MINIGAMES=off` | null commit, no events |
+| MGM-T-02 | M-02 | many salts, including a short demo `timeScale` | count is 2–4 when the shift can hold two arms, else 0; gaps are `480 / timeScale`; `slotS` is null |
+| MGM-T-03 | M-03 | `GET` the ride after a verdict | revealed salt hashes to the commit; before the verdict the salt is absent |
+| MGM-T-04 | M-04 | schedule with the full known list | every event is `phone-sms` |
+| MGM-T-05 | M-05 | still armed inside the end pad | status `cancelled`, penalty 0 |
+| MGM-T-06 | M-06 | three wrong codes; then a miss with no answer | `+20` only on the third wrong try; a miss stores no extra seconds and does not fail the ride |
+| MGM-T-07 | M-07 | open JSON and each SVG | the expected digit string is absent from the JSON; the dispatch SVG has no digit cells; one cab SVG shows the code |
+| MGM-T-08 | M-08 | start in `more-time` | window is 60_000 ms and there are no decoy threads |
+| MGM-T-09 | M-09 | the same attempt posted twice, then a different answer | the first outcome is returned; the second is a conflict |
+| MGM-T-10 | M-10 | 11 opens inside one minute | the 11th is `429` `mg_rate_limited` |
+| MGM-T-11 | M-11 | answer after `missed` | `410` `mg_expired` |
+| MGM-T-12 | M-12 | a GULP or PIKE stop, and a tip | no `RideMiniGame` row, and the tip does not change `mgDetail` |
 
-### Traceability
-| Rule | Tests |
-|---|---|
-| M-01 | MGM-T-01 |
-| M-02 | MGM-T-02 |
-| M-03 | MGM-T-03, AC-M (reveal), catalog #53 |
-| M-04 | MGM-T-04 |
-| M-05 | AC-M (safe state, Appendix B) |
-| M-06 | AC-R5, AC-M (skip) |
-| M-07 | MGM-T-05, catalog #52 |
-| M-08 | MGM-T-06 |
-| M-09 | MGM-T-07 |
-| M-10 | MGM-T-08 |
-| M-11 | catalog #55 |
-| M-12 | MGM-T-09 |
-
-Total: 12 MUST, planned ids (9 new + AC-M1…M20). There are no minigames in the code ([`PRODUCT.md`](PRODUCT.md)). An id is not a written test. Settle the AC-M → rule mapping when minigames land as their own change. The executable bar is [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
+An id is not a written test until it runs on the phone-minigames tree. The executable bar is [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
 
 ---
 
-## Appendix A. Minigames (former §13)
-> Moved unchanged from `anticheat_test_plan.md §13` (superseded, merged into docs/spec) (17.10.2026); heading levels shifted by one. Part 1 of this file is normative; if they diverge, the spec wins.
+## Appendix A. Retired catalog (former §13)
+
+> Not the game. The phone build does not implement parking pockets, noisy PNGs, a +45 s skip, or the 15-id list below. Part 1 wins. This appendix stays so the old decisions can be read. Do not schedule a task from it.
+
+> Moved unchanged from `anticheat_test_plan.md §13` (17.10.2026).
 
 ### 13. Minigame captchas (1h rides only)
 

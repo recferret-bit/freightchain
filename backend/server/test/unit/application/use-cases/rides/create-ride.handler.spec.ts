@@ -2,7 +2,7 @@ import { worldFor } from '../../../../../src/domain/rides/ride-rules.js';
 import { CreateRideHandler } from '../../../../../src/application/use-cases/rides/create-ride/create-ride.handler.js';
 import { CreateRideCommand } from '../../../../../src/application/use-cases/rides/create-ride/create-ride.command.js';
 import { RideStatus } from '../../../../../src/domain/rides/ride-status.js';
-import { ConflictError, ServiceUnavailableError } from '../../../../../src/domain/shared/errors.js';
+import { BadRequestError, ConflictError, ServiceUnavailableError } from '../../../../../src/domain/shared/errors.js';
 import { FixedRules, DEMO_UNIT_WALLET, unitContext, unitRules } from '../../../../support/unit-context.js';
 import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 import { StubPrice } from '../../../../support/stub-price.js';
@@ -104,7 +104,7 @@ describe('CreateRideHandler', () => {
   it('a paid tier refuses the tutorial and assist (409) – assist never reaches a ranked ride – and creates nothing', async () => {
     const { ctx, create } = setup();
     await expect(create('1h', 'w', false, true)).rejects.toThrow(new ConflictError('the tutorial and assist are for free rides only'));
-    await expect(create('4h', 'w', true, false)).rejects.toThrow(ConflictError);
+    await expect(create('4h', 'w', true, false)).rejects.toThrow(new BadRequestError('4h and 8h shifts are not created', 'tier_retired'));
     expect(await ctx.rides.findOpenByWallet('w')).toBeNull();
   });
 
@@ -190,14 +190,14 @@ describe('CreateRideHandler', () => {
     expect((await create('1h', 'c')).seed).not.toBe(a.seed);
   });
 
-  it('the same unpaid order while it is quoted; an off-sale tier leaves it; a lapsed quote expires it', async () => {
+  it('the same unpaid order while it is quoted; 4h and 8h are 400 tier_retired and leave it; a lapsed quote expires it', async () => {
     const { ctx, analytics, create } = setup();
     const first = await create('1h');
     expect((await create('1h')).id).toBe(first.id);
     expect(analytics.named('ride_ordered')).toHaveLength(1);
     expect(analytics.named('ride_resumed')).toHaveLength(1);
-    await expect(create('4h')).rejects.toThrow(new ConflictError('the 4-hour shift is not on sale yet', 'tier_not_on_sale'));
-    await expect(create('8h')).rejects.toThrow(new ConflictError('the 8-hour shift is not on sale yet', 'tier_not_on_sale'));
+    await expect(create('4h')).rejects.toThrow(new BadRequestError('4h and 8h shifts are not created', 'tier_retired'));
+    await expect(create('8h')).rejects.toThrow(new BadRequestError('4h and 8h shifts are not created', 'tier_retired'));
     expect(analytics.named('ride_ordered')).toHaveLength(1);
     expect(analytics.named('ride_expired')).toHaveLength(0);
     expect((await ctx.reload(first.id)).status).toBe(RideStatus.AwaitingPayment);
@@ -217,8 +217,8 @@ describe('CreateRideHandler', () => {
     const paid = await ctx.reload(order.id); paid.markPaid(1, ctx.now()); await ctx.rides.save(paid);
     const ordered = analytics.named('ride_ordered').length;
     for (const tier of ['free', '1h'] as const) expect((await create(tier)).id).toBe(order.id);
-    await expect(create('4h')).rejects.toThrow(/not on sale/);
-    await expect(create('8h')).rejects.toThrow(/not on sale/);
+    await expect(create('4h')).rejects.toThrow(new BadRequestError('4h and 8h shifts are not created', 'tier_retired'));
+    await expect(create('8h')).rejects.toThrow(new BadRequestError('4h and 8h shifts are not created', 'tier_retired'));
     expect(analytics.named('ride_ordered')).toHaveLength(ordered);
     expect(analytics.named('ride_resumed').length).toBeGreaterThanOrEqual(2);
   });
@@ -241,7 +241,7 @@ describe('CreateRideHandler', () => {
     price.usd = null;
     expect((await create('1h')).id).toBe(order.id);
     expect(price.calls).toBe(1); // handing back the order in hand never waits on the price feeds
-    await expect(create('4h')).rejects.toThrow(/not on sale/); // refused before a price is needed, and the quote stays
+    await expect(create('4h')).rejects.toThrow(new BadRequestError('4h and 8h shifts are not created', 'tier_retired')); // refused before a price is needed, and the quote stays
     expect((await ctx.reload(order.id)).status).toBe(RideStatus.AwaitingPayment);
     ctx.clock.advance(601);
     await expect(create('1h')).rejects.toThrow('no SOL/USD price available right now');
@@ -266,9 +266,9 @@ describe('CreateRideHandler', () => {
     });
 
     it('every ride of a pool is driven on the POOL\'s seed – one road (route, start hour, layout, holes) for all its riders; another pool, another road', async () => {
-      const { create, give } = await withPools({ id: 1, status: 'active', rideSeed: 5555 }, { id: 2, tier: '4h', status: 'active', rideSeed: 6666 });
+      const { create, give } = await withPools({ id: 1, status: 'active', rideSeed: 5555 }, { id: 2, tier: '1h', status: 'active', rideSeed: 6666 });
       await give(1, 1, 'a'); await give(1, 1, 'b'); await give(2, 1, 'c');
-      const [a, b, c] = [await create('1h', 'a'), await create('1h', 'b'), await create('4h', 'c')];
+      const [a, b, c] = [await create('1h', 'a'), await create('1h', 'b'), await create('1h', 'c')];
       expect(a).toMatchObject({ seed: 5555, ...worldFor(5555) });
       expect(b).toMatchObject({ seed: 5555, route: a.route, startHour: a.startHour });
       expect(c).toMatchObject({ seed: 6666, ...worldFor(6666) });
@@ -284,9 +284,9 @@ describe('CreateRideHandler', () => {
     });
 
     it('409 no_tickets with none, 409 pool_not_live when the only tickets wait for the minimum – and nothing else changed', async () => {
-      const { ctx, create, give } = await withPools({ id: 1, status: 'open', minTickets: 10, ticketsSold: 7 }, { id: 2, tier: '4h', status: 'active' });
-      await expect(create('8h')).rejects.toMatchObject({ errorCode: 'tier_not_on_sale' }); // no 8h pool: not on sale, even with no treasury
-      await expect(create('4h')).rejects.toThrow(new ConflictError('no 4h tickets left', 'no_tickets'));
+      const { ctx, create, give } = await withPools({ id: 1, status: 'open', minTickets: 10, ticketsSold: 7 }, { id: 2, tier: '1h', status: 'active' });
+      await expect(create('8h')).rejects.toMatchObject({ errorCode: 'tier_retired' });
+      await expect(create('4h')).rejects.toMatchObject({ errorCode: 'tier_retired' });
       await give(1, 1);
       const free = await create('free');
       await expect(create('1h')).rejects.toThrow(new ConflictError('pool not live yet – 3 more tickets needed', 'pool_not_live'));
@@ -300,14 +300,14 @@ describe('CreateRideHandler', () => {
       const t = setup(new StubPrice(), unitRules({ paymentMode: 'program', programId: '9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx' }));
       await t.ctx.pools.upsert(aPool({ id: 1, status: 'refunding' }, t.ctx.now()));
       await expect(t.create('1h')).rejects.toMatchObject({ errorCode: 'tier_not_on_sale' });
-      await expect(t.create('8h')).rejects.toMatchObject({ errorCode: 'tier_not_on_sale' }); // no pool at all: soon, not "no tickets"
+      await expect(t.create('8h')).rejects.toMatchObject({ errorCode: 'tier_retired' });
     });
 
-    it('an active pool past its play deadline is not ridden from (409 rides_closed names the pool and the deadline)', async () => {
+    it('an active 1h pool past lastStartAt is not ridden from (409 pool_last_start_passed)', async () => {
       const { ctx, create, give } = await withPools({ id: 1, status: 'active' });
       await give(1, 1);
       ctx.clock.advance(15 * 86_400);
-      await expect(create('1h')).rejects.toMatchObject({ errorCode: 'rides_closed', message: expect.stringMatching(/^rides for pool #1 closed at /) });
+      await expect(create('1h')).rejects.toMatchObject({ errorCode: 'pool_last_start_passed', message: expect.stringMatching(/^the last start for pool #1 was /) });
     });
 
     it('buying with a ticket while holding an unstarted free ride cancels it and refunds the credit', async () => {

@@ -3,15 +3,15 @@ import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { REPO } from '../harness/dom.mjs';
-import { SOLANA, devAdmin, session, signInAdmin, adminSign, signInPlayer } from '../harness/api.mjs';
+import { SOLANA, adminMutateHeaders, adminSign, devAdmin, session, signInAdmin, signInPlayer } from '../harness/api.mjs';
 
 const exec = promisify(execFile);
 const SERVER = join(REPO, 'backend/server');
-const LEDGER = join(REPO, 'tests/e2e/.ledger');
-const PAYER = join(LEDGER, 'keys/payer.json');
+const KEYS = join(REPO, 'tests/e2e/.keys');
+const PAYER = join(KEYS, 'payer.json');
 
 function pub(file) {
-  return execFile('solana-keygen', ['pubkey', file], { encoding: 'utf8' }).then((r) => r.stdout.trim());
+  return exec('solana-keygen', ['pubkey', file]).then((r) => r.stdout.trim());
 }
 
 async function adminCli(args) {
@@ -25,7 +25,7 @@ async function adminCli(args) {
 async function balance(address) {
   const r = await fetch(SOLANA, {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: [address] }),
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: [address, { commitment: 'confirmed' }] }),
   });
   const body = await r.json();
   if (body.error) throw new Error(JSON.stringify(body.error));
@@ -65,7 +65,8 @@ export async function redeemTicketPromo() {
   const code = `POOL${Date.now().toString(36).toUpperCase()}`;
   const promo = { code, effect: { kind: 'tickets', tier: '1h', poolId: made.poolId, credits: 1 }, description: null, maxRedemptions: 2, perWallet: 1, startsAt: null, expiresAt: null, note: null };
   const signature = await adminSign(api, keys, '/api/admin/promos/challenge', { action: 'promo_create', promo });
-  const created = await api.call('/api/admin/promos', { body: { promo, signature }, headers: { 'x-fc-admin': '1' } });
+  const createdBody = { promo, signature };
+  const created = await api.call('/api/admin/promos', { body: createdBody, headers: adminMutateHeaders(keys, '/api/admin/promos', createdBody) });
   if (created.status !== 200) throw new Error(JSON.stringify(created.json));
   const player = session();
   await signInPlayer(player);
@@ -76,7 +77,7 @@ export async function redeemTicketPromo() {
 
 export async function payWinners() {
   const { admin } = await ensureChain();
-  const buyerFile = join(LEDGER, 'keys/buyer.json');
+  const buyerFile = join(KEYS, 'buyer.json');
   await exec('solana-keygen', ['new', '-s', '--no-bip39-passphrase', '--force', '-o', buyerFile]);
   const buyer = await pub(buyerFile);
   await exec('solana', ['airdrop', '--url', SOLANA, '--keypair', PAYER, '5', buyer]);

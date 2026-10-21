@@ -4,6 +4,27 @@ export const TRAFFIC_PROOF_MAX_CHARS: number;
 export function encodeTrafficProof(rows: readonly (readonly number[])[]): string;
 export function decodeTrafficProof(text: string): number[][] | null;
 export function mulberry32(a: number): () => number;
+export const MINIGAME_KINDS: readonly string[];
+export const MINIGAME_ACCEPTED: readonly string[];
+export const MG_RULES_VERSION: string;
+export const MG_SALT_VERSION: string;
+export const TELEMETRY_KEY_ID: string;
+export const BATCH_MAC_LABEL: string;
+export function batchMacGenesisMessage(rideId: string): string;
+export function batchMacMessage(rideId: string, seq: number, prevMac: string, canonical: string): string;
+export function enforceBatchMacMessage(rideId: string, seq: number, startTick: number, endTick: number, inpSha256Hex: string, chkSha256Hex: string): string;
+export const NAMED_STREAMS: readonly string[];
+export const STEP_30_DT: number;
+export function requireNamedStreams<T extends Record<string, string>>(named: T): T;
+export function stepInpAt30Hz(initial: Partial<LongitudinalState> | null, inp: readonly { tick: number; gas?: number; brake?: number; gear?: number }[] | null, ticks: number): LongitudinalState;
+export function continueInpAt30Hz(state: LongitudinalState, inp: readonly { tick: number; gas?: number; brake?: number; gear?: number }[] | null, fromTick: number, toTick: number): LongitudinalState;
+export function worldDigest32(ids: readonly string[]): number;
+export function judgeWorldDigest(points: readonly { tSec: number; client: number; server: number }[]): 'ok' | 'flag' | 'reject';
+export const TRAFFIC_SALT_LABEL: string;
+export const HOLE_SALT_LABEL: string;
+export function saltMessage(label: string, rideId: string): string;
+/** Home-grid ids, length 12. Null is an empty slot. */
+export const MG_GRID: readonly (string | null)[];
 export function clamp(v: number, a: number, b: number): number;
 export function approach(v: number, t: number, r: number, dt: number): number;
 
@@ -225,6 +246,8 @@ export function checkTruckTrafficSwept(
 ): TruckTrafficSweptHit | null;
 
 export const REPLAY_SIM_HZ: number;
+export const SHADOW_STEP_DT: number;
+export function stepAt30Hz(state: LongitudinalState, config?: LongitudinalConfig, powerFactor?: number, brakeEfficiency?: number, offroad?: boolean): LongitudinalState;
 export const REPLAY_PHYSICS_SUBSTEPS: number;
 export const EVENT_APPLY_GRACE_MS: number;
 export const GEAR_RATIOS: readonly number[];
@@ -308,6 +331,33 @@ export interface SharedTrafficSimulation {
 export const SIMULATION_CONFIG: LongitudinalConfig & Readonly<Record<string, unknown>>;
 export const SIMULATION_TRIPS: Readonly<Record<string, SimulationTrip>>;
 export const ROUTE_CURVATURE: Readonly<Record<string, (s: number) => number>>;
+export const FINISH_RULES_VERSION: number;
+export const V_BASE: number;
+export const FINISH_MIN_M: number;
+export const FINISH_MAX_M: number;
+export interface FinishForResult {
+  finishS: number;
+  expectedSeconds: number;
+  finishRulesVersion: number;
+  rx: number;
+  rz: number;
+  rt: number;
+}
+export function finishFor(roadSeed: number, trip: string, finishRulesVersion?: number): FinishForResult;
+export function finishBlocked(roadSeed: number, trip: string, s: number): boolean;
+export function snapSafe(net: object, holes: readonly { s: number }[], sStar: number): number;
+
+export const DAMAGE_SOURCES: readonly ['holes', 'vehicles', 'props', 'cold', 'other'];
+export interface DamageBuckets { holes: number; vehicles: number; props: number; cold: number; other: number }
+export function emptyBuckets(): DamageBuckets;
+export function addBucket(buckets: DamageBuckets, source: string, amount: number): DamageBuckets;
+export function bucketTotal(buckets: DamageBuckets): number;
+export function sourceOfLabel(label: string): 'holes' | 'vehicles' | 'props' | 'cold' | 'other';
+export function bucketsFromCharges(holeAmounts: readonly number[], vehicleAmounts: readonly number[], hullAtFinish: number): DamageBuckets;
+export function crossedRed(net: { near(lo: number, hi: number): readonly object[]; stopLine(j: object, dir: number): number; signal(j: object, app: string): string }, s0: number, s1: number): number;
+export function countRedLights(net: { clock: number; near(lo: number, hi: number): readonly object[]; stopLine(j: object, dir: number): number; signal(j: object, app: string): string }, samples: readonly { s: number; t: number }[]): number;
+export function roadNetFor(roadSeed: number, trip: string): { clock: number; world(s: number, d: number): { x: number; z: number }; near(lo: number, hi: number): readonly object[]; stopLine(j: object, dir: number): number; signal(j: object, app: string): string };
+
 export function createRoadGeometry(): RoadGeometry;
 export function createRoadNetwork(options: { config: object; geometry: RoadGeometry; trip: SimulationTrip }): SharedRoadNetwork;
 export function createTrafficSimulation(options: {

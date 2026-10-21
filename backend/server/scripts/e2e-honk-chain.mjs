@@ -263,7 +263,16 @@ async function session() {
     const keys = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd']];
     (async () => { for (let i = 0; driving; i++) { const [code, key] = keys[i % 3]; try { await D.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(80); await D.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); await sleep(120); } catch { driving = false; } } })();
     await S.send('Page.navigate', { url: `${BASE}/play.html?watch=${rideId}` });
-    const until = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return true; await sleep(300); } return false; };
+    // A debugger timeout while the cab is busy is "not yet", not a failed session.
+    const until = async (fn, ms) => {
+      const t0 = Date.now();
+      while (Date.now() - t0 < ms) {
+        try { if (await fn()) return true; }
+        catch (e) { if (!/timed out/.test(String(e?.message))) throw e; }
+        await sleep(300);
+      }
+      return false;
+    };
     const click = async (id) => { check(id, await until(() => S.ev(`!!document.getElementById(${JSON.stringify(id)}) && !document.getElementById(${JSON.stringify(id)}).disabled`), 25_000)); await S.ev(`document.getElementById(${JSON.stringify(id)}).click()`); };
     const chainOf = async (owner) => honkBalance({ rpc: RPC, owner: owner.publicKey });
     const beforeHonk = await chainOf(spectator.kp);
@@ -291,8 +300,13 @@ async function session() {
     check('clear effect', clearLanded, await S.ev('document.getElementById("w-msg")?.textContent ?? ""'));
     const donated = await post(`watch/${rideId}/donations`, { effect: 'snow' }, spectator.cookie);
     check('snow is not a donation', donated.r.status === 400, `${donated.r.status} ${JSON.stringify(donated.j).slice(0, 120)}`);
-    const cabClear = () => D.ev('__game.weather.snow === 0 && __game.weather.ambient === __game.weather.baseAmbient');
-    check('cab clear', await until(cabClear, 45_000) || await cabClear(), await D.ev('JSON.stringify(__game.weather)'));
+    let weather = '';
+    const cabClear = async () => {
+      const gone = await D.ev('__game.weather.snow === 0 && __game.weather.ambient === __game.weather.baseAmbient');
+      if (!gone) weather = await D.ev('JSON.stringify(__game.weather)');
+      return gone;
+    };
+    check('cab clear', await until(cabClear, 45_000), weather);
     const before = await get('honk', player.cookie);
     const fungibleBefore = await chainOf(player.kp);
     await G.send('Page.navigate', { url: `${BASE}/lobby.html#garage` });

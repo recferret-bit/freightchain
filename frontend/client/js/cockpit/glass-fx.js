@@ -1,5 +1,5 @@
 import { ctx, view } from './canvas.js';
-import { st, dn, weather } from '../state.js';
+import { st, dn, weather, driveHull } from '../state.js';
 import { CFG } from '../config.js';
 import { clamp, rnd } from '../util.js';
 import { ObjectPool } from '../object-pool.js';
@@ -26,9 +26,10 @@ export function drawGlassFX(u, cx, hy) {
     }
     ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.arc(W * c.x, H * c.y, (.4 + .5 * sev) * u, 0, 7); ctx.fill();   // impact point
   }
-  if (st.hull < 35 && st.mode === 'drive') {   // smoke from under the hood, thicker and darker as the hull fails
-    smokeT += dt * (35 - st.hull) / 35 * 25;
-    while (smokeT >= 1) { smokeT--; smoke.push(Object.assign(smokePool.acquire(), { x: cx + (Math.random() - .5) * 10 * u, y: hy + 6 * u, vx: (Math.random() - .5) * 3 * u, vy: -(6 + Math.random() * 6) * u, life: 0, max: 1.5 + Math.random(), r: (2 + Math.random() * 2) * u, dark: st.hull < 18, a: 1 })); }
+  const body = driveHull();
+  if (body < 35 && st.mode === 'drive') {   // smoke from under the hood, thicker and darker as the body fails
+    smokeT += dt * (35 - body) / 35 * 25;
+    while (smokeT >= 1) { smokeT--; smoke.push(Object.assign(smokePool.acquire(), { x: cx + (Math.random() - .5) * 10 * u, y: hy + 6 * u, vx: (Math.random() - .5) * 3 * u, vy: -(6 + Math.random() * 6) * u, life: 0, max: 1.5 + Math.random(), r: (2 + Math.random() * 2) * u, dark: body < 18, a: 1 })); }
   }
   for (let i = smoke.length - 1; i >= 0; i--) {
     const q = smoke[i]; q.life += dt; if (q.life > q.max) { smokePool.release(q); smoke.splice(i, 1); continue; }

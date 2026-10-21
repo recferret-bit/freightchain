@@ -29,8 +29,13 @@ export class DisableAdminPromoHandler implements ICommandHandler<DisableAdminPro
     const proof = await this.proofs.prove(admin, { action: 'promo_disable', code }, signature);
     const done = await this.transactions.run(async (tx) => {
       const now = this.clock.now();
-      if (!(await this.promos.disable(code, now, tx))) throw new NotFoundError('no such promo code');
-      await this.audit.insert({ wallet: admin, action: 'promo.disable', target: code, detail: { signed: proof }, requestId, at: now }, tx);
+      const prior = await this.promos.findByCode(code, tx);
+      if (!prior || !(await this.promos.disable(code, now, tx))) throw new NotFoundError('no such promo code');
+      await this.audit.insert({
+        wallet: admin, action: 'promo.disable', target: code, role: 'admin',
+        beforeState: { state: prior.stateAt(now) }, afterState: { state: 'disabled' },
+        detail: { signed: proof }, requestId, at: now,
+      }, tx);
       return { dto: toPromoDto((await this.promos.findByCode(code, tx)) as PromoCode, now), now };
     });
     emitAnalytics(this.analytics, () => promoDisabled(code, done.dto.effect.kind, done.dto.redeemed, done.now));

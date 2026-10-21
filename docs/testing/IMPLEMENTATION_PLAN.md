@@ -87,7 +87,7 @@ Each row is its own spec-first PR. Update the decision if the owner changes it, 
 5. Finish formula and a 30 Hz re-sim (12, 38–44), only if the owner asks. Do not edit `1h` or `free-3c` in place. A retune is a new trip id. A rules change leaves stored rides on their version, lands `road-drift.spec.ts`, `traffic-sim.spec.ts`, and `replay-engine.spec.ts` in the same commit, and does not bump `SUMMARY_VERSION` or `WORLD_FACTS_VERSION`. Sample columns stay append-only.
 6. `set_pool_rules`: Squads only (60) or an admin HTTP route (backend decision 8). Do not delete either `MUST` until the owner picks. `POOL-M-12` stays a planned id. LiteSVM already calls the instruction. The live check stays pending.
 7. Weekly Tuesday pool clock, if it replaces the per-tier windows.
-8. Minigames, if they are actually to be built. Until then `minigames.md` stays a target catalog.
+8. Minigames. The game to port is `phone-sms` on branch `phone-minigames`. `docs/spec/minigames.md` Part 1 is that build. Appendix A is retired.
 9. `stats.RideResult` and the published score formula.
 10. English and Russian lobby copy (58).
 11. Admin roles, session revoke, Telegram, IP allowlist (59–66).

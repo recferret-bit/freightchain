@@ -15,8 +15,9 @@ import { env } from './world/environment.js';
 import { THEMES } from './themes/index.js';
 import { advanceCursor } from './live-effects.js';
 import { visitorId, leaveOnClose } from '../site/presence.js';
-import { INPUT_COL, passedMask, lightInputs, inputLights } from './input-bits.js';
+import { passedMask, lightInputs, inputLights } from './input-bits.js';
 import { replayOver, REPLAY_END_GAP } from './replay-end.js';
+import { deepLinkSeconds } from '../site/replay-player.js';
 import { addOutcome, roadCheckFrom, stampPassed, placeObstacle, replaceObstacles, drawReplayTraffic } from './watch-world.js';
 
 /* Live streams & replay playback orchestrator (play.html?watch=<rideId>). */
@@ -83,7 +84,7 @@ function addBatches(list) {
   if (!pruned && fresh[0].seq === watch.rowsSeq + 1 && fresh.every((b, i) => b.seq === fresh[0].seq + i)) for (const b of fresh) { watch.rows.push(...b.samples.filter(usable)); watch.tframes.push(...(b.traffic ?? []).filter(usable)); }
   else { const all = [...watch.batches.values()].sort((a, b) => a.seq - b.seq); watch.rows = all.flatMap(b => b.samples).filter(usable); watch.tframes = all.flatMap(b => b.traffic ?? []).filter(usable); }
   watch.rowsSeq = Math.max(...watch.batches.keys());
-  inputLights.on = (watch.rows.at(-1)?.length ?? 0) > INPUT_COL;
+  inputLights.on = false; // public replays do not light the raw input overlay (the input column is zeroed)
 }
 
 export const roadCheck = () => roadCheckFrom(watch);
@@ -97,7 +98,11 @@ export function addEvent(e) {
 export function startWatch() {
   replaceObstacles(watch);
   watch.started = true; watch.jumped = true;
-  watch.wt = watch.follow ? liveTarget() : (watch.rows[0]?.[0] ?? 0); watch.seeking = watch.follow;
+  const deep = typeof location === 'undefined' ? null : deepLinkSeconds(location.search);
+  watch.follow = deep == null;
+  watch.wt = deep == null ? (watch.follow ? liveTarget() : (watch.rows[0]?.[0] ?? 0)) : deep;
+  watch.seeking = true;
+  if (deep != null) watch.playing = true;
   schedule(0);
 }
 

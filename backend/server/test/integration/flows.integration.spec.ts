@@ -26,6 +26,7 @@ import { LIVE_ENV, LIVE_FLAGS_ENV, LIVE_OFF_ENV, liveFlagsScenarios, liveOffScen
 import { AGREEMENTS_ENV, agreementsScenarios } from '../scenarios/agreements.scenarios.js';
 import { ACTIONS_PROGRAM_ENV, actionsBuyScenarios, actionsScenarios } from '../scenarios/actions.scenarios.js';
 import { referralScenarios } from '../scenarios/referrals.scenarios.js';
+import { MINIGAMES_ENV, minigameScenarios } from '../scenarios/minigames.scenarios.js';
 import { adminGapScenarios } from '../scenarios/http-gaps-admin.scenarios.js';
 import { editorGapScenarios, editorMcpGapScenarios } from '../scenarios/http-gaps-editor.scenarios.js';
 import { HOST_GAP_ENV, hostGapScenarios } from '../scenarios/http-gaps-host.scenarios.js';
@@ -75,6 +76,7 @@ for (const [name, env, scenarios] of [
   ['solana actions: discovery, shift card, ride blink', {}, actionsScenarios],
   ['solana actions: one program-mode ticket', ACTIONS_PROGRAM_ENV, actionsBuyScenarios],
   ['referrals: a code, one referrer, a gift colour', {}, referralScenarios],
+  ['phone minigames: phone-sms on a 1h ride', MINIGAMES_ENV, minigameScenarios],
   ['http gaps: admin directory and signed changes', ADMIN_ENV, adminGapScenarios],
   ['http gaps: editor logout and signed writes', EDITOR_ENV, editorGapScenarios],
   ['http gaps: editor mcp entity head', EDITOR_JOBS_ENV, editorMcpGapScenarios],
@@ -131,9 +133,9 @@ describe('HTTP (PostgreSQL) · row deltas', () => {
   it('a ticket order inserts one TicketOrder and no Pool; an unknown pool and a bad settle write nothing', async () => {
     await harness.app.get(PoolRepositoryPort).upsert(aPool({ id: 7, status: 'open' }, new Date(harness.clock.ms)));
     const rider = await login();
-    const created = await expectDbDelta(prisma(), { TicketOrder: 1, Pool: 0 }, () => rider.agent.post('/api/tickets').send({ poolId: 7, qty: 1 }));
+    const created = await expectDbDelta(prisma(), { TicketOrder: 1, Pool: 0 }, () => rider.agent.post('/api/tickets').send({ poolId: 7, qty: 1, burnWarningAccepted: true }));
     expect(created.status).toBe(200);
-    const missing = await expectDbDelta(prisma(), { TicketOrder: 0, Pool: 0 }, () => rider.agent.post('/api/tickets').send({ poolId: 99, qty: 1 }));
+    const missing = await expectDbDelta(prisma(), { TicketOrder: 0, Pool: 0 }, () => rider.agent.post('/api/tickets').send({ poolId: 99, qty: 1, burnWarningAccepted: true }));
     expect(missing.status).toBe(404);
     const settle = await expectDbDelta(prisma(), { ChainEvent: 0 }, () => rider.agent.post('/api/chain/settle').send({}));
     expect(settle.status).toBe(400);
@@ -170,7 +172,7 @@ describe('HTTP (PostgreSQL) · row deltas', () => {
     expect(editor.status).toBe(404);
     const rider = await login();
     const stranger = await expectDbDelta(prisma(), { AuthChallenge: 0, AdminAction: 0 }, () => anon().post('/api/admin/auth/nonce').set('x-fc-admin', '1').send({ wallet: rider.address }));
-    expect(stranger.status).toBe(404);
+    expect(stranger.status).toBe(200); // a non-admin gets the same shape and nothing is stored, so the allowlist is not probed
     const nonce = await expectDbDelta(prisma(), { AuthChallenge: 1 }, () => anon().post('/api/admin/auth/nonce').set('x-fc-admin', '1').send({ wallet: ADMIN.address }));
     expect(nonce.status).toBe(200);
   });

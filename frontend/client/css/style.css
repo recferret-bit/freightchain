@@ -83,6 +83,11 @@ body:has(#chain:not([hidden])) #toast{top:calc(14% + 40px)}
 #watch input[type=range]{width:100%;accent-color:#ffcf5a}
 #watch .w-track{position:relative}
 #watch .w-marks{position:absolute;left:8px;right:8px;top:-5px;height:6px;pointer-events:none}
+#watch .w-time-tip{position:absolute;top:-18px;transform:translateX(-50%);font-size:10px;color:#1b1408;background:#ffcf5a;padding:1px 4px;border-radius:3px;pointer-events:none}
+#watch .w-chart{width:100%;height:42px;background:#0006;border-radius:4px}
+#watch .w-damage{height:6px;background:#ffffff14;border-radius:3px;overflow:hidden}#watch .w-damage i{display:block;height:100%;width:0;background:#ff6b5a}
+#watch .w-event.damage{background:#ff6b5a}#watch .w-event.honk{background:#7be07b}#watch .w-event.minigame{background:#9b5de5}
+#watch .w-line.tip{outline:1px solid #ffcf5a55}
 #watch .w-mark{position:absolute;top:0;width:4px;height:6px;margin-left:-2px;border-radius:1px;pointer-events:auto;cursor:pointer;background:#ffcf5a99}
 #watch .w-mark.ignored{width:6px;height:12px;top:-3px;margin-left:-3px;background:#ff3b2a;box-shadow:0 0 6px #ff3b2a}
 #watch .w-road{font-size:11px;letter-spacing:.5px;color:#9fd49f}#watch .w-road.bad{color:#ff6b5a;font-weight:bold}
@@ -190,6 +195,9 @@ body.tutorial #toast{top:26%}
 /* the phone map (js/ui/map.js): the phone taken from its dash mount, right of the windscreen – the game goes on behind it */
 #phone{position:absolute;right:max(14px,4vw);top:50%;z-index:4;transform:translate(0,-50%) translateY(115%) rotate(4deg);transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s;opacity:0;pointer-events:none}
 #phone.on{transform:translate(0,-50%) rotate(-1.5deg);opacity:1;pointer-events:auto}
+@keyframes phone-buzz{0%,100%{transform:translate(0,-50%) rotate(-1.5deg)}25%{transform:translate(-3px,-50%) rotate(-2.6deg)}50%{transform:translate(3px,-50%) rotate(-.4deg)}75%{transform:translate(-2px,-50%) rotate(-2.2deg)}}
+#phone.on.buzz{animation:phone-buzz .32s linear infinite}
+@media (prefers-reduced-motion:reduce){#phone.on.buzz{animation:none}}
 #phone .phone-body{position:relative;height:min(82vh,720px);min-height:min(420px,96vh);aspect-ratio:9/19;padding:12px 11px;box-sizing:border-box;border-radius:42px;background:linear-gradient(145deg,#2b2d31,#0d0e10 60%);box-shadow:0 0 0 2px #45484e,0 24px 60px #000c,inset 0 0 0 2px #000}
 /* the camera island: a speaker slot, a small sensor and the main lens (a ring, blue glass, a glint) – drawn with gradients */
 #phone .phone-notch{position:absolute;left:50%;top:18px;width:32%;height:22px;transform:translateX(-50%);border-radius:12px;z-index:1;pointer-events:none;box-shadow:0 0 0 1px #15171b;background:
@@ -198,7 +206,7 @@ body.tutorial #toast{top:26%}
  radial-gradient(circle at 63% 50%,#27324d 0 1.5px,transparent 2px),
  linear-gradient(#1f2127,#1f2127) 22% 50%/24% 3px no-repeat,#000}
 #phone .phone-screen{position:relative;inset:auto;display:block;width:100%;height:100%;border-radius:32px;background:#05060b;touch-action:none;cursor:grab}
-@media (max-width:700px){#phone{right:50%;transform:translate(50%,-50%) translateY(115%)}#phone.on{transform:translate(50%,-50%)}}
+@media (max-width:700px){#phone{right:50%;transform:translate(50%,-50%) translateY(115%)}#phone.on{transform:translate(50%,-50%)}@keyframes phone-buzz{0%,100%{transform:translate(50%,-50%) rotate(-1.5deg)}25%{transform:translate(calc(50% - 3px),-50%) rotate(-2.6deg)}75%{transform:translate(calc(50% + 3px),-50%) rotate(-.4deg)}}#phone.on.buzz{animation:phone-buzz .32s linear infinite}}
 #phone .phone-close{position:absolute;left:50%;bottom:22px;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;flex:none;font-size:13px;z-index:2}
 #phone .phone-close:focus-visible{width:auto;height:auto;padding:6px 12px;clip-path:none;transform:translateX(-50%);outline:2px solid #fff}
 /* a spectator's map: above the watch panel (it is a bottom sheet on a phone), and beside it while it is open on a wide screen */

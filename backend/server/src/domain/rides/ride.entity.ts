@@ -1,4 +1,5 @@
 import type { Loadout } from '../economy/cosmetics.js';
+import { finishFor, FINISH_RULES_VERSION } from '../road/finish-for.js';
 import { ConflictError } from '../shared/errors.js';
 import { RideStatus, type RideOutcome } from './ride-status.js';
 import type { PaidTierId, RideTierId } from './ride-tier.js';
@@ -11,9 +12,10 @@ import { BATCH_SEQ_SLACK, GAME_TIME_FACTOR, GAME_TIME_SLACK_SECONDS, MIN_BATCH_S
 import {
   DRIVE_CREDIT_SLACK, DRIVE_CREDIT_SLACK_SECONDS, GAME_SLACK_METRES, GAME_SPEED_SLACK, MAX_SPEED, REASON_MAX_LENGTH, RIDE_SLACK_METRES, RIDE_SPEED_SLACK,
   SLACK_METRES, SPEED_SLACK,
-  completeDist, completeDistK, crashCap, worldFor, type RideTimingRules,
+  completeDist, completeDistK, crashCap, worldFor, T_CAP_SECONDS, type RideTimingRules,
 } from './ride-rules.js';
 import { DEFAULT_FREE_LEVEL, FREE_LEVELS, assertAssistAllowed, assertTutorialAllowed, levelOfTrip, tripOf, type FreeLevel } from './ride-trip.js';
+import { notePause } from './pause-bounds.js';
 
 export interface RideProps {
   id: string;
@@ -81,6 +83,18 @@ export interface RideProps {
   promoCode?: string | null;
   /** The week's granted paid ticket (AMOE). A paid-tier ride that was not bought. It does not mint TEN4. */
   weeklyGrant?: boolean;
+  /** hex SHA-256 of the minigame salt bytes. Null on training rides and when MINIGAMES is off. */
+  mgCommit?: string | null;
+  mgSaltVersion?: string | null;
+  /** Set the first time GET ride reveals the salt, which is only after a verdict. */
+  mgSaltRevealedAt?: Date | null;
+  mgMode?: 'normal' | 'more-time' | null;
+  mgLang?: 'en' | 'ru' | null;
+  sessionKey?: string | null;
+  pauseCount?: number;
+  pauseSeconds?: number;
+  trafficSaltCommit?: string | null;
+  holeSaltCommit?: string | null;
 }
 
 /** What issuing a prompt needs from the caller: an id and a random draw (the entity stays pure). */
@@ -101,6 +115,9 @@ export interface PromoRideInput {
 }
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+/** A full-length 1h ride takes its line from finishFor. A shortened ride (a demo, a test) keeps K × speed × its own seconds. */
+const lineFor = (tier: string, seed: number, trip: string | null, minSeconds: number): number =>
+  tier === '1h' && minSeconds >= 3600 ? finishFor(seed, trip ?? '1h', FINISH_RULES_VERSION).finishS : completeDist(minSeconds, completeDistK(tier, trip));
 
 /* A ride. The CLIENT does not decide whether a ride counts: it reports progress and the server judges it –
    complete = the reported distance ≥ completeDist (the finish line), where the distance may only grow at ≤ MAX_SPEED per second of the server's wall clock –
@@ -129,7 +146,7 @@ export class Ride {
   static createFromTicket(i: TicketRideInput): Ride {
     if (i.tier === 'free') throw new ConflictError('a free ride is not paid with a ticket');
     return new Ride({
-      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
+      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: lineFor(i.tier, i.seed, tripOf(i.tier), i.minSeconds),
       status: RideStatus.Created, createdAt: i.now, timeScale: i.timeScale, poolId: i.poolId, roundId: i.roundId, paidAt: i.now,
       seedCommitment: i.seedCommitment ?? null, blockhash: i.blockhash ?? null, slot: i.slot ?? null,
     });
@@ -138,7 +155,7 @@ export class Ride {
   /** The week's granted ticket. Ready at once, price 0, paid tier, no pool, no TEN4. The caller has already claimed the row. */
   static createWeeklyGrant(i: Omit<PromoRideInput, 'promoCode'>): Ride {
     return new Ride({
-      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
+      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: lineFor(i.tier, i.seed, tripOf(i.tier), i.minSeconds),
       status: RideStatus.Created, createdAt: i.now, timeScale: i.timeScale, paidAt: i.now, weeklyGrant: true,
     });
   }
@@ -146,7 +163,7 @@ export class Ride {
   /** A ride granted by a ride promo code. Ready at once, price 0, no pool, no TEN4. The caller has already claimed the grant. */
   static createPromo(i: PromoRideInput): Ride {
     return new Ride({
-      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
+      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: lineFor(i.tier, i.seed, tripOf(i.tier), i.minSeconds),
       status: RideStatus.Created, createdAt: i.now, timeScale: i.timeScale, promoCode: i.promoCode,
     });
   }
@@ -154,7 +171,7 @@ export class Ride {
   /** A paid order: priced in SOL at the moment of ordering, awaiting the on-chain payment. */
   static createPaidOrder(i: PaidOrderInput): Ride {
     return new Ride({
-      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK(i.tier)),
+      ...Ride.blank(), id: i.id, wallet: i.wallet, tier: i.tier, trip: tripOf(i.tier), ...worldFor(i.seed), seed: i.seed, minSeconds: i.minSeconds, completeDist: lineFor(i.tier, i.seed, tripOf(i.tier), i.minSeconds),
       status: RideStatus.AwaitingPayment, createdAt: i.now, timeScale: i.timeScale, priceUsd: i.priceUsd, lamports: i.lamports, solUsd: i.solUsd,
       quoteExpiresAt: new Date(i.now.getTime() + i.quoteTtlMs),
     });
@@ -165,6 +182,9 @@ export class Ride {
       ...props, trafficVersion: props.trafficVersion ?? 0, paymentReference: props.paymentReference ?? null,
       ranked: props.ranked === true, cleanMetres: props.cleanMetres ?? null, prizeCountry: props.prizeCountry ?? null, prizeRegion: props.prizeRegion ?? null,
       weeklyGrant: props.weeklyGrant === true,
+      mgCommit: props.mgCommit ?? null, mgSaltVersion: props.mgSaltVersion ?? null, mgSaltRevealedAt: props.mgSaltRevealedAt ?? null, mgMode: props.mgMode ?? null, mgLang: props.mgLang ?? null,
+      sessionKey: props.sessionKey ?? null, pauseCount: props.pauseCount ?? 0, pauseSeconds: props.pauseSeconds ?? 0,
+      trafficSaltCommit: props.trafficSaltCommit ?? null, holeSaltCommit: props.holeSaltCommit ?? null,
     });
   }
 
@@ -223,6 +243,36 @@ export class Ride {
   get cleanMetres(): number | null { return this.p.cleanMetres ?? null; }
   get prizeCountry(): string | null { return this.p.prizeCountry ?? null; }
   get prizeRegion(): string | null { return this.p.prizeRegion ?? null; }
+  get mgCommit(): string | null { return this.p.mgCommit ?? null; }
+  get mgSaltVersion(): string | null { return this.p.mgSaltVersion ?? null; }
+  get mgSaltRevealedAt(): Date | null { return this.p.mgSaltRevealedAt ?? null; }
+  get mgMode(): 'normal' | 'more-time' | null { return this.p.mgMode ?? null; }
+  get mgLang(): 'en' | 'ru' | null { return this.p.mgLang ?? null; }
+  get sessionKey(): string | null { return this.p.sessionKey ?? null; }
+  get pauseCount(): number { return this.p.pauseCount ?? 0; }
+  get pauseSeconds(): number { return this.p.pauseSeconds ?? 0; }
+  get trafficSaltCommit(): string | null { return this.p.trafficSaltCommit ?? null; }
+  get holeSaltCommit(): string | null { return this.p.holeSaltCommit ?? null; }
+
+  stampSessionKey(key: string): void {
+    this.p.sessionKey = key;
+  }
+
+  stampSalts(trafficCommit: string, holeCommit: string): void {
+    this.p.trafficSaltCommit = trafficCommit;
+    this.p.holeSaltCommit = holeCommit;
+  }
+
+  stampMinigames(commit: string | null, mode: 'normal' | 'more-time' | null, lang: 'en' | 'ru' | null, saltVersion: string | null): void {
+    this.p.mgCommit = commit;
+    this.p.mgMode = mode;
+    this.p.mgLang = lang;
+    this.p.mgSaltVersion = saltVersion;
+  }
+
+  markSaltRevealed(now: Date): void {
+    if (this.p.mgSaltRevealedAt === null || this.p.mgSaltRevealedAt === undefined) this.p.mgSaltRevealedAt = now;
+  }
 
   isInStatus(...statuses: RideStatus[]): boolean {
     return statuses.includes(this.p.status);
@@ -313,14 +363,28 @@ export class Ride {
     this.close(RideStatus.Cancelled, `rides for its pool closed – a shift started now would end after ${deadline.toISOString()}`.slice(0, REASON_MAX_LENGTH), now);
   }
 
+  /** Created after a ticket was spent, but START is after lastStartAt. The ticket stays in the pot. */
+  closeLastStartPassed(now: Date, lastStart: Date): void {
+    this.mustBe(RideStatus.Created);
+    if (this.p.poolId === null) throw new ConflictError('only a ticket ride belongs to a pool');
+    this.close(RideStatus.Cancelled, `last start passed at ${lastStart.toISOString()}`.slice(0, REASON_MAX_LENGTH), now);
+  }
+
   failHeartbeatLost(now: Date): void {
     this.mustBe(RideStatus.Running);
     this.close(RideStatus.Failed, 'heartbeat lost', now);
   }
 
+  /** A 1h shift whose wall clock from the start is past T_cap. It did not finish. */
+  failTimeout(now: Date): void {
+    this.mustBe(RideStatus.Running);
+    this.close(RideStatus.Failed, 'timeout', now);
+  }
+
   /** Apply one progress report. Returns false when the report failed the ride (silent for the caller to persist) – too late, or faster than a truck can go. */
   applyReport(report: RideReport, now: Date, rules: RideTimingRules): boolean {
     this.mustBe(RideStatus.Running);
+    if (this.pastCap(now)) { this.failTimeout(now); return false; }
     const s = report.s ?? this.p.lastS;
     const hull = report.hull === null ? this.p.hull : clamp(report.hull, 0, 100); // the game can overshoot below 0 on the hit that wrecks it
     const dt = (now.getTime() - (this.p.lastHbAt ?? now).getTime()) / 1000;
@@ -346,6 +410,9 @@ export class Ride {
     this.p.lastHbAt = now;
     this.p.driveSeconds += credit;
     this.p.nightSeconds += report.night ? credit : 0;
+    const pause = notePause(this.p.paused, report.paused, dt, { count: this.p.pauseCount ?? 0, seconds: this.p.pauseSeconds ?? 0 });
+    this.p.pauseCount = pause.count;
+    this.p.pauseSeconds = pause.seconds;
     this.p.paused = report.paused;
     this.p.crashesVehicle = raised(this.p.crashesVehicle, report.crashesVehicle, crashCap(this.p.driveSeconds));
     this.p.crashesBuilding = raised(this.p.crashesBuilding, report.crashesBuilding, crashCap(this.p.driveSeconds));
@@ -380,6 +447,7 @@ export class Ride {
   /** The driver ended the shift ('shift': the server judges complete / abandoned) or the ride failed ('failed': a crash etc.). */
   finish(outcome: RideOutcome, reason: string | null, now: Date): void {
     this.mustBe(RideStatus.Running);
+    if (this.pastCap(now)) { this.failTimeout(now); return; }
     if (outcome === 'failed') {
       this.close(RideStatus.Failed, (reason ?? 'failed').slice(0, REASON_MAX_LENGTH), now);
     } else if (this.p.lastS >= this.p.completeDist) {
@@ -399,13 +467,18 @@ export class Ride {
   }
 
   snapshot(): RideProps {
-    return { ...this.p };
+    const p = this.p; // null/0 defaults match the row, so a PostgreSQL round trip equals the entity that was saved
+    return { ...p, mgCommit: p.mgCommit ?? null, mgSaltVersion: p.mgSaltVersion ?? null, mgSaltRevealedAt: p.mgSaltRevealedAt ?? null, mgMode: p.mgMode ?? null, mgLang: p.mgLang ?? null, sessionKey: p.sessionKey ?? null, pauseCount: p.pauseCount ?? 0, pauseSeconds: p.pauseSeconds ?? 0, trafficSaltCommit: p.trafficSaltCommit ?? null, holeSaltCommit: p.holeSaltCommit ?? null };
   }
 
   private close(status: RideStatus, reason: string | null, now: Date): void {
     this.p.status = status;
     this.p.reason = reason;
     this.p.endedAt = now;
+  }
+
+  private pastCap(now: Date): boolean {
+    return this.p.tier === '1h' && this.p.startedAt !== null && (now.getTime() - this.p.startedAt.getTime()) / 1000 > T_CAP_SECONDS;
   }
 
   private mustBe(...allowed: RideStatus[]): void {

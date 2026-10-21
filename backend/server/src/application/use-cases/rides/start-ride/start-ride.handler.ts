@@ -1,3 +1,4 @@
+import { Optional } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { toRideDto, type RideDto } from '../../../../domain/rides/ride.dto.js';
 import type { RideProps } from '../../../../domain/rides/ride.entity.js';
@@ -20,6 +21,14 @@ import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { isDemoWallet } from '../../../services/demo.js';
 import { RideLookupService } from '../../../services/ride-lookup.service.js';
 import { RankedEntryService } from '../../../services/ranked-entry.service.js';
+import { PoolScheduleService } from '../../../services/pool-schedule.service.js';
+import { MinigameSessionService } from '../../../services/minigame-session.service.js';
+import { TelemetryConfigPort } from '../../../ports/telemetry/telemetry-config.port.js';
+import { EntropyPort } from '../../../ports/shared/entropy.port.js';
+import { HasherPort } from '../../../ports/shared/hasher.port.js';
+import { revealRideSalts } from '../../../rides/ride-salts.js';
+import { TELEMETRY_KEY_ID } from '../../../../domain/shared/index.js';
+import type { Ride } from '../../../../domain/rides/ride.entity.js';
 import { StartRideCommand } from './start-ride.command.js';
 
 interface StartFacts {
@@ -50,9 +59,19 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
     private readonly stats: StatsService,
     private readonly pools: PoolRepositoryPort,
     private readonly rankedEntry: RankedEntryService,
+    private readonly schedule: PoolScheduleService,
+    @Optional() private readonly minigames?: MinigameSessionService,
+    @Optional() private readonly telemetry?: TelemetryConfigPort,
+    @Optional() private readonly entropy?: EntropyPort,
+    @Optional() private readonly hasher?: HasherPort,
   ) {}
 
-  async execute({ wallet, rideId, trip, ranked, headers }: StartRideCommand): Promise<RideDto> {
+  async execute({ wallet, rideId, trip, ranked, headers, mgMode, lang }: StartRideCommand): Promise<RideDto> {
+    const preview = await this.lookup.require(rideId, wallet);
+    if (preview.poolId !== null) {
+      const mirrored = await this.pools.findById(preview.poolId);
+      if (mirrored) await this.schedule.assertSynced(mirrored); // before the player lock: the chain read must not sit under it
+    }
     const facts = await this.transactions.run(async (tx) => {
       const now = this.clock.now();
       const player = await this.players.findByWalletForUpdate(wallet, tx);
@@ -73,20 +92,39 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
       if (!ride.isFree && !ride.isPromo && !ride.isWeeklyGrant) player.requirePaidPlay(); // training, a promo, and the weekly grant were not bought
       if (ride.poolId !== null) {   // a ticket ride starts only while a shift started now ends by its pool's play deadline (H6) – the pool row is read, not locked: its deadline comes from chain and never changes
         const pool = await this.pools.findById(ride.poolId, tx);
-        if (pool && !pool.canFinishBy(now, ride.completeDist / MAX_SPEED)) {   // ordered in time (the spend checked the whole shift): it starts while its finish line is still reachable
-          ride.closeRidesClosed(now, pool.playDeadline);
-          await this.rides.save(ride, tx);
-          await this.stats.recordRide(ride.snapshot(), tx);   // every path that ends a ride (a ride that never started adds nothing)
-          return { closed: pool.playDeadline, failed } as const;
+        if (pool) {
+          if (now.getTime() > pool.lastStartAt.getTime()) {
+            ride.closeLastStartPassed(now, pool.lastStartAt);
+            await this.rides.save(ride, tx);
+            await this.stats.recordRide(ride.snapshot(), tx);
+            return { lastStart: pool.lastStartAt, failed } as const;
+          }
+          if (!pool.canFinishBy(now, ride.completeDist / MAX_SPEED)) {   // ordered in time (the spend checked the whole shift): it starts while its finish line is still reachable
+            ride.closeRidesClosed(now, pool.playDeadline);
+            await this.rides.save(ride, tx);
+            await this.stats.recordRide(ride.snapshot(), tx);   // every path that ends a ride (a ride that never started adds nothing)
+            return { closed: pool.playDeadline, failed } as const;
+          }
         }
       }
       const stamp = ranked ? await this.rankedEntry.claim(player, ride, headers, now, tx) : null;   // 409 leaves the ride created, so the driver can start it unranked
       const wardrobe = toWardrobeDto(await this.cosmetics.listUnlocked(wallet, tx), await this.cosmetics.listEquipped(wallet, tx));
+      if (this.minigames) await this.minigames.stamp(ride, mgMode, lang);   // null commit on training rides and when MINIGAMES is off; absent in tests that predate the port
+      const revealed = this.issueSessionKey(ride);   // absent when TELEMETRY_V21 is off, or when a unit test did not pass the ports
       ride.start(now, wardrobe.equipped, this.rules.get().trafficProofRequired === false ? 0 : 1, stamp);   // what is worn right now (owned items only) goes with the ride: live streams and replays draw it
       const saved = await this.rides.save(ride, tx);
+      if (revealed) await this.rides.storeRevealedSalts(saved.id, revealed, tx);
       if (ride.tutorial && player.markTutorialPassed(now)) await this.players.save(player, tx);   // starting a ride with the tutorial on = it was done: the lobby leaves it off from now on
-      return { dto: toRideDto(saved), started: saved.snapshot(), failed } satisfies StartFacts;
+      const dto = toRideDto(saved);
+      const sessionKey = saved.sessionKey;
+      const commits = saved.trafficSaltCommit ? { trafficSaltCommit: saved.trafficSaltCommit, holeSaltCommit: saved.holeSaltCommit } : {};
+      const raw = revealed ? { trafficSalt: revealed.trafficSalt, holeSalt: revealed.holeSalt } : {};
+      return { dto: sessionKey ? { ...dto, sessionKey, keyId: TELEMETRY_KEY_ID, protocol: 2 as const, ...commits, ...raw } : dto, started: saved.snapshot(), failed } satisfies StartFacts;
     });
+    if ('lastStart' in facts && facts.lastStart) {
+      if (facts.failed) { await this.stats.invalidate(wallet); const failedRide = facts.failed; emitAnalytics(this.analytics, () => rideFailed(failedRide, isDemoWallet(this.rules.get(), wallet), 'stale_on_start')); }
+      throw new ConflictError(`the last start for this ride's pool was ${facts.lastStart.toISOString()} – the ride is closed, its ticket stays in the pot`, 'pool_last_start_passed');
+    }
     if ('closed' in facts && facts.closed) {
       if (facts.failed) { await this.stats.invalidate(wallet); const failedRide = facts.failed; emitAnalytics(this.analytics, () => rideFailed(failedRide, isDemoWallet(this.rules.get(), wallet), 'stale_on_start')); }
       throw new ConflictError(`rides for this ride's pool closed: a shift started now would end after its play deadline (${facts.closed.toISOString()}) – the ride is closed, its ticket stays in the pot`, 'rides_closed');   // after the commit: the closed ride stays closed
@@ -96,5 +134,19 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
     if (facts.failed) { const failed = facts.failed; emitAnalytics(this.analytics, () => rideFailed(failed, demo(), 'stale_on_start')); }
     emitAnalytics(this.analytics, () => rideStarted(facts.started, demo()));
     return facts.dto;
+  }
+
+  /** 32 raw bytes, base64. Skipped when the flag is off or the test did not wire entropy. The key stays off GET and heartbeat.
+      Enforce also returns the salts (re-derived from the session key). Shadow stores only the commits. */
+  private issueSessionKey(ride: Ride): { trafficSalt: string; holeSalt: string; saltCommit: string } | null {
+    const mode = this.telemetry?.mode();
+    if ((mode !== 'shadow' && mode !== 'enforce') || !this.entropy) return null;
+    const sessionKey = Buffer.from(this.entropy.hex(32), 'hex').toString('base64');
+    ride.stampSessionKey(sessionKey);
+    if (!this.hasher) return null;
+    const salts = revealRideSalts(this.hasher, ride.id, sessionKey);
+    ride.stampSalts(salts.trafficSaltCommit, salts.holeSaltCommit);
+    if (mode !== 'enforce') return null;
+    return { trafficSalt: salts.trafficSalt, holeSalt: salts.holeSalt, saltCommit: this.hasher.sha256Hex(`${salts.trafficSaltCommit}${salts.holeSaltCommit}`) };
   }
 }

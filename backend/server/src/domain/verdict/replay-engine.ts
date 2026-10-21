@@ -18,7 +18,7 @@ import { EMPTY_REPLAY_SCORES, type ReplayRedFlag, type ReplaySimScores } from '.
 import { verifyTrafficProof } from './traffic-proof.js';
 import { ReplayPhysics } from './replay-physics.js';
 import { TrafficSimulator } from './traffic-sim.js';
-import { EVENT_APPLY_GRACE_MS, REPLAY_PHYSICS_SUBSTEPS, REPLAY_SIM_HZ, stepTruckPhysics } from '../shared/index.js';
+import { EVENT_APPLY_GRACE_MS, REPLAY_PHYSICS_SUBSTEPS, REPLAY_SIM_HZ, bucketsFromCharges, countRedLights, emptyBuckets, roadNetFor, stepTruckPhysics, type DamageBuckets } from '../shared/index.js';
 import {
   GASLESS_MIN_DV, GASLESS_REJECT_GAIN, GASLESS_REJECT_STEPS, OBSTACLE_IGNORED_REJECT,
   OFFROAD_FACTOR, OFFROAD_SLACK_SECONDS, PASS_CLEAR_METRES, PASS_DAMAGE_SHARE, PASS_MIN_DAMAGE,
@@ -52,6 +52,8 @@ export interface ReplayVerificationOutput {
   readonly eventsCorrelated: number;
   readonly redFlags: ReplayRedFlag[];
   readonly scores: ReplaySimScores;
+  readonly damage: DamageBuckets;
+  readonly redLights: number;
 }
 
 const round = (v: number, d = 100): number => Math.round(v * d) / d;
@@ -89,6 +91,7 @@ export class ReplayEngine {
         simulatedCrashesVehicle: 0, simulatedCrashesBuilding: 0, eventsExpected: 0, eventsCorrelated: 0,
         redFlags: [{ code: 'bad-sample', category: 'recording', severity: 'reject', detail: unsafe, atSecond: null, atMetre: null, evidence: null }],
         scores: { ...EMPTY_REPLAY_SCORES },
+        damage: emptyBuckets(), redLights: 0,
       };
       if (batch.body.samples.length) prefix = batch.body.samples.slice(-PREFIX_ROWS);
     }
@@ -338,6 +341,10 @@ export class ReplayEngine {
     const recordedSeconds = firstRow && lastRow ? Math.max(0, round(lastRow[SAMPLE_T_COL]! - firstRow[SAMPLE_T_COL]!, 100)) : 0;
     const recordedDistance = lastRow ? round(lastRow[SAMPLE_S_COL]!, 10) : 0;
     const recordedHull = lastRow ? round(lastRow[SAMPLE_HULL_COL]!, 10) : (ride.hull ?? 100);
+    const holeCharges = [...plannedOutcomes.values(), ...donatedOutcomes.values()].map((out) => out.expected);
+    const vehicleCharges = traffic.contacts.map((c) => c.expectedDamage);
+    const damage = bucketsFromCharges(holeCharges, vehicleCharges, recordedHull);
+    const redLights = rows.length < 2 ? 0 : countRedLights(roadNetFor(ride.seed, ride.trip ?? 'classic'), rows.map((r) => ({ s: r[SAMPLE_S_COL] ?? 0, t: r[SAMPLE_T_COL] ?? 0 })));
     const totalEventsExpected = liveEventsExpected + ride.challenges.filter((c) => c.deadlineMs <= (endedMs - (ride.startedAt?.getTime() ?? 0))).length;
     const challengeAnswered = checkChallenges(
       ride.challenges,
@@ -365,7 +372,7 @@ export class ReplayEngine {
       simulatedCrashesVehicle: traffic.contacts.filter((c) => c.kind !== 'scrape').length,
       simulatedCrashesBuilding: 0,
       eventsExpected: totalEventsExpected, eventsCorrelated: liveEventsCorrelated + challengeAnswered,
-      redFlags, scores,
+      redFlags, scores, damage, redLights,
     };
   }
 

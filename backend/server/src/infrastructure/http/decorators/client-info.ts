@@ -11,6 +11,12 @@ export const clientInfoOf = (req: Request): ClientInfo => {
 };
 export const CurrentClient = createParamDecorator((_data: unknown, ctx: ExecutionContext): ClientInfo => clientInfoOf(ctx.switchToHttp().getRequest<Request>()));
 
+/** Stable browser id for admin sign-in challenges (`x-fc-client`). Missing or blank becomes `default`. */
+export const CurrentClientId = createParamDecorator((_data: unknown, ctx: ExecutionContext): string => {
+  const raw = ctx.switchToHttp().getRequest<Request>().header('x-fc-client')?.trim().slice(0, 64);
+  return raw ? raw : 'default';
+});
+
 /** The browser's Origin header (null when absent) – which of the app's own pages a sign-in comes from. Only ever compared with configured origins. */
 export const CurrentOrigin = createParamDecorator((_data: unknown, ctx: ExecutionContext): string | null => ctx.switchToHttp().getRequest<Request>().header('origin') ?? null);
 

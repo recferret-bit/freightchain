@@ -42,10 +42,11 @@ export class UnprocessableEntityError extends DomainError {
 
 export class UnauthorizedError extends DomainError {
   readonly statusCode = 401;
-  readonly errorCode = 'unauthorized';
+  readonly errorCode: string;
 
-  constructor(message = 'Unauthorized') {
+  constructor(message = 'Unauthorized', errorCode = 'unauthorized') {
     super(message);
+    this.errorCode = errorCode;
   }
 }
 
@@ -76,6 +77,16 @@ export class VersionConflictError extends DomainError {
 
   constructor(message = 'The record was changed by another request – retry') {
     super(message);
+  }
+}
+
+/** Dual approval is waiting on a second admin. 202 so the first request did not apply the change. */
+export class PendingApprovalError extends DomainError {
+  readonly statusCode = 202;
+  readonly errorCode = 'pending_approval';
+
+  constructor(readonly proposalId: string) {
+    super(`waiting for a second admin: ${proposalId}`);
   }
 }
 
@@ -119,6 +130,17 @@ export class ResponseSchemaViolationError extends DomainError {
 
   constructor(message = 'Response did not match its schema') {
     super(message);
+  }
+}
+
+/** The minigame window closed. ProblemDetailsFilter renders `errorCode` (mg_expired) at 410. */
+export class GoneError extends DomainError {
+  readonly statusCode = 410;
+  readonly errorCode: string;
+
+  constructor(message = 'Gone', errorCode = 'gone') {
+    super(message);
+    this.errorCode = errorCode;
   }
 }
 

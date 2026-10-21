@@ -1,4 +1,5 @@
 /* HTTP client for the dockerised API. A tweetnacl keypair stands in for the wallet extension. */
+import { createHash, randomBytes } from 'node:crypto';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 
@@ -84,9 +85,26 @@ export async function signInAdmin(api, keys = devAdmin()) {
   return { ...keys, session: ver.json };
 }
 
+/** Headers for a mutating /api/admin call. The surface guard signs domain, wallet, method, path, body hash, nonce, and time. */
+export function adminMutateHeaders(keys, path, body, method = 'POST') {
+  const domain = new URL(BASE).hostname;
+  const json = body == null ? '' : JSON.stringify(body);
+  const bodyHash = createHash('sha256').update(json).digest('hex');
+  const nonce = randomBytes(16).toString('hex');
+  const timestamp = String(Date.now());
+  const route = (path.split('?')[0] ?? '').toLowerCase().replace(/\/+$/, '') || '/';
+  const text = [domain, keys.wallet, method.toUpperCase(), route, bodyHash, nonce, timestamp].join('\n');
+  return {
+    'x-fc-admin': '1',
+    'x-fc-admin-sig': sign(keys.secretKey, text),
+    'x-fc-admin-nonce': nonce,
+    'x-fc-admin-ts': timestamp,
+  };
+}
+
 /** Admin changes: ask for the exact text, sign it, return the signature. */
 export async function adminSign(api, keys, path, body) {
-  const ch = await api.call(path, { body, headers: { 'x-fc-admin': '1' } });
+  const ch = await api.call(path, { body, headers: adminMutateHeaders(keys, path, body) });
   if (ch.status !== 200) throw new Error(`challenge ${path} ${ch.status} ${JSON.stringify(ch.json)}`);
   return sign(keys.secretKey, ch.json.message);
 }

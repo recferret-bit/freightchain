@@ -20,6 +20,11 @@ export class PoolMapper {
       winnersRoot: row.winnersRoot,
       committedAt: row.committedAt,
       payFrom: row.payFrom,
+      ...(row.opensAt ? { opensAt: row.opensAt } : {}),
+      ...(row.salesCloseAt ? { salesCloseAt: row.salesCloseAt } : {}),
+      ...(row.lastStartAt ? { lastStartAt: row.lastStartAt } : {}),
+      ...(row.playCloseAt ? { playCloseAt: row.playCloseAt } : {}),
+      ...(row.validationUntil ? { validationUntil: row.validationUntil } : {}),
     });
   }
 

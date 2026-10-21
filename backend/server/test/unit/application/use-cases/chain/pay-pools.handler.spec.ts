@@ -142,22 +142,26 @@ describe('PayPoolsHandler – the payout job (program v4: commit the winners, pa
   });
 
   describe('the commit (program v4 – audit H5-B)', () => {
-    it('is made at the play deadline and nothing is paid before payFrom (`committed`, the payFrom in the note); from payFrom the prizes go out', async () => {
+    it('waits through validation, then commits, and nothing is paid before payFrom', async () => {
       const { ctx, payout, run, mirror, onChain, t } = await setup();
       await poolRide(ctx, W.alice, 9_000); await poolRide(ctx, W.bob, 5_000);
-      payout.now = new Date(t - DAY);   // the chain clock AT the play deadline: payFrom = max(payoutAt, now + review window) = t
+      payout.now = new Date(t - DAY);   // play deadline: validation (payoutAt) is still open
+      expect((await run()).pools[0]).toMatchObject({ state: 'waiting_review', paid: [], closed: null });
+      expect(payout.calls).toEqual([]);
+      const payFrom = new Date(t + DAY);   // commit at validationUntil: payFrom = now + the review window
+      payout.now = new Date(t);
       const pass = (await run()).pools[0];
-      expect(pass).toMatchObject({ state: 'committed', note: expect.stringContaining(new Date(t).toISOString()), paid: [], closed: null });
+      expect(pass).toMatchObject({ state: 'committed', note: expect.stringContaining(payFrom.toISOString()), paid: [], closed: null });
       expect((await mirror()).payoutState).toBe('committed');
       expect(payout.calls).toEqual(['commit 1 2']);
       const rows = await ctx.poolPayouts.listByPool(1);
       expect(rows.map((r) => [r.rank, r.wallet, r.status])).toEqual([[1, W.alice, 'planned'], [2, W.bob, 'planned']]);
       const tree = winnersTree(1, rows.map((r) => ({ wallet: r.wallet, lamports: r.lamports })), sha);
-      expect(onChain()).toMatchObject({ winnersRoot: tree.root.toString('base64'), winnersCount: 2, winnersTotal: tree.total, payFrom: new Date(t) });
-      payout.now = new Date(t - 1);   // one ms before payFrom: still locked, no second commit
+      expect(onChain()).toMatchObject({ winnersRoot: tree.root.toString('base64'), winnersCount: 2, winnersTotal: tree.total, payFrom });
+      payout.now = new Date(payFrom.getTime() - 1);
       expect((await run()).pools[0]).toMatchObject({ state: 'committed', paid: [] });
       expect(payout.calls).toEqual(['commit 1 2']);
-      payout.now = new Date(t);
+      payout.now = payFrom;
       expect((await run()).pools[0]).toMatchObject({ state: 'paid', paid: [{ rank: 1, wallet: W.alice }, { rank: 2, wallet: W.bob }] });
     });
 

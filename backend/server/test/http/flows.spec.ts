@@ -26,6 +26,7 @@ import { LIVE_ENV, LIVE_FLAGS_ENV, LIVE_OFF_ENV, liveFlagsScenarios, liveOffScen
 import { AGREEMENTS_ENV, agreementsScenarios } from '../scenarios/agreements.scenarios.js';
 import { ACTIONS_PROGRAM_ENV, actionsBuyScenarios, actionsScenarios } from '../scenarios/actions.scenarios.js';
 import { referralScenarios } from '../scenarios/referrals.scenarios.js';
+import { MINIGAMES_ENV, minigameScenarios } from '../scenarios/minigames.scenarios.js';
 import { adminGapScenarios } from '../scenarios/http-gaps-admin.scenarios.js';
 import { editorGapScenarios, editorMcpGapScenarios } from '../scenarios/http-gaps-editor.scenarios.js';
 import { HOST_GAP_ENV, hostGapScenarios } from '../scenarios/http-gaps-host.scenarios.js';
@@ -65,6 +66,7 @@ for (const [name, env, scenarios] of [
   ['solana actions: discovery, shift card, ride blink', {}, actionsScenarios],
   ['solana actions: one program-mode ticket', ACTIONS_PROGRAM_ENV, actionsBuyScenarios],
   ['referrals: a code, one referrer, a gift colour', {}, referralScenarios],
+  ['phone minigames: phone-sms on a 1h ride', MINIGAMES_ENV, minigameScenarios],
   ['http gaps: admin directory and signed changes', ADMIN_ENV, adminGapScenarios],
   ['http gaps: editor logout and signed writes', EDITOR_ENV, editorGapScenarios],
   ['http gaps: editor mcp entity head', EDITOR_JOBS_ENV, editorMcpGapScenarios],

@@ -1,6 +1,7 @@
 import type { RideTicket } from '../players/ride-ticket.entity.js';
 import type { TicketGrantProps, TicketSource } from '../players/ride-ticket.types.js';
 import type { Pool } from './pool.entity.js';
+import { derivedSchedule, schedulePhase, type PoolPhase } from './pool-schedule.js';
 import type { PayoutState, PoolStatus } from './pool.types.js';
 
 /** An escrowed prize pool as the lobby and the landing show it ("7 / 10 committed"). Lamports are integers, timestamps epoch ms. */
@@ -38,16 +39,28 @@ export interface PrizePoolDto {
   split: { prizeBps: number; seedBps: number; feeBps: number; referralBps: number };
   treasuries: { fee: string; seed: string };
   roundId: number | null;
+  opensAt: number;
+  salesCloseAt: number;
+  lastStartAt: number;
+  playCloseAt: number;
+  validationUntil: number;
+  /** upcoming | open | finishing | validating | paid | closed */
+  phase: PoolPhase;
 }
 
-export const toPrizePoolDto = (pool: Pool): PrizePoolDto => {
+export const toPrizePoolDto = (pool: Pool, now?: Date): PrizePoolDto => {
   const s = pool.snapshot();
+  const at = now ?? s.prepDeadline;
+  const schedule = derivedSchedule(s);
   return {
     id: s.id, address: s.address, tier: s.tier, label: s.label, status: s.status, priceLamports: s.priceLamports, minTickets: s.minTickets, maxTickets: s.maxTickets,
     maxPerWallet: s.maxPerWallet, sold: s.ticketsSold, buyers: s.buyers, toGo: pool.ticketsToGo, progressPct: pool.progress.pct,
     prepDeadline: s.prepDeadline.getTime(), playDeadline: s.playDeadline.getTime(), payoutAt: s.payoutAt.getTime(),
     payout: { state: s.payoutState, note: s.payoutNote, held: s.hold !== null }, vaultLamports: s.vaultLamports, sponsoredLamports: s.sponsored, potLamports: pool.pot,
     split: { prizeBps: s.prizeBps, seedBps: s.seedBps, feeBps: s.feeBps, referralBps: s.referralBps ?? 0 }, treasuries: { fee: s.feeTreasury, seed: s.seedTreasury }, roundId: s.roundId,
+    opensAt: schedule.opensAt.getTime(), salesCloseAt: schedule.salesCloseAt.getTime(), lastStartAt: schedule.lastStartAt.getTime(),
+    playCloseAt: schedule.playCloseAt.getTime(), validationUntil: schedule.validationUntil.getTime(),
+    phase: schedulePhase(s.status, s.payoutState, schedule, at),
   };
 };
 
@@ -67,17 +80,20 @@ export interface TicketBalanceDto {
   refundable: boolean;
   /** an unused ticket here can be ridden NOW (live pool, before its play deadline) – what POST /api/rides spends */
   ridable: boolean;
-  /** the last moment a shift can START with this ticket (ms): the pool's play deadline minus the tier's shift – a ride counts only when it ENDED by the
-      deadline; unused tickets after it are spent on nothing */
+  /** the last moment a shift can START with this ticket (ms): lastStartAt, or earlier when the shift could not finish by play close */
   rideBy: number;
+  /** an unused ticket after lastStartAt: shown as spent, not refundable. The lamports stay in this pool. */
+  burned: boolean;
 }
 
 /** `refundable` = money is owed back: the pool failed, or it missed its goal and nobody has failed it yet (the refund transaction then fails it first). */
 export const toTicketBalanceDto = (ticket: RideTicket, pool: Pool, now: Date, shiftSeconds: number = pool.shiftSeconds): TicketBalanceDto => {
   const s = pool.snapshot();
+  const burned = now.getTime() > pool.lastStartAt.getTime() && ticket.balance > 0 && s.status !== 'refunding' && s.status !== 'cancelled';
   return {
-    poolId: s.id, tier: s.tier, label: s.label, status: s.status, balance: ticket.balance, bought: ticket.bought, cap: s.maxPerWallet,
-    refundable: (s.status === 'refunding' || pool.isPastDeadlineUnderMinimum(now)) && ticket.bought > 0, ridable: ticket.balance > 0 && pool.isRidable(now, shiftSeconds), rideBy: pool.startBy(shiftSeconds).getTime(),
+    poolId: s.id, tier: s.tier, label: s.label, status: s.status, balance: burned ? 0 : ticket.balance, bought: ticket.bought, cap: s.maxPerWallet,
+    refundable: !burned && (s.status === 'refunding' || pool.isPastDeadlineUnderMinimum(now)) && ticket.bought > 0,
+    ridable: !burned && ticket.balance > 0 && pool.isRidable(now, shiftSeconds), rideBy: pool.startBy(shiftSeconds).getTime(), burned,
   };
 };
 

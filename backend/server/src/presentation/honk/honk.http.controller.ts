@@ -5,6 +5,7 @@ import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js'
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { TermsGuard } from '../common/guards/terms.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import { z } from 'zod';
@@ -31,7 +32,7 @@ export class HonkHttpController {
     private readonly queryBus: QueryBus,
   ) {}
 
-  @Get('honk') @UseGuards(PlayerAuthGuard)
+  @Get('honk') @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(honkAccountResponse)
   mine(@CurrentPlayer() player: PlayerIdentity): Promise<HonkAccountDto> {
     return this.queryBus.execute<GetHonkQuery, HonkAccountDto>(new GetHonkQuery(player.wallet));
@@ -43,28 +44,28 @@ export class HonkHttpController {
     return this.queryBus.execute<GetHonkCatalogQuery, HonkCatalogEntry[]>(new GetHonkCatalogQuery());
   }
 
-  @Post('honk/visuals') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('honk/visuals') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(honkVisualResponse)
   visual(@CurrentPlayer() player: PlayerIdentity, @ZodBody(honkVisualBodySchema) body: VisualBody): Promise<HonkVisualResult> {
     return this.commandBus.execute<MintHonkVisualCommand, HonkVisualResult>(new MintHonkVisualCommand(player.wallet, body.slot, body.item, body.signature));
   }
 
   /** 200 the burn · 409 not enough TEN4 · 429 one HONK per 10 s, or the chat window is taken (the burn is refunded). `signature` is required only when HONK_PROGRAM_ID is set. */
-  @Post('watch/:id/honk') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('watch/:id/honk') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(honkBurnResponse)
   honk(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(honkBurnBodySchema) body: HonkBurnBody): Promise<HonkBurnResult> {
     return this.commandBus.execute<BurnHonkCommand, HonkBurnResult>(new BurnHonkCommand(player.wallet, params.id, body.signature));
   }
 
   /** 200 the burn · 409 not enough TEN4 · 429 the effect window is taken (the burn is refunded). Not the HONK chat line. */
-  @Post('watch/:id/honk/time') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('watch/:id/honk/time') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(honkTimeResponse)
   honkTime(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(honkTimeBodySchema) body: HonkTimeBody): Promise<HonkTimeBurnResult> {
     return this.commandBus.execute<BurnHonkTimeCommand, HonkTimeBurnResult>(new BurnHonkTimeCommand(player.wallet, params.id, body.phase, body.signature));
   }
 
   /** 200 the burn · 409 not enough TEN4 · 429 the effect window is taken (the burn is refunded). Not a donation. */
-  @Post('watch/:id/honk/weather') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('watch/:id/honk/weather') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(honkWeatherResponse)
   honkWeather(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(honkWeatherBodySchema) body: HonkWeatherBody): Promise<HonkWeatherBurnResult> {
     return this.commandBus.execute<BurnHonkWeatherCommand, HonkWeatherBurnResult>(new BurnHonkWeatherCommand(player.wallet, params.id, body.weather, body.signature));

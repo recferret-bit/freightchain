@@ -157,7 +157,7 @@ export const CFG = {
   FOG_CLEAR: 0.3 / 9,        // fog cleared per second by the cooler at full strength (one third of FROST_MELT), from the vents
   FOG_HAZE: 0.5,             // drawn strength of the milky haze (was 1): the same thickness looks half as opaque
   SNOW_FLAKES: 240,          // falling snowflakes at snow = 1
-  PHONE: { BOOT: 3000, HOME: 2500, LAUNCH_AT: 2000, UI_MS: 450, FREE_MAX: 3000, FREE_IDLE: 15000 },   // the cab phone (ui/map.js), ms: the boot animation · the home screen (Maps is pressed at LAUNCH_AT, open by HOME) · the map's controls sliding in; the map's drag limit (m from the truck) and the idle time (ms) before it follows the truck again
+  PHONE: { BOOT: 3000, HOME: 2500, LAUNCH_AT: 2000, UI_MS: 450, FREE_MAX: 3000, FREE_IDLE: 15000 },   // the cab phone (ui/map.js), ms. BOOT is the Freight Chain mark. The launcher stays until an icon is opened (HOME and LAUNCH_AT are no longer a timer). UI_MS slides the map controls in. FREE_MAX (m from the truck) and FREE_IDLE (ms) bound the map's drag.
 };
 // The road never ends. A shift is complete after COMPLETE_DIST metres (speed is governed, so the distance can't be covered faster than
 // COMPLETE_DIST_K × RIDE_MIN_SECONDS; RIDE_MIN_SECONDS is the nominal shift length, not a minimum time).

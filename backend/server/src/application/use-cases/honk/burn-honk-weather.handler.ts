@@ -3,7 +3,7 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { RideEvent } from '../../../domain/live/ride-event.entity.js';
 import { EFFECT_WINDOW_MS } from '../../../domain/live/live-rules.js';
 import { formatHonk, HONK_WEATHER_BURN, TOKEN_SYMBOL } from '../../../domain/honk/tokenomics.js';
-import { ConflictError } from '../../../domain/shared/errors.js';
+import { ConflictError, NotFoundError } from '../../../domain/shared/errors.js';
 import { HonkRepositoryPort } from '../../ports/honk/honk.repository.port.js';
 import { PlayerRepositoryPort } from '../../ports/players/player.repository.port.js';
 import { RideEventRepositoryPort } from '../../ports/live/ride-event.repository.port.js';
@@ -39,6 +39,8 @@ export class BurnHonkWeatherHandler implements ICommandHandler<BurnHonkWeatherCo
   ) {}
 
   async execute({ wallet, rideId, weather, signature }: BurnHonkWeatherCommand): Promise<HonkWeatherBurnResult> {
+    void wallet; void rideId; void weather; void signature;
+    throw new NotFoundError('TEN4 weather changes were removed', 'not_found');
     const now = this.clock.now();
     await this.access.requirePostable(rideId, wallet, { kind: 'honk-weather' }, now);   // paid, live, not the driver, not muted. Not a donation, so LIVE_EFFECTS does not gate it.
     await requireHonkBurn(this.chain, signature, wallet, HONK_WEATHER_BURN);

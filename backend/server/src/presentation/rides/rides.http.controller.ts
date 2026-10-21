@@ -1,5 +1,5 @@
-import { Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
-import { rideResponse, pendingRideResponse, rideReplaysResponse, paymentInstructionsResponse, confirmPaymentResponse, reconcilePaymentResponse, batchReceiptResponse } from '../common/response/wire.js';
+import { Controller, Get, Header, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { rideResponse, pendingRideResponse, rideReplaysResponse, paymentInstructionsResponse, confirmPaymentResponse, reconcilePaymentResponse, batchReceiptResponse, num, numOrNull, obj, str } from '../common/response/wire.js';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { PendingRideDto, RideDto } from '../../domain/rides/ride.dto.js';
 import { ConfirmPaymentCommand, type ConfirmPaymentResultDto } from '../../application/use-cases/rides/confirm-payment/confirm-payment.command.js';
@@ -9,10 +9,14 @@ import { GetPaymentInstructionsQuery, type PaymentInstructionsDto } from '../../
 import { GetPendingRideQuery } from '../../application/use-cases/rides/get-pending-ride/get-pending-ride.query.js';
 import { GetRideQuery } from '../../application/use-cases/rides/get-ride/get-ride.query.js';
 import { HeartbeatRideCommand } from '../../application/use-cases/rides/heartbeat-ride/heartbeat-ride.command.js';
+import { AnswerMinigameCommand, GetMinigameAssetQuery, OpenMinigameCommand } from '../../application/use-cases/rides/minigames/minigames.command.js';
+import type { MinigameAnswerDto } from '../../application/services/minigame-session.service.js';
 import { ReconcilePaymentCommand, type ReconcilePaymentResultDto } from '../../application/use-cases/rides/reconcile-payment/reconcile-payment.command.js';
 import { StartRideCommand } from '../../application/use-cases/rides/start-ride/start-ride.command.js';
+import { SubmitRideAppealCommand, type RideAppealDto } from '../../application/use-cases/rides/ride-appeal/ride-appeal.command.js';
 import { UploadBatchCommand } from '../../application/use-cases/telemetry/upload-batch/upload-batch.command.js';
 import { GetRideReplaysQuery } from '../../application/use-cases/verdict/get-ride-replays/get-ride-replays.query.js';
+import type { MinigameOpenDto } from '../../domain/minigames/phone-sms.js';
 import type { RideReplaysDto } from '../../domain/verdict/ride-replay.entity.js';
 import type { BatchBody } from '../../domain/telemetry/ride-batch.entity.js';
 import type { BatchReceiptDto } from '../../domain/telemetry/telemetry.dto.js';
@@ -20,18 +24,24 @@ import type { GeoHeaders } from '../../application/ports/prize/geo-locator.port.
 import { ClientGeo } from '../../infrastructure/http/decorators/client-geo.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
-import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
+import { ZodResponse, ZodResponseRaw } from '../../infrastructure/http/decorators/zod-response.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { TermsGuard } from '../common/guards/terms.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import {
-  batchBodySchema, confirmPaymentBodySchema, createRideBodySchema, endRideBodySchema, heartbeatBodySchema, startRideBodySchema,
-  type ConfirmPaymentBody, type CreateRideBody, type EndRideBody, type HeartbeatBody, type StartRideBody,
+  answerMinigameBodySchema, appealBodySchema, batchBodySchema, confirmPaymentBodySchema, createRideBodySchema, endRideBodySchema, heartbeatBodySchema, minigameAnswerResponse, minigameAssetParamsSchema, minigameEventParamsSchema, minigameOpenResponse, openMinigameBodySchema, startRideBodySchema,
+  type AnswerMinigameBody, type AppealBody, type ConfirmPaymentBody, type CreateRideBody, type EndRideBody, type HeartbeatBody, type MinigameAssetParams, type MinigameEventParams, type OpenMinigameBody, type StartRideBody,
 } from './dto/rides.dto.js';
+import { z } from 'zod';
+
+const appealResponse = obj({
+  id: str, rideId: str, poolId: num, wallet: str, status: z.enum(['open', 'upheld', 'denied']), reason: str, createdAt: num, resolvedAt: numOrNull,
+});
 
 /** A rider's rides: order / get one, pay for it, start it, report progress, end it. Everything is private to the signed-in wallet. */
 @Controller('api/rides')
-@UseGuards(PlayerAuthGuard)
+@UseGuards(PlayerAuthGuard, TermsGuard)
 export class RidesHttpController {
   constructor(
     private readonly commandBus: CommandBus,
@@ -88,7 +98,14 @@ export class RidesHttpController {
   @Post(':id/start') @HttpCode(200)
   @ZodResponse(rideResponse)
   start(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(startRideBodySchema) body: StartRideBody, @ClientGeo() headers: GeoHeaders = {}): Promise<RideDto> {
-    return this.commandBus.execute<StartRideCommand, RideDto>(new StartRideCommand(player.wallet, params.id, body.trip ?? null, body.ranked === true, headers));
+    return this.commandBus.execute<StartRideCommand, RideDto>(new StartRideCommand(player.wallet, params.id, body.trip ?? null, body.ranked === true, headers, body.mgMode ?? 'normal', body.lang ?? 'en'));
+  }
+
+  /** One appeal per rejected or flagged pool ride, before validationUntil. */
+  @Post(':id/appeal') @HttpCode(200)
+  @ZodResponse(appealResponse)
+  appeal(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(appealBodySchema) body: AppealBody): Promise<RideAppealDto> {
+    return this.commandBus.execute(new SubmitRideAppealCommand(player.wallet, params.id, body.reason));
   }
 
   @Post(':id/heartbeat') @HttpCode(200)
@@ -108,5 +125,23 @@ export class RidesHttpController {
   @ZodResponse(rideResponse)
   end(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(endRideBodySchema) body: EndRideBody): Promise<RideDto> {
     return this.commandBus.execute<EndRideCommand, RideDto>(new EndRideCommand(player.wallet, params.id, body.outcome, body.report, body.reason));
+  }
+
+  @Post(':id/minigames/:eventId/open') @HttpCode(200)
+  @ZodResponse(minigameOpenResponse)
+  openMinigame(@CurrentPlayer() player: PlayerIdentity, @ZodParams(minigameEventParamsSchema) params: MinigameEventParams, @ZodBody(openMinigameBodySchema) body: OpenMinigameBody): Promise<MinigameOpenDto> {
+    return this.commandBus.execute<OpenMinigameCommand, MinigameOpenDto>(new OpenMinigameCommand(player.wallet, params.id, params.eventId, body.mac, body.variantSeq, body.safe ?? null));
+  }
+
+  @Post(':id/minigames/:eventId/answer') @HttpCode(200)
+  @ZodResponse(minigameAnswerResponse)
+  answerMinigame(@CurrentPlayer() player: PlayerIdentity, @ZodParams(minigameEventParamsSchema) params: MinigameEventParams, @ZodBody(answerMinigameBodySchema) body: AnswerMinigameBody): Promise<MinigameAnswerDto> {
+    return this.commandBus.execute<AnswerMinigameCommand, MinigameAnswerDto>(new AnswerMinigameCommand(player.wallet, params.id, params.eventId, body.mac, body.nonce, body.attempt, body.answer, body.safe ?? null));
+  }
+
+  @Get(':id/minigames/:eventId/assets/:assetId') @Header('Content-Type', 'image/svg+xml') @Header('Cache-Control', 'no-store') @Header('X-Content-Type-Options', 'nosniff')
+  @ZodResponseRaw()
+  minigameAsset(@CurrentPlayer() player: PlayerIdentity, @ZodParams(minigameAssetParamsSchema) params: MinigameAssetParams): Promise<string> {
+    return this.queryBus.execute<GetMinigameAssetQuery, string>(new GetMinigameAssetQuery(player.wallet, params.id, params.eventId, params.assetId));
   }
 }

@@ -3,6 +3,7 @@ import { VersionConflictError } from '../../../../domain/shared/errors.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { PlayerRepositoryPort } from '../../../ports/players/player.repository.port.js';
+import { T_CAP_SECONDS } from '../../../../domain/rides/ride-rules.js';
 import { RideQueryPort } from '../../../ports/rides/ride-query.port.js';
 import { RideRepositoryPort } from '../../../ports/rides/ride.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
@@ -38,7 +39,9 @@ export class SweepStaleRidesHandler implements ICommandHandler<SweepStaleRidesCo
 
   async execute(): Promise<SweepStaleRidesResultDto> {
     const rules = this.rules.get();
-    const stale = await this.rideQuery.staleRunning(new Date(this.clock.now().getTime() - rules.hbTimeoutMs), BATCH);
+    const nowMs = this.clock.now().getTime();
+    const stale = await this.rideQuery.staleRunning(new Date(nowMs - rules.hbTimeoutMs), BATCH);
+    const capped = await this.rideQuery.overCapRunning(new Date(nowMs - T_CAP_SECONDS * 1000), BATCH);
     let ended = 0, skipped = 0;
     for (const { id, wallet } of stale) {
       const failed = await this.transactions.run(async (tx) => {
@@ -60,6 +63,28 @@ export class SweepStaleRidesHandler implements ICommandHandler<SweepStaleRidesCo
       ended++;
       await this.stats.invalidate(wallet);
       emitAnalytics(this.analytics, () => rideFailed(failed, isDemoWallet(rules, wallet), 'stale_sweep'));
+    }
+    const seen = new Set(stale.map((row) => row.id));
+    for (const { id, wallet } of capped) {
+      if (seen.has(id)) continue;
+      const failed = await this.transactions.run(async (tx) => {
+        await this.players.findByWalletForUpdate(wallet, tx);
+        const ride = await this.rides.findById(id, tx);
+        const now = this.clock.now();
+        if (!ride || ride.status !== 'running' || ride.tier !== '1h' || !ride.startedAt) return null;
+        if ((now.getTime() - ride.startedAt.getTime()) / 1000 <= T_CAP_SECONDS) return null;
+        ride.failTimeout(now);
+        const props = (await this.rides.save(ride, tx)).snapshot();
+        await this.stats.recordRide(props, tx);
+        return props;
+      }).catch((error: unknown) => {
+        if (error instanceof VersionConflictError) return null;
+        throw error;
+      });
+      if (!failed) { skipped++; continue; }
+      ended++;
+      await this.stats.invalidate(wallet);
+      emitAnalytics(this.analytics, () => rideFailed(failed, isDemoWallet(rules, wallet), 'timeout'));
     }
     return { ended, skipped };
   }

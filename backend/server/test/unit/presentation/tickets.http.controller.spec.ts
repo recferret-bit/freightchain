@@ -12,7 +12,7 @@ describe('TicketsHttpController', () => {
   it('create → the command, pending / order → their queries, all with the signed-in wallet', async () => {
     const commands = busMock({ id: 'o' }), queries = busMock({ order: null });
     const c = new TicketsHttpController(commands.bus, queries.bus);
-    expect(await c.create({ wallet: 'w' }, { poolId: 1, qty: 2 })).toEqual({ id: 'o' });
+    expect(await c.create({ wallet: 'w' }, { poolId: 1, qty: 2, burnWarningAccepted: true })).toEqual({ id: 'o' });
     expect(commands.last()).toEqual(new CreateTicketOrderCommand('w', 1, 2));
     await c.pending({ wallet: 'w' }); expect(queries.last()).toEqual(new GetPendingTicketOrderQuery('w'));
     await c.order({ wallet: 'w' }, { id: 'x' }); expect(queries.last()).toEqual(new GetTicketOrderQuery('w', 'x'));
@@ -22,8 +22,10 @@ describe('TicketsHttpController', () => {
   });
 
   it('bodies and ids are validated', () => {
-    expect(createTicketOrderBodySchema.safeParse({ poolId: 1, qty: 2 }).success).toBe(true);
-    for (const b of [{ poolId: 1, qty: 0 }, { poolId: 1, qty: 101 }, { poolId: -1, qty: 1 }, { poolId: '1', qty: 1 }, { poolId: 1 }]) expect(createTicketOrderBodySchema.safeParse(b).success, JSON.stringify(b)).toBe(false);
+    expect(createTicketOrderBodySchema.safeParse({ poolId: 1, qty: 2, burnWarningAccepted: true }).success).toBe(true);
+    expect(createTicketOrderBodySchema.safeParse({ poolId: 1, qty: 2 }).success).toBe(false);
+    expect(createTicketOrderBodySchema.safeParse({ poolId: 1, qty: 2, burnWarningAccepted: false }).success).toBe(false);
+    for (const b of [{ poolId: 1, qty: 0, burnWarningAccepted: true }, { poolId: 1, qty: 101, burnWarningAccepted: true }, { poolId: -1, qty: 1, burnWarningAccepted: true }, { poolId: '1', qty: 1, burnWarningAccepted: true }, { poolId: 1, burnWarningAccepted: true }]) expect(createTicketOrderBodySchema.safeParse(b).success, JSON.stringify(b)).toBe(false);
     expect(orderIdParamsSchema.safeParse({ id: '00000000-0000-4000-8000-000000000001' }).success).toBe(true);
     expect(orderIdParamsSchema.safeParse({ id: 'nope' }).success).toBe(false);
     expect(confirmTicketOrderBodySchema.safeParse({ signature: 'nope' }).success).toBe(false);

@@ -32,9 +32,9 @@ export function pledgeScenarios(h: () => Harness): void {
   it('pledge → sign → confirm → active; the pool reviewed and paid → the driver is attested before the close → the pledge job settles it on chain', async () => {
     const driver = await login();
     sec(3 * DAY); // an old wallet: a brand-new one in the top 3 would go under review first
-    const payoutAt = new Date(now() + 3_600_000), prepDeadline = new Date(now() + 1_800_000); // still selling: the promo's ticket lands
-    await get(PoolRepositoryPort).upsert(aPool({ id: 1, status: 'active', ticketsSold: 2, minTickets: 2, payoutAt, playDeadline: payoutAt, prepDeadline }, new Date(now())));
-    h().poolChain.pools.set(1, chainPool(new Date(now()), { poolId: 1, status: 'active', ticketsSold: 2, minTickets: 2, vaultLamports: 890_880 + 100_000_000, escrowLamports: 100_000_000, playDeadline: payoutAt, payoutAt, prepDeadline }));
+    const playDeadline = new Date(now() + 90 * 60_000), payoutAt = playDeadline, prepDeadline = new Date(now() + 30 * 60_000); // last start is 15 min ahead; sales still open
+    await get(PoolRepositoryPort).upsert(aPool({ id: 1, status: 'active', ticketsSold: 2, minTickets: 2, payoutAt, playDeadline, prepDeadline }, new Date(now())));
+    h().poolChain.pools.set(1, chainPool(new Date(now()), { poolId: 1, status: 'active', ticketsSold: 2, minTickets: 2, vaultLamports: 890_880 + 100_000_000, escrowLamports: 100_000_000, playDeadline, payoutAt, prepDeadline }));
     await get(PromoRepositoryPort).insert(aPromo(new Date(now()), { code: 'ONE', maxRedemptions: null, effect: ticketEffect({ credits: 1 }) }));
     await driver.agent.post('/api/promo/redeem').send({ code: 'ONE' }).expect(200);
     const ride = (await driver.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
@@ -88,9 +88,9 @@ export function pledgeScenarios(h: () => Harness): void {
 
   it('a pledge nobody signed stays pending and costs nothing; a pledge to a driver who never finishes is refunded once the pool is over', async () => {
     const driver = await login();
-    const payoutAt = new Date(now() + 3_600_000), prepDeadline = new Date(now() + 1_800_000); // still selling: the promo's ticket lands
-    await get(PoolRepositoryPort).upsert(aPool({ id: 1, status: 'active', payoutAt, playDeadline: payoutAt, prepDeadline }, new Date(now())));
-    h().poolChain.pools.set(1, chainPool(new Date(now()), { poolId: 1, status: 'active', playDeadline: payoutAt, payoutAt, prepDeadline }));
+    const playDeadline = new Date(now() + 90 * 60_000), payoutAt = playDeadline, prepDeadline = new Date(now() + 30 * 60_000);
+    await get(PoolRepositoryPort).upsert(aPool({ id: 1, status: 'active', payoutAt, playDeadline, prepDeadline }, new Date(now())));
+    h().poolChain.pools.set(1, chainPool(new Date(now()), { poolId: 1, status: 'active', playDeadline, payoutAt, prepDeadline }));
     await get(PromoRepositoryPort).insert(aPromo(new Date(now()), { code: 'ONE', maxRedemptions: null, effect: ticketEffect({ credits: 1 }) }));
     await driver.agent.post('/api/promo/redeem').send({ code: 'ONE' }).expect(200);
     const ride = (await driver.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;

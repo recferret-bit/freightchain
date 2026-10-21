@@ -18,7 +18,7 @@ describe('EnvService', () => {
   it('RESPONSE_SCHEMA_CHECK defaults strict outside production and warn in production; empty is unset', () => {
     expect(withEnv({ ...base, RESPONSE_SCHEMA_CHECK: undefined }).responseSchemaCheck).toBe('strict');
     expect(withEnv({ ...base, NODE_ENV: 'test', RESPONSE_SCHEMA_CHECK: undefined }).responseSchemaCheck).toBe('strict');
-    expect(withEnv({ ...base, NODE_ENV: 'production', JWT_SECRET: 'z'.repeat(40), TREASURY_PUBKEY: Keypair.generate().publicKey.toBase58(), TRUST_PROXY: '1', RESPONSE_SCHEMA_CHECK: undefined }).responseSchemaCheck).toBe('warn');
+    expect(withEnv({ ...base, NODE_ENV: 'production', JWT_SECRET: 'z'.repeat(40), TREASURY_PUBKEY: Keypair.generate().publicKey.toBase58(), TRUST_PROXY: '1', LIVE_FREE_DONATIONS: 'off', LIVE_EFFECTS: 'off', RESPONSE_SCHEMA_CHECK: undefined }).responseSchemaCheck).toBe('warn');
     expect(withEnv({ ...base, RESPONSE_SCHEMA_CHECK: 'off' }).responseSchemaCheck).toBe('off');
   });
 
@@ -66,12 +66,12 @@ describe('EnvService', () => {
     expect([on.cookieDomain, on.corsOrigins]).toEqual(['freightchain.fun', ['https://freightchain.fun', 'https://ride.freightchain.fun']]);
   });
 
-  it('the admin session: its own key (ADMIN_JWT_SECRET, else derived – never the player key), 120 minutes by default', () => {
+  it('the admin session: its own key (ADMIN_JWT_SECRET, else derived – never the player key), 60 minutes by default', () => {
     const derived = withEnv({ ...base, JWT_SECRET: 'p'.repeat(40), ADMIN_JWT_SECRET: undefined, ADMIN_SESSION_TTL_MINUTES: undefined });
     expect(derived.adminJwtSecret).toHaveLength(64);
     expect(derived.adminJwtSecret).not.toBe(derived.jwtSecret);
     expect(derived.adminJwtSecret).toBe(withEnv({ ...base, JWT_SECRET: 'p'.repeat(40) }).adminJwtSecret);   // stable across restarts
-    expect(derived.adminSessionTtlMinutes).toBe(120);
+    expect(derived.adminSessionTtlMinutes).toBe(60); // EnvService caps the session at an hour
     const own = withEnv({ ...base, ADMIN_JWT_SECRET: 'a'.repeat(32), ADMIN_SESSION_TTL_MINUTES: '30' });
     expect([own.adminJwtSecret, own.adminSessionTtlMinutes]).toEqual(['a'.repeat(32), 30]);
     expect(() => withEnv({ ...base, ADMIN_JWT_SECRET: 'short' })).toThrow(/ADMIN_JWT_SECRET/);

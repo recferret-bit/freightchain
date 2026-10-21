@@ -13,7 +13,7 @@ describe('PlayerPrismaRepository (PostgreSQL)', () => {
   it('insertIfAbsent creates once and is a no-op afterwards; findByWallet maps the row back', async () => {
     await repo.insertIfAbsent(Player.register('w', T0, 5, 5));
     await repo.insertIfAbsent(Player.register('w', T0, 99, 5));
-    expect((await repo.findByWallet('w'))?.snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2036-10-08', freeRidesMax: 5, createdAt: T0, tutorialPassedAt: null, age18At: null, lossAt: null, guest: false });
+    expect((await repo.findByWallet('w'))?.snapshot()).toEqual({ wallet: 'w', version: 1, freeRides: 5, freeDay: '2036-10-08', freeRidesMax: 5, createdAt: T0, tutorialPassedAt: null, age18At: null, lossAt: null, guest: false, trustScore: 60, termsVersion: 1, privacyVersion: 1, rejectedRides: 0 });
     expect(await repo.findByWallet('nobody')).toBeNull();
   });
 

@@ -26,10 +26,14 @@ export type RoadPlanQuery = z.infer<typeof roadPlanQuerySchema>;
 export const inboxQuerySchema = z.object({ after: cursor }).strict();
 export type InboxQuery = z.infer<typeof inboxQuerySchema>;
 
-export const messageBodySchema = z.object({ text: z.string().min(1).max(MESSAGE_MAX_LENGTH * 4) }).strict();
+export const messageBodySchema = z.object({ text: z.string().min(1).max(MESSAGE_MAX_LENGTH * 4), replayT: z.number().int().min(0).max(10_000_000).optional() }).strict();
 export type MessageBody = z.infer<typeof messageBodySchema>;
 
-export const donationBodySchema = z.object({ effect: z.enum(EFFECT_IDS), note: z.string().max(NOTE_MAX_LENGTH * 4).nullish().transform((v) => v ?? null) }).strict();
+export const donationBodySchema = z.object({
+  effect: z.enum(EFFECT_IDS),
+  note: z.string().max(NOTE_MAX_LENGTH * 4).nullish().transform((v) => v ?? null),
+  lamports: z.number().int().nullish().transform((v) => v ?? null),
+}).strict();
 export type DonationBody = z.infer<typeof donationBodySchema>;
 
 export const effectParamsSchema = z.object({ id: z.string().min(1).max(64), eventId: z.coerce.number().int().positive().max(2_147_483_647) }).strict();
@@ -51,3 +55,15 @@ export const appliedBodySchema = z.object({
   missed: z.boolean().optional().default(false), // an obstacle the game found no room for
 }).strict();
 export type AppliedBody = z.infer<typeof appliedBodySchema>;
+
+export const pledgeIntentBodySchema = z.object({
+  lamportsPerKm: z.coerce.bigint().min(1_000n).max(1_000_000_000n),
+  targetKm: z.coerce.number().int().min(1).max(10_000),
+}).strict();
+export type PledgeIntentBody = z.infer<typeof pledgeIntentBodySchema>;
+
+export const pledgeConfirmOnRideBodySchema = z.object({
+  pledgeId: z.string().min(1).max(64),
+  signature: z.string().refine(isTransactionSignature, TRANSACTION_SIGNATURE_MESSAGE),
+}).strict();
+export type PledgeConfirmOnRideBody = z.infer<typeof pledgeConfirmOnRideBodySchema>;

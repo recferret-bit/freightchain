@@ -11,7 +11,7 @@ import { track, flushSoon } from '../js/analytics.js';
 import { store } from '../js/util.js';
 import { FREE_COUNTRIES } from '../js/free-countries.js';
 import { isMobileDevice, showMobileToast } from '../js/mobile.js';
-import { ticketDialog, hideTicketDialog } from './ticket-dialog.js';
+import { ticketDialog, hideTicketDialog, confirmBurnWarning } from './ticket-dialog.js';
 
 /* NEW RIDE tab controller for the Lobby: free ride level picker, pending ride banner,
    ticket order retry, pool cards, pool results, refunds, rules, and Solana Pay QR mount. */
@@ -222,6 +222,8 @@ export function createNewRideTab({ S, view, now, dur, km, TIER_NAME, refreshMe, 
 
   const buy = (tier, poolId, qty) => busy(tier, async () => {
     if (blockPaid(S.me)) return;
+    const pool = S.tiers?.tiers.find(t => t.pool?.id === poolId)?.pool ?? S.pool?.pools?.find(p => p.id === poolId);
+    if (!(await confirmBurnWarning(pool))) { say(tier, 'Ticket not bought – confirm the burn warning first.', true); return; }
     try {
       const r = await buyTickets(poolId, qty, text => say(tier, text), url => setPayQr(tier, url));
       S.qty[tier] = 1; creditLocal(poolId, qty); await Promise.all([refreshMe(), refreshPool()]);

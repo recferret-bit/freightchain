@@ -10,6 +10,7 @@ import { GetLiveQuery } from '../../application/use-cases/lobby/get-live/get-liv
 import { GetProfileQuery } from '../../application/use-cases/lobby/get-profile/get-profile.query.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { TermsGuard } from '../common/guards/terms.guard.js';
 import { OptionalSessionGuard } from '../../infrastructure/http/guards/optional-session.guard.js';
 import { OptionalSession } from '../../infrastructure/http/decorators/optional-session.js';
 import { CurrentClient } from '../../infrastructure/http/decorators/client-info.js';
@@ -32,21 +33,21 @@ export class LobbyHttpController {
     return this.queryBus.execute<GetLiveQuery, LiveFeedDto>(new GetLiveQuery(query.visitor, query.page, client.ip ?? '', wallet, query.leave));
   }
 
-  /** Public – the replays history: rides that ended, newest first, `before`-paged, each saying whether it can still be replayed (play.html?watch=<id>). */
-  @Get('replays')
+  /** Public – finished 1h replays. A session still sees that driver's own pool ride before payout. */
+  @Get('replays') @UseGuards(OptionalSessionGuard)
   @ZodResponse(replaysPageResponse)
-  replays(@ZodQuery(replaysQuerySchema) query: ReplaysQuery): Promise<ReplaysDto> {
-    return this.queryBus.execute<GetReplaysQuery, ReplaysDto>(new GetReplaysQuery(query.before, query.limit, query.wallet, query.status));
+  replays(@ZodQuery(replaysQuerySchema) query: ReplaysQuery, @OptionalSession() viewer: string | null): Promise<ReplaysDto> {
+    return this.queryBus.execute<GetReplaysQuery, ReplaysDto>(new GetReplaysQuery(query.before, query.limit, query.wallet, query.status, viewer));
   }
 
-  @Get('profile') @UseGuards(PlayerAuthGuard)
+  @Get('profile') @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(profileResponse)
   profile(@CurrentPlayer() player: PlayerIdentity): Promise<ProfileDto> {
     return this.queryBus.execute<GetProfileQuery, ProfileDto>(new GetProfileQuery(player.wallet));
   }
 
   /** Both boxes. Off until ticked. A paid shift reads the stamps, not this response. */
-  @Put('profile/agreements') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Put('profile/agreements') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(agreementsResponse)
   agreements(@CurrentPlayer() player: PlayerIdentity, @ZodBody(agreementsBodySchema) body: AgreementsBody): Promise<AgreementsDto> {
     return this.commandBus.execute<AcceptAgreementsCommand, AgreementsDto>(new AcceptAgreementsCommand(player.wallet, body.age18, body.loss));

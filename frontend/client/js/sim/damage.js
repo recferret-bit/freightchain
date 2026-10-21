@@ -1,4 +1,4 @@
-import { st } from '../state.js';
+import { st, chipHull, wreckHull } from '../state.js';
 import { CFG } from '../config.js';
 import { guide } from '../guide.js';
 import { roadAt } from '../road.js';
@@ -11,6 +11,7 @@ import { clamp } from '../util.js';
 import { audio } from './audio.js';
 import { toast } from '../ui/toast.js';
 import { glassHit } from './glass-damage.js';
+import { addBucket, emptyBuckets, sourceOfLabel } from '../../shared/damage-buckets.js';
 
 /* Collisions, prop destruction, pooled 3D debris particles, and road hole impacts. */
 const TRUCK_HALF_W = 1.25, TRUCK_FRONT = 3.3, TRUCK_BACK = -1.6;   // metres from the driver's eye
@@ -26,7 +27,7 @@ export function collide(dt) {   // returns the reason the ride is over when the 
       c.cool = Math.max(0, c.cool - dt); if (c.dead || c.cool > 0) continue;
       const ds = c.s - st.s, dl = c.lat - st.d, f = ds * cp + dl * sp, r = -ds * sp + dl * cp;   // prop in the truck's own frame
       if (f < TRUCK_BACK - c.rf || f > TRUCK_FRONT + c.rf || Math.abs(r) > TRUCK_HALF_W + c.rl) continue;   // rf/rl: reach along / across the road (guardrails are long and thin)
-      if (c.kind === 'building') { st.crashB++; st.hull = 0; st.crash = 1; st.flash = 1; audio.crash(1); return 'You crashed into a building – the truck is a wreck.'; }   // any contact with a building is fatal
+      if (c.kind === 'building') { st.crashB++; wreckHull(); st.crash = 1; st.flash = 1; audio.crash(1); return 'You crashed into a building – the truck is a wreck.'; }   // any contact with a building is fatal
       hit(c, f);
     }
   }
@@ -44,9 +45,11 @@ function hit(c, f) {
 }
 
 /* hull loss + shake/flash/sound/glass; iv = impact speed (m/s), label = toast prefix (shared with vehicle collisions) */
-export function hurt(dmg, iv, label = 'IMPACT', fatal = false) {   // fatal: the hit that wrecks the truck whatever the assist (head-on, rear-end)
+export function hurt(dmg, iv, label = 'IMPACT', fatal = false, source = sourceOfLabel(label)) {   // fatal: the hit that wrecks the truck whatever the assist (head-on, rear-end)
   if (guide.assist && !fatal) dmg *= CFG.ASSIST.HULL_DMG;   // assist mode: twice the durability
-  st.hull = Math.max(0, st.hull - dmg); st.crash = Math.min(1, st.crash + iv / 14 + .15); st.flash = Math.min(1, dmg / 12 + .15);
+  if (!st.dmg) st.dmg = emptyBuckets();
+  addBucket(st.dmg, source, dmg);
+  chipHull(dmg); st.crash = Math.min(1, st.crash + iv / 14 + .15); st.flash = Math.min(1, dmg / 12 + .15);
   audio.crash(Math.min(1, iv / 20)); toast(label + '  −' + dmg.toFixed(1) + '% hull', 1300);
   glassHit(dmg);
 }

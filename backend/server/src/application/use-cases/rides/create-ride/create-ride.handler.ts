@@ -1,3 +1,4 @@
+import { Optional } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { lamportsFor } from '../../../../domain/economy/prize-split.js';
 import { toRideDto, type RideDto } from '../../../../domain/rides/ride.dto.js';
@@ -10,7 +11,9 @@ import { PoolTicketsService } from '../../../services/pool-tickets.service.js';
 import { RoundService } from '../../../services/round.service.js';
 import { withVersionRetry } from '../../../services/version-retry.js';
 import type { Player } from '../../../../domain/players/player.entity.js';
-import { ConflictError, NotFoundError, ServiceUnavailableError } from '../../../../domain/shared/errors.js';
+import { FINISH_RULES_VERSION } from '../../../../domain/road/finish-for.js';
+import { BadRequestError, ConflictError, NotFoundError, ServiceUnavailableError } from '../../../../domain/shared/errors.js';
+import { FinishRulesPort } from '../../../rides/finish-rules.port.js';
 import type { GeoHeaders } from '../../../ports/prize/geo-locator.port.js';
 import { AnalyticsPort } from '../../../ports/analytics/analytics.port.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
@@ -78,9 +81,11 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     private readonly dailySeeds: DailySeedRepositoryPort,
     private readonly promos: PromoRepositoryPort,
     private readonly weekly: WeeklyTicketService,
+    @Optional() private readonly finishRules?: FinishRulesPort,
   ) {}
 
   async execute({ wallet, tier, tutorial, assist, level: asked, geo }: CreateRideCommand): Promise<RideDto> {
+    if (tier === '4h' || tier === '8h') throw new BadRequestError('4h and 8h shifts are not created', 'tier_retired');
     const rules = this.rules.get();
     const paid = isPaidTier(tier);
     if (paid && (tutorial || assist)) throw new ConflictError('the tutorial and assist are for free rides only'); // assist must never reach a ranked, paid ride
@@ -151,6 +156,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
           ? await this.grantedRide(wallet, tier as PaidTierId, now, tx, player, geo)
           : ticketed ?? (await this.newRide(wallet, tier, quote, now, { tutorial, assist, level }, tx));
       await this.rides.insert(ride, tx);
+      if (this.finishRules && ride.tier === '1h' && ride.minSeconds >= 3600) await this.finishRules.stamp(ride.id, FINISH_RULES_VERSION, tx);
       return { dto: toRideDto(ride), now, ordered: ride.snapshot(), resumed: null, failed, expired, cancelled, freeRidesLeft: player.freeRides };
     }));
     if (facts.failed) await this.stats.invalidate(wallet); // a stale ride this call ended joined the statistics

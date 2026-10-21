@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ApplicationModule } from '../application/application.module.js';
 import { AdminHttpController } from './admin/admin.http.controller.js';
+import { AdminModerationHttpController } from './admin/admin-moderation.http.controller.js';
 import { AuthHttpController } from './auth/auth.http.controller.js';
 import { ChainHttpController } from './chain/chain.http.controller.js';
 import { EconomyHttpController } from './economy/economy.http.controller.js';
@@ -21,11 +22,16 @@ import { LiveHttpController } from './live/live.http.controller.js';
 import { AdminDirectoryHttpController } from './admin/admin-directory.http.controller.js';
 import { AdminSettingsHttpController } from './admin/admin-settings.http.controller.js';
 import { AdminPoolsHttpController } from './admin/admin-pools.http.controller.js';
+import { AdminAppealsHttpController } from './admin/admin-appeals.http.controller.js';
 import { SnsHttpController } from './sns/sns.http.controller.js';
 import { SolanaPayHttpController } from './solana-pay/solana-pay.http.controller.js';
 import { ActionsHttpController } from './actions/actions.http.controller.js';
 import { PledgesHttpController } from './economy/pledges.http.controller.js';
 import { ReferralsHttpController } from './referrals/referrals.http.controller.js';
+import { ConvoyHttpController } from './referral/convoy.http.controller.js';
+import { PrivacyHttpController } from './referral/privacy.http.controller.js';
+import { AirdropHttpController } from './referral/airdrop.http.controller.js';
+import { MeController } from './player/me.controller.js';
 import { HonkHttpController } from './honk/honk.http.controller.js';
 import { PrizeHttpController } from './prize/prize.http.controller.js';
 import { EntitiesHttpController } from './entities/entities.http.controller.js';
@@ -35,6 +41,6 @@ import { EditorJobsHttpController } from './editor/editor-jobs.http.controller.j
 import { EditorMcpHttpController } from './editor/editor-mcp.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, HonkHttpController, PrizeHttpController, EntitiesHttpController, EditorAuthHttpController, EditorEntitiesHttpController, EditorJobsHttpController, EditorMcpHttpController, ReferralsHttpController],
+  controllers: [HealthHttpController, AuthHttpController, MeController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminModerationHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, AdminAppealsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, HonkHttpController, PrizeHttpController, EntitiesHttpController, EditorAuthHttpController, EditorEntitiesHttpController, EditorJobsHttpController, EditorMcpHttpController, ReferralsHttpController, ConvoyHttpController, PrivacyHttpController, AirdropHttpController],
 })
 export class PresentationModule {}

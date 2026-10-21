@@ -18,7 +18,11 @@ The speed trap alias is the optional case: a billboard, a radar, and a cruiser, 
 
 `client/shared/entity/seed/landmark/<id>.js` (`anchor: 'base'`: `at.y` is the bottom of a box). A new implementation = a new entity + a row `{ id, hl, hd }` at the END of its type in `ROSTER.landmark` (`client/shared/entity/roster.js`). Shared pieces are `part` entities (`cruiser`, `lm-pump`, `lm-cones`).
 
-Frame: origin on the ground at the footprint centre, y up, front faces −x, the road runs along z.
+Frame: origin on the ground at the footprint centre, y up, front faces −x, the road runs along z. Parts stay inside the footprint: nothing past local x = −hd, or it stands in the lane.
+
+## Apron
+
+The tarmac between the road and the building is not a part of the entity. `createLandmarks` `model()` adds one slab. It has to cross the shoulder (the grass or dirt strip in the road ribbon, `SHOULDER` in `client/shared/road.js`) and tuck 0.5 m under the asphalt. It is drawn at polygon offset −3, over the road surface (−2) and under the lane marks (−4). If grass shows in that join, extend this slab. Do not add a ground box in the entity to hide it.
 
 ## Review
 

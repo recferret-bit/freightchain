@@ -30,7 +30,7 @@ globalThis.innerHeight ??= 720;
 globalThis.devicePixelRatio ??= 1;
 
 const { RIDE_MODES, onShift, canStartRide, canEndRide, canPauseRide, canResumeRide, transitionRideMode, failCode } = await import('../js/ui/ride-fsm.js');
-const { PHONE_POWER, stepPhonePower, fastForwardHomeLaunch, resetPhonePower } = await import('../js/ui/map/power-fsm.js');
+const { PHONE_POWER, stepPhonePower, openPhoneApp, returnPhoneHome, resetPhonePower } = await import('../js/ui/map/power-fsm.js');
 const { ENGINE_STATES, engineStateOf, ignition, keySwitch, releaseKey, engineOff, stepEngine } = await import('../js/sim/engine.js');
 const { phone } = await import('../js/phone.js');
 const { CFG } = await import('../js/config.js');
@@ -96,14 +96,14 @@ test('failCode maps failure reasons to canonical telemetry codes and ignores non
   assert.equal(failCode('failed', 'Unexpected stop.'), 'other');
 });
 
-test('phone power FSM steps OFF -> BOOT -> HOME -> ON and resets on engine stall', () => {
+test('phone power FSM stays on HOME until an app is opened', () => {
   st.watch = false;
   st.engineOn = false;
   resetPhonePower();
   assert.equal(phone.power, PHONE_POWER.OFF);
+  assert.equal(phone.app, null);
 
   assert.deepEqual(stepPhonePower(1000), { off: true });
-  assert.equal(phone.power, PHONE_POWER.OFF);
 
   st.engineOn = true;
   const bootDesc = stepPhonePower(1000);
@@ -114,22 +114,35 @@ test('phone power FSM steps OFF -> BOOT -> HOME -> ON and resets on engine stall
   assert.equal(phone.power, PHONE_POWER.HOME);
   assert.equal(homeDesc.home, 0);
 
-  fastForwardHomeLaunch(1000 + CFG.PHONE.BOOT + 50);
-  assert.ok(1000 + CFG.PHONE.BOOT + 50 - phone.homeAt >= CFG.PHONE.LAUNCH_AT - 120);
+  const still = stepPhonePower(phone.homeAt + CFG.PHONE.HOME + 5000);
+  assert.equal(phone.power, PHONE_POWER.HOME);
+  assert.equal(phone.app, null);
+  assert.ok(still.home > CFG.PHONE.HOME);
 
-  const onDesc = stepPhonePower(phone.homeAt + CFG.PHONE.HOME);
+  openPhoneApp('maps', phone.homeAt + 10);
   assert.equal(phone.power, PHONE_POWER.ON);
-  assert.equal(onDesc.on, true);
+  assert.equal(phone.app, 'maps');
+  assert.equal(stepPhonePower(phone.readyAt + CFG.PHONE.UI_MS).on, true);
 
-  // Engine stall powers down phone immediately
+  returnPhoneHome(phone.readyAt + 20);
+  assert.equal(phone.power, PHONE_POWER.HOME);
+  assert.equal(phone.app, null);
+  assert.ok(stepPhonePower(phone.homeAt + 1000).home > 0);
+
+  openPhoneApp('chat', phone.homeAt + 30);
+  phone.awake = true;
   st.engineOn = false;
-  assert.deepEqual(stepPhonePower(phone.readyAt + 200), { off: true });
-  assert.equal(phone.power, PHONE_POWER.OFF);
+  assert.equal(stepPhonePower(phone.readyAt + 200).on, true);
+  assert.equal(phone.app, 'chat');
 
-  // Watch mode forces ON even with engine off
+  phone.awake = false;
+  assert.deepEqual(stepPhonePower(phone.readyAt + 400), { off: true });
+  assert.equal(phone.app, null);
+
   st.watch = true;
   resetPhonePower();
   assert.equal(phone.power, PHONE_POWER.ON);
+  assert.equal(phone.app, 'maps');
   assert.equal(stepPhonePower(5000).on, true);
   st.watch = false;
   resetPhonePower();

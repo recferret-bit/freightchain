@@ -4,6 +4,7 @@ import type { RideReport } from '../../../src/domain/rides/ride-report.js';
 import { ConflictError } from '../../../src/domain/shared/errors.js';
 import { FREE_LEVELS } from '../../../src/domain/rides/ride-trip.js';
 import { ROUTE_IDS, START_HOURS, worldFor } from '../../../src/domain/rides/ride-rules.js';
+import { finishFor } from '../../../src/domain/road/finish-for.js';
 
 const T0 = new Date('2026-10-07T12:00:00.000Z');
 const at = (seconds: number) => new Date(T0.getTime() + seconds * 1000);
@@ -230,6 +231,15 @@ describe('Ride – finishing', () => {
     expect(fast.status).toBe(RideStatus.Completed);
   });
 
+  it('a full 1h ride stores finishFor, and 90 minutes of wall clock is a timeout', () => {
+    const made = Ride.createFromTicket({ id: 'cap', wallet: 'w', tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, poolId: 1, roundId: 1, now: T0 });
+    expect(made.completeDist).toBe(finishFor(1, '1h', 1).finishS);
+    made.start(T0);
+    made.finish('shift', null, at(5401));
+    expect(made.status).toBe(RideStatus.Failed);
+    expect(made.reason).toBe('timeout');
+  });
+
   it("'failed' ends the ride with the (truncated) reason", () => {
     const r = running(); r.finish('failed', 'x'.repeat(500), at(1));
     expect(r.status).toBe(RideStatus.Failed);
@@ -273,6 +283,17 @@ describe('Ride – challenge channel', () => {
     expect(r.snapshot().nextChallengeAt).toBeCloseTo(130 + 240 * (0.6 + 0.8 * 0.3));
     expect(r.openChallenge(at(140))).toEqual(c);
     expect(r.openChallenge(at(151))).toBeNull();
+  });
+
+  it('counts each pause and the wall time of the beats that arrive paused', () => {
+    const r = running();
+    r.applyReport(report({ s: 10, t: 1 }), at(1), rules);
+    r.applyReport(report({ s: 20, t: 2, paused: true }), at(3), rules);
+    r.applyReport(report({ s: 20, t: 2, paused: true }), at(5), rules);
+    r.applyReport(report({ s: 30, t: 3 }), at(6), rules);
+    r.applyReport(report({ s: 40, t: 4, paused: true }), at(8), rules);
+    expect(r.pauseCount).toBe(2);
+    expect(r.pauseSeconds).toBeCloseTo(6);
   });
 
   it('no prompts while paused, with the interval at 0, before the start, once ended, or past the cap', () => {

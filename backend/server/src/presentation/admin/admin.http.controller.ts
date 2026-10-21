@@ -6,7 +6,7 @@ import { LogoutCommand, type LogoutResultDto } from '../../application/use-cases
 import type { ChallengeDto } from '../../application/use-cases/auth/request-challenge/request-challenge.command.js';
 import { RequestAdminChallengeCommand } from '../../application/use-cases/admin/request-admin-challenge/request-admin-challenge.command.js';
 import { VerifyAdminSignInCommand, type AdminSignInResultDto } from '../../application/use-cases/admin/verify-admin-signin/verify-admin-signin.command.js';
-import { CurrentClient } from '../../infrastructure/http/decorators/client-info.js';
+import { CurrentClient, CurrentClientId } from '../../infrastructure/http/decorators/client-info.js';
 import { AdminPublic } from '../../infrastructure/http/guards/admin.guard.js';
 import { ClearAdminCookieInterceptor, SetAdminCookieInterceptor } from '../../infrastructure/http/interceptors/admin-cookie.interceptor.js';
 import { challengeBodySchema, verifyBodySchema, type ChallengeBody, type VerifyBody } from '../auth/dto/auth.dto.js';
@@ -28,6 +28,7 @@ import { CurrentPlayer } from '../../infrastructure/http/decorators/current-play
 import { ZodBody, ZodParams, ZodQuery } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { AdminGuard } from '../../infrastructure/http/guards/admin.guard.js';
+import { PublicAdminAuth, Roles } from '../../infrastructure/http/guards/privileged.decorator.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import {
@@ -38,6 +39,7 @@ import {
 /** The admin page's API (admin.<apex>). An admin session (the admin sign-in below) of a wallet in ADMIN_WALLETS – to anybody else every route is a 404. Changes need the X-FC-Admin header and are audited. */
 @Controller('api/admin')
 @UseGuards(AdminGuard)
+@Roles('admin')
 export class AdminHttpController {
   constructor(
     private readonly commandBus: CommandBus,
@@ -45,49 +47,49 @@ export class AdminHttpController {
   ) {}
 
   /** Admin sign-in, step 1: the message for the wallet to sign (404 unless the wallet is in ADMIN_WALLETS). */
-  @Post('auth/nonce') @HttpCode(200) @AdminPublic()
+  @Post('auth/nonce') @HttpCode(200) @AdminPublic() @PublicAdminAuth()
   @ZodResponse(adminChallengeResponse)
-  nonce(@ZodBody(challengeBodySchema) body: ChallengeBody): Promise<ChallengeDto> {
-    return this.commandBus.execute<RequestAdminChallengeCommand, ChallengeDto>(new RequestAdminChallengeCommand(body.wallet));
+  nonce(@ZodBody(challengeBodySchema) body: ChallengeBody, @CurrentClientId() clientId = 'default'): Promise<ChallengeDto> {
+    return this.commandBus.execute<RequestAdminChallengeCommand, ChallengeDto>(new RequestAdminChallengeCommand(body.wallet, clientId));
   }
 
   /** Step 2: the signature → the fc_admin cookie (SetAdminCookieInterceptor); the body says whose session it is and until when. */
-  @Post('auth/verify') @HttpCode(200) @AdminPublic() @UseInterceptors(SetAdminCookieInterceptor)
+  @Post('auth/verify') @HttpCode(200) @AdminPublic() @PublicAdminAuth() @UseInterceptors(SetAdminCookieInterceptor)
   @ZodResponse(adminSignInResponse)
-  verify(@ZodBody(verifyBodySchema) body: VerifyBody, @CurrentClient() client: ClientInfo, @CurrentRequestId() requestId: string): Promise<AdminSignInResultDto> {
-    return this.commandBus.execute<VerifyAdminSignInCommand, AdminSignInResultDto>(new VerifyAdminSignInCommand(body.wallet, body.signature, client, requestId));
+  verify(@ZodBody(verifyBodySchema) body: VerifyBody, @CurrentClient() client: ClientInfo, @CurrentRequestId() requestId: string, @CurrentClientId() clientId = 'default'): Promise<AdminSignInResultDto> {
+    return this.commandBus.execute<VerifyAdminSignInCommand, AdminSignInResultDto>(new VerifyAdminSignInCommand(body.wallet, body.signature, client, requestId, clientId));
   }
 
   /** Ends the admin session (works with an expired one too); the player session is left alone. */
-  @Post('auth/logout') @HttpCode(200) @AdminPublic() @UseInterceptors(ClearAdminCookieInterceptor)
+  @Post('auth/logout') @HttpCode(200) @AdminPublic() @Roles('admin', 'moderator') @UseInterceptors(ClearAdminCookieInterceptor)
   @ZodResponse(okResponse)
   logout(): Promise<LogoutResultDto> {
     return this.commandBus.execute<LogoutCommand, LogoutResultDto>(new LogoutCommand());
   }
 
-  @Get('overview')
+  @Get('overview') @Roles('admin', 'moderator')
   @ZodResponse(adminOverviewResponse)
   overview(): Promise<AdminOverviewDto> {
     return this.queryBus.execute<GetAdminOverviewQuery, AdminOverviewDto>(new GetAdminOverviewQuery());
   }
 
   /** ?review=under_review is the review queue (every paid ride under review first, then the flagged free ones); &pool=N narrows to one pool */
-  @Get('rides')
+  @Get('rides') @Roles('admin', 'moderator')
   @ZodResponse(adminRidesResponse)
   rides(@ZodQuery(adminRidesQuerySchema) query: AdminRidesQuery): Promise<AdminListDto<AdminRideRowDto>> {
     return this.queryBus.execute<ListAdminRidesQuery, AdminListDto<AdminRideRowDto>>(new ListAdminRidesQuery(query));
   }
 
-  @Get('replays')
+  @Get('replays') @Roles('admin', 'moderator')
   @ZodResponse(adminReplaysResponse)
   replays(@ZodQuery(adminReplaysQuerySchema) query: AdminReplaysQuery): Promise<AdminReplaysDto> {
     return this.queryBus.execute<ListAdminReplaysQuery, AdminReplaysDto>(new ListAdminReplaysQuery(query));
   }
 
-  @Get('rides/:id')
+  @Get('rides/:id') @Roles('admin', 'moderator')
   @ZodResponse(adminRideDetailResponse)
-  ride(@ZodParams(rideIdParamsSchema) params: RideIdParams): Promise<AdminRideDetailDto> {
-    return this.queryBus.execute<GetAdminRideQuery, AdminRideDetailDto>(new GetAdminRideQuery(params.id));
+  ride(@CurrentPlayer() admin: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams): Promise<AdminRideDetailDto> {
+    return this.queryBus.execute<GetAdminRideQuery, AdminRideDetailDto>(new GetAdminRideQuery(params.id, admin.wallet));
   }
 
   /** The text the admin's wallet signs before ONE change of this ride (an override with its decision + note, or a re-judge). */
@@ -122,8 +124,8 @@ export class AdminHttpController {
 
   @Get('actions')
   @ZodResponse(adminActionsResponse)
-  actions(@ZodQuery(actionsQuerySchema) query: ActionsQuery): Promise<AdminListDto<AdminActionDto>> {
-    return this.queryBus.execute<ListAdminActionsQuery, AdminListDto<AdminActionDto>>(new ListAdminActionsQuery(query.limit));
+  actions(@CurrentPlayer() admin: PlayerIdentity, @ZodQuery(actionsQuerySchema) query: ActionsQuery): Promise<AdminListDto<AdminActionDto>> {
+    return this.queryBus.execute<ListAdminActionsQuery, AdminListDto<AdminActionDto>>(new ListAdminActionsQuery(query.limit, admin.wallet));
   }
 
   /** This process's newest log lines (?level=warn, ?q=<request id / wallet / ride id>). */

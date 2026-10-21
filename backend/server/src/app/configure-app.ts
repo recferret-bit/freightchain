@@ -13,6 +13,7 @@ import { actionHeadersMiddleware, isActionRequest } from '../infrastructure/http
 import { apiPath } from '../infrastructure/http/api-path.js';
 import { ridePageMiddleware } from '../infrastructure/http/middleware/ride-page.middleware.js';
 import { PrismaService } from '../infrastructure/prisma/prisma.service.js';
+import { ClockPort } from '../application/ports/shared/clock.port.js';
 import { JsonLogger } from '../infrastructure/logging/json-logger.js';
 
 export const EDITOR_BODY_LIMIT = '256kb';
@@ -22,6 +23,7 @@ export function configureApp(app: INestApplication): void {
   const env = app.get(EnvService, { strict: false });
   const logger = app.get(JsonLogger, { strict: false });
   const prisma = app.get(PrismaService, { strict: false });
+  const clock = app.get(ClockPort, { strict: false });
   app.useLogger(logger);   // JSON lines in production (`npm run ops -- logs`), and the in-memory ring the admin page reads
   // behind a reverse proxy (Railway / Fly) req.ip would be the proxy's: tell Express how many hops to trust, or every rider shares one rate-limit bucket
   (app.getHttpAdapter().getInstance() as Express).set('trust proxy', env.trustProxy);
@@ -40,7 +42,7 @@ export function configureApp(app: INestApplication): void {
   // (wrapped: Nest skips its own global JSON parser when it finds a middleware NAMED jsonParser – the bare body-parser function would switch it off everywhere)
   const editorJson = json({ limit: EDITOR_BODY_LIMIT });
   app.use('/api/editor', function editorBodyParser(req: Request, res: Response, next: NextFunction) { editorJson(req, res, next); });
-  app.use(ridePageMiddleware(prisma, env));   // public ride page (/r/:id) with dynamic Twitter Cards & OpenGraph tags
+  app.use(ridePageMiddleware(prisma, env, () => (clock ? clock.now().getTime() : Number.NEGATIVE_INFINITY)));   // public ride page (/r/:id) with dynamic Twitter Cards & OpenGraph tags
   app.useGlobalFilters(new ProblemDetailsFilter());
   app.enableShutdownHooks();
 }

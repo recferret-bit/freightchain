@@ -8,6 +8,14 @@ import { unitContext } from '../../../../support/unit-context.js';
 describe('GetAdminPlayerHandler', () => {
   const handler = (ctx: ReturnType<typeof unitContext>) => new GetAdminPlayerHandler(ctx.players, ctx.statsRepo, ctx.tickets, ctx.payments, ctx.signIns, ctx.adminQuery);
 
+  it('a wallet detail read is an audit row', async () => {
+    const ctx = unitContext();
+    await ctx.freeRide('alice', true);
+    const h = new GetAdminPlayerHandler(ctx.players, ctx.statsRepo, ctx.tickets, ctx.payments, ctx.signIns, ctx.adminQuery, ctx.adminActions, ctx.clock);
+    await h.execute(new GetAdminPlayerQuery('alice', 'ADMIN'));
+    expect(ctx.db.adminActions.at(-1)).toMatchObject({ action: 'read.player', target: 'alice', wallet: 'ADMIN', role: 'admin' });
+  });
+
   it('a wallet that never signed in is a 404', async () => {
     await expect(handler(unitContext()).execute(new GetAdminPlayerQuery('nobody'))).rejects.toBeInstanceOf(NotFoundError);
   });

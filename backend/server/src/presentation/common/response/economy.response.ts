@@ -20,6 +20,7 @@ export const leaderboardResponse = obj({
   page: num, pageSize: num, total: num, rows: z.array(lbRow), me: obj({ rank: num, distance: num, seconds: num, hull: numOrNull, rides: num }).nullable(), standing: z.array(standing).nullable(),
 });
 export const poolListResponse = obj({ pools: z.array(prizePoolResponse), finished: z.array(prizePoolResponse) });
+export const currentPoolResponse = obj({ pool: prizePoolResponse.nullable() });
 export const prizePoolDetailResponse = prizePoolResponse.and(obj({ recent: z.array(chainEventResponse) }));
 const rank = obj({ rank: num, wallet: str, distance: num, rides: num, lamports: num, paid: bool, signature: strOrNull });
 export const poolStandingsResponse = obj({
@@ -86,6 +87,14 @@ const achievement = obj({
   nft: obj({ status: str, assetId: strOrNull, signature: strOrNull }).nullable(),
 });
 const ticketGrant = obj({ poolId: num, delta: num, source: str, ref: strOrNull, at: num });
+const poolResultMine = obj({ rideId: str, effectiveDurationMs: num, finished: bool, damageTotal: num });
+export const poolResultsResponse = obj({
+  poolId: num, revealed: bool, payoutAt: num, scoreFormulaVersion: num, participants: num, mine: poolResultMine.nullable(),
+  ranks: z.array(poolResultMine.and(obj({
+    rank: num, wallet: str, damageHoles: num, damageVehicles: num, damageProps: num, damageCold: num, damageOther: num,
+    redLights: num, mgWrong: num, mgMissed: num, mgPenaltySeconds: num, scoreFormulaVersion: num,
+  }))),
+});
 export const profileResponse = obj({
   wallet: str, createdAt: num, freeRides: num, freeRidesMax: num, nextFreeRideAt: numOrNull, demo: bool, demoScale: num,
   stats: obj({ rides: num, completed: num, metres: num, bestMetres: num, paidRides: num, spentLamports: num, ticketsBought: num }),

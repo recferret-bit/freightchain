@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { maskIpSubnet } from '../../../../domain/shared/ip-mask.js';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { SignInRepositoryPort } from '../../../ports/auth/sign-in.repository.port.js';
 import { TokenSignerPort } from '../../../ports/auth/token-signer.port.js';
@@ -39,7 +40,7 @@ export class StartGuestHandler implements ICommandHandler<StartGuestCommand, Sig
     const rules = this.rules.get();
     const session = await this.tokens.sign(wallet);
     const player = await this.sessions.touch(wallet, now, { guest: true });
-    this.logger.log({ event: 'guest', msg: `guest session ${wallet}`, wallet, ip: command.client.ip });
+    this.logger.log({ event: 'guest', msg: `guest session ${wallet}`, wallet, ip: maskIpSubnet(command.client.ip) });
     await this.signIns.insert({ wallet, at: now, ...command.client }).catch((error: unknown) => {
       this.logger.warn(`guest ${wallet} not recorded: ${error instanceof Error ? error.message : String(error)}`);
     });

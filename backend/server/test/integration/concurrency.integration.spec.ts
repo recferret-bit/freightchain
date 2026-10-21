@@ -108,7 +108,8 @@ describe('concurrency (PostgreSQL)', () => {
   it('N parallel starts of one ticket ride at the play-window boundary (H6): in time exactly one starts; past the last start all are 409 rides_closed, the ride is closed once, no deadlock', async () => {
     const pools = () => harness.app.get(PoolRepositoryPort, { strict: false }), promos = () => harness.app.get(PromoRepositoryPort, { strict: false });
     const t = harness.clock.now().getTime();
-    await pools().upsert(aPool({ id: 1, status: 'active', prepDeadline: new Date(t + 60_000), playDeadline: new Date(t + 3600_000 + 30_000), payoutAt: new Date(t + 7200_000) }, harness.clock.now()));
+    const lastStart = new Date(t + 120_000);
+    await pools().upsert(aPool({ id: 1, status: 'active', prepDeadline: new Date(t + 60_000), playDeadline: new Date(lastStart.getTime() + 75 * 60_000), payoutAt: new Date(t + 4 * 3600_000) }, harness.clock.now()));
     await promos().insert(aPromo(harness.clock.now(), { code: 'TIX', effect: ticketEffect({ credits: 2 }), maxRedemptions: null }));
     const a = await login();
     await a.agent.post('/api/promo/redeem').send({ code: 'TIX' }).expect(200);
@@ -118,10 +119,10 @@ describe('concurrency (PostgreSQL)', () => {
     expect(inTime.filter((r) => r.status === 200)).toHaveLength(1);
     await a.agent.post(`/api/rides/${first}/end`).send({ outcome: 'failed', s: 0, t: 1, hull: 0, reason: 'test' }).expect(200);
     const second = await order();   // ordered (its ticket spent) while a shift still fits
-    sec(1831);   // a second past the last START: a 1 h shift ordered in time may start while its line (half the shift at the governor) is reachable
+    sec(121);   // a second past lastStartAt (play close − 75 min)
     const late = await parallel(PARALLEL, () => a.agent.post(`/api/rides/${second}/start`));
     expect(late.every((r) => r.status === 409)).toBe(true);
-    expect(late.filter((r) => r.body.code === 'rides_closed')).toHaveLength(1);   // the first closes it; the rest find it cancelled
+    expect(late.filter((r) => r.body.code === 'pool_last_start_passed')).toHaveLength(1);   // the first closes it; the rest find it cancelled
     expect(await prisma.ride.findUniqueOrThrow({ where: { id: second } })).toMatchObject({ status: 'cancelled' });
   });
 
@@ -330,8 +331,8 @@ describe('concurrency (PostgreSQL)', () => {
   describe('pledges', () => {
     /** a started ticket ride of pool 1 and an active-to-be pledge on it: the create_pledge is on the (fake) chain, nobody confirmed it yet */
     const pledged = async () => {
-      const now = new Date(harness.clock.ms), payoutAt = new Date(harness.clock.ms + 3_600_000);
-      await harness.app.get(PoolRepositoryPort, { strict: false }).upsert(aPool({ id: 1, status: 'active', payoutAt, playDeadline: payoutAt }, now));
+      const now = new Date(harness.clock.ms), playDeadline = new Date(harness.clock.ms + 90 * 60_000), payoutAt = playDeadline;
+      await harness.app.get(PoolRepositoryPort, { strict: false }).upsert(aPool({ id: 1, status: 'active', payoutAt, playDeadline }, now));
       await harness.app.get(PromoRepositoryPort, { strict: false }).insert(aPromo(now, { code: 'ONE', maxRedemptions: null, effect: ticketEffect({ credits: 1 }) }));
       const driver = await login();
       await driver.agent.post('/api/promo/redeem').send({ code: 'ONE' }).expect(200);
@@ -549,10 +550,11 @@ describe('concurrency (PostgreSQL)', () => {
 
   describe('live streams', () => {
 
-    it('N spectators paying for an effect in the same window: ONE effect stored, every other caller a 429 (no lock – the unique window does it)', async () => {
-      const { ride } = await liveRide();
-      const fans = await parallel(PARALLEL, () => login());
-      const results = await parallel(PARALLEL, (i) => fans[i]!.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: i % 2 ? 'night' : 'sinkhole' }));
+    it('one spectator tipping the same replay in parallel stores ONE tip (the wallet line window)', async () => {
+      const { driver, ride } = await liveRide();
+      await driver.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'failed', s: 1, t: 1 }).expect(200);
+      const fan = await login();
+      const results = await parallel(PARALLEL, () => fan.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'tip' }));
       expect(results.filter((r) => r.status === 200)).toHaveLength(1);
       expect(results.filter((r) => r.status === 429)).toHaveLength(PARALLEL - 1);
       expect(await prisma.rideEvent.count({ where: { rideId: ride.id } })).toBe(1);
@@ -570,11 +572,13 @@ describe('concurrency (PostgreSQL)', () => {
       await harness.close();
       harness = await createHarness('postgres', { FREE_RIDE_SECONDS: '10', LIVE_FREE_DONATIONS: 'off' });
       prisma = harness.app.get(PrismaService, { strict: false });
-      const { ride } = await liveRide();
+      const { driver, ride } = await liveRide();
+      await driver.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'failed', s: 1, t: 1 }).expect(200);
       const driverWallet = (await prisma.ride.findUniqueOrThrow({ where: { id: ride.id } })).wallet;
       const fan = await login();
-      const { order } = (await fan.agent.post(`/api/watch/${ride.id}/donation-orders`).send({ effect: 'sinkhole' }).expect(200)).body;
-      const signature = harness.chain.addPayment({ payer: fan.address, destination: driverWallet, lamports: order.lamports, memo: order.memo, reference: order.reference });
+      const { order } = (await fan.agent.post(`/api/watch/${ride.id}/donation-orders`).send({ effect: 'tip' }).expect(200)).body;
+      const treasuryCut = Math.floor(order.lamports * 500 / 10_000);
+      const signature = harness.chain.addPayment({ payer: fan.address, destination: driverWallet, lamports: order.lamports - treasuryCut, memo: order.memo, reference: order.reference, extraTransfers: [{ source: fan.address, destination: TREASURY, lamports: treasuryCut }] });
       const results = await parallel(PARALLEL, () => fan.agent.post(`/api/watch/${ride.id}/donation-orders/${order.id}/confirm`).send({ signature }));
       expect(results.every((r) => r.status === 200)).toBe(true);
       const ids = new Set(results.filter((r) => r.body.status === 'paid').map((r) => r.body.event.id));
@@ -593,15 +597,15 @@ describe('concurrency (PostgreSQL)', () => {
       expect(await prisma.rideMute.count({ where: { rideId: ride.id } })).toBe(1);
     });
 
-    it('N parallel "applied" acks of one effect (re-sends): ONE stamp, every caller gets that same stamp', async () => {
+    it('applied-effect acks are gone: every caller is 404 and nothing is stamped', async () => {
       const { driver, ride } = await liveRide();
+      await driver.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'failed', s: 1, t: 1 }).expect(200);
       const fan = await login();
-      const gift = (await fan.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'trench' }).expect(200)).body;
-      const results = await parallel(PARALLEL, (i) => driver.agent.post(`/api/rides/${ride.id}/effects/${gift.id}/applied`).send({ t: 10 + i, s: 900 + i, lat: 2.4 }));
-      expect(results.every((r) => r.status === 200)).toBe(true);
-      expect(new Set(results.map((r) => JSON.stringify(r.body.applied))).size).toBe(1);
+      const gift = (await fan.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'tip' }).expect(200)).body;
+      const results = await parallel(PARALLEL, () => driver.agent.post(`/api/rides/${ride.id}/effects/${gift.id}/applied`).send({ t: 10, s: 900, lat: 2.4 }));
+      expect(results.every((r) => r.status === 404)).toBe(true);
       const row = await prisma.rideEvent.findUniqueOrThrow({ where: { id: gift.id } });
-      expect(row.appliedS).toBe(results[0]!.body.applied.s);
+      expect(row.appliedS).toBeNull();
     });
   });
 
@@ -703,6 +707,7 @@ describe('concurrency (PostgreSQL)', () => {
 
   it('statistics: donations from many spectators in parallel are all counted on the driver', async () => {
     const { driver, ride } = await liveRide();
+    await driver.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'failed', s: 1, t: 1 }).expect(200);
     const fans = await Promise.all(Array.from({ length: PARALLEL }, () => login()));
     const res = await Promise.all(fans.map((f) => f.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'tip' })));
     const ok = res.filter((r) => r.status === 200).length;
@@ -721,7 +726,7 @@ describe('concurrency (PostgreSQL)', () => {
         fan.agent.post(`/api/watch/${ride.id}/donations`).send({ effect: 'tip' }),
       ]);
       expect(end.status).toBe(200);
-      expect([200, 409]).toContain(tip.status);   // a tip that lands after the end is refused (409) – never a 500
+      expect([200, 404]).toContain(tip.status);   // a tip on a ride that is still running is 404; one that lands on the replay is counted
       const career = (await driver.agent.get('/api/profile').expect(200)).body.career;
       expect(career.rides).toBe(1);
       expect(career.donations).toBe(tip.status === 200 ? 1 : 0);
@@ -779,13 +784,14 @@ describe('concurrency (PostgreSQL)', () => {
       const sig = harness.chain.addPayment({ payer: driver.address, destination: TREASURY, lamports: ride.lamports, memo: ride.id });
       await driver.agent.post(`/api/rides/${ride.id}/confirm`).send({ signature: sig }).expect(200);
       await driver.agent.post(`/api/rides/${ride.id}/start`).expect(200);
+      await driver.agent.post(`/api/rides/${ride.id}/end`).send({ outcome: 'failed', s: 1, t: 1 }).expect(200);
       const fans = await Promise.all([login(), login()]);
       const results = await Promise.all(fans.map((f) => f.agent.post(`/api/watch/${ride.id}/donation-orders`).send({ effect: 'tip' })));
       expect(results.every((r) => r.status === 200)).toBe(true);
       const rows = await prisma.donationOrder.findMany({ where: { recipient: driver.address } });
-      const held = rows.filter((r) => r.shareState === 'reserved' || r.shareState === 'paid');
-      expect(held).toHaveLength(1);
-      expect(Number(held[0]?.shareLamports)).toBe(share);
+      expect(rows).toHaveLength(2);
+      expect(rows.every((r) => r.referrer === TREASURY && Number(r.shareLamports) === Math.floor(Number(r.lamports) * 500 / 10_000))).toBe(true);
+      void share;
     } finally {
       await harness.close();
       harness = await createHarness('postgres', { FREE_RIDE_SECONDS: '10' });

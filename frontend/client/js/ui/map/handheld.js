@@ -2,23 +2,42 @@ import { st, dn } from '../../state.js';
 import { CFG } from '../../config.js';
 import { env } from '../../world/environment.js';
 import { trip } from '../../trips.js';
+import { phone } from '../../phone.js';
+import { os } from '../../phone/os.js';
+import { paintLauncher, homeLayout as launcherLayout } from '../../phone/home.js';
+import { noteFrame } from '../../minigames/runtime.js';
+import { noteGulp } from './gulp-scan.js';
+import { notePike } from './pike-scan.js';
 import { clamp, fmt, MONO } from '../../util.js';
 import { SB, view, palette, target } from './state.js';
 import { stepPhonePower } from './power-fsm.js';
 import { paintMap } from './canvas-map.js';
-import { paintBoot, paintHome, homeLayout, statusIcons } from './screens.js';
+import { paintBoot, statusIcons } from './screens.js';
 import { nextStep, distText, icon, fit } from './navigation.js';
 
-/* Handheld phone screen compositor: combines map/OS screens with the status bar, green navigation card, floating buttons, and bottom trip sheet. */
-
-const { LAUNCH_AT } = CFG.PHONE;
+/* Handheld phone screen compositor. Maps keeps the navigation chrome. Every other app is the phone OS.
+   Home hits are CSS pixels divided by view.k. App hits are already in that logical space. */
 
 export function drawMap(g, X, Y, W, H, o = {}) {
+  noteFrame();
+  noteGulp();
+  notePike();
   const sc = stepPhonePower();
-  if (sc.on) paintMap(g, X, Y, W, H, o);
-  else if (sc.home !== undefined) paintHome(g, X, Y, W, H, sc.home, !!o.thumb, o);
+  const other = sc.on && phone.app && phone.app !== 'maps';
+  if (sc.on && !other) paintMap(g, X, Y, W, H, o);
+  else if (other && o.thumb) paintThumbApp(g, X, Y, W, H);
+  else if (other) { g.fillStyle = '#10141b'; g.fillRect(X, Y, W, H); }
+  else if (sc.home !== undefined) paintLauncher(g, X, Y, W, H, sc.home, !!o.thumb, o.thumb ? -1 : os.focus);
   else paintBoot(g, X, Y, W, H, sc, !!o.thumb);
   return sc;
+}
+
+function paintThumbApp(g, X, Y, W, H) {
+  const meta = os.app();
+  g.fillStyle = '#10141b'; g.fillRect(X, Y, W, H);
+  g.fillStyle = meta?.color ?? '#334155'; g.fillRect(X, Y, W, Math.max(4, H * .08));
+  g.fillStyle = '#e8edf3'; g.font = `700 ${Math.max(8, W / 14)}px ${MONO}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(meta?.label ?? '', X + W / 2, Y + H / 2);
 }
 
 export function drawPhone() {
@@ -33,13 +52,17 @@ export function drawPhone() {
   if (!sc.on) {
     g.textAlign = 'center'; g.textBaseline = 'middle';
     if (sc.off) { g.fillStyle = '#7d8594'; g.font = `600 13px ${MONO}`; g.fillText('PHONE OFF', W / 2, H * .46); g.font = `11px ${MONO}`; g.fillText('start the engine to switch it on', W / 2, H * .46 + 22); }
-    if (sc.home !== undefined) for (const ic of homeLayout(0, 0, CW, CH, false).icons) hits.push({ id: 'app:' + ic.id, x: ic.x / k, y: ic.y / k, w: ic.s / k, h: ic.s / k });
-    if (sc.home === undefined || sc.home < LAUNCH_AT) {
-      const cy = sc.home === undefined ? H - 52 : homeLayout(0, 0, CW, CH, false).dockY / k - 42;
-      g.fillStyle = 'rgba(255,255,255,.14)'; g.beginPath(); g.roundRect(W / 2 - 44, cy, 88, 32, 16); g.fill();
-      g.fillStyle = '#c3ccd8'; g.font = `700 13px ${MONO}`; g.fillText('CLOSE', W / 2, cy + 17);
-      hits.unshift({ id: 'exit', x: W / 2 - 44, y: cy, w: 88, h: 32 });
-    }
+    const lay = sc.home !== undefined ? launcherLayout(0, 0, CW, CH, false) : null;
+    if (lay) for (const ic of lay.icons) hits.push({ id: 'app:' + ic.id, x: ic.x / k, y: ic.y / k, w: ic.s / k, h: ic.s / k });
+    const cy = lay ? lay.dockY / k - 42 : H - 52;
+    g.fillStyle = 'rgba(255,255,255,.14)'; g.beginPath(); g.roundRect(W / 2 - 44, cy, 88, 32, 16); g.fill();
+    g.fillStyle = '#c3ccd8'; g.font = `700 13px ${MONO}`; g.fillText('CLOSE', W / 2, cy + 17);
+    hits.unshift({ id: 'exit', x: W / 2 - 44, y: cy, w: 88, h: 32 });
+    return;
+  }
+  if (phone.app && phone.app !== 'maps') {
+    os.paint(g, W, H);
+    for (const h of os.hits(W, H)) hits.push(h);
     return;
   }
   const ui = sc.u;

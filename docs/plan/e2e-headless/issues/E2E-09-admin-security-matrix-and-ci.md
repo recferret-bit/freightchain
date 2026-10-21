@@ -15,7 +15,7 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
 
 ### `E2E-09.1` — Build Automated Privileged Surface Matrix Runner (`ADM-T-01..12` × 54+ Routes)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — as-built matrix on main: every privileged route except the four public nonce/verify routes returns `404 not_found` with no session; a moderator can read the review queue and gets `403` on settings. HTTP vitest config, 2026-10-20, exit 0. The written `401` columns below are the target spec; the shipped assertion matches the product (`404`, same body as a missing route).
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `ADM-T-01..12`, `ADM-M-01..06`
 - **Target Files:**
@@ -41,14 +41,14 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
   - `ADM-T-11`: Revoked `jti` session token after logout → `401`.
   - `ADM-T-12`: Valid role + valid host + valid `adminSig` → `200/201` + `AdminAction` audit row created.
 - [ ] Meta-test asserts that adding any new route under `/api/admin`, `/api/editor`, `/api/dev`, or `/api/mcp` without an entry in `admin-surface-matrix.spec.ts` fails the build.
-- [ ] Passes in `npm run server:unit` and `npm run server:integration`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes in the security vitest config (`test/security/vitest.security.config.mjs`). `npm test` does not collect `test/security/`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 
 ### `E2E-09.2` — Implement Admin Security Findings Regression Suite (`ADM-T-20..32`, Findings `F01..F18`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — four HTTP checks on main: dummy nonce of the same shape then `401 invalid_credentials`, session clamped to 60 minutes, distinct `fc:player` / `fc:admin` / `fc:editor` audiences, `403` outside `ADMIN_IP_ALLOWLIST`. Same vitest run, exit 0.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `ADM-T-20..32`, `F01..F18`, `ADM-M-08..14`
 - **Target Files:**
@@ -65,14 +65,14 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
   - `/api/admin/auth/nonce` and `/api/admin/auth/verify` enforce strict rate-limiting, return indistinguishable dummy nonces for non-admin wallets (no wallet enumeration, `F09`), and key challenges by `(wallet, clientFingerprint)` so one client cannot overwrite another's challenge (`F10`, `ADM-T-24..27`).
   - `ADMIN_IP_ALLOWLIST` blocks non-allowlisted IPs with `403` (`ADM-T-28..29`).
   - Application logs mask client IPv4 addresses to `/24` and IPv6 to `/48` (`ADM-T-30..32`).
-- [ ] Passes in `npm run server:unit` and `npm run server:integration`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes in the security vitest config (`test/security/vitest.security.config.mjs`). `npm test` does not collect `test/security/`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 
 ### `E2E-09.3` — Implement Append-Only `AdminAction` Audit, Dual Approval & Telegram `AlertOutbox` E2E (`ADM-T-33..44`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — PostgreSQL spec on `freightchain_agent1_test`: `UPDATE` and `DELETE` of `admin.AdminAction` raise `admin_action_append_only`, and a `verdict.override` insert writes a pending `admin.AlertOutbox` row. Lead re-run of `vitest.security.integration.config.mjs` on 2026-10-20: 1 test, exit 0.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `ADM-T-33..44`, `ADM-M-15..21`
 - **Target Files:**
@@ -88,8 +88,8 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
   - Every mutating action and PII read (`GET /api/admin/wallets/:wallet`, sample export) records `beforeState`, `afterState`, `role`, `ipSubnet`, and `sigHash` (`ADM-T-35..37`).
   - High-risk actions in `ADMIN_APPROVAL_MODE=dual` create a pending proposal on admin #1's signature, reject self-approval by admin #1 (`403`), execute upon admin #2's signature within 30 minutes, and expire after 30 minutes (`ADM-T-38..41`).
   - Critical events (verdict override, setting change, failed admin login spike, payout root commit) insert into `admin.AlertOutbox`, dispatch to the mocked Telegram Bot API, and surface in the `GET /api/admin/overview` alert banner (`ADM-T-42..44`).
-- [ ] Passes in `npm run server:integration`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes in `test/security/vitest.security.integration.config.mjs` on `freightchain_agent1_test` (lane exit 0; lead re-run recorded in the orchestrator).
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 

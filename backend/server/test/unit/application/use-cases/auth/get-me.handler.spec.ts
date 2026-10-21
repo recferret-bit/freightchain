@@ -39,10 +39,12 @@ describe('GetMeHandler', () => {
     await ctx.pools.upsert(aPool({ id: 2, status: 'refunding' }));
     await ctx.pools.upsert(aPool({ id: 3, status: 'settled' }));
     for (const [id, n] of [[1, 2], [2, 0], [3, 1]] as const) { const t = await ctx.tickets.open('w', id); if (n) { t.recordPurchase(n); await ctx.tickets.save(t); } }
-    const s = aPool().snapshot(), rideBy = Math.min(s.prepDeadline.getTime(), s.playDeadline.getTime() - 3600_000);   // the last start: the sale end (no new rides after it), or earlier when a 1 h shift could not end by the play deadline
+    const live = aPool({ id: 1, status: 'active', label: 'L1' });
+    const settled = aPool({ id: 3, status: 'settled' });
+    const rideBy = (pool: ReturnType<typeof aPool>) => pool.startBy(pool.shiftSeconds).getTime(); // lastStartAt for a 1h shift (75 min before play close)
     expect((await new GetMeHandler(ctx.sessions, ctx.clock, ctx.meProfile).execute(new GetMeQuery('w'))).tickets).toEqual([
-      { poolId: 1, tier: '1h', label: 'L1', status: 'active', balance: 2, bought: 2, cap: 5, refundable: false, ridable: true, rideBy },
-      { poolId: 3, tier: '1h', label: '1 HOUR · test', status: 'settled', balance: 1, bought: 1, cap: 5, refundable: false, ridable: false, rideBy },
+      { poolId: 1, tier: '1h', label: 'L1', status: 'active', balance: 2, bought: 2, cap: 5, refundable: false, ridable: true, rideBy: rideBy(live), burned: false },
+      { poolId: 3, tier: '1h', label: '1 HOUR · test', status: 'settled', balance: 1, bought: 1, cap: 5, refundable: false, ridable: false, rideBy: rideBy(settled), burned: false },
     ]);
   });
 

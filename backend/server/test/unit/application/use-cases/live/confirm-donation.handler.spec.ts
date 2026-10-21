@@ -27,7 +27,7 @@ describe('ConfirmDonationHandler', () => {
     expect(await confirm(o, 'not-there-yet')).toEqual({ status: 'pending' });
     const sig = pay(o);
     const done = await confirm(o, sig);
-    expect(done).toMatchObject({ status: 'paid', event: { kind: 'donation', effect: 'sinkhole', lamports: EFFECTS.sinkhole.lamports, signature: sig, text: 'gg' } });
+    expect(done).toMatchObject({ status: 'paid', event: { kind: 'donation', effect: 'tip', lamports: EFFECTS.sinkhole.lamports, signature: sig, text: expect.stringMatching(/sinkhole is off on this ride/) } });
     expect(await confirm(o, sig)).toEqual(done);
     expect((await ctx.rideEvents.listAfter(ride.id, 0, 10)).length).toBe(1);
     expect((await ctx.donationOrders.findById(o.id))?.snapshot()).toMatchObject({ status: 'paid', signature: sig });
@@ -51,7 +51,7 @@ describe('ConfirmDonationHandler', () => {
     const o1 = await busy.order();
     const e1 = (await busy.confirm(o1, busy.pay(o1))) as { event: { effect: string; text: string; lamports: number } };
     expect(e1.event).toMatchObject({ effect: 'tip', lamports: EFFECTS.sinkhole.lamports });
-    expect(e1.event.text).toMatch(/gg – sinkhole came inside another effect's 20 s, delivered as a tip/);
+    expect(e1.event.text).toMatch(/sinkhole is off on this ride, delivered as a tip/);
     const off = await setup('off');
     const o2 = await off.order('night');
     expect(((await off.confirm(o2, off.pay(o2))) as { event: { text: string } }).event.text).toMatch(/night is off on this ride, delivered as a tip/);

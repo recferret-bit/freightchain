@@ -10,6 +10,8 @@ import { chooseWallet, rememberWallet } from './wallet.js';
 import { signAndSend } from './pay.js';
 import { SITE_BASE } from '../js/hosts.js';
 import { mapRule, resolveHref, unwrap } from './blink-map.js';
+import { bootI18n } from './i18n.js';
+bootI18n();
 
 const DEVNET = 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1', MAINNET = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
 const CHAIN = { [DEVNET]: 'devnet', [MAINNET]: 'mainnet' };

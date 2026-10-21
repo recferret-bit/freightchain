@@ -30,9 +30,15 @@ export class HoldPoolPayoutHandler implements ICommandHandler<HoldPoolPayoutComm
       if (hold && (pool.status !== 'open' && pool.status !== 'active')) throw new ConflictError(`this pool is ${pool.status} – there is no payout to hold`, 'not_holdable');
       if (hold && pool.payoutState === 'paid') throw new ConflictError('this pool was paid already', 'not_holdable');
       const now = this.clock.now();
+      const beforeHold = pool.hold;
       if (hold) pool.putOnHold(admin, note, now); else pool.releaseHold();
       await this.pools.saveHold(poolId, pool.hold, tx);
-      await this.audit.insert({ wallet: admin, action: hold ? 'pool.hold' : 'pool.release', target: String(poolId), detail: { note, signed: proof }, requestId, at: now }, tx);
+      const held = (h: typeof beforeHold) => (h ? { held: true, by: h.by, note: h.note } : { held: false });
+      await this.audit.insert({
+        wallet: admin, action: hold ? 'pool.hold' : 'pool.release', target: String(poolId), role: 'admin',
+        beforeState: held(beforeHold), afterState: held(pool.hold),
+        detail: { note, signed: proof }, requestId, at: now,
+      }, tx);
       const h = pool.hold;
       return { poolId, held: h !== null, by: h?.by ?? null, at: h?.at.getTime() ?? null, note: h?.note ?? null };
     });

@@ -1,4 +1,4 @@
-import { RideEventRepositoryPort } from '../../../src/application/ports/live/ride-event.repository.port.js';
+import { RideEventRepositoryPort, type TipHistoryRow } from '../../../src/application/ports/live/ride-event.repository.port.js';
 import { RideMuteRepositoryPort } from '../../../src/application/ports/live/ride-mute.repository.port.js';
 import { DonationOrderRepositoryPort } from '../../../src/application/ports/live/donation-order.repository.port.js';
 import { DonationOrder } from '../../../src/domain/live/donation-order.entity.js';
@@ -53,12 +53,41 @@ export class MemoryRideEventRepository extends RideEventRepositoryPort {
   }
 
   async listAfter(rideId: string, afterId: number, limit: number): Promise<RideEvent[]> {
-    return this.db.rideEvents.filter((e) => e.rideId === rideId && (e.id ?? 0) > afterId).slice(0, limit).map((e) => RideEvent.restore(e));
+    return this.db.rideEvents.filter((e) => e.rideId === rideId && (e.id ?? 0) > afterId && !(e.kind === 'message' && e.hidden)).slice(0, limit).map((e) => RideEvent.restore(e));
+  }
+
+  async countRecentChat(rideId: string, wallet: string, since: Date): Promise<number> {
+    return this.db.rideEvents.filter((e) => e.rideId === rideId && e.wallet === wallet && e.kind === 'message' && e.slotKey.startsWith(`chat:${wallet}:`) && e.createdAt.getTime() >= since.getTime()).length;
+  }
+
+  async hideMessage(id: number): Promise<boolean> {
+    const row = this.db.rideEvents.find((e) => e.id === id && e.kind === 'message');
+    if (!row) return false;
+    row.hidden = true;
+    return true;
+  }
+
+  async purgeMessagesBefore(cutoff: Date): Promise<number> {
+    const before = this.db.rideEvents.length;
+    this.db.rideEvents = this.db.rideEvents.filter((e) => !(e.kind === 'message' && e.createdAt.getTime() < cutoff.getTime()));
+    return before - this.db.rideEvents.length;
   }
 
   async totals(rideId: string): Promise<LiveTotalsByRide> {
     const mine = this.db.rideEvents.filter((e) => e.rideId === rideId), gifts = mine.filter((e) => e.kind === 'donation');
     return { messages: mine.filter((e) => e.kind === 'message').length, donations: gifts.length, lamports: gifts.reduce((a, e) => a + e.lamports, 0) };
+  }
+
+  async tipsFor(wallet: string, limit: number): Promise<{ sent: TipHistoryRow[]; received: TipHistoryRow[] }> {
+    const tips = this.db.rideEvents.filter((e) => e.kind === 'donation' && e.effect === 'tip');
+    const row = (e: (typeof tips)[number]): TipHistoryRow => ({
+      id: e.id ?? 0, rideId: e.rideId, fromWallet: e.wallet, toWallet: this.db.rides.get(e.rideId)?.props.wallet ?? '', lamports: e.lamports, note: e.text, signature: e.signature, at: e.createdAt,
+    });
+    const newest = (a: (typeof tips)[number], b: (typeof tips)[number]) => b.createdAt.getTime() - a.createdAt.getTime();
+    return {
+      sent: tips.filter((e) => e.wallet === wallet).sort(newest).slice(0, limit).map(row),
+      received: tips.filter((e) => this.db.rides.get(e.rideId)?.props.wallet === wallet).sort(newest).slice(0, limit).map(row),
+    };
   }
 }
 
@@ -129,5 +158,9 @@ export class MemoryDonationOrderRepository extends DonationOrderRepositoryPort {
     if (!p || p.shareState !== 'reserved') return false;
     p.shareState = 'paid';
     return true;
+  }
+
+  async countOpen(wallet: string, createdAfter: Date): Promise<number> {
+    return [...this.db.donationOrders.values()].filter((o) => o.wallet === wallet && o.status === 'pending' && o.createdAt.getTime() >= createdAfter.getTime()).length;
   }
 }

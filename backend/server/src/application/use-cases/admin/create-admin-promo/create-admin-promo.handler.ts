@@ -27,7 +27,11 @@ export class CreateAdminPromoHandler implements ICommandHandler<CreateAdminPromo
     const created = await this.transactions.run(async (tx) => {
       const promo = await this.creation.create(input, tx);
       const now = this.clock.now();
-      await this.audit.insert({ wallet: admin, action: 'promo.create', target: promo.code, detail: { effect: promo.effect, signed: proof }, requestId, at: now }, tx);
+      await this.audit.insert({
+        wallet: admin, action: 'promo.create', target: promo.code, role: 'admin',
+        beforeState: null, afterState: { code: promo.code, effect: promo.effect },
+        detail: { effect: promo.effect, signed: proof }, requestId, at: now,
+      }, tx);
       return { dto: toPromoDto(promo, now), snapshot: promo.snapshot(), now };
     });
     const { snapshot: s } = created;

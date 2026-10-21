@@ -39,7 +39,7 @@ export class GetTiersHandler implements IQueryHandler<GetTiersQuery, TiersDto> {
       solUsd: quote?.usd ?? null,
       treasury: rules.treasury || null,
       paymentMode: rules.paymentMode,
-      tiers: rideTiers(rules.freeRideSeconds).map((t) => {
+      tiers: rideTiers(rules.freeRideSeconds).filter((t) => t.id === 'free' || t.id === '1h').map((t) => {
         const pool = isPaidTier(t.id) ? poolOf(t.id) : null;
         const row = { id: t.id, usd: t.usd, seconds: t.seconds, completeDist: completeDist(t.seconds, completeDistK(t.id, tripOf(t.id))), onSale: t.onSale, schedule: t.schedule };   // the free row: level 1's (= the EASY level, FREE_RIDE_SECONDS × 1, its K)
         if (pool) return { ...row, lamports: pool.priceLamports, available: pool.whyNotSellable(now, 1, 0) === null, pool: toPrizePoolDto(pool) };

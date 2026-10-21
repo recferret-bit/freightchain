@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { LiveTotalsByRide } from '../../../domain/live/live.dto.js';
 import type { RideEvent } from '../../../domain/live/ride-event.entity.js';
-import { RideEventRepositoryPort } from '../../../application/ports/live/ride-event.repository.port.js';
+import { RideEventRepositoryPort, type TipHistoryRow } from '../../../application/ports/live/ride-event.repository.port.js';
 import type { TransactionHandle } from '../../../application/ports/shared/transaction.port.js';
 import { RideEventMapper } from '../mappers/ride-event.mapper.js';
 import { clientFor, isUniqueViolation } from '../prisma-client.js';
@@ -63,7 +63,13 @@ export class RideEventPrismaRepository extends RideEventRepositoryPort {
   }
 
   async listAfter(rideId: string, afterId: number, limit: number, tx?: TransactionHandle): Promise<RideEvent[]> {
-    const rows = await clientFor(this.prisma, tx).rideEvent.findMany({ where: { rideId, id: { gt: afterId } }, orderBy: { id: 'asc' }, take: limit });
+    const rows = await clientFor(this.prisma, tx).rideEvent.findMany({
+      where: {
+        rideId, id: { gt: afterId },
+        OR: [{ kind: { not: 'message' } }, { appliedS: null }, { appliedS: { not: -1 } }],
+      },
+      orderBy: { id: 'asc' }, take: limit,
+    });
     return rows.map((row) => RideEventMapper.toDomain(row));
   }
 
@@ -71,5 +77,31 @@ export class RideEventPrismaRepository extends RideEventRepositoryPort {
     const groups = await this.prisma.rideEvent.groupBy({ by: ['kind'], where: { rideId }, _count: { _all: true }, _sum: { lamports: true } });
     const of = (kind: string) => groups.find((g) => g.kind === kind);
     return { messages: of('message')?._count._all ?? 0, donations: of('donation')?._count._all ?? 0, lamports: Number(of('donation')?._sum.lamports ?? 0n) };
+  }
+
+  async tipsFor(wallet: string, limit: number): Promise<{ sent: TipHistoryRow[]; received: TipHistoryRow[] }> {
+    const tip = { kind: 'donation', effect: 'tip' };
+    const [sent, received] = await Promise.all([
+      this.prisma.rideEvent.findMany({ where: { ...tip, wallet }, orderBy: { createdAt: 'desc' }, take: limit, include: { ride: { select: { wallet: true } } } }),
+      this.prisma.rideEvent.findMany({ where: { ...tip, ride: { wallet } }, orderBy: { createdAt: 'desc' }, take: limit, include: { ride: { select: { wallet: true } } } }),
+    ]);
+    const map = (row: (typeof sent)[number]): TipHistoryRow => ({
+      id: row.id, rideId: row.rideId, fromWallet: row.wallet, toWallet: row.ride.wallet, lamports: Number(row.lamports), note: row.text, signature: row.signature, at: row.createdAt,
+    });
+    return { sent: sent.map(map), received: received.map(map) };
+  }
+
+  async countRecentChat(rideId: string, wallet: string, since: Date): Promise<number> {
+    return this.prisma.rideEvent.count({ where: { rideId, wallet, kind: 'message', createdAt: { gte: since }, slotKey: { startsWith: `chat:${wallet}:` } } });
+  }
+
+  async hideMessage(id: number): Promise<boolean> {
+    const { count } = await this.prisma.rideEvent.updateMany({ where: { id, kind: 'message' }, data: { appliedS: -1 } });
+    return count === 1;
+  }
+
+  async purgeMessagesBefore(cutoff: Date): Promise<number> {
+    const { count } = await this.prisma.rideEvent.deleteMany({ where: { kind: 'message', createdAt: { lt: cutoff } } });
+    return count;
   }
 }

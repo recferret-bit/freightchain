@@ -166,6 +166,8 @@ describe('ReplayEngine & TrafficSimulator (10 Hz backend verification)', () => {
       createdAt: new Date('2026-04-01T12:00:01Z'),
       applied: { at: new Date('2026-04-01T12:00:01Z'), t: 1, s: sample50[1]!, lat: sample50[2]! },
       signature: null,
+      replayT: null,
+      hidden: false,
     });
 
     const unappliedEffect = RideEvent.restore({
@@ -181,6 +183,8 @@ describe('ReplayEngine & TrafficSimulator (10 Hz backend verification)', () => {
       createdAt: new Date('2026-04-01T12:00:10Z'),
       applied: null,
       signature: null,
+      replayT: null,
+      hidden: false,
     });
 
     const nightSwitch = RideEvent.restore({
@@ -196,6 +200,8 @@ describe('ReplayEngine & TrafficSimulator (10 Hz backend verification)', () => {
       createdAt: new Date('2026-04-01T12:00:15Z'),
       applied: { at: new Date('2026-04-01T12:00:16Z'), t: 16, s: 200, lat: null },
       signature: null,
+      replayT: null,
+      hidden: false,
     });
 
     const out = ReplayEngine.verify(ride, batches, [donatedSinkhole, unappliedEffect, nightSwitch]);
@@ -236,6 +242,30 @@ describe('ReplayEngine & TrafficSimulator (10 Hz backend verification)', () => {
     expect(out.scores.plannedHolesIgnored).toBe(1);
     expect(out.redFlags.some((f) => f.code === 'obstacle-no-impact' && f.severity === 'flag')).toBe(true);
     expect(out.redFlags.some((f) => f.code === 'obstacle-ignored')).toBe(false);
+  });
+
+  it('splits hull loss into the same five buckets the client adds, and counts a red the same way twice', async () => {
+    const shared = await import('../../../../src/domain/shared/index.js');
+    const { addBucket, emptyBuckets, bucketsFromCharges, countRedLights, roadNetFor } = shared;
+    const holes = [2.5, 1.25];
+    const vehicles = [4];
+    const client = shared.emptyBuckets();
+    for (const n of holes) shared.addBucket(client, 'holes', n);
+    for (const n of vehicles) shared.addBucket(client, 'vehicles', n);
+    shared.addBucket(client, 'props', 0);
+    shared.addBucket(client, 'cold', 1);
+    const server = shared.bucketsFromCharges(holes, vehicles, 100 - (2.5 + 1.25 + 4));
+    shared.addBucket(server, 'cold', 1);
+    expect(client).toEqual(server);
+    expect(client.holes + client.vehicles + client.props + client.cold + client.other).toBeCloseTo(2.5 + 1.25 + 4 + 1, 6);
+    const ride = makeRide(424242, 200, 20, '1h');
+    const batches = toEntities(ride.id, recording(ride.id, { seconds: 20, distance: 200, road: 424242, trip: '1h', replay: true }));
+    const out = ReplayEngine.verify(ride, batches, []);
+    const again = ReplayEngine.verify(ride, batches, []);
+    expect(out.damage).toEqual(again.damage);
+    expect(out.redLights).toBe(again.redLights);
+    const samples = batches.flatMap((b) => b.body.samples).map((r) => ({ s: r[1] ?? 0, t: r[0] ?? 0 }));
+    expect(out.redLights).toBe(shared.countRedLights(roadNetFor(ride.seed, '1h'), samples));
   });
 
 });

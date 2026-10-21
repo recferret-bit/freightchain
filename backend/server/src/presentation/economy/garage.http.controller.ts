@@ -8,12 +8,13 @@ import { CurrentPlayer } from '../../infrastructure/http/decorators/current-play
 import { ZodBody } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { TermsGuard } from '../common/guards/terms.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { saveGarageBodySchema, type SaveGarageBody } from './dto/garage.dto.js';
 
 /** The Garage (lobby → GARAGE): every part of the catalog with what the signed-in wallet owns and wears, and its collection progress; and SAVE of a whole selection. */
 @Controller('api/garage')
-@UseGuards(PlayerAuthGuard)
+@UseGuards(PlayerAuthGuard, TermsGuard)
 export class GarageHttpController {
   constructor(
     private readonly commandBus: CommandBus,

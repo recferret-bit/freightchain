@@ -106,16 +106,28 @@ export const envSchema = z
     ADMIN_WALLETS: z.string().default(''),
     /** the admin session's own signing key (rotate it = every admin signed out); unset = derived from JWT_SECRET */
     ADMIN_JWT_SECRET: optional(z.string().min(32, 'ADMIN_JWT_SECRET must be at least 32 characters')),
-    /** how long an admin sign-in lasts (minutes); there is no silent renewal – the wallet signs again */
-    ADMIN_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(120),
+    /** how long an admin sign-in lasts (minutes); there is no silent renewal – the wallet signs again. Capped at 60. */
+    ADMIN_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(60),
+    /** review-queue wallets (comma-separated). They are not admins. Empty = no moderators. */
+    MODERATOR_WALLETS: z.string().default(''),
+    /** optional admin client IPs / CIDRs; empty = any IP. Required on mainnet. */
+    ADMIN_IP_ALLOWLIST: z.string().default(''),
+    /** Telegram Bot API token. Empty = alerts stay queued. Never log it. */
+    ADMIN_ALERT_TELEGRAM_BOT_TOKEN: optional(z.string().min(1)),
+    /** Telegram chat id the alert worker posts into. */
+    ADMIN_ALERT_TELEGRAM_CHAT_ID: optional(z.string().min(1)),
+    /** single = one admin signature. dual = a second distinct admin within 30 minutes for money changes. */
+    ADMIN_APPROVAL_MODE: z.enum(['single', 'dual']).default('single'),
+    /** /api/admin/auth/* per IP per minute. Production stays at 10; tests raise it the way they raise the other budgets. */
+    THROTTLE_ADMIN_AUTH_LIMIT: z.coerce.number().int().positive().default(10),
     /** wallets that may use the 3D model editor on storybook.<apex> (/api/editor/*), comma-separated; empty = no editor (every editor route is a 404) */
     EDITOR_WALLETS: z.string().default(''),
     /** LOCAL ONLY: storybook skips the wallet sign-in and acts as the first EDITOR_WALLETS address. Refused in production. */
     EDITOR_OPEN: z.enum(['0', '1']).default('0'),
     /** the editor session's own signing key; unset = derived from JWT_SECRET (never the player's or the admin's bytes) */
     EDITOR_JWT_SECRET: optional(z.string().min(32, 'EDITOR_JWT_SECRET must be at least 32 characters')),
-    /** how long an editor sign-in lasts (minutes); the wallet signs again after it */
-    EDITOR_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(240),
+    /** how long an editor sign-in lasts (minutes); the wallet signs again after it. Capped at 60. */
+    EDITOR_SESSION_TTL_MINUTES: z.coerce.number().int().positive().max(1440).default(60),
     /** optional: only these client IPs / CIDRs reach the editor (comma-separated, IPv4 or IPv6); empty = any IP */
     EDITOR_IP_ALLOWLIST: z.string().default(''),
     /** the AI model editor (docs/spec/platform_services.md): SECRETS, read by the infrastructure only – a provider is offered when its key is set */
@@ -141,16 +153,24 @@ export const envSchema = z
     VERDICT_ENFORCE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** days a ride's recording is kept after the ride ended (flagged rides are kept until reviewed); 0 = keep forever */
     TELEMETRY_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),
+    /** off = v1 only. shadow = session key and a flag-only pause check. enforce = named streams, the enforce MAC, and pause/slow-mo rejects. Default stays off. The 10 Hz chain stays. */
+    TELEMETRY_V21: z.enum(['off', 'shadow', 'enforce']).default('off'),
     /** days the sign-in log (wallet, time, IP address, browser) is kept; 0 = forever */
     SIGNIN_RETENTION_DAYS: z.coerce.number().int().min(0).default(180),
     /** verified play: seconds of driving between two challenges, issued with the heartbeat when CHALLENGE_KINDS is non-empty; a short shift gets at most 4; 0 = off */
     CHALLENGE_INTERVAL_SECONDS: z.coerce.number().min(0).default(240),
     CHALLENGE_FREE_RIDES: z.enum(['on', 'off']).default('on'), // dispatch prompts on FREE rides too – prod compose: off (the one-minute free run is the onboarding ride; it ends itself at the line, so its prompts could never be judged, and the free board ranks every completed run whatever its verdict)
+    /** Phone minigames on 1h rides. off = nothing issued. shadow = rows stored, verdict unchanged. enforce = a flag may be added, never a reject. */
+    MINIGAMES: z.enum(['off', 'shadow', 'enforce']).default('off'),
+    /** HMAC key for the minigame salt. Required only when MINIGAMES is not off. At least 32 bytes. */
+    MG_SECRET: optional(z.string().min(32, 'MG_SECRET must be at least 32 bytes')),
+    MG_SALT_VERSION: z.string().min(1).default('mg:v1'),
     // live streams (spectators) – feature flags, enforced here and sent to the watch page / the driver's game (domain/live/live-features.ts)
     LIVE_CHAT: z.enum(['all', 'free', 'off']).default('all'), // spectators' chat: on every ride · only on free test rides · nowhere
     LIVE_DONATIONS: z.enum(['on', 'off']).default('on'), // any donation at all
     LIVE_FREE_DONATIONS: z.enum(['on', 'off']).default('on'), // on = MOCK donations (nothing charged) · off = a real SOL transfer to the driver, verified on chain
-    LIVE_EFFECTS: z.enum(['all', 'free', 'off']).default('all'), // donations that change the ride (night / day / holes): every ride · free test rides only · none (tips only)
+    LIVE_EFFECTS: z.enum(['all', 'free', 'off']).default('all'), // donations that change the ride (night / day / holes): every ride · free test rides only · none (tips only). The server no longer applies them.
+    PLEDGES_ENABLED: z.enum(['0', '1']).default('0'), // 1 = POST /api/pledges (and the live pledge routes) accept a per-km pledge. Devnet launch is 0.
     /** comma-separated ISO codes that replace the prize-rules defaults. Empty = those defaults (sanctioned draft, UK+EU, blocked US states). */
     PRIZE_SANCTIONED_COUNTRIES: z.string().default(''),
     PRIZE_BLOCKED_COUNTRIES: z.string().default(''),
@@ -159,6 +179,10 @@ export const envSchema = z
   .superRefine((env, ctx) => {
     const badAdmin = env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isWalletAddress(w));
     if (badAdmin.length) ctx.addIssue({ code: 'custom', path: ['ADMIN_WALLETS'], message: `ADMIN_WALLETS must be base58 Solana addresses (bad: ${badAdmin.join(', ')})` });
+    const badMod = env.MODERATOR_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isWalletAddress(w));
+    if (badMod.length) ctx.addIssue({ code: 'custom', path: ['MODERATOR_WALLETS'], message: `MODERATOR_WALLETS must be base58 Solana addresses (bad: ${badMod.join(', ')})` });
+    const badAdminIps = env.ADMIN_IP_ALLOWLIST.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isIpRule(w));
+    if (badAdminIps.length) ctx.addIssue({ code: 'custom', path: ['ADMIN_IP_ALLOWLIST'], message: `ADMIN_IP_ALLOWLIST must be IPs or CIDRs (bad: ${badAdminIps.join(', ')})` });
     const badEditor = env.EDITOR_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isWalletAddress(w));
     if (badEditor.length) ctx.addIssue({ code: 'custom', path: ['EDITOR_WALLETS'], message: `EDITOR_WALLETS must be base58 Solana addresses (bad: ${badEditor.join(', ')})` });
     const badIps = env.EDITOR_IP_ALLOWLIST.split(',').map((w) => w.trim()).filter((w) => w.length > 0 && !isIpRule(w));
@@ -178,6 +202,7 @@ export const envSchema = z
       if (bad.length) ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be comma-separated 2-letter codes` });
     }
     if (env.PAYMENT_MODE === 'program' && !env.TICKET_PROGRAM_ID) ctx.addIssue({ code: 'custom', path: ['TICKET_PROGRAM_ID'], message: 'TICKET_PROGRAM_ID must be set when PAYMENT_MODE=program' });
+    if (env.MINIGAMES !== 'off' && !env.MG_SECRET) ctx.addIssue({ code: 'custom', path: ['MG_SECRET'], message: 'MG_SECRET must be set (at least 32 bytes) when MINIGAMES is not off' });
     if (env.NODE_ENV === 'production') {
       if (env.EDITOR_FAKE_LLM === '1') ctx.addIssue({ code: 'custom', path: ['EDITOR_FAKE_LLM'], message: 'EDITOR_FAKE_LLM is a test switch – never in production' });
       if (env.EDITOR_OPEN === '1') ctx.addIssue({ code: 'custom', path: ['EDITOR_OPEN'], message: 'EDITOR_OPEN is a local switch – never in production' });
@@ -197,11 +222,41 @@ export const envSchema = z
 
 export type EnvConfig = z.infer<typeof envSchema>;
 
+/** Anything except an explicit development or test process, including an unset NODE_ENV. */
+export function isStrictNodeEnv(node: unknown): boolean {
+  return node !== 'development' && node !== 'test';
+}
+
+/** Flags that must not boot a staging / production / unset process. Names the key so the log says which one. */
+export function strictModeIssues(env: EnvConfig): string[] {
+  const issues: string[] = [];
+  if (env.DEMO_WALLETS.trim()) issues.push('DEMO_WALLETS: must be empty outside development and test');
+  if (env.EDITOR_FAKE_LLM === '1') issues.push('EDITOR_FAKE_LLM: is a test switch – never outside development and test');
+  if (env.LIVE_FREE_DONATIONS === 'on') issues.push('LIVE_FREE_DONATIONS: must be off outside development and test');
+  if (env.LIVE_EFFECTS !== 'off') issues.push('LIVE_EFFECTS: must be off outside development and test');
+  if (env.ADMIN_JWT_SECRET && env.JWT_SECRET && env.ADMIN_JWT_SECRET === env.JWT_SECRET) issues.push('ADMIN_JWT_SECRET: must differ from JWT_SECRET');
+  if (env.EDITOR_JWT_SECRET && env.JWT_SECRET && env.EDITOR_JWT_SECRET === env.JWT_SECRET) issues.push('EDITOR_JWT_SECRET: must differ from JWT_SECRET');
+  if (env.ADMIN_JWT_SECRET && env.EDITOR_JWT_SECRET && env.ADMIN_JWT_SECRET === env.EDITOR_JWT_SECRET) issues.push('ADMIN_JWT_SECRET: must differ from EDITOR_JWT_SECRET');
+  const allowlisted = [env.ADMIN_WALLETS, env.MODERATOR_WALLETS, env.EDITOR_WALLETS].some((value) => value.trim().length > 0);
+  if (allowlisted) {
+    if (!env.ADMIN_JWT_SECRET) issues.push('ADMIN_JWT_SECRET: must be set outside development and test when an allowlist is set');
+    if (!env.EDITOR_JWT_SECRET) issues.push('EDITOR_JWT_SECRET: must be set outside development and test when an allowlist is set');
+    if (!env.ADMIN_ALERT_TELEGRAM_BOT_TOKEN) issues.push('ADMIN_ALERT_TELEGRAM_BOT_TOKEN: must be set outside development and test when an allowlist is set');
+    if (!env.ADMIN_ALERT_TELEGRAM_CHAT_ID) issues.push('ADMIN_ALERT_TELEGRAM_CHAT_ID: must be set outside development and test when an allowlist is set');
+  }
+  if (env.SOLANA_RPC.includes('mainnet-beta') && !env.ADMIN_IP_ALLOWLIST.trim()) issues.push('ADMIN_IP_ALLOWLIST: must be set on mainnet');
+  return issues;
+}
+
 export function validateEnv(config: Record<string, unknown>): EnvConfig {
   const result = envSchema.safeParse(config);
   if (!result.success) {
     const details = result.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('\n');
     throw new Error(`Configuration validation error:\n${details}`);
+  }
+  if (isStrictNodeEnv(result.data.NODE_ENV)) {
+    const extra = strictModeIssues(result.data);
+    if (extra.length) throw new Error(`Configuration validation error:\n${extra.join('\n')}`);
   }
   return result.data;
 }

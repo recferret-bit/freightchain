@@ -1049,6 +1049,306 @@
         ]
       }
     },
+    "/api/admin/appeals": {
+      "get": {
+        "operationId": "AdminAppealsHttpController.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "poolId",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "appeals": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "createdAt": {
+                            "type": "number"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "poolId": {
+                            "type": "number"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "resolvedAt": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "rideId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "enum": [
+                              "open",
+                              "upheld",
+                              "denied"
+                            ],
+                            "type": "string"
+                          },
+                          "wallet": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "createdAt",
+                          "id",
+                          "poolId",
+                          "reason",
+                          "resolvedAt",
+                          "rideId",
+                          "status",
+                          "wallet"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "appeals"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminAppealsHttpController"
+        ]
+      }
+    },
+    "/api/admin/appeals/:id": {
+      "post": {
+        "operationId": "AdminAppealsHttpController.resolve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "decision": {
+                    "enum": [
+                      "upheld",
+                      "denied"
+                    ],
+                    "type": "string"
+                  },
+                  "note": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "signature": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "decision",
+                  "note",
+                  "signature"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "createdAt": {
+                      "type": "number"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "poolId": {
+                      "type": "number"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "resolvedAt": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "rideId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "open",
+                        "upheld",
+                        "denied"
+                      ],
+                      "type": "string"
+                    },
+                    "wallet": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "createdAt",
+                    "id",
+                    "poolId",
+                    "reason",
+                    "resolvedAt",
+                    "rideId",
+                    "status",
+                    "wallet"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminAppealsHttpController"
+        ]
+      }
+    },
+    "/api/admin/appeals/:id/challenge": {
+      "post": {
+        "operationId": "AdminAppealsHttpController.challenge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "decision": {
+                    "enum": [
+                      "upheld",
+                      "denied"
+                    ],
+                    "type": "string"
+                  },
+                  "note": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "decision",
+                  "note"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "address": {
+                      "type": "string"
+                    },
+                    "chainId": {
+                      "type": "string"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "expirationTime": {
+                      "type": "string"
+                    },
+                    "issuedAt": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "nonce": {
+                      "type": "string"
+                    },
+                    "statement": {
+                      "type": "string"
+                    },
+                    "uri": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminAppealsHttpController"
+        ]
+      }
+    },
     "/api/admin/auth/logout": {
       "post": {
         "operationId": "AdminHttpController.logout",
@@ -1221,6 +1521,106 @@
         ]
       }
     },
+    "/api/admin/chat/:eventId/hide": {
+      "post": {
+        "operationId": "AdminModerationHttpController.hide",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eventId",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminModerationHttpController"
+        ]
+      }
+    },
+    "/api/admin/config": {
+      "post": {
+        "operationId": "AdminModerationHttpController.config",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "note": {
+                    "maxLength": 200,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "note"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminModerationHttpController"
+        ]
+      }
+    },
     "/api/admin/logs": {
       "get": {
         "operationId": "AdminHttpController.logs",
@@ -1321,6 +1721,33 @@
                 "schema": {
                   "additionalProperties": true,
                   "properties": {
+                    "activeAlerts": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "at": {
+                            "type": "number"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "id",
+                          "kind",
+                          "text"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
                     "config": {
                       "additionalProperties": true,
                       "properties": {
@@ -1387,6 +1814,9 @@
                       ],
                       "type": "object"
                     },
+                    "undeliveredAlerts": {
+                      "type": "number"
+                    },
                     "underReview": {
                       "type": "number"
                     },
@@ -1398,6 +1828,7 @@
                     }
                   },
                   "required": [
+                    "activeAlerts",
                     "config",
                     "now",
                     "payments",
@@ -1406,6 +1837,7 @@
                     "running",
                     "signIns24h",
                     "telemetry",
+                    "undeliveredAlerts",
                     "underReview",
                     "verdicts"
                   ],
@@ -1860,6 +2292,68 @@
         ]
       }
     },
+    "/api/admin/players/:wallet/chat-ban": {
+      "post": {
+        "operationId": "AdminModerationHttpController.ban",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wallet",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "ban": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "ban"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminModerationHttpController"
+        ]
+      }
+    },
     "/api/admin/players/free-rides": {
       "post": {
         "operationId": "AdminSettingsHttpController.adjustFreeRides",
@@ -2072,6 +2566,9 @@
                               "label": {
                                 "type": "string"
                               },
+                              "lastStartAt": {
+                                "type": "number"
+                              },
                               "maxPerWallet": {
                                 "type": "number"
                               },
@@ -2079,6 +2576,9 @@
                                 "type": "number"
                               },
                               "minTickets": {
+                                "type": "number"
+                              },
+                              "opensAt": {
                                 "type": "number"
                               },
                               "payout": {
@@ -2117,6 +2617,20 @@
                               "payoutAt": {
                                 "type": "number"
                               },
+                              "phase": {
+                                "enum": [
+                                  "upcoming",
+                                  "open",
+                                  "finishing",
+                                  "validating",
+                                  "paid",
+                                  "closed"
+                                ],
+                                "type": "string"
+                              },
+                              "playCloseAt": {
+                                "type": "number"
+                              },
                               "playDeadline": {
                                 "type": "number"
                               },
@@ -2137,6 +2651,9 @@
                                   "number",
                                   "null"
                                 ]
+                              },
+                              "salesCloseAt": {
+                                "type": "number"
                               },
                               "sold": {
                                 "type": "number"
@@ -2200,6 +2717,9 @@
                                 ],
                                 "type": "object"
                               },
+                              "validationUntil": {
+                                "type": "number"
+                              },
                               "vaultLamports": {
                                 "type": "number"
                               }
@@ -2209,17 +2729,22 @@
                               "buyers",
                               "id",
                               "label",
+                              "lastStartAt",
                               "maxPerWallet",
                               "maxTickets",
                               "minTickets",
+                              "opensAt",
                               "payout",
                               "payoutAt",
+                              "phase",
+                              "playCloseAt",
                               "playDeadline",
                               "potLamports",
                               "prepDeadline",
                               "priceLamports",
                               "progressPct",
                               "roundId",
+                              "salesCloseAt",
                               "sold",
                               "split",
                               "sponsoredLamports",
@@ -2227,6 +2752,7 @@
                               "tier",
                               "toGo",
                               "treasuries",
+                              "validationUntil",
                               "vaultLamports"
                             ],
                             "type": "object"
@@ -2874,6 +3400,67 @@
         },
         "tags": [
           "AdminPoolsHttpController"
+        ]
+      }
+    },
+    "/api/admin/pools/rules": {
+      "post": {
+        "operationId": "AdminModerationHttpController.rules",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "note": {
+                    "maxLength": 200,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "poolId": {
+                    "exclusiveMinimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "note",
+                  "poolId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminModerationHttpController"
         ]
       }
     },
@@ -3970,6 +4557,54 @@
         },
         "tags": [
           "AdminPromosHttpController"
+        ]
+      }
+    },
+    "/api/admin/proposals/:id/approve": {
+      "post": {
+        "operationId": "AdminModerationHttpController.approve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "ok": {
+                      "const": true
+                    },
+                    "status": {
+                      "const": "applied"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ok",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminModerationHttpController"
         ]
       }
     },
@@ -6373,6 +7008,598 @@
         ]
       }
     },
+    "/api/admin/wallets/:wallet/chat-ban": {
+      "post": {
+        "operationId": "AdminModerationHttpController.banWallet",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wallet",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "ban": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "ban"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminModerationHttpController"
+        ]
+      }
+    },
+    "/api/airdrop/claim": {
+      "post": {
+        "operationId": "AirdropHttpController.claim",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "turnstileToken": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "campaign": {
+                      "const": "preseason"
+                    },
+                    "claimed": {
+                      "type": "boolean"
+                    },
+                    "claimedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "rideUnlocked": {
+                      "type": "boolean"
+                    },
+                    "settlement": {
+                      "const": "ledger"
+                    },
+                    "telegram": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "bound": {
+                          "type": "boolean"
+                        },
+                        "member": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "bound",
+                        "member"
+                      ],
+                      "type": "object"
+                    },
+                    "turnstile": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "required": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "passed",
+                        "required"
+                      ],
+                      "type": "object"
+                    },
+                    "x": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "ageOk": {
+                          "type": "boolean"
+                        },
+                        "bound": {
+                          "type": "boolean"
+                        },
+                        "followersOk": {
+                          "type": "boolean"
+                        },
+                        "follows": {
+                          "type": "boolean"
+                        },
+                        "quoteOk": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ageOk",
+                        "bound",
+                        "followersOk",
+                        "follows",
+                        "quoteOk"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "campaign",
+                    "claimed",
+                    "claimedAt",
+                    "code",
+                    "rideUnlocked",
+                    "settlement",
+                    "telegram",
+                    "turnstile",
+                    "x"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AirdropHttpController"
+        ]
+      }
+    },
+    "/api/airdrop/status": {
+      "get": {
+        "operationId": "AirdropHttpController.status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "campaign": {
+                      "const": "preseason"
+                    },
+                    "claimed": {
+                      "type": "boolean"
+                    },
+                    "claimedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "rideUnlocked": {
+                      "type": "boolean"
+                    },
+                    "settlement": {
+                      "const": "ledger"
+                    },
+                    "telegram": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "bound": {
+                          "type": "boolean"
+                        },
+                        "member": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "bound",
+                        "member"
+                      ],
+                      "type": "object"
+                    },
+                    "turnstile": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "required": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "passed",
+                        "required"
+                      ],
+                      "type": "object"
+                    },
+                    "x": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "ageOk": {
+                          "type": "boolean"
+                        },
+                        "bound": {
+                          "type": "boolean"
+                        },
+                        "followersOk": {
+                          "type": "boolean"
+                        },
+                        "follows": {
+                          "type": "boolean"
+                        },
+                        "quoteOk": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ageOk",
+                        "bound",
+                        "followersOk",
+                        "follows",
+                        "quoteOk"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "campaign",
+                    "claimed",
+                    "claimedAt",
+                    "code",
+                    "rideUnlocked",
+                    "settlement",
+                    "telegram",
+                    "turnstile",
+                    "x"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AirdropHttpController"
+        ]
+      }
+    },
+    "/api/airdrop/verify-telegram": {
+      "post": {
+        "operationId": "AirdropHttpController.verifyTelegram",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "telegramUserId": {
+                    "pattern": "^\\d{1,32}$",
+                    "type": "string"
+                  },
+                  "turnstileToken": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "telegramUserId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "campaign": {
+                      "const": "preseason"
+                    },
+                    "claimed": {
+                      "type": "boolean"
+                    },
+                    "claimedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "rideUnlocked": {
+                      "type": "boolean"
+                    },
+                    "settlement": {
+                      "const": "ledger"
+                    },
+                    "telegram": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "bound": {
+                          "type": "boolean"
+                        },
+                        "member": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "bound",
+                        "member"
+                      ],
+                      "type": "object"
+                    },
+                    "turnstile": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "required": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "passed",
+                        "required"
+                      ],
+                      "type": "object"
+                    },
+                    "x": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "ageOk": {
+                          "type": "boolean"
+                        },
+                        "bound": {
+                          "type": "boolean"
+                        },
+                        "followersOk": {
+                          "type": "boolean"
+                        },
+                        "follows": {
+                          "type": "boolean"
+                        },
+                        "quoteOk": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ageOk",
+                        "bound",
+                        "followersOk",
+                        "follows",
+                        "quoteOk"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "campaign",
+                    "claimed",
+                    "claimedAt",
+                    "code",
+                    "rideUnlocked",
+                    "settlement",
+                    "telegram",
+                    "turnstile",
+                    "x"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AirdropHttpController"
+        ]
+      }
+    },
+    "/api/airdrop/verify-x": {
+      "post": {
+        "operationId": "AirdropHttpController.verifyX",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "handle": {
+                    "pattern": "^@?[A-Za-z0-9_]{1,15}$",
+                    "type": "string"
+                  },
+                  "postId": {
+                    "pattern": "^\\d{1,30}$",
+                    "type": "string"
+                  },
+                  "turnstileToken": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "handle",
+                  "postId"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "campaign": {
+                      "const": "preseason"
+                    },
+                    "claimed": {
+                      "type": "boolean"
+                    },
+                    "claimedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "rideUnlocked": {
+                      "type": "boolean"
+                    },
+                    "settlement": {
+                      "const": "ledger"
+                    },
+                    "telegram": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "bound": {
+                          "type": "boolean"
+                        },
+                        "member": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "bound",
+                        "member"
+                      ],
+                      "type": "object"
+                    },
+                    "turnstile": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "required": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "passed",
+                        "required"
+                      ],
+                      "type": "object"
+                    },
+                    "x": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "ageOk": {
+                          "type": "boolean"
+                        },
+                        "bound": {
+                          "type": "boolean"
+                        },
+                        "followersOk": {
+                          "type": "boolean"
+                        },
+                        "follows": {
+                          "type": "boolean"
+                        },
+                        "quoteOk": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ageOk",
+                        "bound",
+                        "followersOk",
+                        "follows",
+                        "quoteOk"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "campaign",
+                    "claimed",
+                    "claimedAt",
+                    "code",
+                    "rideUnlocked",
+                    "settlement",
+                    "telegram",
+                    "turnstile",
+                    "x"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AirdropHttpController"
+        ]
+      }
+    },
     "/api/auth/guest": {
       "post": {
         "operationId": "AuthHttpController.guest",
@@ -6490,6 +7717,9 @@
                           "bought": {
                             "type": "number"
                           },
+                          "burned": {
+                            "type": "boolean"
+                          },
                           "cap": {
                             "type": "number"
                           },
@@ -6525,6 +7755,7 @@
                         "required": [
                           "balance",
                           "bought",
+                          "burned",
                           "cap",
                           "label",
                           "poolId",
@@ -6974,6 +8205,9 @@
                           "bought": {
                             "type": "number"
                           },
+                          "burned": {
+                            "type": "boolean"
+                          },
                           "cap": {
                             "type": "number"
                           },
@@ -7009,6 +8243,7 @@
                         "required": [
                           "balance",
                           "bought",
+                          "burned",
                           "cap",
                           "label",
                           "poolId",
@@ -10546,6 +11781,344 @@
         ]
       }
     },
+    "/api/live/rides/:id/pledge-confirm": {
+      "post": {
+        "operationId": "LiveHttpController.pledgeConfirm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "pledgeId": {
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "signature": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "pledgeId",
+                  "signature"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "createSignature": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "number"
+                    },
+                    "driver": {
+                      "type": "string"
+                    },
+                    "earnedLamports": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "lamportsPerKm": {
+                      "type": "string"
+                    },
+                    "maxLamports": {
+                      "type": "string"
+                    },
+                    "pdaAddress": {
+                      "type": "string"
+                    },
+                    "poolId": {
+                      "type": "number"
+                    },
+                    "refundedLamports": {
+                      "type": "string"
+                    },
+                    "rideId": {
+                      "type": "string"
+                    },
+                    "settled": {
+                      "type": "boolean"
+                    },
+                    "settledAt": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "signature": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "slot": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "sponsor": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "targetKm": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "createSignature",
+                    "createdAt",
+                    "driver",
+                    "earnedLamports",
+                    "id",
+                    "lamportsPerKm",
+                    "maxLamports",
+                    "pdaAddress",
+                    "poolId",
+                    "refundedLamports",
+                    "rideId",
+                    "settled",
+                    "settledAt",
+                    "signature",
+                    "slot",
+                    "sponsor",
+                    "status",
+                    "targetKm"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "LiveHttpController"
+        ]
+      }
+    },
+    "/api/live/rides/:id/pledge-intent": {
+      "post": {
+        "operationId": "LiveHttpController.pledgeIntent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "lamportsPerKm": {
+                    "type": "integer"
+                  },
+                  "targetKm": {
+                    "maximum": 10000,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "lamportsPerKm",
+                  "targetKm"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "pledge": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "createSignature": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "number"
+                        },
+                        "driver": {
+                          "type": "string"
+                        },
+                        "earnedLamports": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "lamportsPerKm": {
+                          "type": "string"
+                        },
+                        "maxLamports": {
+                          "type": "string"
+                        },
+                        "pdaAddress": {
+                          "type": "string"
+                        },
+                        "poolId": {
+                          "type": "number"
+                        },
+                        "refundedLamports": {
+                          "type": "string"
+                        },
+                        "rideId": {
+                          "type": "string"
+                        },
+                        "settled": {
+                          "type": "boolean"
+                        },
+                        "settledAt": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "signature": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "slot": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sponsor": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "targetKm": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "createSignature",
+                        "createdAt",
+                        "driver",
+                        "earnedLamports",
+                        "id",
+                        "lamportsPerKm",
+                        "maxLamports",
+                        "pdaAddress",
+                        "poolId",
+                        "refundedLamports",
+                        "rideId",
+                        "settled",
+                        "settledAt",
+                        "signature",
+                        "slot",
+                        "sponsor",
+                        "status",
+                        "targetKm"
+                      ],
+                      "type": "object"
+                    },
+                    "transaction": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "blockhash": {
+                          "type": "string"
+                        },
+                        "computeUnits": {
+                          "type": "number"
+                        },
+                        "feePayer": {
+                          "type": "string"
+                        },
+                        "lastValidBlockHeight": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "priorityMicrolamports": {
+                          "type": "number"
+                        },
+                        "transaction": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "blockhash",
+                        "computeUnits",
+                        "feePayer",
+                        "lastValidBlockHeight",
+                        "message",
+                        "priorityMicrolamports",
+                        "transaction"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "pledge",
+                    "transaction"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "LiveHttpController"
+        ]
+      }
+    },
     "/api/me": {
       "get": {
         "operationId": "AuthHttpController.me",
@@ -10663,6 +12236,9 @@
                           "bought": {
                             "type": "number"
                           },
+                          "burned": {
+                            "type": "boolean"
+                          },
                           "cap": {
                             "type": "number"
                           },
@@ -10698,6 +12274,7 @@
                         "required": [
                           "balance",
                           "bought",
+                          "burned",
                           "cap",
                           "label",
                           "poolId",
@@ -10768,6 +12345,204 @@
         },
         "tags": [
           "AuthHttpController"
+        ]
+      }
+    },
+    "/api/me/donations": {
+      "get": {
+        "operationId": "MeController.donations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "received": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "at": {
+                            "type": "number"
+                          },
+                          "fromWallet": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "number"
+                          },
+                          "lamports": {
+                            "type": "number"
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rideId": {
+                            "type": "string"
+                          },
+                          "signature": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "toWallet": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "fromWallet",
+                          "id",
+                          "lamports",
+                          "note",
+                          "rideId",
+                          "signature",
+                          "toWallet"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "sent": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "at": {
+                            "type": "number"
+                          },
+                          "fromWallet": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "number"
+                          },
+                          "lamports": {
+                            "type": "number"
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rideId": {
+                            "type": "string"
+                          },
+                          "signature": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "toWallet": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "fromWallet",
+                          "id",
+                          "lamports",
+                          "note",
+                          "rideId",
+                          "signature",
+                          "toWallet"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "totals": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "receivedLamports": {
+                          "type": "number"
+                        },
+                        "sentLamports": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "receivedLamports",
+                        "sentLamports"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "received",
+                    "sent",
+                    "totals"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "MeController"
+        ]
+      }
+    },
+    "/api/me/privacy": {
+      "patch": {
+        "operationId": "PrivacyHttpController.privacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "convoyHidden": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "convoyHidden"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "column": {
+                      "enum": [
+                        "present",
+                        "missing"
+                      ],
+                      "type": "string"
+                    },
+                    "convoyHidden": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "column",
+                    "convoyHidden"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "PrivacyHttpController"
         ]
       }
     },
@@ -11246,6 +13021,9 @@
                           "label": {
                             "type": "string"
                           },
+                          "lastStartAt": {
+                            "type": "number"
+                          },
                           "maxPerWallet": {
                             "type": "number"
                           },
@@ -11253,6 +13031,9 @@
                             "type": "number"
                           },
                           "minTickets": {
+                            "type": "number"
+                          },
+                          "opensAt": {
                             "type": "number"
                           },
                           "payout": {
@@ -11291,6 +13072,20 @@
                           "payoutAt": {
                             "type": "number"
                           },
+                          "phase": {
+                            "enum": [
+                              "upcoming",
+                              "open",
+                              "finishing",
+                              "validating",
+                              "paid",
+                              "closed"
+                            ],
+                            "type": "string"
+                          },
+                          "playCloseAt": {
+                            "type": "number"
+                          },
                           "playDeadline": {
                             "type": "number"
                           },
@@ -11311,6 +13106,9 @@
                               "number",
                               "null"
                             ]
+                          },
+                          "salesCloseAt": {
+                            "type": "number"
                           },
                           "sold": {
                             "type": "number"
@@ -11374,6 +13172,9 @@
                             ],
                             "type": "object"
                           },
+                          "validationUntil": {
+                            "type": "number"
+                          },
                           "vaultLamports": {
                             "type": "number"
                           }
@@ -11383,17 +13184,22 @@
                           "buyers",
                           "id",
                           "label",
+                          "lastStartAt",
                           "maxPerWallet",
                           "maxTickets",
                           "minTickets",
+                          "opensAt",
                           "payout",
                           "payoutAt",
+                          "phase",
+                          "playCloseAt",
                           "playDeadline",
                           "potLamports",
                           "prepDeadline",
                           "priceLamports",
                           "progressPct",
                           "roundId",
+                          "salesCloseAt",
                           "sold",
                           "split",
                           "sponsoredLamports",
@@ -11401,6 +13207,7 @@
                           "tier",
                           "toGo",
                           "treasuries",
+                          "validationUntil",
                           "vaultLamports"
                         ],
                         "type": "object"
@@ -11559,6 +13366,9 @@
                           "label": {
                             "type": "string"
                           },
+                          "lastStartAt": {
+                            "type": "number"
+                          },
                           "maxPerWallet": {
                             "type": "number"
                           },
@@ -11566,6 +13376,9 @@
                             "type": "number"
                           },
                           "minTickets": {
+                            "type": "number"
+                          },
+                          "opensAt": {
                             "type": "number"
                           },
                           "payout": {
@@ -11604,6 +13417,20 @@
                           "payoutAt": {
                             "type": "number"
                           },
+                          "phase": {
+                            "enum": [
+                              "upcoming",
+                              "open",
+                              "finishing",
+                              "validating",
+                              "paid",
+                              "closed"
+                            ],
+                            "type": "string"
+                          },
+                          "playCloseAt": {
+                            "type": "number"
+                          },
                           "playDeadline": {
                             "type": "number"
                           },
@@ -11624,6 +13451,9 @@
                               "number",
                               "null"
                             ]
+                          },
+                          "salesCloseAt": {
+                            "type": "number"
                           },
                           "sold": {
                             "type": "number"
@@ -11687,6 +13517,9 @@
                             ],
                             "type": "object"
                           },
+                          "validationUntil": {
+                            "type": "number"
+                          },
                           "vaultLamports": {
                             "type": "number"
                           }
@@ -11696,17 +13529,22 @@
                           "buyers",
                           "id",
                           "label",
+                          "lastStartAt",
                           "maxPerWallet",
                           "maxTickets",
                           "minTickets",
+                          "opensAt",
                           "payout",
                           "payoutAt",
+                          "phase",
+                          "playCloseAt",
                           "playDeadline",
                           "potLamports",
                           "prepDeadline",
                           "priceLamports",
                           "progressPct",
                           "roundId",
+                          "salesCloseAt",
                           "sold",
                           "split",
                           "sponsoredLamports",
@@ -11714,6 +13552,7 @@
                           "tier",
                           "toGo",
                           "treasuries",
+                          "validationUntil",
                           "vaultLamports"
                         ],
                         "type": "object"
@@ -11736,6 +13575,9 @@
                           "label": {
                             "type": "string"
                           },
+                          "lastStartAt": {
+                            "type": "number"
+                          },
                           "maxPerWallet": {
                             "type": "number"
                           },
@@ -11743,6 +13585,9 @@
                             "type": "number"
                           },
                           "minTickets": {
+                            "type": "number"
+                          },
+                          "opensAt": {
                             "type": "number"
                           },
                           "payout": {
@@ -11781,6 +13626,20 @@
                           "payoutAt": {
                             "type": "number"
                           },
+                          "phase": {
+                            "enum": [
+                              "upcoming",
+                              "open",
+                              "finishing",
+                              "validating",
+                              "paid",
+                              "closed"
+                            ],
+                            "type": "string"
+                          },
+                          "playCloseAt": {
+                            "type": "number"
+                          },
                           "playDeadline": {
                             "type": "number"
                           },
@@ -11801,6 +13660,9 @@
                               "number",
                               "null"
                             ]
+                          },
+                          "salesCloseAt": {
+                            "type": "number"
                           },
                           "sold": {
                             "type": "number"
@@ -11864,6 +13726,9 @@
                             ],
                             "type": "object"
                           },
+                          "validationUntil": {
+                            "type": "number"
+                          },
                           "vaultLamports": {
                             "type": "number"
                           }
@@ -11873,17 +13738,22 @@
                           "buyers",
                           "id",
                           "label",
+                          "lastStartAt",
                           "maxPerWallet",
                           "maxTickets",
                           "minTickets",
+                          "opensAt",
                           "payout",
                           "payoutAt",
+                          "phase",
+                          "playCloseAt",
                           "playDeadline",
                           "potLamports",
                           "prepDeadline",
                           "priceLamports",
                           "progressPct",
                           "roundId",
+                          "salesCloseAt",
                           "sold",
                           "split",
                           "sponsoredLamports",
@@ -11891,6 +13761,7 @@
                           "tier",
                           "toGo",
                           "treasuries",
+                          "validationUntil",
                           "vaultLamports"
                         ],
                         "type": "object"
@@ -11950,6 +13821,9 @@
                         "label": {
                           "type": "string"
                         },
+                        "lastStartAt": {
+                          "type": "number"
+                        },
                         "maxPerWallet": {
                           "type": "number"
                         },
@@ -11957,6 +13831,9 @@
                           "type": "number"
                         },
                         "minTickets": {
+                          "type": "number"
+                        },
+                        "opensAt": {
                           "type": "number"
                         },
                         "payout": {
@@ -11995,6 +13872,20 @@
                         "payoutAt": {
                           "type": "number"
                         },
+                        "phase": {
+                          "enum": [
+                            "upcoming",
+                            "open",
+                            "finishing",
+                            "validating",
+                            "paid",
+                            "closed"
+                          ],
+                          "type": "string"
+                        },
+                        "playCloseAt": {
+                          "type": "number"
+                        },
                         "playDeadline": {
                           "type": "number"
                         },
@@ -12015,6 +13906,9 @@
                             "number",
                             "null"
                           ]
+                        },
+                        "salesCloseAt": {
+                          "type": "number"
                         },
                         "sold": {
                           "type": "number"
@@ -12078,6 +13972,9 @@
                           ],
                           "type": "object"
                         },
+                        "validationUntil": {
+                          "type": "number"
+                        },
                         "vaultLamports": {
                           "type": "number"
                         }
@@ -12087,17 +13984,22 @@
                         "buyers",
                         "id",
                         "label",
+                        "lastStartAt",
                         "maxPerWallet",
                         "maxTickets",
                         "minTickets",
+                        "opensAt",
                         "payout",
                         "payoutAt",
+                        "phase",
+                        "playCloseAt",
                         "playDeadline",
                         "potLamports",
                         "prepDeadline",
                         "priceLamports",
                         "progressPct",
                         "roundId",
+                        "salesCloseAt",
                         "sold",
                         "split",
                         "sponsoredLamports",
@@ -12105,6 +14007,7 @@
                         "tier",
                         "toGo",
                         "treasuries",
+                        "validationUntil",
                         "vaultLamports"
                       ],
                       "type": "object"
@@ -12462,6 +14365,179 @@
         ]
       }
     },
+    "/api/pools/:id/results": {
+      "get": {
+        "operationId": "PoolsHttpController.results",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maximum": 4294967295,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "mine": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "damageTotal": {
+                          "type": "number"
+                        },
+                        "effectiveDurationMs": {
+                          "type": "number"
+                        },
+                        "finished": {
+                          "type": "boolean"
+                        },
+                        "rideId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "damageTotal",
+                        "effectiveDurationMs",
+                        "finished",
+                        "rideId"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "participants": {
+                      "type": "number"
+                    },
+                    "payoutAt": {
+                      "type": "number"
+                    },
+                    "poolId": {
+                      "type": "number"
+                    },
+                    "ranks": {
+                      "items": {
+                        "allOf": [
+                          {
+                            "additionalProperties": true,
+                            "properties": {
+                              "damageTotal": {
+                                "type": "number"
+                              },
+                              "effectiveDurationMs": {
+                                "type": "number"
+                              },
+                              "finished": {
+                                "type": "boolean"
+                              },
+                              "rideId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "damageTotal",
+                              "effectiveDurationMs",
+                              "finished",
+                              "rideId"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": true,
+                            "properties": {
+                              "damageCold": {
+                                "type": "number"
+                              },
+                              "damageHoles": {
+                                "type": "number"
+                              },
+                              "damageOther": {
+                                "type": "number"
+                              },
+                              "damageProps": {
+                                "type": "number"
+                              },
+                              "damageVehicles": {
+                                "type": "number"
+                              },
+                              "mgMissed": {
+                                "type": "number"
+                              },
+                              "mgPenaltySeconds": {
+                                "type": "number"
+                              },
+                              "mgWrong": {
+                                "type": "number"
+                              },
+                              "rank": {
+                                "type": "number"
+                              },
+                              "redLights": {
+                                "type": "number"
+                              },
+                              "scoreFormulaVersion": {
+                                "type": "number"
+                              },
+                              "wallet": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "damageCold",
+                              "damageHoles",
+                              "damageOther",
+                              "damageProps",
+                              "damageVehicles",
+                              "mgMissed",
+                              "mgPenaltySeconds",
+                              "mgWrong",
+                              "rank",
+                              "redLights",
+                              "scoreFormulaVersion",
+                              "wallet"
+                            ],
+                            "type": "object"
+                          }
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    "revealed": {
+                      "type": "boolean"
+                    },
+                    "scoreFormulaVersion": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "mine",
+                    "participants",
+                    "payoutAt",
+                    "poolId",
+                    "ranks",
+                    "revealed",
+                    "scoreFormulaVersion"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "PoolsHttpController"
+        ]
+      }
+    },
     "/api/pools/:id/standings": {
       "get": {
         "operationId": "PoolsHttpController.standings",
@@ -12585,6 +14661,241 @@
                     "ranks",
                     "tier",
                     "underReview"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "PoolsHttpController"
+        ]
+      }
+    },
+    "/api/pools/current": {
+      "get": {
+        "operationId": "PoolsHttpController.current",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "pool": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "address": {
+                          "type": "string"
+                        },
+                        "buyers": {
+                          "type": "number"
+                        },
+                        "id": {
+                          "type": "number"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "lastStartAt": {
+                          "type": "number"
+                        },
+                        "maxPerWallet": {
+                          "type": "number"
+                        },
+                        "maxTickets": {
+                          "type": "number"
+                        },
+                        "minTickets": {
+                          "type": "number"
+                        },
+                        "opensAt": {
+                          "type": "number"
+                        },
+                        "payout": {
+                          "additionalProperties": true,
+                          "properties": {
+                            "held": {
+                              "type": "boolean"
+                            },
+                            "note": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "state": {
+                              "enum": [
+                                "pending",
+                                "waiting_review",
+                                "held",
+                                "committed",
+                                "paying",
+                                "paid",
+                                "no_winners",
+                                "error"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "held",
+                            "note",
+                            "state"
+                          ],
+                          "type": "object"
+                        },
+                        "payoutAt": {
+                          "type": "number"
+                        },
+                        "phase": {
+                          "enum": [
+                            "upcoming",
+                            "open",
+                            "finishing",
+                            "validating",
+                            "paid",
+                            "closed"
+                          ],
+                          "type": "string"
+                        },
+                        "playCloseAt": {
+                          "type": "number"
+                        },
+                        "playDeadline": {
+                          "type": "number"
+                        },
+                        "potLamports": {
+                          "type": "number"
+                        },
+                        "prepDeadline": {
+                          "type": "number"
+                        },
+                        "priceLamports": {
+                          "type": "number"
+                        },
+                        "progressPct": {
+                          "type": "number"
+                        },
+                        "roundId": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "salesCloseAt": {
+                          "type": "number"
+                        },
+                        "sold": {
+                          "type": "number"
+                        },
+                        "split": {
+                          "additionalProperties": true,
+                          "properties": {
+                            "feeBps": {
+                              "type": "number"
+                            },
+                            "prizeBps": {
+                              "type": "number"
+                            },
+                            "referralBps": {
+                              "type": "number"
+                            },
+                            "seedBps": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "feeBps",
+                            "prizeBps",
+                            "referralBps",
+                            "seedBps"
+                          ],
+                          "type": "object"
+                        },
+                        "sponsoredLamports": {
+                          "type": "number"
+                        },
+                        "status": {
+                          "enum": [
+                            "open",
+                            "active",
+                            "refunding",
+                            "settled",
+                            "cancelled"
+                          ],
+                          "type": "string"
+                        },
+                        "tier": {
+                          "type": "string"
+                        },
+                        "toGo": {
+                          "type": "number"
+                        },
+                        "treasuries": {
+                          "additionalProperties": true,
+                          "properties": {
+                            "fee": {
+                              "type": "string"
+                            },
+                            "seed": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "fee",
+                            "seed"
+                          ],
+                          "type": "object"
+                        },
+                        "validationUntil": {
+                          "type": "number"
+                        },
+                        "vaultLamports": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "address",
+                        "buyers",
+                        "id",
+                        "label",
+                        "lastStartAt",
+                        "maxPerWallet",
+                        "maxTickets",
+                        "minTickets",
+                        "opensAt",
+                        "payout",
+                        "payoutAt",
+                        "phase",
+                        "playCloseAt",
+                        "playDeadline",
+                        "potLamports",
+                        "prepDeadline",
+                        "priceLamports",
+                        "progressPct",
+                        "roundId",
+                        "salesCloseAt",
+                        "sold",
+                        "split",
+                        "sponsoredLamports",
+                        "status",
+                        "tier",
+                        "toGo",
+                        "treasuries",
+                        "validationUntil",
+                        "vaultLamports"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "pool"
                   ],
                   "type": "object"
                 }
@@ -13160,6 +15471,9 @@
                           "bought": {
                             "type": "number"
                           },
+                          "burned": {
+                            "type": "boolean"
+                          },
                           "cap": {
                             "type": "number"
                           },
@@ -13195,6 +15509,7 @@
                         "required": [
                           "balance",
                           "bought",
+                          "burned",
                           "cap",
                           "label",
                           "poolId",
@@ -13746,6 +16061,85 @@
         ]
       }
     },
+    "/api/referrals/convoy/bind": {
+      "post": {
+        "operationId": "ConvoyHttpController.bind",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "pattern": "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "expiresAt": {
+                      "type": "string"
+                    },
+                    "idempotent": {
+                      "type": "boolean"
+                    },
+                    "maxPending": {
+                      "type": "number"
+                    },
+                    "pending": {
+                      "type": "number"
+                    },
+                    "referee": {
+                      "type": "string"
+                    },
+                    "referrer": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "active",
+                        "qualified",
+                        "expired"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "expiresAt",
+                    "idempotent",
+                    "maxPending",
+                    "pending",
+                    "referee",
+                    "referrer",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "ConvoyHttpController"
+        ]
+      }
+    },
     "/api/referrals/gift": {
       "post": {
         "operationId": "ReferralsHttpController.gift",
@@ -13851,6 +16245,114 @@
         },
         "tags": [
           "ReferralsHttpController"
+        ]
+      }
+    },
+    "/api/referrals/leaderboard": {
+      "get": {
+        "operationId": "ConvoyHttpController.leaderboard",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "me": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "active": {
+                          "type": "number"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "hidden": {
+                          "type": "boolean"
+                        },
+                        "qualified": {
+                          "type": "number"
+                        },
+                        "rank": {
+                          "type": "number"
+                        },
+                        "wallet": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "active",
+                        "displayName",
+                        "hidden",
+                        "qualified",
+                        "rank",
+                        "wallet"
+                      ],
+                      "type": "object"
+                    },
+                    "privacyColumn": {
+                      "enum": [
+                        "present",
+                        "missing"
+                      ],
+                      "type": "string"
+                    },
+                    "rows": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "active": {
+                            "type": "number"
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "hidden": {
+                            "type": "boolean"
+                          },
+                          "qualified": {
+                            "type": "number"
+                          },
+                          "rank": {
+                            "type": "number"
+                          },
+                          "wallet": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "active",
+                          "displayName",
+                          "hidden",
+                          "qualified",
+                          "rank",
+                          "wallet"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "me",
+                    "privacyColumn",
+                    "rows"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "ConvoyHttpController"
         ]
       }
     },
@@ -14108,6 +16610,12 @@
                     "driveSeconds": {
                       "type": "number"
                     },
+                    "holeSaltCommit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "honk": {
                       "additionalProperties": true,
                       "properties": {
@@ -14176,6 +16684,9 @@
                     "id": {
                       "type": "string"
                     },
+                    "keyId": {
+                      "type": "string"
+                    },
                     "lamports": {
                       "type": "number"
                     },
@@ -14208,6 +16719,9 @@
                     },
                     "promo": {
                       "type": "boolean"
+                    },
+                    "protocol": {
+                      "const": 2
                     },
                     "quoteExpiresAt": {
                       "type": [
@@ -14251,6 +16765,9 @@
                         "null"
                       ]
                     },
+                    "sessionKey": {
+                      "type": "string"
+                    },
                     "slot": {
                       "type": [
                         "number",
@@ -14271,6 +16788,12 @@
                     },
                     "timeScale": {
                       "type": "number"
+                    },
+                    "trafficSaltCommit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "trafficVersion": {
                       "type": "number"
@@ -14501,6 +17024,12 @@
                     "driveSeconds": {
                       "type": "number"
                     },
+                    "holeSaltCommit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "honk": {
                       "additionalProperties": true,
                       "properties": {
@@ -14569,6 +17098,9 @@
                     "id": {
                       "type": "string"
                     },
+                    "keyId": {
+                      "type": "string"
+                    },
                     "lamports": {
                       "type": "number"
                     },
@@ -14601,6 +17133,9 @@
                     },
                     "promo": {
                       "type": "boolean"
+                    },
+                    "protocol": {
+                      "const": 2
                     },
                     "quoteExpiresAt": {
                       "type": [
@@ -14644,6 +17179,9 @@
                         "null"
                       ]
                     },
+                    "sessionKey": {
+                      "type": "string"
+                    },
                     "slot": {
                       "type": [
                         "number",
@@ -14664,6 +17202,12 @@
                     },
                     "timeScale": {
                       "type": "number"
+                    },
+                    "trafficSaltCommit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "trafficVersion": {
                       "type": "number"
@@ -14806,6 +17350,104 @@
         ]
       }
     },
+    "/api/rides/:id/appeal": {
+      "post": {
+        "operationId": "RidesHttpController.appeal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "createdAt": {
+                      "type": "number"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "poolId": {
+                      "type": "number"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "resolvedAt": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "rideId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "open",
+                        "upheld",
+                        "denied"
+                      ],
+                      "type": "string"
+                    },
+                    "wallet": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "createdAt",
+                    "id",
+                    "poolId",
+                    "reason",
+                    "resolvedAt",
+                    "rideId",
+                    "status",
+                    "wallet"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "RidesHttpController"
+        ]
+      }
+    },
     "/api/rides/:id/batches": {
       "post": {
         "operationId": "RidesHttpController.batch",
@@ -14827,6 +17469,10 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "aux": {
+                    "additionalProperties": {},
+                    "type": "object"
+                  },
                   "hash": {
                     "pattern": "^[0-9a-f]{64}$",
                     "type": [
@@ -14861,10 +17507,65 @@
                     "maxLength": 2000,
                     "type": "array"
                   },
+                  "mac": {
+                    "pattern": "^[0-9a-f]{64}$",
+                    "type": "string"
+                  },
+                  "named": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "chk": {
+                        "maxLength": 120000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "clk": {
+                        "maxLength": 120000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "endTick": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "env": {
+                        "maxLength": 120000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "inp": {
+                        "maxLength": 120000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "mg": {
+                        "maxLength": 120000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "startTick": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "chk",
+                      "clk",
+                      "endTick",
+                      "env",
+                      "inp",
+                      "mg",
+                      "startTick"
+                    ],
+                    "type": "object"
+                  },
                   "prevHash": {
                     "maxLength": 64,
                     "minLength": 1,
                     "type": "string"
+                  },
+                  "protocol": {
+                    "const": 2
                   },
                   "samples": {
                     "items": {
@@ -14881,6 +17582,10 @@
                     "maximum": 100000,
                     "minimum": 0,
                     "type": "integer"
+                  },
+                  "streams": {
+                    "maxLength": 120000,
+                    "type": "string"
                   },
                   "t0": {
                     "maximum": 10000000,
@@ -14953,6 +17658,31 @@
         },
         "tags": [
           "RidesHttpController"
+        ]
+      }
+    },
+    "/api/rides/:id/card.png": {
+      "get": {
+        "operationId": "PublicRidesHttpController.card",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Non-JSON response"
+          }
+        },
+        "tags": [
+          "PublicRidesHttpController"
         ]
       }
     },
@@ -15068,6 +17798,12 @@
                             "driveSeconds": {
                               "type": "number"
                             },
+                            "holeSaltCommit": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
                             "honk": {
                               "additionalProperties": true,
                               "properties": {
@@ -15136,6 +17872,9 @@
                             "id": {
                               "type": "string"
                             },
+                            "keyId": {
+                              "type": "string"
+                            },
                             "lamports": {
                               "type": "number"
                             },
@@ -15168,6 +17907,9 @@
                             },
                             "promo": {
                               "type": "boolean"
+                            },
+                            "protocol": {
+                              "const": 2
                             },
                             "quoteExpiresAt": {
                               "type": [
@@ -15211,6 +17953,9 @@
                                 "null"
                               ]
                             },
+                            "sessionKey": {
+                              "type": "string"
+                            },
                             "slot": {
                               "type": [
                                 "number",
@@ -15231,6 +17976,12 @@
                             },
                             "timeScale": {
                               "type": "number"
+                            },
+                            "trafficSaltCommit": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "trafficVersion": {
                               "type": "number"
@@ -15520,6 +18271,12 @@
                     "lamports": {
                       "type": "number"
                     },
+                    "replayT": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
                     "signature": {
                       "type": [
                         "string",
@@ -15543,6 +18300,7 @@
                     "id",
                     "kind",
                     "lamports",
+                    "replayT",
                     "signature",
                     "text",
                     "wallet"
@@ -15687,6 +18445,12 @@
                     "driveSeconds": {
                       "type": "number"
                     },
+                    "holeSaltCommit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "honk": {
                       "additionalProperties": true,
                       "properties": {
@@ -15755,6 +18519,9 @@
                     "id": {
                       "type": "string"
                     },
+                    "keyId": {
+                      "type": "string"
+                    },
                     "lamports": {
                       "type": "number"
                     },
@@ -15787,6 +18554,9 @@
                     },
                     "promo": {
                       "type": "boolean"
+                    },
+                    "protocol": {
+                      "const": 2
                     },
                     "quoteExpiresAt": {
                       "type": [
@@ -15830,6 +18600,9 @@
                         "null"
                       ]
                     },
+                    "sessionKey": {
+                      "type": "string"
+                    },
                     "slot": {
                       "type": [
                         "number",
@@ -15850,6 +18623,12 @@
                     },
                     "timeScale": {
                       "type": "number"
+                    },
+                    "trafficSaltCommit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "trafficVersion": {
                       "type": "number"
@@ -16110,6 +18889,12 @@
                     "driveSeconds": {
                       "type": "number"
                     },
+                    "holeSaltCommit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "honk": {
                       "additionalProperties": true,
                       "properties": {
@@ -16178,6 +18963,9 @@
                     "id": {
                       "type": "string"
                     },
+                    "keyId": {
+                      "type": "string"
+                    },
                     "lamports": {
                       "type": "number"
                     },
@@ -16210,6 +18998,9 @@
                     },
                     "promo": {
                       "type": "boolean"
+                    },
+                    "protocol": {
+                      "const": 2
                     },
                     "quoteExpiresAt": {
                       "type": [
@@ -16253,6 +19044,9 @@
                         "null"
                       ]
                     },
+                    "sessionKey": {
+                      "type": "string"
+                    },
                     "slot": {
                       "type": [
                         "number",
@@ -16273,6 +19067,12 @@
                     },
                     "timeScale": {
                       "type": "number"
+                    },
+                    "trafficSaltCommit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "trafficVersion": {
                       "type": "number"
@@ -16504,6 +19304,12 @@
                           "lamports": {
                             "type": "number"
                           },
+                          "replayT": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
                           "signature": {
                             "type": [
                               "string",
@@ -16527,6 +19333,7 @@
                           "id",
                           "kind",
                           "lamports",
+                          "replayT",
                           "signature",
                           "text",
                           "wallet"
@@ -16613,6 +19420,302 @@
         },
         "tags": [
           "LiveHttpController"
+        ]
+      }
+    },
+    "/api/rides/:id/minigames/:eventId/answer": {
+      "post": {
+        "operationId": "RidesHttpController.answerMinigame",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eventId",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "answer": {
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "attempt": {
+                    "maximum": 3,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "mac": {
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "type": "string"
+                  },
+                  "nonce": {
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "safe": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "answer",
+                  "attempt",
+                  "mac",
+                  "nonce"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "attempts": {
+                      "type": "number"
+                    },
+                    "outcome": {
+                      "type": "string"
+                    },
+                    "penaltyS": {
+                      "type": "number"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "attempts",
+                    "outcome",
+                    "penaltyS",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "RidesHttpController"
+        ]
+      }
+    },
+    "/api/rides/:id/minigames/:eventId/assets/:assetId": {
+      "get": {
+        "operationId": "RidesHttpController.minigameAsset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assetId",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{16}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "eventId",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Non-JSON response"
+          }
+        },
+        "tags": [
+          "RidesHttpController"
+        ]
+      }
+    },
+    "/api/rides/:id/minigames/:eventId/open": {
+      "post": {
+        "operationId": "RidesHttpController.openMinigame",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eventId",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "mac": {
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "type": "string"
+                  },
+                  "safe": {
+                    "type": "boolean"
+                  },
+                  "variantSeq": {
+                    "anyOf": [
+                      {
+                        "const": 0
+                      },
+                      {
+                        "const": 1
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "mac",
+                  "variantSeq"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "const": "phone-sms"
+                    },
+                    "layout": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "cab": {
+                          "items": {},
+                          "type": "array"
+                        },
+                        "iconOrder": {
+                          "items": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "type": "array"
+                        },
+                        "keys": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "sendSlot": {
+                          "type": "number"
+                        },
+                        "threads": {
+                          "items": {},
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "cab",
+                        "iconOrder",
+                        "keys",
+                        "sendSlot",
+                        "threads"
+                      ],
+                      "type": "object"
+                    },
+                    "nonce": {
+                      "type": "string"
+                    },
+                    "ordinal": {
+                      "type": "number"
+                    },
+                    "revealedAt": {
+                      "type": "number"
+                    },
+                    "variantSeq": {
+                      "type": "number"
+                    },
+                    "windowMs": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "layout",
+                    "nonce",
+                    "ordinal",
+                    "revealedAt",
+                    "variantSeq",
+                    "windowMs"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "RidesHttpController"
         ]
       }
     },
@@ -17131,6 +20234,12 @@
                         "driveSeconds": {
                           "type": "number"
                         },
+                        "holeSaltCommit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "honk": {
                           "additionalProperties": true,
                           "properties": {
@@ -17199,6 +20308,9 @@
                         "id": {
                           "type": "string"
                         },
+                        "keyId": {
+                          "type": "string"
+                        },
                         "lamports": {
                           "type": "number"
                         },
@@ -17231,6 +20343,9 @@
                         },
                         "promo": {
                           "type": "boolean"
+                        },
+                        "protocol": {
+                          "const": 2
                         },
                         "quoteExpiresAt": {
                           "type": [
@@ -17274,6 +20389,9 @@
                             "null"
                           ]
                         },
+                        "sessionKey": {
+                          "type": "string"
+                        },
                         "slot": {
                           "type": [
                             "number",
@@ -17294,6 +20412,12 @@
                         },
                         "timeScale": {
                           "type": "number"
+                        },
+                        "trafficSaltCommit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "trafficVersion": {
                           "type": "number"
@@ -17776,6 +20900,20 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "lang": {
+                    "enum": [
+                      "en",
+                      "ru"
+                    ],
+                    "type": "string"
+                  },
+                  "mgMode": {
+                    "enum": [
+                      "normal",
+                      "more-time"
+                    ],
+                    "type": "string"
+                  },
                   "ranked": {
                     "type": "boolean"
                   },
@@ -17864,6 +21002,12 @@
                     "driveSeconds": {
                       "type": "number"
                     },
+                    "holeSaltCommit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "honk": {
                       "additionalProperties": true,
                       "properties": {
@@ -17932,6 +21076,9 @@
                     "id": {
                       "type": "string"
                     },
+                    "keyId": {
+                      "type": "string"
+                    },
                     "lamports": {
                       "type": "number"
                     },
@@ -17964,6 +21111,9 @@
                     },
                     "promo": {
                       "type": "boolean"
+                    },
+                    "protocol": {
+                      "const": 2
                     },
                     "quoteExpiresAt": {
                       "type": [
@@ -18007,6 +21157,9 @@
                         "null"
                       ]
                     },
+                    "sessionKey": {
+                      "type": "string"
+                    },
                     "slot": {
                       "type": [
                         "number",
@@ -18027,6 +21180,12 @@
                     },
                     "timeScale": {
                       "type": "number"
+                    },
+                    "trafficSaltCommit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "trafficVersion": {
                       "type": "number"
@@ -18248,6 +21407,12 @@
                         "driveSeconds": {
                           "type": "number"
                         },
+                        "holeSaltCommit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "honk": {
                           "additionalProperties": true,
                           "properties": {
@@ -18316,6 +21481,9 @@
                         "id": {
                           "type": "string"
                         },
+                        "keyId": {
+                          "type": "string"
+                        },
                         "lamports": {
                           "type": "number"
                         },
@@ -18348,6 +21516,9 @@
                         },
                         "promo": {
                           "type": "boolean"
+                        },
+                        "protocol": {
+                          "const": 2
                         },
                         "quoteExpiresAt": {
                           "type": [
@@ -18391,6 +21562,9 @@
                             "null"
                           ]
                         },
+                        "sessionKey": {
+                          "type": "string"
+                        },
                         "slot": {
                           "type": [
                             "number",
@@ -18411,6 +21585,12 @@
                         },
                         "timeScale": {
                           "type": "number"
+                        },
+                        "trafficSaltCommit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "trafficVersion": {
                           "type": "number"
@@ -19234,6 +22414,9 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "burnWarningAccepted": {
+                    "const": true
+                  },
                   "poolId": {
                     "maximum": 4294967295,
                     "minimum": 0,
@@ -19246,6 +22429,125 @@
                   }
                 },
                 "required": [
+                  "burnWarningAccepted",
+                  "poolId",
+                  "qty"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "createdAt": {
+                      "type": "number"
+                    },
+                    "expiresAt": {
+                      "type": "number"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "lamports": {
+                      "type": "number"
+                    },
+                    "paidAt": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "poolId": {
+                      "type": "number"
+                    },
+                    "qty": {
+                      "type": "number"
+                    },
+                    "reference": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "refundedAt": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "signature": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "enum": [
+                        "awaiting_payment",
+                        "paid",
+                        "expired",
+                        "refunded"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "createdAt",
+                    "expiresAt",
+                    "id",
+                    "lamports",
+                    "paidAt",
+                    "poolId",
+                    "qty",
+                    "reference",
+                    "refundedAt",
+                    "signature",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "TicketsHttpController"
+        ]
+      }
+    },
+    "/api/tickets/orders": {
+      "post": {
+        "operationId": "TicketsHttpController.createAtOrders",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "burnWarningAccepted": {
+                    "const": true
+                  },
+                  "poolId": {
+                    "maximum": 4294967295,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "qty": {
+                    "maximum": 100,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "burnWarningAccepted",
                   "poolId",
                   "qty"
                 ],
@@ -20221,6 +23523,9 @@
                               "label": {
                                 "type": "string"
                               },
+                              "lastStartAt": {
+                                "type": "number"
+                              },
                               "maxPerWallet": {
                                 "type": "number"
                               },
@@ -20228,6 +23533,9 @@
                                 "type": "number"
                               },
                               "minTickets": {
+                                "type": "number"
+                              },
+                              "opensAt": {
                                 "type": "number"
                               },
                               "payout": {
@@ -20266,6 +23574,20 @@
                               "payoutAt": {
                                 "type": "number"
                               },
+                              "phase": {
+                                "enum": [
+                                  "upcoming",
+                                  "open",
+                                  "finishing",
+                                  "validating",
+                                  "paid",
+                                  "closed"
+                                ],
+                                "type": "string"
+                              },
+                              "playCloseAt": {
+                                "type": "number"
+                              },
                               "playDeadline": {
                                 "type": "number"
                               },
@@ -20286,6 +23608,9 @@
                                   "number",
                                   "null"
                                 ]
+                              },
+                              "salesCloseAt": {
+                                "type": "number"
                               },
                               "sold": {
                                 "type": "number"
@@ -20349,6 +23674,9 @@
                                 ],
                                 "type": "object"
                               },
+                              "validationUntil": {
+                                "type": "number"
+                              },
                               "vaultLamports": {
                                 "type": "number"
                               }
@@ -20358,17 +23686,22 @@
                               "buyers",
                               "id",
                               "label",
+                              "lastStartAt",
                               "maxPerWallet",
                               "maxTickets",
                               "minTickets",
+                              "opensAt",
                               "payout",
                               "payoutAt",
+                              "phase",
+                              "playCloseAt",
                               "playDeadline",
                               "potLamports",
                               "prepDeadline",
                               "priceLamports",
                               "progressPct",
                               "roundId",
+                              "salesCloseAt",
                               "sold",
                               "split",
                               "sponsoredLamports",
@@ -20376,6 +23709,7 @@
                               "tier",
                               "toGo",
                               "treasuries",
+                              "validationUntil",
                               "vaultLamports"
                             ],
                             "type": [
@@ -20786,6 +24120,12 @@
                           "lamports": {
                             "type": "number"
                           },
+                          "replayT": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
                           "signature": {
                             "type": [
                               "string",
@@ -20809,6 +24149,7 @@
                           "id",
                           "kind",
                           "lamports",
+                          "replayT",
                           "signature",
                           "text",
                           "wallet"
@@ -21056,6 +24397,12 @@
                     ],
                     "type": "string"
                   },
+                  "lamports": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
                   "note": {
                     "maxLength": 320,
                     "type": [
@@ -21272,6 +24619,12 @@
                             "lamports": {
                               "type": "number"
                             },
+                            "replayT": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
                             "signature": {
                               "type": [
                                 "string",
@@ -21295,6 +24648,7 @@
                             "id",
                             "kind",
                             "lamports",
+                            "replayT",
                             "signature",
                             "text",
                             "wallet"
@@ -21426,6 +24780,12 @@
                                 "lamports": {
                                   "type": "number"
                                 },
+                                "replayT": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
                                 "signature": {
                                   "type": [
                                     "string",
@@ -21449,6 +24809,7 @@
                                 "id",
                                 "kind",
                                 "lamports",
+                                "replayT",
                                 "signature",
                                 "text",
                                 "wallet"
@@ -21522,6 +24883,12 @@
                       "sinkhole"
                     ],
                     "type": "string"
+                  },
+                  "lamports": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
                   },
                   "note": {
                     "maxLength": 320,
@@ -21600,6 +24967,12 @@
                     "lamports": {
                       "type": "number"
                     },
+                    "replayT": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
                     "signature": {
                       "type": [
                         "string",
@@ -21623,6 +24996,7 @@
                     "id",
                     "kind",
                     "lamports",
+                    "replayT",
                     "signature",
                     "text",
                     "wallet"
@@ -21879,6 +25253,11 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "replayT": {
+                    "maximum": 10000000,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
                   "text": {
                     "maxLength": 560,
                     "minLength": 1,
@@ -21954,6 +25333,12 @@
                     "lamports": {
                       "type": "number"
                     },
+                    "replayT": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
                     "signature": {
                       "type": [
                         "string",
@@ -21977,6 +25362,7 @@
                     "id",
                     "kind",
                     "lamports",
+                    "replayT",
                     "signature",
                     "text",
                     "wallet"

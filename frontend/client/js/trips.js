@@ -58,7 +58,7 @@ export const TRIPS = {
   // HARD, fourth round: same road and modifiers as free-3b, twice the shift (30 min / 20 160 m at the default FREE_RIDE_SECONDS). A new id because trip ids are frozen.
   'free-3c': { id: 'free-3c', name: 'FREE · HARD', level: 3, tutorial: false, assist: false, bends: 1.6, traffic: 1.4, cross: 1.4, calm: false, props: 1.2, finish: true, start: 'depot', seconds: 1800, k: .4,
     road: { first: ['open', 'xroad', 'highway', 'xroad', 'fork', 'xroad', 'xroad', 'fork', 'xroad', 'xroad'], weights: { open: 2, highway: 1 }, holeChance: 2, firstLen: [450, 450] } },
-  '1h': { id: '1h',   name: '1 HOUR HAUL',  bends: 1,   traffic: 1,   cross: 1, calm: false, props: 1,   finish: false, start: 'depot' },
+  '1h': { id: '1h',   name: '1 HOUR HAUL',  bends: 1,   traffic: 1,   cross: 1, calm: false, props: 1,   finish: true, start: 'depot' },
   '4h': { id: '4h',   name: '4 HOUR HAUL',  bends: 1.2, traffic: 1.4, cross: 1.4, calm: false, props: 1.2, finish: false, start: 'depot' },
   '8h': { id: '8h',   name: '8 HOUR HAUL',  bends: 1.4, traffic: 1.8, cross: 1.8, calm: false, props: 1.4, finish: false, start: 'depot' },
 };

@@ -44,10 +44,22 @@ export class RideQueryPrismaRepository extends RideQueryPort {
   /** One query: the page of ended rides + whether each still has a recording (a relation count, no N+1). Uses the (status, endedAt) index. */
   async history(f: HistoryFilter): Promise<HistoryRideRow[]> {
     const ended = f.status ? [f.status] : ['completed', 'abandoned', 'failed'];
+    const board = f.board;
     const rows = await this.prisma.ride.findMany({
       where: {
-        status: { in: ended as RideStatusRow[] }, startedAt: { not: null }, endedAt: { not: null }, ...(f.wallet ? { wallet: f.wallet } : {}),
-        ...(f.before ? { OR: [{ endedAt: { lt: f.before.endedAt } }, { endedAt: f.before.endedAt, seq: { lt: f.before.seq } }] } : {}),
+        AND: [
+          { status: { in: ended as RideStatusRow[] }, startedAt: { not: null }, endedAt: { not: null }, ...(f.wallet ? { wallet: f.wallet } : {}) },
+          ...(f.before ? [{ OR: [{ endedAt: { lt: f.before.endedAt } }, { endedAt: f.before.endedAt, seq: { lt: f.before.seq } }] }] : []),
+          ...(board ? [{
+            tier: '1h', tutorial: false, assist: false, player: { guest: false },
+            NOT: { verdict: { is: { status: 'rejected' as const } } },
+            OR: [
+              { poolId: null },
+              { pool: { payoutAt: { lte: board.now } } },
+              ...(board.viewerWallet ? [{ wallet: board.viewerWallet }] : []),
+            ],
+          }] : []),
+        ],
       },
       orderBy: [{ endedAt: 'desc' }, { seq: 'desc' }], take: f.limit,
       include: { _count: { select: { batches: true } } },
@@ -60,6 +72,10 @@ export class RideQueryPrismaRepository extends RideQueryPort {
 
   async staleRunning(cutoff: Date, limit: number): Promise<{ id: string; wallet: string }[]> {
     return this.prisma.ride.findMany({ where: { status: 'running', OR: [{ lastHbAt: { lt: cutoff } }, { lastHbAt: null }] }, orderBy: [{ lastHbAt: { sort: 'asc', nulls: 'first' } }], take: limit, select: { id: true, wallet: true } });
+  }
+
+  async overCapRunning(startedBefore: Date, limit: number): Promise<{ id: string; wallet: string }[]> {
+    return this.prisma.ride.findMany({ where: { status: 'running', tier: '1h', startedAt: { lt: startedBefore } }, orderBy: { startedAt: 'asc' }, take: limit, select: { id: true, wallet: true } });
   }
 
   async upcoming(limit: number): Promise<UpcomingRideRow[]> {
@@ -76,8 +92,9 @@ export class RideQueryPrismaRepository extends RideQueryPort {
       where: { status: { in: ['completed', 'abandoned', 'failed'] }, startedAt: { not: null }, endedAt: { not: null } },
       orderBy: [{ endedAt: 'desc' }, { seq: 'desc' }],
       take: limit,
+      include: { pool: { select: { payoutAt: true } } },
     });
-    return rows.map((r) => ({ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, lastS: r.lastS, endedAt: r.endedAt }));
+    return rows.map((r) => ({ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, lastS: r.lastS, endedAt: r.endedAt, poolId: r.poolId, payoutAt: r.pool?.payoutAt ?? null }));
   }
 
   /** Aggregate over the started rides, the completed rides themselves (few per wallet) for the per-ride achievement facts, TEN4 counts, and the convoy count. */

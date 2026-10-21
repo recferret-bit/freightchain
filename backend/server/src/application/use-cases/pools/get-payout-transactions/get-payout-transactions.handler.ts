@@ -2,6 +2,8 @@ import { Optional } from '@nestjs/common';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import { Pool } from '../../../../domain/economy/pool.entity.js';
 import { poolPayouts, TOP20_SIZE } from '../../../../domain/economy/pool-payouts.js';
+import { SCORE_FORMULA_VERSION, orderWalletsByResults } from '../../../../domain/pool/pool-ranking.js';
+import { RideResultRepositoryPort } from '../../../rides/ride-result.port.js';
 import { prizeBound } from '../../../../domain/economy/vault-split.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../../../domain/shared/errors.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
@@ -31,6 +33,7 @@ export class GetPayoutTransactionsHandler implements IQueryHandler<GetPayoutTran
     private readonly clock: ClockPort,
     private readonly hasher: HasherPort,
     @Optional() private readonly referralPayout?: ReferralPayoutService,
+    @Optional() private readonly rideResults?: RideResultRepositoryPort,
   ) {}
 
   async execute({ wallet, poolId }: GetPayoutTransactionsQuery): Promise<PayoutTransactionsDto> {
@@ -48,9 +51,11 @@ export class GetPayoutTransactionsHandler implements IQueryHandler<GetPayoutTran
     const maxPlayerShareBps = s.maxPlayerShareBps ?? chain.maxPlayerShareBps;
     const prizeLamports = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps, ...(maxPlayerShareBps !== undefined ? { maxPlayerShareBps } : {}) });
     const ranking = await this.rides.poolRanking(poolId, TOP20_SIZE, true); // verified recordings only – money never follows shadow mode
+    const resultRows = this.rideResults ? await this.rideResults.listByPool(poolId) : [];
+    const wallets = orderWalletsByResults(ranking.map((r) => r.wallet), resultRows, SCORE_FORMULA_VERSION).slice(0, TOP20_SIZE);
     const plan = this.referralPayout
-      ? await this.referralPayout.leaves(Pool.restore({ ...s, ...(maxPlayerShareBps !== undefined ? { maxPlayerShareBps } : {}) }))
-      : poolPayouts(prizeLamports, ranking.map((r) => r.wallet)).filter((p) => p.lamports > 0).map((p) => ({ ...p, kind: 'rider' as const }));
+      ? await this.referralPayout.leaves(Pool.restore({ ...s, ...(maxPlayerShareBps !== undefined ? { maxPlayerShareBps } : {}) }), wallets)
+      : poolPayouts(prizeLamports, wallets).filter((p) => p.lamports > 0).map((p) => ({ ...p, kind: 'rider' as const }));
     const tree = winnersTree(poolId, plan.map((p) => ({ wallet: p.wallet, lamports: p.lamports })), (d) => this.hasher.sha256(d));
     const paidBit = (rank: number) => chain.paidMask !== undefined && ((chain.paidMask >> BigInt(rank - 1)) & 1n) === 1n;
     const riderLeaves = plan.filter((p) => (p.kind ?? 'rider') === 'rider');

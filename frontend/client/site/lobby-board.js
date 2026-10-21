@@ -9,7 +9,7 @@ import { formatDriver, seedSns, seedSnsBatch } from './sns.js';
    stays put while a board, a level, a sort or a page is loading — replacing the whole view with "Loading…" flashed. */
 const BOARDS = [['round', 'THIS ROUND'], ['all', 'ALL TIME'], ['free', 'FREE RIDES']];
 const OFF = new Set(['round', 'all']);   // paid boards are switched off for now; the buttons stay so the row does not move
-const TIERS = [['1h', '1H', '1 hour'], ['4h', '4H', '4 hours'], ['8h', '8H', '8 hours']];
+const TIERS = [['1h', '1H', 'standard shift']];
 const COLS = [['distance', 'KM', 'total distance'], ['time', 'TIME', 'time driven'], ['hull', 'HULL', 'hull left at the end of the furthest shift'], ['rides', 'SHIFTS', 'finished shifts']];
 const SORT_NOTE = { time: 'time driven', hull: 'hull left', rides: 'shifts' };
 const FALLBACK = ['', 'EASY', 'MEDIUM', 'HARD'];

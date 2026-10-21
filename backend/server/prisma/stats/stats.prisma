@@ -61,3 +61,81 @@ model DailyStats {
 
   @@schema("stats")
 }
+
+// One row per ride (docs/spec/rides.md §21.2). The verdict worker fills it; this migration only creates the table.
+// Null means "not measured yet". Ranking reads S/D/Srv columns; clientReported is the cross-check only.
+model RideResult {
+  rideId               String   @id
+  ride                 Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  wallet               String
+  poolId               Int?
+  tier                 String?
+  trip                 String?
+  roadSeed             Int?
+  attemptNo            Int?
+  rulesVersion         Int?
+  finishRulesVersion   Int?
+  scoreInputsVersion   Int?
+  simHz                Int?
+  finished             Boolean?
+  finishReason         String?
+  finishS              Float?
+  distanceM            Float?
+  driveSeconds         Float?
+  driveToFinishSeconds Float?
+  wallSeconds          Float?
+  pausedSeconds        Float?
+  pauseCount           Int?
+  avgSpeedKmh          Float?
+  maxSpeedKmh          Float?
+  hullAtFinish         Float?
+  damageTotal          Float?
+  damageHoles          Float?
+  damageVehicles       Float?
+  damageProps          Float?
+  damageCold           Float?
+  damageOther          Float?
+  holesHit             Int?
+  holesHitByType       Json?
+  crashesVehicle       Int?
+  crashesBuilding      Int?
+  crashesProp          Int?
+  offroadSeconds       Float?
+  offroadEpisodes      Int?
+  signalsPassed        Int?
+  redLightViolations   Int?
+  amberPasses          Int?
+  redLightDetail       Json?
+  stopLineViolations   Int?
+  speedingSeconds      Float?
+  mgIssued             Int?
+  mgPassed             Int?
+  mgWrong              Int?
+  mgMissed             Int?
+  mgPenaltySeconds     Float?
+  mgMode               String?
+  mgDetail             Json?
+  verdictTier          String?
+  verdictReasons       Json?
+  humannessScore       Float?
+  featureScores        Json?
+  clientReported       Json?
+  score                Float?
+  scoreFormulaVersion  Int?
+  replayId             String?
+  computedAt           DateTime?
+  durationMs           Int?
+  effectiveDurationMs  Int?
+  redLights            Int?
+  offRoadSeconds       Float?
+  mgTotal              Int?
+  compositeScore       Float?
+  createdAt            DateTime
+
+  @@index([poolId, finished, verdictTier])
+  @@index([poolId, driveToFinishSeconds])
+  @@index([wallet, computedAt])
+  @@index([poolId, compositeScore])
+  @@index([wallet, createdAt])
+  @@schema("stats")
+}

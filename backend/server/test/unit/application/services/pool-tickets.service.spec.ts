@@ -17,10 +17,10 @@ describe('PoolTicketsService', () => {
     await ctx.pools.upsert(aPool({ id: 2, status: 'cancelled' }));
     await ctx.pools.upsert(aPool({ id: 3, status: 'settled', maxPerWallet: 9 }));
     await ctx.tickets.open('w', 1); await ctx.tickets.open('w', 2); await give(3, 2); await give(1, 1, 'other');
-    const rideBy = (id: number) => { const s = aPool({ id }).snapshot(); return Math.min(s.prepDeadline.getTime(), s.playDeadline.getTime() - 3600_000); };   // the last start: the sale end, or earlier when a 1 h shift could not end by the play deadline
+    const rideBy = (id: number) => { const s = aPool({ id }).snapshot(); return Math.min(s.playDeadline.getTime() - 75 * 60_000, s.playDeadline.getTime() - 3600_000); };
     expect(await svc.balances('w', ctx.now())).toEqual([
-      { poolId: 1, tier: '1h', label: '1 HOUR · test', status: 'open', balance: 0, bought: 0, cap: 5, refundable: false, ridable: false, rideBy: rideBy(1) },
-      { poolId: 3, tier: '1h', label: '1 HOUR · test', status: 'settled', balance: 2, bought: 2, cap: 9, refundable: false, ridable: false, rideBy: rideBy(3) },
+      { poolId: 1, tier: '1h', label: '1 HOUR · test', status: 'open', balance: 0, bought: 0, cap: 5, refundable: false, ridable: false, rideBy: rideBy(1), burned: false },
+      { poolId: 3, tier: '1h', label: '1 HOUR · test', status: 'settled', balance: 2, bought: 2, cap: 9, refundable: false, ridable: false, rideBy: rideBy(3), burned: false },
     ]);
     expect(await svc.balances('nobody', ctx.now())).toEqual([]);
   });
@@ -76,18 +76,15 @@ describe('PoolTicketsService', () => {
       expect(err).toMatchObject({ message: 'pool not live yet – 1 more ticket needed', errorCode: 'pool_not_live' });
     });
 
-    it('an active pool where a shift started now would end after its play deadline is skipped; holding only such tickets is 409 rides_closed with the pool and the deadline', async () => {
+    it('a shift that cannot finish before play close, while last start is still ahead, is 409 rides_closed and the ticket is kept', async () => {
       const { ctx, svc, give } = await setup();
-      const tooSoon = new Date(ctx.now().getTime() + 3599_000);   // a 1 h shift started now would end a second late
-      await ctx.pools.upsert(aPool({ id: 1, status: 'active', playDeadline: tooSoon }));
+      const play = new Date(ctx.now().getTime() + 5_000_000);
+      await ctx.pools.upsert(aPool({ id: 1, status: 'active', playDeadline: play }, ctx.now()));
       await give(1, 1);
-      await expect(svc.spendForRide('w', '1h', 'r', ctx.now(), tx, 3600)).rejects.toMatchObject({ errorCode: 'rides_closed', message: `rides for pool #1 closed at ${new Date(tooSoon.getTime() - 3600_000).toISOString()}` });   // the last start
-      expect((await svc.spendForRide('w', '1h', 'r', ctx.now(), tx, 60)).id).toBe(1);   // a demo shift of 60 s still fits (the ride's own minSeconds)
-      await give(1, 1);
-      await ctx.pools.upsert(aPool({ id: 2, status: 'active', playDeadline: new Date(ctx.now().getTime() + 3600_000) }));
-      await give(2, 1);
-      expect((await svc.spendForRide('w', '1h', 'r', ctx.now(), tx)).id).toBe(2);
+      const startBy = new Date(play.getTime() - 7200_000);
+      await expect(svc.spendForRide('w', '1h', 'r', ctx.now(), tx, 7200)).rejects.toMatchObject({ errorCode: 'rides_closed', message: `rides for pool #1 closed at ${startBy.toISOString()}` });
       expect((await ctx.tickets.find('w', 1))?.balance).toBe(1);
+      expect((await svc.spendForRide('w', '1h', 'r', ctx.now(), tx, 400)).id).toBe(1);
     });
 
     it('program v4 (audit L4): a pool whose road is not sealed yet spends nothing – 409 road_not_sealed, the ticket kept; once sealed it rides', async () => {
@@ -100,22 +97,26 @@ describe('PoolTicketsService', () => {
       expect((await svc.spendForRide('w', '1h', 'r', ctx.now(), tx, 60)).id).toBe(1);
     });
 
-    it('no new ride after the sale end: a live pool past its prep deadline spends nothing, however long its play window still runs (3 h to finish)', async () => {
+    it('sales can close before the last start; after lastStartAt the unused ticket burns (409 pool_last_start_passed, no refund)', async () => {
       const { ctx, svc, give } = await setup();
       const sale = new Date(ctx.now().getTime() - 1_000);
-      await ctx.pools.upsert(aPool({ id: 1, status: 'active', prepDeadline: sale, playDeadline: new Date(sale.getTime() + 3 * 3600_000) }));
-      await give(1, 1);
-      await expect(svc.spendForRide('w', '1h', 'r', ctx.now(), tx, 60)).rejects.toMatchObject({ errorCode: 'rides_closed', message: `rides for pool #1 closed at ${sale.toISOString()}` });
-      expect(await svc.balances('w', ctx.now())).toMatchObject([{ poolId: 1, balance: 1, ridable: false, rideBy: sale.getTime() }]);
+      const play = new Date(sale.getTime() + 3 * 3600_000);
+      await ctx.pools.upsert(aPool({ id: 1, status: 'active', prepDeadline: sale, playDeadline: play }, ctx.now()));
+      await give(1, 2);
+      expect((await svc.spendForRide('w', '1h', 'r', ctx.now(), tx, 60)).id).toBe(1);
+      const last = new Date(play.getTime() - 75 * 60_000);
+      await expect(svc.spendForRide('w', '1h', 'r2', new Date(last.getTime() + 1), tx, 60)).rejects.toMatchObject({ errorCode: 'pool_last_start_passed' });
+      expect((await ctx.tickets.find('w', 1))?.balance).toBe(0);
+      expect(await svc.balances('w', new Date(last.getTime() + 1))).toMatchObject([{ poolId: 1, balance: 0, burned: false, refundable: false }]);
     });
 
-    it('balances: ridable only while the pool is live and a shift started now ends by its play deadline; rideBy is that last start', async () => {
+    it('balances: ridable until lastStartAt; rideBy is that instant for a 1h shift', async () => {
       const { ctx, svc, give } = await setup();
-      const now = ctx.now(), deadline = new Date(now.getTime() + 3660_000), startBy = deadline.getTime() - 3600_000;
-      await ctx.pools.upsert(aPool({ id: 1, status: 'active', playDeadline: deadline }));
+      const now = ctx.now(), deadline = new Date(now.getTime() + 2 * 3600_000), startBy = deadline.getTime() - 75 * 60_000;
+      await ctx.pools.upsert(aPool({ id: 1, status: 'active', playDeadline: deadline }, now));
       await give(1, 1);
-      expect(await svc.balances('w', now)).toMatchObject([{ poolId: 1, balance: 1, ridable: true, rideBy: startBy }]);
-      expect(await svc.balances('w', new Date(startBy + 1))).toMatchObject([{ poolId: 1, balance: 1, ridable: false, rideBy: startBy }]);
+      expect(await svc.balances('w', now)).toMatchObject([{ poolId: 1, balance: 1, ridable: true, rideBy: startBy, burned: false }]);
+      expect(await svc.balances('w', new Date(startBy + 1))).toMatchObject([{ poolId: 1, balance: 0, ridable: false, rideBy: startBy, burned: true }]);
     });
   });
 

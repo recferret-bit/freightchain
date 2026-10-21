@@ -19,7 +19,7 @@ describe('GetInboxHandler', () => {
     expect((await handler.execute(new GetInboxQuery('driver', ride.id, a.id!))).events.map((e) => e.effect)).toEqual(['day']);
     expect((await handler.execute(new GetInboxQuery('driver', ride.id, 0))).viewers).toBe(1); // reading it twice adds no viewer
     await expect(handler.execute(new GetInboxQuery('fan', ride.id, 0))).rejects.toBeInstanceOf(NotFoundError);
-    expect(inbox.features).toEqual({ chat: true, donations: true, payment: 'mock', effects: true });
+    expect(inbox.features).toEqual({ chat: true, donations: true, payment: 'mock', effects: false });
     await ctx.rideMutes.set(ride.id, 'fan', true, ctx.now());
     const muted = await handler.execute(new GetInboxQuery('driver', ride.id, 0));
     expect(muted.events.map((e) => e.kind)).toEqual(['donation']); // the muted wallet's line is gone, its donation stays

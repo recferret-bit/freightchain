@@ -17,6 +17,7 @@ import { API_BASE, GAME_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
+import { bootI18n } from './i18n.js';
 import { TOKEN_SYMBOL } from '../js/config.js';
 import { isMobileDevice, showMobileToast } from '../js/mobile.js';
 import { formatDriver, seedSns } from './sns.js';
@@ -26,7 +27,7 @@ import { formatDriver, seedSns } from './sns.js';
 reportWebVitals('lobby');   // before the session check, so a bounce back to the landing still reports the load
 const view = $('view');
 const ROUTES = { route66: 'Route 66', stuart: 'Stuart Hwy', siberia: 'Trans-Siberian', brenner: 'Brenner Pass', panamerican: 'Pan-American' };   // = client/js/themes ids
-const TIER_NAME = { free: 'TEST RIDE', '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8 HOURS' };
+const TIER_NAME = { free: 'TRAINING', '1h': 'STANDARD SHIFT', '4h': '4 HOURS', '8h': '8 HOURS' };
 const TABS = ['new', 'live', 'replays', 'board', 'achievements', 'garage', 'profile'];
 const TAB_ALIAS = { promo: 'profile' };   // the old PROMO tab (the landing's invite link, bookmarks) lives in the PROFILE now
 
@@ -34,7 +35,7 @@ const avatar = w => el('span', { class: 'av', style: `background:hsl(${hue(w)} 6
 const km = m => (m / 1000).toFixed(m < 10_000 ? 2 : 1);
 
 /* ───────── state ───────── */
-const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'free', boardLevel: Number(store.get('freightchain.board-level')) || 3, boardTier: store.get('freightchain.board-tier') === '4h' || store.get('freightchain.board-tier') === '8h' ? store.get('freightchain.board-tier') : '1h', pending: null, pendingNote: '', pools: null, standings: {}, stAt: {}, tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') !== '0', level: Number(store.get('freightchain.level')) || 1 } };
+const S = { me: null, tiers: null, pool: null, live: { rides: [] }, liveAt: 0, skew: 0, board: 'free', boardLevel: Number(store.get('freightchain.board-level')) || 3, boardTier: '1h', pending: null, pendingNote: '', pools: null, standings: {}, stAt: {}, tab: 'new', busy: null, qty: {}, msgs: {}, poolInfo: {}, order: null, focus: null, opt: { tutorial: null, assist: store.get('freightchain.assist') !== '0', level: Number(store.get('freightchain.level')) || 1 } };
 let seq = 0, meGen = 0, honkTicket = 0;
 const now = () => Date.now() + S.skew;
 const freeLeft = () => 'training · unlimited';   // no counted balance. Statistics and achievements still count; the ride is not ranked and not a prize entry
@@ -210,6 +211,7 @@ for (const a of document.querySelectorAll('a[href="/play.html"]')) a.addEventLis
   }
   track('offline_practice_clicked'); flushSoon();
 });
+bootI18n();
 captureRef(store, location.search);
 { const next = searchWithoutRef(location.search); if (next != null) history.replaceState(null, '', `${location.pathname}${next}${location.hash}`); }
 try { S.me = await api('me'); } catch { flushSoon(); location.href = '/'; }

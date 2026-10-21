@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { canvasTex } from '../../world/scene.js';
 import { trackMat } from './mats.js';
 
-/* Depth order (polygon offsets, so 3 cm of real height still wins at 500 m, where the depth buffer steps are ~5 cm): ground 0 < landmark apron -1 < surface -2 < pad -3 < marks -4 < hole decals -5…. */
+/* Depth order (polygon offsets, so 3 cm of real height still wins at 500 m, where the depth buffer steps are ~5 cm): ground 0 < surface -2 < landmark apron and junction pad -3 < marks -4 < hole decals -5…. The apron sits over the shoulder so the grass strip does not show between the asphalt and the lot. */
 /* A route's road look. The road is built from strips of variable width (world/roadmesh.js), so the markings are NOT painted into the surface any more:
    surface: shoulder | asphalt | shoulder across u (0 .. .125 | .125 .. .875 | .875 .. 1; the asphalt stretches with the lane count), repeats every 9 m along the road.
    pad:     the same surface for junction aprons (drawn on top of the road strips: polygon offset).

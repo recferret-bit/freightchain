@@ -27,7 +27,7 @@ describe('CreatePledgeHandler', () => {
     await ctx.accept(SPONSOR, true);
     await ctx.player(DRIVER);
     await ctx.accept(DRIVER, true);
-    const handler = new CreatePledgeHandler(ctx.pledges, ctx.rides, ctx.players, ctx.pools, ctx.poolChain, ctx.transactions, ctx.clock, ctx.entropy);
+    const handler = new CreatePledgeHandler(ctx.pledges, ctx.rides, ctx.players, ctx.pools, ctx.poolChain, ctx.transactions, ctx.clock, ctx.entropy, ctx.pledgeGate);
     return { ctx, handler, create: (rideId: string, rate = 10_000_000n, km = 5, sponsor = SPONSOR) => handler.execute(new CreatePledgeCommand(sponsor, rideId, rate, km)) };
   };
 

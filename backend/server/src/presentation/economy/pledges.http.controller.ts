@@ -11,6 +11,7 @@ import { CurrentPlayer } from '../../infrastructure/http/decorators/current-play
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { TermsGuard } from '../common/guards/terms.guard.js';
 import type { PlayerAuthPayload } from '../../infrastructure/http/types/http-request.js';
 import {
   createPledgeBodySchema,
@@ -30,7 +31,7 @@ export class PledgesHttpController {
     private readonly queryBus: QueryBus,
   ) {}
 
-  @Post('pledges') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('pledges') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(createdPledgeResponse)
   create(@CurrentPlayer() player: PlayerAuthPayload, @ZodBody(createPledgeBodySchema) body: CreatePledgeDto): Promise<CreatedPledgeDto> {
     return this.commandBus.execute<CreatePledgeCommand, CreatedPledgeDto>(
@@ -45,7 +46,7 @@ export class PledgesHttpController {
   }
 
   /** the sponsor's wallet sent the create_pledge: the server reads that transaction's events (settling and refunding are the pledge job's, on chain) */
-  @Post('pledges/:id/confirm') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('pledges/:id/confirm') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(pledgeResponse)
   confirm(@CurrentPlayer() player: PlayerAuthPayload, @ZodParams(pledgeIdParamsSchema) params: PledgeIdParams, @ZodBody(confirmPledgeBodySchema) body: ConfirmPledgeBody): Promise<PledgeDto> {
     return this.commandBus.execute<ConfirmPledgeCommand, PledgeDto>(new ConfirmPledgeCommand(player.wallet, params.id, body.signature));

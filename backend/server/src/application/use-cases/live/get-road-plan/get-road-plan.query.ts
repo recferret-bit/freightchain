@@ -4,5 +4,6 @@ export class GetRoadPlanQuery {
     public readonly rideId: string,
     public readonly from: number,
     public readonly to: number,
+    public readonly caller: string | null = null,
   ) {}
 }

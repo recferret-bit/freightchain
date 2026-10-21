@@ -31,7 +31,8 @@ const net=G.net, checks=[]; const check=(ok,l)=>{ checks.push((ok?'ok   ':'FAIL 
 // speed-held driving (gas/brake bang-bang around vmax) for the depot road and the turn
 const crawl=(until,vmax,label,maxSec=120)=>{ for(let i=0;i<maxSec*10&&st.mode==='drive'&&!until();i++){ steerCtl(); input.gas=st.v<vmax?1:0; input.brake=st.v>vmax+1.5?1:0; step(6);} input.gas=0; input.brake=0; if(label)snap(label); };
 // warmed-up engine: a cold one has thin power (CFG.COLD_POWER) and wears the hull when revved, so the scripted launch would stall
-G.startRide(); const parkedAtStart=st.park; st.park=false; st.temp=G.CFG.ENGINE_WARM+5; snap('start (depot)'); check(parkedAtStart,'the ride starts with the parking brake ON (released here for the scripted driver)'); check(st.s===0&&!st.off,'starts in the depot yard, on the road'); step(30); fire('keydown','KeyI'); step(60*2.6); snap('after start');
+G.startRide(); const parkedAtStart=st.park; st.park=false; st.temp=G.CFG.ENGINE_WARM+5; if (G.pike) G.pike.paid = 130;   // the first PIKE arm is on the depot road; this trace is the turn, not the booth
+snap('start (depot)'); check(parkedAtStart,'the ride starts with the parking brake ON (released here for the scripted driver)'); check(st.s===0&&!st.off,'starts in the depot yard, on the road'); step(30); fire('keydown','KeyI'); step(60*2.6); snap('after start');
 fire('keydown','ShiftLeft'); step(20); fire('keydown','KeyE'); step(25); fire('keyup','ShiftLeft');
 crawl(()=>st.s>40,4,'1st, yard');   // 1st tops out at 4.3 m/s (redline): holding more gas there would blow the engine (max-rev strain)
 fire('keydown','ShiftLeft'); step(20); fire('keydown','KeyE'); fire('keyup','ShiftLeft');
@@ -54,7 +55,7 @@ if(j){ Object.assign(st,{s:j.s-220,d:2.4,psi:0,v:14,hull:100,offT:0}); const see
 const sig=()=>net.near(0,30000).map(q=>q.kind[0]+q.s+(q.signal?'*':'')).join(' ')+'|'+net.segs.filter(q=>q.s0<30000).map(q=>q.nR+'+'+q.nL).join(' ');
 const a1=sig(), rseed=G.roads.seed; net.reset(rseed); check(sig()===a1,'same seed -> same layout ('+net.near(0,30000).length+' junctions in 30 km)');
 const kinds=new Set(net.segs.map(q=>q.nR+'+'+q.nL)); out.push('lane layouts: '+[...kinds].join(' ')+' · patterns: '+[...new Set(net.segs.map(q=>q.pat))].join(' '));
-Object.assign(st,{s:60000,d:2.4,psi:0,v:20,hull:100,offT:0}); drive(3,'60 km out'); check(st.mode==='drive'&&st.s>60000,'60 km: still road (endless)');
+Object.assign(st,{s:60000,d:2.4,psi:0,v:20,hull:100,offT:0}); drive(3,'60 km out'); check(st.s>60000&&(st.mode==='drive'||st.complete),'60 km: still road (endless)');   // a finish-line trip ends here; the road itself still exists
 // roadside collision run
 st.d=12; st.psi=0; for(let i=0;i<60&&st.mode==='drive';i++){ step(6); } snap('roadside run');
 // every route: switch, start a ride, drive a bit on the main road (exercises sky/terrain/props/furniture/road build for each theme)
@@ -145,8 +146,8 @@ check(nightX.night===true&&dayX.night===false&&G.THEMES.some(t=>t.id===dayX.rout
   fire('keydown','ShiftLeft'); step(20); fire('keydown','Digit1'); step(60*7); check(st.gear===1&&ids().startsWith('GAS'),'tutorial step 4 (moving off) once 1st is in ['+ids()+']');
   st.engineOn=false; st.stalled=true; st.rpm=0; step(70); check(G.guide.note==='ENGINE STALLED'&&ids().startsWith('STALL,CLU,key-start'),'tutorial step 4, the engine stalls: a warning with the next actions ['+G.guide.note+' | '+ids()+']');
   st.engineOn=true; st.stalled=false; st.rpm=900; step(60*7); check(G.guide.note===''&&ids().startsWith('GAS'),'… and the lesson is back once the engine runs again ['+ids()+']');
-  st.t=1e3; st.s=1e6; step(3); check(!st.complete&&G.guide.hold,'the tutorial holds the finish line while it is open');
-  G.setGuide({}); step(3); check(!G.guide.hold&&st.complete,'… and lets the ride complete once it is closed'); fire('keyup','ShiftLeft');
+  st.t=1e3; st.s=1e6; step(3); check(st.complete&&!G.guide.hold,'an open tutorial is cut off when the finish line is reached');
+  G.setGuide({}); step(3); check(!G.guide.hold&&st.complete,'… and the finished ride stays finished once the tutorial is closed'); fire('keyup','ShiftLeft');
   toastEl.textContent='marker'; G.setGuide({assist:true}); G.st.mode='done'; G.startRide(); step(5);
   check(toastEl.textContent==='marker','assist: the opening key toast does not repeat the tip');
   G.tryShift(1); check(toastEl.textContent==='marker'&&st.grind>0,'assist: grinding does not also raise the grind toast');

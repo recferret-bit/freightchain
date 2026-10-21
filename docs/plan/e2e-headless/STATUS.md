@@ -9,16 +9,16 @@
 
 | Epic | Domain | Track | Total Tasks | Todo | In Progress | Done | Blocked |
 |---|---|---|---|---|---|---|---|
-| [`E2E-01`](./issues/E2E-01-gates-and-census.md) | Red Gates & Coverage Census | Track A (As-Built) | 4 | 4 | 0 | 0 | 0 |
-| [`E2E-02`](./issues/E2E-02-http-contract-and-zod-schemas.md) | HTTP Contract, `@ZodResponse` & Negative Matrix | Track A + B | 6 | 6 | 0 | 0 | 0 |
-| [`E2E-03`](./issues/E2E-03-http-zero-and-single-scenario-routes.md) | 17 Zero-Scenario & 47 Single-Scenario HTTP Routes | Track A (As-Built) | 7 | 7 | 0 | 0 | 0 |
-| [`E2E-04`](./issues/E2E-04-headless-chrome-as-built.md) | Headless Chrome As-Built Suite (12 Scripts) | Track A (As-Built) | 12 | 12 | 0 | 0 | 0 |
-| [`E2E-05`](./issues/E2E-05-local-validator-and-chain-e2e.md) | Local Validator, Anchor Programs & Block 1/2 E2E | Track A + B | 8 | 8 | 0 | 0 | 0 |
-| [`E2E-06`](./issues/E2E-06-mockchain-and-replays-streams-e2e.md) | `mock-rpc`, Replays, Streams, Controls `C1..C36` & i18n | Track B (Target) | 8 | 8 | 0 | 0 | 0 |
+| [`E2E-01`](./issues/E2E-01-gates-and-census.md) | Red Gates & Coverage Census | Track A (As-Built) | 4 | 0 | 0 | 4 | 0 |
+| [`E2E-02`](./issues/E2E-02-http-contract-and-zod-schemas.md) | HTTP Contract, `@ZodResponse` & Negative Matrix | Track A + B | 6 | 0 | 0 | 6 | 0 |
+| [`E2E-03`](./issues/E2E-03-http-zero-and-single-scenario-routes.md) | 17 Zero-Scenario & 47 Single-Scenario HTTP Routes | Track A (As-Built) | 7 | 0 | 0 | 7 | 0 |
+| [`E2E-04`](./issues/E2E-04-headless-chrome-as-built.md) | Headless Chrome As-Built Suite (12 Scripts) | Track A (As-Built) | 12 | 0 | 0 | 12 | 0 |
+| [`E2E-05`](./issues/E2E-05-local-validator-and-chain-e2e.md) | Local Validator, Anchor Programs & Block 1/2 E2E | Track A + B | 8 | 2 | 0 | 6 | 0 |
+| [`E2E-06`](./issues/E2E-06-mockchain-and-replays-streams-e2e.md) | `mock-rpc`, Replays, Streams, Controls `C1..C36` & i18n | Track B (Target) | 8 | 3 | 0 | 5 | 0 |
 | [`E2E-07`](./issues/E2E-07-anticheat-bots-and-resim-e2e.md) | Block 3 Anti-Cheat Driver Bots & 30 Hz Re-Sim | Track B (Target) | 8 | 8 | 0 | 0 | 0 |
-| [`E2E-08`](./issues/E2E-08-minigames-and-rides-ranking-e2e.md) | Dynamic Finish, `RideResult`, Minigames & Pool Appeals | Track B (Target) | 6 | 6 | 0 | 0 | 0 |
-| [`E2E-09`](./issues/E2E-09-admin-security-matrix-and-ci.md) | Admin Security Matrix (54+ Routes) & CI Pipeline | Track B (Target) | 5 | 5 | 0 | 0 | 0 |
-| **Total** | | | **64** | **64** | **0** | **0** | **0** |
+| [`E2E-08`](./issues/E2E-08-minigames-and-rides-ranking-e2e.md) | Dynamic Finish, `RideResult`, Minigames & Pool Appeals | Track B (Target) | 6 | 2 | 0 | 4 | 0 |
+| [`E2E-09`](./issues/E2E-09-admin-security-matrix-and-ci.md) | Admin Security Matrix (54+ Routes) & CI Pipeline | Track B (Target) | 5 | 2 | 0 | 3 | 0 |
+| **Total** | | | **64** | **17** | **0** | **47** | **0** |
 
 ---
 
@@ -79,10 +79,10 @@
 |---|---|---|---|---|---|
 | `E2E-05.1` | Pin `freightchain_honk` IDL drift check in `anchor-idl-drift.spec.ts` (all 7 instructions) | `COVERAGE_CONTRACT` Phase 4.1 | Track A | — | `[x] Done` |
 | `E2E-05.2` | Extend `npm run test:localnet` with full SOL pool lifecycle + `pledge_ride` / `settle_pledge` / `refund_pledge` | `POOL-T-01..10`, `SOL-T-01..08` | Track A | `E2E-05.1` | `[x] Done` |
-| `E2E-05.3` | Extend `honk-suite` with negative checks (`tier='free'` training ride & weekly grant ride mint `0` TEN4) | `TEN-T-01..15` | Track A | `E2E-05.1` | `[ ] Todo` |
-| `E2E-05.4` | Complete pending Block 1 & Block 2 tests (`B1-REF-04`, `B2-PROMO-02`, `B2-ADMIN-04`, `B2-API-06`, `B2-API-07`, `B2-HONK-02`) | `E2E-T-02..07`, `E2E_PLAN.md` | Track A | `E2E-05.1` | `[ ] Todo` |
-| `E2E-05.5` | Implement `SOL-T-01..16` (SIWS auth, `.sol` SNS resolution, Blink CORS/actions, soulbound cNFT outbox) | `SOL-T-01..16` | Track A + B | `E2E-05.2` | `[ ] Todo` |
-| `E2E-05.6` | Implement `PRM-T-01..14` (Promo code normalization, caps, expiry, batch generation, race conditions) | `PRM-T-01..14` | Track A + B | `E2E-03.5` | `[ ] Todo` |
+| `E2E-05.3` | Extend `honk-suite` with negative checks (`tier='free'` training ride & weekly grant ride mint `0` TEN4) | `TEN-T-01..15` | Track A | `E2E-05.1` | `[x] Done` |
+| `E2E-05.4` | Complete pending Block 1 & Block 2 tests (`B1-REF-04`, `B2-PROMO-02`, `B2-ADMIN-04`, `B2-API-06`, `B2-API-07`, `B2-HONK-02`) | `E2E-T-02..07`, `E2E_PLAN.md` | Track A | `E2E-05.1` | `[x] Done` |
+| `E2E-05.5` | Implement `SOL-T-01..16` (SIWS auth, `.sol` SNS resolution, Blink CORS/actions, soulbound cNFT outbox) | `SOL-T-01..16` | Track A + B | `E2E-05.2` | `[x] Done` |
+| `E2E-05.6` | Implement `PRM-T-01..14` (Promo code normalization, caps, expiry, batch generation, race conditions) | `PRM-T-01..14` | Track A + B | `E2E-03.5` | `[x] Done` |
 | `E2E-05.7` | Implement Target Convoy Referral E2E suite (`REF-T-01..22`: `pending→active→qualified→expired`, M1/M2 TEN4, caps) | `REF-T-01..22`, `REF-M-15` | Track B | `SPC-08.1..3` | `[ ] Todo` |
 | `E2E-05.8` | Implement Target TEN4 Airdrop & Pre-Season E2E suite (Telegram/X tasks, `twitterapi.io` mock, Turnstile, Sybil hold) | `TEN-T-10..15`, `DEVNET_PRESEASON` | Track B | `SPC-08.4..5` | `[ ] Todo` |
 
@@ -90,14 +90,14 @@
 
 | Task ID | Title | Spec / Contract Ref | Track | Depends On | Status |
 |---|---|---|---|---|---|
-| `E2E-06.1` | Build deterministic `e2e/mockchain/rpc.mjs` (`mock-rpc`) + `e2e/harness/wallet.mjs` (`E1M` runtime) | `RPL-T-95..99`, `replays_streams.md` §7 | Track B | — | `[ ] Todo` |
-| `E2E-06.2` | Implement Replay Lifecycle & Visibility E2E (`RPL-T-01..15`, `M-RPL-01..06`: running=`404`, training hidden, pool gated until `payout_at`, no `SAMPLE_INPUT_COL`) | `RPL-T-01..15`, `M-RPL-01..06` | Track B | `SPC-04.1..3` | `[ ] Todo` |
+| `E2E-06.1` | Build deterministic `e2e/mockchain/rpc.mjs` (`mock-rpc`) + `e2e/harness/wallet.mjs` (`E1M` runtime) | `RPL-T-95..99`, `replays_streams.md` §7 | Track B | — | `[x] Done` |
+| `E2E-06.2` | Implement Replay Lifecycle & Visibility E2E (`RPL-T-01..15`, `M-RPL-01..06`: running=`404`, training hidden, pool gated until `payout_at`, no `SAMPLE_INPUT_COL`) | `RPL-T-01..15`, `M-RPL-01..06` | Track B | `SPC-04.1..3` | `[x] Done` |
 | `E2E-06.3` | Implement EN/RU Localization & Legal Copy E2E (`RPL-T-16..29`, `LEG-T-01..11`: `?lang=ru`, `fc_lang`, no English leaks, banned words grep) | `RPL-T-16..29`, `LEG-T-01..11` | Track B | `SPC-04.9`, `SPC-08.6` | `[ ] Todo` |
 | `E2E-06.4` | Implement Replay Player Controls `C1..C19` Headless Chrome E2E (`RPL-T-30..48`: play/pause, speed `0.5x..4x`, scrub, `±10s`, camera `C`, fullscreen `F`, event markers, volume/mute, share `?t=`) | `RPL-T-30..48`, `RPL-M-13` | Track B | `SPC-04.7` | `[ ] Todo` |
 | `E2E-06.5` | Implement Replay HUD, Telemetry & Removal Controls `C20..C36` E2E (`RPL-T-49..60`: `C36` mini-chart, `C9/C26/C27/C32` absent) | `RPL-T-49..60`, `RPL-M-13` | Track B | `SPC-04.7` | `[ ] Todo` |
-| `E2E-06.6` | Implement Replay Chat & Time-Binding E2E (`RPL-T-61..69`: `replayT` sorting, 200-char limit, link/word filter, `P01` hide, `P02` ban, 90d retention) | `RPL-T-61..69`, `RPL-M-25..31` | Track B | `SPC-04.8` | `[ ] Todo` |
-| `E2E-06.7` | Implement Replay Tip-Only Donations & `GET /api/me/donations` E2E via `mock-rpc` (`RPL-T-70..90`: 0.01/0.05/0.1 SOL, min/max, 15m expiry, ≤3 open orders, 0% referral share, effects removed) | `RPL-T-70..90`, `RPL-M-14..23` | Track B | `E2E-06.1`, `SPC-04.4..6` | `[ ] Todo` |
-| `E2E-06.8` | Implement Pledges Disabled & Receipt/Blink E2E (`RPL-T-91..102`: `403 pledges_disabled`, `r.html`, `blink.html`, OG PNG caching) | `RPL-T-91..102`, `RPL-M-24, 33` | Track B | `SPC-04.6` | `[ ] Todo` |
+| `E2E-06.6` | Implement Replay Chat & Time-Binding E2E (`RPL-T-61..69`: `replayT` sorting, 200-char limit, link/word filter, `P01` hide, `P02` ban, 90d retention) | `RPL-T-61..69`, `RPL-M-25..31` | Track B | `SPC-04.8` | `[x] Done` |
+| `E2E-06.7` | Implement Replay Tip-Only Donations & `GET /api/me/donations` E2E via `mock-rpc` (`RPL-T-70..90`: 0.01/0.05/0.1 SOL, min/max, 15m expiry, ≤3 open orders, 0% referral share, effects removed) | `RPL-T-70..90`, `RPL-M-14..23` | Track B | `E2E-06.1`, `SPC-04.4..6` | `[x] Done` |
+| `E2E-06.8` | Implement Pledges Disabled & Receipt/Blink E2E (`RPL-T-91..102`: `403 pledges_disabled`, `r.html`, `blink.html`, OG PNG caching) | `RPL-T-91..102`, `RPL-M-24, 33` | Track B | `SPC-04.6` | `[x] Done` |
 
 ### Epic E2E-07 — Block 3 Anti-Cheat Driver Bots & 30 Hz Re-Sim ([`issues/E2E-07-anticheat-bots-and-resim-e2e.md`](./issues/E2E-07-anticheat-bots-and-resim-e2e.md))
 
@@ -116,19 +116,19 @@
 
 | Task ID | Title | Spec / Contract Ref | Track | Depends On | Status |
 |---|---|---|---|---|---|
-| `E2E-08.1` | Implement Dynamic 65 km/h Finish & Curvature Factors E2E (`RID-T-01..07`: 4h/8h rejected, `finishFor` deterministic within `[48, 65] km`, `snapSafe`, 1h finish line) | `RID-T-01..07`, `RID-M-01..11` | Track B | `SPC-03.1..3` | `[ ] Todo` |
-| `E2E-08.2` | Implement `stats.RideResult` Breakdown & Pool Ranking Formula E2E (`RID-T-08..12`: damage by source, red lights, `scoreFormulaVersion`, `GET /api/pools/:id/results` gated by `payout_at`) | `RID-T-08..12`, `RID-M-12..21` | Track B | `SPC-03.4..6` | `[ ] Todo` |
-| `E2E-08.3` | Implement Minigame Schedule, Parking Pocket & Commit–Reveal E2E (`MGM-T-01..05`, `AC-M1..M10`: 1h only, `mgSalt`, 2–4 events, ≥8m gap, ≥300m hazard clearance, pocket stop) | `MGM-T-01..05`, `AC-M1..10`, `MGM-M-01..06` | Track B | `SPC-07.1..2` | `[ ] Todo` |
-| `E2E-08.4` | Implement Minigame Noisy Image, Catalog, Penalties & `×2` Accessibility E2E (`MGM-T-06..09`, `AC-M11..M20`: PNG challenge, +20s/+45s penalties, crypto safety gate) | `MGM-T-06..09`, `AC-M11..20`, `MGM-M-07..12` | Track B | `SPC-07.3..5` | `[ ] Todo` |
-| `E2E-08.5` | Implement Pool Schedule, `last_start_at` Cutoff, Ticket Burn UI & Appeals E2E (`POOL-T-01..16`: `409 pool_schedule_mismatch`, `409 pool_last_start_passed`, appeals workflow, v6 fields) | `POOL-T-01..16`, `POOL-M-01..14` | Track B | `SPC-05.1..5` | `[ ] Todo` |
+| `E2E-08.1` | Implement Dynamic 65 km/h Finish & Curvature Factors E2E (`RID-T-01..07`: 4h/8h rejected, `finishFor` deterministic within `[48, 65] km`, `snapSafe`, 1h finish line) | `RID-T-01..07`, `RID-M-01..11` | Track B | `SPC-03.1..3` | `[x] Done` |
+| `E2E-08.2` | Implement `stats.RideResult` Breakdown & Pool Ranking Formula E2E (`RID-T-08..12`: damage by source, red lights, `scoreFormulaVersion`, `GET /api/pools/:id/results` gated by `payout_at`) | `RID-T-08..12`, `RID-M-12..21` | Track B | `SPC-03.4..6` | `[x] Done` |
+| `E2E-08.3` | Phone-sms schedule, cancel, and salt reveal E2E (`MGM-T-01..05`) | `MGM-T-01..05`, `MGM-M-01..05` | Track B | `SPC-07.1..2` | `[ ] Todo` |
+| `E2E-08.4` | Phone-sms SVG, scoring, and rate-limit E2E (`MGM-T-06..12`) | `MGM-T-06..12`, `MGM-M-06..12` | Track B | `SPC-07.3..5` | `[ ] Todo` |
+| `E2E-08.5` | Implement Pool Schedule, `last_start_at` Cutoff, Ticket Burn UI & Appeals E2E (`POOL-T-01..16`: `409 pool_schedule_mismatch`, `409 pool_last_start_passed`, appeals workflow, v6 fields) | `POOL-T-01..16`, `POOL-M-01..14` | Track B | `SPC-05.1..5` | `[x] Done` |
 | `E2E-08.6` | Implement Platform Services E2E (`PLT-T-01..14`: PostHog opt-in, Redis fail-closed AI limits, dedicated editor worker, bundle revision signing) | `PLT-T-01..14`, `PLT-M-01..12` | Track A + B | `E2E-03.2` | `[x] Done` |
 
 ### Epic E2E-09 — Admin Security Matrix & CI Pipeline ([`issues/E2E-09-admin-security-matrix-and-ci.md`](./issues/E2E-09-admin-security-matrix-and-ci.md))
 
 | Task ID | Title | Spec / Contract Ref | Track | Depends On | Status |
 |---|---|---|---|---|---|
-| `E2E-09.1` | Build Automated Privileged Surface Matrix Runner (`ADM-T-01..12` across all 54+ routes: `A01..A33`, `E01..E17`, `M01..M04`, `S01..S03`, `P01..P04`) | `ADM-T-01..12`, `ADM-M-01..06` | Track B | `SPC-02.1..3` | `[ ] Todo` |
-| `E2E-09.2` | Implement Admin Security Findings Regression Suite (`ADM-T-20..32`: strict startup env, 60m TTL + `jti` revoke, auth throttle + dummy nonce, IP allowlist, `/24` IP mask) | `ADM-T-20..32`, `F01..F18`, `ADM-M-08..14` | Track B | `SPC-02.4..6` | `[ ] Todo` |
-| `E2E-09.3` | Implement Append-Only `AdminAction` Audit, Dual Approval & Telegram `AlertOutbox` E2E (`ADM-T-33..44`) | `ADM-T-33..44`, `ADM-M-15..21` | Track B | `SPC-02.7..9` | `[ ] Todo` |
+| `E2E-09.1` | Build Automated Privileged Surface Matrix Runner (`ADM-T-01..12` across all 54+ routes: `A01..A33`, `E01..E17`, `M01..M04`, `S01..S03`, `P01..P04`) | `ADM-T-01..12`, `ADM-M-01..06` | Track B | `SPC-02.1..3` | `[x] Done` |
+| `E2E-09.2` | Implement Admin Security Findings Regression Suite (`ADM-T-20..32`: strict startup env, 60m TTL + `jti` revoke, auth throttle + dummy nonce, IP allowlist, `/24` IP mask) | `ADM-T-20..32`, `F01..F18`, `ADM-M-08..14` | Track B | `SPC-02.4..6` | `[x] Done` |
+| `E2E-09.3` | Implement Append-Only `AdminAction` Audit, Dual Approval & Telegram `AlertOutbox` E2E (`ADM-T-33..44`) | `ADM-T-33..44`, `ADM-M-15..21` | Track B | `SPC-02.7..9` | `[x] Done` |
 | `E2E-09.4` | Wire PR Fast-Gate (`npm run check`, `server:integration`, `test:e2e:block1`, `negative-matrix`) & Nightly Full-Stack CI (`e2e.sh`, `block2`, `block3`, `mockchain`) | `E2E-T-01..07`, `COVERAGE_CONTRACT` §4 | Track A + B | `E2E-01..08` | `[ ] Todo` |
 | `E2E-09.5` | Final `census.mjs` 100% green audit across all 151+ routes, 28+ tables, 12 HTML pages, 19 Anchor instructions & 211 spec rules | `COVERAGE_CONTRACT` §2–4 | Track A + B | `E2E-09.1..4` | `[ ] Todo` |

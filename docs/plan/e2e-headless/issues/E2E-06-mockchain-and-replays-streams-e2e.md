@@ -15,7 +15,7 @@ Implements the full target verification suite for [`docs/spec/replays_streams.md
 
 ### `E2E-06.1` — Build deterministic `e2e/mockchain/rpc.mjs` (`mock-rpc`) + `e2e/harness/wallet.mjs` (`E1M` runtime)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `RPL-T-95..99`, `docs/spec/replays_streams.md` §7
 - **Target Files:**
@@ -37,7 +37,7 @@ Implements the full target verification suite for [`docs/spec/replays_streams.md
 
 ### `E2E-06.2` — Implement Replay Lifecycle & Visibility E2E (`RPL-T-01..15`, `M-RPL-01..06`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — `replays-visibility.e2e.spec.ts` passed in the lane on port 3102. Not re-run on the merged tree.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `RPL-T-01..15`, `M-RPL-01..06`, `RPL-M-01..09`
 - **Target Files:**
@@ -122,7 +122,7 @@ Implements the full target verification suite for [`docs/spec/replays_streams.md
 
 ### `E2E-06.6` — Implement Replay Chat & Time-Binding E2E (`RPL-T-61..69`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — `replay-chat.e2e.spec.ts` passed in the lane. Not re-run on the merged tree.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `RPL-T-61..69`, `RPL-M-25..31`
 - **Target Files:**
@@ -146,7 +146,7 @@ Implements the full target verification suite for [`docs/spec/replays_streams.md
 
 ### `E2E-06.7` — Implement Replay Tip-Only Donations & `GET /api/me/donations` E2E via `mock-rpc` (`RPL-T-70..90`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — `replay-donations.e2e.spec.ts` passed in the lane against mock RPC on port 8898. Not re-run on the merged tree.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `RPL-T-70..90`, `RPL-M-14..23, 34`
 - **Target Files:**
@@ -171,7 +171,7 @@ Implements the full target verification suite for [`docs/spec/replays_streams.md
 
 ### `E2E-06.8` — Implement Pledges Disabled & Receipt/Blink E2E (`RPL-T-91..102`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — `replay-receipts-pledges.e2e.spec.ts` passed in the lane. Not re-run on the merged tree. `E2E-06.3`, `E2E-06.4`, and `E2E-06.5` stay open.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `RPL-T-91..102`, `RPL-M-24, 33`
 - **Target Files:**

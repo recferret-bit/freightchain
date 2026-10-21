@@ -10,6 +10,17 @@ import { ConflictError, NotFoundError } from '../../../../../src/domain/shared/e
 import { unitContext } from '../../../../support/unit-context.js';
 import { RecordingAnalytics } from '../../../../support/recording-analytics.js';
 import { aPool } from '../../../../support/pools.js';
+import { PoolScheduleService } from '../../../../../src/application/services/pool-schedule.service.js';
+import { TelemetryConfigPort } from '../../../../../src/application/ports/telemetry/telemetry-config.port.js';
+import { toRideDto } from '../../../../../src/domain/rides/ride.dto.js';
+import { revealRideSalts } from '../../../../../src/application/rides/ride-salts.js';
+import { RoadPlan } from '../../../../../src/domain/road/road-plan.js';
+import { HOLE_SALT_LABEL, TRAFFIC_SALT_LABEL, saltMessage } from '../../../../../src/domain/shared/index.js';
+import { createHash, createHmac } from 'node:crypto';
+
+class ShadowTelemetry extends TelemetryConfigPort {
+  mode() { return 'shadow' as const; }
+}
 
 class DefaultLists extends PrizeGeoPort { rules() { return DEFAULT_GEO; } }
 
@@ -17,7 +28,7 @@ const setup = () => {
   const ctx = unitContext();
   const analytics = new RecordingAnalytics();
   const rankedEntry = new RankedEntryService(ctx.rides, new HeaderGeoAdapter(), new DefaultLists());
-  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics, ctx.stats, ctx.pools, rankedEntry);
+  const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics, ctx.stats, ctx.pools, rankedEntry, new PoolScheduleService(ctx.poolChain, ctx.clock, ctx.entropy));
   return {
     ctx, analytics,
     start: (id: string, wallet = 'w', trip: string | null = null) => handler.execute(new StartRideCommand(wallet, id, trip)),
@@ -96,11 +107,11 @@ describe('StartRideHandler', () => {
       await ctx.rides.insert(ride);
       return id;
     };
-    const late = await ticketRide(1799);   // a 1 h shift's finish line (0.5 × 28 m/s × 3600 s) is 1800 s away at the governor: a second too late
-    await expect(start(late)).rejects.toMatchObject({ errorCode: 'rides_closed' });
+    const late = await ticketRide(4499);   // last start is play close − 75 min: one second past it
+    await expect(start(late)).rejects.toMatchObject({ errorCode: 'pool_last_start_passed' });
     expect(await ctx.reload(late)).toMatchObject({ status: RideStatus.Cancelled });
     await expect(start(late)).rejects.toThrow(/ride is cancelled/);
-    const inTime = await ticketRide(1800);   // exactly in time: it may reach its line AT the deadline
+    const inTime = await ticketRide(4500);   // exactly at last start: still allowed (now > lastStart is the cutoff)
     expect((await start(inTime)).status).toBe('running');
   });
 
@@ -175,5 +186,52 @@ describe('StartRideHandler', () => {
     const running = await ctx.reload(ride.id); running.finish('failed', null, ctx.now()); await ctx.rides.save(running);
     await expect(startRanked(blocked.id, 'w', { 'cf-ipcountry': 'US', 'cf-region-code': 'DE' })).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
     expect(await start(blocked.id)).toMatchObject({ status: 'running', ranked: false });
+  });
+
+  it('a start with telemetry off has no session key', async () => {
+    const { ctx, start } = setup();
+    const ride = await ctx.freeRide('w');
+    const dto = await start(ride.id);
+    expect(dto).not.toHaveProperty('sessionKey');
+    expect(dto).not.toHaveProperty('trafficSaltCommit');
+    expect((await ctx.reload(ride.id)).sessionKey).toBeNull();
+    expect((await ctx.reload(ride.id)).trafficSaltCommit).toBeNull();
+  });
+
+  it('shadow telemetry returns the session key on start only', async () => {
+    const { ctx, analytics } = setup();
+    const rankedEntry = new RankedEntryService(ctx.rides, new HeaderGeoAdapter(), new DefaultLists());
+    const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics, ctx.stats, ctx.pools, rankedEntry, new PoolScheduleService(ctx.poolChain, ctx.clock, ctx.entropy), undefined, new ShadowTelemetry(), ctx.entropy);
+    const ride = await ctx.freeRide('w');
+    const dto = await handler.execute(new StartRideCommand('w', ride.id, null));
+    expect(dto.sessionKey).toMatch(/^[A-Za-z0-9+/]{43}=$/);
+    expect(dto).toMatchObject({ keyId: 'v2', protocol: 2, status: 'running' });
+    const saved = await ctx.reload(ride.id);
+    expect(saved.sessionKey).toBe(dto.sessionKey);
+    expect(toRideDto(saved).sessionKey).toBeUndefined();
+    expect(analytics.named('ride_started')[0]?.properties).not.toHaveProperty('sessionKey');
+    expect(dto).not.toHaveProperty('trafficSaltCommit');
+  });
+
+  it('shadow telemetry commits salts that reveal from the ride id and leaves the road plan alone', async () => {
+    const { ctx, analytics } = setup();
+    const rankedEntry = new RankedEntryService(ctx.rides, new HeaderGeoAdapter(), new DefaultLists());
+    const handler = new StartRideHandler(ctx.lookup, ctx.rides, ctx.players, ctx.cosmetics, ctx.rules, ctx.transactions, ctx.clock, analytics, ctx.stats, ctx.pools, rankedEntry, new PoolScheduleService(ctx.poolChain, ctx.clock, ctx.entropy), undefined, new ShadowTelemetry(), ctx.entropy, ctx.hasher);
+    const ride = await ctx.freeRide('w');
+    const holes = () => RoadPlan.forSeed(ride.seed, ride.trip).holesBetween(0, 3000).map((h) => `${h.id}:${h.s}`);
+    const before = holes();
+    const dto = await handler.execute(new StartRideCommand('w', ride.id, null));
+    expect(holes()).toEqual(before);
+    expect(dto.trafficSaltCommit).toMatch(/^[0-9a-f]{64}$/);
+    expect(dto.holeSaltCommit).toMatch(/^[0-9a-f]{64}$/);
+    const revealed = revealRideSalts(ctx.hasher, ride.id, dto.sessionKey!);
+    expect(revealed.trafficSaltCommit).toBe(dto.trafficSaltCommit);
+    expect(revealed.holeSaltCommit).toBe(dto.holeSaltCommit);
+    const key = Buffer.from(dto.sessionKey!, 'base64');
+    const traffic = createHmac('sha256', key).update(saltMessage(TRAFFIC_SALT_LABEL, ride.id), 'utf8').digest('hex');
+    const hole = createHmac('sha256', key).update(saltMessage(HOLE_SALT_LABEL, ride.id), 'utf8').digest('hex');
+    expect(createHash('sha256').update(traffic, 'utf8').digest('hex')).toBe(dto.trafficSaltCommit);
+    expect(createHash('sha256').update(hole, 'utf8').digest('hex')).toBe(dto.holeSaltCommit);
+    expect(toRideDto(await ctx.reload(ride.id)).trafficSaltCommit).toBeUndefined();
   });
 });

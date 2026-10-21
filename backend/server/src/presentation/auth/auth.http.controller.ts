@@ -16,6 +16,7 @@ import type { ClientInfo } from '../../domain/auth/sign-in.js';
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { TermsGuard } from '../common/guards/terms.guard.js';
 import { AdoptPairSessionInterceptor, SetPairCookieInterceptor } from '../../infrastructure/http/interceptors/phone-pair.interceptor.js';
 import { ClearSessionCookieInterceptor, SetSessionCookieInterceptor } from '../../infrastructure/http/interceptors/session-cookie.interceptor.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
@@ -50,7 +51,7 @@ export class AuthHttpController {
   }
 
   /** Phone: the session just created here is the one the computer adopts. */
-  @Post('auth/pair/:id/claim') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('auth/pair/:id/claim') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(okResponse)
   claimPair(@ZodParams(pairParamsSchema) params: PairParams, @CurrentSessionToken() token: string | null): Promise<{ ok: true }> {
     return this.commandBus.execute<ClaimPhonePairCommand, { ok: true }>(new ClaimPhonePairCommand(params.id, token));
@@ -76,7 +77,7 @@ export class AuthHttpController {
     return this.commandBus.execute<StartGuestCommand, SignInResultDto>(new StartGuestCommand(client));
   }
 
-  @Get('me') @UseGuards(PlayerAuthGuard)
+  @Get('me') @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(meResponse)
   me(@CurrentPlayer() player: PlayerIdentity, @ClientGeo() headers: GeoHeaders = {}): Promise<MeDto> {
     return this.queryBus.execute<GetMeQuery, MeDto>(new GetMeQuery(player.wallet, headers));

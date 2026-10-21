@@ -8,6 +8,7 @@ import { PlayerRepositoryPort } from '../../../ports/players/player.repository.p
 import { PoolChainPort } from '../../../ports/economy/pool-chain.port.js';
 import { TransactionPort } from '../../../ports/shared/transaction.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { PledgeService } from '../../../live/pledge.service.js';
 
 /**
  * The sponsor's wallet sent the create_pledge: the row turns active only when THAT transaction's own events show this pledge's PledgeCreated with its terms
@@ -22,9 +23,11 @@ export class ConfirmPledgeHandler implements ICommandHandler<ConfirmPledgeComman
     private readonly chain: PoolChainPort,
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
+    private readonly pledgeGate: PledgeService,
   ) {}
 
   async execute(c: ConfirmPledgeCommand): Promise<PledgeDto> {
+    this.pledgeGate.assertEnabled();
     const before = await this.pledges.findById(c.pledgeId);
     // Someone else's pledge is the same 404 as a missing id: confirming must not reveal that the row exists.
     if (!before || before.sponsor !== c.wallet) throw new NotFoundError('pledge not found');

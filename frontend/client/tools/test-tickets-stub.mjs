@@ -34,7 +34,7 @@ check('reconcile of an unknown order is 404', missing.status === 404, String(mis
 check('unknown order problem code is not_found', missing.json.code === 'not_found');
 
 const before = bal(await me(), 1);
-const created = await call('POST', 'tickets', { poolId: 1, qty: 1 });
+const created = await call('POST', 'tickets', { poolId: 1, qty: 1, burnWarningAccepted: true });
 check('an order is created unpaid', created.status === 200 && created.json.status === 'awaiting_payment' && !created.json.signature);
 const looked = await call('POST', `tickets/orders/${created.json.id}/reconcile`, {});
 check('reconcile without a signature is not_found', looked.status === 200 && looked.json.status === 'not_found');

@@ -6,12 +6,15 @@ import { scene } from './scene.js';
 import { KINDS, destroyed } from './props.js';
 import { env } from './environment.js';
 import { buildHoles } from './holes.js';
+import { buildToll } from './toll.js';
 import { footprintOf, insideChunk, occupancy } from './spacing.js';
 import { buildJunction, heads } from './junctions.js';
 import { buildDepot } from './depot.js';
 import { stripPool, strips, finish, buildSpine, buildAlt } from './roadmesh.js';
 import { group, releaseTree, poolStats, meshPool, groupPool } from './pool.js';
 import { trip } from '../trips.js';
+import { buildGantry } from './gantry.js';
+import { finishGantry } from './finish-line.js';
 
 /* Road is streamed in 32 m chunks around the truck: road surface + markings (world/roadmesh.js, widths from the road network), junctions that fall in the
    chunk (world/junctions.js), the depot (chunk 0), the route's props and roadside furniture (all registered as colliders).
@@ -33,6 +36,8 @@ function buildChunk(ci) {
   const js = net.near(s0, s0 + CH).filter(j => j.s < s0 + CH);
   for (const j of js) buildJunction(j, { surf, pad, marks, place: (o, s, l, y) => putAt(grp, roadAt, o, s, l, y), reg: (obj, id, s, lat, extra) => regAt(grp, colliders, obj, id, s, lat, extra), destroyed, heads: grp.userData.heads });
   if (ci === 0) buildDepot({ place: (o, s, l, y) => putAt(grp, roadAt, o, s, l, y), reg: (obj, id, s, lat, extra) => regAt(grp, colliders, obj, id, s, lat, extra), destroyed });
+  const line = finishGantry(trip, CFG.COMPLETE_DIST, ci, CH);
+  if (line) { const gantry = buildGantry(env.theme?.finishText || 'FINISH'); gantry.userData.finish = true; putAt(grp, roadAt, gantry, line.s, 0); }
   grp.userData.s1 = Math.max(s0 + CH, ci <= 1 ? 96 : 0, ...js.map(j => j.s + 64));
   const out = [[surf, M.surface], [pad, M.pad], [marks, M.marks]];
   if (fk) {   // a fork: the OTHER road too – its ribbon (just under the spine's, so the shared apron does not flicker), its roadside and its holes, drawn only (no colliders)
@@ -59,9 +64,10 @@ function roadside(ci, grp, alt, fk, colliders) {
   const place = (obj, s, lat, yaw) => { const l = net.roadside(s, lat); if (net.keepOut(s, l, alt) || !claim(obj, s, l)) releaseTree(obj); else raw(obj, s, l, yaw); };
   const rawReg = alt ? () => {} : (obj, id, s, lat, extra) => regAt(grp, colliders, obj, pre + id, s, lat, extra);
   const reg = (obj, id, s, lat, extra) => { if (extra?.rf) { const f = occ.items.find(o => o.obj === obj); if (f) { f.rf = extra.rf; f.rl = extra.rl; } } rawReg(obj, id, s, net.roadside(s, lat), extra); };   // a building's real footprint comes with its reg
-  const siteAt = k => net.busy(k * CH - 20, k * CH + CH + 20) ? null : env.landmarks?.site(k, k * CH) ?? null;
+  const siteAt = k => (env.landmarks?.nearStart !== k && net.busy(k * CH - 20, k * CH + CH + 20)) ? null : env.landmarks?.site(k, k * CH) ?? null;
   const lm = siteAt(ci);   // at most one building per chunk; ordinary props stay out of its footprint
   env.landmarks?.build(lm, ci, { place, reg, destroyed: dz });
+  if (!alt) buildToll(grp, s0, at);
   env.furniture.build({ ci, s0, place, reg, destroyed: dz, lm, lms: [ci - 1, ci, ci + 1].map(k => k === ci ? lm : siteAt(k)).filter(Boolean) });   // delineator posts / poles / guardrails
   buildHoles(ci, s0, { place, raw, reg, destroyed: dz });   // road holes + the warning signs before them (a fork's two roads have the same holes: they are one road in (s, d))
   // roadside scenery (kinds, density and distances come from the route's props.js); placed LAST, so it is the one that gives way to buildings, guardrails and warning signs

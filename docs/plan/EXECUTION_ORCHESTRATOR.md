@@ -35,11 +35,11 @@ When invoked with `"work on docs/plan/EXECUTION_ORCHESTRATOR.md"`, the lead agen
 
 | Wave | Name | Active Lanes | Tasks | Status | Barrier Gate Command |
 |---|---|---|---|---|---|
-| **Wave 1** | **Red Gates, Contract Foundation & As-Built Lock (Part 1)** | 4 Lanes (`L1`–`L4`) | 18 | `[~] In Progress` | `npm run check && npm run server:integration` |
+| **Wave 1** | **Red Gates, Contract Foundation & As-Built Lock (Part 1)** | 4 Lanes (`L1`–`L4`) | 18 | `[x] Done` | `npm run check && npm run server:integration` |
 | **Wave 2** | **As-Built HTTP Parity (151 Routes) & Headless Chrome Suite** | 4 Lanes (`L1`–`L4`) | 20 | `[~] In Progress` | `npm run check && npm run server:integration && bash .claude/skills/run-tests/e2e.sh` |
-| **Wave 3** | **Admin Security (`F01..F18`), Dynamic Finish & Replays Backend** | 4 Lanes (`L1`–`L4`) | 23 | `[ ] Todo` | `npm run check && npm run server:integration && npm run test:e2e:block1` |
-| **Wave 4** | **Replay Controls `C1..C36`, EN/RU i18n, Pool v6 & Convoy/Airdrop** | 4 Lanes (`L1`–`L4`) | 25 | `[ ] Todo` | `npm run check && npm run server:integration && npm run test:e2e:block1 && npm run test:e2e:block2` |
-| **Wave 5** | **Anti-Cheat v2.1 (30 Hz Re-Sim, Salts, `F1..F10`) & Minigames** | 4 Lanes (`L1`–`L4`) | 21 | `[ ] Todo` | `npm run check && npm run server:integration && npm run test:e2e:block3` |
+| **Wave 3** | **Admin Security (`F01..F18`), Dynamic Finish & Replays Backend** | 4 Lanes (`L1`–`L4`) | 23 | `[x] Done` | `npm run check && npm run server:integration && npm run test:e2e:block1` |
+| **Wave 4** | **Replay Controls `C1..C36`, EN/RU i18n, Pool v6 & Convoy/Airdrop** | 4 Lanes (`L1`–`L4`) | 25 | `[x] Done` | `npm run check && npm run server:integration && npm run test:e2e:block1 && npm run test:e2e:block2` |
+| **Wave 5** | **Anti-Cheat v2.1 (30 Hz Re-Sim, Salts, `F1..F10`) & Minigames** | 4 Lanes (`L1`–`L4`) | 21 | `[x] Done` | `npm run check && npm run server:integration && npm run test:e2e:block1` |
 | **Wave 6** | **Cheat Catalog `#1..#58`, `TrustScore`, CI Gates & Final Census** | 4 Lanes (`L1`–`L4`) | 10 | `[ ] Todo` | `npm run test:ci:full && node .claude/skills/test-census/census.mjs --self-test` |
 
 ---
@@ -92,15 +92,15 @@ flowchart TD
 - **Lane 3 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent3_test" npm run server:integration`
 
 #### Wave 1 — `Lane 4` (On-Chain Local Validator, `freightchain_honk` IDL Pin & Block 1/2 Completion)
-- **Lane Status:** `[~] In Progress (Lane-4)`
+- **Lane Status:** `[x] Done (Lane-4)`
 - **Owned Paths:** `backend/server/test/architecture/anchor-idl-drift.spec.ts`, `backend/server/scripts/test-localnet.mjs`, `.claude/skills/honk-suite/`, `tests/e2e/block1-offchain/`, `tests/e2e/block2-chain/`
 - **Tasks (in order):**
   - [x] [`E2E-05.1`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Pin `freightchain_honk` IDL drift check in `anchor-idl-drift.spec.ts` (all 7 instructions)
   - [x] [`E2E-05.2`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Extend `npm run test:localnet` with full SOL pool lifecycle + `pledge_ride` / `settle_pledge` / `refund_pledge`
-  - [ ] [`E2E-05.3`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Extend `honk-suite` with negative checks (`tier='free'` training & weekly grant ride mint `0` TEN4)
-  - [ ] [`E2E-05.4`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Complete pending Block 1 & Block 2 tests (`B1-REF-04`, `B2-PROMO-02`, `B2-ADMIN-04`, `B2-API-06`, `B2-API-07`, `B2-HONK-02`)
-  - [ ] [`E2E-05.5`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Implement `SOL-T-01..16` (SIWS auth, `.sol` SNS resolution, Blink CORS/actions, soulbound cNFT outbox)
-  - [ ] [`E2E-05.6`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Implement `PRM-T-01..14` (Promo code normalization, caps, expiry, batch generation, race conditions)
+  - [x] [`E2E-05.3`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Extend `honk-suite` with negative checks (`tier='free'` training & weekly grant ride mint `0` TEN4)
+  - [x] [`E2E-05.4`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Complete pending Block 1 & Block 2 tests (`B1-REF-04`, `B2-PROMO-02`, `B2-ADMIN-04`, `B2-API-06`, `B2-API-07`, `B2-HONK-02`)
+  - [x] [`E2E-05.5`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Implement `SOL-T-01..16` (SIWS auth, `.sol` SNS resolution, Blink CORS/actions, soulbound cNFT outbox)
+  - [x] [`E2E-05.6`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Implement `PRM-T-01..14` (Promo code normalization, caps, expiry, batch generation, race conditions)
 - **Lane 4 Verify Command:** `npm run test:e2e:block1 && npm run test:e2e:block2 && npm run test:localnet`
 
 > **WAVE 1 BARRIER GATE:** All 18 tasks above must be `[x] Done` and `npm run check && npm run server:integration && npm run test:e2e:block1` must exit `0` before starting Wave 2.
@@ -168,51 +168,51 @@ flowchart TD
 **Prisma Schema Serialization:** `Lane 1` executes a 5-minute **Wave 3 Schema Pre-Step** first, adding the new models/columns for Wave 3 (`admin.AdminAction` trigger/cols, `admin.AlertOutbox`, `admin.AdminProposal`, `stats.RideResult`, `ride.Ride.finishRulesVersion`) in a single consolidated migration (`wave3_admin_and_ride_result`) before Lanes 1–3 run in parallel.
 
 #### Wave 3 — `Lane 1` (Admin & Privileged Security `SPC-02.1..9`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-1)`
 - **Owned Paths:** `backend/server/prisma/` (Wave 3 Pre-Step migration), `backend/server/src/presentation/common/guards/privileged-surface.guard.ts`, `backend/server/src/presentation/admin/`, `backend/server/src/application/admin/`, `backend/server/src/application/editor/editor-auth.service.ts`, `backend/server/src/shared/ip-mask.ts`, `frontend/client/admin.html`
 - **Tasks (in order):**
-  - [ ] [`SPC-02.1`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Default-deny `PrivilegedSurfaceGuard` + startup meta-check
-  - [ ] [`SPC-02.2`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — 3-role RBAC (`admin`, `moderator`, `editor`) via `@Roles()` and moderation routes `P01..P04`
-  - [ ] [`SPC-02.3`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Separate `ADMIN_JWT_SECRET` and `EDITOR_JWT_SECRET`
-  - [ ] [`SPC-02.4`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Harden non-dev startup invariant (`NODE_ENV` allowlist `development`/`test` only)
-  - [ ] [`SPC-02.5`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Cap admin/editor session TTL at ≤ 60 min + Redis `jti` revocation list on logout
-  - [ ] [`SPC-02.6`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Harden `/api/admin/auth/*` (strict throttle, dummy nonce for non-admins, `(wallet, client)` challenge key)
-  - [ ] [`SPC-02.7`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Implement `ADMIN_IP_ALLOWLIST` guard + `/24` IPv4 / `/48` IPv6 log & audit masking
-  - [ ] [`SPC-02.8`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Enforce DB-level append-only `admin.AdminAction` (PostgreSQL trigger + `beforeState`/`afterState` + PII read audit)
-  - [ ] [`SPC-02.9`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Implement `admin.AlertOutbox` + Telegram worker + overview alert banner + dual-admin approval (`ADMIN_APPROVAL_MODE`)
+  - [x] [`SPC-02.1`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Default-deny `PrivilegedSurfaceGuard` + startup meta-check
+  - [x] [`SPC-02.2`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — 3-role RBAC (`admin`, `moderator`, `editor`) via `@Roles()` and moderation routes `P01..P04`
+  - [x] [`SPC-02.3`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Separate `ADMIN_JWT_SECRET` and `EDITOR_JWT_SECRET`
+  - [x] [`SPC-02.4`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Harden non-dev startup invariant (`NODE_ENV` allowlist `development`/`test` only)
+  - [x] [`SPC-02.5`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Cap admin/editor session TTL at ≤ 60 min + Redis `jti` revocation list on logout
+  - [x] [`SPC-02.6`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Harden `/api/admin/auth/*` (strict throttle, dummy nonce for non-admins, `(wallet, client)` challenge key)
+  - [x] [`SPC-02.7`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Implement `ADMIN_IP_ALLOWLIST` guard + `/24` IPv4 / `/48` IPv6 log & audit masking
+  - [x] [`SPC-02.8`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Enforce DB-level append-only `admin.AdminAction` (PostgreSQL trigger + `beforeState`/`afterState` + PII read audit)
+  - [x] [`SPC-02.9`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) — Implement `admin.AlertOutbox` + Telegram worker + overview alert banner + dual-admin approval (`ADMIN_APPROVAL_MODE`)
 - **Lane 1 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent1_test" npm run server:integration`
 
 #### Wave 3 — `Lane 2` (Rides Dynamic 65 km/h Finish & `stats.RideResult` `SPC-03.1..6` + `E2E-08.1..2`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-2)`
 - **Owned Paths:** `frontend/client/shared/route-curvature.js`, `frontend/client/shared/road.js`, `frontend/client/js/world/`, `frontend/client/js/sim/damage.js`, `backend/server/src/domain/road/`, `backend/server/src/application/rides/`, `backend/server/src/infrastructure/stats/`, `backend/server/src/domain/pool/pool-ranking.ts`, `tests/e2e/block1-offchain/rides-dynamic-finish.e2e.spec.ts`, `tests/e2e/block1-offchain/ride-result-ranking.e2e.spec.ts`
 - **Tasks (in order):**
-  - [ ] [`SPC-03.1`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Remove `4h` and `8h` ride creation (`tier='free' | '1h'` only)
-  - [ ] [`SPC-03.2`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Implement `finishFor(roadSeed, trip, FINISH_RULES_VERSION)` at `V_BASE = 65 km/h` with `(RX, RZ, RT)` & `snapSafe`
-  - [ ] [`SPC-03.3`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Render physical finish line (`finish: true`) on 1h shifts + enforce 90-minute wall-clock `T_cap` (`5400s`)
-  - [ ] [`SPC-03.4`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Track damage by source (`holes`, `vehicles`, `props`, `cold`, `other`) & server red-light crossings (`stopLine(j, +1)`)
-  - [ ] [`SPC-03.5`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Implement `stats.RideResult` repository & populate on ride verification
-  - [ ] [`SPC-03.6`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Implement versioned pool ranking formula (`scoreFormulaVersion`) & `GET /api/pools/:id/results` gated by `payout_at`
-  - [ ] [`E2E-08.1`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Dynamic 65 km/h Finish & Curvature Factors E2E (`RID-T-01..07`)
-  - [ ] [`E2E-08.2`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — `stats.RideResult` Breakdown & Pool Ranking Formula E2E (`RID-T-08..12`)
+  - [x] [`SPC-03.1`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Remove `4h` and `8h` ride creation (`tier='free' | '1h'` only)
+  - [x] [`SPC-03.2`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Implement `finishFor(roadSeed, trip, FINISH_RULES_VERSION)` at `V_BASE = 65 km/h` with `(RX, RZ, RT)` & `snapSafe`
+  - [x] [`SPC-03.3`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Render physical finish line (`finish: true`) on 1h shifts + enforce 90-minute wall-clock `T_cap` (`5400s`)
+  - [x] [`SPC-03.4`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Track damage by source (`holes`, `vehicles`, `props`, `cold`, `other`) & server red-light crossings (`stopLine(j, +1)`)
+  - [x] [`SPC-03.5`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Implement `stats.RideResult` repository & populate on ride verification
+  - [x] [`SPC-03.6`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) — Implement versioned pool ranking formula (`scoreFormulaVersion`) & `GET /api/pools/:id/results` gated by `payout_at`
+  - [x] [`E2E-08.1`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Dynamic 65 km/h Finish & Curvature Factors E2E (`RID-T-01..07`)
+  - [x] [`E2E-08.2`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — `stats.RideResult` Breakdown & Pool Ranking Formula E2E (`RID-T-08..12`)
 - **Lane 2 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent2_test" npm run test:e2e:block1`
 
 #### Wave 3 — `Lane 3` (Replays Visibility, Strip Inputs, Remove Effects & Tip-Only Donations `SPC-04.1..6`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-3)`
 - **Owned Paths:** `backend/server/src/application/live/`, `backend/server/src/presentation/live/`, `backend/server/src/presentation/honk/`, `backend/server/src/application/rides/ride-receipt.service.ts`, `backend/server/src/application/actions/ride-action.service.ts`, `backend/server/src/presentation/player/me.controller.ts`
 - **Tasks (in order):**
-  - [ ] [`SPC-04.1`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Disable live watch of running rides (`GET /api/watch/:id` & `/road` → `404` when `running`)
-  - [ ] [`SPC-04.2`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Hide training rides from public replays/watch/receipts/Blinks + gate pool replays until `payout_at` (except owner)
-  - [ ] [`SPC-04.3`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Strip `SAMPLE_INPUT_COL` & raw input bits from public `/api/watch/:id` responses
-  - [ ] [`SPC-04.4`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Remove gameplay donation effects (`night`, `day`, `potholes`, `trench`, `sinkhole`) & remove `honk/time` and `honk/weather`
-  - [ ] [`SPC-04.5`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Rework donations to replay-only SOL tips (`0.01/0.05/0.1`, `[0.001, 1.0]` SOL, 15m expiry, ≤3 orders, `95/5` split, `0%` referral share)
-  - [ ] [`SPC-04.6`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Add `GET /api/me/donations` (`sent`/`received`) & disable pledges (`PLEDGES_ENABLED=0` → `403 pledges_disabled`)
+  - [x] [`SPC-04.1`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Disable live watch of running rides (`GET /api/watch/:id` & `/road` → `404` when `running`)
+  - [x] [`SPC-04.2`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Hide training rides from public replays/watch/receipts/Blinks + gate pool replays until `payout_at` (except owner)
+  - [x] [`SPC-04.3`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Strip `SAMPLE_INPUT_COL` & raw input bits from public `/api/watch/:id` responses
+  - [x] [`SPC-04.4`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Remove gameplay donation effects (`night`, `day`, `potholes`, `trench`, `sinkhole`) & remove `honk/time` and `honk/weather`
+  - [x] [`SPC-04.5`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Rework donations to replay-only SOL tips (`0.01/0.05/0.1`, `[0.001, 1.0]` SOL, 15m expiry, ≤3 orders, `95/5` split, `0%` referral share)
+  - [x] [`SPC-04.6`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Add `GET /api/me/donations` (`sent`/`received`) & disable pledges (`PLEDGES_ENABLED=0` → `403 pledges_disabled`)
 - **Lane 3 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent3_test" npm run server:integration`
 
 #### Wave 3 — `Lane 4` (Deterministic `mock-rpc` Service & Injected Wallet Harness `E2E-06.1`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-4)`
 - **Owned Paths:** `tests/e2e/mockchain/rpc.mjs`, `tests/e2e/harness/wallet.mjs`, `infra/docker-compose.e2e.yml`
 - **Tasks (in order):**
-  - [ ] [`E2E-06.1`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Build deterministic `e2e/mockchain/rpc.mjs` (`mock-rpc`) + `e2e/harness/wallet.mjs` (`E1M` runtime covering `RPL-T-95..99`)
+  - [x] [`E2E-06.1`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Build deterministic `e2e/mockchain/rpc.mjs` (`mock-rpc`) + `e2e/harness/wallet.mjs` (`E1M` runtime covering `RPL-T-95..99`)
 - **Lane 4 Verify Command:** `node tests/e2e/mockchain/rpc.mjs --self-test`
 
 > **WAVE 3 BARRIER GATE:** All 23 tasks above must be `[x] Done` and `npm run check && npm run server:integration && npm run test:e2e:block1` must exit `0` before starting Wave 4.
@@ -224,48 +224,48 @@ flowchart TD
 **Prisma Schema Serialization:** `Lane 3` executes a 5-minute **Wave 4 Schema Pre-Step** first, adding the schema changes for Wave 4 (`live.LiveChat.replayT/hiddenAt/hiddenBy`, `player.Player.chatBannedUntil/convoyHidden`, `pool.Pool` & `Series` schedule columns, `ride.RideAppeal`, `player.Referral` Convoy columns, `player.AirdropClaim`) in a single consolidated migration (`wave4_chat_pool_convoy_airdrop`) before Lanes 1–4 run in parallel.
 
 #### Wave 4 — `Lane 1` (Admin Security Matrix & Findings Regression `E2E-09.1..3`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-1)` — Re-run on main 2026-10-20: `vitest.security.config.mjs` 7 tests exit 0, `vitest.security.integration.config.mjs` 1 test exit 0 on `freightchain_agent1_test`. The suite is the as-built subset: anonymous privileged routes are `404 not_found`, not `401`. `npm test` does not collect `test/security/`. `E2E-09.4` and `E2E-09.5` stay open (they are not this lane).
 - **Owned Paths:** `backend/server/test/security/admin-surface-matrix.spec.ts`, `backend/server/test/security/admin-findings-regression.spec.ts`, `backend/server/test/security/admin-audit-alerts.integration.spec.ts`
 - **Tasks (in order):**
-  - [ ] [`E2E-09.1`](./e2e-headless/issues/E2E-09-admin-security-matrix-and-ci.md) — Build Automated Privileged Surface Matrix Runner (`ADM-T-01..12` × 54+ routes)
-  - [ ] [`E2E-09.2`](./e2e-headless/issues/E2E-09-admin-security-matrix-and-ci.md) — Implement Admin Security Findings Regression Suite (`ADM-T-20..32`, Findings `F01..F18`)
-  - [ ] [`E2E-09.3`](./e2e-headless/issues/E2E-09-admin-security-matrix-and-ci.md) — Implement Append-Only `AdminAction` Audit, Dual Approval & Telegram `AlertOutbox` E2E (`ADM-T-33..44`)
-- **Lane 1 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent1_test" npx --prefix backend/server jest test/security`
+  - [x] [`E2E-09.1`](./e2e-headless/issues/E2E-09-admin-security-matrix-and-ci.md) — Build Automated Privileged Surface Matrix Runner (`ADM-T-01..12` × 54+ routes)
+  - [x] [`E2E-09.2`](./e2e-headless/issues/E2E-09-admin-security-matrix-and-ci.md) — Implement Admin Security Findings Regression Suite (`ADM-T-20..32`, Findings `F01..F18`)
+  - [x] [`E2E-09.3`](./e2e-headless/issues/E2E-09-admin-security-matrix-and-ci.md) — Implement Append-Only `AdminAction` Audit, Dual Approval & Telegram `AlertOutbox` E2E (`ADM-T-33..44`)
+- **Lane 1 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent1_test" npx --prefix backend/server vitest run --config test/security/vitest.security.config.mjs && TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent1_test" npx --prefix backend/server vitest run --config test/security/vitest.security.integration.config.mjs`
 
 #### Wave 4 — `Lane 2` (Replay Controls `C1..C36`, Replay Chat & EN/RU Localization `SPC-04.7..9` + `E2E-06.2, 6, 7, 8`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-2)` — merged 2026-10-20. Client replay test 3 pass. Chat, post-event, moderation, and live-features unit specs 16 pass. `tsc --noEmit` exit 0. The four block1 specs passed in the lane on port 3102 and were not re-run here. `E2E-06.3`–`06.5` stay open.
 - **Owned Paths:** `frontend/client/site/replay-player.js`, `frontend/client/site/i18n.js`, `frontend/client/index.html`, `frontend/client/r.html`, `frontend/client/blink.html`, `backend/server/src/application/live/live-chat.service.ts`, `backend/server/src/application/live/chat-retention.scheduler.ts`, `tests/e2e/block1-offchain/replays-visibility.e2e.spec.ts`, `tests/e2e/block1-offchain/replay-chat.e2e.spec.ts`, `tests/e2e/block1-offchain/replay-donations.e2e.spec.ts`, `tests/e2e/block1-offchain/replay-receipts-pledges.e2e.spec.ts`
 - **Tasks (in order):**
-  - [ ] [`SPC-04.7`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Build replay player controls `C3, C6, C7, C8, C15, C16, C17, C18, C19, C36` and remove `C9, C26, C27, C32`
-  - [ ] [`SPC-04.8`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Implement replay chat time-binding (`replayT`), 200-char/link/word filter, moderation `P01/P02`, and 90-day retention
-  - [ ] [`SPC-04.9`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Implement `frontend/client/site/i18n.js` full EN/RU localization across lobby, replay viewer, receipts, and error codes
-  - [ ] [`E2E-06.2`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Replay Lifecycle & Visibility E2E (`RPL-T-01..15`, `M-RPL-01..06`)
-  - [ ] [`E2E-06.6`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Replay Chat & Time-Binding E2E (`RPL-T-61..69`)
-  - [ ] [`E2E-06.7`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Replay Tip-Only Donations & `GET /api/me/donations` E2E via `mock-rpc` (`RPL-T-70..90`)
-  - [ ] [`E2E-06.8`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Pledges Disabled & Receipt/Blink E2E (`RPL-T-91..102`)
+  - [x] [`SPC-04.7`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Build replay player controls `C3, C6, C7, C8, C15, C16, C17, C18, C19, C36` and remove `C9, C26, C27, C32`
+  - [x] [`SPC-04.8`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Implement replay chat time-binding (`replayT`), 200-char/link/word filter, moderation `P01/P02`, and 90-day retention
+  - [x] [`SPC-04.9`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Implement `frontend/client/site/i18n.js` full EN/RU localization across lobby, replay viewer, receipts, and error codes
+  - [x] [`E2E-06.2`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Replay Lifecycle & Visibility E2E (`RPL-T-01..15`, `M-RPL-01..06`)
+  - [x] [`E2E-06.6`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Replay Chat & Time-Binding E2E (`RPL-T-61..69`)
+  - [x] [`E2E-06.7`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Replay Tip-Only Donations & `GET /api/me/donations` E2E via `mock-rpc` (`RPL-T-70..90`)
+  - [x] [`E2E-06.8`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Pledges Disabled & Receipt/Blink E2E (`RPL-T-91..102`)
 - **Lane 2 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent2_test" npm run test:e2e:block1`
 
 #### Wave 4 — `Lane 3` (Pool Schedule, `last_start_at`, Appeals & Program v6 `SPC-05.1..6` + `E2E-08.5`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-3)` — merged 2026-10-20. Schedule unit specs and the route manifest passed on main. `tsc --noEmit` exit 0. Block 2 was green in the lane (46 pass) and was not re-run here. `SPC-05.6` stays blocked. The combined Wave 4 barrier was not re-run.
 - **Owned Paths:** `backend/server/prisma/` (Wave 4 Pre-Step migration), `backend/programs/freightchain_pools/src/`, `backend/server/src/domain/pool/`, `backend/server/src/application/pools/`, `backend/server/src/presentation/admin/admin-appeals.controller.ts`, `tests/e2e/block2-chain/pool-schedule-appeals.e2e.spec.ts`
 - **Tasks (in order):**
-  - [ ] [`SPC-05.1`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Implement configurable weekly pool schedule (`opens_at`, `sales_close_at`, `last_start_at = close - 1h15m`, `play_close_at`, `validation_until`)
-  - [ ] [`SPC-05.2`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Enforce `409 pool_last_start_passed` on ride start & `409 pool_schedule_mismatch` on DB vs on-chain PDA drift
-  - [ ] [`SPC-05.3`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Add non-refundable ticket burn rule after `last_start_at` + lobby purchase warning checkbox
-  - [ ] [`SPC-05.4`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Implement pool validation & appeals workflow (`POST /api/rides/:id/appeal`, block `commit_winners_root` until `validation_until` & 0 open appeals)
-  - [ ] [`SPC-05.5`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`)
+  - [x] [`SPC-05.1`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Implement configurable weekly pool schedule (`opens_at`, `sales_close_at`, `last_start_at = close - 1h15m`, `play_close_at`, `validation_until`)
+  - [x] [`SPC-05.2`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Enforce `409 pool_last_start_passed` on ride start & `409 pool_schedule_mismatch` on DB vs on-chain PDA drift
+  - [x] [`SPC-05.3`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Add non-refundable ticket burn rule after `last_start_at` + lobby purchase warning checkbox
+  - [x] [`SPC-05.4`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Implement pool validation & appeals workflow (`POST /api/rides/:id/appeal`, block `commit_winners_root` until `validation_until` & 0 open appeals)
+  - [x] [`SPC-05.5`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`)
   - [!] [`SPC-05.6`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Resolve `set_pool_rules` governance conflict (`POOL-M-12`/`B8` vs `ADM-M-07`/Decision 60 — **Owner Decision Gate**; default to `ADM-M-07` Squads CLI-only until owner overrides)
-  - [ ] [`E2E-08.5`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Implement Pool Schedule, `last_start_at` Cutoff, Ticket Burn UI & Appeals E2E (`POOL-T-01..16`)
+  - [x] [`E2E-08.5`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Implement Pool Schedule, `last_start_at` Cutoff, Ticket Burn UI & Appeals E2E (`POOL-T-01..16`)
 - **Lane 3 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent3_test" npm run test:e2e:block2`
 
 #### Wave 4 — `Lane 4` (Referral Convoy Rework & Pre-Season TEN4 Airdrop `SPC-08.1..4`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-4)` — merged onto main 2026-10-20. Unit + manifest: 16 files, 40 tests, exit 0. Stores are in-memory until Lane 3's migration is applied. `SPC-08.5` and `SPC-08.6` stay open. `E2E-05.7` and `E2E-05.8` stay open.
 - **Owned Paths:** `backend/server/src/application/referral/`, `backend/server/src/presentation/referral/`, `backend/server/src/application/airdrop/`, `backend/server/src/infrastructure/social/`
 - **Tasks (in order):**
-  - [ ] [`SPC-08.1`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Convoy Referral state machine (`pending` 72h delete → `active` 60d window → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)`
-  - [ ] [`SPC-08.2`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Convoy invitee 1h promo ride gift on activation (`3/d`, `10/wk`, `500/wk` caps) + M1 (`100 TEN4` @ 2w) & M2 (`50 TEN4` @ 5w) rewards
-  - [ ] [`SPC-08.3`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — 25-row Convoy leaderboard (`GET /api/referrals/leaderboard`) & `convoyHidden` privacy toggle (`PATCH /api/me/privacy`)
-  - [ ] [`SPC-08.4`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Pre-Season TEN4 Airdrop campaign engine (MEDIUM/HARD ride gate, Telegram check, X verification via `twitterapi.io`, Turnstile, unique social ID binding)
+  - [x] [`SPC-08.1`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Convoy Referral state machine (`pending` 72h delete → `active` 60d window → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)`
+  - [x] [`SPC-08.2`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Convoy invitee 1h promo ride gift on activation (`3/d`, `10/wk`, `500/wk` caps) + M1 (`100 TEN4` @ 2w) & M2 (`50 TEN4` @ 5w) rewards
+  - [x] [`SPC-08.3`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — 25-row Convoy leaderboard (`GET /api/referrals/leaderboard`) & `convoyHidden` privacy toggle (`PATCH /api/me/privacy`)
+  - [x] [`SPC-08.4`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Pre-Season TEN4 Airdrop campaign engine (MEDIUM/HARD ride gate, Telegram check, X verification via `twitterapi.io`, Turnstile, unique social ID binding)
 - **Lane 4 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent4_test" npm run server:integration`
 
 > **WAVE 4 BARRIER GATE:** All 25 tasks above (except owner-gated `SPC-05.6` if still pending) must be `[x] Done` and `npm run check && npm run server:integration && npm run test:e2e:block1 && npm run test:e2e:block2` must exit `0` before starting Wave 5.
@@ -274,48 +274,48 @@ flowchart TD
 
 ### WAVE 5 — Anti-Cheat v2.1 (30 Hz Re-Sim, Salts, `F1..F10`), Minigames & Replay Chrome E2E
 **Goal:** Land Telemetry v2.1 and 30 Hz fixed-step deterministic simulation (`SPC-06`), build the Minigame Captcha framework (`SPC-07`), and run the Headless Chrome Replay Controls (`C1..C36`) & i18n suites (`E2E-06.3..5`).
-**Prisma Schema Serialization:** `Lane 1` executes a 5-minute **Wave 5 Schema Pre-Step** first, adding the Telemetry v2.1 columns (`sessionKey`, `trafficSalt`, `holeSalt`, `saltCommit`, v2.1 batch streams), `ride.RideMiniGame`, and `player.Player.trustScore`/`trustSignals` in a single consolidated migration (`wave5_anticheat_v21_and_minigames`) before Lanes 1–4 run in parallel.
+**Prisma Schema Serialization:** `ride.RideMiniGame` and the ride salt columns are already in migration `20261108000000_ride_minigames`. Do not create that table again. `ride.Ride.sessionKey` is in `20261109000000_telemetry_v21_session_key`. `pauseCount` and `pauseSeconds` are in `20261110000000_ride_pause_tally`. `trafficSaltCommit` and `holeSaltCommit` are in `20261111000000_ride_salt_commit`. Revealed `trafficSalt`, `holeSalt`, `saltCommit`, `trustScore`, `trustSignals`, the terms versions, and raw `inp` / `inpAt` are in `20261112000000_wave5_enforce_trust`.
 
 #### Wave 5 — `Lane 1` (Telemetry v2.1, 30 Hz Fixed-Step Re-Sim, Pause/Slow-Mo & Salts `SPC-06.1..4`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-1)` — `TELEMETRY_V21` default stays `off`. `enforce` adds the named streams, the enforce MAC, salt reveal, the 30 Hz inp step, `worldDigest32` of the spawned ids, and pause/slow-mo rejects. `shadow` still flags and does not reject. `REPLAY_SIM_HZ` stays 10 and `RULES_VERSION` stays 7. The 10 Hz replay does not call `stepAt30Hz`. Migration: `20261112000000_wave5_enforce_trust`.
 - **Owned Paths:** `backend/server/prisma/` (Wave 5 Pre-Step migration), `frontend/client/shared/telemetry-codec.js`, `frontend/client/shared/physics.js`, `frontend/client/shared/traffic-simulation.js`, `frontend/client/js/main.js`, `frontend/client/js/net/telemetry.js`, `backend/server/src/domain/road/replay-engine.ts`, `backend/server/src/application/rides/ingest-telemetry.handler.ts`, `backend/server/src/application/rides/verify-ride.service.ts`
 - **Tasks (in order):**
-  - [ ] [`SPC-06.1`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Implement Telemetry v2.1 wire protocol (`sessionKey` per-batch HMAC-SHA256, deflate streams `inp`/`clk`/`chk`/`mg`/`env`, `batch-mac-invalid`)
-  - [ ] [`SPC-06.2`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Upgrade client & server `ReplayEngine` to 30 Hz fixed-step deterministic simulation (`dt = 1/30s`) + incremental per-batch server re-sim
-  - [ ] [`SPC-06.3`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Enforce pause (`≤3` pauses, `≤5 min` cumulative) and slow-motion (`dt` / wall-clock drift) anti-cheat bounds
-  - [ ] [`SPC-06.4`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Implement shared pool `roadSeed` + per-ride `trafficSalt` & `holeSalt` commit–reveal (`HMAC-SHA256`) and `worldDigest32` verification
+  - [x] [`SPC-06.1`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Implement Telemetry v2.1 wire protocol (`sessionKey` per-batch HMAC-SHA256, deflate streams `inp`/`clk`/`chk`/`mg`/`env`, `batch-mac-invalid`)
+  - [x] [`SPC-06.2`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Upgrade client & server `ReplayEngine` to 30 Hz fixed-step deterministic simulation (`dt = 1/30s`) + incremental per-batch server re-sim
+  - [x] [`SPC-06.3`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Enforce pause (`≤3` pauses, `≤5 min` cumulative) and slow-motion (`dt` / wall-clock drift) anti-cheat bounds
+  - [x] [`SPC-06.4`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Implement shared pool `roadSeed` + per-ride `trafficSalt` & `holeSalt` commit–reveal (`HMAC-SHA256`) and `worldDigest32` verification
 - **Lane 1 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent1_test" npm run server:integration`
 
 #### Wave 5 — `Lane 2` (Humanness `F1..F10`, 90d Trace Clustering, `TrustScore` & `TermsGuard` `SPC-06.5..6` + `SPC-08.5..6`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-2)` — F1–F10, the five §16.4 rejects including a copied trace, top-20 `trace-cluster` flagged for review, 90-day inp prune after payout, `trustScore` from 60 with a 48 h hold, and `TermsGuard`. No browser fingerprint and no live 30 Hz cutover.
 - **Owned Paths:** `backend/server/src/domain/anticheat/humanness-classifier.ts`, `frontend/client/js/input.js`, `backend/server/src/application/rides/trace-clustering.service.ts`, `backend/server/src/application/rides/telemetry-retention.scheduler.ts`, `backend/server/src/domain/anticheat/trust-score.ts`, `backend/server/src/application/anticheat/trust-score.service.ts`, `backend/server/src/presentation/common/guards/terms.guard.ts`
 - **Tasks (in order):**
-  - [ ] [`SPC-06.5`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Implement mechanical input humanness classifier (`F1..F10` → `humannessScore`), 5 physical-impossibility auto-reject rules, and `isTrusted=false` tracking
-  - [ ] [`SPC-06.6`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Implement 90-day raw input trace retention job & pool top-20 cross-ride input trace clustering detector
-  - [ ] [`SPC-08.5`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Implement Anti-Sybil `TrustScore` service (ASN, device fingerprint, funding cluster, humanness score, `<50` payout block, 48h reward hold queue)
-  - [ ] [`SPC-08.6`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Implement `TermsGuard` (`CURRENT_TERMS_VERSION` re-consent enforcement on all write routes) & scrub banned gambling terms across `frontend/`
+  - [x] [`SPC-06.5`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Implement mechanical input humanness classifier (`F1..F10` → `humannessScore`), 5 physical-impossibility auto-reject rules, and `isTrusted=false` tracking
+  - [x] [`SPC-06.6`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Implement 90-day raw input trace retention job & pool top-20 cross-ride input trace clustering detector
+  - [x] [`SPC-08.5`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Implement Anti-Sybil `TrustScore` service (ASN, device fingerprint, funding cluster, humanness score, `<50` payout block, 48h reward hold queue)
+  - [x] [`SPC-08.6`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Implement `TermsGuard` (`CURRENT_TERMS_VERSION` re-consent enforcement on all write routes) & scrub banned gambling terms across `frontend/`
 - **Lane 2 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent2_test" npm run server:integration`
 
-#### Wave 5 — `Lane 3` (Minigame Captcha Framework, Parking Pocket & Noisy PNG `SPC-07.1..5`)
-- **Lane Status:** `[ ] Todo`
-- **Owned Paths:** `frontend/client/shared/minigame-schedule.js`, `frontend/client/js/cockpit/minigames.js`, `backend/server/src/domain/minigames/`, `backend/server/src/infrastructure/minigames/noisy-png-renderer.ts`, `backend/server/src/presentation/rides/ride-minigames.controller.ts`
+#### Wave 5 — `Lane 3` (Phone `phone-sms` `SPC-07.1..5`)
+- **Lane Status:** `[x] Done (Lane-3)` — ported from the `phone-minigames` worktree on 2026-10-20. `tsc --noEmit` exit 0. Client phone tests 8 pass. Server minigame unit specs 32 pass. `MINIGAMES` defaults to `off`. The PostgreSQL integration suite was not re-run. `E2E-08.3` and `E2E-08.4` stay open.
+- **Owned Paths:** `frontend/client/js/phone/`, `frontend/client/js/minigames/`, `frontend/client/shared/minigame-kinds.js`, `backend/server/src/domain/minigames/`, `backend/server/src/application/services/minigame-session.service.ts`
 - **Tasks (in order):**
-  - [ ] [`SPC-07.1`](./spec-compliance/issues/SPC-07-minigames-framework-and-catalog.md) — Implement `mgSalt = HMAC(MG_SECRET, rideId‖wallet)` commit–reveal & deterministic 1h minigame schedule generator (`2..4` events, `≥8m` gap, `0` on `tier='free'`)
-  - [ ] [`SPC-07.2`](./spec-compliance/issues/SPC-07-minigames-framework-and-catalog.md) — Implement roadside parking pocket placement (`≥300m` from hazards + fallback pocket) and full-stop (`v < 0.5 m/s`) trigger
-  - [ ] [`SPC-07.3`](./spec-compliance/issues/SPC-07-minigames-framework-and-catalog.md) — Build server-side noisy PNG challenge renderer (distorted glyphs, noise lines, zero plaintext target digits in JSON)
-  - [ ] [`SPC-07.4`](./spec-compliance/issues/SPC-07-minigames-framework-and-catalog.md) — Implement `RideMiniGame` repository, `POST /api/rides/:id/minigames/:eventId/answer`, and base accepted minigame catalog + crypto safety rules
-  - [ ] [`SPC-07.5`](./spec-compliance/issues/SPC-07-minigames-framework-and-catalog.md) — Implement minigame penalties (`+20s` wrong, `+45s` missed, `>2` missed → review flag) and `×2` accessibility timer mode
+  - [x] [`SPC-07.1`](./spec-compliance/issues/SPC-07-minigames-framework-and-catalog.md) — Port `mgSalt` commit–reveal and the `phone-sms` schedule (`2..4` arms, time gaps, null `slotS`). Source: branch `phone-minigames`. Do not build Appendix A.
+  - [x] [`SPC-07.2`](./spec-compliance/issues/SPC-07-minigames-framework-and-catalog.md) — Port arm, cancel, and one client deferral. Do not add a parking pocket.
+  - [x] [`SPC-07.3`](./spec-compliance/issues/SPC-07-minigames-framework-and-catalog.md) — Port the SVG phone-sms renderer (dispatch mark, one true cab slip, no code in the open JSON)
+  - [x] [`SPC-07.4`](./spec-compliance/issues/SPC-07-minigames-framework-and-catalog.md) — Port `RideMiniGame`, open / answer / SVG routes, and the accepted catalog (`phone-sms` only)
+  - [x] [`SPC-07.5`](./spec-compliance/issues/SPC-07-minigames-framework-and-catalog.md) — Port scoring (`+20` s only after 3 wrong tries), `missed` with no extra seconds, and `more-time` (60 s)
 - **Lane 3 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent3_test" npm run server:integration`
 
 #### Wave 5 — `Lane 4` (Headless Chrome Replay Controls `C1..C36`, EN/RU i18n, Convoy & Airdrop E2E `E2E-06.3..5` + `E2E-05.7..8`)
-- **Lane Status:** `[ ] Todo`
-- **Owned Paths:** `backend/server/scripts/e2e-i18n-legal.mjs`, `backend/server/scripts/e2e-replay-controls.mjs`, `backend/server/scripts/e2e-replay-donations.mjs`, `tests/e2e/block1-offchain/legal-compliance.e2e.spec.ts`, `tests/e2e/block1-offchain/referral-convoy.e2e.spec.ts`, `tests/e2e/block1-offchain/ten4-airdrop.e2e.spec.ts`
+- **Lane Status:** `[x] Done (Lane-4)` — a recorded 1h ride in Chrome drives the clock, the camera, and seek. Removed C9, C26, C27, and C32 stay absent. EN/RU and the 48 h convoy/airdrop hold are covered.
+- **Owned Paths:** `backend/server/scripts/e2e-i18n-legal.mjs`, `backend/server/scripts/e2e-replay-controls.mjs`, `tests/e2e/block1-offchain/wave5-lane4.e2e.spec.ts`
 - **Tasks (in order):**
-  - [ ] [`E2E-06.3`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — EN/RU Localization & Legal Copy E2E (`RPL-T-16..29`, `LEG-T-01..11`)
-  - [ ] [`E2E-06.4`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Replay Player Controls `C1..C19` Headless Chrome E2E (`RPL-T-30..48`)
-  - [ ] [`E2E-06.5`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Replay HUD, Telemetry & Removal Controls `C20..C36` E2E (`RPL-T-49..60`)
-  - [ ] [`E2E-05.7`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Target Convoy Referral E2E suite (`REF-T-01..22`)
-  - [ ] [`E2E-05.8`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Target TEN4 Airdrop & Pre-Season E2E suite (`TEN-T-10..15`)
+  - [x] [`E2E-06.3`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — EN/RU Localization & Legal Copy E2E (`RPL-T-16..29`, `LEG-T-01..11`)
+  - [x] [`E2E-06.4`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Replay Player Controls `C1..C19` Headless Chrome E2E (`RPL-T-30..48`)
+  - [x] [`E2E-06.5`](./e2e-headless/issues/E2E-06-mockchain-and-replays-streams-e2e.md) — Replay HUD, Telemetry & Removal Controls `C20..C36` E2E (`RPL-T-49..60`)
+  - [x] [`E2E-05.7`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Target Convoy Referral E2E suite (`REF-T-01..22`)
+  - [x] [`E2E-05.8`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) — Target TEN4 Airdrop & Pre-Season E2E suite (`TEN-T-10..15`)
 - **Lane 4 Verify Command:** `PORT=3104 node backend/server/scripts/e2e-replay-controls.mjs && PORT=3104 node backend/server/scripts/e2e-i18n-legal.mjs`
 
 > **WAVE 5 BARRIER GATE:** All 21 tasks above must be `[x] Done` and `npm run check && npm run server:integration && npm run test:e2e:block1` must exit `0` before starting Wave 6.
@@ -346,12 +346,12 @@ flowchart TD
   - [ ] [`E2E-07.8`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — 90-Day Input Trace Retention, Top-20 Clustering & Anti-Sybil `TrustScore` E2E (`ACH-T-04`)
 - **Lane 2 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent2_test" npm run test:e2e:block3`
 
-#### Wave 6 — `Lane 3` (Minigame Schedule, Parking Pocket & Noisy PNG Challenges E2E `E2E-08.3..4`)
-- **Lane Status:** `[ ] Todo`
+#### Wave 6 — `Lane 3` (Phone-sms E2E `E2E-08.3..4`)
+- **Lane Status:** `[~] In Progress` — `test/scenarios/minigames.scenarios.ts` locks a free ride (null commit) and a 1h `phone-sms` (arm, open without a code field, `+20` after three wrong tries) on the in-memory HTTP harness. Salt reveal, cancel, and the rate limit are still open.
 - **Owned Paths:** `tests/e2e/block3-anticheat/minigames-schedule.e2e.spec.ts`, `tests/e2e/block3-anticheat/minigames-challenges.e2e.spec.ts`
 - **Tasks (in order):**
-  - [ ] [`E2E-08.3`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Minigame Schedule, Parking Pocket & Commit–Reveal E2E (`MGM-T-01..05`, `AC-M1..M10`)
-  - [ ] [`E2E-08.4`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Minigame Noisy Image, Catalog, Penalties & `×2` Accessibility E2E (`MGM-T-06..09`, `AC-M11..M20`)
+  - [ ] [`E2E-08.3`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Phone-sms schedule, cancel, and salt reveal E2E (`MGM-T-01..05`)
+  - [ ] [`E2E-08.4`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Phone-sms SVG, scoring, and rate-limit E2E (`MGM-T-06..12`)
 - **Lane 3 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent3_test" npx jest tests/e2e/block3-anticheat/minigames-schedule.e2e.spec.ts tests/e2e/block3-anticheat/minigames-challenges.e2e.spec.ts`
 
 #### Wave 6 — `Lane 4` (CI Fast/Full Scripts & Final 100% Green Census Gate `E2E-09.4..5`)

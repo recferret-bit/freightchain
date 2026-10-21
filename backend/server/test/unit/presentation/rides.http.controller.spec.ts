@@ -10,7 +10,8 @@ import { HeartbeatRideCommand } from '../../../src/application/use-cases/rides/h
 import { EndRideCommand } from '../../../src/application/use-cases/rides/end-ride/end-ride.command.js';
 import { UploadBatchCommand } from '../../../src/application/use-cases/telemetry/upload-batch/upload-batch.command.js';
 import { GetRideReplaysQuery } from '../../../src/application/use-cases/verdict/get-ride-replays/get-ride-replays.query.js';
-import { batchBodySchema, endRideBodySchema, heartbeatBodySchema, createRideBodySchema, confirmPaymentBodySchema, startRideBodySchema } from '../../../src/presentation/rides/dto/rides.dto.js';
+import { AnswerMinigameCommand, GetMinigameAssetQuery, OpenMinigameCommand } from '../../../src/application/use-cases/rides/minigames/minigames.command.js';
+import { batchBodySchema, endRideBodySchema, heartbeatBodySchema, createRideBodySchema, confirmPaymentBodySchema, minigameAssetParamsSchema, openMinigameBodySchema, startRideBodySchema } from '../../../src/presentation/rides/dto/rides.dto.js';
 import { rideIdParamsSchema } from '../../../src/presentation/common/dto/common.dto.js';
 import { busMock } from '../../support/bus.js';
 import { newSignature } from '../../support/fake-chain.js';
@@ -43,6 +44,27 @@ describe('RidesHttpController', () => {
     await c.batch(me, params, batch); expect(commands.last()).toEqual(new UploadBatchCommand('W', 'ride-1', batch));
     expect(commands.sent).toHaveLength(11);
     expect(queries.sent).toHaveLength(4);
+  });
+
+  it('dispatches the minigame routes and still accepts a start body with no mgMode', async () => {
+    const { commands, queries, c } = setup();
+    const mac = 'A'.repeat(43);
+    await c.openMinigame(me, { id: 'ride-1', eventId: 'ev' }, { mac, variantSeq: 1, safe: false });
+    expect(commands.last()).toEqual(new OpenMinigameCommand('W', 'ride-1', 'ev', mac, 1, false));
+    await c.answerMinigame(me, { id: 'ride-1', eventId: 'ev' }, { mac, nonce: 'abc', attempt: 2, answer: '12' });
+    expect(commands.last()).toEqual(new AnswerMinigameCommand('W', 'ride-1', 'ev', mac, 'abc', 2, '12', null));
+    await c.minigameAsset(me, { id: 'ride-1', eventId: 'ev', assetId: 'a'.repeat(16) });
+    expect(queries.last()).toEqual(new GetMinigameAssetQuery('W', 'ride-1', 'ev', 'a'.repeat(16)));
+    expect(startRideBodySchema.parse({})).toEqual({});
+    expect(startRideBodySchema.safeParse({ trafficVersion: 0 }).success).toBe(false); // a client cannot downgrade the stamped traffic protocol
+    expect(startRideBodySchema.parse({ mgMode: 'more-time', lang: 'ru' })).toEqual({ mgMode: 'more-time', lang: 'ru' });
+    await c.start(me, params, { mgMode: 'more-time', lang: 'ru' });
+    expect(commands.last()).toEqual(new StartRideCommand('W', 'ride-1', null, false, {}, 'more-time', 'ru'));
+    expect(openMinigameBodySchema.safeParse({ mac, variantSeq: 0, extra: true }).success).toBe(false);
+    expect(minigameAssetParamsSchema.safeParse({ id: 'ride-1', eventId: 'ev', assetId: 'A'.repeat(16) }).success).toBe(false);
+    const [b0] = recording('ride-1', { seconds: 10 });
+    expect(batchBodySchema.parse({ ...b0, aux: { k: 1 } }).aux).toEqual({ k: 1 });
+    expect(batchBodySchema.parse({ ...b0, aux: { pad: 'x'.repeat(64_000) } }).aux).toBeUndefined();
   });
 
   it('returns what the handler returned, untouched', async () => {

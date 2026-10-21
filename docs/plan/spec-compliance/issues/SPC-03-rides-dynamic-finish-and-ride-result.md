@@ -15,7 +15,7 @@ Aligns shift creation, road finish calculation, damage/violation tracking, and p
 
 ### `SPC-03.1` — Remove `4h` and `8h` ride creation (restrict valid shifts to `tier='free'` training and `tier='1h'` standard shift)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RID-M-01`, `RID-M-02` (`docs/spec/rides.md`, Decision 38)
 - **Paired Plan 1 Task:** `E2E-08.1`
 - **Target Files:**
@@ -36,7 +36,7 @@ Aligns shift creation, road finish calculation, damage/violation tracking, and p
 
 ### `SPC-03.2` — Implement `finishFor(roadSeed, trip, FINISH_RULES_VERSION)` at `V_BASE = 65 km/h` with `(RX, RZ, RT)` curvature factors & `snapSafe`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RID-M-03`, `RID-M-04`, `RID-M-05`, `RID-M-06`, `RID-M-07`, `RID-M-08`, `RID-M-10` (Decisions 17, 39, 40)
 - **Paired Plan 1 Task:** `E2E-08.1`
 - **Target Files:**
@@ -59,7 +59,7 @@ Aligns shift creation, road finish calculation, damage/violation tracking, and p
 
 ### `SPC-03.3` — Render physical finish line (`finish: true`) on 1h shifts + enforce 90-minute wall-clock `T_cap` (`5400s`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RID-M-09`, `RID-M-11` (Decisions 41, 42)
 - **Paired Plan 1 Tasks:** `E2E-08.1`, `E2E-07.6`
 - **Target Files:**
@@ -80,7 +80,7 @@ Aligns shift creation, road finish calculation, damage/violation tracking, and p
 
 ### `SPC-03.4` — Track damage by source (`holes`, `vehicles`, `props`, `cold`, `other`) & server-side red-light crossings (`stopLine(j, +1)`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RID-M-13`, `RID-M-14` (`docs/spec/rides.md` §4)
 - **Paired Plan 1 Task:** `E2E-08.2`
 - **Target Files:**
@@ -101,7 +101,7 @@ Aligns shift creation, road finish calculation, damage/violation tracking, and p
 
 ### `SPC-03.5` — Add Prisma migration & repository for `stats.RideResult` (`1:1` with `ride.Ride`) and populate on ride verification
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RID-M-12`, `RID-M-15`, `RID-M-16` (`docs/spec/rides.md` §5, Decision 43)
 - **Paired Plan 1 Task:** `E2E-08.2`
 - **Target Files:**
@@ -124,7 +124,7 @@ Aligns shift creation, road finish calculation, damage/violation tracking, and p
 
 ### `SPC-03.6` — Implement versioned pool ranking formula (`scoreFormulaVersion`) & `GET /api/pools/:id/results` gated by `payout_at`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RID-M-17`, `RID-M-18`, `RID-M-19`, `RID-M-20`, `RID-M-21` (Decision 44)
 - **Paired Plan 1 Task:** `E2E-08.2`
 - **Target Files:**

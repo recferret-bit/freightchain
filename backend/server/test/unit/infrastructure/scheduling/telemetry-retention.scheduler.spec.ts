@@ -1,5 +1,8 @@
+import { Logger } from '@nestjs/common';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { SweepTelemetryCommand } from '../../../../src/application/use-cases/telemetry/sweep-telemetry/sweep-telemetry.command.js';
+import { RideVerdict } from '../../../../src/domain/verdict/ride-verdict.entity.js';
+import { VerdictStatus } from '../../../../src/domain/verdict/verdict.dto.js';
 import { SweepSignInsCommand } from '../../../../src/application/use-cases/auth/sweep-sign-ins/sweep-sign-ins.command.js';
 import { TelemetryRetentionScheduler } from '../../../../src/infrastructure/scheduling/telemetry-retention.scheduler.js';
 import { busMock } from '../../../support/bus.js';
@@ -41,5 +44,41 @@ describe('TelemetryRetentionScheduler', () => {
     scheduler.onApplicationShutdown();
     await tick(48 * HOUR);
     expect(calls).toBe(3);
+  });
+
+  it('nulls raw inp only after payout and 90 days, and alerts a similar pair, from the daily job', async () => {
+    const now = clock.now();
+    const nulled: string[] = [];
+    const batches = {
+      inpRetentionRows: () => Promise.resolve([
+        { rideId: 'old', inpAt: new Date(now.getTime() - 91 * 86_400_000), payoutFinalizedAt: new Date(now.getTime() - 1000) },
+        { rideId: 'young', inpAt: now, payoutFinalizedAt: new Date(now.getTime() - 1000) },
+        { rideId: 'unpaid', inpAt: new Date(now.getTime() - 91 * 86_400_000), payoutFinalizedAt: null },
+      ]),
+      nullInp: (rows: readonly { rideId: string }[]) => { nulled.push(...rows.map((row) => row.rideId)); return Promise.resolve(rows.length); },
+      validationTraces: () => Promise.resolve([
+        { rideId: 'a', wallet: 'a', intervalsMs: Array.from({ length: 60 }, () => 100) },
+        { rideId: 'b', wallet: 'b', intervalsMs: Array.from({ length: 60 }, () => 100) },
+      ]),
+    };
+    const scores = { recording: { batches: 1, samples: 0, inputs: 0, recordedSeconds: 0, coverage: 0, maxSpeed: 0, unhashed: 0 }, human: { presses: 0, minHoldCv: null, repeatShare: null, instantShare: null, timerStepMs: 0 }, challenges: { issued: 0, answered: 0, missed: 0, tooFast: 0, medianReactionMs: null } };
+    const stored = new Map<string, RideVerdict>();
+    for (const rideId of ['a', 'b']) stored.set(rideId, RideVerdict.restore({ rideId, status: VerdictStatus.Verified, reasons: [], rulesVersion: 1, judgedAt: now, version: 1, scores }));
+    const verdicts = {
+      findByRide: (rideId: string) => Promise.resolve(stored.get(rideId) ?? null),
+      save: (verdict: RideVerdict) => { stored.set(verdict.rideId, verdict); return Promise.resolve(); },
+    };
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const { bus, sent } = busMock({ cutoff: null, deleted: 0 });
+    const scheduler = new TelemetryRetentionScheduler(bus as never, clock, undefined, batches as never, verdicts as never);
+    scheduler.onApplicationBootstrap();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sent[0]).toEqual(new SweepTelemetryCommand(true));
+    expect(nulled).toEqual(['old']);
+    expect(warn).toHaveBeenCalledWith(expect.objectContaining({ code: 'trace-cluster' }));
+    expect(stored.get('a')?.status).toBe(VerdictStatus.Flagged);
+    expect(stored.get('b')?.reasons.some((reason) => reason.code === 'trace-cluster')).toBe(true);
+    scheduler.onApplicationShutdown();
+    warn.mockRestore();
   });
 });

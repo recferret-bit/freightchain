@@ -14,6 +14,7 @@ import { CurrentPlayer } from '../../infrastructure/http/decorators/current-play
 import { ZodBody, ZodParams, ZodQuery } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { AdminGuard } from '../../infrastructure/http/guards/admin.guard.js';
+import { Roles } from '../../infrastructure/http/guards/privileged.decorator.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import {
   createPromoBodySchema, disablePromoBodySchema, promoChallengeBodySchema, promoCodeParamsSchema, promoRedemptionsQuerySchema, promosQuerySchema,
@@ -23,6 +24,7 @@ import {
 /** The admin page's PROMOCODES tab (same guard as the rest of /api/admin: admin host, admin session, X-FC-Admin on changes). Creating and disabling are signed by the admin's wallet and audited. */
 @Controller('api/admin/promos')
 @UseGuards(AdminGuard)
+@Roles('admin')
 export class AdminPromosHttpController {
   constructor(
     private readonly commandBus: CommandBus,

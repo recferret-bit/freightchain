@@ -23,10 +23,12 @@ export class AdjustFreeRidesHandler implements ICommandHandler<AdjustFreeRidesCo
     return this.transactions.run(async (tx) => {
       const player = await this.players.findByWalletForUpdate(wallet, tx);
       if (!player) throw new NotFoundError('this wallet has never signed in');
+      const before = player.freeRides;
       player.adjustFreeRides(delta);
       const saved = await this.players.save(player, tx);
       await this.audit.insert({
-        wallet: admin, action: 'free_rides.adjust', target: wallet,
+        wallet: admin, action: 'free_rides.adjust', target: wallet, role: 'admin',
+        beforeState: { freeRides: before }, afterState: { freeRides: saved.freeRides, delta },
         detail: { delta, freeRides: saved.freeRides, signed: proof }, requestId, at: this.clock.now(),
       }, tx);
       return { wallet, delta, freeRides: saved.freeRides, freeRidesMax: saved.freeRidesMax };

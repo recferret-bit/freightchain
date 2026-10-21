@@ -4,6 +4,8 @@ import { SIMULATION_CONFIG } from './simulation-config.js';
 /* Shared truck longitudinal physics constants and 10 Hz substepped integrator used by both client/ and server/. */
 
 export const REPLAY_SIM_HZ = 10;
+/** Fixed step for a shadow check. The live replay stays at REPLAY_SIM_HZ. */
+export const SHADOW_STEP_DT = 1 / 30;
 export const REPLAY_PHYSICS_SUBSTEPS = 2;
 export const EVENT_APPLY_GRACE_MS = 25000;
 
@@ -62,3 +64,9 @@ export function stepTruckPhysics(v0, gas, brake, gear, offroad, dt, substeps = R
   return { vSim, vMaxPossible };
 }
 export const stepLongitudinalPhysics = stepTruckPhysics;
+
+/** One 1/30 s step. Does not mutate `state`. The 10 Hz replay does not call this. */
+export function stepAt30Hz(state, config = SIMULATION_CONFIG, powerFactor = 1, brakeEfficiency = 0.25, offroad = false) {
+  const v = integrateLongitudinal(state, config, powerFactor, brakeEfficiency, offroad, SHADOW_STEP_DT, 1);
+  return { v, gear: state.gear, gas: state.gas, brake: state.brake, clutch: state.clutch, rpm: state.rpm, engineOn: state.engineOn, park: state.park, rev: state.rev };
+}

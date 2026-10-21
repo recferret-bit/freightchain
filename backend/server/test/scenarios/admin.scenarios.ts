@@ -52,11 +52,12 @@ export function adminScenarios(h: () => Harness): void {
     }
   });
 
-  it('the admin session: the player session of an admin wallet grants nothing; the admin sign-in does, for ADMIN_SESSION_TTL_MINUTES (120); sign-out ends it', async () => {
+  it('the admin session: the player session of an admin wallet grants nothing; the admin sign-in does, for ADMIN_SESSION_TTL_MINUTES (60); sign-out ends it', async () => {
     const player = await login(ADMIN);
     await player.agent.get('/api/admin/overview').expect(404);   // the rider cookie of an admin wallet is no admin session
     const stranger = newWallet();
-    await anon().post('/api/admin/auth/nonce').set('x-fc-admin', '1').send({ wallet: stranger.address }).expect(404);
+    const hidden = await anon().post('/api/admin/auth/nonce').set('x-fc-admin', '1').send({ wallet: stranger.address }).expect(200);
+    expect(hidden.body.message).toContain('ADMIN sign-in to Freight Chain');
     await anon().post('/api/admin/auth/nonce').send({ wallet: ADMIN.address }).expect(403);   // the header, like every admin POST
 
     const admin = await loginAdmin(ADMIN);
@@ -65,7 +66,7 @@ export function adminScenarios(h: () => Harness): void {
     expect(audit[0]).toMatchObject({ wallet: ADMIN.address, action: 'auth.signin', target: ADMIN.address });
     await anon().get('/api/me').set('Cookie', `fc_admin=${'x'}`).expect(401);   // and an admin cookie is no player session
 
-    sec(120 * 60 - 1); await admin.agent.get('/api/admin/overview').expect(200);
+    sec(60 * 60 - 1); await admin.agent.get('/api/admin/overview').expect(200);
     sec(2); await admin.agent.get('/api/admin/overview').expect(404);   // expired: sign in again
 
     const again = await loginAdmin(ADMIN);

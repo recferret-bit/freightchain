@@ -9,9 +9,12 @@ import { GetAdminStatsQuery } from '../../application/use-cases/admin/get-admin-
 import { ListAdminPlayersQuery } from '../../application/use-cases/admin/list-admin-players/list-admin-players.query.js';
 import { ListAdminPoolsQuery } from '../../application/use-cases/admin/list-admin-pools/list-admin-pools.query.js';
 import { ListAdminSessionsQuery } from '../../application/use-cases/admin/list-admin-sessions/list-admin-sessions.query.js';
+import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { ZodParams, ZodQuery } from '../../infrastructure/http/decorators/zod.js';
+import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { AdminGuard } from '../../infrastructure/http/guards/admin.guard.js';
+import { Roles } from '../../infrastructure/http/guards/privileged.decorator.js';
 import {
   adminStatsQuerySchema, playersQuerySchema, poolIdParamsSchema, poolsQuerySchema, sessionsQuerySchema, walletParamsSchema,
   type AdminStatsQuery, type PlayersQuery, type PoolIdParams, type PoolsQuery, type SessionsQuery, type WalletParams,
@@ -20,17 +23,18 @@ import {
 /** The admin page's read-only directory: players, pools, statistics, sessions. Same guard as the rest of /api/admin; nothing here changes anything. */
 @Controller('api/admin')
 @UseGuards(AdminGuard)
+@Roles('admin')
 export class AdminDirectoryHttpController {
   constructor(private readonly queryBus: QueryBus) {}
 
   /** the REVIEW QUEUE badge: a count, not the list (asked on every tab change) */
-  @Get('queue/count')
+  @Get('queue/count') @Roles('admin', 'moderator')
   @ZodResponse(adminQueueResponse)
   queueCount(): Promise<{ flagged: number; underReview: number }> {
     return this.queryBus.execute<GetAdminQueueCountQuery, { flagged: number; underReview: number }>(new GetAdminQueueCountQuery());
   }
 
-  @Get('players')
+  @Get('players') @Roles('admin', 'moderator')
   @ZodResponse(adminPlayersResponse)
   players(@ZodQuery(playersQuerySchema) query: PlayersQuery): Promise<AdminListDto<AdminPlayerRowDto>> {
     return this.queryBus.execute<ListAdminPlayersQuery, AdminListDto<AdminPlayerRowDto>>(new ListAdminPlayersQuery(query.limit, query.q));
@@ -38,8 +42,8 @@ export class AdminDirectoryHttpController {
 
   @Get('players/:wallet')
   @ZodResponse(adminPlayerResponse)
-  player(@ZodParams(walletParamsSchema) params: WalletParams): Promise<AdminPlayerDetailDto> {
-    return this.queryBus.execute<GetAdminPlayerQuery, AdminPlayerDetailDto>(new GetAdminPlayerQuery(params.wallet));
+  player(@CurrentPlayer() admin: PlayerIdentity, @ZodParams(walletParamsSchema) params: WalletParams): Promise<AdminPlayerDetailDto> {
+    return this.queryBus.execute<GetAdminPlayerQuery, AdminPlayerDetailDto>(new GetAdminPlayerQuery(params.wallet, admin.wallet));
   }
 
   @Get('pools')

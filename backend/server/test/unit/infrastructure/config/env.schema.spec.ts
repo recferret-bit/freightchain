@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { validateEnv } from '../../../../src/infrastructure/config/env.schema.js';
 
 const base = { DATABASE_URL: 'postgresql://x' };
-const prod = { ...base, NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), TREASURY_PUBKEY: Keypair.generate().publicKey.toBase58(), TRUST_PROXY: '1' };
+const prod = { ...base, NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), TREASURY_PUBKEY: Keypair.generate().publicKey.toBase58(), TRUST_PROXY: '1', LIVE_FREE_DONATIONS: 'off', LIVE_EFFECTS: 'off' };
 
 describe('validateEnv', () => {
   it('the deployed worker supplies the explicit production proxy setting required by its CLI EnvModule', () => {
@@ -53,7 +53,7 @@ describe('validateEnv', () => {
   });
   it('accepts what the old config accepted: SOL_USD=0 (= not pinned) and any NODE_ENV', () => {
     expect(validateEnv({ ...base, SOL_USD: '0' }).SOL_USD).toBe(0);
-    expect(validateEnv({ ...base, NODE_ENV: 'staging' }).NODE_ENV).toBe('staging');
+    expect(validateEnv({ ...base, NODE_ENV: 'staging', LIVE_FREE_DONATIONS: 'off', LIVE_EFFECTS: 'off' }).NODE_ENV).toBe('staging');
   });
 
   it('production REQUIRES JWT_SECRET (>= 32 chars), TREASURY_PUBKEY and an explicit TRUST_PROXY (0 is fine)', () => {
@@ -95,7 +95,7 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
 
   it('EDITOR_WALLETS are base58 addresses and EDITOR_IP_ALLOWLIST IPs / CIDRs; both default to empty', () => {
     const base = { DATABASE_URL: 'postgresql://x/y' };
-    expect(validateEnv(base)).toMatchObject({ EDITOR_WALLETS: '', EDITOR_IP_ALLOWLIST: '', EDITOR_SESSION_TTL_MINUTES: 240, THROTTLE_ENTITIES_LIMIT: 120, THROTTLE_EDITOR_LIMIT: 240, THROTTLE_ENTITIES_RPS: 5, THROTTLE_EDITOR_RPS: 10, THROTTLE_AUTH_RPS: 5, THROTTLE_MCP_LIMIT: 600, THROTTLE_MCP_RPS: 20 });
+    expect(validateEnv(base)).toMatchObject({ EDITOR_WALLETS: '', EDITOR_IP_ALLOWLIST: '', EDITOR_SESSION_TTL_MINUTES: 60, THROTTLE_ENTITIES_LIMIT: 120, THROTTLE_EDITOR_LIMIT: 240, THROTTLE_ENTITIES_RPS: 5, THROTTLE_EDITOR_RPS: 10, THROTTLE_AUTH_RPS: 5, THROTTLE_MCP_LIMIT: 600, THROTTLE_MCP_RPS: 20 });
     expect(() => validateEnv({ ...base, EDITOR_WALLETS: 'not-a-wallet' })).toThrow(/EDITOR_WALLETS/);
     expect(() => validateEnv({ ...base, EDITOR_IP_ALLOWLIST: '10.0.0.0/8, nonsense' })).toThrow(/EDITOR_IP_ALLOWLIST.*nonsense/);
     expect(validateEnv({ ...base, EDITOR_IP_ALLOWLIST: '10.0.0.0/8, ::1' }).EDITOR_IP_ALLOWLIST).toBe('10.0.0.0/8, ::1');
@@ -115,13 +115,14 @@ describe('validateEnv – paid tickets (all optional until the workstreams need 
 
   it('production with editor or admin wallets needs COOKIE_DOMAIN (the host walls); without wallets it may be unset', () => {
     const w = Keypair.generate().publicKey.toBase58();
-    expect(() => validateEnv({ ...prod, EDITOR_WALLETS: w })).toThrow(/COOKIE_DOMAIN/);
-    expect(() => validateEnv({ ...prod, ADMIN_WALLETS: w })).toThrow(/COOKIE_DOMAIN/);
-    expect(validateEnv({ ...prod, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun' }).EDITOR_WALLETS).toBe(w);
+    const secrets = { ADMIN_JWT_SECRET: 'a'.repeat(32), EDITOR_JWT_SECRET: 'e'.repeat(32), ADMIN_ALERT_TELEGRAM_BOT_TOKEN: 't'.repeat(24), ADMIN_ALERT_TELEGRAM_CHAT_ID: '1' };
+    expect(() => validateEnv({ ...prod, ...secrets, EDITOR_WALLETS: w })).toThrow(/COOKIE_DOMAIN/);
+    expect(() => validateEnv({ ...prod, ...secrets, ADMIN_WALLETS: w })).toThrow(/COOKIE_DOMAIN/);
+    expect(validateEnv({ ...prod, ...secrets, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun' }).EDITOR_WALLETS).toBe(w);
     const token = 'x'.repeat(24);
     expect(() => validateEnv({ ...prod, EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun', EDITOR_MCP_TOKEN: token, EDITOR_MCP_URL: 'http://169.254.169.254' })).toThrow(/EDITOR_MCP_URL/);
     expect(() => validateEnv({ ...prod, EDITOR_MCP_TOKEN: token })).toThrow(/REDIS_URL/);
-    expect(validateEnv({ ...prod, REDIS_URL: 'redis://redis:6379', EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun', EDITOR_MCP_TOKEN: token, EDITOR_MCP_URL: 'http://mcp:3100' }).EDITOR_MCP_URL).toBe('http://mcp:3100');
+    expect(validateEnv({ ...prod, ...secrets, REDIS_URL: 'redis://redis:6379', EDITOR_WALLETS: w, COOKIE_DOMAIN: 'freightchain.fun', EDITOR_MCP_TOKEN: token, EDITOR_MCP_URL: 'http://mcp:3100' }).EDITOR_MCP_URL).toBe('http://mcp:3100');
     expect(validateEnv(prod).NODE_ENV).toBe('production');
   });
 });

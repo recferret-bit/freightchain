@@ -14,7 +14,7 @@ if ! command -v solana >/dev/null; then
   exit 0
 fi
 # Explicit payer. Never the global solana CLI id.
-KEYS="${E2E_LEDGER:-$ROOT/tests/e2e/.ledger}/keys"
+KEYS="$ROOT/tests/e2e/.keys"
 mkdir -p "$KEYS"
 PAYER="$KEYS/payer.json"
 if [ ! -f "$PAYER" ]; then
@@ -34,7 +34,16 @@ deploy_one() {
     echo "$name program keypair missing; not deployed." >&2
     return 0
   fi
-  solana program deploy --url "$RPC" --keypair "$PAYER" --program-id "$key" "$so"
+  local on
+  on="$(curl -sf -X POST -H 'content-type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccountInfo\",\"params\":[\"$id\",{\"encoding\":\"base64\"}]}" "$RPC" \
+    | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{try{process.stdout.write(JSON.parse(s).result?.value?.executable?"yes":"no")}catch{process.stdout.write("no")}})')"
+  if [ "$on" = "yes" ]; then
+    echo "$name already loaded on the validator"
+    return 0
+  fi
+  # --use-rpc avoids the TPU websocket client, which panics when the validator's pubsub frame is not HTTP/1.1.
+  solana program deploy --url "$RPC" --keypair "$PAYER" --program-id "$key" --use-rpc "$so"
 }
 deploy_one "$POOL_SO" "$POOL_ID" "pool" "$POOL_KEY"
 # The TEN4 program id keypair is not in this checkout. Skip rather than deploy under another id.

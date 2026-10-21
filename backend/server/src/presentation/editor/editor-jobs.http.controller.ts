@@ -13,6 +13,7 @@ import { CurrentPlayer } from '../../infrastructure/http/decorators/current-play
 import { ZodBody, ZodParams, ZodQuery } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { EditorGuard } from '../../infrastructure/http/guards/editor.guard.js';
+import { Roles } from '../../infrastructure/http/guards/privileged.decorator.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import {
   createJobBodySchema, jobEventsQuerySchema, jobIdParamsSchema, jobsQuerySchema,
@@ -22,6 +23,7 @@ import {
 /** The AI model editor's chat (docs/spec/platform_services.md "jobs"): ask (202), follow a job's events by polling, cancel. Editor session only. */
 @Controller('api/editor')
 @UseGuards(EditorGuard)
+@Roles('editor')
 export class EditorJobsHttpController {
   constructor(
     private readonly commandBus: CommandBus,

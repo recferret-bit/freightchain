@@ -3,6 +3,7 @@ import { CreateTicketOrderCommand } from '../../../../../src/application/use-cas
 import { ConflictError, NotFoundError, ServiceUnavailableError } from '../../../../../src/domain/shared/errors.js';
 import { FixedRules, unitContext, unitRules } from '../../../../support/unit-context.js';
 import { aPool } from '../../../../support/pools.js';
+import { PoolScheduleService } from '../../../../../src/application/services/pool-schedule.service.js';
 
 const PROGRAM = unitRules({ paymentMode: 'program', programId: '9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx' });
 
@@ -11,7 +12,7 @@ describe('CreateTicketOrderHandler', () => {
     const ctx = unitContext(rules);
     await ctx.pools.upsert(aPool({ id: 1, maxPerWallet: 5 }, ctx.now()));
     await ctx.pools.upsert(aPool({ id: 2, tier: '4h' }, ctx.now()));
-    const handler = new CreateTicketOrderHandler(ctx.players, ctx.pools, ctx.tickets, ctx.orders, ctx.sessions, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy);
+    const handler = new CreateTicketOrderHandler(ctx.players, ctx.pools, ctx.tickets, ctx.orders, ctx.sessions, new FixedRules(rules), ctx.transactions, ctx.clock, ctx.entropy, new PoolScheduleService(ctx.poolChain, ctx.clock, ctx.entropy));
     return { ctx, order: async (poolId: number, qty: number, wallet = 'w', opts: { offer?: boolean } = {}) => {
       if (opts.offer !== false) await ctx.accept(wallet);
       return handler.execute(new CreateTicketOrderCommand(wallet, poolId, qty));
@@ -27,11 +28,12 @@ describe('CreateTicketOrderHandler', () => {
 
   it('a different pool or quantity, or a lapsed order, lets the old one expire', async () => {
     const { ctx, order } = await setup();
+    await ctx.pools.upsert(aPool({ id: 3, status: 'active' }, ctx.now()));
     const a = await order(1, 2);
-    const b = await order(2, 1);
+    const b = await order(3, 1);
     expect((await ctx.orders.findById(a.id))?.status).toBe('expired');
     ctx.clock.advance(3600);
-    const c = await order(2, 1);
+    const c = await order(3, 1);
     expect(c.id).not.toBe(b.id);
     expect((await ctx.orders.findById(b.id))?.status).toBe('expired');
   });

@@ -2,6 +2,11 @@ import { Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { watchResponse, roadPlanResponse, rideEventResponse, donationOrderResponse, confirmDonationResponse, reconcileDonationResponse, inboxResponse, muteResponse } from '../common/response/live.response.js';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { ConfirmDonationResultDto, DonationOrderDto, InboxDto, MuteDto, RideEventDto, WatchDto } from '../../domain/live/live.dto.js';
+import { CreatePledgeCommand } from '../../application/use-cases/pledges/create-pledge/create-pledge.command.js';
+import { ConfirmPledgeCommand } from '../../application/use-cases/pledges/confirm-pledge/confirm-pledge.command.js';
+import type { CreatedPledgeDto } from '../../application/use-cases/pledges/create-pledge/create-pledge.handler.js';
+import type { PledgeDto } from '../../domain/economy/pledge.dto.js';
+import { createdPledgeResponse, pledgeResponse } from '../common/response/economy.response.js';
 import { CreateDonationOrderCommand } from '../../application/use-cases/live/create-donation-order/create-donation-order.command.js';
 import { ConfirmDonationCommand } from '../../application/use-cases/live/confirm-donation/confirm-donation.command.js';
 import { ReconcileDonationCommand, type ReconcileDonationResultDto } from '../../application/use-cases/live/reconcile-donation/reconcile-donation.command.js';
@@ -18,11 +23,14 @@ import type { ClientInfo } from '../../domain/auth/sign-in.js';
 import { ZodBody, ZodParams, ZodQuery } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { TermsGuard } from '../common/guards/terms.guard.js';
+import { OptionalSessionGuard } from '../../infrastructure/http/guards/optional-session.guard.js';
+import { OptionalSession } from '../../infrastructure/http/decorators/optional-session.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { rideIdParamsSchema, type RideIdParams } from '../common/dto/common.dto.js';
 import {
-  appliedBodySchema, confirmDonationBodySchema, donationBodySchema, effectParamsSchema, inboxQuerySchema, messageBodySchema, muteBodySchema, orderParamsSchema, roadPlanQuerySchema, watchQuerySchema,
-  type AppliedBody, type ConfirmDonationBody, type DonationBody, type EffectParams, type InboxQuery, type MessageBody, type MuteBody, type OrderParams, type RoadPlanQuery, type WatchQuery,
+  appliedBodySchema, confirmDonationBodySchema, donationBodySchema, effectParamsSchema, inboxQuerySchema, messageBodySchema, muteBodySchema, orderParamsSchema, pledgeConfirmOnRideBodySchema, pledgeIntentBodySchema, roadPlanQuerySchema, watchQuerySchema,
+  type AppliedBody, type ConfirmDonationBody, type DonationBody, type EffectParams, type InboxQuery, type MessageBody, type MuteBody, type OrderParams, type PledgeConfirmOnRideBody, type PledgeIntentBody, type RoadPlanQuery, type WatchQuery,
 } from './dto/live.dto.js';
 
 /**
@@ -37,69 +45,85 @@ export class LiveHttpController {
   ) {}
 
   @Get('watch/:id')
+  @UseGuards(OptionalSessionGuard)
   @ZodResponse(watchResponse)
-  watch(@ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(watchQuerySchema) query: WatchQuery, @CurrentClient() client: ClientInfo): Promise<WatchDto> {
-    return this.queryBus.execute<WatchRideQuery, WatchDto>(new WatchRideQuery(params.id, query.from, query.after, query.viewer, query.since, client.ip ?? '', query.leave));
+  watch(@ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(watchQuerySchema) query: WatchQuery, @CurrentClient() client: ClientInfo, @OptionalSession() caller: string | null): Promise<WatchDto> {
+    return this.queryBus.execute<WatchRideQuery, WatchDto>(new WatchRideQuery(params.id, query.from, query.after, query.viewer, query.since, client.ip ?? '', query.leave, caller));
   }
 
   /** The ride's obstacle plan for [from, to) m – PUBLIC like the watch page: the holes the server rebuilt from the seed. The driver's game drives over them,
       a replay draws them, the verdict judges the recording on them. */
   @Get('watch/:id/road')
+  @UseGuards(OptionalSessionGuard)
   @ZodResponse(roadPlanResponse)
-  road(@ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(roadPlanQuerySchema) query: RoadPlanQuery): Promise<RoadPlanDto> {
-    return this.queryBus.execute<GetRoadPlanQuery, RoadPlanDto>(new GetRoadPlanQuery(params.id, query.from, query.to));
+  road(@ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(roadPlanQuerySchema) query: RoadPlanQuery, @OptionalSession() caller: string | null): Promise<RoadPlanDto> {
+    return this.queryBus.execute<GetRoadPlanQuery, RoadPlanDto>(new GetRoadPlanQuery(params.id, query.from, query.to, caller));
   }
 
-  @Post('watch/:id/messages') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('watch/:id/messages') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(rideEventResponse)
   message(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(messageBodySchema) body: MessageBody): Promise<RideEventDto> {
-    return this.commandBus.execute<PostRideEventCommand, RideEventDto>(new PostRideEventCommand(player.wallet, params.id, { kind: 'message', text: body.text }));
+    return this.commandBus.execute<PostRideEventCommand, RideEventDto>(new PostRideEventCommand(player.wallet, params.id, { kind: 'message', text: body.text, ...(body.replayT != null ? { replayT: body.replayT } : {}) }));
   }
 
   /** 200 the stored donation · 429 the ride's effect window (or the wallet's line window) is taken · 409 the ride is not live · 403 your own ride. */
-  @Post('watch/:id/donations') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('watch/:id/donations') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(rideEventResponse)
   donate(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(donationBodySchema) body: DonationBody): Promise<RideEventDto> {
-    return this.commandBus.execute<PostRideEventCommand, RideEventDto>(new PostRideEventCommand(player.wallet, params.id, { kind: 'donation', effect: body.effect, note: body.note }));
+    return this.commandBus.execute<PostRideEventCommand, RideEventDto>(new PostRideEventCommand(player.wallet, params.id, { kind: 'donation', effect: body.effect, note: body.note, lamports: body.lamports ?? null }));
   }
 
   /** A PAID donation (LIVE_FREE_DONATIONS=off), step 1: the order + the unsigned transfer to the driver, for the wallet to sign and send. */
-  @Post('watch/:id/donation-orders') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('watch/:id/donation-orders') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(donationOrderResponse)
   order(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(donationBodySchema) body: DonationBody): Promise<DonationOrderDto> {
-    return this.commandBus.execute<CreateDonationOrderCommand, DonationOrderDto>(new CreateDonationOrderCommand(player.wallet, params.id, body.effect, body.note));
+    return this.commandBus.execute<CreateDonationOrderCommand, DonationOrderDto>(new CreateDonationOrderCommand(player.wallet, params.id, body.effect, body.note, body.lamports ?? null));
   }
 
   /** Step 2: 200 `{status:'paid', event}` or `{status:'pending'}` (not on chain yet – ask again) · 400 the transfer does not pay this order · 409 already used. */
-  @Post('watch/:id/donation-orders/:orderId/confirm') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('watch/:id/donation-orders/:orderId/confirm') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(confirmDonationResponse)
   confirm(@CurrentPlayer() player: PlayerIdentity, @ZodParams(orderParamsSchema) params: OrderParams, @ZodBody(confirmDonationBodySchema) body: ConfirmDonationBody): Promise<ConfirmDonationResultDto> {
     return this.commandBus.execute<ConfirmDonationCommand, ConfirmDonationResultDto>(new ConfirmDonationCommand(player.wallet, params.id, params.orderId, body.signature));
   }
 
   /** The phone paid: look the transfer up by the order's reference key. */
-  @Post('watch/:id/donation-orders/:orderId/reconcile') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('watch/:id/donation-orders/:orderId/reconcile') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(reconcileDonationResponse)
   reconcileDonation(@CurrentPlayer() player: PlayerIdentity, @ZodParams(orderParamsSchema) params: OrderParams): Promise<ReconcileDonationResultDto> {
     return this.commandBus.execute<ReconcileDonationCommand, ReconcileDonationResultDto>(new ReconcileDonationCommand(player.wallet, params.id, params.orderId));
   }
 
-  @Get('rides/:id/inbox') @UseGuards(PlayerAuthGuard)
+  @Get('rides/:id/inbox') @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(inboxResponse)
   inbox(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodQuery(inboxQuerySchema) query: InboxQuery): Promise<InboxDto> {
     return this.queryBus.execute<GetInboxQuery, InboxDto>(new GetInboxQuery(player.wallet, params.id, query.after));
   }
 
   /** Chat safety: the driver mutes / unmutes a spectator on its ride (their lines vanish from every feed, they can't post there). */
-  @Post('rides/:id/mutes') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('rides/:id/mutes') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(muteResponse)
   mute(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(muteBodySchema) body: MuteBody): Promise<MuteDto> {
     return this.commandBus.execute<MuteWalletCommand, MuteDto>(new MuteWalletCommand(player.wallet, params.id, body.wallet, body.muted));
   }
 
-  @Post('rides/:id/effects/:eventId/applied') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @Post('rides/:id/effects/:eventId/applied') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
   @ZodResponse(rideEventResponse)
   applied(@CurrentPlayer() player: PlayerIdentity, @ZodParams(effectParamsSchema) params: EffectParams, @ZodBody(appliedBodySchema) body: AppliedBody): Promise<RideEventDto> {
     return this.commandBus.execute<AckEffectCommand, RideEventDto>(new AckEffectCommand(player.wallet, params.id, params.eventId, body));
+  }
+
+  /** Same gate as POST /api/pledges. Off unless PLEDGES_ENABLED=1. */
+  @Post('live/rides/:id/pledge-intent') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
+  @ZodResponse(createdPledgeResponse)
+  pledgeIntent(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(pledgeIntentBodySchema) body: PledgeIntentBody): Promise<CreatedPledgeDto> {
+    return this.commandBus.execute<CreatePledgeCommand, CreatedPledgeDto>(new CreatePledgeCommand(player.wallet, params.id, body.lamportsPerKm, body.targetKm));
+  }
+
+  @Post('live/rides/:id/pledge-confirm') @HttpCode(200) @UseGuards(PlayerAuthGuard, TermsGuard)
+  @ZodResponse(pledgeResponse)
+  pledgeConfirm(@CurrentPlayer() player: PlayerIdentity, @ZodParams(rideIdParamsSchema) params: RideIdParams, @ZodBody(pledgeConfirmOnRideBodySchema) body: PledgeConfirmOnRideBody): Promise<PledgeDto> {
+    void params;
+    return this.commandBus.execute<ConfirmPledgeCommand, PledgeDto>(new ConfirmPledgeCommand(player.wallet, body.pledgeId, body.signature));
   }
 }

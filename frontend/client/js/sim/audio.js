@@ -9,14 +9,15 @@ const BUS = .9;
 
 /* audio (simple synthesized engine) */
 export const audio = {
-  ctx: null, _muted: false, bufs: {}, vols: {}, last: {}, loading: null, want: null,
+  ctx: null, _muted: false, level: 1, bufs: {}, vols: {}, last: {}, loading: null, want: null,
   get muted() { return this._muted; },
-  set muted(v) { this._muted = !!v; if (this.bus) this.bus.gain.value = this._muted ? 0 : BUS; },
+  set muted(v) { this._muted = !!v; if (this.bus) this.bus.gain.value = this._muted ? 0 : BUS * this.level; },
+  setLevel(v) { this.level = Math.max(0, Math.min(1, Number(v) || 0)); if (this.bus) this.bus.gain.value = this._muted ? 0 : BUS * this.level; },
   start() {
     if (this.ctx) { this.ctx.resume?.()?.catch?.(() => {}); if (!this.loading) this.load(); return; }   // WebKit stays suspended until resume() runs inside the gesture that created the context
     const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
     const ctx = this.ctx = new C();
-    this.bus = ctx.createGain(); this.bus.gain.value = this._muted ? 0 : BUS; this.bus.connect(ctx.destination);
+    this.bus = ctx.createGain(); this.bus.gain.value = this._muted ? 0 : BUS * this.level; this.bus.connect(ctx.destination);
     this.o = ctx.createOscillator(); this.o.type = 'sawtooth';
     this.f = ctx.createBiquadFilter(); this.f.type = 'lowpass'; this.f.frequency.value = 380;
     this.g = ctx.createGain(); this.g.gain.value = 0;

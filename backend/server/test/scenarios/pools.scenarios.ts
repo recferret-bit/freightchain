@@ -1,4 +1,5 @@
 import { projectRoadSeed } from '../../src/domain/road/provable-seed.js';
+import { roadPlanFor } from '../../src/domain/road/road-plan.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
 import { RideTicketRepositoryPort } from '../../src/application/ports/players/ride-ticket.repository.port.js';
@@ -39,10 +40,10 @@ export function poolScenarios(h: () => Harness): void {
     });
 
     it('the tiers list prices a pooled tier by its pool, and the round pot lists the live pools', async () => {
-      await seedPool({ id: 1, tier: '4h', status: 'active', priceLamports: 120_000_000 });
+      await seedPool({ id: 1, tier: '1h', status: 'active', priceLamports: 120_000_000 });
       const tiers = (await anon().get('/api/tiers').expect(200)).body;
-      expect(tiers.tiers.find((t: { id: string }) => t.id === '4h')).toMatchObject({ lamports: 120_000_000, available: true, onSale: false, pool: { id: 1 } }); // a live pool still sells a shift that is otherwise soon
-      expect(tiers.tiers.find((t: { id: string }) => t.id === '1h').pool).toBeNull();
+      expect(tiers.tiers.map((t: { id: string }) => t.id)).toEqual(['free', '1h']);
+      expect(tiers.tiers.find((t: { id: string }) => t.id === '1h')).toMatchObject({ lamports: 120_000_000, available: true, onSale: false, pool: { id: 1 } });
       expect((await anon().get('/api/pool').expect(200)).body.pools.map((p: { id: number }) => p.id)).toEqual([1]);
     });
   });
@@ -70,7 +71,7 @@ export function poolScenarios(h: () => Harness): void {
       await seedPromo('WELCOME');
       const w = await login();
       expect((await redeem(w, ' welcome ').expect(200)).body).toEqual({ kind: 'tickets', code: 'WELCOME', label: '2 × 1h ride tickets', poolId: 1, tier: '1h', added: 2, balance: 2, cap: 5 });
-      expect((await w.agent.get('/api/me').expect(200)).body.tickets).toEqual([{ poolId: 1, tier: '1h', label: '1 HOUR · test', status: 'open', balance: 2, bought: 0, cap: 5, refundable: false, ridable: false, rideBy: expect.any(Number) }]);
+      expect((await w.agent.get('/api/me').expect(200)).body.tickets).toEqual([{ poolId: 1, tier: '1h', label: '1 HOUR · test', status: 'open', balance: 2, bought: 0, cap: 5, refundable: false, ridable: false, rideBy: expect.any(Number), burned: false }]);
       const profile = (await w.agent.get('/api/profile').expect(200)).body;
       expect(profile.grants).toEqual([{ poolId: 1, delta: 2, source: 'promo', ref: 'WELCOME', at: now() }]);
       expect((await redeem(w, 'WELCOME').expect(409)).body).toMatchObject({ code: 'promo_unavailable' });
@@ -129,16 +130,16 @@ export function poolScenarios(h: () => Harness): void {
       expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'no_tickets' });
     });
 
-    it('an unused ticket of a live pool where a shift would no longer end by the play deadline is not ridable: /api/me says so with rideBy (the last start), POST /api/rides is 409 rides_closed', async () => {
-      const deadline = new Date(now() + 3660_000), rideBy = new Date(deadline.getTime() - 3600_000);
+    it('an unused ticket past lastStartAt is shown burned, and POST /api/rides is 409 pool_last_start_passed', async () => {
+      const rideBy = new Date(now() + 60_000), deadline = new Date(rideBy.getTime() + 75 * 60_000);
       await seedPool({ id: 1, status: 'active', playDeadline: deadline, payoutAt: new Date(deadline.getTime() + 60_000) });
       await seedPromo('ONE', { effect: ticketEffect({ credits: 1 }) });
       const w = await login();
       await redeem(w, 'ONE').expect(200);
-      expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 1, ridable: true, rideBy: rideBy.getTime() });
+      expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 1, ridable: true, burned: false, rideBy: rideBy.getTime() });
       sec(61);   // a second past the last start
-      expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 1, ridable: false });
-      expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'rides_closed', detail: `rides for pool #1 closed at ${rideBy.toISOString()}` });
+      expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 0, ridable: false, burned: true, rideBy: rideBy.getTime() });
+      expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'pool_last_start_passed', detail: `the last start for pool #1 was ${rideBy.toISOString()}` });
     });
 
     it('program v4 (audit L4): no ride on a pool whose road is not sealed – 409 road_not_sealed; the RoadSealed event lets it ride, on the sealed road', async () => {
@@ -153,18 +154,20 @@ export function poolScenarios(h: () => Harness): void {
       expect(r.seed).toBe(projectRoadSeed(Buffer.from(commitment, 'base64')));
     });
 
-    it('no new ride after the sale end: a live pool with 3 h of its play window left spends nothing – /api/me says rideBy = the sale end, POST /api/rides is 409 rides_closed', async () => {
-      const sale = new Date(now() + 60_000), deadline = new Date(sale.getTime() + 3 * 3600_000);
+    it('a held ticket stays ridable after sales close until lastStartAt; a start after that is 409 pool_last_start_passed', async () => {
+      const sale = new Date(now() + 60_000), deadline = new Date(sale.getTime() + 3 * 3600_000), rideBy = new Date(deadline.getTime() - 75 * 60_000);
       await seedPool({ id: 1, status: 'active', prepDeadline: sale, playDeadline: deadline, payoutAt: new Date(deadline.getTime() + 60_000) });
       await seedPromo('ONE', { effect: ticketEffect({ credits: 2 }) });
       const w = await login();
       await redeem(w, 'ONE').expect(200);
-      expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 2, ridable: true, rideBy: sale.getTime() });
-      sec(60); const last = (await ride(w, '1h').expect(200)).body;   // the last second of the sale: still spent
-      await w.agent.post(`/api/rides/${last.id}/start`).expect(200);   // ordered in time: it starts and drives on into the finishing window
-      sec(1); await w.agent.post(`/api/rides/${last.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
-      expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 1, ridable: false, rideBy: sale.getTime() });
-      expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'rides_closed', detail: `rides for pool #1 closed at ${sale.toISOString()}` });
+      expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 2, ridable: true, burned: false, rideBy: rideBy.getTime() });
+      sec(61); const last = (await ride(w, '1h').expect(200)).body;   // sales have closed; the last start is still ahead
+      await w.agent.post(`/api/rides/${last.id}/start`).expect(200);
+      sec(2); await w.agent.post(`/api/rides/${last.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
+      expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 1, ridable: true, rideBy: rideBy.getTime() });
+      sec(Math.ceil((rideBy.getTime() - now()) / 1000) + 1);
+      expect((await w.agent.get('/api/me')).body.tickets[0]).toMatchObject({ balance: 0, ridable: false, burned: true, rideBy: rideBy.getTime() });
+      expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'pool_last_start_passed', detail: `the last start for pool #1 was ${rideBy.toISOString()}` });
     });
 
     it('one pool, one road: every rider of the pool (and every ticket of one rider) gets the pool\'s seed, route, start hour and the same holes', async () => {
@@ -179,12 +182,12 @@ export function poolScenarios(h: () => Harness): void {
       expect(rb).toMatchObject({ seed: 123_457, route: ra.route, startHour: ra.startHour, trip: ra.trip });
       expect(ra.seed).toBe(123_457);
       for (const [w, r] of [[a, ra], [b, rb]] as const) await w.agent.post(`/api/rides/${r.id}/start`).expect(200);
-      const plan = async (id: string) => (await anon().get(`/api/watch/${id}/road?from=0&to=8000`).expect(200)).body.holes;
-      expect(await plan(rb.id)).toEqual(await plan(ra.id));
+      const plan = (seed: number, trip: string) => roadPlanFor(seed, trip).window('cmp', 0, 8000).holes;
+      expect(plan(rb.seed, rb.trip)).toEqual(plan(ra.seed, ra.trip));
       sec(2); await a.agent.post(`/api/rides/${ra.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
       expect((await ride(a, '1h').expect(200)).body.seed).toBe(123_457); // a second ticket: the same road again
       await b.agent.post(`/api/rides/${rb.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
-      expect((await ride(b, '4h').expect(200)).body.seed).toBe(765_431); // another pool, another road
+      expect((await ride(b, '4h').expect(400)).body.code).toBe('tier_retired'); // 4h is not created; the 1h riders above already share one road
     });
 
     it('tickets in a pool still short of its minimum cannot be ridden yet (409 pool_not_live); once it is active they can', async () => {

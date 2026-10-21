@@ -1,6 +1,6 @@
 import { CFG } from '../config.js';
 import { guide } from '../guide.js';
-import { st, dn, powered, coldK } from '../state.js';
+import { st, dn, powered, coldK, driveHull } from '../state.js';
 import { wip } from '../cockpit/windscreen.js';
 import { resetTutorial, tutorialTips, tutorialOpen } from './tutorial.js';
 import { net } from '../net/network.js';
@@ -29,7 +29,7 @@ function assistTips() {
   }
   if (st.off) T.push(K('OFF ROAD', 'Off the road – steer back before the ride ends', 'A D'));
   if (dn.k > .5 && !dn.head && powered()) T.push(K('head', 'It is dark – headlights on', 'L'));
-  if (st.hull < 60) T.push(K('HUL', `Hull ${Math.round(st.hull)} % – avoid holes, signs and cars`));
+  if (driveHull() < 60) T.push(K('HUL', `Hull ${Math.round(driveHull())} % – avoid holes, signs and cars`));
   if (powered() && !st.engineOn && st.batt < CFG.BATT.START_MIN) T.push(K('BAT', 'Battery too flat to crank – switch lights, heater, cooler and radio off and wait a few seconds, it recovers by itself'));
   else if (powered() && st.batt < CFG.BATT.LOW) T.push(K('BAT', 'Battery low – lights / heater / cooling off, keep the engine running'));
   if (coldK() > .5 && st.rpm > 1800) T.push(K('COLD', 'Cold engine – keep the revs low until TEMP rises'));

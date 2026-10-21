@@ -14,7 +14,7 @@ export function economyGapScenarios(h: () => Harness): void {
   it('reconcile pays the order whose reference is on chain', async () => {
     await seed();
     const rider = await login();
-    const order = (await rider.agent.post('/api/tickets').send({ poolId: 1, qty: 1 }).expect(200)).body;
+    const order = (await rider.agent.post('/api/tickets').send({ poolId: 1, qty: 1, burnWarningAccepted: true }).expect(200)).body;
     expect(order.reference).toEqual(expect.any(String));
     const sig = h().poolChain.addEvent('TicketBought', {
       poolId: 1, buyer: rider.address, qty: 1, lamports: order.lamports, orderId: order.id, ticketsSold: 1, activated: false,
@@ -28,7 +28,7 @@ export function economyGapScenarios(h: () => Harness): void {
   it('an unpaid order reconciles as not_found and credits nothing', async () => {
     await seed();
     const rider = await login();
-    const order = (await rider.agent.post('/api/tickets').send({ poolId: 1, qty: 1 }).expect(200)).body;
+    const order = (await rider.agent.post('/api/tickets').send({ poolId: 1, qty: 1, burnWarningAccepted: true }).expect(200)).body;
     const body = (await rider.agent.post(`/api/tickets/orders/${order.id}/reconcile`).expect(200)).body;
     expect(body).toMatchObject({ status: 'not_found', order: { id: order.id, status: 'awaiting_payment' } });
     expect((await rider.agent.get('/api/me').expect(200)).body.tickets).toEqual([]);
@@ -38,7 +38,7 @@ export function economyGapScenarios(h: () => Harness): void {
     await seed();
     const rider = await login();
     const other = await login();
-    const order = (await rider.agent.post('/api/tickets').send({ poolId: 1, qty: 1 }).expect(200)).body;
+    const order = (await rider.agent.post('/api/tickets').send({ poolId: 1, qty: 1, burnWarningAccepted: true }).expect(200)).body;
     await anon().get('/api/tickets/pending').expect(401);
     await anon().get(`/api/tickets/orders/${order.id}/payment`).expect(401);
     await anon().post(`/api/tickets/orders/${order.id}/confirm`).send({ signature: '5'.repeat(88) }).expect(401);
@@ -56,7 +56,7 @@ export function economyGapScenarios(h: () => Harness): void {
   it('an order Solana Pay link is public; the transaction is the buyer\'s', async () => {
     await seed();
     const rider = await login();
-    const order = (await rider.agent.post('/api/tickets').send({ poolId: 1, qty: 1 }).expect(200)).body;
+    const order = (await rider.agent.post('/api/tickets').send({ poolId: 1, qty: 1, burnWarningAccepted: true }).expect(200)).body;
     expect((await anon().get(`/api/solana-pay/orders/${order.id}`).expect(200)).body.label).toBe('Freight Chain');
     const tx = await anon().post(`/api/solana-pay/orders/${order.id}`).send({ account: rider.address }).expect(200);
     expect(tx.body.message).toMatch(/tickets/);

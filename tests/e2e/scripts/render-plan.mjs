@@ -111,16 +111,16 @@ ${checklist(2)}
 1. Wallet A reads \`GET /api/referrals\` and receives a code. The default gift is convoy.
 2. Wallet B posts \`/api/referrals/bind\`. \`referredBy\` is A's wallet.
 3. Either wallet posts \`/api/referrals/gift\` with \`convoy\` or \`signal\`.
-4. The +2 / +3 free rides after a verified MEDIUM finish stay in \`referral.service.spec.ts\` (\`B1-REF-04\`, pending here). Pool v5 has no on-chain referral leg.
+4. A verified MEDIUM finish grants the referrer +2 free rides and the referee +3 (\`B1-REF-04\`). Pool v5 has no on-chain referral leg.
 
 ### Paid season week (block 2)
 
 1. Compose Postgres and Redis, then a host \`solana-test-validator\` (Agave, same as \`localnet-e2e\`). Deploy the pool and TEN4 programs when their \`.so\` files exist (\`programs/target/deploy\`, \`e2e/scripts/chain-init.sh\`). The TEN4 crate is \`freightchain_honk\`.
 2. The server runs \`PAYMENT_MODE=program\` with both program ids. \`GET /api/honk\` returns \`chain.programId\`. \`GET /api/chain/fees\` answers. Tiers still list free, 1h, 4h, 8h.
 3. The landing hero says IN ESCROW when \`/api/pool\` has vaults. The lobby 1h card shows BUY. START FREE RIDE still posts \`tier: 'free'\`.
-4. Ticket promo shape is in the admin schema. Redeeming one into a deployed pool is pending (\`B2-PROMO-02\`).
-5. \`set_pool_rules\` is in the program and the IDL. No admin HTTP route calls it. The CLI is \`pool-admin.mjs set-pool-rules\` (\`B2-ADMIN-04\` pending, \`M-10\` if a human wallet UI appears).
-6. Buy, ride, settle, and pay winners stay in \`server/scripts/e2e-localnet.mjs\` and \`e2e-localnet-payout.mjs\` (Chrome). This suite checks validator health and leaves the Merkle payout as \`B2-API-06\`. TEN4 ledger versus chain is \`B2-API-07\` / \`B2-HONK-02\`, already covered by \`honk-suite\` with a browser.
+4. A signed admin creates a ticket promo for the deployed pool. A player redeems it and the ticket balance for that pool goes up by one (\`B2-PROMO-02\`).
+5. \`set_pool_rules\` is in the program and the IDL. No admin HTTP route calls it. The CLI \`pool-admin.mjs set-pool-rules\` runs against the local validator (\`B2-ADMIN-04\`). A human wallet UI stays manual (\`M-10\`).
+6. The block-2 payer buys a ticket, the road is sealed, a winner is committed and paid, and the pool closes (\`B2-API-06\`). A fresh wallet's ledger mint is 0 when the TEN4 program is absent, and matches the chain balance when it is deployed (\`B2-API-07\`, \`B2-HONK-02\`). The full paid ride whose chain mint is 100 TEN4 is \`honk-suite\`.
 
 ## (c) Coverage matrix
 

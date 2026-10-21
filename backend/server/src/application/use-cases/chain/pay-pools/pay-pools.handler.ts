@@ -4,6 +4,8 @@ import { SETTLE_GRACE_MS } from '../../../../domain/economy/pool-crank.js';
 import type { Pool } from '../../../../domain/economy/pool.entity.js';
 import type { PayoutState } from '../../../../domain/economy/pool.types.js';
 import { poolPayouts, TOP20_SIZE } from '../../../../domain/economy/pool-payouts.js';
+import { SCORE_FORMULA_VERSION, orderWalletsByResults } from '../../../../domain/pool/pool-ranking.js';
+import { RideResultRepositoryPort } from '../../../rides/ride-result.port.js';
 import type { PoolPayoutRecord } from '../../../../domain/economy/pool-payout.js';
 import { prizeBound } from '../../../../domain/economy/vault-split.js';
 import { winnersTree, type WinnersTree } from '../../../../domain/economy/winners-merkle.js';
@@ -22,6 +24,8 @@ import { PoolRegistryService } from '../../../services/pool-registry.service.js'
 import { AttestationService } from '../../../services/attestation.service.js';
 import { ReferralPayoutService } from '../../../services/referral-payout.service.js';
 import { SettleChainSignatureCommand } from '../settle-chain-signature/settle-chain-signature.command.js';
+import { commitBlockReason } from '../../../../domain/economy/pool-schedule.js';
+import { RideAppealRepositoryPort } from '../../../ports/rides/ride-appeal.repository.port.js';
 import { PayPoolsCommand, type PaidPrizeDto, type PayoutPassDto, type PoolPayoutResultDto } from './pay-pools.command.js';
 
 /** states that wait for a person: the pool's settle grace runs on, so they are logged as an error when it is near */
@@ -67,6 +71,8 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     private readonly pledges: PledgeRepositoryPort,
     private readonly hasher: HasherPort,
     @Optional() private readonly referralPayout?: ReferralPayoutService,
+    @Optional() private readonly rideResults?: RideResultRepositoryPort,
+    @Optional() private readonly appeals?: RideAppealRepositoryPort,
   ) {}
 
   async execute({ poolId }: PayPoolsCommand): Promise<PayoutPassDto> {
@@ -134,6 +140,9 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
         if (held) return await done(pool, 'held', held);
         const attested = await this.attestPledged(pool);   // before the commit: a pledged ride's lock then ends with the winners'
         if (attested) return await done(pool, attested.state, attested.note);
+        const blockers = this.appeals ? await this.appeals.blockers(pool.id) : { openAppeals: 0, running: 0 };
+        const blocked = commitBlockReason(now, pool.validationUntil, blockers.openAppeals, blockers.running);
+        if (blocked) return await done(pool, 'waiting_review', blocked);
         const committed = await this.commit(pool, tree, rows.length, now);
         if (committed) return await done(pool, 'error', committed);
         chain = await this.chainState(pool.id);
@@ -214,10 +223,19 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
     return p?.hold ? (p.hold.note ?? `held by ${p.hold.by}`) : null;
   }
 
+  /** Verified wallets, in scoreFormulaVersion order when stats.RideResult rows exist. */
+  private async rankedWallets(poolId: number): Promise<string[]> {
+    const base = (await this.rides.poolRanking(poolId, TOP20_SIZE, true)).map((row) => row.wallet);
+    if (!this.rideResults) return base;
+    const rows = await this.rideResults.listByPool(poolId);
+    if (!rows.length) return base;
+    return orderWalletsByResults(base, rows, SCORE_FORMULA_VERSION).slice(0, TOP20_SIZE);
+  }
+
   /** The unpaid plan against the verified ranking NOW (audit M7): a verdict decided after the plan (a ride rejected, another accepted) changes who should be
       paid – stop, with what moved, for the admin. null = the plan still is the ranking. */
   private async planDrift(pool: Pool, rows: readonly PoolPayoutRecord[]): Promise<string | null> {
-    const now = (await this.rides.poolRanking(pool.id, TOP20_SIZE, true)).map((r) => r.wallet);
+    const now = await this.rankedWallets(pool.id);
     const planned = [...rows].filter((r) => (r.kind ?? 'rider') === 'rider').sort((a, b) => a.rank - b.rank).map((r) => r.wallet);
     if (now.length === planned.length && now.every((w, i) => w === planned[i])) return null;
     const first = planned.findIndex((w, i) => now[i] !== w);
@@ -227,16 +245,16 @@ export class PayPoolsHandler implements ICommandHandler<PayPoolsCommand, PayoutP
 
   /** the plan from the verified ranking; written once (rows that exist are kept) */
   private async plan(pool: Pool): Promise<PoolPayoutRecord[]> {
-    const ranking = await this.rides.poolRanking(pool.id, TOP20_SIZE, true);
-    if (!ranking.length) return [];
+    const wallets = await this.rankedWallets(pool.id);
+    if (!wallets.length) return [];
     const s = pool.snapshot();
     // maxPlayerShareBps is not a column. Absent (a Postgres reload) counts every ticket; the chain still rejects a root above prize_share.
     const prize = prizeBound({ priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps, referralBps: s.referralBps ?? 0, ...(s.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: s.maxPlayerShareBps } : {}) });
     // a 0-lamport rank could never be paid (the program refuses it) and would keep the pool from closing: the shares are floored, so they are the last ranks.
     // with the referral service the same root also carries one leaf per referrer (kind), which planDrift ignores
     const plan = this.referralPayout
-      ? await this.referralPayout.leaves(pool)
-      : poolPayouts(prize, ranking.map((r) => r.wallet)).filter((p) => p.lamports > 0).map((p) => ({ poolId: pool.id, rank: p.rank, wallet: p.wallet, lamports: p.lamports, status: 'planned' as const }));
+      ? await this.referralPayout.leaves(pool, wallets)
+      : poolPayouts(prize, wallets).filter((p) => p.lamports > 0).map((p) => ({ poolId: pool.id, rank: p.rank, wallet: p.wallet, lamports: p.lamports, status: 'planned' as const }));
     await this.payouts.plan(plan, this.clock.now());
     return this.payouts.listByPool(pool.id);
   }

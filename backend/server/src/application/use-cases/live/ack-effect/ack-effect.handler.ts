@@ -23,7 +23,12 @@ export class AckEffectHandler implements ICommandHandler<AckEffectCommand, RideE
     private readonly clock: ClockPort,
   ) {}
 
-  execute({ wallet, rideId, eventId, report }: AckEffectCommand): Promise<RideEventDto> {
+  async execute(_command: AckEffectCommand): Promise<RideEventDto> {
+    throw new NotFoundError('gameplay effects were removed', 'not_found');
+  }
+
+  /** kept so a reintroduced stamp still type-checks against the old lock order; the route answers 404 */
+  private retired({ wallet, rideId, eventId, report }: AckEffectCommand): Promise<RideEventDto> {
     return this.transactions.run(async (tx) => {
       await this.players.findByWalletForUpdate(wallet, tx);
       const ride = await this.lookup.require(rideId, wallet, tx);

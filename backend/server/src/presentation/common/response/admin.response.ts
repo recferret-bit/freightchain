@@ -22,6 +22,7 @@ export const adminLogsResponse = obj({ entries: z.array(obj({ time: str, level: 
 export const adminOverviewResponse = obj({
   now: num, players: num, signIns24h: num, running: num, rides: z.record(str, num), verdicts: z.record(str, num), underReview: num,
   payments: obj({ count: num, lamports: num }), telemetry: obj({ batches: num, bytes: num }), config: obj({ verdictEnforce: bool, telemetryRetentionDays: num }),
+  activeAlerts: z.array(obj({ id: str, kind: str, text: str, at: num })), undeliveredAlerts: num,
 });
 export const adminPlayersResponse = list(obj({ wallet: str, freeRides: num, freeRidesMax: num, createdAt: num, lastSignInAt: numOrNull, rides: num, tickets: num }));
 export const adminPlayerResponse = obj({
@@ -45,6 +46,8 @@ export const settingUpdatedResponse = obj({ key: str, value: num, settings: game
 export const freeRidesAdjustedResponse = obj({ wallet: str, delta: num, freeRides: num, freeRidesMax: num });
 /** The token is the fc_admin cookie. The body is the session the page shows. */
 export const adminSignInResponse = obj({ wallet: str, expiresAt: num });
+export const moderationResponse = obj({ ok: z.literal(true), status: str });
+export const proposalApprovedResponse = obj({ ok: z.literal(true), status: z.literal('applied'), id: str });
 export const poolHoldResponse = obj({ poolId: num, held: bool, by: strOrNull, at: numOrNull, note: strOrNull });
 export const poolPayoutsResponse = obj({ pools: z.array(obj({ pool: prizePoolResponse, standings: poolStandingsResponse, hold: obj({ by: str, at: num, note: strOrNull }).nullable() })) });
 export { authChallengeResponse as adminChallengeResponse };

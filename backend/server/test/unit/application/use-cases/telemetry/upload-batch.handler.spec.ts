@@ -1,14 +1,24 @@
+import { createRequire } from 'node:module';
+const { deflateRawSync, inflateRawSync } = createRequire(import.meta.url)('node:zlib') as typeof import('node:zlib');
 import { UploadBatchHandler } from '../../../../../src/application/use-cases/telemetry/upload-batch/upload-batch.handler.js';
+import { STREAMS_COMPRESSED_MAX, STREAMS_UNCOMPRESSED_MAX } from '../../../../../src/application/telemetry/batch-streams.js';
 import { UploadBatchCommand } from '../../../../../src/application/use-cases/telemetry/upload-batch/upload-batch.command.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../../../../../src/domain/shared/errors.js';
-import { recording } from '../../../../support/recording.js';
+import { checkpointMetres, serverWorldDigest } from '../../../../../src/application/telemetry/enforce-resim.js';
+import { revealRideSalts } from '../../../../../src/application/rides/ride-salts.js';
+import { WORLD_DIGEST_WINDOW_M, spawnedWorldIds } from '../../../../../src/application/telemetry/spawned-world.js';
+import { roadPlanFor } from '../../../../../src/domain/road/road-plan.js';
+import { TrafficSimulator } from '../../../../../src/domain/verdict/traffic-sim.js';
+import { batchMacGenesisMessage, batchMacMessage, enforceBatchMacMessage, worldDigest32 } from '../../../../../src/domain/shared/index.js';
+import { RideBatch, type BatchBody } from '../../../../../src/domain/telemetry/ride-batch.entity.js';
+import { recording, type TestHasher } from '../../../../support/recording.js';
 import { RoadPlan } from '../../../../../src/domain/road/road-plan.js';
 import { unitContext } from '../../../../support/unit-context.js';
 
 describe('UploadBatchHandler', () => {
   const setup = () => {
     const ctx = unitContext();
-    const handler = new UploadBatchHandler(ctx.lookup, ctx.batches, ctx.hasher, ctx.verdicts, ctx.clock, ctx.players, ctx.transactions);
+    const handler = new UploadBatchHandler(ctx.lookup, ctx.batches, ctx.hasher, ctx.verdicts, ctx.clock, ctx.players, ctx.transactions, { inflateRaw: (data: Buffer) => inflateRawSync(data) });
     return { ctx, up: (wallet: string, id: string, b: Parameters<typeof handler.execute>[0]['body']) => handler.execute(new UploadBatchCommand(wallet, id, b)) };
   };
 
@@ -132,4 +142,109 @@ describe('UploadBatchHandler', () => {
     expect(stored).toBeGreaterThan(3);
     expect(await ctx.batches.totalBytes(ride.id)).toBeLessThanOrEqual(ride.recordingAllowance(ctx.now()).maxBytes);
   });
+
+  it('checks a protocol-2 mac and still stores a v1 batch on a ride that has a session key', async () => {
+    const { ctx, up } = setup();
+    const key = Buffer.from('11'.repeat(32), 'hex').toString('base64');
+    const ride = await ctx.freeRide('w', true);
+    ride.stampSessionKey(key);
+    await ctx.rides.save(ride);
+    const [b0, b1] = recording(ride.id, { seconds: 20 });
+    const mac0 = macFor(ctx.hasher, key, ride.id, b0!, genesis(ctx.hasher, key, ride.id));
+    expect(await up('w', ride.id, { ...b0!, protocol: 2, mac: mac0 })).toMatchObject({ seq: 0, stored: true, hashOk: true });
+    const mac1 = macFor(ctx.hasher, key, ride.id, b1!, mac0);
+    expect(await up('w', ride.id, { ...b1!, protocol: 2, mac: mac1 })).toMatchObject({ seq: 1, stored: true, hashOk: true });
+
+    const bad = await ctx.freeRide('w', true);
+    bad.stampSessionKey(key);
+    await ctx.rides.save(bad);
+    const [badBatch] = recording(bad.id, { seconds: 10 });
+    await expect(up('w', bad.id, { ...badBatch!, protocol: 2, mac: 'ab'.repeat(32) })).rejects.toMatchObject({ errorCode: 'batch-mac-invalid' });
+
+    const missing = await ctx.freeRide('w', true);
+    missing.stampSessionKey(key);
+    await ctx.rides.save(missing);
+    const [bare] = recording(missing.id, { seconds: 10 });
+    await expect(up('w', missing.id, { ...bare!, protocol: 2 })).rejects.toMatchObject({ errorCode: 'batch-mac-missing' });
+
+    const legacy = await ctx.freeRide('w', true);
+    legacy.stampSessionKey(key);
+    await ctx.rides.save(legacy);
+    const [v1] = recording(legacy.id, { seconds: 10 });
+    expect(await up('w', legacy.id, v1!)).toMatchObject({ stored: true, hashOk: true });
+  });
+
+  it('checks the mac before inflate and refuses a bad or oversized protocol-2 stream without storing it', async () => {
+    const { ctx, up } = setup();
+    const key = Buffer.from('22'.repeat(32), 'hex').toString('base64');
+    const ride = await ctx.freeRide('w', true);
+    ride.stampSessionKey(key);
+    await ctx.rides.save(ride);
+    const [b0] = recording(ride.id, { seconds: 10 });
+    const mac = macFor(ctx.hasher, key, ride.id, b0!, genesis(ctx.hasher, key, ride.id));
+    const signed = { ...b0!, protocol: 2 as const, mac };
+    const junk = Buffer.from([0xff, 0xff, 0xff, 0xff]).toString('base64');
+    await expect(up('w', ride.id, { ...signed, mac: 'ab'.repeat(32), streams: junk })).rejects.toMatchObject({ errorCode: 'batch-mac-invalid' });
+    await expect(up('w', ride.id, { ...signed, streams: junk })).rejects.toMatchObject({ errorCode: 'batch-streams-invalid' });
+    await expect(up('w', ride.id, { ...signed, streams: Buffer.alloc(STREAMS_COMPRESSED_MAX + 1).toString('base64') })).rejects.toMatchObject({ errorCode: 'batch-streams-oversize' });
+    const inflated = deflateRawSync(Buffer.alloc(STREAMS_UNCOMPRESSED_MAX + 1)).toString('base64');
+    await expect(up('w', ride.id, { ...signed, streams: inflated })).rejects.toMatchObject({ errorCode: 'batch-streams-oversize' });
+    expect(await ctx.batches.listByRide(ride.id)).toEqual([]);
+    const streams = deflateRawSync(Buffer.from('fc-streams')).toString('base64');
+    const stored = RideBatch.accept(ride.id, { ...signed, streams }, ctx.hasher.sha256Hex(RideBatch.canonical(signed)), ctx.now());
+    const plain = RideBatch.accept(ride.id, signed, ctx.hasher.sha256Hex(RideBatch.canonical(signed)), ctx.now());
+    expect(stored.summary).toEqual(plain.summary);
+    expect(await up('w', ride.id, { ...signed, streams })).toMatchObject({ stored: true, hashOk: true });
+    const legacy = await ctx.freeRide('v', true);
+    legacy.stampSessionKey(key);
+    await ctx.rides.save(legacy);
+    const [v1] = recording(legacy.id, { seconds: 10 });
+    expect(await up('v', legacy.id, v1!)).toMatchObject({ stored: true, hashOk: true });
+  });
+
+  it('enforce mode accepts a chk of the spawned ids and rejects a salt-formula or a world with an object removed', async () => {
+    const ctx = unitContext();
+    const handler = new UploadBatchHandler(ctx.lookup, ctx.batches, ctx.hasher, ctx.verdicts, ctx.clock, ctx.players, ctx.transactions, { inflateRaw: (data: Buffer) => inflateRawSync(data) }, { mode: () => 'enforce' });
+    const key = Buffer.from('33'.repeat(32), 'hex').toString('base64');
+    ctx.clock.advance(30);
+    const upload = async (wallet: string, digestOf: (ids: string[], tSec: number, trafficSalt: string, holeSalt: string) => number) => {
+      const ride = await ctx.freeRide(wallet, true);
+      ride.stampSessionKey(key);
+      await ctx.rides.save(ride);
+      const [batch] = recording(ride.id, { seconds: 20 });
+      const salts = revealRideSalts(ctx.hasher, ride.id, key);
+      const plan = roadPlanFor(ride.seed, ride.trip);
+      const cars = TrafficSimulator.forRide(ride.seed, ride.trip).cars;
+      const checks = [0, 5, 12].map((tSec) => {
+        const s = checkpointMetres(batch!.samples, tSec);
+        const near = (at: number) => Math.abs(at - s) <= WORLD_DIGEST_WINDOW_M;
+        const ids = [
+          ...plan.holesNear(s - WORLD_DIGEST_WINDOW_M, s + WORLD_DIGEST_WINDOW_M).map((hole) => hole.id),
+          ...plan.layout.describe(s + WORLD_DIGEST_WINDOW_M).junctions.filter((junction) => near(junction.s)).map((junction) => junction.id),
+          ...cars.filter((car) => near(car.s)).map((car) => `car-${car.id}`),
+        ];
+        expect(ids.length).toBeGreaterThan(0);
+        expect(spawnedWorldIds(ride.seed, ride.trip, s)).toEqual(ids);
+        expect(serverWorldDigest(ride.seed, ride.trip, s)).toBe(worldDigest32(ids));
+        expect(worldDigest32(ids)).not.toBe(worldDigest32([`traffic:${salts.trafficSalt}`, `hole:${salts.holeSalt}`, `t:${tSec}`]));
+        return { tSec, s, digest: digestOf(ids, tSec, salts.trafficSalt, salts.holeSalt) };
+      });
+      const inp = deflateRawSync(Buffer.from(JSON.stringify([{ tick: 0, gas: 1 }]))).toString('base64');
+      const chk = deflateRawSync(Buffer.from(JSON.stringify(checks))).toString('base64');
+      const named = { inp, clk: inp, chk, mg: inp, env: inp, startTick: 0, endTick: 400 };
+      const mac = ctx.hasher.hmacSha256Hex(Buffer.from(key, 'base64'), enforceBatchMacMessage(ride.id, 0, named.startTick, named.endTick, ctx.hasher.sha256Hex(inp), ctx.hasher.sha256Hex(chk)));
+      return handler.execute(new UploadBatchCommand(wallet, ride.id, { ...batch!, named, mac }));
+    };
+    await expect(upload('w', (ids) => worldDigest32(ids))).resolves.toMatchObject({ stored: true });
+    await expect(upload('gone', (ids) => worldDigest32(ids.slice(1)))).rejects.toMatchObject({ errorCode: 'world-digest-mismatch' });
+    await expect(upload('echo', (_ids, tSec, trafficSalt, holeSalt) => worldDigest32([`traffic:${trafficSalt}`, `hole:${holeSalt}`, `t:${tSec}`]))).rejects.toMatchObject({ errorCode: 'world-digest-mismatch' });
+  });
 });
+
+function genesis(hasher: TestHasher, keyB64: string, rideId: string): string {
+  return hasher.hmacSha256Hex(Buffer.from(keyB64, 'base64'), batchMacGenesisMessage(rideId));
+}
+
+function macFor(hasher: TestHasher, keyB64: string, rideId: string, body: BatchBody, prevMac: string): string {
+  return hasher.hmacSha256Hex(Buffer.from(keyB64, 'base64'), batchMacMessage(rideId, body.seq, prevMac, RideBatch.canonical(body)));
+}

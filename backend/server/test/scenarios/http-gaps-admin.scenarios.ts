@@ -20,7 +20,7 @@ export function adminGapScenarios(h: () => Harness): void {
     await anon().post('/api/admin/pools/1/hold').send({ hold: true, note: null, signature: 'abc' }).expect(404);
     await anon().post('/api/admin/players/free-rides/challenge').send({ action: 'free_rides_adjust', wallet: ADMIN.address, delta: 1 }).expect(404);
     await anon().post('/api/admin/rides/missing-ride/rejudge').send({ signature: 'abc' }).expect(404);
-    await anon().post('/api/admin/auth/logout').expect(403); // public route: the header, not the session
+    await anon().post('/api/admin/auth/logout').expect(404); // logout needs a session; no session is the same 404 as any other admin route
   });
 
   it('a rider session, even with the admin header, is still 404 on the directory and the signed changes', async () => {
@@ -30,7 +30,7 @@ export function adminGapScenarios(h: () => Harness): void {
     await rider.agent.post('/api/admin/pools/1/hold').set('x-fc-admin', '1').send({ hold: true, note: null, signature: 'abc' }).expect(404);
     await rider.agent.post('/api/admin/players/free-rides/challenge').set('x-fc-admin', '1').send({ action: 'free_rides_adjust', wallet: rider.address, delta: 1 }).expect(404);
     await rider.agent.post('/api/admin/rides/missing-ride/rejudge').set('x-fc-admin', '1').send({ signature: 'abc' }).expect(404);
-    await rider.agent.post('/api/admin/auth/logout').set('x-fc-admin', '1').expect(200); // AdminPublic: any caller with the header
+    await rider.agent.post('/api/admin/auth/logout').set('x-fc-admin', '1').expect(404); // a player session is not an admin session
     await rider.agent.get('/api/admin/overview').expect(404);
   });
 

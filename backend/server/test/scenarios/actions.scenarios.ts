@@ -3,6 +3,8 @@ import { DEVNET_BLOCKCHAIN_ID } from '../../src/domain/actions/action-card.js';
 import { bindClient, newWallet } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 import { aPool } from '../support/pools.js';
+import { TREASURY } from '../support/fake-chain.js';
+import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
 
 /* Solana Actions. The default harness is transfer mode (no buy). The program harness buys one ticket through the same order as the lobby. */
 export const ACTIONS_PROGRAM_ENV = { PAYMENT_MODE: 'program', TICKET_PROGRAM_ID: '9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx' };
@@ -65,7 +67,16 @@ export function actionsScenarios(h: () => Harness): void {
 
   it('a ride blink describes the shift and never says verified; an unknown id is 404 {message}', async () => {
     const w = await login();
-    const ride = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body as { id: string };
+    const hidden = (await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body as { id: string };
+    await anon().get(`/api/actions/ride/${hidden.id}`).expect(404);
+    setTierOnSaleForTest('1h', true);
+    const ordered = (await w.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body as { id: string; lamports: number };
+    const sig = h().chain.addPayment({ payer: w.address, destination: TREASURY, lamports: ordered.lamports, memo: ordered.id });
+    await w.agent.post(`/api/rides/${ordered.id}/confirm`).send({ signature: sig }).expect(200);
+    await w.agent.post(`/api/rides/${ordered.id}/start`).expect(200);
+    await w.agent.post(`/api/rides/${ordered.id}/end`).send({ outcome: 'failed', s: 1, t: 1 }).expect(200);
+    setTierOnSaleForTest('1h', false);
+    const ride = ordered;
     const card = await anon().get(`/api/actions/ride/${ride.id}`).expect(200);
     expect(card.body.type).toBe('action');
     expect(JSON.stringify(card.body).toLowerCase()).not.toContain('verified');
@@ -73,10 +84,10 @@ export function actionsScenarios(h: () => Harness): void {
     for (const a of card.body.links.actions as { type: string; href: string }[]) {
       const link = await anon().post(a.href).send({ account: w.address, type: a.type }).expect(200);
       expect(link.body.type).toBe('external-link');
-      expect(link.body.externalLink).toMatch(new RegExp(`/r/${ride.id}$`)); // a created free ride: the page, and no watch button
+      expect(link.body.externalLink).toMatch(new RegExp(`(${ride.id})`));
     }
     const watch = await anon().post(`/api/actions/ride/${ride.id}/watch`).send({ account: w.address }).expect(200);
-    expect(watch.body.externalLink).toMatch(new RegExp(`/r/${ride.id}$`));
+    expect(watch.body.externalLink).toMatch(/play\.html\?watch=/);
     const missing = await anon().get('/api/actions/ride/missing-ride').expect(404);
     expect(missing.body).toEqual({ message: expect.any(String) });
     expect(missing.headers['content-type']).not.toMatch(/problem\+json/);

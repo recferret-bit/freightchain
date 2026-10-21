@@ -62,12 +62,12 @@ export function promoAbuseScenarios(h: () => Harness): void {
     });
 
     it('what a code gave is kept after it ended: the ride grants, an owned + worn wheel that can be swapped away and back, the log, the admin\'s ENDED list', async () => {
-      await seedPromo('RIDES', { effect: { kind: 'ride', tier: '4h' }, expiresAt: new Date(now() + 3_600_000) });
-      await seedPromo('EXTRA', { effect: { kind: 'ride', tier: '1h' }, expiresAt: new Date(now() + 3_600_000) });
+      await seedPromo('RIDES', { effect: { kind: 'ride', tier: '4h' }, expiresAt: new Date(now() + 60_000) });
+      await seedPromo('EXTRA', { effect: { kind: 'ride', tier: '1h' }, expiresAt: new Date(now() + 60_000) });
       const w = await login(), admin = await asAdmin();
       await redeem(w, 'RIDES').expect(200); await redeem(w, 'EXTRA').expect(200);
       const { body: { nft } } = await mintVisual(w, 'wheel', 'gold'); // cab visuals are HONK, not a code
-      sec(3_600);
+      sec(61); // past the codes; inside the 60-minute admin session
       expect(await freeRides(w)).toBe(10);
       expect((await grants(w)).slice().sort((a, b) => a.code.localeCompare(b.code))).toEqual([{ code: 'EXTRA', tier: '1h' }, { code: 'RIDES', tier: '4h' }]);
       const garage = (await w.agent.get('/api/garage').expect(200)).body;

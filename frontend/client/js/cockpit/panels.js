@@ -5,7 +5,7 @@ import { lamp, strainLamp, brakeLamp, batLamp, stallLamp, heatButton, coldButton
 import { ignitionPanel } from './ignition.js';
 import { radioPanel } from './radio-panel.js';
 import { wip } from './windscreen.js';
-import { st, dn, coldK } from '../state.js';
+import { st, dn, coldK, driveHull } from '../state.js';
 import { MONO } from '../util.js';
 import { online } from '../online.js';
 
@@ -20,7 +20,8 @@ export function drawLeftPanel(cx, u, off, pw) {
   ledBar(lx + .5 * u, 84 * u, 3.2 * u, 12 * u, pw ? st.clutch : 0, '#4a8fd8', 'CLU', u);
   ledBar(lx + 5 * u, 84 * u, 3.2 * u, 12 * u, pw ? st.brake : 0, '#e0503f', 'BRK', u);
   ledBar(lx + 9.5 * u, 84 * u, 3.2 * u, 12 * u, pw ? st.gas : 0, '#6ecf5a', 'GAS', u);
-  ledBar(lx + 14 * u, 84 * u, 3.2 * u, 12 * u, pw ? st.hull / 100 : 0, st.hull > 50 ? '#6ecf5a' : st.hull > 25 ? '#e0a03f' : '#e0503f', 'HUL', u);
+  const body = driveHull();
+  ledBar(lx + 14 * u, 84 * u, 3.2 * u, 12 * u, pw ? body / 100 : 0, body > 50 ? '#6ecf5a' : body > 25 ? '#e0a03f' : '#e0503f', 'HUL', u);
 }
 
 export function drawParkValve(px, vy, u, btn) {

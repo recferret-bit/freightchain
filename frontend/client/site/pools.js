@@ -154,6 +154,8 @@ export function rideError(e, tier) {
   if (e?.code === 'assist_not_allowed') return `${e.message[0]?.toUpperCase() ?? ''}${e.message.slice(1)} – untick ASSIST or pick an easier level.`;
   if (e?.code === 'tutorial_not_allowed') return `${e.message[0]?.toUpperCase() ?? ''}${e.message.slice(1)} – untick TUTORIAL or pick an easier level.`;
   if (e?.code === 'rides_closed') return `Rides for your ${tierName(tier)} ticket are over (${e.message.replace(/T(\d\d:\d\d):\d\d\.\d+Z$/, ' $1 UTC')}). A ticket counts only in its own pool – buy one in the pool on sale now.`;
+  if (e?.code === 'pool_last_start_passed') return 'The last start has passed. An unused ticket burns into this pool and is not refunded.';
+  if (e?.code === 'pool_schedule_mismatch') return 'This pool is paused: its schedule does not match the chain. An admin has been alerted.';
   if (e?.code === 'pool_not_live') return `The pool is still waiting for riders (${e.message}). Your tickets wait – and are refunded in full if it misses its goal.`;
   if (e?.status === 409 && /in progress/.test(e.message ?? '')) return 'You already have a ride on the road (another tab?). It frees up about 2½ minutes after its last signal.';
   return e?.message ?? String(e);

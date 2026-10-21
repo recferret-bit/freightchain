@@ -9,7 +9,11 @@ export type PoolIdParams = z.infer<typeof poolIdParamsSchema>;
 export const redeemPromoBodySchema = z.object({ code: z.string().trim().min(1).max(64) }).strict();
 export type RedeemPromoBody = z.infer<typeof redeemPromoBodySchema>;
 
-export const createTicketOrderBodySchema = z.object({ poolId: z.number().int().min(0).max(4_294_967_295), qty: z.number().int().min(1).max(100) }).strict();
+export const createTicketOrderBodySchema = z.object({
+  poolId: z.number().int().min(0).max(4_294_967_295),
+  qty: z.number().int().min(1).max(100),
+  burnWarningAccepted: z.literal(true),
+}).strict();
 export type CreateTicketOrderBody = z.infer<typeof createTicketOrderBodySchema>;
 
 export const orderIdParamsSchema = z.object({ id: z.string().uuid() }).strict();

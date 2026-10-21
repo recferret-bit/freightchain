@@ -10,7 +10,7 @@ describe('ListPoolsHandler', () => {
     await ctx.pools.upsert(aPool({ id: 3, status: 'refunding' }));
     await ctx.pools.upsert(aPool({ id: 4, status: 'settled', payoutAt: new Date(Date.UTC(2036, 8, 1)) }));
     await ctx.pools.upsert(aPool({ id: 5, status: 'settled', payoutAt: new Date(Date.UTC(2036, 8, 9)) }));
-    const { pools, finished } = await new ListPoolsHandler(ctx.pools).execute();
+    const { pools, finished } = await new ListPoolsHandler(ctx.pools, ctx.clock).execute();
     expect(pools.map((p) => p.id)).toEqual([2, 1]);
     expect(finished.map((p) => p.id)).toEqual([5, 4]); // the newest payouts first
     expect(pools[0]).toMatchObject({ status: 'open', sold: 7, minTickets: 10, toGo: 3, progressPct: 70 });
@@ -20,10 +20,13 @@ describe('ListPoolsHandler', () => {
       payout: { state: 'pending', note: null, held: false },
       vaultLamports: 600_000_000, sponsoredLamports: 0, potLamports: 600_000_000, split: { prizeBps: 7000, seedBps: 2000, feeBps: 1000, referralBps: 0 },
       treasuries: { fee: 'FeeTreasury11111111111111111111111111111111', seed: 'SeedTreasury1111111111111111111111111111111' }, roundId: 3,
+      opensAt: Date.UTC(2036, 9, 8, 12), salesCloseAt: Date.UTC(2036, 9, 8, 12) + 7 * 86_400_000,
+      lastStartAt: Date.UTC(2036, 9, 30) - 75 * 60_000, playCloseAt: Date.UTC(2036, 9, 30), validationUntil: Date.UTC(2036, 9, 30), phase: 'open',
     });
   });
 
   it('none registered → an empty list', async () => {
-    expect(await new ListPoolsHandler(unitContext().pools).execute()).toEqual({ pools: [], finished: [] });
+    const ctx = unitContext();
+    expect(await new ListPoolsHandler(ctx.pools, ctx.clock).execute()).toEqual({ pools: [], finished: [] });
   });
 });

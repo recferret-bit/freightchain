@@ -15,7 +15,7 @@ Upgrades the anti-cheat pipeline from 10 Hz sample inspection to the full [`docs
 
 ### `SPC-06.1` — Implement Telemetry v2.1 wire protocol (`sessionKey` per-batch HMAC-SHA256, deflate streams `inp`/`clk`/`chk`/`mg`/`env`, `batch-mac-invalid`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[~] In Progress` — shadow HMAC, then optional deflate-raw `streams` checked after the MAC (64 KB compressed, 256 KB uncompressed). The named `inp`/`clk`/`chk`/`mg`/`env` codec is not in. `RULES_VERSION` stays 7.
 - **Spec Rules:** `ACH-M-02`, `ACH-M-03`, `ACH-M-05` (`docs/spec/anticheat.md` §3–4, Decisions 3, 4, 8)
 - **Paired Plan 1 Task:** `E2E-07.3`
 - **Target Files:**
@@ -61,7 +61,7 @@ Upgrades the anti-cheat pipeline from 10 Hz sample inspection to the full [`docs
 
 ### `SPC-06.3` — Enforce pause (`≤3` pauses, `≤5 min` cumulative) and slow-motion (`dt` / wall-clock drift) anti-cheat bounds
 
-- **Status:** `[ ] Todo`
+- **Status:** `[~] In Progress` — heartbeats store `pauseCount` and `pauseSeconds`. `TELEMETRY_V21=shadow` flags `pause-limit`, `pause-time`, and `time-dilation` (game/wall below 0.9 after 60 s outside pauses). None of them reject. `RULES_VERSION` stays 7.
 - **Spec Rules:** `ACH-M-04` (`docs/spec/anticheat.md` §4.3, Decision 7)
 - **Paired Plan 1 Task:** `E2E-07.6`
 - **Target Files:**
@@ -80,7 +80,7 @@ Upgrades the anti-cheat pipeline from 10 Hz sample inspection to the full [`docs
 
 ### `SPC-06.4` — Implement shared pool `roadSeed` + per-ride `trafficSalt` & `holeSalt` commit–reveal (`HMAC-SHA256`) and `worldDigest32` verification
 
-- **Status:** `[ ] Todo`
+- **Status:** `[~] In Progress` — start stores `trafficSaltCommit` and `holeSaltCommit`, re-derived from the ride id and session key. The 10 Hz road does not read them. `worldDigest32` is not in.
 - **Spec Rules:** `ACH-M-05`, `ACH-M-11` (`docs/spec/anticheat.md` §6, Decisions 9, 10)
 - **Paired Plan 1 Task:** `E2E-07.4`
 - **Target Files:**

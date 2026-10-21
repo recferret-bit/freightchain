@@ -18,6 +18,10 @@ export class RidePrismaRepository extends RideRepositoryPort {
     super();
   }
 
+  async storeRevealedSalts(id: string, salts: { trafficSalt: string; holeSalt: string; saltCommit: string }, tx?: TransactionHandle): Promise<void> {
+    await clientFor(this.prisma, tx).$executeRaw`UPDATE "ride"."Ride" SET "trafficSalt" = ${salts.trafficSalt}, "holeSalt" = ${salts.holeSalt}, "saltCommit" = ${salts.saltCommit} WHERE id = ${id}`;
+  }
+
   async findById(id: string, tx?: TransactionHandle): Promise<Ride | null> {
     const row = await clientFor(this.prisma, tx).ride.findUnique({ where: { id } });
     return row ? RideMapper.toDomain(row) : null;

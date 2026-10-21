@@ -99,8 +99,9 @@ const chain0 = await honkBalance({ rpc: RPC, owner: player.kp.publicKey });
 const free = await driveVerified(callOf(player.cookie), { tier: 'free', level: 1 });
 await assertNoMint('free training ride', free, chain0);
 
-const agreed = await post('profile/agreements', { age18: true, loss: true }, player.cookie);
-check('age agreement', agreed.r.ok, JSON.stringify(agreed.j).slice(0, 160));
+const agreed = await fetch(`${BASE}/api/profile/agreements`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie: player.cookie }, body: JSON.stringify({ age18: true, loss: true }) });
+const agreedBody = await agreed.text();
+check('age agreement', agreed.ok, `${agreed.status} ${agreedBody.slice(0, 160)}`);
 const weekly = await driveVerified(callOf(player.cookie, { 'cf-ipcountry': 'CA' }), { tier: '1h' });
 check('weekly grant ride', weekly.end?.json?.weeklyGrant === true, weekly.error || JSON.stringify(weekly.end?.json).slice(0, 200));
 await assertNoMint('weekly grant ride', weekly, chain0);

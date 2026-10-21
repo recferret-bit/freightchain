@@ -1,13 +1,54 @@
 // Everything an admin did on the admin page (verdict overrides …): who, what, on which target, when, and the request id to find it in the log.
 model AdminAction {
-  id        BigInt   @id @default(autoincrement())
-  wallet    String // the admin's wallet
-  action    String // e.g. verdict.override
-  target    String // e.g. the ride id
-  detail    Json
-  requestId String?
-  at        DateTime
+  id          BigInt   @id @default(autoincrement())
+  wallet      String // the admin's wallet
+  action      String // e.g. verdict.override
+  target      String // e.g. the ride id
+  detail      Json
+  requestId   String?
+  at          DateTime
+  role        String? // admin | moderator | editor | cli
+  beforeState Json?
+  afterState  Json?
+  ipSubnet    String? // masked /24 or /48, never a full address
+  sigHash     String? // sha256 of the action signature, not the signature
 
   @@index([at])
+  @@schema("admin")
+}
+
+// Telegram (and any later channel) notifications. Written in the same transaction as the audit row; a worker delivers them.
+model AlertOutbox {
+  id            String    @id
+  kind          String
+  text          String
+  money         Boolean   @default(false)
+  status        String    @default("pending") // pending | sent | undelivered
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime
+  lastError     String?
+  createdAt     DateTime
+  sentAt        DateTime?
+  requestId     String?
+
+  @@index([status, nextAttemptAt])
+  @@schema("admin")
+}
+
+// A high-risk change waiting for a second admin (ADMIN_APPROVAL_MODE=dual). The payload is the HTTP body, not a chain transaction.
+model AdminProposal {
+  id             String    @id
+  action         String
+  target         String
+  proposerWallet String
+  approverWallet String?
+  payload        Json
+  status         String    @default("pending") // pending | applying | applied | expired
+  createdAt      DateTime
+  expiresAt      DateTime
+  appliedAt      DateTime?
+  requestId      String?
+
+  @@index([status, expiresAt])
   @@schema("admin")
 }

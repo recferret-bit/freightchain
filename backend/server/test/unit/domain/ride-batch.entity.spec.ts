@@ -1,4 +1,4 @@
-import { RideBatch, type BatchBody, type InputEvent } from '../../../src/domain/telemetry/ride-batch.entity.js';
+import { AUX_MAX_CHARS, RideBatch, type BatchBody, type InputEvent } from '../../../src/domain/telemetry/ride-batch.entity.js';
 import { BadRequestError } from '../../../src/domain/shared/errors.js';
 import { hashBatch, INPUT_BIT, recording } from '../../support/recording.js';
 import { SAMPLE_INPUT_COL } from '../../../src/domain/telemetry/telemetry-rules.js';
@@ -15,6 +15,20 @@ describe('RideBatch', () => {
     expect(RideBatch.canonical(b)).toBe(`{"seq":0,"prevHash":"ride-1","t0":0,"t1":15,"samples":${JSON.stringify(b.samples)},"inputs":[[120,"KeyW",1]]}`);
     const other: BatchBody = { ...b, hash: 'ignored' };
     expect(RideBatch.canonical(other)).toBe(RideBatch.canonical(b));
+  });
+
+  it('aux is hashed after trafficProof, and a missing or oversized aux leaves the old canonical text', () => {
+    const b = body();
+    const old = `{"seq":0,"prevHash":"ride-1","t0":0,"t1":15,"samples":${JSON.stringify(b.samples)},"inputs":[[120,"KeyW",1]]}`;
+    expect(RideBatch.canonical(b)).toBe(old);
+    expect(RideBatch.canonical({ ...b, aux: { phone: 1 } })).toBe(`${old.slice(0, -1)},"aux":{"phone":1}}`);
+    expect(RideBatch.canonical({ ...b, trafficProof: 'abc', aux: { phone: 1 } })).toBe(`${old.slice(0, -1)},"trafficProof":"abc","aux":{"phone":1}}`);
+    const huge = { pad: 'x'.repeat(AUX_MAX_CHARS) };
+    expect(RideBatch.canonical({ ...b, aux: huge })).toBe(old);
+    expect(RideBatch.accept('ride-1', { ...b, aux: huge }, hashBatch(b), NOW).body.aux).toBeUndefined();
+    const withAux = { ...b, aux: { phone: 1 } };
+    const auxHash = hashBatch(withAux);
+    expect(RideBatch.accept('ride-1', { ...withAux, hash: auxHash }, auxHash, NOW)).toMatchObject({ hashOk: true, body: { aux: { phone: 1 } } });
   });
 
   it('accepts a batch and verifies the client hash against the server one', () => {

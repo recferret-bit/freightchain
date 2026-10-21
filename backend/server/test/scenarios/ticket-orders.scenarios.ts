@@ -21,7 +21,7 @@ export function ticketOrderScenarios(h: () => Harness): void {
   it('order → its purchase event → the order is paid, the tickets are there, and a ride spends one', async () => {
     await seedPool({ id: 1, status: 'active' });
     const w = await login();
-    const order = (await w.agent.post('/api/tickets').send({ poolId: 1, qty: 2 }).expect(200)).body;
+    const order = (await w.agent.post('/api/tickets').send({ poolId: 1, qty: 2, burnWarningAccepted: true }).expect(200)).body;
     expect(order).toMatchObject({ poolId: 1, qty: 2, lamports: 100_000_000, status: 'awaiting_payment' });
     expect((await w.agent.get('/api/tickets/pending').expect(200)).body.order.id).toBe(order.id);
     expect(await settlement().settlePurchase(bought(w, { orderId: order.id }))).toMatchObject({ outcome: 'settled', balance: 2 });
@@ -57,12 +57,12 @@ export function ticketOrderScenarios(h: () => Harness): void {
   it('refusals: signed-out 401, bad body 400, unknown pool 404, not sellable 409, someone else\'s order 404', async () => {
     await seedPool({ id: 1, status: 'refunding' });
     const w = await login(), other = await login();
-    await anon().post('/api/tickets').send({ poolId: 1, qty: 1 }).expect(401);
-    await w.agent.post('/api/tickets').send({ poolId: 1, qty: 0 }).expect(400);
-    await w.agent.post('/api/tickets').send({ poolId: 2, qty: 1 }).expect(404);
-    expect((await w.agent.post('/api/tickets').send({ poolId: 1, qty: 1 }).expect(409)).body).toMatchObject({ code: 'not_sellable', detail: 'this pool is refunding' });
+    await anon().post('/api/tickets').send({ poolId: 1, qty: 1, burnWarningAccepted: true }).expect(401);
+    await w.agent.post('/api/tickets').send({ poolId: 1, qty: 0, burnWarningAccepted: true }).expect(400);
+    await w.agent.post('/api/tickets').send({ poolId: 2, qty: 1, burnWarningAccepted: true }).expect(404);
+    expect((await w.agent.post('/api/tickets').send({ poolId: 1, qty: 1, burnWarningAccepted: true }).expect(409)).body).toMatchObject({ code: 'not_sellable', detail: 'this pool is refunding' });
     await seedPool({ id: 3, status: 'open' });
-    const mine = (await w.agent.post('/api/tickets').send({ poolId: 3, qty: 1 }).expect(200)).body;
+    const mine = (await w.agent.post('/api/tickets').send({ poolId: 3, qty: 1, burnWarningAccepted: true }).expect(200)).body;
     await other.agent.get(`/api/tickets/orders/${mine.id}`).expect(404);
     await w.agent.get('/api/tickets/orders/not-a-uuid').expect(400);
   });
@@ -70,7 +70,7 @@ export function ticketOrderScenarios(h: () => Harness): void {
   it('the wallet path end to end on the (fake) chain: payment transaction → confirm → paid; refund transaction after the pool failed → settle', async () => {
     await seedPool({ id: 1, status: 'open', minTickets: 5 });
     const w = await login();
-    const order = (await w.agent.post('/api/tickets').send({ poolId: 1, qty: 2 }).expect(200)).body;
+    const order = (await w.agent.post('/api/tickets').send({ poolId: 1, qty: 2, burnWarningAccepted: true }).expect(200)).body;
     const pay = (await w.agent.get(`/api/tickets/orders/${order.id}/payment`).expect(200)).body;
     expect(pay).toMatchObject({ orderId: order.id, poolId: 1, lamports: 100_000_000, feePayer: w.address });
     expect(h().poolChain.built[0]).toMatchObject({ kind: 'buy', input: { payer: w.address, orderId: order.id, qty: 2 } });
@@ -92,9 +92,9 @@ export function ticketOrderScenarios(h: () => Harness): void {
     const tiers = (await anon().get('/api/tiers').expect(200)).body;
     expect(tiers.paymentMode).toBe('program');
     expect(tiers.tiers.map((t: { id: string; available: boolean; lamports: number | null; pool: { id: number } | null }) => [t.id, t.available, t.lamports === null, t.pool?.id ?? null]))
-      .toEqual([['free', true, true, null], ['1h', true, false, 1], ['4h', false, true, null], ['8h', false, true, null]]);
+      .toEqual([['free', true, true, null], ['1h', true, false, 1]]);
     const w = await login();
-    expect((await w.agent.post('/api/rides').send({ tier: '4h' }).expect(409)).body).toMatchObject({ code: 'tier_not_on_sale' }); // a refunding pool is not live, and 4h is not on sale
+    expect((await w.agent.post('/api/rides').send({ tier: '4h' }).expect(400)).body).toMatchObject({ code: 'tier_retired' });
   });
 
   it('a pool that missed its goal is refundable at once – before anyone sends fail_pool (the refund transaction bundles it)', async () => {

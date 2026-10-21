@@ -12,6 +12,8 @@ export const getRequestId = (req: Request): string => (req as Partial<RequestWit
 /** The signed-in rider, set by PlayerAuthGuard. */
 export interface PlayerIdentity {
   wallet: string;
+  termsVersion?: number | null;
+  privacyVersion?: number | null;
 }
 export type PlayerAuthPayload = PlayerIdentity;
 

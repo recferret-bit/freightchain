@@ -6,7 +6,7 @@ import type { SettingKey } from '../settings/game-settings.js';
 
 /* What an admin's wallet signs. Pending challenges share the rider sign-in's store (one per key), under their own keys so an admin sign-in never
    replaces a rider sign-in of the same wallet, and a message of one kind can never be consumed as the other. */
-export const adminSignInKey = (wallet: string): string => `admin:${wallet}`;
+export const adminSignInKey = (wallet: string, clientId = 'default'): string => `admin:${wallet}:${clientId}`;
 
 export const ADMIN_SIGNIN_STATEMENT = 'ADMIN sign-in to Freight Chain (the admin page). This request will not trigger a transaction or cost any fees.';
 
@@ -21,9 +21,9 @@ export interface AdminSignInInput {
 }
 
 /** The admin sign-in message (Sign-In-With-Solana format, the admin host as its domain), stored under the admin key. */
-export function adminSignInChallenge(input: AdminSignInInput): AuthChallenge {
+export function adminSignInChallenge(input: AdminSignInInput & { clientId?: string }): AuthChallenge {
   const c = AuthChallenge.issue({ ...input, statement: ADMIN_SIGNIN_STATEMENT });
-  return new AuthChallenge(adminSignInKey(input.wallet), c.message, c.expiresAt);
+  return new AuthChallenge(adminSignInKey(input.wallet, input.clientId), c.message, c.expiresAt);
 }
 
 /* The ENTITY EDITOR (the storybook model viewer): its own sign-in message and key, so an editor sign-in never replaces an admin or rider sign-in. */
@@ -61,6 +61,7 @@ export type AdminIntent =
   | { action: 'free_rides_adjust'; wallet: string; delta: number }
   | { action: 'setting_update'; key: SettingKey | string; value: number }
   | { action: 'pool_hold'; poolId: number; hold: boolean; note: string | null }
+  | { action: 'appeal_resolve'; appealId: string; decision: 'upheld' | 'denied'; note: string | null }
   | { action: 'entity_publish'; entityId: string; revisionId: string; seq: number };
 
 /** EVERY field of a new promo code as one JSON line, keys in a fixed order, dates as ISO strings – the signature binds the whole code, not a summary of it. */
@@ -80,6 +81,7 @@ export function intentLines(intent: AdminIntent): string[] {
     case 'setting_update': return [`Action: SET setting ${intent.key}`, `Value: ${intent.value}`];
     case 'entity_publish': return [`Action: PUBLISH 3D model ${intent.entityId} – every player draws it from now on`, `Revision: #${intent.seq} (${intent.revisionId})`];
     case 'pool_hold': return [`Action: ${intent.hold ? 'HOLD the payout of' : 'RELEASE the payout hold of'} pool ${intent.poolId}`, `Note: ${intent.note === null ? '(none)' : JSON.stringify(intent.note)}`];
+    case 'appeal_resolve': return [`Action: ${intent.decision === 'upheld' ? 'UPHOLD' : 'DENY'} appeal ${intent.appealId}`, `Note: ${intent.note === null ? '(none)' : JSON.stringify(intent.note)}`];
   }
 }
 

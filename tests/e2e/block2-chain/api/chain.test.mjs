@@ -27,11 +27,11 @@ apiTest(test, 'B2-API-03 GET /api/chain/fees answers', async () => {
   assert.equal(r.status, 200, JSON.stringify(r.json));
 });
 
-apiTest(test, 'B2-API-04 tiers still list free, 1h, 4h and 8h', async () => {
+apiTest(test, 'B2-API-04 the public tier list is free and 1h (4h and 8h stay retired)', async () => {
   const r = await session().call('/api/tiers');
   assert.equal(r.status, 200);
-  const ids = r.json.tiers.map((t) => t.id);
-  assert.deepEqual(ids.filter((id) => ['free', '1h', '4h', '8h'].includes(id)).sort(), ['1h', '4h', '8h', 'free']);
+  const ids = r.json.tiers.map((t) => t.id).sort();
+  assert.deepEqual(ids, ['1h', 'free']);
 });
 
 test('B2-POOL-01 the escrow program id in the IDL is the pinned one', () => {

@@ -21,10 +21,10 @@ export function agreementsScenarios(h: () => Harness): void {
     const w = await rider();
     expect((await w.agent.get('/api/me').expect(200)).body.agreements).toEqual(OFF);
     expect((await w.agent.get('/api/profile').expect(200)).body.agreements).toEqual(OFF);
-    expect((await w.agent.post('/api/tickets').send({ poolId: 1, qty: 1 }).expect(503)).body.code).toBe('service_unavailable'); // transfer mode, before the offer
+    expect((await w.agent.post('/api/tickets').send({ poolId: 1, qty: 1, burnWarningAccepted: true }).expect(503)).body.code).toBe('service_unavailable'); // transfer mode, before the offer
     expect((await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body).toMatchObject({ tier: 'free', status: 'created' });
     expect((await w.agent.post('/api/rides').send({ tier: '1h', tutorial: true }).expect(409)).body.code).not.toBe('agreements_required');
-    expect((await w.agent.post('/api/rides').send({ tier: '4h' }).expect(409)).body.code).toBe('tier_not_on_sale');
+    expect((await w.agent.post('/api/rides').send({ tier: '4h' }).expect(400)).body.code).toBe('tier_retired');
     expect((await w.agent.post('/api/rides').send({ tier: '1h' }).expect(409)).body).toMatchObject({ code: 'agreements_required', status: 409 });
     await w.agent.put('/api/profile/agreements').send({ age18: true }).expect(400);
   });

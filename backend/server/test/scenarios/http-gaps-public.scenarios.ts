@@ -1,6 +1,8 @@
 import request from 'supertest';
 import { DEVNET_BLOCKCHAIN_ID } from '../../src/domain/actions/action-card.js';
 import { bindClient, newWallet } from '../support/client.js';
+import { TREASURY } from '../support/fake-chain.js';
+import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
 import type { Harness } from '../support/harness.js';
 
 /* Zero-scenario and single-scenario public / auth / blink routes.
@@ -75,7 +77,16 @@ export function publicGapScenarios(h: () => Harness): void {
 
   it('POST /api/actions/ride/:id opens the page; a bad account is 400 and an unknown id is 404 {message}', async () => {
     const rider = await login();
-    const ride = (await rider.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body as { id: string };
+    const hidden = (await rider.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body as { id: string };
+    await anon().post(`/api/actions/ride/${hidden.id}`).send({ account: rider.address }).expect(404);
+    setTierOnSaleForTest('1h', true);
+    const ordered = (await rider.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body as { id: string; lamports: number };
+    const sig = h().chain.addPayment({ payer: rider.address, destination: TREASURY, lamports: ordered.lamports, memo: ordered.id });
+    await rider.agent.post(`/api/rides/${ordered.id}/confirm`).send({ signature: sig }).expect(200);
+    await rider.agent.post(`/api/rides/${ordered.id}/start`).expect(200);
+    await rider.agent.post(`/api/rides/${ordered.id}/end`).send({ outcome: 'failed', s: 1, t: 1 }).expect(200);
+    setTierOnSaleForTest('1h', false);
+    const ride = ordered;
     const link = await anon().post(`/api/actions/ride/${ride.id}`).send({ account: rider.address }).expect(200);
     expect(link.body).toMatchObject({ type: 'external-link', externalLink: expect.stringMatching(new RegExp(`/r/${ride.id}$`)) });
     expect(link.headers['access-control-allow-origin']).toBe('*');

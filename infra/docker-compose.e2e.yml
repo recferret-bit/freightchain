@@ -1,6 +1,8 @@
 # Code-level e2e stack. Separate project, ports and volume from docker-compose.yml
 # (dev Postgres stays on 15433, this one on 15434). No Solana image: block 2 uses the
 # host solana-test-validator (Agave), the same binary as .claude/skills/localnet-e2e.
+# Profile `mockchain` is the in-repo JSON-RPC mock (not a validator). It listens on
+# 8898 inside the network and is published on 127.0.0.1:18899. It does not bind 8899.
 name: freightchain-e2e
 
 services:
@@ -36,6 +38,28 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+
+  # Deterministic Solana JSON-RPC. Not started by `up` unless `--profile mockchain`.
+  # Host 18899 → container 8898. SOLANA_RPC for a sibling container is http://mock-rpc:8898.
+  mock-rpc:
+    image: node:22-alpine
+    container_name: freightchain-e2e-mock-rpc
+    profiles: ["mockchain"]
+    working_dir: /e2e
+    command: ["node", "mockchain/rpc.mjs"]
+    environment:
+      MOCK_RPC_HOST: "0.0.0.0"
+      MOCK_RPC_PORT: "8898"
+    volumes:
+      - ../tests/e2e:/e2e:ro
+    ports:
+      - "127.0.0.1:18899:8898"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8898',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getHealth'})}).then(r=>r.json()).then(j=>process.exit(j.result==='ok'?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 2s
 
 volumes:
   freightchain_e2e_pg:

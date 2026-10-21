@@ -1,7 +1,8 @@
 import { CFG } from '../config.js';
 import { guide } from '../guide.js';
 import { clamp, approach } from '../util.js';
-import { st, dn, weather, powered, coldK, REDLINE } from '../state.js';
+import { st, dn, weather, powered, coldK, REDLINE, chipHull, wreckHull } from '../state.js';
+import { addBucket, emptyBuckets } from '../../shared/damage-buckets.js';
 import { toast } from '../ui/toast.js';
 import { audio } from './audio.js';
 
@@ -48,7 +49,10 @@ export function updateClimate(dt) {
   if (on && ck > .1) {
     const hard = clamp((st.rpm - CFG.COLD_WEAR_RPM) / (REDLINE - CFG.COLD_WEAR_RPM), 0, 1);
     if (hard > .05 && ck > .35) {
-      st.hull = Math.max(0, st.hull - CFG.COLD_WEAR * ck * ck * hard * dt * (guide.assist ? CFG.ASSIST.HULL_DMG : 1)); st.coldT = 1.2;
+      const wear = CFG.COLD_WEAR * ck * ck * hard * dt * (guide.assist ? CFG.ASSIST.HULL_DMG : 1);
+      if (!st.dmg) st.dmg = emptyBuckets();
+      addBucket(st.dmg, 'cold', wear);
+      st.hull = Math.max(0, st.hull - wear); st.coldT = 1.2;
       if (!st._coldWarned) { st._coldWarned = true; toast('Engine is cold – keep the revs low until the TEMP needle rises', 3000); }
     }
   }
@@ -58,12 +62,12 @@ export function updateClimate(dt) {
   if (st.fight) {   // driving against the brakes: the drivetrain takes the load, a different failure from max revs
     const was = st.strain; st.strain = Math.min(1, st.strain + dt / CFG.FIGHT_TIME);
     if (was < .4 && st.strain >= .4) audio.play('alarm'), toast('Straining against the brakes – release the clutch or the parking brake!', 2500);
-    if (st.strain >= 1 && !st.blown) { st.blown = true; st.blownWhy = 'brakes'; st.hull = 0; }
+    if (st.strain >= 1 && !st.blown) { st.blown = true; st.blownWhy = 'brakes'; wreckHull(); }
   } else if (on && st.rpm >= REDLINE * CFG.STRAIN_RPM) {
     const was = st.strain;
     st.strain = Math.min(1, st.strain + dt / CFG.STRAIN_TIME);
     if (was < .4 && st.strain >= .4) audio.play('alarm'), toast('Engine is straining at max revs – ease off the throttle!', 2500);
-    if (st.strain >= 1 && !st.blown) { st.blown = true; st.hull = 0; }
+    if (st.strain >= 1 && !st.blown) { st.blown = true; wreckHull(); }
   } else st.strain = Math.max(0, st.strain - dt * CFG.STRAIN_RECOVER / CFG.STRAIN_TIME);
 
   // brakes: friction heat ∝ pedal × speed², cooled by moving air; hot brakes fade (brakeEff() in state.js)

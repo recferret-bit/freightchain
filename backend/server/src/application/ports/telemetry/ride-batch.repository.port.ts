@@ -1,3 +1,5 @@
+import type { InpRetentionRow } from '../../../domain/anticheat/inp-retention.js';
+import type { TraceRow } from '../../../domain/anticheat/trace-cluster.js';
 import type { BatchFacts, RideBatch } from '../../../domain/telemetry/ride-batch.entity.js';
 import type { TransactionHandle } from '../shared/transaction.port.js';
 
@@ -17,4 +19,12 @@ export abstract class RideBatchRepositoryPort {
   /** Retention: deletes the batches of rides that ENDED before `cutoff`, except rides whose verdict is flagged (kept for review) and completed shifts
       that were never judged. Returns how many were deleted. */
   abstract deleteForRidesEndedBefore(cutoff: Date): Promise<number>;
+  /** Raw 30 Hz inp still stored, with the pool payout instant when that pool is settled. */
+  inpRetentionRows(): Promise<InpRetentionRow[]> { return Promise.resolve([]); }
+  /** Clears raw inp. The downsampled batch samples stay. */
+  nullInp(rows: readonly { rideId: string }[]): Promise<number> { void rows; return Promise.resolve(0); }
+  /** Top traces of verified rides whose pool validation window is still open. */
+  validationTraces(now: Date): Promise<TraceRow[]> { void now; return Promise.resolve([]); }
+  /** Interval traces of other rides, for the copied-input reject (§16.4 d). */
+  otherRideIntervals(excludeRideId: string): Promise<number[][]> { void excludeRideId; return Promise.resolve([]); }
 }

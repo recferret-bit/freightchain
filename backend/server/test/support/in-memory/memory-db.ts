@@ -5,6 +5,7 @@ import type { Payment } from '../../../src/domain/economy/payment.entity.js';
 import type { RoundProps } from '../../../src/domain/economy/round.entity.js';
 import type { PlayerProps } from '../../../src/domain/players/player.entity.js';
 import type { RideProps } from '../../../src/domain/rides/ride.entity.js';
+import type { RideAppealRecord } from '../../../src/domain/rides/ride-appeal.js';
 import type { PoolProps } from '../../../src/domain/economy/pool.types.js';
 import type { PromoCodeProps } from '../../../src/domain/economy/promo.types.js';
 import type { CosmeticUnlockRecord } from '../../../src/application/ports/players/cosmetic.repository.port.js';
@@ -17,6 +18,7 @@ import type { RideVerdictProps } from '../../../src/domain/verdict/ride-verdict.
 import type { RideReplayProps } from '../../../src/domain/verdict/ride-replay.entity.js';
 import type { SignInRecord } from '../../../src/domain/auth/sign-in.js';
 import type { AdminActionRecord } from '../../../src/domain/admin/admin.dto.js';
+import type { AdminProposalRecord } from '../../../src/domain/admin/privileged-records.js';
 import type { RideEventProps } from '../../../src/domain/live/ride-event.entity.js';
 import type { StatsRow } from '../../../src/application/ports/stats/stats.repository.port.js';
 import type { DonationOrderProps } from '../../../src/domain/live/donation-order.entity.js';
@@ -28,6 +30,7 @@ export class MemoryDb {
   players = new Map<string, PlayerProps>();
   challenges = new Map<string, AuthChallenge>();
   rides = new Map<string, { props: RideProps; seq: number }>();
+  appeals: RideAppealRecord[] = [];
   rounds: RoundProps[] = [];
   payments: Payment[] = [];
   unlocks: AchievementUnlock[] = [];
@@ -57,6 +60,7 @@ export class MemoryDb {
   replays = new Map<string, RideReplayProps>();
   signIns: SignInRecord[] = [];
   adminActions: AdminActionRecord[] = [];
+  proposals: AdminProposalRecord[] = [];
   /** live feed, in id order */
   rideEvents: RideEventProps[] = [];
   /** `${rideId}|${wallet}` */
@@ -97,8 +101,8 @@ export class MemoryDb {
   editorMcpCalls = new Map<string, import('../../../src/domain/editor/editor-job.js').EditorMcpCallRecord[]>();
 
   reset(): void {
-    this.players.clear(); this.challenges.clear(); this.rides.clear(); this.batches.clear(); this.verdicts.clear(); this.replays.clear();
-    this.rounds = []; this.payments = []; this.unlocks = []; this.mints = []; this.signIns = []; this.adminActions = [];
+    this.players.clear(); this.challenges.clear(); this.rides.clear(); this.appeals = []; this.batches.clear(); this.verdicts.clear(); this.replays.clear();
+    this.rounds = []; this.payments = []; this.unlocks = []; this.mints = []; this.signIns = []; this.adminActions = []; this.proposals = [];
     this.seq = 0; this.roundSeq = 0;
     this.pools.clear(); this.poolPayouts.clear(); this.tickets.clear(); this.grants = []; this.promos.clear(); this.redemptions.clear(); this.promoGrants = []; this.weeklyTickets.clear(); this.orders.clear(); this.cosmeticUnlocks.clear(); this.cosmeticEquipped.clear();
     this.chainEvents = []; this.chainCursors.clear();

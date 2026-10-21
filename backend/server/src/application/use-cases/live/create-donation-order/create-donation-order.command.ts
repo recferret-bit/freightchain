@@ -7,5 +7,7 @@ export class CreateDonationOrderCommand {
     public readonly rideId: string,
     public readonly effect: EffectId,
     public readonly note: string | null,
+    /** omitted = the 0.01 SOL preset */
+    public readonly lamports: number | null = null,
   ) {}
 }

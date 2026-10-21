@@ -55,7 +55,7 @@ Match a note to an id from the list. The wording may not be the viewer's label. 
 | traffic vehicle | `seed/vehicle/<type>.js` + the shared parts `seed/part/veh-*.js` (wheels, lights, siren, bodies). Size / mass / speed / presets are `VEHICLES` (`client/shared/traffic.js`), never the entity. Id shape `<type>`, `sedan#<paint>` |
 | prop | `seed/prop/<id>.js`; which prop a route places with which params and materials is that route's `client/js/themes/<route>/props.js`. A new collision kind is a `KINDS` row in `client/js/world/props.js` + a roster row. Id shape `<route>/<id>` |
 | furniture | `seed/furniture/{post,lamp,pole,guard}.js`; spacing and sides stay in `client/js/themes/_shared/furniture.js` |
-| landmark | `seed/landmark/<id>.js` (+ the parts `cruiser`, `lm-pump`, `lm-cones`); footprint and order are `ROSTER.landmark`; signs and facades are painters in `client/js/themes/_shared/landmarks/index.js` |
+| landmark | `seed/landmark/<id>.js` (+ the parts `cruiser`, `lm-pump`, `lm-cones`); footprint and order are `ROSTER.landmark`; signs, facades, and the apron that meets the road are in `client/js/themes/_shared/landmarks/index.js` (the apron is not an entity part — see `kinds/building.md`) |
 | finish gantry | `seed/gantry/gantry.js`, banner painter in `client/js/world/gantry.js` |
 
 (`seed/` = `client/shared/entity/seed/`; after adding or removing a file run `node client/tools/entity-seed-index.mjs`.) Check an edited entity with `node --test client/test/entity.test.mjs` – it validates every seed (shape, expressions, the roster contract, finite numbers at every param's min and max).

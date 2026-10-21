@@ -18,7 +18,7 @@ export const replaysPageResponse = obj({
 });
 const applied = obj({ t: num, s: num, lat: numOrNull, placed: bool });
 export const rideEventResponse = obj({
-  id: num, kind: z.enum(['message', 'donation', 'honk']), wallet: str, text: strOrNull, effect: strOrNull, lamports: num, at: num, applied: applied.nullable(), signature: strOrNull,
+  id: num, kind: z.enum(['message', 'donation', 'honk']), wallet: str, text: strOrNull, effect: strOrNull, lamports: num, at: num, applied: applied.nullable(), signature: strOrNull, replayT: numOrNull,
 });
 const features = obj({ chat: bool, donations: bool, payment: z.enum(['mock', 'chain']), effects: bool });
 const totals = obj({ messages: num, donations: num, lamports: num });
@@ -38,5 +38,7 @@ export const donationOrderResponse = obj({
 });
 export const confirmDonationResponse = z.union([obj({ status: z.literal('pending') }), obj({ status: z.literal('paid'), event: rideEventResponse })]);
 export const reconcileDonationResponse = z.union([confirmDonationResponse, obj({ status: z.literal('not_found') })]);
+const myDonation = obj({ id: num, rideId: str, fromWallet: str, toWallet: str, lamports: num, note: strOrNull, signature: strOrNull, at: num });
+export const myDonationsResponse = obj({ sent: z.array(myDonation), received: z.array(myDonation), totals: obj({ sentLamports: num, receivedLamports: num }) });
 export const inboxResponse = obj({ now: num, events: z.array(rideEventResponse), totals, viewers: num, features, muted: z.array(str) });
 export const muteResponse = obj({ wallet: str, muted: bool });

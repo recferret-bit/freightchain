@@ -5,6 +5,8 @@ export abstract class ChallengeRepositoryPort {
   abstract upsert(challenge: AuthChallenge): Promise<void>;
   /** Atomically delete-and-return the pending challenge: single use – a second concurrent verify gets null. */
   abstract consume(key: string): Promise<AuthChallenge | null>;
+  /** Keys with this prefix, soonest expiry first. Admin sign-in keeps up to five (wallet, client) rows. */
+  abstract listKeys(prefix: string): Promise<string[]>;
 
   /** Convenience method for consuming 1-click challenges by nonce */
   consumeByNonce(nonce: string): Promise<AuthChallenge | null> {

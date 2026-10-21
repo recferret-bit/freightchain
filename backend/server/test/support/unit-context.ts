@@ -46,6 +46,9 @@ import { DEFAULT_GEO } from '../../src/domain/prize/prize-rules.js';
 import { HeaderGeoAdapter } from '../../src/infrastructure/prize/header-geo.adapter.js';
 import { MemoryWeeklyTicketRepository } from './in-memory/memory-weekly-ticket.js';
 import { LiveAccessService } from '../../src/application/services/live-access.service.js';
+import { ReplayAccessService } from '../../src/application/live/replay-access.service.js';
+import { LiveDonationService } from '../../src/application/live/live-donation.service.js';
+import { PledgeService } from '../../src/application/live/pledge.service.js';
 import { MemorySettingsRepository } from './in-memory/memory-settings.js';
 import { MemoryDailySeedRepository } from './in-memory/memory-daily-seeds.js';
 import { StubNameServiceAdapter } from './stub-name-service.js';
@@ -61,7 +64,7 @@ export const unitRules = (over: Partial<RulesConfig> = {}): RulesConfig => ({
   demoWallets: new Set([DEMO_UNIT_WALLET]), demoScale: 60, initialSeedLamports: 0, treasury: TREASURY, appDomain: 'freight.test', appOrigin: 'https://freight.test', localSignIn: false, gameDomain: null, gameOrigin: null,
   paymentMode: 'transfer', programId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 0, orderTtlMs: 3_600_000, commitment: 'confirmed', crankEnabled: false,
   priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, sessionTtlHours: 24,
-  verdictEnforce: true, telemetryRetentionDays: 90, signInRetentionDays: 180, challengeIntervalSeconds: 240, challengeFreeRides: true, live: { chat: 'all', donations: true, freeDonations: true, effects: 'all' }, adminWallets: new Set([ADMIN_UNIT_WALLET]), adminDomain: 'freight.test', adminOrigin: 'https://freight.test', editorWallets: new Set([EDITOR_UNIT_WALLET]), editorDomain: 'freight.test', editorOrigin: 'https://freight.test', editorJobTimeoutMs: 600_000,
+  verdictEnforce: true, telemetryRetentionDays: 90, signInRetentionDays: 180, challengeIntervalSeconds: 240, challengeFreeRides: true, live: { chat: 'all', donations: true, freeDonations: true, effects: 'all' }, pledgesEnabled: true, adminWallets: new Set([ADMIN_UNIT_WALLET]), adminDomain: 'freight.test', adminOrigin: 'https://freight.test', editorWallets: new Set([EDITOR_UNIT_WALLET]), editorDomain: 'freight.test', editorOrigin: 'https://freight.test', editorJobTimeoutMs: 600_000,
   ...over,
 });
 
@@ -126,6 +129,9 @@ export function unitContext(rules: RulesConfig = unitRules()) {
   const rideMutes = new MemoryRideMuteRepository(db);
   const donationOrders = new MemoryDonationOrderRepository(db);
   const liveAccess = new LiveAccessService(rides, rideMutes, rulesPort);
+  const replayAccess = new ReplayAccessService(rides, players, pools, verdictRepo, clock);
+  const donations = new LiveDonationService(replayAccess, donationOrders, rideMutes, rulesPort, clock);
+  const pledgeGate = new PledgeService(rulesPort);
   const statsRepo = new MemoryStatsRepository(db);
   const cache = new MemoryCacheAdapter(clock);
   const stats = new StatsService(statsRepo, cache, clock);
@@ -190,7 +196,7 @@ export function unitContext(rules: RulesConfig = unitRules()) {
     db, clock, chain, entropy, dailySeeds, rules: rulesPort, transactions, players, challenges, rides, rideQuery, roundRepo, payments, unlocks, mints, mintChain, batches, hasher, verdictRepo, replayRepo, replayQueue, verdicts, proofs, signIns, adminActions, adminQuery, adminDirectory, health, analytics,
     pools, poolPayouts, pledges, tickets, promos, cosmetics, promoCreation, orders, poolTickets, ticketSettlement, honkRepo, honkMint, honkEmissionChain,
     sessions, weekly, meProfile, settings, settingsRepo, lookup, rounds, achievements, settlement, now, player, accept, freeRide, paidOrder, paidRide, reload, storedPlayer,
-    poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, statsRepo, cache, stats, nameService,
+    poolChain, chainEvents, chainCursors, registry, rideEvents, viewers, sitePresence, rideMutes, donationOrders, liveAccess, replayAccess, donations, pledgeGate, statsRepo, cache, stats, nameService,
   };
 }
 export type UnitContext = ReturnType<typeof unitContext>;

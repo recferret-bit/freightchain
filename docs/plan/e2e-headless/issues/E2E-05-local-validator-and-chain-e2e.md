@@ -53,7 +53,7 @@ Completes the on-chain local validator suites (`freightchain_pools` and `freight
 
 ### `E2E-05.3` — Extend `honk-suite` with negative checks (`tier='free'` training ride & weekly grant ride mint `0` TEN4)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `TEN-T-01..09`, `TEN-M-02`, `IMPLEMENTATION_PLAN.md` §Phase 4.3
 - **Target Files:**
@@ -73,7 +73,7 @@ Completes the on-chain local validator suites (`freightchain_pools` and `freight
 
 ### `E2E-05.4` — Complete pending Block 1 & Block 2 tests (`B1-REF-04`, `B2-PROMO-02`, `B2-ADMIN-04`, `B2-API-06`, `B2-API-07`, `B2-HONK-02`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A (As-Built)
 - **Spec / Contract Ref:** `E2E-T-02..07`, `docs/testing/E2E_PLAN.md`
 - **Target Files:**
@@ -93,7 +93,7 @@ Completes the on-chain local validator suites (`freightchain_pools` and `freight
 
 ### `E2E-05.5` — Implement `SOL-T-01..16` (SIWS auth, `.sol` SNS resolution, Blink CORS/actions, soulbound cNFT outbox)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `SOL-T-01..16`, `SOL-M-01..12`
 - **Target Files:**
@@ -112,7 +112,7 @@ Completes the on-chain local validator suites (`freightchain_pools` and `freight
 
 ### `E2E-05.6` — Implement `PRM-T-01..14` (Promo code normalization, caps, expiry, batch generation, race conditions)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `PRM-T-01..14`, `PRM-M-01..10`
 - **Target Files:**

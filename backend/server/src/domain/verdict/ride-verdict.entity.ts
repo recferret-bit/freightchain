@@ -7,6 +7,7 @@ import { checkHumanTiming, type HumanScores } from './human-checks.js';
 import { checkAgreement, checkChain, checkInputsAgree, checkInputsPresent, checkMotion, checkSamples, recordingScores, type RecordingScores } from './recording-checks.js';
 import { RULES_VERSION } from './verdict-rules.js';
 import { checkWorld, type WorldScores } from './world-checks.js';
+import { minigameVerdictDelta, type MinigameVerdictInput } from '../minigames/verdict.js';
 import { ConflictError } from '../shared/errors.js';
 import { VerdictStatus, type VerdictDecision, type VerdictDto, type VerdictReason } from './verdict.dto.js';
 
@@ -40,7 +41,8 @@ export class RideVerdict {
 
   /** Judge the ride from what is stored – always the whole recording (its batches' facts: chain columns + summaries), so judging again (a late batch)
       gives the up-to-date answer. The dispatch prompts the ride issued are judged against the recording's input events. */
-  static judge(ride: Ride, batches: readonly BatchFacts[], now: Date, replayReasons: readonly VerdictReason[] = []): RideVerdict {
+  /** `minigames` defaults to off, so a caller that does not pass rows (VerdictService today) adds no minigame reasons. */
+  static judge(ride: Ride, batches: readonly BatchFacts[], now: Date, replayReasons: readonly VerdictReason[] = [], minigames: MinigameVerdictInput = { mode: 'off', events: [] }): RideVerdict {
     const facts = { rideId: ride.id, driveSeconds: ride.driveSeconds, distance: ride.distance, ranked: ride.ranked, cleanMetres: ride.cleanMetres };
     const ordered = [...batches].sort((a, b) => a.seq - b.seq);
     const chain = checkChain(facts, ordered);
@@ -56,7 +58,7 @@ export class RideVerdict {
     const world = checkWorld(ordered);
     const baseReasons = ordered.length === 0 ? chain : [...chain, ...samples.reasons, ...agreement.reasons, ...motion.reasons, ...checkInputsPresent(facts, ordered), ...agree.reasons, ...human.reasons, ...challenges.reasons, ...world.reasons];
     const extra = ordered.length === 0 ? [] : replayReasons.filter((r, i) => !baseReasons.some((x) => x.code === r.code) && replayReasons.findIndex((x) => x.code === r.code) === i);
-    const reasons = [...baseReasons, ...extra];
+    const reasons = [...baseReasons, ...extra, ...minigameVerdictDelta(minigames)];
     const status = reasons.some((r) => r.severity === 'reject') ? VerdictStatus.Rejected : reasons.length ? VerdictStatus.Flagged : VerdictStatus.Verified;
     return new RideVerdict({
       rideId: ride.id, status, reasons, rulesVersion: RULES_VERSION, judgedAt: now, version: 1, overriddenBy: null, overriddenAt: null, note: null,

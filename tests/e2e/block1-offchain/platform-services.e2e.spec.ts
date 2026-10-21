@@ -229,7 +229,7 @@ test('PLT-T-01..14 platform services against PostgreSQL and Redis', { timeout: 3
       const fan = await player();
       const id = `plt-paid-${Date.now().toString(36)}`;
       const now = new Date();
-      await db.ride.create({ data: { id, wallet: driver.wallet, tier: '1h', seed: 1, minSeconds: 3600, completeDist: 100000, status: 'running', createdAt: now, startedAt: now, lastHbAt: now } });
+      await db.ride.create({ data: { id, wallet: driver.wallet, tier: '1h', seed: 1, minSeconds: 3600, completeDist: 100000, status: 'completed', createdAt: now, startedAt: now, endedAt: now, lastHbAt: now } });
       await anon.call('/api/stats');
       const before = await counts(driver.wallet);
       const tip = await fan.api.call(`/api/watch/${id}/donations`, { body: { effect: 'tip' } });
@@ -536,6 +536,9 @@ test('PLT-T-01..14 platform services against PostgreSQL and Redis', { timeout: 3
         ...common, PORT: String(prodPort), NODE_ENV: 'production', APP_DOMAIN: `127.0.0.1:${prodPort}`, APP_ORIGIN: `http://127.0.0.1:${prodPort}`,
         COOKIE_DOMAIN: 'plt.test', TRUST_PROXY: '0', TREASURY_PUBKEY: editors[0].wallet, EDITOR_FAKE_LLM: '0', EDITOR_DEFAULT_PROVIDER: '',
         REDIS_URL: 'redis://127.0.0.1:1', JWT_SECRET: common.JWT_SECRET,
+        LIVE_FREE_DONATIONS: 'off', LIVE_EFFECTS: 'off', DEMO_WALLETS: '',
+        ADMIN_JWT_SECRET: 'plt-admin-jwt-secret-32chars-minimum', EDITOR_JWT_SECRET: 'plt-editor-jwt-secret-32chars-minimum',
+        ADMIN_ALERT_TELEGRAM_BOT_TOKEN: 'plt-telegram-bot-token-24', ADMIN_ALERT_TELEGRAM_CHAT_ID: '1',
       }, prodLog);
       kids.push(prod);
       try {
@@ -694,10 +697,8 @@ test('PLT-T-01..14 platform services against PostgreSQL and Redis', { timeout: 3
       const who = await player();
       const ride = await endRide(who, { outcome: 'failed', s: 0, t: 1 });
       const watch = await anon.call(`/api/watch/${ride.id}`);
-      assert.equal(watch.status, 200, JSON.stringify(watch.json));
-      assert.equal(watch.json.ride.status, 'failed');
-      assert.equal(typeof watch.json.ride.distance, 'number');
-      assert.equal(typeof watch.json.ride.driveSeconds, 'number');
+      assert.equal(watch.status, 404, JSON.stringify(watch.json));
+      assert.equal(watch.json.code, 'replay_not_available');
       const pub = await anon.call(`/api/rides/${ride.id}/public`);
       assert.equal(pub.status, 200, JSON.stringify(pub.json));
       assert.equal(pub.json.status, 'failed');
@@ -709,7 +710,7 @@ test('PLT-T-01..14 platform services against PostgreSQL and Redis', { timeout: 3
       assert.match(page, /play\.html\?watch=/);
       assert.match(page, /NOT FOUND/);
       assert.match(page, /credentials:\s*'include'/);
-      gaps.push('PLT-T-14: /r/:id (client/site/ride.js) loads GET /api/rides/:id/public, not GET /api/watch/:id. Both routes 404 an unknown id; watch still returns distance and time for a started ride');
+      gaps.push('PLT-T-14: /r/:id loads GET /api/rides/:id/public. A free ride is not a public replay, so GET /api/watch/:id is 404 replay_not_available');
     });
 
     if (gaps.length) console.log(`PLT gaps:\n- ${gaps.join('\n- ')}`);

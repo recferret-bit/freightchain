@@ -32,6 +32,8 @@ describe('ridePageMiddleware', () => {
     let sentBody = '';
     const res = {
       setHeader: () => undefined,
+      status() { return this; },
+      type() { return this; },
       send: (body: string) => { sentBody = body; },
     } as unknown as Response;
     middleware(req, res, () => undefined);
@@ -57,17 +59,21 @@ describe('ridePageMiddleware', () => {
     const middleware = ridePageMiddleware(prisma, env);
     const req = { method: 'GET', path: '/r/test-uuid' } as unknown as Request;
     let sentBody = '';
+    let status = 200;
     const res = {
+      statusCode: 200,
       setHeader: () => undefined,
+      status(code: number) { status = code; return this; },
+      type() { return this; },
       send: (body: string) => { sentBody = body; },
     } as unknown as Response;
 
     middleware(req, res, () => undefined);
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(sentBody).toContain('LIVE · 25.4 km');
-    expect(sentBody).toMatch(/<meta property="og:url" content="https?:\/\/[^"]+\/r\/test-uuid"/);
-    expect(sentBody).toContain('Gsea…Cqbn');
+    expect(status).toBe(404);
+    expect(sentBody).toBe('Not found');
+    expect(sentBody).not.toContain('Gsea');
   });
 
   it('serves dynamic tags for a completed verified ride', async () => {
@@ -91,6 +97,8 @@ describe('ridePageMiddleware', () => {
     let sentBody = '';
     const res = {
       setHeader: () => undefined,
+      status() { return this; },
+      type() { return this; },
       send: (body: string) => { sentBody = body; },
     } as unknown as Response;
 

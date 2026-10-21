@@ -15,7 +15,7 @@ Implements all 21 mandatory security controls (`ADM-M-01..21`) and remediates al
 
 ### `SPC-02.1` — Implement default-deny `PrivilegedSurfaceGuard` + startup meta-check across `/api/admin/*`, `/api/editor/*`, `/api/dev/*`, `/api/mcp/*`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `ADM-M-01`, `ADM-M-02`, `ADM-M-06`, Findings `F01`, `F02`
 - **Paired Plan 1 Task:** `E2E-09.1`
 - **Target Files:**
@@ -38,7 +38,7 @@ Implements all 21 mandatory security controls (`ADM-M-01..21`) and remediates al
 
 ### `SPC-02.2` — Implement 3-role RBAC (`admin`, `moderator`, `editor`) via `@Roles()` and moderation routes `P01..P04`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `ADM-M-03`, `ADM-M-04`, Finding `F06` (Decision 59)
 - **Paired Plan 1 Task:** `E2E-09.1`
 - **Target Files:**
@@ -61,7 +61,7 @@ Implements all 21 mandatory security controls (`ADM-M-01..21`) and remediates al
 
 ### `SPC-02.3` — Separate `ADMIN_JWT_SECRET` and `EDITOR_JWT_SECRET` + cryptographic domain separation
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `ADM-M-05`, Finding `F04`
 - **Paired Plan 1 Task:** `E2E-09.1`
 - **Target Files:**
@@ -82,7 +82,7 @@ Implements all 21 mandatory security controls (`ADM-M-01..21`) and remediates al
 
 ### `SPC-02.4` — Harden non-dev startup invariant (`NODE_ENV` allowlist `development`/`test` only for dangerous flags)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `ADM-M-08`, Findings `F03`, `F05`
 - **Paired Plan 1 Task:** `E2E-09.2`
 - **Target Files:**
@@ -101,7 +101,7 @@ Implements all 21 mandatory security controls (`ADM-M-01..21`) and remediates al
 
 ### `SPC-02.5` — Cap admin/editor session TTL at ≤ 60 min + Redis `jti` revocation list on logout
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `ADM-M-09`, `ADM-M-10`, Findings `F07`, `F08` (Decision 63)
 - **Paired Plan 1 Tasks:** `E2E-09.1`, `E2E-09.2`
 - **Target Files:**
@@ -122,7 +122,7 @@ Implements all 21 mandatory security controls (`ADM-M-01..21`) and remediates al
 
 ### `SPC-02.6` — Harden `/api/admin/auth/*` (strict throttle, indistinguishable dummy nonce for non-admins, challenge keyed by `(wallet, clientFingerprint)`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `ADM-M-11`, Findings `F09`, `F10`, `F11` (Decision 65)
 - **Paired Plan 1 Task:** `E2E-09.2`
 - **Target Files:**
@@ -143,7 +143,7 @@ Implements all 21 mandatory security controls (`ADM-M-01..21`) and remediates al
 
 ### `SPC-02.7` — Implement `ADMIN_IP_ALLOWLIST` guard + `/24` IPv4 / `/48` IPv6 log & audit masking
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `ADM-M-13`, `ADM-M-14`, Findings `F12`, `F13` (Decision 66)
 - **Paired Plan 1 Task:** `E2E-09.2`
 - **Target Files:**
@@ -165,7 +165,7 @@ Implements all 21 mandatory security controls (`ADM-M-01..21`) and remediates al
 
 ### `SPC-02.8` — Enforce DB-level append-only `admin.AdminAction` (PostgreSQL trigger + `beforeState`/`afterState` + PII read audit + CLI script audit)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `ADM-M-15`, `ADM-M-16`, `ADM-M-17`, `ADM-M-18`, Findings `F14`, `F15` (Decision 64)
 - **Paired Plan 1 Task:** `E2E-09.3`
 - **Target Files:**
@@ -187,7 +187,7 @@ Implements all 21 mandatory security controls (`ADM-M-01..21`) and remediates al
 
 ### `SPC-02.9` — Implement `admin.AlertOutbox` + Telegram alert worker + overview alert banner + dual-admin approval (`ADMIN_APPROVAL_MODE=single|dual`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `ADM-M-19`, `ADM-M-20`, `ADM-M-21`, Findings `F16`, `F17`, `F18` (Decisions 61, 62)
 - **Paired Plan 1 Task:** `E2E-09.3`
 - **Target Files:**

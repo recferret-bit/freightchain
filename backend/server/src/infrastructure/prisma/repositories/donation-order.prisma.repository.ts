@@ -68,4 +68,8 @@ export class DonationOrderPrismaRepository extends DonationOrderRepositoryPort {
     const r = await this.prisma.donationOrder.updateMany({ where: { id, shareState: 'reserved' }, data: { shareState: 'paid' } });
     return r.count === 1;
   }
+
+  async countOpen(wallet: string, createdAfter: Date): Promise<number> {
+    return this.prisma.donationOrder.count({ where: { wallet, status: 'pending', createdAt: { gte: createdAfter } } });
+  }
 }

@@ -3,6 +3,7 @@ import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.r
 import { RegisterPoolFromChainCommand } from '../../src/application/use-cases/pools/register-pool-from-chain/register-pool-from-chain.command.js';
 import type { PoolChainState } from '../../src/domain/economy/chain-events.js';
 import { RoadLayout } from '../../src/domain/road/road-layout.js';
+import { roadPlanFor } from '../../src/domain/road/road-plan.js';
 import { bindClient, type Rider } from '../support/client.js';
 import { TREASURY, newSignature } from '../support/fake-chain.js';
 import type { Harness } from '../support/harness.js';
@@ -27,13 +28,8 @@ export function sharedRoadScenarios(h: () => Harness): void {
   /** what a rider of a started ride drives: its world, its holes and its layout – everything that makes the road */
   const roadOf = async (w: Rider, id: string) => {
     const ride = (await w.agent.get(`/api/rides/${id}`).expect(200)).body;
-    if (ride.tier === 'free') {
-      await anon().get(`/api/watch/${id}`).expect(403);
-    } else {
-      const watched = (await anon().get(`/api/watch/${id}`).expect(200)).body.ride;
-      expect(watched).toMatchObject({ seed: ride.seed, route: ride.route, trip: ride.trip }); // spectators rebuild the same road the driver got
-    }
-    const plan = (await anon().get(`/api/watch/${id}/road?from=0&to=${KM}`).expect(200)).body;
+    await anon().get(`/api/watch/${id}`).expect(404); // a running ride, and a training ride, are not a public replay
+    const plan = roadPlanFor(ride.seed, ride.trip).window(id, 0, KM);
     expect(plan.seed).toBe(ride.seed);
     return { seed: ride.seed, route: ride.route, startHour: ride.startHour, trip: ride.trip, holes: plan.holes, layout: new RoadLayout(ride.seed, ride.trip).describe(KM) };
   };

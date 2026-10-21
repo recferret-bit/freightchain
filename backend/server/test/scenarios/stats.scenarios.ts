@@ -94,10 +94,11 @@ export function statsScenarios(h: () => Harness): void {
     const driver = await login(), fan = await login();
     const freeId = await startFree(driver);
     await fan.agent.post(`/api/watch/${freeId}/messages`).send({ text: 'go go' }).expect(403);
-    await fan.agent.post(`/api/watch/${freeId}/donations`).send({ effect: 'tip' }).expect(403);
+    await fan.agent.post(`/api/watch/${freeId}/donations`).send({ effect: 'tip' }).expect(404);
     await driver.agent.post(`/api/rides/${freeId}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
     const id = await startPaid(driver);
     await fan.agent.post(`/api/watch/${id}/messages`).send({ text: 'go go' }).expect(200);
+    await driver.agent.post(`/api/rides/${id}/end`).send({ outcome: 'failed', s: 1, t: 1 }).expect(200);
     await fan.agent.post(`/api/watch/${id}/donations`).send({ effect: 'tip' }).expect(200);
     expect(await career(driver)).toMatchObject({ donations: 1, donationLamports: 0 });   // a mock tip: counted, no lamports
     expect(await career(fan)).toMatchObject({ donations: 0 });

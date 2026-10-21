@@ -1,3 +1,4 @@
+import type { MgLang, MgMode } from '../../../../domain/minigames/kinds.js';
 import type { GeoHeaders } from '../../../ports/prize/geo-locator.port.js';
 
 export class StartRideCommand {
@@ -10,5 +11,8 @@ export class StartRideCommand {
     public readonly ranked = false,
     /** edge geo headers. Read only when `ranked` is true. */
     public readonly headers: GeoHeaders = {},
+    /** Phone minigames. Defaults keep `new StartRideCommand(wallet, id, trip)` equal to a start body that omitted them. */
+    public readonly mgMode: MgMode = 'normal',
+    public readonly lang: MgLang = 'en',
   ) {}
 }

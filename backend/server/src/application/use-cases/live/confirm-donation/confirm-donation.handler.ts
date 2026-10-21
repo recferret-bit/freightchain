@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
+import { donationExpired } from '../../../../domain/live/tip-rules.js';
 import { donationSplitLanded, verifyDonation, type DonationOrder } from '../../../../domain/live/donation-order.entity.js';
 import { liveFeatures } from '../../../../domain/live/live-features.js';
 import { EFFECTS, EFFECT_WINDOW_MS, NOTE_MAX_LENGTH, type EffectId } from '../../../../domain/live/live-rules.js';
@@ -39,6 +40,7 @@ export class ConfirmDonationHandler implements ICommandHandler<ConfirmDonationCo
   async execute({ wallet, rideId, orderId, signature }: ConfirmDonationCommand): Promise<ConfirmDonationResultDto> {
     const order = await this.orders.findById(orderId);
     if (!order || order.wallet !== wallet || order.rideId !== rideId) throw new NotFoundError('donation not found');
+    if (order.status === 'pending' && donationExpired(order.createdAt, this.clock.now())) throw new ConflictError('the donation order expired', 'donation_expired');
     if (order.status === 'paid') return this.alreadyPaid(order, signature);
     const used = await this.events.findBySignature(signature);
     if (used) throw new ConflictError('this transaction already paid a donation', 'signature_reused');

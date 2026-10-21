@@ -1,4 +1,6 @@
+import { inflateRawSync } from 'node:zlib';
 import { Injectable } from '@nestjs/common';
+import { eventTimesUs, intervalsFromTimesUs } from '../../../src/domain/anticheat/inp-intervals.js';
 import { AchievementUnlock } from '../../../src/domain/achievements/achievement-unlock.entity.js';
 import type { AuthChallenge } from '../../../src/domain/auth/auth-challenge.entity.js';
 import type { LeaderboardBoard, LeaderboardSort } from '../../../src/domain/economy/economy.dto.js';
@@ -15,6 +17,8 @@ import { AchievementMintRepositoryPort } from '../../../src/application/ports/ac
 import { MAX_MINT_ATTEMPTS, type AchievementMintRecord } from '../../../src/domain/achievements/achievement-mint.js';
 import { AchievementRepositoryPort } from '../../../src/application/ports/achievements/achievement.repository.port.js';
 import { ChallengeRepositoryPort } from '../../../src/application/ports/auth/challenge.repository.port.js';
+import { AdminProposalRepositoryPort } from '../../../src/application/ports/admin/admin-proposal.repository.port.js';
+import type { AdminProposalRecord } from '../../../src/domain/admin/privileged-records.js';
 import { PaymentRepositoryPort } from '../../../src/application/ports/economy/payment.repository.port.js';
 import { RoundRepositoryPort, type RoundEntries } from '../../../src/application/ports/economy/round.repository.port.js';
 import { HealthProbePort } from '../../../src/application/ports/health/health-probe.port.js';
@@ -29,6 +33,7 @@ import { RideVerdict } from '../../../src/domain/verdict/ride-verdict.entity.js'
 import { RideReplayRepositoryPort } from '../../../src/application/ports/verdict/ride-replay.repository.port.js';
 import { RideReplay } from '../../../src/domain/verdict/ride-replay.entity.js';
 import { VerdictStatus } from '../../../src/domain/verdict/verdict.dto.js';
+import { isPublicReplay } from '../../../src/domain/live/replay-visibility.js';
 import { badgeRejected } from '../../../src/domain/achievements/achievements.js';
 
 /** a pool's results count only the rides that ended by its play deadline (the Prisma repositories' H6 rule) */
@@ -98,10 +103,35 @@ export class MemoryChallengeRepository extends ChallengeRepositoryPort {
 
   async upsert(challenge: AuthChallenge): Promise<void> { this.db.challenges.set(challenge.wallet, challenge); }
 
+  async listKeys(prefix: string): Promise<string[]> {
+    return [...this.db.challenges.entries()].filter(([key]) => key.startsWith(prefix)).sort((a, b) => a[1].expiresAt.getTime() - b[1].expiresAt.getTime()).map(([key]) => key);
+  }
+
   async consume(key: string): Promise<AuthChallenge | null> {
     const c = this.db.challenges.get(key) ?? null;
     this.db.challenges.delete(key);
     return c;
+  }
+}
+
+@Injectable()
+export class MemoryAdminProposalRepository extends AdminProposalRepositoryPort {
+  constructor(private readonly db: MemoryDb) { super(); }
+  async insert(row: AdminProposalRecord): Promise<void> { this.db.proposals.push({ ...row, payload: { ...row.payload } }); }
+  async find(id: string): Promise<AdminProposalRecord | null> { return this.db.proposals.find((row) => row.id === id) ?? null; }
+  async claim(id: string, approver: string, at: Date): Promise<boolean> {
+    const row = this.db.proposals.find((item) => item.id === id && item.status === 'pending' && item.expiresAt.getTime() > at.getTime());
+    if (!row) return false;
+    row.status = 'applying'; row.approverWallet = approver;
+    return true;
+  }
+  async markApplied(id: string, at: Date): Promise<void> {
+    const row = this.db.proposals.find((item) => item.id === id);
+    if (row) { row.status = 'applied'; row.appliedAt = at; }
+  }
+  async release(id: string): Promise<void> {
+    const row = this.db.proposals.find((item) => item.id === id && item.status === 'applying');
+    if (row) { row.status = 'pending'; row.approverWallet = null; }
   }
 }
 
@@ -209,8 +239,17 @@ export class MemoryRideQuery extends RideQueryPort {
 
   async history(f: HistoryFilter): Promise<HistoryRideRow[]> {
     const ended = f.status ? [f.status] : ['completed', 'abandoned', 'failed'];
+    const board = f.board;
     return [...this.db.rides.values()]
       .filter(({ props: p }) => ended.includes(p.status) && p.startedAt && p.endedAt && (!f.wallet || p.wallet === f.wallet))
+      .filter(({ props: p }) => {
+        if (!board) return true;
+        const payoutAt = p.poolId == null ? null : this.db.pools.get(p.poolId)?.payoutAt ?? null;
+        return isPublicReplay({
+          status: p.status, tier: p.tier, tutorial: p.tutorial, assist: p.assist, guest: this.db.players.get(p.wallet)?.guest === true, wallet: p.wallet,
+          poolId: p.poolId, payoutAt, verdict: this.db.verdicts.get(p.id)?.status ?? null,
+        }, board.now, board.viewerWallet);
+      })
       .filter(({ props: p, seq }) => !f.before || p.endedAt!.getTime() < f.before.endedAt.getTime() || (p.endedAt!.getTime() === f.before.endedAt.getTime() && BigInt(seq) < f.before.seq))
       .sort((a, b) => b.props.endedAt!.getTime() - a.props.endedAt!.getTime() || b.seq - a.seq).slice(0, f.limit)
       .map(({ props: p, seq }) => ({
@@ -222,6 +261,11 @@ export class MemoryRideQuery extends RideQueryPort {
   async staleRunning(cutoff: Date, limit: number): Promise<{ id: string; wallet: string }[]> {
     return [...this.db.rides.values()].filter((r) => r.props.status === RideStatus.Running && (r.props.lastHbAt?.getTime() ?? 0) < cutoff.getTime())
       .sort((a, b) => (a.props.lastHbAt?.getTime() ?? 0) - (b.props.lastHbAt?.getTime() ?? 0)).slice(0, limit).map(({ props: p }) => ({ id: p.id, wallet: p.wallet }));
+  }
+
+  async overCapRunning(startedBefore: Date, limit: number): Promise<{ id: string; wallet: string }[]> {
+    return [...this.db.rides.values()].filter((r) => r.props.status === RideStatus.Running && r.props.tier === '1h' && (r.props.startedAt?.getTime() ?? Number.POSITIVE_INFINITY) < startedBefore.getTime())
+      .sort((a, b) => (a.props.startedAt?.getTime() ?? 0) - (b.props.startedAt?.getTime() ?? 0)).slice(0, limit).map(({ props: p }) => ({ id: p.id, wallet: p.wallet }));
   }
 
   async upcoming(limit: number): Promise<UpcomingRideRow[]> {
@@ -238,7 +282,7 @@ export class MemoryRideQuery extends RideQueryPort {
       .filter((r) => ended.includes(r.props.status) && r.props.startedAt)
       .sort((a, b) => (b.props.endedAt?.getTime() ?? Number.NEGATIVE_INFINITY) - (a.props.endedAt?.getTime() ?? Number.NEGATIVE_INFINITY) || b.seq - a.seq)
       .slice(0, limit)
-      .map(({ props: p }) => ({ id: p.id, wallet: p.wallet, tier: p.tier, route: p.route, status: p.status, lastS: p.lastS, endedAt: p.endedAt }));
+      .map(({ props: p }) => ({ id: p.id, wallet: p.wallet, tier: p.tier, route: p.route, status: p.status, lastS: p.lastS, endedAt: p.endedAt, poolId: p.poolId, payoutAt: p.poolId == null ? null : this.db.pools.get(p.poolId)?.payoutAt ?? null }));
   }
 
   async summary(wallet: string, opts: { skipRejected?: boolean } = {}): Promise<RideSummary> {
@@ -387,7 +431,30 @@ export class MemoryPaymentRepository extends PaymentRepositoryPort {
 
 @Injectable()
 export class MemoryRideBatchRepository extends RideBatchRepositoryPort {
+  readonly retention: { rideId: string; inpAt: Date | null; payoutFinalizedAt: Date | null }[] = [];
+  readonly traces: { rideId: string; wallet: string; intervalsMs: number[]; distance?: number }[] = [];
+  readonly nulled: string[] = [];
+
   constructor(private readonly db: MemoryDb) { super(); }
+
+  override inpRetentionRows() { return Promise.resolve(this.retention.map((row) => ({ ...row }))); }
+  override nullInp(rows: readonly { rideId: string }[]) { for (const row of rows) this.nulled.push(row.rideId); return Promise.resolve(rows.length); }
+  override validationTraces() { return Promise.resolve([...this.traces].sort((a, b) => (b.distance ?? 0) - (a.distance ?? 0)).slice(0, 20).map((row) => ({ rideId: row.rideId, wallet: row.wallet, intervalsMs: [...row.intervalsMs] }))); }
+  override otherRideIntervals(excludeRideId: string) {
+    const times = new Map<string, number[]>();
+    for (const snap of this.db.batches.values()) {
+      if (snap.rideId === excludeRideId) continue;
+      const encoded = RideBatch.restore(snap).body.named?.inp;
+      if (!encoded) continue;
+      let text: string;
+      try { text = inflateRawSync(Buffer.from(encoded, 'base64')).toString('utf8'); }
+      catch { text = Buffer.from(encoded, 'base64').toString('utf8'); }
+      const bucket = times.get(snap.rideId) ?? [];
+      bucket.push(...eventTimesUs(text));
+      times.set(snap.rideId, bucket);
+    }
+    return Promise.resolve([...times.values()].slice(0, 20).map((row) => intervalsFromTimesUs(row)));
+  }
 
   async insert(batch: RideBatch): Promise<boolean> {
     const key = `${batch.rideId}:${batch.seq}`;
@@ -607,6 +674,10 @@ export class MemoryAdminActionRepository extends AdminActionRepositoryPort {
 
   async insert(record: AdminActionRecord): Promise<void> { this.db.adminActions.push({ ...record }); }
   async recent(limit: number): Promise<AdminActionRecord[]> { return [...this.db.adminActions].reverse().slice(0, limit); }
+  async latest(action: string, target: string): Promise<AdminActionRecord | null> {
+    for (let i = this.db.adminActions.length - 1; i >= 0; i--) if (this.db.adminActions[i]?.action === action && this.db.adminActions[i]?.target === target) return this.db.adminActions[i] ?? null;
+    return null;
+  }
 }
 
 @Injectable()

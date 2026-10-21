@@ -7,6 +7,7 @@ export class VerifyAdminSignInCommand {
     public readonly signature: string,
     public readonly client: ClientInfo = { ip: null, userAgent: null },
     public readonly requestId: string | null = null,
+    public readonly clientId = 'default',
   ) {}
 }
 

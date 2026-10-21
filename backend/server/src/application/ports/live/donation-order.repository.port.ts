@@ -18,4 +18,6 @@ export abstract class DonationOrderRepositoryPort {
   abstract releaseStale(referrer: string, recipient: string, before: Date, tx?: TransactionHandle): Promise<void>;
   /** reserved → paid, only. A release that won the race stays released and is not counted again. */
   abstract markSharePaid(id: string): Promise<boolean>;
+  /** Pending orders this donor opened at or after `createdAfter` (older than the tip TTL do not count). */
+  abstract countOpen(wallet: string, createdAfter: Date): Promise<number>;
 }

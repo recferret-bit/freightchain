@@ -1,5 +1,6 @@
 import { clamp, approach, mulberry32 } from './prng.js';
 import { laneLat, edgeOf } from './road.js';
+import { nextToll, TOLL_WAIT } from './toll.js';
 import { VEHICLES, TRUCK_FRONT, CAB_BACK, HITCH, TRAILER_BACK, HORIZON, PRESETS, BEHIND_OK, CROSS_OK, CALM_OK, bumpDmg as sharedBumpDmg } from './traffic.js';
 
 /** One instance per ride. Rendering and sound are browser adapters; all spawning, AI and collision responses live here. */
@@ -61,7 +62,7 @@ function spawnAt(type, preset, road, dir, s, lat) {
   const home = lat ?? laneLat(dir, lane);
   for (const o of cars) if (o.road === road && Math.abs(o.lat - home) < 2.5 && Math.abs(o.s - s) < 40 + (o.def.len + def.len) / 2) return null;
   let vDes = Math.min(34, (def.v[0] + T.rng() * (def.v[1] - def.v[0])) * P.speed); if (!road.main) vDes = Math.min(vDes, 15 + T.rng() * 3);
-  const pick = T.rng() * 100 | 0, mesh = buildVehicle(def, pick), a = { id: ++T.ids, pick, def, P, preset, road, dir, s, lat: home, lane, target: home, lv: 0, v: vDes, vDes, brake: false, mesh, lcT: 0, ph: T.rng() * 6.28, t: 0, cool: 0, touch: 99, worst: 0, vs: 0, vl: 0, counted: false, over: false, dV: Infinity, state: 'drive', stT: 0, blockT: 0, hornT: 0, wait: false };
+  const pick = T.rng() * 100 | 0, mesh = buildVehicle(def, pick), a = { id: ++T.ids, pick, def, P, preset, road, dir, s, lat: home, lane, target: home, lv: 0, v: vDes, vDes, brake: false, mesh, lcT: 0, ph: T.rng() * 6.28, t: 0, cool: 0, touch: 99, worst: 0, vs: 0, vl: 0, counted: false, over: false, dV: Infinity, state: 'drive', stT: 0, blockT: 0, hornT: 0, wait: false, tollAt: null, tollGate: null, tollT: 0 };
   cars.push(a); place(a); return a;
 }
 function pickType(ok) {
@@ -135,6 +136,18 @@ function signalLead(a) {
   if (sg === 'G' && !cars.some(b => b.road.main !== a.road.main && b.v > .5 && inBox(b, j))) return null;
   if (sg === 'A' && gap < a.v * a.v / (2 * 3.5)) return null;   // amber too close to stop comfortably: go
   return { gap: Math.max(gap, .3), vl: 0 };
+}
+/* PIKE arm, driver's direction only. The car at the line waits TOLL_WAIT s (its payment), then this gate is behind it.
+   No RNG: the same cars stop for the same time in a replay. Cars behind follow it, so the lane pays one at a time. */
+function tollLead(a, dt) {
+  if (!a.road.main || a.dir < 0) return null;
+  const gate = nextToll(a.s);
+  if (a.tollAt === gate) return null;
+  if (a.tollGate !== gate) { a.tollGate = gate; a.tollT = 0; }
+  const gap = gate - 2 - a.s - a.def.len / 2;
+  if (gap < -6) { a.tollAt = gate; return null; }
+  if (gap < 8 && a.v < 1.2) { a.tollT += dt; if (a.tollT >= TOLL_WAIT) { a.tollAt = gate; a.tollT = 0; return null; } }
+  return { gap: Math.max(gap, .35), vl: 0 };
 }
 /* Road holes (world/holes.js): the AI reads the hole ahead (≈ where the warning sign stands) and, in this order, (1) shifts sideways inside its lane, (2) moves to another
    free lane (the oncoming one only on a 1+1 road), (3) crawls through at the hole's `crawl` speed. Stateless every step: the lateral override (a.dLat) and speed cap (a.dV)
@@ -232,8 +245,9 @@ function think(a, dt, tb) {
   if (giveWay) a.dV = Math.min(a.dV, a.v * .8);   // ≈ −3.6 m/s² from the IDM's free term (the IDM brakes for the truck itself as well)
   const P = a.P, n = laneCount(a, a.s), nAhead = laneCount(a, a.s + a.dir * 150);
   let lead = leadOf(a, tb); const sl = signalLead(a); if (sl && (!lead || sl.gap < lead.gap)) lead = sl;
+  const toll = tollLead(a, dt); if (toll && (!lead || toll.gap < lead.gap)) lead = toll;
   const who = lead?.who, other = who && who !== 'truck' ? who : null;
-  a.wait = !!(other && lead.gap < 60 && (other.state !== 'drive' || other.wait));   // behind a crashed / backing / honking vehicle: wait, no lane change
+  a.wait = !!((toll && toll.gap < 70) || (other && lead.gap < 60 && (other.state !== 'drive' || other.wait)));   // at the arm, or behind a car that is: stay in lane
   if (other && (other.state === 'back' || other.state === 'yield') && lead.vl < -.2 && lead.gap < 4 && rearGap(a, tb) > 2.5) { a.state = 'yield'; a.stT = 0; return limp(a, dt, tb); }
   if (who === 'truck' && a.v < .3 && lead.vl < .3 && lead.gap < CFG.CAR_FREE_GAP) {   // stopped with the truck in front of it: after a while back off or honk (any car, crashed or not)
     if ((a.blockT += dt) > CFG.CAR_BLOCK_T) { settle(a, lead.raw, rearGap(a, tb)); if (a.state !== 'drive') return limp(a, dt, tb); }

@@ -1,4 +1,5 @@
 import { Controller, Get, HttpCode, Post, UseGuards, UseInterceptors } from '@nestjs/common';
+import { PublicAdminAuth, Roles } from '../../infrastructure/http/guards/privileged.decorator.js';
 import { okResponse } from '../common/response/wire.js';
 import { editorChallengeResponse, editorSignInResponse, editorMeResponse } from '../common/response/editor.response.js';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
@@ -20,19 +21,20 @@ import { requestChallengeBodySchema, verifyBodySchema, type RequestChallengeBody
 /** The 3D model editor's sign-in (storybook.<apex>): a wallet in EDITOR_WALLETS signs a message → the fc_editor cookie. To anybody else every route is a 404. */
 @Controller('api/editor')
 @UseGuards(EditorGuard)
+@Roles('editor')
 export class EditorAuthHttpController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
   ) {}
 
-  @Post('auth/nonce') @HttpCode(200) @EditorPublic()
+  @Post('auth/nonce') @HttpCode(200) @EditorPublic() @PublicAdminAuth()
   @ZodResponse(editorChallengeResponse)
   nonce(@ZodBody(requestChallengeBodySchema) body: RequestChallengeBody): Promise<ChallengeDto> {
     return this.commandBus.execute<RequestEditorChallengeCommand, ChallengeDto>(new RequestEditorChallengeCommand(body.wallet ?? null));
   }
 
-  @Post('auth/verify') @HttpCode(200) @EditorPublic() @UseInterceptors(SetEditorCookieInterceptor)
+  @Post('auth/verify') @HttpCode(200) @EditorPublic() @PublicAdminAuth() @UseInterceptors(SetEditorCookieInterceptor)
   @ZodResponse(editorSignInResponse)
   verify(@ZodBody(verifyBodySchema) body: VerifyBody, @CurrentClient() client: ClientInfo, @CurrentRequestId() requestId: string): Promise<EditorSignInResultDto> {
     return this.commandBus.execute<VerifyEditorSignInCommand, EditorSignInResultDto>(new VerifyEditorSignInCommand(body.wallet, body.signature, client, requestId, body.message ?? null, body.nonce ?? null));

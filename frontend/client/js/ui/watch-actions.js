@@ -1,18 +1,17 @@
 import { TOKEN_SYMBOL } from '../config.js';
-import { watch, addEvent, LIVE_LAG } from '../watch.js';
-import { EFFECT_INFO, solText } from '../live-effects.js';
+import { watch, addEvent } from '../watch.js';
+import { solText } from '../live-effects.js';
 import { el } from '../../site/dom.js';
 import { api, signIn } from '../../site/wallet.js';
 import { phoneStep, signAndSend } from '../../site/pay.js';
 import { solanaPayUrl, donationPayPath } from '../../site/solana-pay.js';
 import { API_BASE } from '../hosts.js';
 
-/* Spectator interaction & donation service for watch-panel.js: wallet sign-in, chat messages, TEN4 burns (HONK, day/night, snow/clear), and mock/Solana-Pay donations. */
+/* Spectator interaction for the replay panel: wallet sign-in, chat, a cosmetic HONK, and tip-only donations. */
 
-const HONK_GAP_MS = 10_000, TIME_GAP_MS = 20_000;
-const FX_IDS = ['w-honk-day', 'w-honk-night', 'w-honk-snow', 'w-honk-clear'];
+const HONK_GAP_MS = 10_000;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const sent = (effect, how) => (effect === 'tip' ? `Tip sent (${how}).` : `${EFFECT_INFO[effect].label} sent (${how}) – it happens when the driver's game picks it up; you see it here ~${LIVE_LAG} s later.`);
+const sent = (_effect, how) => `Tip sent (${how}).`;
 
 export const donationKey = rideId => `freightchain.donation.${rideId}`;
 export const rememberDonation = (rideId, orderId) => { try { sessionStorage.setItem(donationKey(rideId), orderId); } catch { /* private mode */ } };
@@ -37,7 +36,8 @@ export function createWatchActions({ P, $, say, refreshMe, paintMe, addOwn = add
 
   async function send() {
     const t = $('w-text'); if (!t || !t.value.trim()) return;
-    try { const e = await api(`watch/${encodeURIComponent(watch.id)}/messages`, { text: t.value }); t.value = ''; say(''); addOwn(e); }
+    const replayT = Math.max(0, Math.floor(watch.wt || 0));
+    try { const e = await api(`watch/${encodeURIComponent(watch.id)}/messages`, { text: t.value, replayT }); t.value = ''; say(''); addOwn(e); }
     catch (e) { say(e.message, 'bad'); if (e.status === 401) refreshMe(); }
   }
 
@@ -77,46 +77,6 @@ export function createWatchActions({ P, $, say, refreshMe, paintMe, addOwn = add
     return b;
   }
 
-  function releaseTime() {
-    if (Date.now() < P.timeUntil) return;
-    for (const id of FX_IDS) { const b = $(id); if (b) b.disabled = false; }
-  }
-
-  function holdFx() {
-    const buttons = FX_IDS.map((id) => $(id));
-    if (buttons.some((b) => !b || b.disabled) || Date.now() < P.timeUntil) return false;
-    for (const b of buttons) b.disabled = true;
-    return true;
-  }
-
-  async function sendHonkFx(cost, path, body, msg) {
-    if (watch.ride?.ranked || !holdFx()) return;
-    try {
-      const signature = await honkSignature(cost * 1_000_000n);
-      await api(`watch/${encodeURIComponent(watch.id)}/honk/${path}`, { ...body, ...(signature ? { signature } : {}) });
-      P.timeUntil = Date.now() + TIME_GAP_MS;
-      say(msg, 'good');
-      setTimeout(releaseTime, TIME_GAP_MS);
-    } catch (e) {
-      if (Date.now() >= P.timeUntil) releaseTime();
-      say(e.message, 'bad');
-      if (e.status === 401) refreshMe();
-    }
-  }
-
-  const sendTime = phase => sendHonkFx(10n, 'time', { phase }, phase === 'night' ? 'Night burn landed.' : 'Day burn landed.');
-  const sendWeather = weather => sendHonkFx(25n, 'weather', { weather }, weather === 'snow' ? 'Snow burn landed.' : 'Clear burn landed.');
-
-  function timeControls() {
-    const left = P.timeUntil - Date.now(), held = left > 0;
-    const title = on => `Burning 10 ${TOKEN_SYMBOL} turns the ride to ${on}. The driver's clock moves; spectators see it in the replay.`;
-    const btn = (phase, label) => el('button', { id: `w-honk-${phase}`, type: 'button', class: 'alt', disabled: held, title: title(phase), onclick: () => sendTime(phase) }, label, el('small', {}, `10 ${TOKEN_SYMBOL}`));
-    const wxTitle = on => `Burning 25 ${TOKEN_SYMBOL} ${on === 'snow' ? 'makes it snow' : 'clears the snow'}. Not a donation.`;
-    const wx = (weather, label) => el('button', { id: `w-honk-${weather}`, type: 'button', class: 'alt', disabled: held, title: wxTitle(weather), onclick: () => sendWeather(weather) }, label, el('small', {}, `25 ${TOKEN_SYMBOL}`));
-    if (held) setTimeout(releaseTime, left);
-    return [el('div', { class: 'w-fx' }, btn('day', 'DAY'), btn('night', 'NIGHT')), el('div', { class: 'w-fx' }, wx('snow', 'SNOW'), wx('clear', 'CLEAR'))];
-  }
-
   async function showDonationQr(url) {
     if (!url) { $('w-qr')?.remove(); return; }
     const { payQrBlock } = await import('../../site/qr.js');
@@ -126,18 +86,20 @@ export function createWatchActions({ P, $, say, refreshMe, paintMe, addOwn = add
     box.replaceChildren(...payQrBlock(url, 'dim w-small'));
   }
 
-  async function donate(effect) {
+  async function donate(effect, lamports) {
+    if (effect !== 'tip') { say('Only a tip is accepted.', 'bad'); return; }
     if (P.busy) return;
     const n = $('w-note-in'), note = n?.value.trim() || null, id = encodeURIComponent(watch.id);
+    const body = { effect: 'tip', note, ...(Number.isInteger(lamports) ? { lamports } : {}) };
     const finishPaid = ev => { forgetDonation(watch.id); if (n) n.value = ''; addOwn(ev); say(ev.effect === effect ? sent(effect, 'paid') : `Paid – ${ev.text ?? 'delivered as a tip'}.`, 'good'); };
     P.busy = true;
     const stop = { done: false };
     try {
       if (watch.features.payment !== 'chain') {
-        addOwn(await api(`watch/${id}/donations`, { effect, note })); say(sent(effect, 'mock'), 'good');
+        addOwn(await api(`watch/${id}/donations`, body)); say(sent('tip', 'mock'), 'good');
       } else {
         say('Preparing the transfer…');
-        const { order, transaction } = await api(`watch/${id}/donation-orders`, { effect, note });
+        const { order, transaction } = await api(`watch/${id}/donation-orders`, body);
         rememberDonation(watch.id, order.id);
         await showDonationQr(solanaPayUrl(API_BASE, location.origin, donationPayPath(order.id)));
         const phone = async () => {
@@ -178,5 +140,5 @@ export function createWatchActions({ P, $, say, refreshMe, paintMe, addOwn = add
     finally { stop.done = true; P.busy = false; $('w-qr')?.remove(); }
   }
 
-  return { connect, send, honkBtn, timeControls, donate };
+  return { connect, send, honkBtn, donate };
 }

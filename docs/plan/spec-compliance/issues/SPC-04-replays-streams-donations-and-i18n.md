@@ -15,7 +15,7 @@ Transforms the live stream & replay subsystem to match [`docs/spec/replays_strea
 
 ### `SPC-04.1` — Disable live watch of running rides (`GET /api/watch/:id` & `/road` → `404` when `running`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RPL-M-01`, `RPL-M-02` (Decision 45)
 - **Paired Plan 1 Task:** `E2E-06.2`
 - **Target Files:**
@@ -36,7 +36,7 @@ Transforms the live stream & replay subsystem to match [`docs/spec/replays_strea
 
 ### `SPC-04.2` — Hide training rides from public replays/watch/receipts/Blinks + gate pool replays until `payout_at` (except owner)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RPL-M-03`, `RPL-M-04`, `RPL-M-05`, `RPL-M-06`, `RPL-M-08`, `RPL-M-09`, `RPL-M-24` (Decisions 46, 47)
 - **Paired Plan 1 Tasks:** `E2E-06.2`, `E2E-06.8`
 - **Target Files:**
@@ -57,7 +57,7 @@ Transforms the live stream & replay subsystem to match [`docs/spec/replays_strea
 
 ### `SPC-04.3` — Strip `SAMPLE_INPUT_COL` & raw input bits from public `/api/watch/:id` responses
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RPL-M-07` (`docs/spec/replays_streams.md` §2.4, Decision 48)
 - **Paired Plan 1 Task:** `E2E-06.2`
 - **Target Files:**
@@ -75,7 +75,7 @@ Transforms the live stream & replay subsystem to match [`docs/spec/replays_strea
 
 ### `SPC-04.4` — Remove gameplay donation effects & remove `honk/time` and `honk/weather`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RPL-M-17`, `RPL-M-34` (Decisions 18, 51)
 - **Paired Plan 1 Task:** `E2E-06.7`
 - **Target Files:**
@@ -98,7 +98,7 @@ Transforms the live stream & replay subsystem to match [`docs/spec/replays_strea
 
 ### `SPC-04.5` — Rework donations to replay-only SOL tips (`0.01/0.05/0.1` presets, `[0.001, 1.0]` SOL bounds, 15m expiry, ≤3 open orders, `95/5` split, `0%` referral share)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RPL-M-14`, `RPL-M-15`, `RPL-M-16`, `RPL-M-19`, `RPL-M-20`, `RPL-M-21`, `RPL-M-22`, `RPL-M-23` (Decisions 33, 50, 52, 53)
 - **Paired Plan 1 Task:** `E2E-06.7`
 - **Target Files:**
@@ -118,7 +118,7 @@ Transforms the live stream & replay subsystem to match [`docs/spec/replays_strea
 
 ### `SPC-04.6` — Add `GET /api/me/donations` (`sent`/`received` history) & disable pledges on devnet launch (`PLEDGES_ENABLED=0` → `403 pledges_disabled`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Spec Rules:** `RPL-M-18`, `RPL-M-33` (Decisions 34, 54)
 - **Paired Plan 1 Tasks:** `E2E-06.7`, `E2E-06.8`
 - **Target Files:**
@@ -140,7 +140,7 @@ Transforms the live stream & replay subsystem to match [`docs/spec/replays_strea
 
 ### `SPC-04.7` — Build replay player controls `C3, C6, C7, C8, C15, C16, C17, C18, C19, C36` and remove `C9, C26, C27, C32` in `frontend/client/`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — `replay-player.js` on main. Client test `replay-player.test.mjs` 3 pass, 2026-10-20. Headless Chrome for the controls was not run.
 - **Spec Rules:** `RPL-M-11`, `RPL-M-12`, `RPL-M-13`, `RPL-M-32` (`docs/spec/replays_streams.md` §3, Decision 49)
 - **Paired Plan 1 Tasks:** `E2E-06.4`, `E2E-06.5`
 - **Target Files:**
@@ -161,7 +161,7 @@ Transforms the live stream & replay subsystem to match [`docs/spec/replays_strea
 
 ### `SPC-04.8` — Implement replay chat time-binding (`replayT`), 200-char/link/word filter, moderation endpoints `P01/P02`, and 90-day chat retention job
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — `LiveChatService` and `ChatRetentionScheduler` on main. `replayT` and hide reuse the existing applied columns. No new Prisma migration in this lane. Chat unit specs passed on main.
 - **Spec Rules:** `RPL-M-25`, `RPL-M-26`, `RPL-M-27`, `RPL-M-28`, `RPL-M-29`, `RPL-M-30`, `RPL-M-31` (Decisions 55–57)
 - **Paired Plan 1 Task:** `E2E-06.6`
 - **Target Files:**
@@ -183,7 +183,7 @@ Transforms the live stream & replay subsystem to match [`docs/spec/replays_strea
 
 ### `SPC-04.9` — Implement `frontend/client/site/i18n.js` full EN/RU localization across lobby, replay viewer, receipts, and error codes
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — EN/RU dictionaries and the language order are covered by the client test. A browser pass of every page was not run.
 - **Spec Rules:** `RPL-M-10`, `RPL-M-10a`, `LEG-M-10`, `LEG-M-11` (Decision 58)
 - **Paired Plan 1 Task:** `E2E-06.3`
 - **Target Files:**

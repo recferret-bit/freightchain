@@ -5,6 +5,7 @@ class CountingTokens extends TokenSignerPort {
   verifications = 0;
   async sign() { return { token: 't', expiresAt: new Date(0) }; }
   async verify(token: string) { this.verifications++; return token === 'good' ? 'WALLET' : null; }
+  async verifyClaims() { return null; }
 }
 
 describe('readCookie & cookieValues', () => {

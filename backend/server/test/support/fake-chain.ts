@@ -37,8 +37,9 @@ export class FakeChain extends ChainPort {
     const blockhash = Keypair.generate().publicKey.toBase58();
     const payer = new PublicKey(input.payer);
     const tx = new Transaction({ feePayer: payer, recentBlockhash: blockhash })
-      .add(withReference(SystemProgram.transfer({ fromPubkey: payer, toPubkey: new PublicKey(input.treasury), lamports: input.lamports }), input.reference))
-      .add(memoInstruction(input.memo, [payer]));
+      .add(withReference(SystemProgram.transfer({ fromPubkey: payer, toPubkey: new PublicKey(input.treasury), lamports: input.lamports }), input.reference));
+    for (const extra of input.also ?? []) tx.add(SystemProgram.transfer({ fromPubkey: payer, toPubkey: new PublicKey(extra.to), lamports: extra.lamports }));
+    tx.add(memoInstruction(input.memo, [payer]));
     return { blockhash, lastValidBlockHeight: 1, transaction: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64') };
   }
 

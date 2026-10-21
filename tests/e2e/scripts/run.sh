@@ -25,6 +25,7 @@ export PAYOUT_INTERVAL_MS=0
 export THROTTLE_LIMIT=10000
 export THROTTLE_AUTH_LIMIT=10000
 export THROTTLE_AUTH_RPS=1000
+export THROTTLE_ADMIN_AUTH_LIMIT=100000
 export SNS_RPC="http://127.0.0.1:9"
 unset HONK_PROGRAM_ID TICKET_PROGRAM_ID
 if [ "$BLOCK" = "2" ]; then
@@ -39,6 +40,13 @@ else
 fi
 
 SERVER_PID=""
+TREASURY_FILE="$ROOT/backend/server/data/treasury.json"
+TREASURY_BAK=""
+# Block 1 is transfer mode with no treasury. The dev data/treasury.json would make the 1h tier buyable.
+if [ "$BLOCK" = "1" ] && [ -f "$TREASURY_FILE" ]; then
+  TREASURY_BAK="$(mktemp)"
+  mv "$TREASURY_FILE" "$TREASURY_BAK"
+fi
 stop_server() {
   if [ -n "$SERVER_PID" ]; then
     kill "$SERVER_PID" 2>/dev/null || true
@@ -46,6 +54,10 @@ stop_server() {
     SERVER_PID=""
   fi
   rm -f "$ROOT/tests/e2e/.server.pid"
+  if [ -n "$TREASURY_BAK" ] && [ ! -f "$TREASURY_FILE" ]; then
+    mv "$TREASURY_BAK" "$TREASURY_FILE"
+    TREASURY_BAK=""
+  fi
 }
 trap stop_server EXIT
 

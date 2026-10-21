@@ -134,7 +134,7 @@ describe('negative matrix', () => {
         anon().post('/api/admin/auth/nonce').set(X_ADMIN, '1').send({ wallet: ADMIN.address, __unexpectedField: 1 }),
         anon().post('/api/editor/auth/nonce').set(X_EDITOR, '1').send({ wallet: EDITOR.address, __unexpectedField: 1 }),
         rider.agent.post('/api/rides').send({ tier: 'free', __unexpectedField: 1 }),
-        rider.agent.post('/api/tickets').send({ poolId: 1, qty: 1, __unexpectedField: 1 }),
+        rider.agent.post('/api/tickets').send({ poolId: 1, qty: 1, burnWarningAccepted: true, __unexpectedField: 1 }),
         rider.agent.post('/api/pledges').send({ rideId: randomUUID(), lamportsPerKm: '1000', targetKm: 1, __unexpectedField: 1 }),
         rider.agent.post('/api/promo/redeem').send({ code: 'ONE', __unexpectedField: 1 }),
         rider.agent.post('/api/referrals/gift').send({ item: 'nope', __unexpectedField: 1 }),
@@ -180,7 +180,7 @@ describe('negative matrix', () => {
       await harness.app.get(PoolRepositoryPort, { strict: false }).upsert(aPool({ id: 1, status: 'active' }, now));
       const owner = await login();
       const other = await login();
-      const order = (await owner.agent.post('/api/tickets').send({ poolId: 1, qty: 1 }).expect(200)).body as { id: string };
+      const order = (await owner.agent.post('/api/tickets').send({ poolId: 1, qty: 1, burnWarningAccepted: true }).expect(200)).body as { id: string };
       const missing = randomUUID();
       sameNotFound(await other.agent.get(`/api/tickets/orders/${order.id}`), await other.agent.get(`/api/tickets/orders/${missing}`));
       sameNotFound(
@@ -190,7 +190,9 @@ describe('negative matrix', () => {
     });
 
     it('donation order confirm', async () => {
-      const { rideId } = await ticketRide();
+      const { driver, rideId } = await ticketRide();
+      await driver.agent.post(`/api/rides/${rideId}/end`).send({ outcome: 'failed', s: 1, t: 1 }).expect(200);
+      await harness.app.get(PoolRepositoryPort, { strict: false }).upsert(aPool({ id: 1, status: 'active', payoutAt: new Date(0) }, new Date(0)));
       const fan = await login();
       const other = await login();
       const created = (await fan.agent.post(`/api/watch/${rideId}/donation-orders`).send({ effect: 'tip' }).expect(200)).body as { order: { id: string } };

@@ -7,8 +7,8 @@ class Tokens extends TokenSignerPort {
   async sign() { return { token: 't', expiresAt: new Date(0) }; }
   async verify(token: string) { return token === 'good' ? 'WALLET' : null; }
 }
-const contextWith = (cookie?: string) => {
-  const request: { headers: { cookie?: string }; player?: { wallet: string } } = { headers: { cookie } };
+const contextWith = (cookie?: string, method = 'GET') => {
+  const request: { headers: { cookie?: string }; method: string; player?: { wallet: string; termsVersion?: number | null; privacyVersion?: number | null } } = { headers: { cookie }, method };
   return { request, ctx: { switchToHttp: () => ({ getRequest: () => request }) } as unknown as ExecutionContext };
 };
 
@@ -18,7 +18,11 @@ describe('PlayerAuthGuard', () => {
   it('a valid session cookie puts the wallet on the request', async () => {
     const { request, ctx } = contextWith('other=1; fc_session=good');
     expect(await guard.canActivate(ctx)).toBe(true);
-    expect(request.player).toEqual({ wallet: 'WALLET' });
+    expect(request.player).toEqual({ wallet: 'WALLET', termsVersion: null, privacyVersion: null });
+  });
+
+  it('a write with no stored terms acceptance is 403', async () => {
+    await expect(guard.canActivate(contextWith('fc_session=good', 'POST').ctx)).rejects.toMatchObject({ errorCode: 'terms_acceptance_required', statusCode: 403 });
   });
 
   it('no cookie: "not signed in"; a bad or expired one: "session expired"', async () => {

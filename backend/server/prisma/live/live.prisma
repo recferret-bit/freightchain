@@ -19,6 +19,9 @@ model RideEvent {
   appliedS   Float? // … where on the road (an obstacle: its position, so a replay puts it in the same place)
   appliedLat Float? // … and across the road (obstacles)
   signature  String?   @unique // a PAID donation: the transfer that paid it (LIVE_FREE_DONATIONS=off) – one transaction pays one event
+  replayT    Int? // replay second this chat line is bound to (null = a line from before time-binding)
+  hiddenAt   DateTime? // moderator hid it (P01). Null = visible.
+  hiddenBy   String? // wallet that hid it
 
   @@unique([rideId, slotKey, slot])
   @@index([rideId, id])
@@ -63,5 +66,21 @@ model DonationOrder {
 
   @@index([rideId])
   @@index([referrer, recipient, shareState])
+  @@schema("live")
+}
+
+// Replay chat row (SPC-04.8). RideEvent stays the legacy feed; this table is the time-bound chat Lane 2 reads.
+model LiveChat {
+  id        String    @id
+  rideId    String
+  ride      Ride      @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  wallet    String
+  text      String
+  replayT   Int       @default(0)
+  hiddenAt  DateTime?
+  hiddenBy  String?
+  createdAt DateTime  @default(now())
+
+  @@index([rideId, replayT])
   @@schema("live")
 }

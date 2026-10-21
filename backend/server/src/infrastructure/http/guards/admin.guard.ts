@@ -38,7 +38,8 @@ export class AdminGuard implements CanActivate {
     if (adminHost && hostOf(request) !== adminHost) throw new NotFoundError('not found');
     const isPublic = this.reflector.getAllAndOverride<boolean>(ADMIN_PUBLIC, [context.getHandler(), context.getClass()]) === true;
     const wallet = isPublic ? null : await adminWallet(request, this.tokens);
-    if (!isPublic && (!wallet || !this.env.adminWallets.has(wallet))) throw new NotFoundError('not found');
+    const moderator = this.env.moderatorWallets?.has(wallet ?? '') ?? false;
+    if (!isPublic && (!wallet || (!this.env.adminWallets.has(wallet) && !moderator))) throw new NotFoundError('not found');
     if (!SAFE_METHODS.has(request.method) && request.headers[ADMIN_HEADER] !== '1') throw new ForbiddenError(`admin changes need the ${ADMIN_HEADER} header`);
     if (wallet) request.player = { wallet };
     return true;

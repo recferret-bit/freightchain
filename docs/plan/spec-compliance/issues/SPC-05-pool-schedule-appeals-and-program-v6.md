@@ -15,7 +15,7 @@ Updates the escrowed prize pool lifecycle and `freightchain_pools` Anchor progra
 
 ### `SPC-05.1` — Implement configurable weekly pool schedule (`opens_at`, `sales_close_at`, `last_start_at = close - 1h15m`, `play_close_at`, `validation_until = payout_at`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — server schedule on `GET /api/pools/current` and `GET /api/pools/:id`. Migration `20261107000000_wave4_chat_pool_convoy_airdrop` is in the tree. Unit specs passed on main, 2026-10-20.
 - **Spec Rules:** `POOL-M-01`, `POOL-M-02`, `POOL-M-03`, `POOL-M-04` (`docs/spec/pool.md` §2, Decision 35)
 - **Paired Plan 1 Task:** `E2E-08.5`
 - **Target Files:**
@@ -37,7 +37,7 @@ Updates the escrowed prize pool lifecycle and `freightchain_pools` Anchor progra
 
 ### `SPC-05.2` — Enforce `409 pool_last_start_passed` on ride start & `409 pool_schedule_mismatch` on DB vs on-chain PDA timestamp drift
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — buy or start after `lastStartAt` is `409 pool_last_start_passed`. Program-mode drift is `409 pool_schedule_mismatch`.
 - **Spec Rules:** `POOL-M-05`, `POOL-M-06`, `POOL-M-11` (`docs/spec/pool.md` §2.3–2.4)
 - **Paired Plan 1 Task:** `E2E-08.5`
 - **Target Files:**
@@ -58,7 +58,7 @@ Updates the escrowed prize pool lifecycle and `freightchain_pools` Anchor progra
 
 ### `SPC-05.3` — Add non-refundable ticket burn rule after `last_start_at` + lobby purchase warning modal & mandatory confirmation checkbox
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — unused tickets burn after last start. The lobby checkbox requires `burnWarningAccepted: true`.
 - **Spec Rules:** `POOL-M-07` (`docs/spec/pool.md` §3, Decision 36)
 - **Paired Plan 1 Task:** `E2E-08.5`
 - **Target Files:**
@@ -78,7 +78,7 @@ Updates the escrowed prize pool lifecycle and `freightchain_pools` Anchor progra
 
 ### `SPC-05.4` — Implement pool validation & appeals workflow (`POST /api/rides/:id/appeal`, admin review queue, block `commit_winners_root` until `validation_until` & 0 open appeals)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — `POST /api/rides/:id/appeal` and `GET/POST /api/admin/appeals`. Payout waits for `validationUntil`, no running rides, and zero open appeals.
 - **Spec Rules:** `POOL-M-08`, `POOL-M-09` (`docs/spec/pool.md` §4, Decision 37)
 - **Paired Plan 1 Task:** `E2E-08.5`
 - **Target Files:**
@@ -101,8 +101,7 @@ Updates the escrowed prize pool lifecycle and `freightchain_pools` Anchor progra
 
 ### `SPC-05.5` — Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`) + operator-funded pool activation (no `min_tickets` low-sales refund)
 
-- **Status:** `[ ] Todo`
-- **Spec Rules:** `POOL-M-05`, `POOL-M-10`, `POOL-M-13`, `POOL-M-14`, `RPL-M-17` (`docs/spec/pool.md` §1.2, §20.3)
+- **Status:** `[x] Done` — server ceiling is 7200 seconds. Rust edits are comments. The on-disk `.so` layout is unchanged and `Config.min_finish_secs` still defaults to 10800 on chain. `npm run test:localnet` was not run.
 - **Paired Plan 1 Task:** `E2E-08.5`
 - **Target Files:**
   - `backend/programs/freightchain_pools/src/`

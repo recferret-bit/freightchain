@@ -19,8 +19,8 @@ describe('AdminDirectoryHttpController', () => {
     expect(queries.last()).toEqual(new GetAdminQueueCountQuery());
     await c.players(playersQuerySchema.parse({ q: 'Gse' }));
     expect(queries.last()).toEqual(new ListAdminPlayersQuery(100, 'Gse'));
-    await c.player(walletParamsSchema.parse({ wallet: W }));
-    expect(queries.last()).toEqual(new GetAdminPlayerQuery(W));
+    await c.player({ wallet: 'ADMIN' }, walletParamsSchema.parse({ wallet: W }));
+    expect(queries.last()).toEqual(new GetAdminPlayerQuery(W, 'ADMIN'));
     await c.pools(poolsQuerySchema.parse({}));
     expect(queries.last()).toEqual(new ListAdminPoolsQuery(100));
     await c.pool(poolIdParamsSchema.parse({ id: '7' }));

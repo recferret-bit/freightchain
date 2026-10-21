@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, Post, UseFilters } from '@nestjs/common';
+import { Controller, Get, Header, HttpCode, Post, UseFilters } from '@nestjs/common';
 import { actionsJsonResponse, actionCardResponse, actionPostResponse, actionTxResponse, actionLinkResponse } from '../common/response/rest.response.js';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { ActionCard, ActionLink, ActionPost, ActionsJson, ActionTx } from '../../domain/actions/action-card.js';
@@ -78,6 +78,7 @@ export class ActionsHttpController {
   }
 
   @Get('api/actions/ride/:id')
+  @Header('Cache-Control', 'public, max-age=86400')
   @ZodResponse(actionCardResponse)
   ride(@ZodParams(rideIdParamsSchema) params: RideIdParams): Promise<ActionCard> {
     return this.queryBus.execute<GetRideActionQuery, ActionCard>(new GetRideActionQuery(params.id));

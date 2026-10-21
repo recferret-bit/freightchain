@@ -11,7 +11,7 @@ describe('ConfirmPledgeHandler – a pledge is active only when its transaction\
     const ctx = unitContext();
     const sponsor = wallet(), driver = wallet();
     await ctx.player(sponsor); await ctx.player(driver);
-    const handler = new ConfirmPledgeHandler(ctx.pledges, ctx.players, ctx.poolChain, ctx.transactions, ctx.clock);
+    const handler = new ConfirmPledgeHandler(ctx.pledges, ctx.players, ctx.poolChain, ctx.transactions, ctx.clock, ctx.pledgeGate);
     return { ctx, sponsor, driver, confirm: (w: string, id: string, sig: string) => handler.execute(new ConfirmPledgeCommand(w, id, sig)) };
   };
 

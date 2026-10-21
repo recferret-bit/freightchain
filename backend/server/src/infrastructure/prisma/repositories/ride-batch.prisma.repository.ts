@@ -1,10 +1,17 @@
+import { inflateRawSync } from 'node:zlib';
 import { Injectable } from '@nestjs/common';
+import { eventTimesUs, intervalsFromTimesUs } from '../../../domain/anticheat/inp-intervals.js';
 import type { BatchFacts, RideBatch } from '../../../domain/telemetry/ride-batch.entity.js';
 import { RideBatchRepositoryPort } from '../../../application/ports/telemetry/ride-batch.repository.port.js';
 import type { TransactionHandle } from '../../../application/ports/shared/transaction.port.js';
 import { RideBatchMapper } from '../mappers/ride-batch.mapper.js';
 import { clientFor } from '../prisma-client.js';
 import { PrismaService } from '../prisma.service.js';
+
+function inflateOrRaw(encoded: string): Buffer {
+  const raw = Buffer.from(encoded, 'base64');
+  try { return inflateRawSync(raw); } catch { return raw; }
+}
 
 @Injectable()
 export class RideBatchPrismaRepository extends RideBatchRepositoryPort {
@@ -14,8 +21,62 @@ export class RideBatchPrismaRepository extends RideBatchRepositoryPort {
 
   /** ONE statement with ON CONFLICT DO NOTHING: two uploads of the same seq race safely, exactly one stores. */
   async insert(batch: RideBatch, tx?: TransactionHandle): Promise<boolean> {
-    const { count } = await clientFor(this.prisma, tx).rideBatch.createMany({ data: [RideBatchMapper.toCreateData(batch)], skipDuplicates: true });
+    const data = {
+      ...RideBatchMapper.toCreateData(batch),
+      ...(batch.body.named?.inp ? { inp: Uint8Array.from(inflateOrRaw(batch.body.named.inp)), inpAt: batch.receivedAt } : {}),
+    };
+    const { count } = await clientFor(this.prisma, tx).rideBatch.createMany({ data: [data], skipDuplicates: true });
     return count === 1;
+  }
+
+  override async inpRetentionRows() {
+    const rows = await this.prisma.rideBatch.findMany({
+      where: { inp: { not: null } },
+      select: { rideId: true, inpAt: true, ride: { select: { pool: { select: { status: true, payoutAt: true } } } } },
+    });
+    return rows.map((row) => ({
+      rideId: row.rideId,
+      inpAt: row.inpAt,
+      payoutFinalizedAt: row.ride.pool?.status === 'settled' ? row.ride.pool.payoutAt : null,
+    }));
+  }
+
+  override async nullInp(rows: readonly { rideId: string }[]): Promise<number> {
+    const ids = [...new Set(rows.map((row) => row.rideId))];
+    if (!ids.length) return 0;
+    const result = await this.prisma.rideBatch.updateMany({ where: { rideId: { in: ids }, inp: { not: null } }, data: { inp: null } });
+    return result.count;
+  }
+
+  /** The top 20 verified rides by distance, one trace each, while that pool's validation window is still open. */
+  override async validationTraces(now: Date) {
+    const rides = await this.prisma.ride.findMany({
+      where: { verdict: { is: { status: 'verified' } }, pool: { is: { status: 'active', payoutAt: { gt: now } } }, batches: { some: { inp: { not: null } } } },
+      orderBy: [{ lastS: 'desc' }, { id: 'asc' }],
+      take: 20,
+      select: { id: true, wallet: true, batches: { where: { inp: { not: null } }, orderBy: { seq: 'asc' }, select: { inp: true } } },
+    });
+    return rides.map((ride) => {
+      const times = ride.batches.flatMap((batch) => batch.inp ? eventTimesUs(Buffer.from(batch.inp).toString('utf8')) : []);
+      return { rideId: ride.id, wallet: ride.wallet, intervalsMs: intervalsFromTimesUs(times) };
+    });
+  }
+
+  override async otherRideIntervals(excludeRideId: string): Promise<number[][]> {
+    const rows = await this.prisma.rideBatch.findMany({
+      where: { rideId: { not: excludeRideId }, inp: { not: null } },
+      orderBy: [{ rideId: 'asc' }, { seq: 'asc' }],
+      take: 400,
+      select: { rideId: true, inp: true },
+    });
+    const times = new Map<string, number[]>();
+    for (const row of rows) {
+      if (!row.inp || (times.size >= 20 && !times.has(row.rideId))) continue;
+      const bucket = times.get(row.rideId) ?? [];
+      bucket.push(...eventTimesUs(Buffer.from(row.inp).toString('utf8')));
+      times.set(row.rideId, bucket);
+    }
+    return [...times.values()].map((row) => intervalsFromTimesUs(row));
   }
 
   async deleteForRidesEndedBefore(cutoff: Date): Promise<number> {

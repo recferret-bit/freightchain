@@ -5,5 +5,7 @@ export class GetReplaysQuery {
     public readonly limit: number,
     public readonly wallet: string | null,
     public readonly status: 'completed' | 'abandoned' | 'failed' | null,
+    /** the session, when one was sent: that driver still sees their own pool replay before payout */
+    public readonly viewer: string | null = null,
   ) {}
 }

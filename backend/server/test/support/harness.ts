@@ -34,6 +34,10 @@ import { AdminActionRepositoryPort } from '../../src/application/ports/admin/adm
 import { MemoryAdminDirectory } from './in-memory/memory-admin-directory.js';
 import { AdminDirectoryPort } from '../../src/application/ports/admin/admin-directory.port.js';
 import { AdminQueryPort } from '../../src/application/ports/admin/admin-query.port.js';
+import { AlertOutboxRepositoryPort } from '../../src/application/ports/admin/alert-outbox.repository.port.js';
+import { MemoryAlertOutboxRepository } from './in-memory/memory-alert-outbox.repository.js';
+import { RideAppealRepositoryPort } from '../../src/application/ports/rides/ride-appeal.repository.port.js';
+import { MemoryRideAppealRepository } from './in-memory/memory-ride-appeal.repository.js';
 import { NameServicePort } from '../../src/application/ports/sns/name-service.port.js';
 import { StubNameServiceAdapter } from './stub-name-service.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
@@ -80,7 +84,9 @@ import { StatsRepositoryPort } from '../../src/application/ports/stats/stats.rep
 import { MemoryDonationOrderRepository, MemoryRideEventRepository, MemoryRideMuteRepository } from './in-memory/memory-live-repositories.js';
 import { DonationOrderRepositoryPort } from '../../src/application/ports/live/donation-order.repository.port.js';
 import { ReferralRepositoryPort } from '../../src/application/ports/referral/referral.repository.port.js';
+import { RideMiniGameRepositoryPort } from '../../src/application/ports/minigames/ride-minigame.repository.port.js';
 import { MemoryReferralRepository } from './in-memory/memory-referral-repository.js';
+import { MemoryRideMiniGameRepository } from './in-memory/memory-minigame.repository.js';
 import { RideMuteRepositoryPort } from '../../src/application/ports/live/ride-mute.repository.port.js';
 import { RideEventRepositoryPort } from '../../src/application/ports/live/ride-event.repository.port.js';
 import { WeeklyTicketRepositoryPort } from '../../src/application/ports/prize/weekly-ticket.repository.port.js';
@@ -122,8 +128,8 @@ export interface Harness {
 }
 
 /** Everything the app reads from the environment that a test may change – cleared before each harness so files can't leak into each other. */
-const TUNABLES = ['TRAFFIC_PROOF_REQUIRED', 'THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'THROTTLE_PROMO_LIMIT', 'THROTTLE_ENTITIES_LIMIT', 'THROTTLE_EDITOR_LIMIT', 'THROTTLE_AUTH_RPS', 'THROTTLE_ENTITIES_RPS', 'THROTTLE_EDITOR_RPS', 'THROTTLE_MCP_LIMIT', 'THROTTLE_MCP_RPS', 'REDIS_URL', 'EDITOR_WALLETS', 'EDITOR_IP_ALLOWLIST', 'EDITOR_JWT_SECRET', 'EDITOR_SESSION_TTL_MINUTES', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GEMINI_API_KEY', 'ZAI_API_KEY', 'ZAI_BASE_URL', 'XAI_API_KEY', 'XAI_BASE_URL', 'EDITOR_DEFAULT_PROVIDER', 'EDITOR_MODEL_ANTHROPIC', 'EDITOR_MODEL_OPENAI', 'EDITOR_MODEL_GEMINI', 'EDITOR_MODEL_ZAI', 'EDITOR_MODEL_XAI', 'EDITOR_MCP_URL', 'EDITOR_MCP_TOKEN', 'EDITOR_JOB_TIMEOUT_MS', 'EDITOR_FAKE_LLM', 'HB_TIMEOUT_MS', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS', 'SIGNIN_RETENTION_DAYS', 'CHALLENGE_INTERVAL_SECONDS',
-  'CHALLENGE_FREE_RIDES', 'LIVE_CHAT', 'LIVE_DONATIONS', 'LIVE_FREE_DONATIONS', 'LIVE_EFFECTS', 'PAYMENT_MODE', 'TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'ORDER_TTL_MINUTES', 'WATCH_INTERVAL_MS', 'WEBHOOK_SECRET', 'CRANK_SECRET', 'CRANK_INTERVAL_MS', 'FEE_PAYER_SECRET', 'SOLANA_COMMITMENT',
+const TUNABLES = ['TRAFFIC_PROOF_REQUIRED', 'THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'THROTTLE_PROMO_LIMIT', 'THROTTLE_ENTITIES_LIMIT', 'THROTTLE_EDITOR_LIMIT', 'THROTTLE_AUTH_RPS', 'THROTTLE_ENTITIES_RPS', 'THROTTLE_EDITOR_RPS', 'THROTTLE_MCP_LIMIT', 'THROTTLE_MCP_RPS', 'THROTTLE_ADMIN_AUTH_LIMIT', 'REDIS_URL', 'EDITOR_WALLETS', 'EDITOR_IP_ALLOWLIST', 'EDITOR_JWT_SECRET', 'EDITOR_SESSION_TTL_MINUTES', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GEMINI_API_KEY', 'ZAI_API_KEY', 'ZAI_BASE_URL', 'XAI_API_KEY', 'XAI_BASE_URL', 'EDITOR_DEFAULT_PROVIDER', 'EDITOR_MODEL_ANTHROPIC', 'EDITOR_MODEL_OPENAI', 'EDITOR_MODEL_GEMINI', 'EDITOR_MODEL_ZAI', 'EDITOR_MODEL_XAI', 'EDITOR_MCP_URL', 'EDITOR_MCP_TOKEN', 'EDITOR_JOB_TIMEOUT_MS', 'EDITOR_FAKE_LLM', 'HB_TIMEOUT_MS', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS', 'SIGNIN_RETENTION_DAYS', 'CHALLENGE_INTERVAL_SECONDS',
+  'CHALLENGE_FREE_RIDES', 'TELEMETRY_V21', 'MINIGAMES', 'MG_SECRET', 'MG_SALT_VERSION', 'LIVE_CHAT', 'LIVE_DONATIONS', 'LIVE_FREE_DONATIONS', 'LIVE_EFFECTS', 'PLEDGES_ENABLED', 'PAYMENT_MODE', 'TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'ORDER_TTL_MINUTES', 'WATCH_INTERVAL_MS', 'WEBHOOK_SECRET', 'CRANK_SECRET', 'CRANK_INTERVAL_MS', 'FEE_PAYER_SECRET', 'SOLANA_COMMITMENT',
   'POSTHOG_KEY', 'POSTHOG_HOST', 'POSTHOG_ENABLED', 'POSTHOG_DISABLED', 'POSTHOG_PROJECT_ID'];
 
 /**
@@ -133,9 +139,10 @@ const TUNABLES = ['TRAFFIC_PROOF_REQUIRED', 'THROTTLE_LIMIT', 'THROTTLE_AUTH_LIM
 export async function createHarness(persistence: Persistence, env: Record<string, string> = {}): Promise<Harness> {
   for (const key of TUNABLES) delete process.env[key];
   Object.assign(process.env, {
-    NODE_ENV: 'test', JWT_SECRET: 'test-secret-'.padEnd(48, 'x'), SOL_USD: '100', TREASURY_PUBKEY: TREASURY, THROTTLE_LIMIT: '1000000', THROTTLE_AUTH_LIMIT: '1000000', THROTTLE_PROMO_LIMIT: '1000000', THROTTLE_ENTITIES_LIMIT: '1000000', THROTTLE_EDITOR_LIMIT: '1000000', THROTTLE_AUTH_RPS: '1000000', THROTTLE_ENTITIES_RPS: '1000000', THROTTLE_EDITOR_RPS: '1000000', THROTTLE_MCP_LIMIT: '1000000', THROTTLE_MCP_RPS: '1000000',
+    NODE_ENV: 'test', JWT_SECRET: 'test-secret-'.padEnd(48, 'x'), SOL_USD: '100', TREASURY_PUBKEY: TREASURY, THROTTLE_LIMIT: '1000000', THROTTLE_AUTH_LIMIT: '1000000', THROTTLE_PROMO_LIMIT: '1000000', THROTTLE_ENTITIES_LIMIT: '1000000', THROTTLE_EDITOR_LIMIT: '1000000', THROTTLE_AUTH_RPS: '1000000', THROTTLE_ENTITIES_RPS: '1000000', THROTTLE_EDITOR_RPS: '1000000', THROTTLE_MCP_LIMIT: '1000000', THROTTLE_MCP_RPS: '1000000', THROTTLE_ADMIN_AUTH_LIMIT: '1000000',
     ACHIEVEMENT_MINT_SECRET: '', ACHIEVEMENT_TREE: '', ACHIEVEMENT_COLLECTION: '', HONK_PROGRAM_ID: '', HONK_EMITTER_SECRET: '', // never the developer's .env: scenarios must not mint (or show a tree) and stay on the HONK ledger
     TRAFFIC_PROOF_REQUIRED: 'false', // historical API fixtures; strict protocol has its own HTTP and Chrome coverage
+    PLEDGES_ENABLED: '1', // the suite still exercises pledges; production and an unset key are 0. A spec that passes 0 checks the gate.
     WATCH_INTERVAL_MS: '0', // the program watcher off: scenarios settle through the webhook / their own calls
     DATABASE_URL: persistence === 'postgres' ? testDatabaseUrl() : 'postgresql://unused:unused@127.0.0.1:1/unused_test',   // NEVER the shell's DATABASE_URL
     ...env,
@@ -155,7 +162,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
   let builder = Test.createTestingModule({ imports: [AppModule, EditorWorkerModule] }).overrideProvider(EntropyPort).useValue(entropy).overrideProvider(StaleRideScheduler).useValue({}).overrideProvider(ReplayVerificationScheduler).useValue({}).overrideProvider(HonkReleaseScheduler).useValue({}).overrideProvider(ReplayQueuePort).useValue(replayQueue).overrideProvider(ClockPort).useValue(clock).overrideProvider(ChainPort).useValue(chain).overrideProvider(PoolChainPort).useValue(poolChain).overrideProvider(PoolPayoutChainPort).useValue(payoutChain).overrideProvider(NameServicePort).useValue(nameService).overrideProvider(EditorJobSweepScheduler).useValue({}).overrideProvider(McpClientPort).useValue(mcp);
   if (persistence === 'memory') {
     builder = builder
-      .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined })
+      .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined, $queryRaw: async () => [], $executeRaw: async () => 0 })
       .overrideProvider(PlayerRepositoryPort).useValue(new MemoryPlayerRepository(memory))
       .overrideProvider(ChallengeRepositoryPort).useValue(new MemoryChallengeRepository(memory))
       .overrideProvider(RideRepositoryPort).useValue(new MemoryRideRepository(memory))
@@ -181,6 +188,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(SignInRepositoryPort).useValue(new MemorySignInRepository(memory))
       .overrideProvider(AdminActionRepositoryPort).useValue(new MemoryAdminActionRepository(memory))
       .overrideProvider(AdminQueryPort).useValue(new MemoryAdminQuery(memory))
+      .overrideProvider(AlertOutboxRepositoryPort).useValue(new MemoryAlertOutboxRepository())
+      .overrideProvider(RideAppealRepositoryPort).useValue(new MemoryRideAppealRepository(memory))
       .overrideProvider(AdminDirectoryPort).useValue(new MemoryAdminDirectory(memory))
       .overrideProvider(TransactionPort).useValue(new MemoryTransaction())
       .overrideProvider(HealthProbePort).useValue(new MemoryHealthProbe())
@@ -190,6 +199,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RideMuteRepositoryPort).useValue(new MemoryRideMuteRepository(memory))
       .overrideProvider(DonationOrderRepositoryPort).useValue(new MemoryDonationOrderRepository(memory))
       .overrideProvider(ReferralRepositoryPort).useValue(new MemoryReferralRepository(memory))
+      .overrideProvider(RideMiniGameRepositoryPort).useValue(new MemoryRideMiniGameRepository())
       .overrideProvider(StatsRepositoryPort).useValue(new MemoryStatsRepository(memory))
       .overrideProvider(SettingsRepositoryPort).useValue(new MemorySettingsRepository(memory))
       .overrideProvider(EntityRepositoryPort).useValue(new MemoryEntityRepository(memory))

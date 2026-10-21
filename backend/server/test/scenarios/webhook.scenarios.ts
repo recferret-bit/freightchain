@@ -22,7 +22,7 @@ export function webhookScenarios(h: () => Harness): void {
   it('a purchase delivered by the webhook credits the ticket with no client call: order paid, tickets there, the event on the pool page', async () => {
     await seedPool({ id: 1, status: 'active' });
     const w = await login();
-    const order = (await w.agent.post('/api/tickets').send({ poolId: 1, qty: 2 }).expect(200)).body;
+    const order = (await w.agent.post('/api/tickets').send({ poolId: 1, qty: 2, burnWarningAccepted: true }).expect(200)).body;
     const sig = buy(w, { orderId: order.id });
     // a Helius "enhanced" delivery: its event data (here: a lie about the amount) is ignored – only the signature is used
     expect((await deliver([{ signature: sig, nativeTransfers: [{ amount: 1 }], type: 'TRANSFER' }]).expect(200)).body).toEqual({ received: 1, settled: 1, pending: 0 });
@@ -40,7 +40,7 @@ export function webhookScenarios(h: () => Harness): void {
   it('PoolFailed by webhook voids the tickets (refundable), then Refunded by webhook marks the order refunded', async () => {
     await seedPool({ id: 1, status: 'open', minTickets: 5 });
     const w = await login();
-    const order = (await w.agent.post('/api/tickets').send({ poolId: 1, qty: 2 }).expect(200)).body;
+    const order = (await w.agent.post('/api/tickets').send({ poolId: 1, qty: 2, burnWarningAccepted: true }).expect(200)).body;
     const bought = buy(w, { orderId: order.id });
     const failed = h().poolChain.addEvent('PoolFailed', { poolId: 1, ticketsSold: 2 });
     // QuickNode Streams shape: matched transactions nested in the payload

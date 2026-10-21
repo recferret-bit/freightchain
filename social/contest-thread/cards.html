@@ -1,0 +1,255 @@
+<!doctype html>
+<!-- Contest thread cards, 1600×900. ?card=11&p=0..1  Rendered by render.mjs. Shots are real game frames. -->
+<html><head><meta charset="utf-8"><title>Freight Chain contest thread</title>
+<style>
+@font-face{font-family:SFM;src:url(file:///System/Library/Fonts/SFNSMono.ttf);font-weight:100 900}
+:root{--bg:#0b0a09;--panel:#17130f;--dash:#26221d;--amber:#ffcf5a;--gear:#ffb03a;--needle:#ff7a2e;--cream:#e8e2cf;--dim:#9d957f;
+  --lcd:#7cff7c;--lcd-bg:#0d2410;--red:#ff3b30;--asphalt:#34322f;--s1:#9945FF;--s2:#14F195;--sol:linear-gradient(90deg,var(--s1),var(--s2));
+  --mono:SFM,Menlo,ui-monospace,monospace}
+*{box-sizing:border-box;margin:0}
+html,body{width:1600px;height:900px;overflow:hidden;background:var(--bg);color:var(--cream);font:400 28px/1.25 var(--mono)}
+.card{display:none;position:relative;width:1600px;height:900px;overflow:hidden;background:var(--bg)}
+.card.on{display:block}
+.bg{position:absolute;inset:-8%;background-size:cover;background-position:center 32%;transform-origin:50% 40%}
+.veil{position:absolute;inset:0}
+.solbar{position:absolute;left:0;right:0;top:0;height:8px;background:var(--sol);box-shadow:0 0 24px #9945ffaa;z-index:6}
+.grain{position:absolute;inset:0;pointer-events:none;z-index:4;background:repeating-linear-gradient(0deg,#0000 0 2px,#00000014 2px 3px)}
+.top,.foot{position:absolute;left:64px;right:64px;z-index:5;display:flex;align-items:center;justify-content:space-between}
+.top{top:36px}.foot{bottom:32px;font-size:22px;letter-spacing:2px;color:var(--dim)}
+.foot b{color:var(--cream);font-weight:700}.foot i{font-style:normal;color:var(--amber)}
+.logo{display:flex;align-items:center;gap:14px;color:var(--amber);font-weight:800;letter-spacing:4px;font-size:26px}
+.logo svg{width:52px;height:52px;flex:none}
+.pill{border:2px solid #1e4a22;background:var(--lcd-bg);color:var(--lcd);border-radius:999px;padding:6px 16px;font-size:20px;font-weight:800;letter-spacing:2px;text-shadow:0 0 10px #7cff7c88}
+.pill.am{border-color:#ffcf5a88;background:#1b1408ee;color:var(--amber);text-shadow:0 0 10px #ffb02e66}
+.pill.nv{border-color:#9945ff;background:#14081bee;color:#d7b6ff;text-shadow:none}
+.pill.rd{border-color:var(--red);background:#1a0605ee;color:var(--red);text-shadow:0 0 10px #ff3b3066}
+h1{font-weight:900;color:var(--amber);line-height:.92;letter-spacing:-1.5px;text-shadow:0 4px 0 #7a4a00,0 0 36px #ffb02e55}
+h1 b{color:var(--cream);font-weight:900;text-shadow:0 4px 0 #3a3428,0 8px 24px #000}
+.kicker{font-size:22px;font-weight:800;letter-spacing:4px;color:var(--dim)}
+.kicker em{font-style:normal;color:var(--lcd)}
+.pad{position:absolute;z-index:3;left:64px;right:64px;top:128px}
+
+/* 11 hook */
+#c11 .bg{filter:saturate(1.15) brightness(.5)}
+#c11 .veil{background:linear-gradient(180deg,#0b0a09f4 0,#0b0a09b0 30%,#0b0a09e8 100%)}
+#c11 h1{font-size:84px;margin:8px 0 30px}
+#c11 .cols{display:grid;grid-template-columns:1fr 1fr 1.18fr;gap:22px}
+#c11 .col{background:#0b0a09e8;border:2px solid #ffffff18;border-radius:16px;padding:24px 28px;min-height:400px}
+#c11 .col h2{font-size:34px;letter-spacing:2px;margin:10px 0 18px;color:var(--dim)}
+#c11 .col li{list-style:none;font-size:29px;font-weight:700;padding:11px 0;border-top:1px solid #ffffff14;color:var(--dim)}
+#c11 ul{margin:0;padding:0}
+#c11 .col .x{color:var(--red);font-weight:900;margin-right:10px}
+#c11 .col.win{border:3px solid #1e4a22;box-shadow:0 0 50px #7cff7c1c,inset 0 0 40px #7cff7c0d;background:#0b150ce8}
+#c11 .col.win h2{color:var(--lcd)}
+#c11 .col.win li{color:var(--cream)}
+#c11 .col.win .x{color:var(--lcd)}
+/* 12 flow */
+#c12 .bg{filter:brightness(.3) saturate(1.1)}
+#c12 h1{font-size:64px;margin:8px 0 18px}
+#c12 .flow{display:grid;grid-template-columns:1fr 54px 1.05fr 54px 1fr 54px 1fr;align-items:stretch;gap:0;margin-top:6px}
+#c12 .arr{display:flex;align-items:center;justify-content:center;font-size:44px;color:var(--amber);font-weight:900}
+#c12 .box{background:#17130fee;border:2px solid #ffcf5a44;border-radius:14px;padding:18px 20px}
+#c12 .box b{display:block;font-size:24px;letter-spacing:2px;color:var(--amber);margin-bottom:8px}
+#c12 .box span{display:block;font-size:25px;font-weight:700;color:var(--cream);line-height:1.25}
+#c12 .box small{display:block;margin-top:8px;font-size:20px;color:var(--dim);font-weight:500}
+#c12 .box.prog{border:3px solid #9945ff;background:#14081bf0;box-shadow:0 0 40px #9945ff44}
+#c12 .box.prog b{color:#d7b6ff}
+#c12 .src{display:flex;flex-direction:column;gap:12px}
+#c12 .src .box{flex:1}
+#c12 .src .box.op b{color:var(--lcd)}
+#c12 .under{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+#c12 .under .box span{font-size:23px}#c12 .under .box{padding:12px 20px}#c12 .under .box b{margin-bottom:4px}
+#c12 .cap{margin-top:16px;font-size:22px;color:var(--dim);letter-spacing:1px}
+/* 13 split */
+#c13 .bg{filter:brightness(.28) saturate(1.1)}
+#c13 h1{font-size:76px;margin:6px 0 20px}
+#c13 .lab{font-size:24px;font-weight:800;letter-spacing:3px;color:var(--dim);margin:14px 0 8px}
+#c13 .bar{display:flex;gap:4px;height:92px;border-radius:10px;overflow:hidden}
+#c13 .bar i{display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:900;font-size:40px;color:#1b1408;height:100%;transform-origin:left}
+#c13 .bar.sm{height:76px}
+#c13 .leg{display:flex;justify-content:space-between;margin-top:10px;font-size:25px;font-weight:700;color:var(--cream)}
+#c13 .leg span{display:block}#c13 .leg em{font-style:normal;color:var(--dim);font-weight:500;display:block;font-size:21px}
+#c13 .note{margin-top:20px;font-size:25px;font-weight:700;color:var(--cream);background:#0b0a09e6;border:2px solid #ffcf5a33;border-radius:12px;padding:14px 20px}
+#c13 .note span{color:var(--dim);font-weight:500}
+/* 14 checklist */
+#c14 .bg{filter:brightness(.25) saturate(1.1)}
+#c14 h1{font-size:60px;margin:6px 0 14px}
+#c14 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 26px}
+#c14 .it{display:flex;gap:14px;align-items:flex-start;background:#17130fe8;border:2px solid #ffffff14;border-radius:12px;padding:9px 16px}
+#c14 .it i{font-style:normal;color:var(--lcd);font-weight:900;font-size:28px;text-shadow:0 0 10px #7cff7c;line-height:1.1}
+#c14 .it b{display:block;font-size:26px;color:var(--cream);line-height:1.15}
+#c14 .it span{display:block;font-size:19px;color:var(--dim);font-weight:500;margin-top:2px;line-height:1.2}
+/* 15 status */
+#c15 .bg{filter:brightness(.32) saturate(1.1)}
+#c15 h1{font-size:76px;margin:6px 0 22px}
+#c15 .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+#c15 .col{background:#0b0a09e8;border:2px solid #ffffff18;border-radius:16px;padding:22px 26px;min-height:340px}
+#c15 .col.a{border-color:#1e4a22}#c15 .col.b{border-color:#9945ff88}#c15 .col.c{border-color:#ffcf5a66}
+#c15 .col h2{font-size:32px;letter-spacing:2px;margin:12px 0 14px}
+#c15 .col.a h2{color:var(--lcd)}#c15 .col.b h2{color:#d7b6ff}#c15 .col.c h2{color:var(--amber)}
+#c15 li{list-style:none;font-size:26px;font-weight:700;padding:9px 0;border-top:1px solid #ffffff14;color:var(--cream)}
+#c15 ul{margin:0;padding:0}
+#c15 .go{display:inline-block;margin-top:22px;background:var(--amber);color:#1b1408;font-weight:900;letter-spacing:2px;font-size:34px;border-radius:12px;padding:12px 30px;box-shadow:0 0 40px #ffb02e77,0 5px 0 #7a4a00}
+#c15 .ask{display:inline-block;margin-left:24px;font-size:26px;color:var(--cream);font-weight:700}
+</style></head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="mk" viewBox="0 0 512 512"><defs><clipPath id="c"><rect width="512" height="512" rx="112"/></clipPath><radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#9945FF" stop-opacity=".9"/><stop offset="1" stop-color="#9945FF" stop-opacity="0"/></radialGradient><linearGradient id="lane" x1="0" y1="206" x2="0" y2="512" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="#0b0a09"/><g clip-path="url(#c)"><ellipse cx="256" cy="206" rx="300" ry="120" fill="url(#glow)"/><polygon points="256,206 36,512 476,512" fill="#26221d"/><polygon points="256,206 36,512 70,512" fill="url(#lane)"/><polygon points="256,206 442,512 476,512" fill="url(#lane)"/><g fill="url(#lane)"><polygon points="252,250 260,250 263,286 249,286"/><polygon points="246,320 266,320 273,380 239,380"/><polygon points="234,420 278,420 290,512 222,512"/></g></g></symbol></svg>
+
+<section class="card" id="c11">
+  <div class="bg" data-pan style="background-image:url(../../frontend/design/youtube-banner/shots/brenner-dusk.jpg)"></div>
+  <div class="veil"></div><div class="solbar"></div><div class="grain"></div>
+  <div class="top"><div class="logo"><svg><use href="#mk"/></svg>FREIGHT CHAIN</div><span class="pill nv">DESIGNED AS A SKILL CONTEST</span></div>
+  <div class="pad">
+    <div class="kicker">WEB3 PRIZE POOLS · THE TIGHTROPE</div>
+    <h1 data-in="0.02">THREE KINDS OF<br><b>PRIZE POOL.</b></h1>
+    <div class="cols">
+      <div class="col" data-in="0.1"><div class="kicker">STAKES</div><h2>WAGER</h2>
+        <ul><li><span class="x">✕</span>Players' money is the pot</li><li><span class="x">✕</span>Winners paid by losers</li><li><span class="x">✕</span>More buy-in, more win</li></ul></div>
+      <div class="col" data-in="0.22"><div class="kicker">CHANCE</div><h2>LOTTERY</h2>
+        <ul><li><span class="x">✕</span>Winner picked by a draw</li><li><span class="x">✕</span>Random roll or loot box</li><li><span class="x">✕</span>Skill does not matter</li></ul></div>
+      <div class="col win" data-in="0.34"><div class="kicker"><em>OUR MODEL</em></div><h2>SKILL CONTEST</h2>
+        <ul><li><span class="x">✓</span>Operator + sponsors fund &gt; 50%</li><li><span class="x">✓</span>Ranked by verified driving</li><li><span class="x">✓</span>Free weekly entry · no RNG</li></ul></div>
+    </div>
+  </div>
+  <div class="foot"><span>CONTEST 1/5</span><span>NOT LEGAL ADVICE</span></div>
+</section>
+
+<section class="card" id="c12">
+  <div class="bg" data-pan style="background-image:url(../../frontend/design/youtube-banner/shots/r66-night.jpg)"></div>
+  <div class="solbar"></div><div class="grain"></div>
+  <div class="top"><div class="logo"><svg><use href="#mk"/></svg>FREIGHT CHAIN</div><span class="pill nv">PLANNED · SEASON 1</span></div>
+  <div class="pad">
+    <div class="kicker">MONEY FLOW</div>
+    <h1 data-in="0.02">OPERATOR FUNDS <b>THE POOL.</b></h1>
+    <div class="flow">
+      <div class="src" data-in="0.08">
+        <div class="box op"><b>OPERATOR + SPONSORS</b><span>≥ 52.6% of every pool</span><small>funded upfront</small></div>
+        <div class="box"><b>ACTIVITY BONUS</b><span>≤ 47.4% · capped &lt; 50%</span><small>from last week's tickets</small></div>
+      </div>
+      <div class="arr">→</div>
+      <div class="box prog" data-in="0.2"><b>ESCROW PROGRAM</b><span>On Solana. The money sits here, never on our server.</span><small>wallets sign their own transactions</small></div>
+      <div class="arr">→</div>
+      <div class="box" data-in="0.32"><b>BOARDS</b><span>1h · 4h · 8h ranked by verified skill</span><small>server re-sims every ride at 10 Hz</small></div>
+      <div class="arr">→</div>
+      <div class="box" data-in="0.44"><b>PAYOUT</b><span>Winners root committed, then claimed with a Merkle proof</span><small>after the review lock</small></div>
+    </div>
+    <div class="under">
+      <div class="box" data-in="0.54"><b>FREE WEEKLY ENTRY</b><span>Every eligible player gets a ranked ride. No purchase needed.</span></div>
+      <div class="box" data-in="0.6"><b>PAID TICKETS</b><span>Extra attempts, not stakes. They never decide who wins.</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>CONTEST 2/5</span><span>PAID TICKETS OFF ON DEVNET</span></div>
+</section>
+
+<section class="card" id="c13">
+  <div class="bg" data-pan style="background-image:url(../../frontend/design/youtube-banner/shots/stuart-night.jpg)"></div>
+  <div class="solbar"></div><div class="grain"></div>
+  <div class="top"><div class="logo"><svg><use href="#mk"/></svg>FREIGHT CHAIN</div><span class="pill nv">PLANNED · SEASON 1</span></div>
+  <div class="pad">
+    <div class="kicker">WHERE EACH WEEK'S POOL GOES</div>
+    <h1 data-in="0.02">85 / 5 / 10.</h1>
+    <div class="lab">WEEKLY POOL</div>
+    <div class="bar">
+      <i data-pct="85" style="background:#ffcf5a">85%</i>
+      <i data-pct="5" style="background:#14F195;font-size:26px">5%</i>
+      <i data-pct="10" style="background:#9945FF;color:#fff">10%</i>
+    </div>
+    <div class="leg"><span>BOARD PRIZES<em>paid this week</em></span><span style="text-align:center">NEXT-WEEK ROLLOVER<em>seed, not a referral cut</em></span><span style="text-align:right">SEASON FINAL RESERVE<em>wk 7 · Feb 22–28</em></span></div>
+    <div class="lab" style="margin-top:26px">BOARD PRIZES · BY RIDE LENGTH</div>
+    <div class="bar sm">
+      <i data-pct="25" style="background:#7cff7c">25%</i>
+      <i data-pct="30" style="background:#ffb03a">30%</i>
+      <i data-pct="45" style="background:#ff7a2e">45%</i>
+    </div>
+    <div class="leg"><span>1h SPRINT</span><span>4h HAUL</span><span>8h LONG HAUL</span></div>
+    <div class="note">Player-derived share is capped under 50%. <span>Referrals pay TEN4 only: 0% of tickets, pools or donations.</span></div>
+  </div>
+  <div class="foot"><span>CONTEST 3/5</span><span>OFFICIAL RULES §6 · DRAFT</span></div>
+</section>
+
+<section class="card" id="c14">
+  <div class="bg" data-pan style="background-image:url(../../frontend/design/youtube-banner/shots/siberia-night.jpg)"></div>
+  <div class="solbar"></div><div class="grain"></div>
+  <div class="top"><div class="logo"><svg><use href="#mk"/></svg>FREIGHT CHAIN</div><span class="pill">ESCROW CHECKLIST</span></div>
+  <div class="pad">
+    <div class="kicker">HOW WE HANDLE MONEY ON-CHAIN</div>
+    <h1 data-in="0.02">11 RULES FOR <b>A WEB3 GAME POOL.</b></h1>
+    <div class="grid">
+      <div class="it" data-in="0.06"><i>✓</i><div><b>Funds live in the program</b><span>never on the game server</span></div></div>
+      <div class="it" data-in="0.1"><i>✓</i><div><b>Every wallet signs its own tx</b><span>no custodial deposits</span></div></div>
+      <div class="it" data-in="0.14"><i>✓</i><div><b>Server keys are narrow</b><span>a crank and a payout key, nothing else</span></div></div>
+      <div class="it" data-in="0.18"><i>✓</i><div><b>Root only after all rides decided</b><span>no early winners commit</span></div></div>
+      <div class="it" data-in="0.22"><i>✓</i><div><b>Merkle-proof payouts after a lock</b><span>cold admin can veto the root</span></div></div>
+      <div class="it" data-in="0.26"><i>✓</i><div><b>Road sealed in advance</b><span>seal_road, from a later slot</span></div></div>
+      <div class="it" data-in="0.3"><i>✓</i><div><b>No RNG in ranking</b><span>server re-simulates at 10 Hz</span></div></div>
+      <div class="it" data-in="0.34"><i>✓</i><div><b>Refund paths on-chain</b><span>sponsor refunds + 14-day expire_pool</span></div></div>
+      <div class="it" data-in="0.38"><i>✓</i><div><b>Reproducible build</b><span>solana-verify against a pinned hash</span></div></div>
+      <div class="it" data-in="0.42"><i>✓</i><div><b>Ranking formula published first</b><span>before the pool opens</span></div></div>
+      <div class="it" data-in="0.46"><i>✓</i><div><b>Referrals never touch the pot</b><span>TEN4 only · 0% of cash flows</span></div></div>
+    </div>
+  </div>
+  <div class="foot"><span>CONTEST 4/5</span><span>OUR OWN CHECKLIST · NOT A THIRD-PARTY AUDIT</span></div>
+</section>
+
+<section class="card" id="c15">
+  <div class="bg" data-pan style="background-image:url(../../frontend/design/youtube-banner/shots/pan-day.jpg)"></div>
+  <div class="solbar"></div><div class="grain"></div>
+  <div class="top"><div class="logo"><svg><use href="#mk"/></svg>FREIGHT CHAIN</div><span class="pill am">STATUS · HONEST</span></div>
+  <div class="pad">
+    <div class="kicker">WHAT IS REAL TODAY</div>
+    <h1 data-in="0.02">DEVNET FIRST.</h1>
+    <div class="cols">
+      <div class="col a" data-in="0.08"><div class="kicker"><em>ON MAIN</em></div><h2>MODEL + RULES</h2>
+        <ul><li>Contest terms + rules</li><li>Escrow program, devnet</li><li>10 Hz verified rides</li></ul></div>
+      <div class="col b" data-in="0.2"><div class="kicker">PLANNED · DEVNET</div><h2>NOV 9–15</h2>
+        <ul><li>$500 USDC · top 20</li><li>Founder-funded</li><li>No paid tickets</li></ul></div>
+      <div class="col c" data-in="0.32"><div class="kicker">PLANNED · MAINNET</div><h2>SEASON 1</h2>
+        <ul><li>Starts Jan 11, 2027</li><li>7 weeks</li><li>Paid tickets: not live</li></ul></div>
+    </div>
+    <div style="margin-top:6px"><span class="go" data-in="0.5">freightchain.fun</span><span class="ask" data-in="0.58">Read the rules. Break the model.</span></div>
+  </div>
+  <div class="foot"><span>CONTEST 5/5</span><span>#SOLANA #BUILDINPUBLIC · NOT LEGAL ADVICE</span></div>
+</section>
+
+<script>
+const ease = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+const clamp = t => Math.max(0, Math.min(1, t));
+function frame(p) {
+  const card = document.querySelector('.card.on');
+  if (!card) return;
+  card.querySelectorAll('[data-in]').forEach(el => {
+    const t = ease(clamp((p - (+el.dataset.in)) / (+el.dataset.dur || 0.18)));
+    el.style.opacity = t;
+    el.style.transform = 'translateY(' + ((1 - t) * 22) + 'px)';
+  });
+  card.querySelectorAll('[data-pan]').forEach(el => {
+    const z = 1.14 - p * 0.1;
+    el.style.transform = 'scale(' + z + ') translate(' + (-2.2 * p) + '%,' + (-1 * p) + '%)';
+  });
+  card.querySelectorAll('[data-count]').forEach(el => {
+    const t = ease(clamp(p / 0.62));
+    el.textContent = String(Math.round((+el.dataset.count) * t));
+  });
+  card.querySelectorAll('[data-pct]').forEach(el => {
+    const t = ease(clamp((p - 0.08) / 0.7));
+    el.style.width = ((+el.dataset.pct) * t) + '%';
+  });
+  card.querySelectorAll('[data-grow]').forEach(el => {
+    el.style.transform = 'scaleX(' + ease(clamp((p - 0.05) / 0.75)) + ')';
+  });
+  const a = card.querySelector('.stage .a'), b = card.querySelector('.stage .b'), tag = card.querySelector('#edtag');
+  if (a && b) {
+    const t = ease(clamp((p - 0.22) / 0.28));
+    a.style.opacity = String(1 - t);
+    b.style.opacity = String(t);
+    if (tag) tag.textContent = t < 0.55 ? 'AI DRAFT' : 'WALLET SIGN TO PUBLISH';
+  }
+}
+window.__frame = frame;
+const q = new URLSearchParams(location.search);
+const id = q.get('card') || '01';
+document.querySelectorAll('.card').forEach(el => el.classList.toggle('on', el.id === 'c' + id));
+frame(Number(q.get('p') ?? 1));
+window.__ready = true;
+</script>
+</body></html>

@@ -25,14 +25,14 @@ export class ReferralPayoutService {
     private readonly clock: ClockPort,
   ) {}
 
-  async leaves(pool: Pool): Promise<PlannedPayout[]> {
-    const ranking = await this.rides.poolRanking(pool.id, TOP20_SIZE, true);
+  async leaves(pool: Pool, wallets?: readonly string[]): Promise<PlannedPayout[]> {
+    const ranking = wallets ? [...wallets] : (await this.rides.poolRanking(pool.id, TOP20_SIZE, true)).map((r) => r.wallet);
     if (!ranking.length) return [];
     const s = pool.snapshot();
     // v5 has no on-chain referral leg (referralBound is 0). The player cap counts only when the in-memory snapshot still has it.
     const money = { priceLamports: s.priceLamports, ticketsSold: s.ticketsSold, sponsored: s.sponsored, prizeBps: s.prizeBps, seedBps: s.seedBps, referralBps: s.referralBps ?? 0, ...(s.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: s.maxPlayerShareBps } : {}) };
     const knobs = await this.settings.current();
-    const ranked = ranking.map((r) => r.wallet);
+    const ranked = ranking;
     const inBoard = new Set(ranked);
     const referrerOf = new Map<string, string | null>();
     for (const wallet of ranked) referrerOf.set(wallet, await this.eligibleReferrer(wallet, pool.id, inBoard));

@@ -8,7 +8,7 @@ import { EntropyPort } from '../../application/ports/shared/entropy.port.js';
 import { EnvService } from '../config/env.service.js';
 
 const ISSUER = 'freight-chain';
-const AUDIENCE = 'player';
+const AUDIENCE = 'fc:player';
 const DAY_S = 86_400;
 
 /** Session tokens: HS256 JWTs whose subject is the wallet. Issue and expiry times come from ClockPort (like every timestamp the server makes). */

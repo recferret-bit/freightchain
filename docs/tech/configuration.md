@@ -107,6 +107,9 @@ Change one with the signed admin API (`GET /api/admin/settings`, then the challe
 | `SIGNIN_RETENTION_DAYS` | `180` | The sign-in log (wallet, time, IP, browser) is pruned after this, with the telemetry sweep; `0` = forever |
 | `CHALLENGE_INTERVAL_SECONDS` | `240` | Verified play: seconds of driving between two challenges (issued on the heartbeat, 20 s window); a short shift gets at most 4; `0` = off. Kinds live in `CHALLENGE_KINDS` (`ride-challenge.ts`); **the table is empty today**, so nothing is issued. The verdict's prompt thresholds are in `verdict-rules.ts` |
 | `CHALLENGE_FREE_RIDES` | `on` (prod compose: `off`) | Challenges on FREE rides too. Production leaves them off: the free run is the one-minute onboarding ride, it ends itself at the line (a prompt still open then is never judged) and the free board ranks every completed run whatever its verdict |
+| `MINIGAMES` | `off` | Phone minigames on 1h paid rides. `off` issues nothing. `shadow` stores rows and does not change the verdict. `enforce` may flag an open the client called unsafe; it never rejects the ride |
+| `MG_SECRET` | unset | HMAC key for the minigame salt. Required only when `MINIGAMES` is not `off`. At least 32 bytes. Never logged |
+| `MG_SALT_VERSION` | `mg:v1` | Label concatenated into the salt HMAC (`version \|\| rideId \|\| wallet`, no extra separators). `mgCommit` is the hex SHA-256 of the raw HMAC bytes |
 
 ### Live streams (spectators – feature flags)
 
@@ -117,7 +120,7 @@ Enforced by the server (a refused post is `403 live_feature_off`) and sent to th
 | `LIVE_CHAT` | `all` | Spectators' chat: `all` rides · `free` = only on free test rides · `off` |
 | `LIVE_DONATIONS` | `on` | `off` = no donations at all (tips and effects) |
 | `LIVE_FREE_DONATIONS` | code `on`, **prod compose `off`** | `on` = MOCK donations (nothing charged) · `off` = each donation is a real SOL transfer from the spectator to the driver, verified on chain before it counts |
-| `LIVE_EFFECTS` | code `all`, **prod compose `free`** | Donations that change the ride (night / day / holes): `all` rides · `free` = only free test rides, never paid ones · `off` = tips only |
+| `LIVE_EFFECTS` | code `all`, **prod compose `off`** | Donations that change the ride (night / day / holes): `all` rides · `free` = only free test rides, never paid ones · `off` = tips only. Strict mode (any `NODE_ENV` other than `development` or `test`) refuses anything but `off` |
 
 ### Weekly skill contest geo
 
@@ -158,8 +161,13 @@ Ranked starts read the country from edge headers (`CF-IPCountry` and `CF-Region-
 | Key | Default | Notes |
 |---|---|---|
 | `ADMIN_WALLETS` | empty | Comma-separated base58 wallets allowed on the admin page. **Empty = no admin surface at all** (every admin route 404s). Local test without a wallet extension: put `64GheTAtcPoz6Re29qwWxzKU2gtZCTF6gC1NBPVgaL2N` in `server/.env` and press **DEV WALLET (local)** on the admin sign-in – `client/site/dev-wallet.js` signs with a fixed public test key through WebCrypto (the server still verifies every signature); it installs on localhost / 127.0.0.1 only and never belongs in `deploy/.env` |
-| `ADMIN_JWT_SECRET` | derived from `JWT_SECRET` | ≥ 32 chars. Rotating it signs all admins out. |
-| `ADMIN_SESSION_TTL_MINUTES` | `120` | max 1440; no silent renewal. |
+| `ADMIN_JWT_SECRET` | derived from `JWT_SECRET` in dev/test | ≥ 32 chars, audience `fc:admin`. Strict mode refuses a secret equal to `JWT_SECRET` or `EDITOR_JWT_SECRET`. Rotating it signs all admins out. |
+| `ADMIN_SESSION_TTL_MINUTES` | `60` | max 60; every `fc_admin` token carries a `jti` and expires within an hour. Logout writes `revoked:jti:<jti>`. |
+| `MODERATOR_WALLETS` | empty | Comma-separated wallets with the moderator role (review queue, chat hide, chat ban). Empty = no moderators |
+| `ADMIN_IP_ALLOWLIST` | empty | Comma-separated IPv4/IPv6 CIDRs for `/api/admin`. Empty = any IP. Required when `SOLANA_RPC` is mainnet |
+| `ADMIN_ALERT_TELEGRAM_BOT_TOKEN` / `ADMIN_ALERT_TELEGRAM_CHAT_ID` | empty | Telegram delivery for `admin.AlertOutbox`. Strict mode with a non-empty admin, moderator, or editor allowlist requires both. The token is never logged |
+| `ADMIN_APPROVAL_MODE` | `single` | `dual` holds high-risk admin mutations for a second distinct admin within 30 minutes |
+| `THROTTLE_ADMIN_AUTH_LIMIT` | `10` | Requests per minute per IP on `/api/admin/auth/nonce` and `/verify` |
 
 The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `DEPLOY_ADMIN_USER` / `DEPLOY_ADMIN_PASSWORD` ≥ 16 chars), a wallet sign-in, and a wallet signature for every change.
 
@@ -168,8 +176,8 @@ The admin API additionally requires: host = `admin.<apex>` (nginx basic auth, `D
 | Key | Default | Notes |
 |---|---|---|
 | `EDITOR_WALLETS` | empty | Comma-separated base58 wallets that may edit and publish the game's 3D models on `storybook.<apex>`. **Empty = no editor** (every `/api/editor` route 404s; the viewer stays read-only) |
-| `EDITOR_JWT_SECRET` | derived from `JWT_SECRET` | ≥ 32 chars. Rotating it signs all editors out |
-| `EDITOR_SESSION_TTL_MINUTES` | `240` | max 1440 |
+| `EDITOR_JWT_SECRET` | derived from `JWT_SECRET` in dev/test | ≥ 32 chars, audience `fc:editor`. Strict mode refuses a secret equal to `JWT_SECRET` or `ADMIN_JWT_SECRET` |
+| `EDITOR_SESSION_TTL_MINUTES` | `60` | max 60; every `fc_editor` token carries a `jti` |
 | `EDITOR_IP_ALLOWLIST` | empty | Optional comma-separated IPs / CIDRs (IPv4 / IPv6); empty = any IP. Needs `TRUST_PROXY` right behind nginx |
 
 | `EDITOR_MCP_TOKEN` | empty | ≥ 24 chars, **secret**, shared with the `mcp` service (`npm run deploy:init` generates it). Empty = no AI editor (`/me` offers no provider, a job is a 503, release.sh does not start `mcp` or `editor-worker`) |

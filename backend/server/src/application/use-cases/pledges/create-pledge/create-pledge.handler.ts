@@ -14,6 +14,7 @@ import { PoolChainPort, type BuiltTransaction } from '../../../ports/economy/poo
 import { TransactionPort } from '../../../ports/shared/transaction.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { EntropyPort } from '../../../ports/shared/entropy.port.js';
+import { PledgeService } from '../../../live/pledge.service.js';
 
 export interface CreatedPledgeDto {
   pledge: PledgeDto;
@@ -37,9 +38,11 @@ export class CreatePledgeHandler implements ICommandHandler<CreatePledgeCommand,
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
     private readonly entropy: EntropyPort,
+    private readonly pledgeGate: PledgeService,
   ) {}
 
   async execute(c: CreatePledgeCommand): Promise<CreatedPledgeDto> {
+    this.pledgeGate.assertEnabled();
     const pledge = await this.transactions.run(async (tx) => {
       const sponsorPlayer = await this.players.findByWalletForUpdate(c.sponsor, tx);
       if (!sponsorPlayer) throw new NotFoundError('sponsor player not found');

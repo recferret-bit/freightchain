@@ -10,7 +10,7 @@ describe('GetLiveHandler', () => {
     return ctx.rides.save(r);
   };
 
-  it('running rides with a recent heartbeat, newest first, with the ride id (the watch link) but no seed or reason', async () => {
+  it('a recent paid heartbeat counts as driving; the public board has no ride cards (RPL-M-11)', async () => {
     const ctx = unitContext();
     const first = await paidRide(ctx, 'alice');
     ctx.clock.advance(1);
@@ -21,17 +21,19 @@ describe('GetLiveHandler', () => {
     await ctx.freeRide('carol', true); // free ride: not on the live board
     const feed = await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats).execute();
     expect(feed.now).toBe(ctx.clock.ms);
-    expect(feed.rides.map((r) => r.wallet)).toEqual(['bob', 'alice']);
-    expect(feed.rides[1]).toMatchObject({ tier: '1h', route: first.route, paused: true, hull: 80, distance: 70, driveSeconds: 5, minSeconds: 3600, completeDist: 50_400, sinceBeat: 0 });
-    expect(feed.rides[1]?.id).toBe(first.id);
-    expect(Object.keys(feed.rides[1] ?? {})).not.toContain('seed'); expect(Object.keys(feed.rides[1] ?? {})).not.toContain('reason');
+    expect(feed.rides).toEqual([]);
+    expect(feed.online.driving).toBe(2);
   });
 
   it('drops a ride whose heartbeats stopped longer than the timeout ago', async () => {
     const ctx = unitContext();
+    const handler = new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats);
     await paidRide(ctx, 'alice');
+    expect((await handler.execute()).online.driving).toBe(1);
     ctx.clock.advance(151);
-    expect((await new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats).execute()).rides).toEqual([]);
+    const later = await handler.execute();
+    expect(later.online.driving).toBe(0);
+    expect(later.rides).toEqual([]);
   });
 
   const feed = (ctx: ReturnType<typeof unitContext>) => new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats).execute();
@@ -46,15 +48,18 @@ describe('GetLiveHandler', () => {
     expect(upcoming).toEqual([{ wallet: 'alice', tier: '1h', minSeconds: 3600, paidAt: ctx.clock.ms }]);
   });
 
-  it('recent finishes: outcome, rounded distance and the id (the replay link) of rides that ended, newest first, without reasons', async () => {
+  it('recent finishes: public 1h rides, newest first, without reasons; a free ride stays off the board', async () => {
     const ctx = unitContext();
     const end = async (wallet: string, metres: number) => {
-      const r = await ctx.freeRide(wallet, true); ctx.clock.advance(2);
+      const r = await ctx.paidRide(wallet); ctx.clock.advance(2);
       r.applyReport({ s: metres, t: 1, hull: 100, paused: false, night: false }, ctx.now(), ctx.rules.get()); r.finish('failed', 'x', ctx.now()); await ctx.rides.save(r);
     };
+    const carol = await ctx.freeRide('carol', true); ctx.clock.advance(2);
+    carol.applyReport({ s: 3, t: 1, hull: 100, paused: false, night: false }, ctx.now(), ctx.rules.get()); carol.finish('failed', 'x', ctx.now()); await ctx.rides.save(carol);
     await end('alice', 12.4); ctx.clock.advance(5); await end('bob', 7);
     const { recent } = await feed(ctx);
     expect(recent.map((r) => [r.wallet, r.status, r.distance])).toEqual([['bob', 'failed', 7], ['alice', 'failed', 12]]);
+    expect(recent.some((r) => r.wallet === 'carol')).toBe(false);
     expect(Object.keys(recent[0] ?? {}).sort()).toEqual(['distance', 'endedAt', 'id', 'route', 'status', 'tier', 'wallet']);
   });
 
@@ -62,17 +67,17 @@ describe('GetLiveHandler', () => {
     const ctx = unitContext();
     const handler = new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats);
     const ride = await paidRide(ctx, 'driver');
-    ctx.viewers.seen(ride.id, '10.0.0.9', 'watcher-1', ctx.now());
+    ctx.viewers.seen(ride.id, '10.0.0.9', 'watcher-1', ctx.now()); // counted in online.watching; the card itself is not on the public board
     await handler.execute(new GetLiveQuery('visitor-aaaa', 'landing', '10.0.0.1', null));
     for (let i = 0; i < 6; i++) await handler.execute(new GetLiveQuery(`bot-${i}-xxxxxx`, 'lobby', '10.0.0.2', null));
     const feed = await handler.execute(new GetLiveQuery('visitor-bbbb', 'lobby', '10.0.0.3', 'fan'));
     expect(feed.online).toEqual({ total: 1 + 3 + 1 + 1 + 1, browsing: 5, watching: 1, driving: 1, players: 2 });
-    expect(feed.rides[0]).toMatchObject({ id: ride.id, viewers: 1, signal: 'live' });
+    expect(feed.rides).toEqual([]); // RPL-M-11: viewers and signal stay off the public cards
     ctx.clock.advance(31);   // the visitors' window (30 s) passed; the ride beat 31 s ago
     const later = await handler.execute(new GetLiveQuery());
     expect(later.online).toMatchObject({ browsing: 0, driving: 1 });
     ctx.clock.advance(15);
-    expect((await handler.execute(new GetLiveQuery())).rides[0]?.signal).toBe('weak');   // 46 s without a heartbeat
+    expect((await handler.execute(new GetLiveQuery())).online.driving).toBe(1);   // 46 s without a heartbeat is still inside the 150 s timeout
   });
 
   it('a closing page (leave) stops counting at once', async () => {

@@ -28,14 +28,14 @@
 <body>
 <header class="top">
   <a class="brand" href="/">FREIGHT CHAIN</a>
-  <span class="chips"><span class="chip">BLINK PREVIEW · DEVNET</span><button class="ghost" id="connect" type="button">CONNECT WALLET</button><span class="chip" id="who">no wallet</span></span>
+  <span class="chips"><span class="chip">BLINK PREVIEW · DEVNET</span><button type="button" class="ghost" data-set-lang="en">EN</button><button type="button" class="ghost" data-set-lang="ru">RU</button><button class="ghost" id="connect" type="button" data-i18n="blink.connect">CONNECT WALLET</button><span class="chip" id="who">no wallet</span></span>
 </header>
 <main>
   <p class="dim">A Solana Action, rendered the way a blink client shows it on X or dial.to – for any page, a <code>solana-action:</code> URL or a dial.to link. Buttons ask your wallet; a buy is signed and sent by you on devnet.</p>
-  <form class="go" id="go"><input id="url" type="url" inputmode="url" autocomplete="off" spellcheck="false" aria-label="Page or action URL" required><button type="submit">SHOW</button></form>
+  <form class="go" id="go"><input id="url" type="url" inputmode="url" autocomplete="off" spellcheck="false" aria-label="Page or action URL" required><button type="submit" data-i18n="blink.show">SHOW</button></form>
   <section id="out" aria-live="polite"></section>
 </main>
-<footer>Devnet SOL has no value. Not a wager. Nothing is signed without your wallet asking you.</footer>
+<footer data-i18n="legal.notice">Devnet SOL has no cash value. Nothing is signed without your wallet.</footer>
 <script type="module" src="site/blink.js"></script>
 </body>
 </html>

@@ -30,11 +30,11 @@ A ride promo (`kind: 'ride'`) grants a 1h, 4h or 8h shift. `kind: 'free_rides'` 
 | admin | 26 | 10 |
 | **total** | **131** | **28** |
 
-Block 1: 131 checks (automated 111, mock 10, manual 9, pending 1).
+Block 1: 131 checks (automated 112, mock 10, manual 9, pending 0).
 
-Block 2: 28 checks (automated 20, mock 2, manual 1, pending 5).
+Block 2: 28 checks (automated 25, mock 2, manual 1, pending 0).
 
-All checks: 159. Automated 131, mock 12, manual 10, pending 6.
+All checks: 159. Automated 137, mock 12, manual 10, pending 0.
 
 Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) are executed in block 1. Block 2 repeats the controls whose payload changes when a pool is on sale.
 
@@ -159,7 +159,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 - `B1-REF-01` (mock) Second wallet binds the first Convoy code
 - `B1-REF-02` (automated) Gift convoy
 - `B1-REF-03` (automated) Gift signal
-- `B1-REF-04` (pending) Verified MEDIUM ride grants the referrer free rides
+- `B1-REF-04` (automated) Verified MEDIUM ride grants the referrer free rides
 
 ### admin
 - `B1-ADMIN-01` (automated) 404 overview shows the sign-in gate
@@ -206,10 +206,10 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 - `B2-LOBBY-02` (automated) START FREE RIDE still posts tier free
 - `B2-LOBBY-03` (automated) Free card remains next to the paid pool
 - `B2-API-05` (automated) Local validator getHealth
-- `B2-API-06` (pending) Buy, ride, settle, pay winners
-- `B2-API-07` (pending) TEN4 mint matches the ledger
+- `B2-API-06` (automated) Buy, ride, settle, pay winners
+- `B2-API-07` (automated) TEN4 mint matches the ledger
 - `B2-HONK-01` (automated) TEN4 program declare_id matches env.schema
-- `B2-HONK-02` (pending) Ledger balance versus chain mint after a local ride
+- `B2-HONK-02` (automated) Ledger balance versus chain mint after a local ride
 
 ### free
 - `B2-FREE-01` (automated) Paid 1h is a separate trip from the three free paths
@@ -217,7 +217,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 
 ### promo
 - `B2-PROMO-01` (automated) Ticket promo effect exists in the admin schema
-- `B2-PROMO-02` (pending) Redeem a ticket promo into a local pool
+- `B2-PROMO-02` (automated) Redeem a ticket promo into a local pool
 
 ### referral
 - `B2-REF-01` (mock) Bind still answers in program mode
@@ -228,7 +228,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 - `B2-ADMIN-01` (automated) POOLS tab GET /api/admin/pools with a signed-in shell
 - `B2-ADMIN-02` (automated) set_pool_rules is in the program and absent from admin HTTP
 - `B2-ADMIN-03` (automated) CLI set-pool-rules exists
-- `B2-ADMIN-04` (pending) Live set_pool_rules against the local validator
+- `B2-ADMIN-04` (automated) Live set_pool_rules against the local validator
 - `B2-API-01` (automated) Program-mode server GET /api/health/live
 - `B2-API-02` (automated) GET /api/honk chain.programId is the local HONK id
 - `B2-API-03` (automated) GET /api/chain/fees
@@ -265,16 +265,16 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 1. Wallet A reads `GET /api/referrals` and receives a code. The default gift is convoy.
 2. Wallet B posts `/api/referrals/bind`. `referredBy` is A's wallet.
 3. Either wallet posts `/api/referrals/gift` with `convoy` or `signal`.
-4. The +2 / +3 free rides after a verified MEDIUM finish stay in `referral.service.spec.ts` (`B1-REF-04`, pending here). Pool v5 has no on-chain referral leg.
+4. A verified MEDIUM finish grants the referrer +2 free rides and the referee +3 (`B1-REF-04`). Pool v5 has no on-chain referral leg.
 
 ### Paid season week (block 2)
 
 1. Compose Postgres and Redis, then a host `solana-test-validator` (Agave, same as `localnet-e2e`). Deploy the pool and TEN4 programs when their `.so` files exist (`programs/target/deploy`, `e2e/scripts/chain-init.sh`). The TEN4 crate is `freightchain_honk`.
 2. The server runs `PAYMENT_MODE=program` with both program ids. `GET /api/honk` returns `chain.programId`. `GET /api/chain/fees` answers. Tiers still list free, 1h, 4h, 8h.
 3. The landing hero says IN ESCROW when `/api/pool` has vaults. The lobby 1h card shows BUY. START FREE RIDE still posts `tier: 'free'`.
-4. Ticket promo shape is in the admin schema. Redeeming one into a deployed pool is pending (`B2-PROMO-02`).
-5. `set_pool_rules` is in the program and the IDL. No admin HTTP route calls it. The CLI is `pool-admin.mjs set-pool-rules` (`B2-ADMIN-04` pending, `M-10` if a human wallet UI appears).
-6. Buy, ride, settle, and pay winners stay in `server/scripts/e2e-localnet.mjs` and `e2e-localnet-payout.mjs` (Chrome). This suite checks validator health and leaves the Merkle payout as `B2-API-06`. TEN4 ledger versus chain is `B2-API-07` / `B2-HONK-02`, already covered by `honk-suite` with a browser.
+4. A signed admin creates a ticket promo for the deployed pool. A player redeems it and the ticket balance for that pool goes up by one (`B2-PROMO-02`).
+5. `set_pool_rules` is in the program and the IDL. No admin HTTP route calls it. The CLI `pool-admin.mjs set-pool-rules` runs against the local validator (`B2-ADMIN-04`). A human wallet UI stays manual (`M-10`).
+6. The block-2 payer buys a ticket, the road is sealed, a winner is committed and paid, and the pool closes (`B2-API-06`). A fresh wallet's ledger mint is 0 when the TEN4 program is absent, and matches the chain balance when it is deployed (`B2-API-07`, `B2-HONK-02`). The full paid ride whose chain mint is 100 TEN4 is `honk-suite`.
 
 ## (c) Coverage matrix
 
@@ -421,24 +421,24 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 | `B2-LOBBY-03` | — | tests/e2e/block2-chain/lobby/page.test.mjs | automated |
 | `B2-FREE-01` | — | tests/e2e/block2-chain/free/paths.test.mjs | automated |
 | `B2-PROMO-01` | server/test/scenarios/promos.scenarios.ts | tests/e2e/block2-chain/promo/schema.test.mjs | automated |
-| `B2-PROMO-02` | server/scripts/e2e-localnet.mjs | tests/e2e/block2-chain/promo/schema.test.mjs | pending |
+| `B2-PROMO-02` | server/scripts/e2e-localnet.mjs | tests/e2e/block2-chain/promo/schema.test.mjs | automated |
 | `B2-REF-01` | server/test/scenarios/referrals.scenarios.ts | tests/e2e/block2-chain/referral/rules.test.mjs | mock |
 | `B2-REF-02` | programs/freightchain_pools | tests/e2e/block2-chain/referral/rules.test.mjs | automated |
 | `B2-ADMIN-01` | — | tests/e2e/block2-chain/admin/pools.test.mjs | automated |
 | `B2-ADMIN-02` | — | tests/e2e/block2-chain/admin/pools.test.mjs | automated |
 | `B2-ADMIN-03` | server/scripts/pool-admin.mjs | tests/e2e/block2-chain/admin/pools.test.mjs | automated |
-| `B2-ADMIN-04` | server/scripts/pool-admin.mjs | tests/e2e/block2-chain/admin/pools.test.mjs | pending |
+| `B2-ADMIN-04` | server/scripts/pool-admin.mjs | tests/e2e/block2-chain/admin/pools.test.mjs | automated |
 | `B2-API-01` | — | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-API-02` | .claude/skills/honk-localnet/run.sh | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-API-03` | server/test/scenarios/chain.scenarios.ts | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-API-04` | server/test/scenarios/pools.scenarios.ts | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-API-05` | .claude/skills/localnet-e2e/run.sh | tests/e2e/block2-chain/api/chain.test.mjs | automated |
-| `B2-API-06` | server/scripts/e2e-localnet-payout.mjs | tests/e2e/block2-chain/api/chain.test.mjs | pending |
-| `B2-API-07` | .claude/skills/honk-suite/run.sh | tests/e2e/block2-chain/api/chain.test.mjs | pending |
+| `B2-API-06` | server/scripts/e2e-localnet-payout.mjs | tests/e2e/block2-chain/api/chain.test.mjs | automated |
+| `B2-API-07` | .claude/skills/honk-suite/run.sh | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-POOL-01` | programs/idl/freightchain_pools.json | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-POOL-02` | — | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-HONK-01` | docs/spec/ten4.md | tests/e2e/block2-chain/honk/ledger.test.mjs | automated |
-| `B2-HONK-02` | .claude/skills/honk-suite/run.sh | tests/e2e/block2-chain/honk/ledger.test.mjs | pending |
+| `B2-HONK-02` | .claude/skills/honk-suite/run.sh | tests/e2e/block2-chain/honk/ledger.test.mjs | automated |
 
 ## (d) Gaps in the existing tests
 

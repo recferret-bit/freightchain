@@ -21,7 +21,8 @@ export type CrankStep = 'fail_pool' | 'expire_pool' | 'refund' | 'close_pool' | 
 export function nextCrankStep(pool: PoolChainState, now: Date): CrankStep | null {
   const t = now.getTime();
   if ((pool.status === 'open' || pool.status === 'active') && (pool.sealSlot ?? 0) > 0 && t >= pool.createdAt.getTime() + SEAL_WAIT_MS) return 'seal_road';
-  if (pool.status === 'open') return t >= pool.prepDeadline.getTime() && pool.ticketsSold < pool.minTickets ? 'fail_pool' : null;
+  // minTickets 0 is operator-funded: the server crank does not fail it for low sales. The shipped .so still has fail_pool for min_tickets > 0.
+  if (pool.status === 'open' && pool.minTickets > 0) return t >= pool.prepDeadline.getTime() && pool.ticketsSold < pool.minTickets ? 'fail_pool' : null;
   if (pool.status === 'active') return t >= pool.payoutAt.getTime() + SETTLE_GRACE_MS && pool.prizesPaid === 0 ? 'expire_pool' : null;
   if (pool.status === 'refunding') {
     if (pool.refunded < pool.priceLamports * pool.ticketsSold) return 'refund';

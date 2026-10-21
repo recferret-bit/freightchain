@@ -19,4 +19,10 @@ describe('NodeHasher', () => {
     const uint8 = new Uint8Array([0x61, 0x62, 0x63]); // 'abc'
     expect(h.sha256(uint8).toString('hex')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
   });
+
+  it('HMAC-SHA256 is lowercase hex over the raw key', () => {
+    const h = new NodeHasher();
+    const key = Buffer.from('11'.repeat(32), 'hex');
+    expect(h.hmacSha256Hex(key, 'fc-batch:v2')).toBe('94939ead6616f0c33ee55760c0dc367a96c46e7d8775e6b28475613aeff8f5fd');
+  });
 });

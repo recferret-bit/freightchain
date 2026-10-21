@@ -14,6 +14,11 @@ export interface AdminActionRecord {
   detail: Record<string, unknown>;
   requestId: string | null;
   at: Date;
+  role?: string | null;
+  beforeState?: Record<string, unknown> | null;
+  afterState?: Record<string, unknown> | null;
+  ipSubnet?: string | null;
+  sigHash?: string | null;
 }
 
 export interface AdminOverviewDto {
@@ -28,6 +33,9 @@ export interface AdminOverviewDto {
   payments: { count: number; lamports: number };
   telemetry: { batches: number; bytes: number };
   config: { verdictEnforce: boolean; telemetryRetentionDays: number };
+  /** Queued and undelivered operator alerts. The page paints these in the top banner. */
+  activeAlerts: { id: string; kind: string; text: string; at: number }[];
+  undeliveredAlerts: number;
 }
 
 /** the verdict filter of the rides list: a status, or 'none' = not judged */

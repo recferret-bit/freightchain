@@ -21,6 +21,10 @@ import { DailySeedRepositoryPort } from '../application/ports/rides/daily-seed.r
 import { PlayerRepositoryPort } from '../application/ports/players/player.repository.port.js';
 import { SettingsRepositoryPort } from '../application/ports/settings/settings.repository.port.js';
 import { RideQueryPort } from '../application/ports/rides/ride-query.port.js';
+import { RideResultRepositoryPort } from '../application/rides/ride-result.port.js';
+import { FinishRulesPort } from '../application/rides/finish-rules.port.js';
+import { PrismaRideResultRepository } from './stats/prisma-ride-result.repository.js';
+import { PrismaFinishRulesRepository } from './stats/prisma-finish-rules.repository.js';
 import { RideRepositoryPort } from '../application/ports/rides/ride.repository.port.js';
 import { WeeklyTicketRepositoryPort } from '../application/ports/prize/weekly-ticket.repository.port.js';
 import { WeeklyTicketPrismaRepository } from './prisma/repositories/weekly-ticket.prisma.repository.js';
@@ -32,12 +36,17 @@ import { AnalyticsPort } from '../application/ports/analytics/analytics.port.js'
 import { ClockPort } from '../application/ports/shared/clock.port.js';
 import { EntropyPort } from '../application/ports/shared/entropy.port.js';
 import { HasherPort } from '../application/ports/shared/hasher.port.js';
+import { DeflatePort } from '../application/ports/telemetry/deflate.port.js';
 import { LogBufferPort } from '../application/ports/ops/log-buffer.port.js';
 import { TransactionPort } from '../application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../application/ports/telemetry/ride-batch.repository.port.js';
 import { RideVerdictRepositoryPort } from '../application/ports/verdict/ride-verdict.repository.port.js';
 import { SignInRepositoryPort } from '../application/ports/auth/sign-in.repository.port.js';
 import { AdminActionRepositoryPort } from '../application/ports/admin/admin-action.repository.port.js';
+import { AlertOutboxRepositoryPort } from '../application/ports/admin/alert-outbox.repository.port.js';
+import { AlertOutboxPrismaRepository } from './prisma/repositories/alert-outbox.prisma.repository.js';
+import { AdminProposalRepositoryPort } from '../application/ports/admin/admin-proposal.repository.port.js';
+import { AdminProposalPrismaRepository } from './prisma/repositories/admin-proposal.prisma.repository.js';
 import { AdminDirectoryPort } from '../application/ports/admin/admin-directory.port.js';
 import { AdminQueryPort } from '../application/ports/admin/admin-query.port.js';
 import { PostHogAnalyticsAdapter } from './analytics/posthog-analytics.adapter.js';
@@ -48,6 +57,15 @@ import { NaclSignatureVerifier } from './auth/nacl.signature-verifier.js';
 import { EnvRulesConfigAdapter } from './config/rules-config.adapter.js';
 import { NodeEntropy } from './crypto/node.entropy.js';
 import { NodeHasher } from './crypto/node.hasher.js';
+import { NodeDeflateAdapter } from './telemetry/node-deflate.adapter.js';
+import { NodeMinigameCrypto } from './crypto/node.minigame-crypto.js';
+import { MinigameCryptoPort } from '../application/ports/minigames/minigame-crypto.port.js';
+import { MinigameConfigPort } from '../application/ports/minigames/minigame-config.port.js';
+import { RideMiniGameRepositoryPort } from '../application/ports/minigames/ride-minigame.repository.port.js';
+import { EnvMinigameConfigAdapter } from './config/env-minigame-config.adapter.js';
+import { TelemetryConfigPort } from '../application/ports/telemetry/telemetry-config.port.js';
+import { EnvTelemetryConfigAdapter } from './config/env-telemetry-config.adapter.js';
+import { RideMiniGamePrismaRepository } from './prisma/repositories/ride-minigame.prisma.repository.js';
 import { JsonLogger } from './logging/json-logger.js';
 import { LogRing } from './logging/log-ring.js';
 import { RingLogBufferAdapter } from './logging/ring-log-buffer.adapter.js';
@@ -110,6 +128,18 @@ import { RideMuteRepositoryPort } from '../application/ports/live/ride-mute.repo
 import { RideMutePrismaRepository } from './prisma/repositories/ride-mute.prisma.repository.js';
 import { DonationOrderRepositoryPort } from '../application/ports/live/donation-order.repository.port.js';
 import { ReferralRepositoryPort } from '../application/ports/referral/referral.repository.port.js';
+import { RideAppealRepositoryPort } from '../application/ports/rides/ride-appeal.repository.port.js';
+import { RideAppealPrismaRepository } from './prisma/repositories/ride-appeal.prisma.repository.js';
+import { ConvoyRepositoryPort } from '../application/referral/convoy.repository.port.js';
+import { AirdropRepositoryPort } from '../application/airdrop/airdrop.repository.port.js';
+import { TelegramMembershipPort } from '../application/airdrop/telegram.port.js';
+import { XAccountPort } from '../application/airdrop/x-account.port.js';
+import { TurnstilePort } from '../application/airdrop/turnstile.port.js';
+import { MemoryConvoyRepository } from './social/memory-convoy.repository.js';
+import { MemoryAirdropRepository } from './social/memory-airdrop.repository.js';
+import { TelegramBotAdapter } from './social/telegram-bot.adapter.js';
+import { TwitterApiIoAdapter } from './social/twitterapi-io.adapter.js';
+import { TurnstileAdapter } from './social/turnstile.adapter.js';
 import { DonationOrderPrismaRepository } from './prisma/repositories/donation-order.prisma.repository.js';
 import { ReferralPrismaRepository } from './prisma/repositories/referral.prisma.repository.js';
 import { CachePort } from '../application/ports/shared/cache.port.js';
@@ -151,6 +181,11 @@ const ports: Provider[] = [
   { provide: ClockPort, useClass: SystemClock },
   { provide: EntropyPort, useClass: NodeEntropy },
   { provide: HasherPort, useClass: NodeHasher },
+  { provide: DeflatePort, useClass: NodeDeflateAdapter },
+  { provide: MinigameCryptoPort, useClass: NodeMinigameCrypto },
+  { provide: MinigameConfigPort, useClass: EnvMinigameConfigAdapter },
+  { provide: TelemetryConfigPort, useClass: EnvTelemetryConfigAdapter },
+  { provide: RideMiniGameRepositoryPort, useClass: RideMiniGamePrismaRepository },
   { provide: LogBufferPort, useClass: RingLogBufferAdapter },
   { provide: RideBatchRepositoryPort, useClass: RideBatchPrismaRepository },
   { provide: RideVerdictRepositoryPort, useClass: RideVerdictPrismaRepository },
@@ -158,6 +193,8 @@ const ports: Provider[] = [
   { provide: ReplayQueuePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): ReplayQueuePort => (env.redisUrl ? new RedisReplayQueueAdapter(env.redisUrl, clock) : new MemoryReplayQueueAdapter()) },
   { provide: SignInRepositoryPort, useClass: SignInPrismaRepository },
   { provide: AdminActionRepositoryPort, useClass: AdminActionPrismaRepository },
+  { provide: AlertOutboxRepositoryPort, useClass: AlertOutboxPrismaRepository },
+  { provide: AdminProposalRepositoryPort, useClass: AdminProposalPrismaRepository },
   { provide: AdminQueryPort, useClass: AdminQueryPrismaRepository },
   { provide: AdminDirectoryPort, useClass: AdminDirectoryPrismaRepository },
   { provide: TransactionPort, useClass: TransactionPrismaAdapter },
@@ -175,6 +212,8 @@ const ports: Provider[] = [
   { provide: JobTokenPort, useClass: JoseJobTokenSigner },
   { provide: EditorJobRepositoryPort, useClass: EditorJobPrismaRepository },
   { provide: RideRepositoryPort, useClass: RidePrismaRepository },
+  { provide: RideResultRepositoryPort, useClass: PrismaRideResultRepository },
+  { provide: FinishRulesPort, useClass: PrismaFinishRulesRepository },
   { provide: DailySeedRepositoryPort, useClass: DailySeedPrismaRepository },
   { provide: RideQueryPort, useClass: RideQueryPrismaRepository },
   { provide: RoundRepositoryPort, useClass: RoundPrismaRepository },
@@ -206,6 +245,12 @@ const ports: Provider[] = [
   { provide: RideMuteRepositoryPort, useClass: RideMutePrismaRepository },
   { provide: DonationOrderRepositoryPort, useClass: DonationOrderPrismaRepository },
   { provide: ReferralRepositoryPort, useClass: ReferralPrismaRepository },
+  { provide: RideAppealRepositoryPort, useClass: RideAppealPrismaRepository },
+  { provide: ConvoyRepositoryPort, useClass: MemoryConvoyRepository },
+  { provide: AirdropRepositoryPort, useClass: MemoryAirdropRepository },
+  { provide: TelegramMembershipPort, useClass: TelegramBotAdapter },
+  { provide: XAccountPort, useClass: TwitterApiIoAdapter },
+  { provide: TurnstilePort, useClass: TurnstileAdapter },
   { provide: AnalyticsPort, useClass: PostHogAnalyticsAdapter },
   { provide: StatsRepositoryPort, useClass: StatsPrismaRepository },
   { provide: CachePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): CachePort => (env.redisUrl ? new RedisCacheAdapter(env.redisUrl, clock) : new MemoryCacheAdapter(clock)) },

@@ -59,6 +59,7 @@ model Ride {
   events         RideEvent[]
   mutes          RideMute[]
   donationOrders DonationOrder[]
+  liveChats      LiveChat[]
   verdict        RideVerdict?
   replays        RideReplay[]
   paymentReference String? @unique // Solana Pay reference (base58 of 32 bytes). Null until the first payment transaction is built.
@@ -71,7 +72,24 @@ model Ride {
   prizeRegion    String? // USPS state when prizeCountry is US
   promoCode      String? // ride promo that granted this shift; null = not a promo ride. Not a purchase and it does not mint TEN4
   weeklyGrant    Boolean         @default(false) // the week's granted paid ticket (AMOE). Not a purchase and it does not mint TEN4.
+  mgCommit         String? // hex SHA-256 of the minigame salt bytes. Null on training rides and when MINIGAMES is off. The salt itself is not a column.
+  mgSaltVersion    String? // the label concatenated into the HMAC (default mg:v1)
+  mgSaltRevealedAt DateTime? // set the first time GET ride returns the salt, which is only after a verdict
+  mgMode           String? // normal | more-time, from POST start
+  mgLang           String? // en | ru, from POST start
+  sessionKey       String? // base64 of 32 bytes, set at start when TELEMETRY_V21 is shadow. Not returned on GET. Not encrypted at rest.
+  pauseCount       Int             @default(0) // rising edges of the heartbeat paused flag
+  pauseSeconds     Float           @default(0) // wall seconds of heartbeats that arrived paused
+  trafficSaltCommit String? // sha256 hex of the traffic salt. Null when TELEMETRY_V21 is off. Not an input to the road.
+  holeSaltCommit    String? // sha256 hex of the hole salt. Null when TELEMETRY_V21 is off. Not an input to the road.
+  trafficSalt       String? // enforce start. Re-derived from the session key. Not returned on GET.
+  holeSalt          String? // enforce start. Re-derived from the session key. Not returned on GET.
+  saltCommit        String? // sha256 of the two commit hexes. Null until enforce start.
+  minigames        RideMiniGame[]
   pledges          Pledge[]
+  finishRulesVersion Int? // FINISH_RULES_VERSION stamped at creation; null = a ride from before the dynamic finish
+  result             RideResult?
+  appeal             RideAppeal?
 
   @@index([wallet, status])
   @@index([status, lastHbAt])
@@ -89,6 +107,36 @@ model Ride {
   @@schema("ride")
 }
 
+/** One issued phone minigame. The salt and the expected code are not stored. `answerHash` is sha256(eventId + ":" + normalized). */
+model RideMiniGame {
+  id            String    @id
+  rideId        String
+  ride          Ride      @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  ordinal       Int
+  kind          String
+  status        String
+  variantSeq    Int       @default(0)
+  trigger       String
+  armedAtMs     Int
+  bayDeadlineMs Int?
+  slotS         Float?
+  windowMs      Int
+  revealedAt    DateTime?
+  answeredAt    DateTime?
+  attempts      Int       @default(0)
+  outcome       String?
+  penaltyS      Int       @default(0)
+  answerHash    String?
+  clientSafe    Boolean?
+  nonce         String?
+  mgDetail      Json?
+  rulesVersion  String    @default("mg:1")
+
+  @@unique([rideId, ordinal])
+  @@index([rideId])
+  @@schema("ride")
+}
+
 // One road per paid tier per UTC day for the pay-per-ride orders (PAYMENT_MODE=transfer, no pool): the first order of the day draws the seed, every later order of that
 // tier that day takes it, so the day's riders all drive the same ride (route, start hour, layout, holes). Ticket rides take their POOL's seed instead (economy.Pool.rideSeed).
 model DailySeed {
@@ -98,5 +146,23 @@ model DailySeed {
   createdAt DateTime
 
   @@id([tier, day])
+  @@schema("ride")
+}
+
+// One appeal per pool ride. open until a signed admin upholds or denies it. commit_winners waits on status = open.
+model RideAppeal {
+  id         String    @id
+  rideId     String    @unique
+  ride       Ride      @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  wallet     String
+  poolId     Int
+  reason     String
+  status     String    @default("open") // open | upheld | denied
+  createdAt  DateTime
+  resolvedAt DateTime?
+  resolvedBy String?
+  resolution String?
+
+  @@index([poolId, status])
   @@schema("ride")
 }

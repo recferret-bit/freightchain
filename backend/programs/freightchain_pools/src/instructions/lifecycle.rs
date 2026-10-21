@@ -16,6 +16,7 @@ pub struct FailPool<'info> {
     pub pool: Account<'info, Pool>,
 }
 
+/// Low-sales fail stays in this .so. The server crank skips it when `min_tickets` is 0 (operator-funded). Only `cancel_pool` and `expire_pool` refund those.
 pub fn handle_fail_pool(ctx: Context<FailPool>, pool_id: u32) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     let pool = &mut ctx.accounts.pool;

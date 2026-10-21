@@ -1,4 +1,4 @@
-import { st } from '../state.js';
+import { st, driveHull } from '../state.js';
 import { CFG } from '../config.js';
 import { audio } from './audio.js';
 
@@ -34,7 +34,7 @@ export function glassHit(dmg) {
   const sev = Math.min(1, dmg / 12);
   if (dmg >= 2) { audio.play('glass', .5 + sev * .5); crackAt(rr(.2, .8), rr(.08, .48), Math.max(.2, sev)); }
   for (let i = 0, n = 1 + Math.round(sev * 4); i < n; i++) scratch();
-  const lost = 100 - st.hull;   // top up so the glass never looks healthier than the hull
+  const lost = 100 - driveHull();   // top up so the glass never looks healthier than the body the driver feels
   while (st.cracks.length < Math.min(10, Math.floor(lost / CFG.GLASS_CRACK_STEP))) crackAt(rr(.1, .9), rr(.08, .5), rr(.05, .3));
   while (st.scratches.length < Math.min(30, Math.floor(lost / CFG.GLASS_SCRATCH_STEP))) scratch();
 }

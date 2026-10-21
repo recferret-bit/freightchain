@@ -65,8 +65,8 @@
           23.93882206454873
         ]
       ],
-      "hash": "ca8895d8362d5146a46faae3da68c0cd1d14a7ee681b73e9c3de513e59917247",
-      "hurts": 4,
+      "hash": "05ce023414bcbc34cbd6c9348ba73f9422e73c5be596e53fd996a1cba72574c2",
+      "hurts": 3,
       "crossFrames": 2400,
       "holeFrames": 2230
     },
@@ -93,7 +93,7 @@
           14.505140365473926
         ]
       ],
-      "hash": "341a959ec5ddcc045503e10018d022749df39d414a233808ab23d3ff590882a8",
+      "hash": "ded878e074ffe773830de2107728438978cccac49214e1119567fb7e47ce91bc",
       "hurts": 2,
       "crossFrames": 0,
       "holeFrames": 0
@@ -153,7 +153,7 @@
           20.778262758627534
         ]
       ],
-      "hash": "79b808640dd53330c65bf689ff87e4bd24b195d5480dd64193df5ae2a75b4ab0",
+      "hash": "a2ad3f395d316addb881d5c3d23d082328ce2f74328086f1e6cef65fba229247",
       "hurts": 2,
       "crossFrames": 0,
       "holeFrames": 1311
@@ -221,7 +221,7 @@
           11.634717944869772
         ]
       ],
-      "hash": "e4b5d01812b9139f33707434544125853db65c4de67e46901b5df7504dd1faf5",
+      "hash": "48dfbaa3113d4a4483f87f83e258c012a4ac563c031a6ff9024ff94686d8da9b",
       "hurts": 4,
       "crossFrames": 2400,
       "holeFrames": 1830
@@ -249,7 +249,7 @@
           8.21866919263266
         ]
       ],
-      "hash": "f16fba9a278ad7c904c105a322f4df85949f11bd69579b55d4c0a5ae0ee1cdfd",
+      "hash": "da01678ecf70ea206dcb950d2f1d1008547b2de01924537e69702e9fb882a9d1",
       "hurts": 2,
       "crossFrames": 0,
       "holeFrames": 0
@@ -309,8 +309,8 @@
           14.65791137740016
         ]
       ],
-      "hash": "0a2396e62f50a461b24085b76d5bbe62730ebcd9fca9d725c7f4a471bc8d697e",
-      "hurts": 1,
+      "hash": "1c37c16339a42a8cf93973d9735214c1a208a412185e3b85a418efdcc79790cc",
+      "hurts": 2,
       "crossFrames": 0,
       "holeFrames": 1398
     },
@@ -377,7 +377,7 @@
           21.641990138427353
         ]
       ],
-      "hash": "c463679a3ade02ce9fe68136d3d0d861e50e8bc2143f68ac7c80739ab01497c7",
+      "hash": "3cbd726fc1a222b0b8e693b3b7ed4fac484d9b77a4869f8e36e88bfa6e0391fe",
       "hurts": 0,
       "crossFrames": 1718,
       "holeFrames": 1768
@@ -405,7 +405,7 @@
           8.572611483139918
         ]
       ],
-      "hash": "cd9e42acdbc5e8ba2bd18d01501cb5b299ae068c0ffadc410a6d0daf0dc00f89",
+      "hash": "f355ce20b1e7b2c9d1097f9f0f73e0b05f46394c1c25c9e8b25aba3411464ebb",
       "hurts": 6,
       "crossFrames": 0,
       "holeFrames": 0
@@ -465,8 +465,8 @@
           12.844414379820227
         ]
       ],
-      "hash": "38c91ec5e75c4875914b687d6601c7cf96fa5a2f69d9c683bf871aa1a18ddf99",
-      "hurts": 10,
+      "hash": "340ddd07b5c692b505454cbfa23c67834eab39b7c02d146e59911333ffb33d09",
+      "hurts": 9,
       "crossFrames": 2400,
       "holeFrames": 1173
     },
@@ -533,8 +533,8 @@
           27.078801508201288
         ]
       ],
-      "hash": "b23e90d8d0ce31b7a77dd88b4623c976cf25576bc5d9dc7352a8b877a589e5d9",
-      "hurts": 4,
+      "hash": "538cede704fe0d003e151cdb97b19ca4996cb66b9fa55dd74840ffdba501aa08",
+      "hurts": 5,
       "crossFrames": 2400,
       "holeFrames": 2117
     },
@@ -561,7 +561,7 @@
           15.896372005343437
         ]
       ],
-      "hash": "424b17ee005aeb178532f347fc3f671b6a380450b3b421998f8aa0877e2aec91",
+      "hash": "5d5f08c4dff88b9e7fee17205f0689c5169025fd853f5be2807afa07e808ce06",
       "hurts": 0,
       "crossFrames": 0,
       "holeFrames": 0
@@ -621,8 +621,8 @@
           25.334031369537115
         ]
       ],
-      "hash": "f47fd63b8c886eb25209c278fade7055868574d2234b95710f85fd09bbc97f41",
-      "hurts": 1,
+      "hash": "98e032a103fbe06311a7ff01a6b4c4c1baa2c90ddfa3297bd72c2750ca849b6b",
+      "hurts": 0,
       "crossFrames": 2400,
       "holeFrames": 1652
     },
@@ -689,8 +689,8 @@
           8.633538265898823
         ]
       ],
-      "hash": "bae6994c3245861b458c390a5c63a9c8dc14625954e358f45e0142ca390ceec6",
-      "hurts": 12,
+      "hash": "c5f820bb14a739dec4ccdffa0a8067330a2d192cd01c2cdd4dacbce874c6fe38",
+      "hurts": 11,
       "crossFrames": 338,
       "holeFrames": 2010
     },
@@ -717,7 +717,7 @@
           9.57003338523209
         ]
       ],
-      "hash": "3583e493c52e84f13f778d0fdc4cc999ae28265f325a5f430c9b8ecb78a26f53",
+      "hash": "e69dcb6de588eff8434147d3b1d5a8035a203c1ccba283aff86d9d1ff6a84408",
       "hurts": 1,
       "crossFrames": 0,
       "holeFrames": 0
@@ -777,8 +777,8 @@
           10.233357217535376
         ]
       ],
-      "hash": "723ddbbafd781da56def7c2eb989644a2cca237582e1a25306b87a78c9116802",
-      "hurts": 4,
+      "hash": "a4b5aaa0baf2e6b9a92027556b5b6a8289a24360027deb489ed6f1c7581ac7c2",
+      "hurts": 3,
       "crossFrames": 0,
       "holeFrames": 1270
     }

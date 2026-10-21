@@ -7,11 +7,11 @@ import { unitContext } from '../../../../support/unit-context.js';
 describe('GetReplaysHandler', () => {
   it('ended rides newest first, paged by a stable cursor, filtered; the fail CODE (no reason text) and whether a replay exists', async () => {
     const ctx = unitContext();
-    const handler = new GetReplaysHandler(ctx.rideQuery);
+    const handler = new GetReplaysHandler(ctx.rideQuery, ctx.clock);
     const page = (before: { endedAt: Date; seq: bigint } | null, limit = 2, wallet: string | null = null, status: 'failed' | null = null) => handler.execute(new GetReplaysQuery(before, limit, wallet, status));
     const ended: string[] = [];
     for (const [w, outcome, reason] of [['a', 'shift', null], ['b', 'failed', 'You drove into a truck'], ['a', 'failed', 'heartbeat lost']] as const) {
-      const r = await ctx.freeRide(w, true); ctx.clock.advance(10);
+      const r = await ctx.paidRide(w, true); ctx.clock.advance(10);
       r.finish(outcome, reason, ctx.now()); await ctx.rides.save(r); ended.push(r.id);
     }
     const running = await ctx.freeRide('c', true); void running;

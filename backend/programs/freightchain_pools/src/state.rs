@@ -46,7 +46,7 @@ pub struct Series {
     /// 0 = unlimited
     pub max_tickets: u32,
     pub max_per_wallet: u16,
-    /// sale window = cadence (seconds)
+    /// sale window = cadence (seconds). v6 would split cadence into `period_secs`; this field stays so the deployed account matches.
     pub sale_secs: i64,
     /// after the sale ends, rides of the pool still count this long
     pub play_secs: i64,

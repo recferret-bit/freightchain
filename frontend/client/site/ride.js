@@ -4,6 +4,8 @@ import { ridePageUrl, rideShareText, xIntent } from '../js/ui/share.js';
 import { isMobileDevice, showMobileToast } from '../js/mobile.js';
 import { formatDriver } from './sns.js';
 import { track } from '../js/analytics.js';
+import { bootI18n } from './i18n.js';
+bootI18n();
 
 function fmt(sec) {
   const s = Math.max(0, Math.floor(sec || 0));

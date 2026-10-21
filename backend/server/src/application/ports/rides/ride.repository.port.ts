@@ -20,4 +20,6 @@ export abstract class RideRepositoryPort {
   abstract countRankedStarts(wallet: string, from: Date, to: Date, tx?: TransactionHandle): Promise<{ free: number; paid: number; promo: number }>;
   /** Ended ranked rides of one tier whose start fell in `[from, to)`. */
   abstract listRankedEnded(tier: string, from: Date, to: Date, tx?: TransactionHandle, opts?: { verifiedOnly?: boolean }): Promise<Ride[]>;
+  /** Enforce start writes the re-derivable salts. The default keeps memory rides on the commit columns alone. */
+  async storeRevealedSalts(_id: string, _salts: { trafficSalt: string; holeSalt: string; saltCommit: string }, _tx?: TransactionHandle): Promise<void> {}
 }

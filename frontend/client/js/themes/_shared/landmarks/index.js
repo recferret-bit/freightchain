@@ -6,24 +6,25 @@ import { basic, trackMat } from '../mats.js';
 import { drawFlag } from './flags.js';
 import { buildInto } from '../../../world/entity-build.js';
 import { ROSTER } from '../../../../shared/entity/roster.js';
+import { SHOULDER } from '../../../../shared/road.js';
 
 /* Roadside LANDMARKS: static buildings beside the road (motels, hotels, gas stations, police stop points, restaurants).
    Abstract on two levels:
    – a TYPE (key of TYPES) is a kind of place; it owns a list of interchangeable IMPLEMENTATIONS { id, hl, hd }: the footprint and order are
      gameplay (client/shared/entity/roster.js), the model is the entity of that id (client/shared/entity/seed/landmark/<id>.js).
-     Add an implementation: an entity + a roster row (at the END of its type). Add a type: a roster list + a default name list + a weight in the theme.
+     Add an implementation: an entity + a roster row (at the END of its type). Add a type: a roster list + a default name list + a weight in W.
    – a theme only supplies a look (palette, names, frequency, mix, flag id) through createLandmarks(config) – never geometry.
    At most one landmark per 32 m chunk (deterministic per chunk), set back from the road on an apron, solid like a building (KINDS.building). */
 export const TYPES = ROSTER.landmark;
-const NAMES = { motel: ['MOTEL', 'INN', 'LODGE'], hotel: ['HOTEL', 'GRAND', 'RESORT'], restaurant: ['DINER', 'CAFE', 'GRILL', 'EATS'], gas: ['GAS', 'FUEL', 'DIESEL'], police: ['POLICE', 'CHECK'] };
+const NAMES = { motel: ['MOTEL', 'INN', 'LODGE'], hotel: ['HOTEL', 'GRAND', 'RESORT'], restaurant: ['DINER', 'CAFE', 'GRILL', 'EATS'], gas: ['GAS', 'FUEL', 'DIESEL'], gulp: ['GULP'], police: ['POLICE', 'CHECK'] };
 const PAL = {   // CSS colours; walls = per-site variants. A theme overrides only what it wants to change.
   walls: ['#e8d9b8', '#d9b99a', '#b9d4cf'], roof: '#7a4a38', trim: '#f2efe6', glass: '#5f8fa8', door: '#7a3b2a', lot: '#3b3b3e', metal: '#8a8f96', dark: '#23252a',
   accent: '#c8281f', accent2: '#1f4a9a', neon: '#ffd84a', leaf: '#3f7a3b', trunk: '#6b4f33', cone: '#ff7a1a',
 };
 
 export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weights = {}, names = {}, flag = null } = {}) {
-  const P = { ...PAL, ...pal }, W = { motel: 1, hotel: 1, restaurant: 1, gas: 1, police: 1, ...weights }, N = { ...NAMES, ...names };
-  const m = { roof: basic(P.roof), trim: basic(P.trim), glass: basic(P.glass), door: basic(P.door), lot: basic(P.lot), apron: basic(P.lot, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), metal: basic(P.metal), dark: basic(P.dark), accent: basic(P.accent), accent2: basic(P.accent2), neon: basic(P.neon),
+  const P = { ...PAL, ...pal }, W = { motel: 1, hotel: 1, restaurant: 1, gas: 1, police: 1, gulp: 0.9, ...weights }, N = { ...NAMES, ...names };
+  const m = { roof: basic(P.roof), trim: basic(P.trim), glass: basic(P.glass), door: basic(P.door), lot: basic(P.lot), apron: basic(P.lot, { polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), metal: basic(P.metal), dark: basic(P.dark), accent: basic(P.accent), accent2: basic(P.accent2), neon: basic(P.neon),
     leaf: basic(P.leaf), trunk: basic(P.trunk), cone: basic(P.cone), white: basic(0xf2f2ea), red: basic(0xd22a22), blue: basic(0x1f4a9a), walls: P.walls.map(w => basic(w)) };
   const SIGN = { neon: [P.dark, P.neon], red: [P.accent, '#ffffff'], blue: [P.accent2, '#ffffff'], cream: [P.trim, P.dark] };
   const cache = new Map(), tex = (key, make) => cache.get(key) ?? (cache.set(key, make()), cache.get(key));
@@ -56,8 +57,14 @@ export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weigh
     for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) { g.fillStyle = rnd(i * 13 + j * 7 + wi) < .25 ? '#ffe9a0' : P.glass; g.fillRect((i + .2) * w / cols, (j + .2) * h / rows, w / cols * .6, h / rows * .55); }
   }, false) })));
 
-  /* Which landmark (if any) sits in chunk `ci`; chunks.js asks first so it can keep ordinary props out of the footprint. */
+  /* Which landmark (if any) sits in chunk `ci`; chunks.js asks first so it can keep ordinary props out of the footprint.
+     Chunk 2 is the access road just past the yard (s ≈ 80). One GULP is pinned there, on the driver's right, so a ride can fuel without hunting. */
+  const NEAR_START = 2;
   function site(ci, s0) {
+    if (ci === NEAR_START) {
+      const v = TYPES.gulp[0], set = near[0], side = 1;
+      return { type: 'gulp', v, side, near: set, s: s0 + 16, lat: side * (set + v.hd), hl: v.hl, hd: v.hd, wi: 0, name: 'GULP' };
+    }
     if (ci < 1 || rnd(ci * 3.31 + 17) > chance) return null;
     const keys = Object.keys(TYPES).filter(k => W[k] > 0); let x = rnd(ci * 5.17 + 2) * keys.reduce((a, k) => a + W[k], 0), type = keys[keys.length - 1];
     for (const k of keys) { if ((x -= W[k]) < 0) { type = k; break; } }
@@ -74,7 +81,7 @@ export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weigh
     const ctx = { slot: n => (n === 'wall' ? wall : m[n] ?? null), facade: (cols, rows) => facadeMat(L.wi, Math.max(1, Math.min(32, Math.floor(cols) || 1)), Math.max(1, Math.min(32, Math.floor(rows) || 1))), sign: (style, text) => signMat(style, text ?? L.name), edge: signEdge,
       disk: (style, text, back) => diskFace(style, text, back), flag: (i, side) => flags[i]?.[side] ?? m.red };
     buildInto(g, L.v.id, { flags: flags.length }, ctx);
-    const wa = L.near - 6.1 + L.hd + .6;   // apron: tarmac from UNDER the shoulder (the ribbon draws over it, so no seam of bare ground) to the middle of the footprint
+    const wa = L.near - 6.1 - SHOULDER + L.hd + .6;   // across the shoulder and 0.5 m under the asphalt; offset -3 covers the grass, marks stay at -4
     g.add(mk(GEO.box, m.apron, wa, .04, L.hl * 2 + 2, -wa / 2, .02, 0));
     g.rotation.y = L.side > 0 ? 0 : Math.PI; root.add(g);   // models face -x (toward the road for right-hand sites)
     root.name = L.v.id; root.userData = { kind: 'building', size: 1, debris: wall };
@@ -85,5 +92,5 @@ export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weigh
     const root = model(L); place(root, L.s, L.lat); reg(root, id, L.s, L.lat, { rf: L.hl, rl: L.hd });
   }
   const preview = (type, i, wi = 0) => { const v = TYPES[type][i]; return model({ v, side: 1, near: near[0], hl: v.hl, hd: v.hd, wi, name: N[type][0] }); };
-  return { site, build, preview };
+  return { site, build, preview, nearStart: NEAR_START };
 }

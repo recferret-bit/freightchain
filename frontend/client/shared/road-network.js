@@ -176,6 +176,9 @@ class RoadNetwork {
   onRoad(s, d) {
     if (s > -80 && s < 30 && Math.abs(d) < 34) return true;   // depot yard
     const [l, r] = this.edges(s); if (d >= l - .5 && d <= r + .5) return true;
+    // Pinned GULP on the access road (landmarks nearStart, s = 80). Its apron is tarmac from the lane to the building.
+    // The fatal box starts at lat 12; the truck is 2.5 m wide, so the centre may sit out to 10.2 and still miss it.
+    if (s > 57 && s < 103 && d > 0 && d <= 10.2) return true;
     if (this.apron(s, FORK.reach)) { const f = this.forkAt(s), a = -this.bulge(f) * this.sep(s); if (d >= Math.min(l, l + a) - .5 && d <= Math.max(r, r + a) + .5) return true; }   // a fork's split / merge: both roads' tarmac (the server allows FORK.corridor m either way there)
     for (const j of this.near(s - 90, s + 90)) {
       if (j.kind === 'start') {

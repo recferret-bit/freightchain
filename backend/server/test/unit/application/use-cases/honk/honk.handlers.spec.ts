@@ -10,7 +10,7 @@ const U = 1_000_000n;
 const PROGRAM = 'GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx';
 const visualId = (wallet: string, slot: string, item: string) => createHash('sha256').update(`${wallet}|${slot}|${item}`).digest('hex').slice(0, 32);
 
-class OffHonkChain extends HonkChainPort {
+export class OffHonkChain extends HonkChainPort {
   loads = 0;
   programId(): string | null { return null; }
   load(): Promise<HonkChainTx | null> { this.loads += 1; return Promise.reject(new Error('chain should stay off')); }

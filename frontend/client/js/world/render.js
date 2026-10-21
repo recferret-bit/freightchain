@@ -62,7 +62,8 @@ export function renderWorld() {
   const crank = st.ign && st.ign.t >= 1.0 ? .03 * (.6 + .4 * Math.sin(now / 22)) * SHAKE_START : 0, idle = st.engineOn ? (.003 + st.rpm * .000002) * SHAKE_START : 0;
   const lat = st.d, shake = drive ? (st.v * 0.0008 * SHAKE_MOVING + (st.off ? 0.05 * Math.min(1, st.v / 8) : 0) + st.jolt * 0.04 + crank + idle + st.rumble * .03 * SHAKE_START + st.crash * .2 + rpmShake() * .01) : 0;
   const px = p.x + Math.cos(p.t) * lat, pz = p.z + Math.sin(p.t) * lat, rot = shake * .14;
-  camera.position.set(px + (Math.random() - .5) * shake, 2.7 + (Math.random() - .5) * shake, pz + (Math.random() - .5) * shake);
+  const cam = st.watch ? st.watchCam : 'cabin', back = cam === 'chase' ? 8 : cam === 'hood' ? -1.4 : 0, camY = cam === 'chase' ? 4.4 : cam === 'hood' ? 1.55 : 2.7;
+  camera.position.set(px - Math.sin(th) * back + (Math.random() - .5) * shake, camY + (Math.random() - .5) * shake, pz + Math.cos(th) * back + (Math.random() - .5) * shake);
   camera.rotation.set(-0.04 + st.pitch + (Math.random() - .5) * rot, -th + (Math.random() - .5) * rot, -st.steer * 0.012 * clamp(st.v / 12, 0, 1) - curv(st.s) * st.v * Math.min(1, st.v / CFG.MAX_SPEED) * 0.5 - st.roll + crank * .12 * Math.sin(now / 37));
   env.sky.mesh.position.copy(camera.position); env.mountains.position.set(px, 0, pz); env.terrain.update(px, pz);   // sky/mountains/terrain follow the camera
   trailer.position.set(px - Math.sin(th) * 1.2, 0, pz + Math.cos(th) * 1.2); trailer.rotation.y = -st.tyaw;  trailer.userData.rev.visible = st.gear < 0 && drive;   // hitched at the kingpin, lags in curves

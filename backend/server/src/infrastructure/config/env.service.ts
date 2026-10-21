@@ -20,6 +20,8 @@ export class EnvService {
   get port(): number { return this.env.PORT; }
   get nodeEnv(): string { return this.env.NODE_ENV; }
   get isProduction(): boolean { return this.nodeEnv === 'production'; }
+  /** development and test are the only modes that may carry demo wallets, fake LLMs, or ride-changing donations. */
+  get isStrict(): boolean { return this.nodeEnv !== 'development' && this.nodeEnv !== 'test'; }
   /** Unset (including `KEY=`): strict outside production, warn in production. */
   get responseSchemaCheck(): 'off' | 'warn' | 'strict' {
     return this.env.RESPONSE_SCHEMA_CHECK ?? (this.isProduction ? 'warn' : 'strict');
@@ -38,10 +40,19 @@ export class EnvService {
   get sessionTtlDays(): number { return this.env.SESSION_TTL_DAYS; }
   /** the admin session's key: ADMIN_JWT_SECRET, else derived from the player secret (never the same bytes – a player token is not an admin token even before the audience check) */
   get adminJwtSecret(): string { return this.env.ADMIN_JWT_SECRET ?? createHash('sha256').update(`${this.jwtSecret}:admin-session`).digest('hex'); }
-  get adminSessionTtlMinutes(): number { return this.env.ADMIN_SESSION_TTL_MINUTES; }
+  get adminSessionTtlMinutes(): number { return Math.min(this.env.ADMIN_SESSION_TTL_MINUTES, 60); }
+  get moderatorWallets(): ReadonlySet<string> {
+    return new Set(this.env.MODERATOR_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));
+  }
+  /** ADMIN_IP_ALLOWLIST as written ('' = any IP). */
+  get adminIpAllowlist(): string { return this.env.ADMIN_IP_ALLOWLIST; }
+  get adminAlertTelegramBotToken(): string | undefined { return this.env.ADMIN_ALERT_TELEGRAM_BOT_TOKEN; }
+  get adminAlertTelegramChatId(): string | undefined { return this.env.ADMIN_ALERT_TELEGRAM_CHAT_ID; }
+  get adminApprovalMode(): 'single' | 'dual' { return this.env.ADMIN_APPROVAL_MODE; }
+  get throttleAdminAuthLimit(): number { return this.env.THROTTLE_ADMIN_AUTH_LIMIT; }
   /** the entity editor's session key: EDITOR_JWT_SECRET, else derived from the player secret (neither the player's nor the admin's bytes) */
   get editorJwtSecret(): string { return this.env.EDITOR_JWT_SECRET ?? createHash('sha256').update(`${this.jwtSecret}:editor-session`).digest('hex'); }
-  get editorSessionTtlMinutes(): number { return this.env.EDITOR_SESSION_TTL_MINUTES; }
+  get editorSessionTtlMinutes(): number { return Math.min(this.env.EDITOR_SESSION_TTL_MINUTES, 60); }
   /** who may use the 3D model editor (empty = nobody: every editor route is a 404) */
   get editorWallets(): ReadonlySet<string> {
     return new Set(this.env.EDITOR_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));
@@ -140,12 +151,17 @@ export class EnvService {
   get trafficProofRequired(): boolean { return this.env.TRAFFIC_PROOF_REQUIRED; }
   get verdictEnforce(): boolean { return this.env.VERDICT_ENFORCE; }
   get telemetryRetentionDays(): number { return this.env.TELEMETRY_RETENTION_DAYS; }
+  get telemetryV21(): 'off' | 'shadow' | 'enforce' { return this.env.TELEMETRY_V21; }
   get signInRetentionDays(): number { return this.env.SIGNIN_RETENTION_DAYS; }
   get challengeIntervalSeconds(): number { return this.env.CHALLENGE_INTERVAL_SECONDS; }
   get challengeFreeRides(): boolean { return this.env.CHALLENGE_FREE_RIDES === 'on'; }
+  get minigamesMode(): 'off' | 'shadow' | 'enforce' { return this.env.MINIGAMES; }
+  get mgSecret(): string | undefined { return this.env.MG_SECRET; }
+  get mgSaltVersion(): string { return this.env.MG_SALT_VERSION; }
   get liveFlags(): LiveFlags {
     return { chat: this.env.LIVE_CHAT, donations: this.env.LIVE_DONATIONS === 'on', freeDonations: this.env.LIVE_FREE_DONATIONS === 'on', effects: this.env.LIVE_EFFECTS };
   }
+  get pledgesEnabled(): boolean { return this.env.PLEDGES_ENABLED === '1'; }
   /** who may use the admin page (empty = nobody: the admin routes answer 404) */
   get adminWallets(): ReadonlySet<string> {
     return new Set(this.env.ADMIN_WALLETS.split(',').map((w) => w.trim()).filter((w) => w.length > 0));

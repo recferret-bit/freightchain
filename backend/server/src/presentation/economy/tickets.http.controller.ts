@@ -12,6 +12,7 @@ import { CurrentPlayer } from '../../infrastructure/http/decorators/current-play
 import { ZodBody, ZodParams } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { TermsGuard } from '../common/guards/terms.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import {
   confirmTicketOrderBodySchema, createTicketOrderBodySchema, orderIdParamsSchema,
@@ -20,7 +21,7 @@ import {
 
 /** Buying tickets into a pool: an order, then (with the chain adapter) its transaction. Private to the signed-in wallet. */
 @Controller('api/tickets')
-@UseGuards(PlayerAuthGuard)
+@UseGuards(PlayerAuthGuard, TermsGuard)
 export class TicketsHttpController {
   constructor(
     private readonly commandBus: CommandBus,
@@ -31,6 +32,13 @@ export class TicketsHttpController {
   @Post() @HttpCode(200)
   @ZodResponse(ticketOrderResponse)
   create(@CurrentPlayer() player: PlayerIdentity, @ZodBody(createTicketOrderBodySchema) body: CreateTicketOrderBody): Promise<TicketOrderDto> {
+    return this.commandBus.execute<CreateTicketOrderCommand, TicketOrderDto>(new CreateTicketOrderCommand(player.wallet, body.poolId, body.qty));
+  }
+
+  /** Same order as POST /api/tickets. The spec name is /orders. */
+  @Post('orders') @HttpCode(200)
+  @ZodResponse(ticketOrderResponse)
+  createAtOrders(@CurrentPlayer() player: PlayerIdentity, @ZodBody(createTicketOrderBodySchema) body: CreateTicketOrderBody): Promise<TicketOrderDto> {
     return this.commandBus.execute<CreateTicketOrderCommand, TicketOrderDto>(new CreateTicketOrderCommand(player.wallet, body.poolId, body.qty));
   }
 

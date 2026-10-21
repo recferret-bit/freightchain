@@ -10,7 +10,7 @@ let cachedTemplate: string | null = null;
 const escapeHtml = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService): (req: Request, res: Response, next: NextFunction) => void {
+export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService, now: () => number = () => Number.NEGATIVE_INFINITY): (req: Request, res: Response, next: NextFunction) => void {
   const clientDir = env?.clientDir ?? '';
   const rHtmlPath = clientDir ? join(clientDir, 'r.html') : '';
 
@@ -38,12 +38,21 @@ export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService
     prisma.ride
       .findUnique({
         where: { id: rideId },
-        select: { lastS: true, route: true, wallet: true, status: true, tier: true, verdict: { select: { status: true } } },
+        select: {
+          lastS: true, route: true, wallet: true, status: true, tier: true, tutorial: true, assist: true, poolId: true,
+          player: { select: { guest: true } }, pool: { select: { payoutAt: true } }, verdict: { select: { status: true } },
+        },
       })
       .then((ride) => {
         if (!ride) {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.send(template);
+          return;
+        }
+        const lockedPool = ride.poolId != null && (ride.pool == null || ride.pool.payoutAt.getTime() > now());
+        const hidden = ride.status === 'running' || ride.status === 'created' || ride.tier === 'free' || ride.tutorial || ride.assist || ride.player?.guest === true || ride.verdict?.status === 'rejected' || lockedPool;
+        if (hidden) {
+          res.status(404).type('text/plain').send('Not found');
           return;
         }
 
@@ -73,6 +82,7 @@ export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService
         const safeTitle = escapeHtml(title);
         const safeDesc = escapeHtml(desc);
 
+        res.setHeader('Cache-Control', 'public, max-age=86400');
         const html = template
           .replace(/<title>[^<]*<\/title>/, () => `<title>${safeTitle}</title>`)
           .replace(/<link rel="canonical"[^>]*>/, () => `<link rel="canonical" href="${safeCanonical}">`)

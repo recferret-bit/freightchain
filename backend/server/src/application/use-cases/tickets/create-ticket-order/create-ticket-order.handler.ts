@@ -1,7 +1,7 @@
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { TicketOrder } from '../../../../domain/economy/ticket-order.entity.js';
 import { toTicketOrderDto, type TicketOrderDto } from '../../../../domain/economy/ticket-order.dto.js';
-import { NotFoundError, ServiceUnavailableError } from '../../../../domain/shared/errors.js';
+import { BadRequestError, ConflictError, NotFoundError, ServiceUnavailableError } from '../../../../domain/shared/errors.js';
 import { RulesConfigPort } from '../../../ports/config/rules-config.port.js';
 import { PoolRepositoryPort } from '../../../ports/economy/pool.repository.port.js';
 import { TicketOrderRepositoryPort } from '../../../ports/economy/ticket-order.repository.port.js';
@@ -11,7 +11,9 @@ import { ClockPort } from '../../../ports/shared/clock.port.js';
 import { EntropyPort } from '../../../ports/shared/entropy.port.js';
 import { TransactionPort } from '../../../ports/shared/transaction.port.js';
 import { PlayerSessionService } from '../../../services/player-session.service.js';
+import { PoolScheduleService } from '../../../services/pool-schedule.service.js';
 import { CreateTicketOrderCommand } from './create-ticket-order.command.js';
+
 
 /**
  * "n tickets of pool X" – priced by the pool (no quote to expire). A wallet has at most ONE order awaiting payment: asking again for the same pool and quantity
@@ -30,12 +32,16 @@ export class CreateTicketOrderHandler implements ICommandHandler<CreateTicketOrd
     private readonly transactions: TransactionPort,
     private readonly clock: ClockPort,
     private readonly entropy: EntropyPort,
+    private readonly schedule: PoolScheduleService,
   ) {}
 
   async execute({ wallet, poolId, qty }: CreateTicketOrderCommand): Promise<TicketOrderDto> {
+    await this.sessions.touch(wallet);
+    const offered = await this.pools.findById(poolId);
+    if (offered && (offered.tier === '4h' || offered.tier === '8h')) throw new BadRequestError('4h and 8h shifts are not sold', 'tier_retired');
     const rules = this.rules.get();
     if (rules.paymentMode !== 'program' || !rules.programId) throw new ServiceUnavailableError('ticket sales are not configured on this server (no pool program)');
-    await this.sessions.touch(wallet);
+    if (offered) await this.schedule.assertEntry(offered, this.clock.now());
     return this.transactions.run(async (tx) => {
       const now = this.clock.now();
       const player = await this.players.findByWalletForUpdate(wallet, tx);

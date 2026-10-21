@@ -9,12 +9,13 @@ import { CurrentPlayer } from '../../infrastructure/http/decorators/current-play
 import { ZodBody } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
+import { TermsGuard } from '../common/guards/terms.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { equipCosmeticBodySchema, type EquipCosmeticBody } from './dto/promos.dto.js';
 
 /** The signed-in wallet's side of promo codes: what it redeemed, and the cosmetics (visuals) it owns and wears. Redeeming itself is `POST /api/promo/redeem` (pools controller). */
 @Controller('api')
-@UseGuards(PlayerAuthGuard)
+@UseGuards(PlayerAuthGuard, TermsGuard)
 export class PromosHttpController {
   constructor(
     private readonly commandBus: CommandBus,

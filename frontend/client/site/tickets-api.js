@@ -20,7 +20,7 @@ export const chainFees = poolId => call(`chain/fees${poolId != null ? `?poolId=$
 
 /** POST /api/tickets {poolId, qty} → TicketOrderDto `{ id, poolId, qty, lamports, status: awaiting_payment|paid|expired|refunded, createdAt, expiresAt, paidAt, refundedAt, signature }`
  *  · 503 no program (→ notConfigured) · 404 pool · 409 `not_sellable`. */
-export const createOrder = (poolId, qty) => call('tickets', { poolId, qty }, { unavailable503: true });
+export const createOrder = (poolId, qty, burnWarningAccepted = true) => call('tickets', { poolId, qty, burnWarningAccepted }, { unavailable503: true });
 
 /** GET /api/tickets/orders/:id → TicketOrderDto. */
 export const getOrder = orderId => call(`tickets/orders/${id(orderId)}`);

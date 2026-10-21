@@ -30,6 +30,10 @@ export interface RideEventProps {
   applied: EffectApplied | null;
   /** a PAID donation's transfer (LIVE_FREE_DONATIONS=off); null = a mock donation, a chat line, or a honk time change */
   signature: string | null;
+  /** second of the replay this line belongs to. Null on a live line and on donations. Stored in appliedT when no effect stamp exists. */
+  replayT: number | null;
+  /** a moderator hid this chat line. Stored as appliedS = -1 so it needs no extra column. */
+  hidden: boolean;
 }
 
 /** A donation that was paid on chain: its order (a unique rate-limit key, so a paid tip never collides with a bucket), the transfer, the amount paid. */
@@ -57,19 +61,27 @@ export class RideEvent {
     if (text.length > MESSAGE_MAX_LENGTH) throw new BadRequestError(`a message is at most ${MESSAGE_MAX_LENGTH} characters`, 'bad_message');
     return new RideEvent({
       id: null, rideId: i.rideId, wallet: i.wallet, kind: 'message', text, effect: null, lamports: 0,
-      slotKey: `msg:${i.wallet}`, slot: windowOf(i.now, LINE_WINDOW_MS), createdAt: i.now, applied: null, signature: null,
+      slotKey: `msg:${i.wallet}`, slot: windowOf(i.now, LINE_WINDOW_MS), createdAt: i.now, applied: null, signature: null, replayT: null, hidden: false,
+    });
+  }
+
+  /** A replay chat line. `seq` is its place in the wallet's current minute, so five lines fit without sharing the 3 s live bucket. */
+  static replayMessage(i: { rideId: string; wallet: string; text: string; now: Date; replayT: number; seq: number }): RideEvent {
+    return new RideEvent({
+      id: null, rideId: i.rideId, wallet: i.wallet, kind: 'message', text: i.text, effect: null, lamports: 0,
+      slotKey: `chat:${i.wallet}:${i.seq}`, slot: windowOf(i.now, 60_000), createdAt: i.now, applied: null, signature: null, replayT: i.replayT, hidden: false,
     });
   }
 
   /** A MOCK donation: priced from EFFECTS, nothing is charged. A game effect takes the ride's one effect window; a tip only the wallet's line window. */
-  static donation(i: { rideId: string; wallet: string; effect: EffectId; note?: string | null; now: Date; paid?: PaidWith }): RideEvent {
+  static donation(i: { rideId: string; wallet: string; effect: EffectId; note?: string | null; now: Date; paid?: PaidWith; lamports?: number }): RideEvent {
     const note = i.note ? cleanText(i.note) : '';
     if (note.length > NOTE_MAX_LENGTH) throw new BadRequestError(`a donation note is at most ${NOTE_MAX_LENGTH} characters`, 'bad_message');
     const rule = EFFECTS[i.effect];
     const slotKey = rule.game ? 'fx' : i.paid ? `paid:${i.paid.orderId}` : `tip:${i.wallet}`;   // a paid tip is never refused: the money already moved
     return new RideEvent({
-      id: null, rideId: i.rideId, wallet: i.wallet, kind: 'donation', text: note || null, effect: i.effect, lamports: i.paid?.lamports ?? rule.lamports,
-      slotKey, slot: rule.game ? windowOf(i.now, EFFECT_WINDOW_MS) : i.paid ? 0 : windowOf(i.now, LINE_WINDOW_MS), createdAt: i.now, applied: null, signature: i.paid?.signature ?? null,
+      id: null, rideId: i.rideId, wallet: i.wallet, kind: 'donation', text: note || null, effect: i.effect, lamports: i.paid?.lamports ?? i.lamports ?? rule.lamports,
+      slotKey, slot: rule.game ? windowOf(i.now, EFFECT_WINDOW_MS) : i.paid ? 0 : windowOf(i.now, LINE_WINDOW_MS), createdAt: i.now, applied: null, signature: i.paid?.signature ?? null, replayT: null, hidden: false,
     });
   }
 
@@ -77,7 +89,7 @@ export class RideEvent {
   static honkPhase(i: { rideId: string; wallet: string; phase: 'day' | 'night'; text: string; now: Date }): RideEvent {
     return new RideEvent({
       id: null, rideId: i.rideId, wallet: i.wallet, kind: 'honk', text: i.text, effect: i.phase, lamports: 0,
-      slotKey: 'fx', slot: windowOf(i.now, EFFECT_WINDOW_MS), createdAt: i.now, applied: null, signature: null,
+      slotKey: 'fx', slot: windowOf(i.now, EFFECT_WINDOW_MS), createdAt: i.now, applied: null, signature: null, replayT: null, hidden: false,
     });
   }
 
@@ -85,12 +97,12 @@ export class RideEvent {
   static honkWeather(i: { rideId: string; wallet: string; weather: 'snow' | 'clear'; text: string; now: Date }): RideEvent {
     return new RideEvent({
       id: null, rideId: i.rideId, wallet: i.wallet, kind: 'honk', text: i.text, effect: i.weather, lamports: 0,
-      slotKey: 'fx', slot: windowOf(i.now, EFFECT_WINDOW_MS), createdAt: i.now, applied: null, signature: null,
+      slotKey: 'fx', slot: windowOf(i.now, EFFECT_WINDOW_MS), createdAt: i.now, applied: null, signature: null, replayT: null, hidden: false,
     });
   }
 
   static restore(props: RideEventProps): RideEvent {
-    return new RideEvent({ ...props, applied: props.applied ? { ...props.applied } : null });
+    return new RideEvent({ ...props, applied: props.applied ? { ...props.applied } : null, replayT: props.replayT ?? null, hidden: props.hidden === true });
   }
 
   /** ms until this line's rate-limit window is over (the Retry-After of a refused post) */

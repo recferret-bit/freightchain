@@ -8,6 +8,7 @@ import { clearDebris } from '../sim/damage.js';
 import { roadAt } from '../road.js';
 import { CFG } from '../config.js';
 import { toast } from '../ui/toast.js';
+import { crossedRed } from '../../shared/damage-buckets.js';
 
 /* RoadOrchestrator (`roads`): the one object that runs the road world, so nothing else has to know the order things happen in.
    - newTrip()      a new ride: new seed → new layout (net/network.js), road holes re-rolled, the depot window built from the pools, traffic already on the main road
@@ -48,11 +49,8 @@ class RoadOrchestrator {
   setBranch(s, choice) { const f = net.forkAt(s); if (f && (choice === 0 || choice === 1)) this.switchFork(f, choice, false); }
   /* crossing a main-road stop line on red: a warning only – the cross traffic is the real consequence */
   redLight() {
-    const s0 = this.lastS, s1 = st.s; if (s1 <= s0) return;
-    for (const j of net.near(s0 - 40, s1 + 40)) {
-      const line = j.s - (j.mouth + 1.2);
-      if (j.signal && s0 < line && s1 >= line && net.signal(j, 'main') === 'R') { st.reds++; toast('⚠ RAN A RED LIGHT', 2500); }
-    }
+    const n = crossedRed(net, this.lastS, st.s);
+    if (n) { st.reds += n; toast('⚠ RAN A RED LIGHT', 2500); }
   }
   /* { road: 'ARTERIAL 2+2', next: { dist, kind, light: 'G'|'A'|'R'|null } | null } */
   status() {

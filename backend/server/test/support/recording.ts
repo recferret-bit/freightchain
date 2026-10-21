@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import type { Agent } from './client.js';
 import { HasherPort } from '../../src/application/ports/shared/hasher.port.js';
 import type { ChallengeDto } from '../../src/domain/rides/ride-challenge.js';
@@ -19,6 +19,9 @@ export class TestHasher extends HasherPort {
   sha256Hex(text: string): string { return sha256(text); }
   sha256(data: Uint8Array | Buffer | string): Buffer {
     return createHash('sha256').update(data).digest();
+  }
+  hmacSha256Hex(key: Uint8Array | Buffer, message: string): string {
+    return createHmac('sha256', key).update(message, 'utf8').digest('hex');
   }
 }
 

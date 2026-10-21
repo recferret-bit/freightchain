@@ -21,6 +21,11 @@ export class ChallengePrismaRepository extends ChallengeRepositoryPort {
   }
 
   /** DELETE … RETURNING is one atomic statement: of two concurrent verifies exactly one gets the row. */
+  async listKeys(prefix: string): Promise<string[]> {
+    const rows = await this.prisma.authChallenge.findMany({ where: { wallet: { startsWith: prefix } }, orderBy: { expiresAt: 'asc' }, select: { wallet: true } });
+    return rows.map((row) => row.wallet);
+  }
+
   async consume(key: string): Promise<AuthChallenge | null> {
     const rows = await this.prisma.$queryRaw<ChallengeRow[]>`DELETE FROM "player"."AuthChallenge" WHERE wallet = ${key} RETURNING wallet, message, "expiresAt"`;
     const row = rows[0];

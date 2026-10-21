@@ -7,8 +7,13 @@ import { phone } from '../phone.js';
 /* Dash phone mount component, right of the bonnet (the map – ui/map.js): its screen shows the live map; a click (or N) takes it in hand. */
 let thumbBroke = false;
 
+const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 export function drawPhoneMount(x, y, w, h, u, btns) {
   uiBtns.push({ id: btns?.map.id || 'map', x: x - u, y: y - 3 * u, w: w + 2 * u, h: h + 4 * u });   // the phone + its caption above it
+  const shake = phone.badge && !phone.open && !reduceMotion;
+  ctx.save();
+  if (shake) ctx.translate(Math.sin(performance.now() / 30) * 0.5 * u, 0);
   ctx.fillStyle = '#121110'; ctx.fillRect(x + w / 2 - 1.2 * u, y + h - .5 * u, 2.4 * u, 3.5 * u);   // the mount's stem into the dash
   ctx.fillStyle = '#1b1a18'; ctx.beginPath(); ctx.roundRect(x - .9 * u, y + h * .3, 1.4 * u, h * .4, .5 * u); ctx.roundRect(x + w - .5 * u, y + h * .3, 1.4 * u, h * .4, .5 * u); ctx.fill();   // the clamp's arms
   /* the same phone as the one in your hand (ui/map.js + css #phone): a dark metal frame, a rounded screen, the camera island with its lens.
@@ -36,4 +41,24 @@ export function drawPhoneMount(x, y, w, h, u, btns) {
   const lx = ix + iw * .82, ly = iy + ih / 2; ctx.fillStyle = '#3a3f4d'; ctx.beginPath(); ctx.arc(lx, ly, ih * .4, 0, 7); ctx.fill();
   ctx.fillStyle = '#1f4fb0'; ctx.beginPath(); ctx.arc(lx, ly, ih * .3, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(lx - ih * .08, ly - ih * .09, ih * .07, 0, 7); ctx.fill();
   if (dn.k > .3 && !phone.open && phone.power > 0) { ctx.fillStyle = `rgba(120,170,255,${.06 * dn.k})`; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, w * 1.1, 0, 7); ctx.fill(); }   // the screen's glow in the dark cab
+  drawPapers(x, y, w, h, u);
+  if (phone.badge && !phone.open) { ctx.fillStyle = '#e23b2f'; ctx.beginPath(); ctx.arc(x + w - 2 * u, y + 2 * u, 1.6 * u, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+
+function drawPapers(x, y, w, h, u) {
+  const list = phone.papers;
+  if (!list?.length) return;
+  // Keep each slip's own shape. A stretched mark is not a mark the driver can match.
+  let top = y + h;
+  list.slice(0, 7).forEach(p => {
+    if (!p?.img) return;
+    const iw = p.img.naturalWidth || p.img.width || 96;
+    const ih = p.img.naturalHeight || p.img.height || 28;
+    const pw = w * 1.7, ph = pw * ih / iw;
+    top -= ph + 0.45 * u;
+    const px = x - pw - 2 * u;
+    ctx.fillStyle = '#f4f0e6'; ctx.fillRect(px - u * 0.3, top - u * 0.3, pw + u * 0.6, ph + u * 0.6);
+    ctx.drawImage(p.img, px, top, pw, ph);
+  });
 }

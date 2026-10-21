@@ -59,20 +59,19 @@ describe('Pool – what can be bought', () => {
 
 describe('Pool – the ride window (audit H6: a ride counts only when it ENDED by the play deadline)', () => {
   const live = (playDeadline: Date, windowH = 3) => pool({ status: 'active', prepDeadline: new Date(playDeadline.getTime() - windowH * 3600_000), playDeadline });
-  it('no new ride after the sale end: the last start is the prep deadline – the 3 h after it only let shifts on the road finish', () => {
-    const p = live(PLAY), sale = PLAY.getTime() - 3 * 3600_000;
+  it('the last start is play close minus 75 min, which can be after sales close', () => {
+    const p = live(PLAY), last = PLAY.getTime() - 75 * 60_000, sale = PLAY.getTime() - 3 * 3600_000;
     expect(p.rideWindow()).toEqual({ endBy: PLAY });
-    expect(p.startBy().getTime()).toBe(sale);
-    expect([p.isRidable(new Date(sale)), p.isRidable(new Date(sale + 1))]).toEqual([true, false]);
-    expect(p.isRidable(new Date(sale + 1), 60)).toBe(false);   // a short demo shift too: the rule is the clock, not the shift
-    expect(pool({ status: 'open', prepDeadline: new Date(sale), playDeadline: PLAY }).isRidable(new Date(sale - 1))).toBe(false);   // not live yet
+    expect(p.lastStartAt.getTime()).toBe(last);
+    expect(p.startBy().getTime()).toBe(last);
+    expect([p.isRidable(new Date(last)), p.isRidable(new Date(last + 1))]).toEqual([true, false]);
+    expect(p.isRidable(new Date(sale + 1))).toBe(true); // sales closed, starts still open
+    expect(pool({ status: 'open', prepDeadline: new Date(sale), playDeadline: PLAY }).isRidable(new Date(sale - 1))).toBe(false); // not live yet (minimum not met)
   });
-  it('a window shorter than a shift (4 h / 8 h tiers, a demo pool): the last start is the play deadline minus the shift', () => {
-    const p = live(PLAY, 2), last = PLAY.getTime() - 3600_000;
-    expect(p.startBy().getTime()).toBe(PLAY.getTime() - 2 * 3600_000);
+  it('a shift longer than the time left still cannot start, even before lastStartAt', () => {
+    const p = live(PLAY);
     expect(p.startBy(4 * 3600).getTime()).toBe(PLAY.getTime() - 4 * 3600_000);
-    expect(live(PLAY, 0.5).startBy().getTime()).toBe(last);
-    expect([live(PLAY, 0.5).isRidable(new Date(last)), live(PLAY, 0.5).isRidable(new Date(last + 1))]).toEqual([true, false]);
+    expect(p.startBy().getTime()).toBe(PLAY.getTime() - 75 * 60_000);
   });
   it('a ride ordered in time may START while it can still reach its finish line by the deadline (half its shift at the governor)', () => {
     const p = live(PLAY), half = 1800;
@@ -240,7 +239,8 @@ describe('Pool.register – the create_pool rules, checked again when a pool ent
     expect(Pool.register(props({ prizeBps: 6500, referralBps: 500 })).snapshot().referralBps).toBe(500);
     expect(Pool.register(props({ maxPlayerShareBps: 4740, paidTicketsEnabled: false })).snapshot()).toMatchObject({ maxPlayerShareBps: 4740, paidTicketsEnabled: false });
     expect(() => Pool.register(props({ prizeBps: 6500 }))).toThrow(BadRequestError);
-    for (const over of [{ id: -1 }, { id: 2 ** 32 }, { prizeBps: 6000 }, { minTickets: 0 }, { maxPerWallet: 0 }, { maxTickets: 1, minTickets: 2 }, { priceLamports: 0 }, { prepDeadline: new Date(PLAY.getTime() + 1) }, { rideSeed: -1 }, { rideSeed: 2 ** 31 }, { rideSeed: 1.5 }, { maxPlayerShareBps: 5000 }, { maxPlayerShareBps: -1 }]) {
+    expect(Pool.register(props({ minTickets: 0, status: 'active' })).minTickets).toBe(0);
+    for (const over of [{ id: -1 }, { id: 2 ** 32 }, { prizeBps: 6000 }, { minTickets: -1 }, { maxPerWallet: 0 }, { maxTickets: 1, minTickets: 2 }, { priceLamports: 0 }, { prepDeadline: new Date(PLAY.getTime() + 1) }, { rideSeed: -1 }, { rideSeed: 2 ** 31 }, { rideSeed: 1.5 }, { maxPlayerShareBps: 5000 }, { maxPlayerShareBps: -1 }]) {
       expect(() => Pool.register(props(over)), JSON.stringify(over)).toThrow(BadRequestError);
     }
   });

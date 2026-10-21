@@ -19,6 +19,8 @@ export interface RideEventDto {
   applied: { t: number; s: number; lat: number | null; placed: boolean } | null;
   /** a PAID donation: the transfer's signature (an explorer link); null = mock, a chat line, or a honk time change */
   signature: string | null;
+  /** replay second this chat line is tied to. Null when the line was posted on a ride that was still running. */
+  replayT: number | null;
 }
 
 export const toRideEventDto = (e: RideEvent): RideEventDto => {
@@ -26,9 +28,14 @@ export const toRideEventDto = (e: RideEvent): RideEventDto => {
   return {
     id: p.id ?? 0, kind: p.kind, wallet: p.wallet, text: p.text, effect: p.effect, lamports: p.lamports, at: p.createdAt.getTime(),
     applied: p.applied ? { t: p.applied.t, s: p.applied.s, lat: p.applied.lat, placed: !e.missed } : null,
-    signature: p.signature,
+    signature: p.signature, replayT: p.replayT ?? null,
   };
 };
+
+/** Chat lines play in replay order. A line with no replay second stays after them, still by id. */
+export function byReplayTime<T extends { id?: number | null; replayT?: number | null }>(events: T[]): T[] {
+  return [...events].sort((a, b) => (a.replayT ?? Number.POSITIVE_INFINITY) - (b.replayT ?? Number.POSITIVE_INFINITY) || (a.id ?? 0) - (b.id ?? 0));
+}
 
 /** The feed as everyone sees it once the driver muted someone: their chat lines are gone, their donation notes blanked. A TEN4 day, night, or weather line stays
     (the burn already landed; the text is the server's, not a chat note). Applied stamps stay – every replay needs where an obstacle went.

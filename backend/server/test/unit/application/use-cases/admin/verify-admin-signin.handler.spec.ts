@@ -7,7 +7,7 @@ import { VerifyAdminSignInCommand } from '../../../../../src/application/use-cas
 import { RequestChallengeHandler } from '../../../../../src/application/use-cases/auth/request-challenge/request-challenge.handler.js';
 import { RequestChallengeCommand } from '../../../../../src/application/use-cases/auth/request-challenge/request-challenge.command.js';
 import { AdminTokenPort } from '../../../../../src/application/ports/admin/admin-token.port.js';
-import { NotFoundError, UnauthorizedError } from '../../../../../src/domain/shared/errors.js';
+import { UnauthorizedError } from '../../../../../src/domain/shared/errors.js';
 import { NaclSignatureVerifier } from '../../../../../src/infrastructure/auth/nacl.signature-verifier.js';
 import { unitContext, unitRules } from '../../../../support/unit-context.js';
 
@@ -36,17 +36,18 @@ describe('admin sign-in handlers', () => {
     expect(message).toContain('ADMIN sign-in to Freight Chain');
     const result = await verify.execute(new VerifyAdminSignInCommand(wallet, sign(message), { ip: '1.2.3.4', userAgent: 'Firefox' }, 'req-1'));
     expect(result).toEqual({ admin: { wallet, expiresAt: Date.UTC(2036, 9, 8, 14) }, session: { token: `admin-token-for-${wallet}`, expiresAt: new Date(Date.UTC(2036, 9, 8, 14)) } });
-    expect(ctx.db.adminActions.at(-1)).toMatchObject({ wallet, action: 'auth.signin', target: wallet, detail: { ip: '1.2.3.4', userAgent: 'Firefox' }, requestId: 'req-1' });
+    expect(ctx.db.adminActions.at(-1)).toMatchObject({ wallet, action: 'auth.signin', target: wallet, detail: { ip: '1.2.3.0/24', userAgent: 'Firefox' }, requestId: 'req-1' });
   });
 
-  it('anybody else: no message, no session (404) – also a wallet removed from the allowlist after asking', async () => {
+  it('anybody else: a dummy message, and verify is invalid_credentials – also a wallet removed from the allowlist after asking', async () => {
     const { nonce, verify, ctx } = setup();
     const stranger = bs58.encode(nacl.sign.keyPair().publicKey);
-    await expect(nonce.execute(new RequestAdminChallengeCommand(stranger))).rejects.toBeInstanceOf(NotFoundError);
-    await expect(verify.execute(new VerifyAdminSignInCommand(stranger, 'sig'))).rejects.toBeInstanceOf(NotFoundError);
+    const dummy = await nonce.execute(new RequestAdminChallengeCommand(stranger));
+    expect(dummy.message).toContain('ADMIN sign-in to Freight Chain');
+    await expect(verify.execute(new VerifyAdminSignInCommand(stranger, 'sig'))).rejects.toMatchObject({ errorCode: 'invalid_credentials' });
     const { message } = await nonce.execute(new RequestAdminChallengeCommand(wallet));
     const removed = new VerifyAdminSignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubAdminTokens(), ctx.adminActions, unitContext(unitRules({ adminWallets: new Set() })).rules, ctx.clock);
-    await expect(removed.execute(new VerifyAdminSignInCommand(wallet, sign(message)))).rejects.toBeInstanceOf(NotFoundError);
+    await expect(removed.execute(new VerifyAdminSignInCommand(wallet, sign(message)))).rejects.toMatchObject({ errorCode: 'invalid_credentials' });
   });
 
   it('single use; a wrong key, an expired message, and the RIDER sign-in message are all refused (401) and nothing is audited', async () => {
@@ -59,7 +60,7 @@ describe('admin sign-in handlers', () => {
     await expect(verify.execute(new VerifyAdminSignInCommand(wallet, sign(late.message)))).rejects.toThrow(/no valid admin challenge/);
     const rider = await new RequestChallengeHandler(ctx.challenges, ctx.rules, ctx.clock, ctx.entropy).execute(new RequestChallengeCommand(wallet));
     await expect(verify.execute(new VerifyAdminSignInCommand(wallet, sign(rider.message)))).rejects.toThrow(/no valid admin challenge/);   // another key: not an admin challenge
-    expect(ctx.db.adminActions).toEqual([]);
+    expect(ctx.db.adminActions.every((row) => row.action === 'auth.fail')).toBe(true);
   });
 
   it('an admin sign-in does not replace a pending rider sign-in of the same wallet (own key)', async () => {

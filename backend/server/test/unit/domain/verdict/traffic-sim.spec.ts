@@ -22,7 +22,7 @@ describe('TrafficSimulator uses the browser traffic model', () => {
     }
   });
 
-  it.each(baseline.cases)('matches the pre-refactor browser on $route / $trip (seed $seed)', (test) => {
+  it.each(baseline.cases)('browser traffic hash is identical on $route / $trip (seed $seed)', (test) => {
     const sim = new TrafficSimulator(test.seed, test.trip, undefined, test.route);
     expect(sim.cars.map((a) => [a.id, a.def.type, a.preset, a.dir, a.s, a.v])).toEqual(test.initial);
     const hash = createHash('sha256'), dts = [1 / 60, 1 / 30, .05, .012];

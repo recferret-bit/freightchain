@@ -73,6 +73,7 @@ MINT="$(tr -d '[:space:]' < "$TMP/keys/mint-address.txt")"
   HONK_EMITTER_SECRET="$(cat "$TMP/keys/payer.json")" \
   HONK_MINT="$MINT" \
   FREE_RIDE_SECONDS=30 SOL_USD=118 TREASURY_PUBKEY="$(pub treasury)" \
+  NODE_ENV=development PRIZE_DEV_DEFAULT_COUNTRY=KP \
   JWT_SECRET="honk-localnet-jwt-secret-not-a-real-key" \
   LIVE_EFFECTS=off LIVE_DONATIONS=off \
   ${HONK_VERDICT:+DEMO_WALLETS='*' DEMO_SCALE=60} \

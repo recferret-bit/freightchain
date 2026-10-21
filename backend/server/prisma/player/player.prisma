@@ -21,10 +21,17 @@ model Player {
   stats        PlayerStats?
   sponsorPledges Pledge[] @relation("SponsorPledges")
   driverPledges  Pledge[] @relation("DriverPledges")
+  chatBannedUntil DateTime? // replay chat: a wallet banned until this instant (null = not banned)
+  convoyHidden    Boolean             @default(false) // omit this wallet from the public Convoy top 25
+  trustScore      Int                 @default(60) // no browser fingerprint. Login, verdict, and social binding move it.
+  trustSignals    Json? // the events that moved trustScore. Not a device id.
+  termsVersion    Int                 @default(1)
+  privacyVersion  Int                 @default(1)
   referralCode   ReferralCode?
   referralsOut   Referral[] @relation("AsReferrer")
   referralIn     Referral?  @relation("AsReferee")
   weeklyTickets  WeeklyTicket[]
+  airdropClaims  AirdropClaim[]
 
   @@index([createdAt]) // the admin PLAYERS list: newest first
   @@index([freeDay]) // retired with the daily grant; left in place
@@ -168,7 +175,32 @@ model Referral {
   rideId       String?
   freeGranted  Boolean   @default(false)
   badgeCounted Boolean   @default(false)
+  activatedAt  DateTime? // pending → active (Convoy). Null on a legacy row.
+  qualifyExpiresAt DateTime? // active window end (activatedAt + 60d). Null until activation.
+  m1QualifiedAt DateTime?
+  m2QualifiedAt DateTime?
 
   @@index([referrer, status])
+  @@schema("player")
+}
+
+// One social binding per wallet per campaign. telegram / x / discord ids are 1:1 across wallets (nulls do not collide).
+model AirdropClaim {
+  wallet         String
+  campaign       String   @default("preseason")
+  player         Player   @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+  telegramUserId String?  @unique
+  xUserId        String?  @unique
+  discordUserId  String?  @unique
+  rideVerifiedAt DateTime?
+  telegramAt     DateTime?
+  xAt            DateTime?
+  turnstileAt    DateTime?
+  claimedAt      DateTime?
+  points         Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+
+  @@id([wallet, campaign])
   @@schema("player")
 }

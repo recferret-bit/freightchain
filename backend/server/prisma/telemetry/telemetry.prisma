@@ -15,6 +15,8 @@ model RideBatch {
   bytes      Int // uncompressed JSON size
   payload    Bytes // gzip of the JSON body
   summary    Json? // what the verdict reads (domain/telemetry/batch-summary.ts): counts, first / last sample, max speed, worst step, fault, the input events; null on rows stored before it existed (summarised from the payload when judged)
+  inp        Bytes? // raw 30 Hz inp. Nulled by the 90-day prune after the pool payout. samples stay.
+  inpAt      DateTime?
   receivedAt DateTime
 
   @@id([rideId, seq])

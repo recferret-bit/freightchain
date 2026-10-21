@@ -17,6 +17,35 @@ const link = (href, text, title = '') => el('a', { href, target: '_blank', rel: 
 
 function onKey(e) { if (e.key === 'Escape') hideTicketDialog(); }
 
+/** Purchase gate: last start in local time, EN and RU burn copy, checkbox required before the order is sent. */
+export function confirmBurnWarning(pool) {
+  const last = pool?.lastStartAt ?? (pool?.playDeadline ? pool.playDeadline - 75 * 60_000 : Date.now());
+  const when = new Date(last);
+  const local = when.toLocaleString();
+  const left = Math.max(0, when.getTime() - Date.now());
+  return new Promise((resolve) => {
+    const n = host();
+    const box = el('input', { id: 'burn-warning', type: 'checkbox' });
+    const go = el('button', { id: 'burn-warning-accept', type: 'button', disabled: true }, 'BUY');
+    box.addEventListener('change', () => { go.disabled = !box.checked; });
+    const cancel = () => { hideTicketDialog(); resolve(false); };
+    go.addEventListener('click', () => { if (!box.checked) return; hideTicketDialog(); resolve(true); });
+    const card = el('div', { class: 'tt', id: 'burn-warning-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'burn-title' },
+      el('div', { class: 'tt-copy' },
+        el('b', { class: 'tt-title', id: 'burn-title' }, 'THIS TICKET CAN BURN'),
+        el('p', { id: 'burn-warning-en' }, `If you do not play by ${local} the ticket burns with no refund.`),
+        el('p', { id: 'burn-warning-ru' }, `Если вы не начнёте поездку до ${local}, билет сгорает без возврата.`),
+        el('p', { class: 'tt-detail', id: 'burn-warning-countdown', 'data-at': String(when.getTime()), 'data-iso': when.toISOString() }, `Last start ${when.toISOString()} · ${Math.ceil(left / 1000)}s`),
+        el('label', { for: 'burn-warning' }, box, ' I understand the ticket is non-refundable and burns if I do not start by the last start.'),
+        el('div', { class: 'td-actions' }, go, el('button', { type: 'button', class: 'td-close', onclick: cancel }, 'CANCEL'))));
+    if (!n.hidden) hideTicketDialog();
+    n.className = 'ok';
+    n.replaceChildren(el('div', { class: 'td-back', onclick: cancel }), card);
+    n.hidden = false;
+    box.focus({ preventScroll: true });
+  });
+}
+
 export function hideTicketDialog() {
   document.removeEventListener('keydown', onKey);
   const n = document.getElementById('ticket-dialog'); if (!n || n.hidden) return;

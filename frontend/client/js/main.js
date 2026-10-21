@@ -38,6 +38,7 @@ import { beginEasyEntry } from './easy-entry.js';
 import { FORK } from './net/patterns.js';
 import { toggleMap } from './ui/map.js';
 import { phone } from './phone.js';
+import { pike } from './phone/pike-state.js';
 import { updateGuide } from './ui/assist.js';
 import { endTutorial, advanceTutorial } from './ui/tutorial.js';
 import { trip, setTrip, tripOf } from './trips.js';
@@ -105,6 +106,6 @@ function devRun(id = '1h') {
   CFG.RIDE_MIN_SECONDS = trip.seconds ?? shift0.s; CFG.COMPLETE_DIST = trip.seconds ? trip.k * CFG.MAX_SPEED * trip.seconds : shift0.d; resetRide();
   if (!looping) { looping = true; requestAnimationFrame(frame); }   // the mobile blocker never started the loop; a second one would step every frame twice
 }
-window.__game = { isMobileBlocked: !isWatching && isMobileDevice(), devRun, forkRules: FORK, toggleMap, phone, guide, setGuide, endTutorial, advanceTutorial, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, cabChain, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, screenClimate, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
+window.__game = { isMobileBlocked: !isWatching && isMobileDevice(), devRun, forkRules: FORK, toggleMap, phone, pike, guide, setGuide, endTutorial, advanceTutorial, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, cabChain, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, screenClimate, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  

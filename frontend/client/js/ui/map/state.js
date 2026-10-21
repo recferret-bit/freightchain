@@ -18,6 +18,7 @@ export const POI = {
   motel: { col: '#8e44ad', kind: 'bed', name: 'MOTEL' },
   hotel: { col: '#8e44ad', kind: 'bed', name: 'HOTEL' },
   gas: { col: '#e8710a', kind: 'pump', name: 'GAS STATION' },
+  gulp: { col: '#f5c400', kind: 'pump', name: 'GULP' },
   police: { col: '#3949ab', kind: 'badge', name: 'POLICE' },
   restaurant: { col: '#d84315', kind: 'fork', name: 'FOOD' },
 };
@@ -50,8 +51,8 @@ export function places(s0, s1) {
   for (let ci = Math.max(1, Math.floor(s0 / CH)); ci <= Math.floor(s1 / CH); ci++) {
     let q = view.sites.get(ci);
     if (q === undefined) {
-      q = null; const L = net.busy(ci * CH - 20, ci * CH + CH + 20) ? null : env.landmarks.site(ci, ci * CH);
-      if (L) { const lat = net.roadside(L.s, L.lat); if (!net.keepOut(L.s, lat)) { const w = net.world(L.s, lat); q = { id: ci, type: L.type, name: L.name, s: L.s, side: L.side, x: w.x, z: w.z }; } }
+      q = null; const L = (env.landmarks.nearStart !== ci && net.busy(ci * CH - 20, ci * CH + CH + 20)) ? null : env.landmarks.site(ci, ci * CH);
+      if (L) { const lat = net.roadside(L.s, L.lat); if (!net.keepOut(L.s, lat)) { const w = net.world(L.s, lat); q = { id: ci, type: L.type, impl: L.v.id, hl: L.hl, name: L.name, s: L.s, side: L.side, x: w.x, z: w.z }; } }
       view.sites.set(ci, q);
     }
     if (q && !destroyed.has(ci + ':lm') && !destroyed.has('b:' + ci + ':lm')) out.push(q);

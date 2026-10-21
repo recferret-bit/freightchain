@@ -5,6 +5,9 @@ import { startTelemetry, flushTelemetry, FLUSH_WAIT_MS } from './telemetry.js';
 import { setLoadout } from './cosmetics.js';
 import { showPrompt, resetPrompts } from './prompt.js';
 import { setGuide } from './guide.js';
+import { store } from './util.js';
+import { phone } from './phone.js';
+import { noteMiniGames } from './minigames/runtime.js';
 
 /* Online mode – OPT-IN: only when the page was opened as play.html?ride=<id> (made by the lobby). Without it nothing here runs and the game
    behaves exactly like the offline prototype (headless test, e2e, viewer and the file:// build all rely on that).
@@ -46,18 +49,24 @@ export async function beginOnline(opts = {}) {
   if (!online.ride || online.started) return;
   online.started = true;
   const ranked = opts.ranked === true;
+  const mgMode = store.get('freightchain.mgMode') === 'more-time' ? 'more-time' : 'normal';
+  const nav = typeof navigator !== 'undefined' ? navigator.language : '';
+  const storedLang = store.get('freightchain.lang');
+  const lang = storedLang === 'ru' || storedLang === 'en' ? storedLang : (/^ru/i.test(nav || '') ? 'ru' : 'en');
+  phone.lang = lang;
   let started;
-  try { started = await api(`rides/${online.ride.id}/start`, { trip: online.ride.trip ?? 'classic', ...(ranked ? { ranked: true } : {}) }); }   // (null = a ride from before trips = 'classic' – trips.js tripOf)
+  try { started = await api(`rides/${online.ride.id}/start`, { trip: online.ride.trip ?? 'classic', mgMode, lang, ...(ranked ? { ranked: true } : {}) }); }   // (null = a ride from before trips = 'classic' – trips.js tripOf)
   catch (e) { online.started = false; if (e.status === 409 && e.code === RECHOSEN) { location.reload(); return new Promise(() => {}); } throw e; }   // re-chosen elsewhere: load it as it is now. Any other refusal can be retried.
   if (started.tutorial !== online.ride.tutorial || started.assist !== online.ride.assist) setGuide(started);   // (HARD's assist is refused by the server: false here too)
   online.running = true;   // the server has started the ride: its road plan is served from now on (road-plan.js)
   setLoadout(started.loadout);   // what the server stamped on the ride (what spectators and replays draw) – normally what the menu already wore
-  startTelemetry(online.ride.id, started.trafficVersion ?? 0);   // inputs + 10 Hz samples, uploaded in hash-chained batches (the server's verdict reads them)
+  startTelemetry(online.ride.id, started.trafficVersion ?? 0, started.sessionKey ?? null);   // inputs + 10 Hz samples. A session key (TELEMETRY_V21=shadow) also MACs each batch.
   resetPrompts();
   if ('honk' in started) online.ride.honk = started.honk;   // the cab line is the server's quote (ui/game.js) – not recomputed here
   online.onRide?.(started);
   timer = setInterval(() => api(`rides/${online.ride.id}/heartbeat`, progress()).then(r => {
     showPrompt(r.challenge);   // the response may carry a challenge (prompt.js): the handler shows whatever the DTO names
+    noteMiniGames(r.minigames, online.ride.id);
     if (online.ride && r && 'honk' in r) online.ride.honk = r.honk;
     online.onRide?.(r);
   }, () => { /* a lost beat is the server's call (timeout) */ }), 10_000);

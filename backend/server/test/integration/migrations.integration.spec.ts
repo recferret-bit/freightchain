@@ -16,6 +16,9 @@ describe('migrations vs the Prisma schema (PostgreSQL)', () => {
 
   it('the database has no drift from the schema files (an empty diff)', () => {
     const diff = prisma('migrate', 'diff', '--from-url', url, '--to-schema-datamodel', 'prisma', '--exit-code');
-    expect(diff.status, diff.stdout + diff.stderr).toBe(0);
+    const text = `${diff.stdout}\n${diff.stderr}`;
+    // Prisma's schema has no place for the append-only trigger, so the only allowed drift is that trigger and its function.
+    const extra = text.split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('--') && !/admin_action_append_only/.test(line));
+    expect(diff.status === 0 || extra.length === 0, text).toBe(true);
   });
 });

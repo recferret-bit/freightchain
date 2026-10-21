@@ -25,7 +25,7 @@ export const agreementsResponse = obj({ age18: bool, loss: bool, age18At: numOrN
 export const weeklyTicketResponse = obj({ tier: str, expiresAt: num, rideId: strOrNull });
 export const readyFreeRideResponse = obj({ id: str, level: numOrNull, trip: strOrNull, tutorial: bool, assist: bool });
 export const ticketBalanceResponse = obj({
-  poolId: num, tier: str, label: str, status: enums(POOL_STATUSES), balance: num, bought: num, cap: num, refundable: bool, ridable: bool, rideBy: num,
+  poolId: num, tier: str, label: str, status: enums(POOL_STATUSES), balance: num, bought: num, cap: num, refundable: bool, ridable: bool, rideBy: num, burned: bool,
 });
 export const meResponse = obj({
   wallet: str, freeRides: num, freeRidesMax: num, nextFreeRideAt: numOrNull, guest: bool, createdAt: num, tutorialPassed: bool, demo: bool, demoScale: num,
@@ -52,6 +52,8 @@ export const rideResponse = obj({
   trip: strOrNull, level: numOrNull, route: strOrNull, startHour: numOrNull, tutorial: bool, assist: bool, verdict: verdictResponse.nullable(), honk: honkQuoteResponse,
   review: strOrNull, challenge: rideChallengeResponse.nullable(), seedCommitment: strOrNull.optional(), blockhash: strOrNull.optional(), slot: numOrNull.optional(),
   ranked: bool, cleanMetres: numOrNull, promo: bool, weeklyGrant: bool,
+  sessionKey: str.optional(), keyId: str.optional(), protocol: z.literal(2).optional(),
+  trafficSaltCommit: str.nullable().optional(), holeSaltCommit: str.nullable().optional(),
 });
 export const pendingRideResponse = obj({ ride: rideResponse.nullable() });
 const replayFlag = obj({ code: str, category: str, severity: z.enum(['reject', 'flag']), detail: str, atSecond: numOrNull, atMetre: numOrNull, evidence: rec.nullable() });
@@ -87,6 +89,8 @@ const splitBps = obj({ prizeBps: num, seedBps: num, feeBps: num, referralBps: nu
 export const prizePoolResponse = obj({
   id: num, address: str, tier: str, label: str, status: enums(POOL_STATUSES), priceLamports: num, minTickets: num, maxTickets: num, maxPerWallet: num, sold: num, buyers: num, toGo: num, progressPct: num,
   prepDeadline: num, playDeadline: num, payoutAt: num, payout, vaultLamports: num, sponsoredLamports: num, potLamports: num, split: splitBps, treasuries: obj({ fee: str, seed: str }), roundId: numOrNull,
+  opensAt: num, salesCloseAt: num, lastStartAt: num, playCloseAt: num, validationUntil: num,
+  phase: z.enum(['upcoming', 'open', 'finishing', 'validating', 'paid', 'closed']),
 });
 export const chainEventResponse = obj({ signature: str, kind: str, wallet: strOrNull, lamports: numOrNull, outcome: str, at: num, finalized: bool });
 export const ticketOrderResponse = obj({

@@ -29,26 +29,22 @@ export function lobbyScenarios(h: () => Harness): void {
     return (await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'shift', s: 150, t: 15, hull, ...extra }).expect(200)).body;
   }
   describe('live feed (public)', () => {
-    it('shows running rides with route, progress, pause state and the ride id (the watch link) – no seed or reason; free rides excluded', async () => {
+    it('counts trucks on the road and does not publish a watch card for a running ride', async () => {
       const w = await login(), id = await paidRide(w);
       const other = await login(), freeId = await freeRide(other);
       sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 80, night: false }).expect(200);
       sec(1); await other.agent.post(`/api/rides/${freeId}/heartbeat`).send({ s: 10, t: 1, hull: 100 }).expect(200);
-      const { body } = await anon().get('/api/live').expect(200);   // no cookie
-      const mine = body.rides.find((r: { wallet: string }) => r.wallet === w.address);
-      expect(mine).toMatchObject({ tier: '1h', route: expect.any(String), distance: 70, hull: 80, paused: false, driveSeconds: 5, minSeconds: 3600, completeDist: 50_400, timeScale: 1 });
-      expect(mine.progress).toBeCloseTo(70 / 50_400, 2);
-      expect(mine.id).toBe(id); expect(Object.keys(mine)).not.toContain('reason'); expect(Object.keys(mine)).not.toContain('seed');
-      expect(body.rides.find((r: { id: string }) => r.id === freeId)).toBeUndefined();
-      sec(5); await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 70, t: 5, hull: 80, paused: true }).expect(200);
-      expect((await anon().get('/api/live')).body.rides.find((r: { wallet: string }) => r.wallet === w.address).paused).toBe(true);
+      const { body } = await anon().get('/api/live').expect(200);
+      expect(body.rides).toEqual([]);
+      expect(body.online.driving).toBe(1);
+      expect((await anon().get(`/api/watch/${id}`).expect(404)).body.code).toBe('replay_not_available');
     });
 
     it('drops a ride whose tab vanished (no heartbeat for a while) and rides that ended', async () => {
       const a = await login(), b = await login(); await paidRide(a); const idB = await paidRide(b);
       sec(200);                                               // both silent for > the 150 s timeout
       let rides = (await anon().get('/api/live')).body.rides.map((r: { wallet: string }) => r.wallet);
-      expect(rides).not.toContain(a.address); expect(rides).not.toContain(b.address);
+      expect(rides).toEqual([]); expect(rides).not.toContain(a.address); expect(rides).not.toContain(b.address);
       const c = await login(), idC = await paidRide(c);
       sec(2); await c.agent.post(`/api/rides/${idC}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
       const body = (await anon().get('/api/live')).body;
@@ -69,8 +65,8 @@ export function lobbyScenarios(h: () => Harness): void {
       expect(await h().app.get(CommandBus).execute(new SweepStaleRidesCommand())).toEqual({ ended: 1, skipped: 0 });
       expect((await w.agent.get(`/api/rides/${id}`).expect(200)).body).toMatchObject({ status: 'failed', reason: 'heartbeat lost' });
       const feed = (await anon().get('/api/live').expect(200)).body;
-      expect(feed.rides.map((r: { id: string }) => r.id)).not.toContain(id);
-      expect(feed.recent.find((r: { id: string }) => r.id === id)).toMatchObject({ status: 'failed', distance: 70 });
+      expect(feed.rides).toEqual([]);
+      expect(feed.recent.find((r: { id: string }) => r.id === id)).toBeUndefined();
       await w.agent.post(`/api/rides/${id}/heartbeat`).send({ s: 80, t: 6, hull: 100 }).expect(409);
       expect((await w.agent.post('/api/rides').send({ tier: 'free' }).expect(200)).body.status).toBe('created');   // the wallet is free for its next ride
     });
@@ -80,21 +76,24 @@ export function lobbyScenarios(h: () => Harness): void {
       const fan = await login();
       await anon().get('/api/live').query({ visitor: 'landing-visitor-1', page: 'landing' }).expect(200);
       await fan.agent.get('/api/live').query({ visitor: 'lobby-visitor-01', page: 'lobby' }).expect(200);
-      await anon().get(`/api/watch/${id}`).query({ viewer: 'watcher-0000001' }).expect(200);
-      const feed = (await anon().get('/api/live').query({ visitor: '<junk>', page: 'nope' }).expect(200)).body;   // junk: not counted, not an error
-      expect(feed.online).toEqual({ total: 4, browsing: 2, watching: 1, driving: 1, players: 2 });
-      expect(feed.rides.find((r: { id: string }) => r.id === id)).toMatchObject({ viewers: 1, signal: 'live' });
+      await anon().get(`/api/watch/${id}`).query({ viewer: 'watcher-0000001' }).expect(404);
+      const feed = (await anon().get('/api/live').query({ visitor: '<junk>', page: 'nope' }).expect(200)).body;
+      expect(feed.online).toEqual({ total: 3, browsing: 2, watching: 0, driving: 1, players: 2 });
+      expect(feed.rides).toEqual([]);
     });
 
     it('the replays history is public: every ride that ended – a swept one too – newest first, paged, filtered, with its replay flag; a bad cursor is a 400', async () => {
       const a = await login(), b = await login();
       const ids: string[] = [];
       for (const w of [a, b, a]) {
-        const id = await freeRide(w); sec(2);
+        const id = await paidRide(w); sec(2);
         await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'failed', s: 10, t: 1, reason: 'crashed into a truck' }).expect(200); ids.push(id);
       }
-      const gone = await freeRide(b); sec(160); await h().app.get(CommandBus).execute(new SweepStaleRidesCommand());
+      const training = await freeRide(a); sec(2);
+      await a.agent.post(`/api/rides/${training}/end`).send({ outcome: 'failed', s: 10, t: 1 }).expect(200);
+      const gone = await paidRide(b); sec(160); await h().app.get(CommandBus).execute(new SweepStaleRidesCommand());
       const p1 = (await anon().get('/api/replays').query({ limit: 3 }).expect(200)).body;
+      expect(p1.rows.map((r: { id: string }) => r.id)).not.toContain(training);
       expect(p1.rows.map((r: { id: string }) => r.id)).toEqual([gone, ids[2], ids[1]]);
       expect(p1.rows[0]).toMatchObject({ status: 'failed', failCode: 'heartbeat_lost', replay: false });
       expect(p1.rows[1]).toMatchObject({ failCode: 'crash' }); expect(Object.keys(p1.rows[1])).not.toContain('reason');
@@ -206,7 +205,7 @@ export function lobbyScenarios(h: () => Harness): void {
       const w = await login(), o = (await w.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
       await w.agent.post(`/api/rides/${o.id}/confirm`).send({ signature: h().chain.addPayment({ payer: w.address, lamports: o.lamports, memo: o.id }) }).expect(200);
       for (const tier of ['free', '1h']) expect((await w.agent.post('/api/rides').send({ tier }).expect(200)).body).toMatchObject({ id: o.id, status: 'created', tier: '1h' });
-      expect((await w.agent.post('/api/rides').send({ tier: '4h' }).expect(409)).body.code).toBe('tier_not_on_sale');
+      expect((await w.agent.post('/api/rides').send({ tier: '4h' }).expect(400)).body.code).toBe('tier_retired');
       expect((await w.agent.get(`/api/rides/${o.id}`)).body.status).toBe('created');
       expect((await w.agent.get('/api/me')).body.freeRides).toBe(10);
     });

@@ -5,7 +5,7 @@ import { MAX_REPORTED_DISTANCE } from '../../../domain/rides/ride-rules.js';
 import { RIDE_TIER_IDS } from '../../../domain/rides/ride-tier.js';
 import { FREE_LEVEL_IDS, TRIP_ID_MAX_LENGTH, isFreeLevel } from '../../../domain/rides/ride-trip.js';
 import { REASON_MAX_LENGTH } from '../../../domain/rides/ride-rules.js';
-import type { BatchBody } from '../../../domain/telemetry/ride-batch.entity.js';
+import { AUX_MAX_CHARS, clampAux, type BatchBody } from '../../../domain/telemetry/ride-batch.entity.js';
 import { BATCH_MAX_INPUTS, BATCH_MAX_SAMPLES, BATCH_MAX_SEQ, INPUT_CODE_MAX_LENGTH, MAX_GAME_SECONDS, SAMPLE_MAX_WIDTH, TRAFFIC_MAX_FRAMES, TRAFFIC_MAX_ROW } from '../../../domain/telemetry/telemetry-rules.js';
 
 /** `tutorial` / `assist`: the free ride's helpers (the lobby's two checkboxes). Optional – an absent flag is off; a paid tier refuses them (409), see CreateRideHandler.
@@ -19,11 +19,57 @@ export type CreateRideBody = z.infer<typeof createRideBodySchema>;
 /** `trip`: the trip id the game built its road from (GET /api/rides/:id → `trip`, null read as 'classic'). Optional – absent = not compared (older games).
     A ride re-chosen in the lobby between that read and this start has another trip: 409 `ride_rechosen`, the game reloads the ride (StartRideHandler).
     `ranked`: declare this start for the weekly skill board. Absent = unranked. A blocked country, missing 18+, or a full weekly cap is 409, not a silent downgrade. */
+/** mgMode and lang are optional here (not .default()) so `{ trip }` still types as StartRideBody. Strict: `{ trafficVersion }` is a 400, so a client cannot downgrade the stamped traffic protocol. */
 export const startRideBodySchema = z.object({
   trip: z.string().min(1).max(TRIP_ID_MAX_LENGTH).optional(),
   ranked: z.boolean().optional(),
+  mgMode: z.enum(['normal', 'more-time']).optional(),
+  lang: z.enum(['en', 'ru']).optional(),
 }).strict();
+
+export const appealBodySchema = z.object({ reason: z.string().trim().min(1).max(500) }).strict();
+export type AppealBody = z.infer<typeof appealBodySchema>;
 export type StartRideBody = z.infer<typeof startRideBodySchema>;
+
+/** 43-char base64url. Checked again in the handler; a mac of this shape is not mg_bad_mac until a session key exists. */
+const mgMacSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+
+export const minigameEventParamsSchema = z.object({
+  id: z.string().min(1).max(80),
+  eventId: z.string().min(1).max(80),
+}).strict();
+export type MinigameEventParams = z.infer<typeof minigameEventParamsSchema>;
+
+export const minigameAssetParamsSchema = minigameEventParamsSchema.extend({
+  assetId: z.string().regex(/^[0-9a-f]{16}$/),
+}).strict();
+export type MinigameAssetParams = z.infer<typeof minigameAssetParamsSchema>;
+
+export const openMinigameBodySchema = z.object({
+  mac: mgMacSchema,
+  variantSeq: z.union([z.literal(0), z.literal(1)]),
+  safe: z.boolean().optional(),
+}).strict();
+export type OpenMinigameBody = z.infer<typeof openMinigameBodySchema>;
+
+export const answerMinigameBodySchema = z.object({
+  mac: mgMacSchema,
+  nonce: z.string().min(1).max(64),
+  attempt: z.number().int().min(1).max(3),
+  answer: z.string().max(64),
+  safe: z.boolean().optional(),
+}).strict();
+export type AnswerMinigameBody = z.infer<typeof answerMinigameBodySchema>;
+
+export const minigameOpenResponse = z.object({
+  id: z.string(), ordinal: z.number(), kind: z.literal('phone-sms'), variantSeq: z.number(), nonce: z.string(), windowMs: z.number(), revealedAt: z.number(),
+  layout: z.object({
+    threads: z.array(z.unknown()), cab: z.array(z.unknown()), keys: z.array(z.string()), sendSlot: z.number(), iconOrder: z.array(z.string().nullable()),
+  }).strict(),
+}).strict();
+export const minigameAnswerResponse = z.object({
+  outcome: z.string(), penaltyS: z.number(), attempts: z.number(), status: z.string(),
+}).strict();
 
 export const confirmPaymentBodySchema = z.object({ signature: z.string().refine(isTransactionSignature, TRANSACTION_SIGNATURE_MESSAGE) }).strict();
 export type ConfirmPaymentBody = z.infer<typeof confirmPaymentBodySchema>;
@@ -76,11 +122,32 @@ export const batchBodySchema = z
     inputs: z.array(z.tuple([z.number().finite().min(0), z.string().max(INPUT_CODE_MAX_LENGTH), z.union([z.literal(0), z.literal(1)])])).max(BATCH_MAX_INPUTS),
     trafficProof: z.string().max(85_000).optional(),
     hash: z.string().regex(/^[0-9a-f]{64}$/, 'must be a lowercase hex SHA-256').nullish(),
+    protocol: z.literal(2).optional(),
+    mac: z.string().regex(/^[0-9a-f]{64}$/, 'must be a lowercase hex HMAC-SHA256').optional(),
+    streams: z.string().max(120_000).optional(),
+    named: z.object({
+      inp: z.string().min(1).max(120_000), clk: z.string().min(1).max(120_000), chk: z.string().min(1).max(120_000),
+      mg: z.string().min(1).max(120_000), env: z.string().min(1).max(120_000),
+      startTick: z.number().int().min(0), endTick: z.number().int().min(0),
+    }).strict().optional(),
+    aux: z.record(z.unknown()).optional(), // oversized aux is dropped in the transform, never a 400
     // replays' traffic track: LENIENT – anything malformed is dropped (.catch), never a 400 (a refused batch would break the recording's chain)
     traffic: z.array(z.array(z.number().finite()).max(TRAFFIC_MAX_ROW)).max(TRAFFIC_MAX_FRAMES).optional().catch(undefined),
   })
   .strict()
-  .transform((b): BatchBody => ({ seq: b.seq, prevHash: b.prevHash, t0: b.t0, t1: b.t1, samples: b.samples, inputs: b.inputs, hash: b.hash ?? null, ...(b.trafficProof !== undefined ? { trafficProof: b.trafficProof } : {}), ...(b.traffic?.length ? { traffic: b.traffic } : {}) }));
+  .transform((b): BatchBody => {
+    const kept = clampAux(b);
+    return {
+      seq: kept.seq, prevHash: kept.prevHash, t0: kept.t0, t1: kept.t1, samples: kept.samples, inputs: kept.inputs, hash: kept.hash ?? null,
+      ...(kept.trafficProof !== undefined ? { trafficProof: kept.trafficProof } : {}),
+      ...(kept.traffic?.length ? { traffic: kept.traffic } : {}),
+      ...(kept.protocol === 2 ? { protocol: 2 as const } : {}),
+      ...(kept.mac !== undefined ? { mac: kept.mac } : {}),
+      ...(kept.streams ? { streams: kept.streams } : {}),
+      ...(kept.named ? { named: kept.named } : {}),
+      ...(kept.aux !== undefined ? { aux: kept.aux } : {}),
+    };
+  });
 export type BatchBodyInput = z.infer<typeof batchBodySchema>;
 
 export const endRideBodySchema = z

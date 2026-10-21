@@ -18,7 +18,7 @@ describe('EnvRulesConfigAdapter', () => {
       trafficProofRequired: true, verdictEnforce: false, telemetryRetentionDays: 30, signInRetentionDays: 180, adminWallets: new Set(['A']), adminDomain: 'd.example', adminOrigin: 'https://d.example',
       editorWallets: new Set(['E']), editorDomain: 'd.example', editorOrigin: 'https://d.example', editorJobTimeoutMs: 600_000,
       paymentMode: 'transfer', programId: '', feeTreasury: '', seedTreasury: '', watchIntervalMs: 15_000, orderTtlMs: 3_600_000, commitment: 'confirmed',
-      crankEnabled: false, priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, sessionTtlHours: 24,
+      crankEnabled: false, priorityFee: { percentile: 75, minMicrolamports: 0, maxMicrolamports: 50_000 }, sessionTtlHours: 24, pledgesEnabled: false,
     });
   });
 

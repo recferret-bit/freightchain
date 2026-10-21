@@ -11,6 +11,7 @@ import { CurrentPlayer } from '../../infrastructure/http/decorators/current-play
 import { ZodBody } from '../../infrastructure/http/decorators/zod.js';
 import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.js';
 import { AdminGuard } from '../../infrastructure/http/guards/admin.guard.js';
+import { Roles } from '../../infrastructure/http/guards/privileged.decorator.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import {
   adjustFreeRidesBodySchema, freeRidesChallengeBodySchema, settingChallengeBodySchema, updateSettingBodySchema,
@@ -20,6 +21,7 @@ import {
 /** Signed changes of the settings table and of one wallet's free rides. Same guard as the rest of /api/admin. */
 @Controller('api/admin')
 @UseGuards(AdminGuard)
+@Roles('admin')
 export class AdminSettingsHttpController {
   constructor(
     private readonly commandBus: CommandBus,

@@ -29,9 +29,9 @@ describe('AdminHttpController', () => {
     await c.rides(filter); expect(queries.last()).toEqual(new ListAdminRidesQuery({ limit: 50, verdict: 'flagged' }));
     const replayFilter = adminReplaysQuerySchema.parse({ status: 'flagged', paid: 'true' });
     await c.replays(replayFilter); expect(queries.last()).toEqual(new ListAdminReplaysQuery({ limit: 50, status: 'flagged', isPaid: true }));
-    await c.ride({ id: 'r1' }); expect(queries.last()).toEqual(new GetAdminRideQuery('r1'));
+    await c.ride({ wallet: W }, { id: 'r1' }); expect(queries.last()).toEqual(new GetAdminRideQuery('r1', W));
     await c.signIns({ limit: 10, wallet: W }); expect(queries.last()).toEqual(new ListSignInsQuery(10, W));
-    await c.actions({ limit: 5 }); expect(queries.last()).toEqual(new ListAdminActionsQuery(5));
+    await c.actions({ wallet: W }, { limit: 5 }); expect(queries.last()).toEqual(new ListAdminActionsQuery(5, W));
     await c.logs(logsQuerySchema.parse({ level: 'warn', q: 'req-1' })); expect(queries.last()).toEqual(new GetAdminLogsQuery({ limit: 200, minLevel: 'warn', text: 'req-1' }));
     await c.challenge({ wallet: 'ADMIN' }, { id: 'r1' }, actionChallengeBodySchema.parse({ action: 'override', decision: 'rejected', note: ' bot ' }));
     expect(commands.last()).toEqual(new RequestActionChallengeCommand('ADMIN', { action: 'override', rideId: 'r1', decision: 'rejected' as never, note: 'bot' }));

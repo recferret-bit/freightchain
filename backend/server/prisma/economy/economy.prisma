@@ -96,6 +96,12 @@ model Pool {
   winnersRoot    String? // program v4: the committed winners root (base64) – public until payFrom
   committedAt    DateTime?
   payFrom        DateTime?
+  /// Weekly schedule windows. Null = derive from createdAt / prepDeadline / playDeadline / payoutAt (a row from before the columns).
+  opensAt          DateTime?
+  salesCloseAt     DateTime?
+  lastStartAt      DateTime?
+  playCloseAt      DateTime?
+  validationUntil  DateTime?
   payouts       PoolPayout[]
   tickets       RideTicket[]
   orders        TicketOrder[]
@@ -107,6 +113,21 @@ model Pool {
   @@index([status, payoutAt(sort: Desc)])
   @@index([roundId])
   @@index([createdAt]) // the admin POOLS list: newest first
+  @@schema("economy")
+}
+
+// The server's weekly series template. The chain Series account is unchanged; these columns are the backend schedule (null until an admin writes one).
+model Series {
+  id              Int       @id
+  address         String    @default("")
+  opensAt         DateTime?
+  salesCloseAt    DateTime?
+  lastStartAt     DateTime?
+  playCloseAt     DateTime?
+  validationUntil DateTime?
+  periodSecs      Int       @default(604800) // 7 days. v6 cadence. The chain still uses sale_secs until the next deploy.
+  enabled         Boolean   @default(false)
+
   @@schema("economy")
 }
 

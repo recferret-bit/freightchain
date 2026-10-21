@@ -6,7 +6,7 @@ import type { EnvService } from '../../../../src/infrastructure/config/env.servi
 const responseSpy = () => {
   const calls: { method: string; args: unknown[] }[] = [];
   const response = { cookie: (...args: unknown[]) => calls.push({ method: 'cookie', args }), clearCookie: (...args: unknown[]) => calls.push({ method: 'clearCookie', args }) };
-  return { calls, ctx: { switchToHttp: () => ({ getResponse: () => response }) } as unknown as ExecutionContext };
+  return { calls, ctx: { switchToHttp: () => ({ getResponse: () => response, getRequest: () => ({ headers: {} }) }) } as unknown as ExecutionContext };
 };
 const handlerOf = <T>(value: T): CallHandler<T> => ({ handle: () => of(value) });
 

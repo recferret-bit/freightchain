@@ -31,11 +31,11 @@ export interface DonationOrderProps {
 export class DonationOrder {
   private constructor(private readonly p: DonationOrderProps) {}
 
-  static create(i: { id: string; rideId: string; wallet: string; recipient: string; effect: EffectId; note?: string | null; now: Date }): DonationOrder {
+  static create(i: { id: string; rideId: string; wallet: string; recipient: string; effect: EffectId; note?: string | null; now: Date; lamports?: number }): DonationOrder {
     const note = i.note ? cleanText(i.note) : '';
     if (note.length > NOTE_MAX_LENGTH) throw new BadRequestError(`a donation note is at most ${NOTE_MAX_LENGTH} characters`, 'bad_message');
     return new DonationOrder({
-      id: i.id, rideId: i.rideId, wallet: i.wallet, recipient: i.recipient, effect: i.effect, note: note || null, lamports: EFFECTS[i.effect].lamports,
+      id: i.id, rideId: i.rideId, wallet: i.wallet, recipient: i.recipient, effect: i.effect, note: note || null, lamports: i.lamports ?? EFFECTS[i.effect].lamports,
       status: 'pending', signature: null, eventId: null, createdAt: i.now, paidAt: null, paymentReference: null, referrer: null, shareLamports: 0, shareState: null,
     });
   }
@@ -58,6 +58,7 @@ export class DonationOrder {
   get referrer(): string | null { return this.p.referrer ?? null; }
   get shareLamports(): number { return this.p.shareLamports ?? 0; }
   get shareState(): 'reserved' | 'paid' | 'released' | null { return this.p.shareState ?? null; }
+  get createdAt(): Date { return this.p.createdAt; }
 
   /** Reserve `lamports` of this tip for the driver's referrer. The rest still goes to the driver. */
   assignShare(referrer: string, lamports: number): void {

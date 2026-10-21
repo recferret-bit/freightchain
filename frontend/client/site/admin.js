@@ -66,6 +66,7 @@ async function go({ dedupe = false } = {}) {
   const wait = same ? 0 : setTimeout(() => { if (current()) view.replaceChildren(el('p', { class: 'dim' }, 'Loading…')); }, 150);
   if (!same) { view.replaceChildren(); view.dataset.tab = ''; }
   refreshQueueCount();
+  paintAlerts();
   // the tabs paint through `gv`: a load that a newer go() superseded (another tab clicked meanwhile) must not draw over it
   const gv = { replaceChildren: (...kids) => { if (current()) view.replaceChildren(...kids); }, dataset: view.dataset };
   const ctx = { api, el, view: gv, signAt, time, ago, wallet, go };
@@ -77,6 +78,18 @@ document.querySelector('.tabs').addEventListener('click', e => { if (e.target.cl
 addEventListener('keydown', e => { if (e.key === 'r' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName ?? '')) go({ dedupe: true }); });
 
 const refreshQueueCount = () => api('queue/count').then(({ underReview, flagged }) => { $('tab-queue-n').textContent = (underReview ?? flagged) || ''; }, () => {});   // a count: this runs on every tab change
+function paintAlerts() {
+  api('overview').then((o) => {
+    const banner = $('alert-banner');
+    const active = o.activeAlerts ?? [];
+    const undelivered = o.undeliveredAlerts ?? 0;
+    banner.replaceChildren();
+    if (!undelivered && !active.length) { banner.hidden = true; return; }
+    banner.hidden = false;
+    if (undelivered) banner.append(el('p', {}, `${undelivered} alerts undelivered`));
+    for (const row of active) banner.append(el('p', {}, row.text));
+  }, () => {});
+}
 
 /* ───────── OVERVIEW ───────── */
 async function overview(view) {

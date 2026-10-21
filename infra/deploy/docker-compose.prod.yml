@@ -132,13 +132,18 @@ services:
       TRAFFIC_PROOF_REQUIRED: ${TRAFFIC_PROOF_REQUIRED:-true}
       VERDICT_ENFORCE: ${VERDICT_ENFORCE:-false}   # shadow mode unless deploy/.env opts in: rides from before verified play have no verdict and would drop off the paid boards
       TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-90}
+      TELEMETRY_V21: ${TELEMETRY_V21:-off}
       SIGNIN_RETENTION_DAYS: ${SIGNIN_RETENTION_DAYS:-180}
       CHALLENGE_INTERVAL_SECONDS: ${CHALLENGE_INTERVAL_SECONDS:-240}
       CHALLENGE_FREE_RIDES: ${CHALLENGE_FREE_RIDES:-off}
+      MINIGAMES: ${MINIGAMES:-off}
+      MG_SECRET: ${MG_SECRET:-}
+      MG_SALT_VERSION: ${MG_SALT_VERSION:-mg:v1}
       LIVE_CHAT: ${LIVE_CHAT:-all}                       # live streams: chat on every ride (all | free | off)
       LIVE_DONATIONS: ${LIVE_DONATIONS:-on}              # donations on (on | off)
       LIVE_FREE_DONATIONS: ${LIVE_FREE_DONATIONS:-off}   # no free mock donations in production: they must be a real SOL transfer to the driver
-      LIVE_EFFECTS: ${LIVE_EFFECTS:-free}                # ride-changing effects only on free test rides – never on paid ones (all | free | off)
+      LIVE_EFFECTS: ${LIVE_EFFECTS:-free}                # ride-changing effects only on free test rides – never on paid ones (all | free | off). The server accepts tips only.
+      PLEDGES_ENABLED: ${PLEDGES_ENABLED:-0}             # 0 = pledges answer 403 pledges_disabled. 1 opts a localnet test back in.
       PRIZE_SANCTIONED_COUNTRIES: ${PRIZE_SANCTIONED_COUNTRIES:-}
       PRIZE_BLOCKED_COUNTRIES: ${PRIZE_BLOCKED_COUNTRIES:-}
       PRIZE_BLOCKED_US_STATES: ${PRIZE_BLOCKED_US_STATES:-}
@@ -147,6 +152,10 @@ services:
       HB_MIN_INTERVAL_MS: ${HB_MIN_INTERVAL_MS:-1000}
       HB_TIMEOUT_MS: ${HB_TIMEOUT_MS:-150000}            # the heartbeat timeout: off the live feed + ended by the stale-ride sweeper
       ADMIN_WALLETS: ${ADMIN_WALLETS:-}
+      MODERATOR_WALLETS: ${MODERATOR_WALLETS:-}
+      ADMIN_IP_ALLOWLIST: ${ADMIN_IP_ALLOWLIST:-}
+      ADMIN_APPROVAL_MODE: ${ADMIN_APPROVAL_MODE:-single}
+      THROTTLE_ADMIN_AUTH_LIMIT: ${THROTTLE_ADMIN_AUTH_LIMIT:-10}
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-}   # empty = derived from JWT_SECRET
       ADMIN_SESSION_TTL_MINUTES: ${ADMIN_SESSION_TTL_MINUTES:-120}
       EDITOR_WALLETS: ${EDITOR_WALLETS:-}
@@ -222,10 +231,18 @@ services:
       TRAFFIC_PROOF_REQUIRED: ${TRAFFIC_PROOF_REQUIRED:-true}
       VERDICT_ENFORCE: ${VERDICT_ENFORCE:-false}
       TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-90}
+      TELEMETRY_V21: ${TELEMETRY_V21:-off}
       SIGNIN_RETENTION_DAYS: ${SIGNIN_RETENTION_DAYS:-180}
       CHALLENGE_INTERVAL_SECONDS: ${CHALLENGE_INTERVAL_SECONDS:-240}
       CHALLENGE_FREE_RIDES: ${CHALLENGE_FREE_RIDES:-off}
+      MINIGAMES: ${MINIGAMES:-off}
+      MG_SECRET: ${MG_SECRET:-}
+      MG_SALT_VERSION: ${MG_SALT_VERSION:-mg:v1}
       ADMIN_WALLETS: ${ADMIN_WALLETS:-}
+      MODERATOR_WALLETS: ${MODERATOR_WALLETS:-}
+      ADMIN_IP_ALLOWLIST: ${ADMIN_IP_ALLOWLIST:-}
+      ADMIN_APPROVAL_MODE: ${ADMIN_APPROVAL_MODE:-single}
+      THROTTLE_ADMIN_AUTH_LIMIT: ${THROTTLE_ADMIN_AUTH_LIMIT:-10}
       POSTHOG_ENABLED: "0"
       POSTHOG_DISABLED: "1"
 

@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+const { deflateRawSync, inflateRawSync } = createRequire(import.meta.url)('node:zlib') as typeof import('node:zlib');
 import { Ride } from '../../../../src/domain/rides/ride.entity.js';
 import { ReferralService } from '../../../../src/application/services/referral.service.js';
 import { VerdictService } from '../../../../src/application/services/verdict.service.js';
@@ -6,6 +8,11 @@ import { VerdictStatus } from '../../../../src/domain/verdict/verdict.dto.js';
 import { hashBatch, recording } from '../../../support/recording.js';
 import { MemoryReferralRepository } from '../../../support/in-memory/memory-referral-repository.js';
 import { unitContext } from '../../../support/unit-context.js';
+import { TelemetryConfigPort } from '../../../../src/application/ports/telemetry/telemetry-config.port.js';
+
+class ShadowTelemetry extends TelemetryConfigPort {
+  mode() { return 'shadow' as const; }
+}
 
 describe('VerdictService', () => {
   /** a free ride driven 60 s / 840 m and ended as a complete shift, with or without its recording stored */
@@ -24,8 +31,113 @@ describe('VerdictService', () => {
     const { ctx, ride } = await ended(true);
     const v = await ctx.verdicts.judge(ride.id);
     expect(v?.status).toBe(VerdictStatus.Verified);
+    expect(v?.reasons.map((r) => r.code)).not.toContain('time-dilation');
+    expect(ride.trafficSaltCommit).toBeNull();
+    expect(ride.holeSaltCommit).toBeNull();
     expect((await ctx.verdictRepo.findByRide(ride.id))?.snapshot()).toEqual(v?.snapshot());
     expect(ctx.db.honkMints.size).toBe(0); // a free ride mints no HONK
+  });
+
+  it('shadow telemetry flags a fourth pause and does not reject for it', async () => {
+    const ctx = unitContext();
+    const ride = await ctx.freeRide('w', true);
+    const timing = { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 };
+    for (let i = 0; i < 4; i++) {
+      ctx.clock.advance(2);
+      const t = (i + 1) * 2;
+      ride.applyReport({ s: t * 10, t, hull: 100, paused: false, night: false }, ctx.now(), timing);
+      ctx.clock.advance(2);
+      ride.applyReport({ s: t * 10, t, hull: 100, paused: true, night: false }, ctx.now(), timing);
+    }
+    ctx.clock.advance(6);
+    ride.applyReport({ s: ride.completeDist, t: 14, hull: 100, paused: false, night: false }, ctx.now(), timing);
+    expect(ride.pauseCount).toBe(4);
+    ride.finish('shift', null, ctx.now());
+    await ctx.rides.save(ride);
+    expect((await ctx.verdicts.judge(ride.id))?.reasons.map((r) => r.code)).not.toContain('pause-limit');
+    const shadow = new VerdictService(ctx.rides, ctx.players, ctx.batches, ctx.verdictRepo, ctx.adminActions, ctx.transactions, ctx.clock, ctx.honkMint, { enabled: () => false, mint: async () => {} }, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, new ShadowTelemetry());
+    const flagged = await shadow.judge(ride.id);
+    expect(flagged?.reasons.find((r) => r.code === 'pause-limit')?.severity).toBe('flag');
+  });
+
+  it('enforce mode rejects a physically impossible 30 Hz inp when the ride is judged', async () => {
+    const ctx = unitContext();
+    const ride = await ctx.freeRide('w', true);
+    const [b0] = recording(ride.id, { seconds: 20, distance: 840 });
+    const events = Array.from({ length: 12 }, (_, i) => ({ tUs: i * 16667, code: 'KeyW', down: true }));
+    const inp = deflateRawSync(Buffer.from(JSON.stringify(events))).toString('base64');
+    const named = { inp, clk: inp, chk: deflateRawSync(Buffer.from('[]')).toString('base64'), mg: inp, env: inp, startTick: 0, endTick: 30 };
+    await ctx.batches.insert(RideBatch.accept(ride.id, { ...b0!, named }, hashBatch({ ...b0!, named }), ctx.now()));
+    ctx.clock.advance(60);
+    ride.applyReport({ s: ride.completeDist, t: 60, hull: 100, paused: false, night: false }, ctx.now(), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
+    ride.finish('shift', null, ctx.now());
+    await ctx.rides.save(ride);
+    const enforce = new VerdictService(ctx.rides, ctx.players, ctx.batches, ctx.verdictRepo, ctx.adminActions, ctx.transactions, ctx.clock, ctx.honkMint, { enabled: () => false, mint: async () => {} }, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { mode: () => 'enforce' }, ctx.hasher, { inflateRaw: (data: Buffer) => inflateRawSync(data) });
+    const judged = await enforce.judge(ride.id);
+    expect(judged?.status).toBe(VerdictStatus.Rejected);
+    expect(judged?.reasons.some((reason) => reason.code === 'physically-impossible-frame-grid' && reason.severity === 'reject')).toBe(true);
+    expect((await ctx.players.findByWallet('w'))?.rejectedRides).toBe(1);
+  });
+
+  it('enforce mode rejects a trace that copies 50 intervals from another ride', async () => {
+    const ctx = unitContext();
+    const events = Array.from({ length: 51 }, (_, i) => ({ tUs: i * 40_000, code: 'KeyW', down: i % 2 === 0 }));
+    const inp = deflateRawSync(Buffer.from(JSON.stringify(events))).toString('base64');
+    const named = { inp, clk: inp, chk: deflateRawSync(Buffer.from('[]')).toString('base64'), mg: inp, env: inp, startTick: 0, endTick: 30 };
+    const source = await ctx.freeRide('other', true);
+    const [sourceBatch] = recording(source.id, { seconds: 20, distance: 840 });
+    await ctx.batches.insert(RideBatch.accept(source.id, { ...sourceBatch!, named }, hashBatch({ ...sourceBatch!, named }), ctx.now()));
+    const ride = await ctx.freeRide('w', true);
+    const [b0] = recording(ride.id, { seconds: 20, distance: 840 });
+    await ctx.batches.insert(RideBatch.accept(ride.id, { ...b0!, named }, hashBatch({ ...b0!, named }), ctx.now()));
+    ctx.clock.advance(60);
+    ride.applyReport({ s: ride.completeDist, t: 60, hull: 100, paused: false, night: false }, ctx.now(), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
+    ride.finish('shift', null, ctx.now());
+    await ctx.rides.save(ride);
+    const enforce = new VerdictService(ctx.rides, ctx.players, ctx.batches, ctx.verdictRepo, ctx.adminActions, ctx.transactions, ctx.clock, ctx.honkMint, { enabled: () => false, mint: async () => {} }, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, { mode: () => 'enforce' }, ctx.hasher, { inflateRaw: (data: Buffer) => inflateRawSync(data) });
+    const judged = await enforce.judge(ride.id);
+    expect(judged?.status).toBe(VerdictStatus.Rejected);
+    expect(judged?.reasons.some((reason) => reason.code === 'physically-impossible-replay' && reason.severity === 'reject')).toBe(true);
+  });
+
+  it('shadow flags pause bounds and slow-mo on a recording that would otherwise verify', async () => {
+    const timing = { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 };
+    const drive = async (wallPerStep: number) => {
+      const ctx = unitContext();
+      const ride = await ctx.freeRide('w', true);
+      for (let i = 1; i <= 60; i++) {
+        ctx.clock.advance(wallPerStep);
+        expect(ride.applyReport({ s: i * 14, t: i, hull: 100, paused: false, night: false }, ctx.now(), timing)).toBe(true);
+      }
+      return { ctx, ride };
+    };
+    const shadow = (ctx: ReturnType<typeof unitContext>) => new VerdictService(ctx.rides, ctx.players, ctx.batches, ctx.verdictRepo, ctx.adminActions, ctx.transactions, ctx.clock, ctx.honkMint, { enabled: () => false, mint: async () => {} }, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, new ShadowTelemetry());
+    const finish = async (ctx: ReturnType<typeof unitContext>, ride: Awaited<ReturnType<typeof drive>>['ride']) => {
+      for (const b of recording(ride.id, { seconds: 60, distance: 840 })) await ctx.batches.insert(RideBatch.accept(ride.id, b, hashBatch(b), ctx.now()));
+      ride.finish('shift', null, ctx.now());
+      await ctx.rides.save(ride);
+      return shadow(ctx).judge(ride.id);
+    };
+
+    const paused = await drive(1);
+    for (let i = 0; i < 4; i++) {
+      paused.ctx.clock.advance(80);
+      expect(paused.ride.applyReport({ s: 840, t: 60, hull: 100, paused: true, night: false }, paused.ctx.now(), timing)).toBe(true);
+      paused.ctx.clock.advance(1);
+      expect(paused.ride.applyReport({ s: 840, t: 60, hull: 100, paused: false, night: false }, paused.ctx.now(), timing)).toBe(true);
+    }
+    expect(paused.ride.pauseCount).toBe(4);
+    expect(paused.ride.pauseSeconds).toBeGreaterThan(300);
+    const pauseVerdict = await finish(paused.ctx, paused.ride);
+    expect(pauseVerdict?.status).toBe(VerdictStatus.Flagged);
+    expect(pauseVerdict?.reasons.filter((r) => r.code === 'pause-limit' || r.code === 'pause-time').map((r) => r.severity)).toEqual(['flag', 'flag']);
+    expect(pauseVerdict?.reasons.some((r) => r.severity === 'reject')).toBe(false);
+
+    const slow = await drive(2);
+    const slowVerdict = await finish(slow.ctx, slow.ride);
+    expect(slowVerdict?.status).toBe(VerdictStatus.Flagged);
+    expect(slowVerdict?.reasons.find((r) => r.code === 'time-dilation')?.severity).toBe('flag');
+    expect(slowVerdict?.reasons.some((r) => r.severity === 'reject')).toBe(false);
   });
 
   it('judging again re-reads the whole recording (a late batch turns "no recording" into a verdict on it)', async () => {

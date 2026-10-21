@@ -33,6 +33,7 @@ export const ROSTER = {
     hotel: [{ id: 'hotel-tower', hl: 8, hd: 6 }, { id: 'hotel-resort', hl: 14, hd: 7 }],
     restaurant: [{ id: 'diner-chrome', hl: 8, hd: 5 }, { id: 'roadhouse-porch', hl: 7, hd: 6 }, { id: 'fastfood-drive', hl: 7, hd: 6 }],
     gas: [{ id: 'gas-canopy', hl: 11, hd: 8 }, { id: 'gas-truckstop', hl: 14, hd: 9 }, { id: 'gas-kiosk', hl: 7, hd: 6 }],
+    gulp: [{ id: 'gulp-bay', hl: 22, hd: 14 }],
     police: [{ id: 'police-checkpoint', hl: 6, hd: 4 }, { id: 'police-speedtrap', hl: 5, hd: 4 }, { id: 'police-station', hl: 10, hd: 6 }],
   },
   vehicle: {

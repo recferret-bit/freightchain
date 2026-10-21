@@ -1,5 +1,6 @@
 import type { Loadout } from '../economy/cosmetics.js';
 import { honkQuote, type HonkQuoteDto } from '../honk/tokenomics.js';
+import { MG_RULES } from '../minigames/kinds.js';
 import { reviewOf, type RideReview } from '../verdict/ride-review.js';
 import type { VerdictDto } from '../verdict/verdict.dto.js';
 import { toChallengeDto, type ChallengeDto } from './ride-challenge.js';
@@ -58,10 +59,45 @@ export interface RideDto {
   promo: boolean;
   /** The week's granted paid ticket. Price 0, watchable, ranked as paid. TEN4 is not minted. */
   weeklyGrant: boolean;
+  /** Null on training rides and when MINIGAMES is off. The salt is not this field. */
+  mgCommit: string | null;
+  mgMode: 'normal' | 'more-time' | null;
+  mgRulesVersion: string | null;
+  /** Present only on GET ride after a verdict, and only when minigames are not off. */
+  mgSalt?: string;
+  /** Heartbeat only: armed events, max 4. No layout, assets, or nonce. Absent when minigames are off. */
+  minigames?: MinigameArmedDto[];
+  /** POST /start only, and only when TELEMETRY_V21 is shadow. Never set by toRideDto. */
+  sessionKey?: string;
+  keyId?: string;
+  protocol?: 2;
+  /** POST /start only, when TELEMETRY_V21 is shadow or enforce and a hasher is wired. sha256 of the salt, not the salt. */
+  trafficSaltCommit?: string | null;
+  holeSaltCommit?: string | null;
+  /** POST /start only, enforce mode. The same bytes revealRideSalts rebuilds. Not on GET. */
+  trafficSalt?: string;
+  holeSalt?: string;
 }
 
-/** `now`: when given, the open prompt is included (the heartbeat); without it the DTO never carries one. `honkPaid`: the 8h mint has been credited. */
-export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date | null = null, honkPaid = false): RideDto => ({
+/** What the heartbeat may carry for one armed minigame. */
+export interface MinigameArmedDto {
+  id: string;
+  ordinal: number;
+  kind: string;
+  state: string;
+  trigger: string;
+  armedAtMs: number;
+  bayDeadlineMs: number | null;
+}
+
+export interface RideDtoExtras {
+  mgSalt?: string;
+  minigames?: MinigameArmedDto[];
+}
+
+/** `now`: when given, the open prompt is included (the heartbeat); without it the DTO never carries one. `honkPaid`: the 8h mint has been credited.
+    `extras.mgSalt` is set only by GET ride after a verdict. `extras.minigames` is the heartbeat list. */
+export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date | null = null, honkPaid = false, extras?: RideDtoExtras): RideDto => ({
   trafficVersion: r.trafficVersion,
   id: r.id,
   tier: r.tier,
@@ -96,6 +132,11 @@ export const toRideDto = (r: Ride, verdict: VerdictDto | null = null, now: Date 
   cleanMetres: r.cleanMetres,
   promo: r.isPromo,
   weeklyGrant: r.isWeeklyGrant,
+  mgCommit: r.mgCommit,
+  mgMode: r.mgMode,
+  mgRulesVersion: r.mgCommit ? MG_RULES : null,
+  ...(extras?.mgSalt ? { mgSalt: extras.mgSalt } : {}),
+  ...(extras?.minigames ? { minigames: extras.minigames } : {}),
 });
 
 /** The wallet's READY free ride (ordered, not started – its credit is already spent): ordering a free ride again hands it back, re-chosen at the level and

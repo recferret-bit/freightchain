@@ -7,20 +7,21 @@ import { recordPhone } from '../../telemetry.js';
 import { view } from './state.js';
 
 /* Explicit finite state machine for the cab phone's power lifecycle:
-   OFF (0) → BOOT (1, engine starts) → HOME (2, icons pop in, Maps launches) → ON (3, navigation map). */
+   OFF → BOOT (engine starts) → HOME (stays until an icon is opened) → ON (that app).
+   A revealed minigame sets phone.awake so the screen survives the engine stopping. */
 
 export const PHONE_POWER = Object.freeze({ OFF: 0, BOOT: 1, HOME: 2, ON: 3 });
 
-const { BOOT, HOME, LAUNCH_AT, UI_MS } = CFG.PHONE;
+const { BOOT, UI_MS } = CFG.PHONE;
 export const ease = x => 1 - (1 - clamp(x, 0, 1)) ** 3;
 export const lerp = (a, b, k) => a + (b - a) * k;
 
 /** Step the phone power FSM and return the current screen descriptor:
     { off: true } | { boot: ms } | { home: ms } | { on: true, u: 0..1 }. */
 export function stepPhonePower(now = performance.now()) {
-  if (st.watch && !phone.power) phone.power = PHONE_POWER.ON;   // a replay's phone is simply on
-  if (phone.power > PHONE_POWER.OFF && !st.engineOn && !st.watch) {
-    phone.power = PHONE_POWER.OFF;
+  if (st.watch && !phone.power) { phone.power = PHONE_POWER.ON; phone.app = phone.app || 'maps'; }   // a replay's phone is simply on, in Maps
+  if (phone.power > PHONE_POWER.OFF && !st.engineOn && !st.watch && !phone.awake) {
+    phone.power = PHONE_POWER.OFF; phone.app = null;
     recordPhone('power-off');
   }
   if (phone.power === PHONE_POWER.OFF && st.engineOn) {
@@ -30,10 +31,6 @@ export function stepPhonePower(now = performance.now()) {
   if (phone.power === PHONE_POWER.BOOT && now - phone.bootAt >= BOOT) {
     phone.power = PHONE_POWER.HOME; phone.homeAt = now;
     recordPhone('home');
-  }
-  if (phone.power === PHONE_POWER.HOME && now - phone.homeAt >= HOME) {
-    phone.power = PHONE_POWER.ON; phone.readyAt = now;
-    recordPhone('ready');
   }
   if (phone.power === PHONE_POWER.ON && view.off !== st.off) {
     view.off = st.off;
@@ -45,12 +42,24 @@ export function stepPhonePower(now = performance.now()) {
   return { on: true, u: phone.readyAt ? ease((now - phone.readyAt) / UI_MS) : 1 };
 }
 
-export function fastForwardHomeLaunch(now = performance.now()) {
-  if (phone.power === PHONE_POWER.HOME && now - phone.homeAt < LAUNCH_AT) {
-    phone.homeAt = now - LAUNCH_AT + 120;
-  }
+/** Open one app from the home screen. Maps used to launch itself; it is now just the Maps icon. */
+export function openPhoneApp(id, now = performance.now()) {
+  phone.power = PHONE_POWER.ON; phone.app = id; phone.readyAt = now; phone.holdHome = false;
+  recordPhone('app:' + id);
 }
 
+/** Back to the launcher. A later step stays on home. */
+export function returnPhoneHome(now = performance.now()) {
+  phone.power = PHONE_POWER.HOME; phone.app = null; phone.holdHome = true; phone.homeAt = now;
+  recordPhone('home');
+}
+
+export function fastForwardHomeLaunch(now = performance.now()) { openPhoneApp('maps', now); }
+
 export function resetPhonePower() {
-  Object.assign(phone, { power: st.watch ? PHONE_POWER.ON : PHONE_POWER.OFF, bootAt: 0, homeAt: 0, readyAt: 0 });
+  Object.assign(phone, {
+    power: st.watch ? PHONE_POWER.ON : PHONE_POWER.OFF, app: st.watch ? 'maps' : null,
+    bootAt: 0, homeAt: 0, readyAt: 0, holdHome: false, awake: false, slowSince: 0,
+    notice: null, badge: null, papers: null, iconOrder: null,
+  });
 }

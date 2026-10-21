@@ -28,7 +28,7 @@ export class GetPoolHandler implements IQueryHandler<GetPoolQuery, PoolDto> {
       round: { id: round.id, startsAt: round.startsAt.getTime(), endsAt: round.endsAt.getTime() },
       entries: entries.count, split, settled: false, solUsd: quote?.usd ?? null,
       usd: { grand: usd(split.grand), top20: usd(split.top20), nextSeed: usd(split.nextSeed), fees: usd(split.fees), entries: usd(split.entries) },
-      pools: (await this.pools.listLive()).map(toPrizePoolDto),
+      pools: (await this.pools.listLive()).map((pool) => toPrizePoolDto(pool)),
     };
   }
 }

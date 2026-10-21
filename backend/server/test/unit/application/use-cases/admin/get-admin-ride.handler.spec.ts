@@ -21,6 +21,13 @@ describe('GetAdminRideHandler', () => {
     expect(d.payment).toBeNull();
   });
 
+  it('opening the recording index is audited as a telemetry read', async () => {
+    const ctx = unitContext();
+    const { ride } = await judgedRide(ctx, 'bob', { inputs: 'bot', seconds: 180 }, 180, 2400);
+    await new GetAdminRideHandler(ctx.rides, ctx.verdictRepo, ctx.adminQuery, ctx.payments, ctx.replayRepo, ctx.adminActions, ctx.clock).execute(new GetAdminRideQuery(ride.id, 'ADMIN'));
+    expect(ctx.db.adminActions.at(-1)).toMatchObject({ action: 'read.telemetry', target: ride.id, wallet: 'ADMIN', role: 'admin' });
+  });
+
   it('an unknown ride is a 404', async () => {
     const ctx = unitContext();
     await expect(new GetAdminRideHandler(ctx.rides, ctx.verdictRepo, ctx.adminQuery, ctx.payments).execute(new GetAdminRideQuery('nope'))).rejects.toBeInstanceOf(NotFoundError);

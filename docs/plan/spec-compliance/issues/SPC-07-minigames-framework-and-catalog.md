@@ -1,21 +1,22 @@
-# Epic SPC-07 — Minigame Captchas, Parking Pocket & Noisy PNG
+# Epic SPC-07 — Port the phone `phone-sms` minigame
 
 > **Parent Plan:** [`docs/plan/SPEC_COMPLIANCE_PLAN.md`](../../SPEC_COMPLIANCE_PLAN.md) · **Status Board:** [`docs/plan/spec-compliance/STATUS.md`](../STATUS.md)
-> **Spec Docs:** [`docs/spec/minigames.md`](../../../spec/minigames.md) (`MGM-M-01..12`, Decisions `14, 19–24, 28, 29, 31`)
+> **Spec Docs:** [`docs/spec/minigames.md`](../../../spec/minigames.md) Part 1 (`MGM-M-01..12`)
+> **Source tree:** `/Users/ferretrec/work/freightchain-phone-minigames` (branch `phone-minigames`). Do not implement Appendix A.
 
 ---
 
 ## Overview
 
-Implements the diegetic in-ride minigame captcha system defined in [`docs/spec/minigames.md`](../../../spec/minigames.md): 1h-shift-only scheduling (`2..4` events per shift, `0` on training rides), `mgSalt = HMAC(MG_SECRET, rideId ‖ wallet)` commit–reveal, roadside parking pockets (`≥300m` from hazards, full stop required), server-rendered noisy PNG challenge images (never sending plaintext target digits in JSON), `POST /api/rides/:id/minigames/:eventId/answer` + `RideMiniGame` persistence, the accepted base minigame catalog, time penalties (`+20s` wrong / `+45s` missed), and the `×2` accessibility timer mode.
+Bring the existing phone minigame onto this checkout. The source already schedules `phone-sms` only, stamps `mgCommit`, serves SVG assets, scores 3 tries at `+20` seconds, and leaves GULP and PIKE as local cab tasks. Parking pockets, noisy PNGs, a 15-id catalog, and a `+45` second skip are not in that code and are not this epic. The checklists under each task still quote the retired catalog. Where a checklist and Part 1 disagree, Part 1 wins.
 
 ---
 
 ## Tasks
 
-### `SPC-07.1` — Implement `mgSalt = HMAC(MG_SECRET, rideId‖wallet)` commit–reveal & deterministic 1h minigame schedule generator
+### `SPC-07.1` — Port `mgSalt` commit–reveal and the `phone-sms` schedule (`2..4` arms, time gaps, null `slotS`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — ported onto this checkout 2026-10-20. `MINIGAMES` defaults to `off`. Unit specs for the domain, session, rate limit, and env adapter passed. `E2E-08.3` and `E2E-08.4` stay open.
 - **Spec Rules:** `MGM-M-01`, `MGM-M-02`, `MGM-M-03`, `MGM-M-04` (`docs/spec/minigames.md` §2–3, Decisions 19, 20)
 - **Paired Plan 1 Task:** `E2E-08.3`
 - **Target Files:**
@@ -35,9 +36,9 @@ Implements the diegetic in-ride minigame captcha system defined in [`docs/spec/m
 
 ---
 
-### `SPC-07.2` — Implement roadside parking pocket placement (`≥300m` from forks/construction/tunnels + fallback pocket) and full-stop (`v < 0.5 m/s`) trigger
+### `SPC-07.2` — Port arm, cancel, and one client deferral. Do not add a parking pocket.
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — ported onto this checkout 2026-10-20. `MINIGAMES` defaults to `off`. Unit specs for the domain, session, rate limit, and env adapter passed. `E2E-08.3` and `E2E-08.4` stay open.
 - **Spec Rules:** `MGM-M-05`, `MGM-M-06` (`docs/spec/minigames.md` §3.2, Decisions 21, 22)
 - **Paired Plan 1 Task:** `E2E-08.3`
 - **Target Files:**
@@ -57,9 +58,9 @@ Implements the diegetic in-ride minigame captcha system defined in [`docs/spec/m
 
 ---
 
-### `SPC-07.3` — Build server-side noisy PNG challenge renderer (distorted glyphs, noise lines, zero plaintext target digits in JSON)
+### `SPC-07.3` — Port the SVG phone-sms renderer (dispatch mark, one true cab slip, no code in the open JSON)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — ported onto this checkout 2026-10-20. `MINIGAMES` defaults to `off`. Unit specs for the domain, session, rate limit, and env adapter passed. `E2E-08.3` and `E2E-08.4` stay open.
 - **Spec Rules:** `MGM-M-07` (`docs/spec/minigames.md` §4, Decision 28)
 - **Paired Plan 1 Task:** `E2E-08.4`
 - **Target Files:**
@@ -76,9 +77,9 @@ Implements the diegetic in-ride minigame captcha system defined in [`docs/spec/m
 
 ---
 
-### `SPC-07.4` — Implement `RideMiniGame` Prisma model, `POST /api/rides/:id/minigames/:eventId/answer`, and base accepted minigame catalog + crypto safety rules
+### `SPC-07.4` — Port `RideMiniGame`, open / answer / SVG routes, and the accepted catalog (`phone-sms` only)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — ported onto this checkout 2026-10-20. `MINIGAMES` defaults to `off`. Unit specs for the domain, session, rate limit, and env adapter passed. `E2E-08.3` and `E2E-08.4` stay open.
 - **Spec Rules:** `MGM-M-08`, `MGM-M-09`, `MGM-M-10` (`docs/spec/minigames.md` §5–6, Decisions 24, 29)
 - **Paired Plan 1 Task:** `E2E-08.4`
 - **Target Files:**
@@ -99,9 +100,9 @@ Implements the diegetic in-ride minigame captcha system defined in [`docs/spec/m
 
 ---
 
-### `SPC-07.5` — Implement minigame penalties (`+20s` wrong, `+45s` missed, `>2` missed → review flag) and `×2` accessibility timer mode
+### `SPC-07.5` — Port scoring (`+20` s only after 3 wrong tries), `missed` with no extra seconds, and `more-time` (60 s)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — ported onto this checkout 2026-10-20. `MINIGAMES` defaults to `off`. Unit specs for the domain, session, rate limit, and env adapter passed. `E2E-08.3` and `E2E-08.4` stay open.
 - **Spec Rules:** `MGM-M-11`, `MGM-M-12` (`docs/spec/minigames.md` §7, Decisions 23, 31)
 - **Paired Plan 1 Task:** `E2E-08.4`
 - **Target Files:**

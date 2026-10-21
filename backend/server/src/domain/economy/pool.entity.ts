@@ -3,6 +3,7 @@ import { BadRequestError, ConflictError } from '../shared/errors.js';
 import { projectRoadSeed } from '../road/provable-seed.js';
 import { rideTier } from '../rides/ride-tier.js';
 import { tierFromChainCode, type ChainEventRecord, type PoolChainState } from './chain-events.js';
+import { derivedSchedule, LAST_START_MS, schedulePhase, type PoolPhase } from './pool-schedule.js';
 import type { PayoutState, PoolHold, PoolProps, PoolStatus } from './pool.types.js';
 
 /**
@@ -49,6 +50,11 @@ export class Pool {
       seedCommitment: state.seedCommitment ?? existing?.p.seedCommitment ?? null,
       blockhash: state.seedSlotHash ?? existing?.p.blockhash ?? null,
       slot: state.seedSlot ?? existing?.p.slot ?? null,
+      opensAt: state.createdAt,
+      salesCloseAt: state.prepDeadline,
+      lastStartAt: new Date(state.playDeadline.getTime() - LAST_START_MS),
+      playCloseAt: state.playDeadline,
+      validationUntil: state.payoutAt,
       sealSlot: state.sealSlot ?? existing?.p.sealSlot ?? null,
       winnersRoot: state.sealSlot === undefined ? (existing?.p.winnersRoot ?? null) : (state.winnersRoot ?? null),
       committedAt: state.sealSlot === undefined ? (existing?.p.committedAt ?? null) : (state.committedAt ?? null),
@@ -62,7 +68,7 @@ export class Pool {
     if (!Number.isInteger(props.id) || props.id < 0 || props.id > 0xffff_ffff) bad('the id is a u32');
     if (props.prizeBps + props.seedBps + props.feeBps + (props.referralBps ?? 0) !== 10_000) bad('the split must add up to 10 000 bps');
     if (props.maxPlayerShareBps !== undefined && (!Number.isInteger(props.maxPlayerShareBps) || props.maxPlayerShareBps < 0 || props.maxPlayerShareBps > 4999)) bad('player share must be under 5000 bps');
-    if (!Number.isInteger(props.minTickets) || props.minTickets < 1) bad('the minimum is at least 1 ticket');
+    if (!Number.isInteger(props.minTickets) || props.minTickets < 0) bad('the minimum is 0 (operator-funded) or more');
     if (!Number.isInteger(props.maxPerWallet) || props.maxPerWallet < 1) bad('at least 1 ticket per wallet');
     if (props.maxTickets !== 0 && props.maxTickets < props.minTickets) bad('the maximum is below the minimum');
     if (props.priceLamports < 1) bad('a ticket costs something');
@@ -83,6 +89,11 @@ export class Pool {
   get prepDeadline(): Date { return this.p.prepDeadline; }
   get playDeadline(): Date { return this.p.playDeadline; }
   get payoutAt(): Date { return this.p.payoutAt; }
+  get opensAt(): Date { return derivedSchedule(this.p).opensAt; }
+  get salesCloseAt(): Date { return derivedSchedule(this.p).salesCloseAt; }
+  get lastStartAt(): Date { return derivedSchedule(this.p).lastStartAt; }
+  get playCloseAt(): Date { return derivedSchedule(this.p).playCloseAt; }
+  get validationUntil(): Date { return derivedSchedule(this.p).validationUntil; }
   get payoutState(): PayoutState { return this.p.payoutState; }
   get hold(): PoolHold | null { return this.p.hold; }
   get roundId(): number | null { return this.p.roundId; }
@@ -100,13 +111,18 @@ export class Pool {
   get shiftSeconds(): number { return rideTier(this.p.tier, 0).seconds; }
   /** A pool's results count only the rides that ENDED by its play deadline (audit H6: a ride started days after it still ranked and was paid). */
   rideWindow(): { endBy: Date } { return { endBy: this.p.playDeadline }; }
-  /** The last moment a ticket of this pool can be spent on a ride: the sale end – no new sales and no new rides after it (the user's rule, Oct 2026: the
-      play window after the sale – 3 h on the 1 h series – only lets shifts already on the road finish) – and never later than a shift of `minSeconds` can
-      still end by the play deadline (a pool whose window is shorter than a shift: the 4 h / 8 h tiers, a demo pool). */
-  startBy(minSeconds: number = this.shiftSeconds): Date { return new Date(Math.min(this.p.prepDeadline.getTime(), this.p.playDeadline.getTime() - minSeconds * 1000)); }
-  /** A ticket of this pool can be ridden now: the pool is live and it is not past `startBy` (POST /api/rides spends one only then; POST /start then allows
-      the lobby → START gap, `canFinishBy`). */
-  isRidable(now: Date, minSeconds: number = this.shiftSeconds): boolean { return this.isActive && now.getTime() <= this.startBy(minSeconds).getTime(); }
+  /** The last moment a ticket of this pool can be spent: `lastStartAt` (play close − 75 min), and never later than a shift of
+      `minSeconds` can still end by the play deadline. Sales may already be closed (`salesCloseAt` = prep deadline, 2 h before play close). */
+  startBy(minSeconds: number = this.shiftSeconds): Date {
+    const last = this.lastStartAt.getTime();
+    const byShift = this.p.playDeadline.getTime() - minSeconds * 1000;
+    return new Date(Math.min(last, byShift));
+  }
+  /** Operator-funded pools (`minTickets === 0`) are ridable while still `open`: the program .so still starts them OPEN, the server does not wait for a sale. */
+  isRidable(now: Date, minSeconds: number = this.shiftSeconds): boolean {
+    const live = this.isActive || (this.p.status === 'open' && this.p.minTickets === 0);
+    return live && now.getTime() >= this.opensAt.getTime() && now.getTime() <= this.startBy(minSeconds).getTime();
+  }
   /** A ride ORDERED in time may still start while it can reach its finish line by the deadline at the governor (`seconds` = completeDist ÷ MAX_SPEED – half
       its shift): the lobby → game → START gap must not cost a ticket that was spent in time (WP2 review). */
   canFinishBy(now: Date, seconds: number): boolean { return this.isActive && now.getTime() + seconds * 1000 <= this.p.playDeadline.getTime(); }
@@ -135,7 +151,8 @@ export class Pool {
     if (!Number.isInteger(qty) || qty < 1) return 'quantity must be a whole number of at least 1';
     if (this.p.status !== 'open' && this.p.status !== 'active') return `this pool is ${this.p.status}`;
     if (this.p.paidTicketsEnabled === false) return 'paid tickets are disabled for this pool';
-    if (now.getTime() >= this.p.prepDeadline.getTime()) return 'ticket sales for this pool are closed';
+    if (now.getTime() < this.opensAt.getTime()) return 'ticket sales have not opened';
+    if (now.getTime() >= this.salesCloseAt.getTime()) return 'ticket sales for this pool are closed';
     if (this.p.maxTickets > 0 && this.p.ticketsSold + qty > this.p.maxTickets) return 'this pool is sold out';
     if (walletBought + qty > this.p.maxPerWallet) return `at most ${this.p.maxPerWallet} tickets per wallet in this pool`;
     return null;
@@ -159,6 +176,11 @@ export class Pool {
     if (this.p.status === 'open') return 'failed';
     if (t < this.p.playDeadline.getTime()) return 'riding';
     return t < this.p.payoutAt.getTime() ? 'review' : 'payout';
+  }
+
+  /** Lobby phase for the weekly schedule (upcoming → open → finishing → validating → paid | closed). */
+  schedulePhase(now: Date): PoolPhase {
+    return schedulePhase(this.p.status, this.p.payoutState, derivedSchedule(this.p), now);
   }
 
   /** An admin stops the payout job for this pool (signed + audited by the caller); holding again replaces the note. */

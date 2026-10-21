@@ -9,7 +9,10 @@ import { ListPromosQuery, type PromoListDto } from '../application/use-cases/pro
 import { DomainError } from '../domain/shared/errors.js';
 import { EnvModule } from '../infrastructure/config/env.module.js';
 import bs58 from 'bs58';
+import { userInfo } from 'node:os';
+import { AdminActionRepositoryPort } from '../application/ports/admin/admin-action.repository.port.js';
 import { ClockPort } from '../application/ports/shared/clock.port.js';
+import { CLI_AUDIT_SKIP, cliAuditRecord } from './cli-audit.js';
 import { RegisterPoolCommand } from '../application/use-cases/pools/register-pool/register-pool.command.js';
 import type { PoolProps } from '../domain/economy/pool.types.js';
 import { EnvService } from '../infrastructure/config/env.service.js';
@@ -32,11 +35,12 @@ import { SweepSignInsCommand } from '../application/use-cases/auth/sweep-sign-in
 @Module({ imports: [EnvModule, ApplicationModule] })
 class CliModule {}
 
-async function withBuses<T>(fn: (buses: { commands: CommandBus; queries: QueryBus; app: INestApplicationContext }) => Promise<T>): Promise<number> {
+async function withBuses<T>(command: string, args: readonly string[], fn: (buses: { commands: CommandBus; queries: QueryBus; app: INestApplicationContext }) => Promise<T>): Promise<number> {
   let app: INestApplicationContext | null = null;
   try {
     app = await NestFactory.createApplicationContext(CliModule, { logger: ['error'] });
     const result = await fn({ commands: app.get(CommandBus), queries: app.get(QueryBus), app });
+    await noteCli(app, command, args);
     console.log(JSON.stringify(result, null, 2));
     return 0;
   } catch (error) {
@@ -55,6 +59,7 @@ async function runReplayWorker(cfg: ReplayWorkerArgs): Promise<number> {
   process.once('SIGTERM', stop);
   try {
     app = await NestFactory.createApplicationContext(CliModule, { logger: ['error', 'warn', 'log'] });
+    await noteCli(app, 'replay:worker', [`--limit`, String(cfg.limit)]);
     const commands = app.get(CommandBus);
     console.log(JSON.stringify({ event: 'replay-worker.start', limit: cfg.limit, concurrency: cfg.concurrency, intervalMs: cfg.intervalMs }));
     while (!stopping) {
@@ -89,19 +94,19 @@ export async function runAdmin(command: string, args: readonly string[]): Promis
   switch (command) {
     case 'promo:create': {
       const input = parsePromoCreate(args);
-      return typeof input === 'string' ? usage(input) : withBuses(({ commands }) => commands.execute(new CreatePromoCommand(input)));
+      return typeof input === 'string' ? usage(input) : withBuses(command, args, ({ commands }) => commands.execute(new CreatePromoCommand(input)));
     }
     case 'promo:list':
-      return withBuses(({ queries }) => queries.execute<ListPromosQuery, PromoListDto>(new ListPromosQuery()));
+      return withBuses(command, args, ({ queries }) => queries.execute<ListPromosQuery, PromoListDto>(new ListPromosQuery()));
     case 'promo:disable':
-      return args.length === 1 ? withBuses(({ commands }) => commands.execute(new DisablePromoCommand(args[0] as string))) : usage('give exactly one code');
+      return args.length === 1 ? withBuses(command, args, ({ commands }) => commands.execute(new DisablePromoCommand(args[0] as string))) : usage('give exactly one code');
     case 'tickets:grant': {
       const g = parseTicketsGrant(args);
-      return typeof g === 'string' ? usage(g) : withBuses(({ commands }) => commands.execute(new GrantTicketsCommand(g.wallet, g.poolId, g.count, g.note)));
+      return typeof g === 'string' ? usage(g) : withBuses(command, args, ({ commands }) => commands.execute(new GrantTicketsCommand(g.wallet, g.poolId, g.count, g.note)));
     }
     case 'pool:seed': {
       const p = parsePoolSeed(args);
-      return typeof p === 'string' ? usage(p) : withBuses(({ commands, app }) => {
+      return typeof p === 'string' ? usage(p) : withBuses(command, args, ({ commands, app }) => {
         const env = app.get(EnvService);
         if (env.isProduction) throw new Error('pool:seed is for development – in production pools come from the chain (pool:register)');
         return commands.execute(new RegisterPoolCommand(seededPool(p, app.get(ClockPort).now(), env)));
@@ -109,27 +114,27 @@ export async function runAdmin(command: string, args: readonly string[]): Promis
     }
     case 'pool:register': {
       const r = parsePoolRegister(args);
-      return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new RegisterPoolFromChainCommand(r.poolId, r.label)));
+      return typeof r === 'string' ? usage(r) : withBuses(command, args, ({ commands }) => commands.execute(new RegisterPoolFromChainCommand(r.poolId, r.label)));
     }
     case 'pool:crank':
-      return args.length ? usage('pool:crank takes no arguments') : withBuses(({ commands }) => commands.execute(new CrankPoolsCommand()));
+      return args.length ? usage('pool:crank takes no arguments') : withBuses(command, args, ({ commands }) => commands.execute(new CrankPoolsCommand()));
     case 'pool:payout': {
       const r = parsePoolPayout(args);
-      return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new PayPoolsCommand(r.poolId)));
+      return typeof r === 'string' ? usage(r) : withBuses(command, args, ({ commands }) => commands.execute(new PayPoolsCommand(r.poolId)));
     }
     case 'pool:pledges':
-      return args.length ? usage('pool:pledges takes no arguments') : withBuses(({ commands }) => commands.execute(new SyncPledgesCommand()));
+      return args.length ? usage('pool:pledges takes no arguments') : withBuses(command, args, ({ commands }) => commands.execute(new SyncPledgesCommand()));
     case 'achievement:mint': {
       if (args.some((a) => a !== '--retry')) return usage('achievement:mint takes only --retry');
-      return withBuses(({ commands, app }) => { const env = app.get(EnvService); return commands.execute(new MintAchievementsCommand(env.achievementMintDelayMs, env.achievementMintBatch, args.includes('--retry'))); });
+      return withBuses(command, args, ({ commands, app }) => { const env = app.get(EnvService); return commands.execute(new MintAchievementsCommand(env.achievementMintDelayMs, env.achievementMintBatch, args.includes('--retry'))); });
     }
     case 'verdict:rejudge': {
       const r = parseVerdictRejudge(args);
-      return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new RejudgeRidesCommand({ verdict: r.verdict, since: r.since, limit: r.limit }, r.dryRun, 'cli')));
+      return typeof r === 'string' ? usage(r) : withBuses(command, args, ({ commands }) => commands.execute(new RejudgeRidesCommand({ verdict: r.verdict, since: r.since, limit: r.limit }, r.dryRun, 'cli')));
     }
     case 'replay:verify': {
       const r = parseReplayVerify(args);
-      return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new ProcessReplayQueueCommand(r.limit, r.concurrency, r.rideId)));
+      return typeof r === 'string' ? usage(r) : withBuses(command, args, ({ commands }) => commands.execute(new ProcessReplayQueueCommand(r.limit, r.concurrency, r.rideId)));
     }
     case 'replay:worker': {
       const r = parseReplayWorker(args);
@@ -137,17 +142,22 @@ export async function runAdmin(command: string, args: readonly string[]): Promis
     }
     case 'pool:attention': {
       const r = parsePoolAttention(args);
-      return typeof r === 'string' ? usage(r) : withBuses(({ app }) => app.get(PoolAttentionService).markPool(r.poolId));
+      return typeof r === 'string' ? usage(r) : withBuses(command, args, ({ app }) => app.get(PoolAttentionService).markPool(r.poolId));
     }
     case 'stats:reconcile': {
       const r = parseStatsReconcile(args);
-      return typeof r === 'string' ? usage(r) : withBuses(({ commands }) => commands.execute(new ReconcileStatsCommand(r.wallet, r.fix)));
+      return typeof r === 'string' ? usage(r) : withBuses(command, args, ({ commands }) => commands.execute(new ReconcileStatsCommand(r.wallet, r.fix)));
     }
     case 'retention:sweep':
-      return args.length ? usage('retention:sweep takes no arguments') : withBuses(async ({ commands }) => ({ telemetry: await commands.execute(new SweepTelemetryCommand()), signIns: await commands.execute(new SweepSignInsCommand()) }));
+      return args.length ? usage('retention:sweep takes no arguments') : withBuses(command, args, async ({ commands }) => ({ telemetry: await commands.execute(new SweepTelemetryCommand()), signIns: await commands.execute(new SweepSignInsCommand()) }));
     default:
       return null;
   }
+}
+
+async function noteCli(app: INestApplicationContext, command: string, args: readonly string[]): Promise<void> {
+  if (CLI_AUDIT_SKIP.has(command)) return;
+  await app.get(AdminActionRepositoryPort).insert(cliAuditRecord(userInfo().username, command, args, app.get(ClockPort).now()));
 }
 
 const DAY = 86_400_000;

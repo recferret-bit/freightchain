@@ -3,9 +3,11 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { RideEvent } from '../../../../domain/live/ride-event.entity.js';
 import { EFFECT_WINDOW_MS, LINE_WINDOW_MS } from '../../../../domain/live/live-rules.js';
 import { toRideEventDto, type RideEventDto } from '../../../../domain/live/live.dto.js';
-import { ForbiddenError, TooManyRequestsError } from '../../../../domain/shared/errors.js';
+import { TooManyRequestsError } from '../../../../domain/shared/errors.js';
 import { RideEventRepositoryPort } from '../../../ports/live/ride-event.repository.port.js';
 import { ClockPort } from '../../../ports/shared/clock.port.js';
+import { isRunningReplayMiss, LiveChatService } from '../../../live/live-chat.service.js';
+import { LiveDonationService } from '../../../live/live-donation.service.js';
 import { LiveAccessService } from '../../../services/live-access.service.js';
 import { StatsService } from '../../../services/stats.service.js';
 import { PostRideEventCommand } from './post-ride-event.command.js';
@@ -26,19 +28,32 @@ export class PostRideEventHandler implements ICommandHandler<PostRideEventComman
     private readonly events: RideEventRepositoryPort,
     private readonly clock: ClockPort,
     private readonly stats: StatsService,
+    private readonly donations: LiveDonationService,
+    private readonly chat: LiveChatService,
   ) {}
 
   async execute({ wallet, rideId, input }: PostRideEventCommand): Promise<RideEventDto> {
     const now = this.clock.now();
-    const { ride, features } = await this.access.requirePostable(rideId, wallet, input, now);
-    if (input.kind === 'donation' && features.payment === 'chain') throw new ForbiddenError('donations are paid with a real transfer here – use a donation order', 'payment_required');
-    const event = input.kind === 'message'
-      ? RideEvent.message({ rideId, wallet, text: input.text, now })
-      : RideEvent.donation({ rideId, wallet, effect: input.effect, note: input.note, now });
-    const stored = await this.events.insert(event, event.needsGame ? EFFECT_WINDOW_MS : undefined);
+    if (input.kind === 'message') {
+      try {
+        return await this.chat.post(wallet, rideId, input.text, input.replayT);
+      } catch (error) {
+        if (!isRunningReplayMiss(error)) throw error; // a finished replay is handled above; a ride still on the road uses the live bucket
+      }
+    }
+    if (input.kind === 'donation') {
+      const prepared = await this.donations.prepare(wallet, rideId, input.effect, input.lamports ?? null, 'mock');
+      const event = RideEvent.donation({ rideId, wallet, effect: 'tip', note: input.note, now, lamports: prepared.lamports });
+      const stored = await this.events.insert(event);
+      if (!stored) throw await effectBusy(this.events, event, now);
+      await this.stats.recordDonation(prepared.ride.wallet, 0, false, stored.snapshot().createdAt).catch((e: unknown) => this.logger.warn(`donation statistics deferred to stats:reconcile: ${e instanceof Error ? e.message : String(e)}`));
+      this.logger.log({ event: 'live-donation', msg: `mock tip on ride ${rideId}`, rideId, wallet, effect: 'tip' });
+      return toRideEventDto(stored);
+    }
+    await this.access.requirePostable(rideId, wallet, input, now);
+    const event = RideEvent.message({ rideId, wallet, text: input.text, now });
+    const stored = await this.events.insert(event);
     if (!stored) throw await effectBusy(this.events, event, now);
-    if (stored.kind === 'donation') await this.stats.recordDonation(ride.wallet, 0, false, stored.snapshot().createdAt).catch((e: unknown) => this.logger.warn(`donation statistics deferred to stats:reconcile: ${e instanceof Error ? e.message : String(e)}`));   // a mock tip: counted, no lamports
-    if (stored.kind === 'donation') this.logger.log({ event: 'live-donation', msg: `mock donation ${stored.effect} on ride ${rideId}`, rideId, wallet, effect: stored.effect });
     return toRideEventDto(stored);
   }
 }

@@ -40,16 +40,9 @@ export async function launch({ port, shotsDir, args = [], evalProblems = false, 
     ws.send(JSON.stringify({ id: i, method, params }));
   });
   const ev = async expr => {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
-        if (evalProblems && r.exceptionDetails) problems.push('EVAL: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text) + ' in ' + expr.slice(0, 80));
-        return r.result?.value ?? r.exceptionDetails?.exception?.description;
-      } catch (e) {
-        // Headless Chrome drops a debugger call while the game tab is busy. A missed poll is not a failed ride.
-        if (attempt === 2 || !/timed out/.test(String(e?.message))) throw e;
-      }
-    }
+    const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
+    if (evalProblems && r.exceptionDetails) problems.push('EVAL: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text) + ' in ' + expr.slice(0, 80));
+    return r.result?.value ?? r.exceptionDetails?.exception?.description;
   };
   // A screenshot is a record of the page, not an assertion. Chrome sometimes never answers captureScreenshot; one retry, then the suite continues.
   const shot = async name => {

@@ -42,6 +42,16 @@ export interface PoolProps {
   playDeadline: Date;
   /** the end of the review window: no prize is paid and the pool is not closed before it (the program enforces it) */
   payoutAt: Date;
+  /** Null/absent = createdAt. Sales are refused before this. */
+  opensAt?: Date | null;
+  /** Null/absent = prepDeadline (the on-chain sales close). */
+  salesCloseAt?: Date | null;
+  /** Null/absent = play close − 75 min. */
+  lastStartAt?: Date | null;
+  /** Null/absent = playDeadline. */
+  playCloseAt?: Date | null;
+  /** Null/absent = payoutAt. commit_winners waits until this instant. */
+  validationUntil?: Date | null;
   prizeBps: number;
   seedBps: number;
   feeBps: number;

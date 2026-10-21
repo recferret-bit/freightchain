@@ -7,7 +7,7 @@
 
 ## Overview
 
-Verifies the target gameplay and pool rules: 1h-only shifts with dynamic `finishFor(roadSeed, trip, FINISH_RULES_VERSION)` distance at `V_BASE = 65 km/h` (`RID-T-01..07`), `stats.RideResult` persistence and versioned pool ranking (`RID-T-08..12`), in-ride minigame captchas with parking pockets and noisy PNG challenges (`MGM-T-01..09`, `AC-M1..20`), configurable weekly pool schedule with `last_start_at` and appeals window (`POOL-T-01..16`), and platform services (`PLT-T-01..14`).
+Verifies the target gameplay and pool rules: 1h-only shifts with dynamic `finishFor(roadSeed, trip, FINISH_RULES_VERSION)` distance at `V_BASE = 65 km/h` (`RID-T-01..07`), `stats.RideResult` persistence and versioned pool ranking (`RID-T-08..12`), the phone `phone-sms` minigame from [`docs/spec/minigames.md`](../../../spec/minigames.md) Part 1 (`MGM-T-01..12`), configurable weekly pool schedule with `last_start_at` and appeals window (`POOL-T-01..16`), and platform services (`PLT-T-01..14`). Checklists under `E2E-08.3` and `E2E-08.4` that mention parking pockets, noisy PNGs, or a `+45` s skip are retired. Part 1 wins.
 
 ---
 
@@ -15,7 +15,7 @@ Verifies the target gameplay and pool rules: 1h-only shifts with dynamic `finish
 
 ### `E2E-08.1` — Implement Dynamic 65 km/h Finish & Curvature Factors E2E (`RID-T-01..07`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `RID-T-01..07`, `RID-M-01..11`
 - **Target Files:**
@@ -38,7 +38,7 @@ Verifies the target gameplay and pool rules: 1h-only shifts with dynamic `finish
 
 ### `E2E-08.2` — Implement `stats.RideResult` Breakdown & Pool Ranking Formula E2E (`RID-T-08..12`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done`
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `RID-T-08..12`, `RID-M-12..21`
 - **Target Files:**
@@ -58,7 +58,7 @@ Verifies the target gameplay and pool rules: 1h-only shifts with dynamic `finish
 
 ---
 
-### `E2E-08.3` — Implement Minigame Schedule, Parking Pocket & Commit–Reveal E2E (`MGM-T-01..05`, `AC-M1..M10`)
+### `E2E-08.3` — Phone-sms schedule, cancel, and salt reveal E2E (`MGM-T-01..05`)
 
 - **Status:** `[ ] Todo`
 - **Track:** Track B (Target)
@@ -81,7 +81,7 @@ Verifies the target gameplay and pool rules: 1h-only shifts with dynamic `finish
 
 ---
 
-### `E2E-08.4` — Implement Minigame Noisy Image, Catalog, Penalties & `×2` Accessibility E2E (`MGM-T-06..09`, `AC-M11..M20`)
+### `E2E-08.4` — Phone-sms SVG, scoring, and rate-limit E2E (`MGM-T-06..12`)
 
 - **Status:** `[ ] Todo`
 - **Track:** Track B (Target)
@@ -106,7 +106,7 @@ Verifies the target gameplay and pool rules: 1h-only shifts with dynamic `finish
 
 ### `E2E-08.5` — Implement Pool Schedule, `last_start_at` Cutoff, Ticket Burn UI & Appeals E2E (`POOL-T-01..16`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — `pool-schedule-appeals.e2e.spec.ts` passed in the lane. Block 2 on that worktree exited 0 (46 pass). Not re-run on the merged tree.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `POOL-T-01..16`, `POOL-M-01..14`
 - **Target Files:**

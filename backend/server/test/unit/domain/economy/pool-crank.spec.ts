@@ -10,6 +10,7 @@ describe('nextCrankStep – what the crank may do, by the chain clock', () => {
     expect(nextCrankStep(pool(now, { status: 'open', prepDeadline: at(1), ticketsSold: 3, minTickets: 10 }), now)).toBeNull();
     expect(nextCrankStep(pool(now, { status: 'open', prepDeadline: now, ticketsSold: 3, minTickets: 10 }), now)).toBe('fail_pool');
     expect(nextCrankStep(pool(now, { status: 'open', prepDeadline: at(-1), ticketsSold: 10, minTickets: 10 }), now)).toBeNull(); // the program would refuse NotFailable
+    expect(nextCrankStep(pool(now, { status: 'open', prepDeadline: now, ticketsSold: 0, minTickets: 0 }), now)).toBeNull(); // operator-funded: no low-sales fail
   });
 
   it('an active pool expires 14 days after its play deadline, only with no prize paid', () => {

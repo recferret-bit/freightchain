@@ -10,5 +10,7 @@ export class WatchRideQuery {
     public readonly source = '',
     /** the watch page is closing: this viewer stops counting now */
     public readonly leave = false,
+    /** the signed-in wallet, when the cookie was sent. A pool replay before payout opens only for this driver. */
+    public readonly caller: string | null = null,
   ) {}
 }
