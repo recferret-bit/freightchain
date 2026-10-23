@@ -19,6 +19,8 @@ describe('action card', () => {
       pool({ id: 2, tier: '1h', prepDeadline: new Date('2030-02-01') }),
       pool({ id: 1, tier: '1h', prepDeadline: new Date('2030-01-15'), priceLamports: 40_000_000 }),
       pool({ id: 3, tier: '4h', prepDeadline: new Date('2030-03-01'), whyNotSellable: () => 'closed' }),
+      pool({ id: 9, tier: '4h', prepDeadline: new Date('2030-01-02') }),
+      pool({ id: 10, tier: '8h', prepDeadline: new Date('2030-01-02') }),
     ], now);
     expect(offers).toEqual([{ tier: '1h', poolId: 1, lamports: 40_000_000 }]);
     expect(sellableOffers(offers.map((o) => pool({ id: o.poolId, tier: o.tier, prepDeadline: now, priceLamports: o.lamports })), now, '4h')).toEqual([]);

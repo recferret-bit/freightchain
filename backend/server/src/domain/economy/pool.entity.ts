@@ -3,7 +3,7 @@ import { BadRequestError, ConflictError } from '../shared/errors.js';
 import { projectRoadSeed } from '../road/provable-seed.js';
 import { rideTier } from '../rides/ride-tier.js';
 import { tierFromChainCode, type ChainEventRecord, type PoolChainState } from './chain-events.js';
-import { derivedSchedule, LAST_START_MS, schedulePhase, type PoolPhase } from './pool-schedule.js';
+import { derivedSchedule, lastStartAtFor, schedulePhase, type PoolPhase } from './pool-schedule.js';
 import type { PayoutState, PoolHold, PoolProps, PoolStatus } from './pool.types.js';
 
 /**
@@ -52,7 +52,7 @@ export class Pool {
       slot: state.seedSlot ?? existing?.p.slot ?? null,
       opensAt: state.createdAt,
       salesCloseAt: state.prepDeadline,
-      lastStartAt: new Date(state.playDeadline.getTime() - LAST_START_MS),
+      lastStartAt: lastStartAtFor(state.playDeadline, state.createdAt),
       playCloseAt: state.playDeadline,
       validationUntil: state.payoutAt,
       sealSlot: state.sealSlot ?? existing?.p.sealSlot ?? null,
@@ -111,7 +111,7 @@ export class Pool {
   get shiftSeconds(): number { return rideTier(this.p.tier, 0).seconds; }
   /** A pool's results count only the rides that ENDED by its play deadline (audit H6: a ride started days after it still ranked and was paid). */
   rideWindow(): { endBy: Date } { return { endBy: this.p.playDeadline }; }
-  /** The last moment a ticket of this pool can be spent: `lastStartAt` (play close − 75 min), and never later than a shift of
+  /** The last moment a ticket of this pool can be spent: `lastStartAt` (play close − 75 min, or play close when the window is shorter), and never later than a shift of
       `minSeconds` can still end by the play deadline. Sales may already be closed (`salesCloseAt` = prep deadline, 2 h before play close). */
   startBy(minSeconds: number = this.shiftSeconds): Date {
     const last = this.lastStartAt.getTime();

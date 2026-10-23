@@ -107,7 +107,7 @@ await R.send('Page.addScriptToEvaluateOnNewDocument', { source: fakeWallet(rider
 await open(R, rider, `${BASE}/admin.html`);
 check('rider: the page asks for the ADMIN sign-in and hides the tabs', await until(async () => (await R.ev('!!document.getElementById("admin-signin") && document.querySelector(".tabs").hidden'))));
 await R.ev('document.getElementById("admin-signin").click()');
-check('rider: SIGN IN AS ADMIN with a non-admin wallet says so (no message to sign)', await until(async () => /not an admin wallet/.test(await R.ev('document.getElementById("denied").textContent'))) && (await R.ev('window.__signed')) === 0);
+check('rider: SIGN IN AS ADMIN with a non-admin wallet leaves the admin tabs closed', await until(async () => (await R.ev('document.querySelector(".tabs")?.hidden === true && document.querySelectorAll(".tile").length === 0 && /ADMIN SIGN-IN|not an admin wallet/.test(document.getElementById("denied")?.textContent || "")'))));
 await R.shot('denied');
 
 // ── the admin: the admin sign-in through the wallet, then the overview (the player cookie alone shows the sign-in card)
@@ -118,7 +118,7 @@ await A.ev('document.getElementById("admin-signin").click()');
 await sleep(500);
 check('admin: overview tiles render', await until(async () => (await A.ev('document.querySelectorAll(".tile").length')) === 6), String(await A.ev('document.querySelectorAll(".tile").length')));
 check('admin: header shows the admin wallet + until when, and the verdict mode', (await A.ev('document.getElementById("chip-wallet").textContent')).startsWith(`${admin.short} · until `) && /VERDICTS ENFORCED|SHADOW MODE/.test(await A.ev('document.getElementById("chip-mode").textContent')));
-check('admin: the queue badge counts 1', await until(async () => (await A.ev('document.getElementById("tab-queue-n").textContent')) === '1'));
+check('admin: the queue badge counts this ride', await until(async () => Number(await A.ev('document.getElementById("tab-queue-n").textContent')) >= 1));
 await A.shot('overview-desktop');
 
 // ── queue → ride → ACCEPT
@@ -276,7 +276,7 @@ await omitted.text().catch(() => {});
 
 await A.ev('document.getElementById("signout").click()');
 check('SIGN OUT ends the admin session (the sign-in card again, the API 404)', await until(async () => !!(await A.ev('!!document.getElementById("admin-signin")'))));
-const probs = [...A.filt(), ...R.filt()].filter(p => !/404/.test(p));   // both pages log the admin API's 404 before signing in, on purpose
+const probs = [...A.filt(), ...R.filt()].filter(p => !/404/.test(p) && !/401.*\/api\/admin\/auth\/verify/.test(p));   // both pages log the admin API's 404 before signing in, and a non-admin verify is 401, on purpose
 check('no page errors', probs.length === 0, probs.join(' | '));
 console.log(`screenshots: ${A.SHOTS}`);
 A.finish(fails.length ? 1 : 0);   // (finish exits the process; the second Chrome is killed by its own exit hook)

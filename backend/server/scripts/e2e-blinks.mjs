@@ -133,7 +133,8 @@ async function page(account, ride) {
     window.__opened = []; window.open = u => { window.__opened.push(u); return null; };
     const pk = { toString: () => ${JSON.stringify(account)}, toBase58: () => ${JSON.stringify(account)} };
     window.phantom = { solana: { isPhantom: true, publicKey: pk, connect: async () => ({ publicKey: pk }),
-      signAndSendTransaction: async tx => { window.__signed = { feePayer: tx.feePayer?.toBase58?.(), ixs: tx.instructions.length }; return { signature: '5'.repeat(88) }; } } };` });
+      signAndSendTransaction: async tx => { window.__signed = { feePayer: tx.feePayer?.toBase58?.(), ixs: tx.instructions.length }; return { signature: '5'.repeat(88) }; } } };
+    window.__fcDevWallet = window.phantom.solana;` });   // CONNECT opens the picker even for one wallet; the dev wallet skips it
   const shot = async name => { await t.ev(`document.querySelector('.blink .body')?.scrollIntoView({ block: 'center' })`); await sleep(150); await t.shot(name); };   // the buttons sit below the square icon
   const until = async (expr, ms = 15000) => { for (let i = 0; i < ms / 200; i++) { const v = await t.ev(expr); if (v) return v; await sleep(200); } return null; };
   const click = label => t.ev(`(() => { const b = [...document.querySelectorAll('.blink button')].find(b => b.textContent.startsWith(${JSON.stringify(label)})); b?.click(); return !!b; })()`);
@@ -192,10 +193,15 @@ console.log(`${BASE}  ${READONLY ? 'read-only' : `account ${account}`}  ride ${r
 await discovery(BASE);
 for (const h of HOSTS) await discovery(h);
 await card(core, `${BASE}/`, `${BASE}/api/actions/shift`, account);
-if (ride) await card(core, `${BASE}/r/${ride}`, `${BASE}/api/actions/ride/${ride}`, account);
+let publicRide = ride;
+if (ride) {
+  const rideAction = await fetch(`${BASE}/api/actions/ride/${ride}`);
+  if (rideAction.status === 404) { check('a training ride has no public blink', true); publicRide = null; }
+  else await card(core, `${BASE}/r/${ride}`, `${BASE}/api/actions/ride/${ride}`, account);
+}
 for (const h of HOSTS) if (!/^https?:\/\/www\./.test(h)) await card(core, `${h}/`, `${h}/api/actions/shift`, account);
 for (const r of rules) if (!['/', '/r/**', '/api/actions/**'].includes(r.pathPattern) && !/[*]/.test(r.pathPattern)) await card(core, `${BASE}${r.pathPattern}`, `${BASE}${r.apiPath}`, account);   // any other card actions.json publishes
 await errors(BASE);
-const chrome = process.env.NO_CHROME === '1' ? null : await page(account, ride);
+const chrome = process.env.NO_CHROME === '1' ? null : await page(account, publicRide);
 console.log(fails.length ? `\n${fails.length} FAILED:\n  ${fails.join('\n  ')}` : '\nall blink checks passed');
 if (chrome) chrome.finish(fails.length ? 1 : 0, 100); else process.exit(fails.length ? 1 : 0);

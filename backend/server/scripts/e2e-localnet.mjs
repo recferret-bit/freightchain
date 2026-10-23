@@ -2,8 +2,8 @@
 // (phase 1: fixtures made by the real program; phase 2: validator + program + the baked accounts + the server in program mode on a throwaway DB).
 // env: BASE, RPC, KEYS (scratch keypair dir), FIXTURES (phase 1's fixtures.json), CHROME_PORT. Explained in docs/tech/localnet-e2e/index.html.
 //   pool A (1h, min 3): lobby buy ×2 (the wallet signs AND sends, it pays its own fee + Ticket rent) → Node buy → live → a sponsorship → 3 verified rides → play deadline → ranked payouts → close (+ sponsorship)
-//   pool B (4h, min 5): two Node buys → missed goal, nobody failed it → lobby CLAIM REFUND (fail_pool + refund) → API refund → anyone closes →
-//                       the 4h tier is not on sale: SOON card, POST /api/rides 409 tier_not_on_sale
+//   pool B (4h, min 5): two chain buys (HTTP orders are 400 tier_retired) → missed goal, nobody failed it → lobby CLAIM REFUND on the refunds strip (no 4h card) → API refund → anyone closes →
+//                       GET /api/tiers omits 4h and 8h; POST /api/rides 400 tier_retired
 //   pool C (8h, min 5) + the baked "three weeks old" pools: the crank (pool:crank) fails C and expires the unpaid baked pool, refunds both, closes both;
 //                       the baked pool that paid a prize is closed by a stranger after the grace (MustExpire refused for the unpaid one)
 // Deadlines run on the validator's clock (no warp): the run is paced by them (PREP_A / PLAY_A / PREP_B / PREP_C seconds, defaults below).
@@ -14,6 +14,7 @@ import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.cod
 import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
 import { closeSplit, prizeBound } from '../dist/domain/economy/vault-split.js';
 import { poolPayouts } from '../dist/domain/economy/pool-payouts.js';
+import { rankedWallets } from './localnet-rank.mjs';
 import { coverage } from './localnet-coverage.mjs';
 import { sealRoad } from './localnet-seal.mjs';
 
@@ -109,7 +110,7 @@ async function browser(p, port) {
   await h.send('Emulation.setDeviceMetricsOverride', { width: 1100, height: 900, deviceScaleFactor: 1, mobile: false });
   const [n, v] = p.cookie.split('='); await h.send('Network.setCookie', { name: n, value: v, url: BASE, httpOnly: true });
   h.txt = sel => h.ev(`document.querySelector(${JSON.stringify(sel)})?.textContent ?? ''`);
-  h.lobby = async () => { await h.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); return until(async () => (await h.ev('document.querySelectorAll(".tier").length')) >= 3, 20000); };
+  h.lobby = async () => { await h.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); return until(async () => /BUY|RIDE|SOON/.test(await h.txt('#tier-1h')), 20000); };
   return h;
 }
 // a ticket ride in the real game (the e2e-browser.mjs recipe): START, distance under the governor on the game clock, human-ish key presses, END SHIFT → server verdict
@@ -138,13 +139,25 @@ async function ride(h, p, tier) {
   return r.j.id;
 }
 
+// The lobby opens the burn dialog before it creates an order. The checkbox has to be on or BUY stays disabled.
+async function acceptBurn(h) {
+  const up = await until(async () => !!(await h.ev('document.getElementById("burn-warning")')), 10000);
+  if (!up) return false;
+  return h.ev('(() => { const box = document.getElementById("burn-warning"); box.checked = true; box.dispatchEvent(new Event("change", { bubbles: true })); document.getElementById("burn-warning-accept").click(); return true; })()');
+}
 // buy helper (Node wallets): the wallet signs AND sends its own transaction (it pays the network fee and the Ticket rent), then /confirm
 async function buySelf(p, poolId, qty = 1) {
-  const o = await api('tickets', { body: { poolId, qty }, cookie: p.cookie });
+  const o = await api('tickets', { body: { poolId, qty, burnWarningAccepted: true }, cookie: p.cookie });
   const pay = await api(`tickets/orders/${o.j.id}/payment`, { cookie: p.cookie });
   const sig = await sendSigned(signedB64(pay.j.transaction, p.kp));
   const paid = !!(await until(async () => (await api(`tickets/orders/${o.j.id}/confirm`, { body: { signature: sig }, cookie: p.cookie })).j.status === 'paid'));
   return { order: o, pay, sig, paid };
+}
+// 4h and 8h are not sold over HTTP (400 tier_retired). The chain buy is credited by the program-log watcher, same as the webhook path below.
+async function buyOnChain(p, poolId) {
+  const direct = admintool(['buy', '-k', p.keyfile, '--pool', String(poolId)]);
+  const credited = await until(async () => ((await myTickets(p, poolId))?.bought ?? 0) >= 1, 20000);
+  return { sig: direct.signature, paid: !!credited };
 }
 const crankPass = () => JSON.parse(execFileSync('node', ['dist/cli/index.js', 'pool:crank'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
 const cov = process.env.COVERAGE ? coverage(process.env.COVERAGE) : null;   // refusals never land: recorded for scripts/localnet-coverage.mjs
@@ -203,6 +216,7 @@ try {
   }, 20000);
   check(`lobby: ${twoTickets}`, qtyReady === true, buyLabel);
   await h1.ev('document.querySelector("#tier-1h .buyb").click()');
+  await acceptBurn(h1);
   check('lobby: paid + 2 tickets credited', await until(async () => /Paid – 2 tickets credited/.test(await h1.txt('#msg-1h')), 60000), await h1.txt('#msg-1h'));
   check('…the wallet was asked to sign AND send (no fee sponsor: it pays its own fee)', (await h1.ev('JSON.stringify(__asked)')) === '["signAndSendTransaction"]', await h1.ev('JSON.stringify(__asked)'));
   await h1.shot('1-lobby-bought');
@@ -233,9 +247,9 @@ try {
   check('…the server mirror shows it (Sponsored event via the watcher)', await until(async () => (await serverPool(A)).sponsoredLamports === SPONSOR_A, 20000), String((await serverPool(A)).sponsoredLamports));
 
   // ── 5. pools B and C take a few tickets, C a sponsorship – both will miss their minimum of 5
-  check('P3 buys 1 of pool B: exactly price + fee + Ticket rent', await (async () => { const b = await bal(P3.wallet); const r = await buySelf(P3, B); return r.paid && b - (await bal(P3.wallet)) === PRICE_B + (await fee(r.sig)) + ticketRent; })());
-  check('P4 buys 1 of pool B', (await buySelf(P4, B)).paid);
-  check('P5 and P6 buy 1 each of pool C', (await buySelf(P5, C)).paid && (await buySelf(P6, C)).paid);
+  check('P3 buys 1 of pool B: exactly price + fee + Ticket rent', await (async () => { const b = await bal(P3.wallet); const r = await buyOnChain(P3, B); return r.paid && b - (await bal(P3.wallet)) === PRICE_B + (await fee(r.sig)) + ticketRent; })());
+  check('P4 buys 1 of pool B', (await buyOnChain(P4, B)).paid);
+  check('P5 and P6 buy 1 each of pool C', (await buyOnChain(P5, C)).paid && (await buyOnChain(P6, C)).paid);
   admintool(['sponsor', '--pool', String(C), '--lamports', String(SPONSOR_C), '-k', S.keyfile]);
   // the WEBHOOK path (QuickNode Streams → POST /api/chain/webhook): a buy straight on chain (no order – nothing calls /confirm), the server told by the webhook
   const W = await player(), hookUrl = `${BASE}/api/chain/webhook`;
@@ -248,10 +262,10 @@ try {
   check('…the on-chain buy (no order) is credited to the wallet', !!(await until(async () => (await myTickets(W, C))?.bought === 1, 20000)), JSON.stringify(await myTickets(W, C)));
   check('pool C: 3 tickets + a sponsorship in the vault', (await bal(vC)) === RENT0 + 3 * PRICE_B + SPONSOR_C);
   const X = await player();
-  check('there is no gasless route any more: POST /api/tickets/orders/:id/submit is a 404 (no fee payer key exists on the server)', await (async () => {
-    const o = await api('tickets', { body: { poolId: B, qty: 1 }, cookie: X.cookie });
-    const r = await api(`tickets/orders/${o.j.id}/submit`, { body: { signedTransaction: 'AAAA' }, cookie: X.cookie });
-    return r.status === 404 && (await bal(vB)) === RENT0 + 2 * PRICE_B;
+  check('there is no gasless route any more: a 4h order is 400 tier_retired and POST /api/tickets/orders/:id/submit is a 404', await (async () => {
+    const o = await api('tickets', { body: { poolId: B, qty: 1, burnWarningAccepted: true }, cookie: X.cookie });
+    const r = await api('tickets/orders/missing/submit', { body: { signedTransaction: 'AAAA' }, cookie: X.cookie });
+    return o.status === 400 && o.j.code === 'tier_retired' && r.status === 404 && (await bal(vB)) === RENT0 + 2 * PRICE_B;
   })());
 
   // ── 6. rides on pool A in the real game: P1 twice, P2 once (verified recordings rank)
@@ -260,14 +274,14 @@ try {
   await ride(h2, P2, '1h');
   check('server: the tickets were spent', (await myTickets(P1, A))?.balance === 0 && (await myTickets(P2, A))?.balance === 0);
 
-  // ── 7. pool B missed its goal and NOBODY failed it yet: the lobby card offers CLAIM REFUND at once (the refund transaction bundles fail_pool)
+  // ── 7. pool B missed its goal and NOBODY failed it yet: the lobby offers CLAIM REFUND at once (the refund transaction bundles fail_pool)
   await untilChain(Number((await poolAcc(B)).prepDeadline.getTime() / 1000), 'pool B prep deadline');
   check('chain: pool B still open past its deadline (no crank has run)', (await poolAcc(B)).status === 0);
   const h3 = await browser(P3, CDP + 2);
   await h3.lobby();
-  // the 4h card shows pool B unless another 4h pool still sells (devnet): then B's claim sits in the refunds strip
+  // GET /api/tiers lists free and 1h only, so a retired tier's failed pool has no card and CLAIM REFUND sits in #refunds. A painted card still counts.
   const claimAt = await until(async () => (await h3.txt('#tier-4h .go')) === 'CLAIM REFUND' ? 'card' : /CLAIM REFUND/.test(await h3.txt('#refunds')) ? 'strip' : null, 20000);
-  check(`lobby: the missed-goal pool offers CLAIM REFUND before anyone failed it (${claimAt || 'nowhere'})`, claimAt === 'card' || (ON_DEVNET && claimAt === 'strip'), await h3.txt('#tier-4h .go'));
+  check(`lobby: the missed-goal pool offers CLAIM REFUND before anyone failed it (${claimAt || 'nowhere'})`, claimAt === 'card' || claimAt === 'strip', claimAt === 'strip' ? await h3.txt('#refunds') : await h3.txt('#tier-4h .go'));
   const claimBtn = claimAt === 'strip' ? '#refunds button' : '#tier-4h .go', claimMsg = claimAt === 'strip' ? `#msg-refund-${B}` : '#msg-4h';
   before = await bals({ p3: P3.wallet });
   await h3.ev(`document.querySelector(${JSON.stringify(claimBtn)}).click()`);
@@ -291,16 +305,20 @@ try {
   await settle(cb.signature, P3.cookie);
   check('server: pool B cancelled', await until(async () => (await serverPool(B)).status === 'cancelled'), (await serverPool(B)).status);
 
-  // ── 8. ticket-only: with B gone the 4h tier has no live pool – nothing on sale, no pay-per-ride fallback
-  const t4 = (await api('tiers')).j.tiers.find(t => t.id === '4h');
-  if (t4.pool) console.log(`NOTE ticket-only checks skipped: another 4h pool (#${t4.pool.id}) is live on this cluster`);
+  // ── 8. ticket-only: 4h and 8h are retired. The tiers list is free and 1h. A 4h ride is refused. The lobby paints no 4h buy.
+  const listed = (await api('tiers')).j.tiers ?? [];
+  const t4 = listed.find(t => t.id === '4h');
+  if (t4?.pool) console.log(`NOTE ticket-only checks skipped: another 4h pool (#${t4.pool.id}) is live on this cluster`);
   else {
-  check('GET /api/tiers: 4h not on sale, no pay-per-ride price', t4.available === false && t4.onSale === false && t4.lamports === null && t4.pool === null, JSON.stringify(t4));
-  const refused4 = await api('rides', { body: { tier: '4h' }, cookie: P3.cookie });
-  check('POST /api/rides 4h without a pool: 409 tier_not_on_sale', refused4.status === 409 && refused4.j.code === 'tier_not_on_sale', JSON.stringify(refused4.j).slice(0, 160));
-  await h3.lobby();
-  check('lobby: the 4h card says SOON and sells nothing', await until(async () => /SOON/.test(await h3.txt('#tier-4h .st')) && (await h3.ev('document.querySelector("#tier-4h .go").disabled')) === true, 15000), await h3.txt('#tier-4h'));
-  await h3.shot('3-lobby-soon');
+    if (t4) check('GET /api/tiers: 4h not on sale, no pay-per-ride price', t4.available === false && t4.onSale === false && t4.lamports === null && t4.pool === null, JSON.stringify(t4));
+    else check('GET /api/tiers omits retired 4h and 8h', listed.some(t => t.id === 'free') && listed.some(t => t.id === '1h') && listed.every(t => t.id === 'free' || t.id === '1h'), JSON.stringify(listed.map(t => t.id)));
+    const refused4 = await api('rides', { body: { tier: '4h' }, cookie: P3.cookie });
+    check('POST /api/rides 4h is 400 tier_retired', refused4.status === 400 && refused4.j.code === 'tier_retired', `${refused4.status} ${refused4.j?.code}`);
+    await h3.lobby();
+    const seen = await until(async () => h3.ev('(() => { const one = document.querySelector("#tier-1h"); if (!one) return null; const go = document.querySelector("#tier-4h .go"); const st = document.querySelector("#tier-4h .st"); return { four: document.querySelector("#tier-4h") !== null, go: go?.textContent ?? "", disabled: go ? go.disabled === true : null, st: st?.textContent ?? "" }; })()'), 15000);
+    const noBuy = !!seen && (seen.four === false || (seen.disabled === true && /SOON|NO POOL|NEXT POOL/.test(`${seen.st}${seen.go}`) && !/BUY/.test(seen.go)));
+    check('lobby: retired 4h is not a buy while 1h is on the page', noBuy, JSON.stringify(seen));
+    await h3.shot('3-lobby-soon');
   }
 
   // ── 9. the CRANK (CRANK_SECRET, one pass from the CLI): fails pool C and refunds it (and on localnet expires the baked pool and refunds it), closes them
@@ -369,8 +387,9 @@ try {
   let po = await api(`pools/${A}/payout`, { cookie: ADM.cookie });
   const chainA = await poolAcc(A);
   const bound = prizeBound({ priceLamports: PRICE_A, ticketsSold: 3, sponsored: SPONSOR_A, prizeBps: 7000, seedBps: 2000, ...(chainA.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: chainA.maxPlayerShareBps } : {}) });
-  const want = poolPayouts(bound, [P1.wallet, P2.wallet]);
-  check('ranking: P1 (2 rides) first, P2 second; the prize cap includes the sponsorship; amounts = the payout table; nothing committed yet → commit_winners offered', po.ok && po.j.ranks.map(r => r.wallet).join() === [P1.wallet, P2.wallet].join() && po.j.ranks.map(r => r.lamports).join() === want.map(w => w.lamports).join() && po.j.prizeLamports === bound
+  const order = await rankedWallets(A, [P1.wallet, P2.wallet]);
+  const want = poolPayouts(bound, order);
+  check('ranking: P1 and P2 once, in score-formula order; the prize cap includes the sponsorship; amounts = the payout table; nothing committed yet → commit_winners offered', order.length === 2 && po.ok && po.j.ranks.map(r => r.wallet).join() === order.join() && po.j.ranks.map(r => r.lamports).join() === want.map(w => w.lamports).join() && po.j.prizeLamports === bound
     && !!po.j.commit && po.j.committedRoot === null && po.j.transactions.length === 0 && po.j.close === null, JSON.stringify(po.j.ranks ?? po.j).slice(0, 300));
   const winnersArg = want.map(w => `${w.wallet}:${w.lamports}`).join(',');
   check('pay_prize before any commit → refused (WinnersNotCommitted)', refuses(['pay-prize', '--pool', String(A), '--winners', winnersArg, '--rank', '1', '-k', Z.keyfile], /WinnersNotCommitted|0x1792/, 'pay_prize before commit_winners'));
@@ -408,7 +427,8 @@ try {
   check('close_sponsor_receipt of the settled pool A by a stranger: the sponsor gets the receipt\'s rent back, the account is gone', (await bal(S.wallet)) - before.s === receiptRent && (await conn.getAccountInfo(receiptA, 'confirmed')) === null, `${(await bal(S.wallet)) - before.s}`);
   check('conservation: tickets + sponsorship = prizes + every close leg', 3 * PRICE_A + SPONSOR_A === paidTotal + legs.fee + legs.platformFee + legs.seed, `${3 * PRICE_A + SPONSOR_A} vs ${paidTotal + legs.fee + legs.platformFee + legs.seed}`);
 
-  const noise = p => !/favicon|status of 409|status of 404/.test(p);
+  // The driver's first road-plan fetch is before the server starts the ride (404, then a retry). Chrome also logs that 404 as "status of 404".
+  const noise = p => !/favicon|status of 409|status of 404|road plan: server error 404/.test(p);
   const probs = browsers.flatMap(h => h.filt().filter(noise));
   check('no page errors (lobby + game, 3 browsers)', probs.length === 0, probs.slice(0, 5).join(' | '));
   console.log(`screenshots: ${browsers[0]?.SHOTS}`);

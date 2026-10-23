@@ -23,7 +23,7 @@
   
   The mock wallet is a `tweetnacl` key (`B1-LAND-11`: nonce + verify).
 - **Scripts:**
-  - root: `test:e2e:block1` = `bash e2e/scripts/run.sh 1`, `test:e2e:block2` = `… 2`, `test:e2e:pages`;
+  - root: `test:e2e:block1` = `bash e2e/scripts/run.sh 1`, `test:e2e:block2` = `… 2`, `test:e2e:block3` = server vitest of `tests/e2e/block3-anticheat` (no API), `test:e2e:pages`;
   - `e2e/package.json`: `test:pages`, `test:block1`, `test:block2`;
   - dependencies: `bs58`, `happy-dom`, `tweetnacl`.
 - **Free paths and an issued ticket (PR #3 is already on main):**

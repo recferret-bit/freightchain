@@ -1151,6 +1151,224 @@ function assert(ok, message) {
   if (!ok) throw new Error(message);
 }
 
+const SPEC_ID = /\b([A-Z][A-Z0-9]*-T-\d+(?:\.\.\d+|…\d+)?|AC-[A-Z]\d+(?:…[A-Z]\d+)?)\b/g;
+const PLANNED_CATALOG = /An id is not a written test|planned ids|each has a planned id|catalog of tests to write|Those ids are not written tests/;
+const VALIDATOR_SCRIPTS = [
+  '.claude/skills/localnet-e2e/run.sh',
+  'backend/server/scripts/e2e-honk-chain.mjs',
+  'backend/server/scripts/e2e-localnet-chaos.mjs',
+  'backend/server/scripts/e2e-localnet-day.mjs',
+  'backend/server/scripts/e2e-localnet-payout.mjs',
+  'backend/server/scripts/e2e-localnet.mjs',
+  'backend/server/scripts/honk-chain.mjs',
+  'backend/server/scripts/localnet-coverage.mjs',
+  'backend/server/scripts/localnet-fault-proxy.mjs',
+  'backend/server/scripts/localnet-fixtures.mjs',
+  'backend/server/scripts/localnet-seal.mjs',
+  'backend/server/scripts/pool-admin.mjs',
+];
+
+function expandSpecId(token) {
+  const range = token.match(/^([A-Z][A-Z0-9]*-T-)(\d+)(?:\.\.|…)(\d+)$/);
+  if (range) {
+    const ids = [];
+    for (let n = +range[2]; n <= +range[3]; n += 1) ids.push(range[1] + String(n).padStart(range[2].length, '0'));
+    return ids;
+  }
+  const ac = token.match(/^(AC-[A-Z])(\d+)…[A-Z](\d+)$/);
+  if (ac) {
+    const ids = [];
+    for (let n = +ac[2]; n <= +ac[3]; n += 1) ids.push(ac[1] + n);
+    return ids;
+  }
+  return [token];
+}
+
+// A bullet's subject is the label before the colon. A table's subjects are its first and last cells.
+// An id named later in the sentence is a cross-reference, not a second requirement.
+function subjectIds(line) {
+  let region = '';
+  if (/^\s*\|/.test(line)) {
+    const cells = line.split('|').slice(1, -1);
+    region = `${cells[0] || ''} ${cells[cells.length - 1] || ''}`;
+  } else if (/^\s*(?:[-*]|#{1,6}\s)/.test(line)) region = line.split(':')[0];
+  return [...region.matchAll(SPEC_ID)].flatMap((m) => expandSpecId(m[1]));
+}
+
+function specIdSets() {
+  const required = new Set();
+  const withdrawn = new Set();
+  for (const name of readdirSync(join(ROOT, 'docs/spec'))) {
+    if (!name.endsWith('.md') || name === 'DECISIONS.md') continue;
+    const text = read(`docs/spec/${name}`);
+    const catalog = PLANNED_CATALOG.test(text) || name === 'PROCESS.md' || name === 'README.md';
+    for (const line of text.split('\n')) {
+      const ids = /WITHDRAWN/.test(line) ? [...line.matchAll(SPEC_ID)].flatMap((m) => expandSpecId(m[1])) : subjectIds(line);
+      if (!ids.length) continue;
+      if (/WITHDRAWN/.test(line)) { for (const id of ids) withdrawn.add(id); continue; }
+      if (catalog) continue;
+      for (const id of ids) required.add(id);
+    }
+  }
+  for (const id of withdrawn) required.delete(id);
+  return { required, withdrawn };
+}
+
+function withoutSkipped(code) {
+  const skipAt = /\b(?:it|test|describe)\.(?:skip|todo)\b|\bxit\b|\bxtest\b/g;
+  let out = '';
+  let i = 0;
+  while (i < code.length) {
+    skipAt.lastIndex = i;
+    const m = skipAt.exec(code);
+    if (!m) return out + code.slice(i);
+    out += code.slice(i, m.index);
+    let j = m.index + m[0].length;
+    while (j < code.length && /\s/.test(code[j])) j += 1;
+    if (code[j] !== '(') { i = j; continue; }
+    let depth = 0;
+    let q = '';
+    while (j < code.length) {
+      const c = code[j];
+      j += 1;
+      if (q) {
+        if (c === '\\') { j += 1; continue; }
+        if (c === q) q = '';
+        continue;
+      }
+      if (c === "'" || c === '"' || c === '`') { q = c; continue; }
+      if (c === '(') depth += 1;
+      else if (c === ')') { depth -= 1; if (depth === 0) break; }
+    }
+    i = j;
+  }
+  return out;
+}
+
+function idMapped(live, id) {
+  if (live.includes(id)) return true;
+  const m = id.match(/^([A-Z][A-Z0-9]*-T-)(\d+)$/);
+  if (!m) return false;
+  const n = +m[2];
+  const re = new RegExp(`${m[1]}(\\d+)(?:\\.\\.|…)(\\d+)`, 'g');
+  for (const hit of live.matchAll(re)) {
+    if (hit[1].length === m[2].length && n >= +hit[1] && n <= +hit[2]) return true;
+  }
+  return false;
+}
+
+function liveTestSource() {
+  const rels = [];
+  walk(ROOT, '', rels);
+  return rels.filter((rel) => /\.(?:spec|test)\.(?:ts|js|mjs)$/.test(rel) || /(?:^|\/)e2e-.*\.mjs$/.test(rel))
+    .map((rel) => withoutSkipped(codeOf(read(rel)))).join('\n');
+}
+
+function chromeSuiteSource() {
+  const e2e = read('.claude/skills/run-tests/e2e.sh');
+  const scripts = [...new Set([...e2e.matchAll(/node ((?:scripts|frontend\/landing\/tools)\/[\w.-]+\.mjs)/g)].map((m) => m[1]))];
+  assert(scripts.length >= 20, `e2e.sh launched ${scripts.length} scripts`);
+  return scripts.map((rel) => {
+    const full = rel.startsWith('scripts/') ? `backend/server/${rel}` : rel;
+    assert(existsSync(join(ROOT, full)), `e2e.sh names a missing script ${full}`);
+    return codeOf(read(full));
+  }).join('\n');
+}
+
+function htmlPageReport(suite) {
+  const pages = [];
+  for (const dir of ['frontend/client', 'frontend/landing']) {
+    for (const name of readdirSync(join(ROOT, dir))) {
+      if (!name.endsWith('.html')) continue;
+      const st = statSync(join(ROOT, dir, name));
+      if (st.isFile()) pages.push(`${dir}/${name}`);
+    }
+  }
+  const excluded = [];
+  const missed = [];
+  for (const rel of pages) {
+    if (rel === 'frontend/client/index.html') {
+      excluded.push(`${rel}: the no-build placeholder; e2e.sh builds the landing and the landing suite opens /`);
+      continue;
+    }
+    const base = rel.split('/').pop();
+    const covered = rel === 'frontend/landing/index.html'
+      ? suite.includes('`${BASE}/`')
+      : rel === 'frontend/client/r.html'
+        ? suite.includes('/r/')
+        : suite.includes(base);
+    if (!covered) missed.push(rel);
+  }
+  return { pages: pages.length - excluded.length, missed, excluded };
+}
+
+function anchorReport() {
+  const idl = JSON.parse(read('backend/programs/idl/freightchain_pools.json'));
+  const idlNames = idl.instructions.map((ix) => ix.name);
+  const lib = read('backend/programs/freightchain_pools/src/lib.rs');
+  const program = lib.slice(lib.indexOf('#[program]'));
+  const fnNames = [...program.matchAll(/pub fn (\w+)/g)].map((m) => m[1]);
+  const same = idlNames.length === fnNames.length && idlNames.every((n) => fnNames.includes(n));
+  assert(same, `IDL instructions [${idlNames}] disagree with #[program] pub fn [${fnNames}]`);
+  const blob = VALIDATOR_SCRIPTS.map((rel) => {
+    assert(existsSync(join(ROOT, rel)), `validator script missing: ${rel}`);
+    return read(rel);
+  }).join('\n');
+  const missed = idlNames.filter((name) => !new RegExp(`\\b${name}\\b`).test(blob));
+  return { total: idlNames.length, missed };
+}
+
+function flowRunnerReport(inv) {
+  const routes = allRoutes(ROOT);
+  const memory = read('backend/server/test/http/flows.spec.ts');
+  const postgres = read('backend/server/test/integration/flows.integration.spec.ts');
+  const side = new Map(routes.map((r) => [r.key, { memory: false, postgres: false }]));
+  for (const f of inv.files.filter((row) => row.layer === 'server-scenarios')) {
+    const fns = scenarioFns(read(f.rel));
+    const onMemory = fns.some((name) => mentions(memory, name) > 0);
+    const onPostgres = fns.some((name) => mentions(postgres, name) > 0);
+    for (const c of caseRoutes(read(f.rel), routes, new Map())) {
+      for (const key of c.keys) {
+        const row = side.get(key);
+        if (!row) continue;
+        if (onMemory) row.memory = true;
+        if (onPostgres) row.postgres = true;
+      }
+    }
+  }
+  const missed = [...side.entries()].filter(([, s]) => !s.memory || !s.postgres).map(([key, s]) => `${key} memory=${s.memory} postgres=${s.postgres}`);
+  return { total: routes.length, missed };
+}
+
+function writeGate(inv, rep) {
+  const zero = rep.routes.filter((r) => (r.scenario || 0) === 0);
+  const single = rep.routes.filter((r) => r.scenario === 1);
+  const runners = flowRunnerReport(inv);
+  const html = htmlPageReport(chromeSuiteSource());
+  const anchor = anchorReport();
+  const ids = specIdSets();
+  const live = liveTestSource();
+  const unmapped = [...ids.required].filter((id) => !idMapped(live, id)).sort();
+  const lines = [
+    `zero-scenario routes: ${zero.length}`,
+    `single-scenario routes: ${single.length}`,
+    `http routes on both flow runners: ${runners.total - runners.missed.length}/${runners.total}`,
+    `html pages covered by the headless Chrome suite: ${html.pages - html.missed.length}/${html.pages}`,
+    ...html.excluded.map((line) => `excluded ${line}`),
+    `anchor instructions on the local validator: ${anchor.total - anchor.missed.length}/${anchor.total}`,
+    `required spec ids mapped to a non-skipped test: ${ids.required.size - unmapped.length}/${ids.required.size}`,
+    `withdrawn spec ids not counted as passing: ${[...ids.withdrawn].sort().join(' ')}`,
+  ];
+  process.stdout.write(`${lines.join('\n')}\n`);
+  assert(!zero.length, `zero-scenario routes: ${zero.map((r) => r.key).join(', ')}`);
+  assert(!single.length, `single-scenario routes: ${single.map((r) => r.key).join(', ')}`);
+  assert(!runners.missed.length, `routes missing a flow runner: ${runners.missed.join(', ')}`);
+  assert(!html.missed.length, `html pages the headless Chrome suite does not open: ${html.missed.join(', ')}`);
+  assert(anchor.total > 0 && !anchor.missed.length, `anchor instructions missing from the validator scripts: ${anchor.missed.join(', ')}`);
+  assert(ids.required.size > 0 && !unmapped.length, `required spec ids with no non-skipped test: ${unmapped.join(', ')}`);
+  assert(ids.withdrawn.has('E2E-T-01') && ids.withdrawn.has('E2E-T-06') && ![...ids.withdrawn].some((id) => ids.required.has(id)), `withdrawn ids must stay withdrawn: ${[...ids.withdrawn].join(' ')}`);
+}
+
 async function selfTest() {
   const commented = countCalls('a.ts', "it('yes', () => {});\n// it('no', () => {});\n/* test('nope', () => {}) */\nit.each([1, 2])('row', () => {});\n/re/.test(s);\nexpect(x).test('no');\nconst label = 'check(s)';\ncheck('redeems it (+3)');\nit('retries it (the week just turned)', () => {});\nit(r.name, () => {});\nconst live = `ok ${check(1)}`;");
   assert(commented.cases === 4 && commented.each === 1 && commented.checks === 2, `case count ${JSON.stringify(commented)}`);
@@ -1284,6 +1502,8 @@ async function selfTest() {
   const routes = allRoutes(ROOT);
   assert(routes.length >= 60 && routes.every((r) => r.name), `routes ${routes.length}`);
   const rep = reportOf(inv);
+  const thinRoutes = rep.routes.filter((r) => (r.scenario || 0) < 2).map((r) => `${r.scenario || 0} ${r.key}`);
+  assert(!thinRoutes.length, `routes with fewer than 2 scenario cases: ${thinRoutes.join(', ')}`);
   assert(rep.flows.every((f) => !f.unknown.length), `flow steps that are no route: ${rep.flows.flatMap((f) => f.unknown).join(', ')}`);
   assert(rep.routes.every((r) => r.feature), `routes no feature owns: ${rep.routes.filter((r) => !r.feature).map((r) => r.key).join(', ')}`);
   assert(!rep.unmapped.length, `source files no feature owns: ${rep.unmapped.join(', ')}`);
@@ -1292,6 +1512,7 @@ async function selfTest() {
   const loose = inv.harnesses.filter((h) => !named.has(h.rel.split('/').pop()));
   assert(!loose.length, `e2e harnesses no feature lists: ${loose.map((h) => h.rel).join(', ')}`);
   assert(rep.controllers.length === new Set(routes.map((r) => r.controller)).size, 'controllers');
+  writeGate(inv, rep);
   process.stdout.write('self-test ok\n');
 }
 

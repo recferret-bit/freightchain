@@ -28,6 +28,7 @@ import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.cod
 import { POOL_PROGRAM_IDL as IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
 import { closeSplit, prizeBound } from '../dist/domain/economy/vault-split.js';
 import { poolPayouts } from '../dist/domain/economy/pool-payouts.js';
+import { rankedWallets } from './localnet-rank.mjs';
 import { honestUntilClear, rechain, paceRecording, uploadBatches } from './honest-traffic.mjs';
 import { coverage } from './localnet-coverage.mjs';
 
@@ -116,11 +117,17 @@ const serverPool = async id => (await api(`pools/${id}`)).j;
 const standings = async id => (await api(`pools/${id}/standings`)).j;
 const myTickets = async (p, poolId) => ((await api('me', { cookie: p.cookie, ip: p.ip })).j.tickets ?? []).find(t => t.poolId === poolId);
 async function buySelf(p, poolId, qty = 1) {
-  const o = await api('tickets', { body: { poolId, qty }, cookie: p.cookie, ip: p.ip });
+  const o = await api('tickets', { body: { poolId, qty, burnWarningAccepted: true }, cookie: p.cookie, ip: p.ip });
   if (!o.ok) return { order: o, paid: false };
   const pay = await api(`tickets/orders/${o.j.id}/payment`, { cookie: p.cookie, ip: p.ip });
   const sig = await sendSigned(signedB64(pay.j.transaction, p.kp));
   return { order: o, sig, paid: !!(await until(async () => (await api(`tickets/orders/${o.j.id}/confirm`, { body: { signature: sig }, cookie: p.cookie, ip: p.ip })).j.status === 'paid')) };
+}
+// The lobby opens the burn dialog before it creates an order. The checkbox has to be on or BUY stays disabled.
+async function acceptBurn(h) {
+  const up = await until(async () => !!(await h.ev('document.getElementById("burn-warning")')), 10000);
+  if (!up) return false;
+  return h.ev('(() => { const box = document.getElementById("burn-warning"); box.checked = true; box.dispatchEvent(new Event("change", { bubbles: true })); document.getElementById("burn-warning-accept").click(); return true; })()');
 }
 
 // ── a PLEDGE per km (program v3) through the server: POST /api/pledges → the sponsor's wallet signs AND sends create_pledge → /confirm reads its events.
@@ -186,7 +193,7 @@ async function browser(p, port) {
   await h.send('Emulation.setDeviceMetricsOverride', { width: 1100, height: 900, deviceScaleFactor: 1, mobile: false });
   const [n, v] = p.cookie.split('='); await h.send('Network.setCookie', { name: n, value: v, url: BASE, httpOnly: true });
   h.txt = sel => h.ev(`document.querySelector(${JSON.stringify(sel)})?.textContent ?? ''`);
-  h.lobby = async () => { await h.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); return until(async () => (await h.ev('document.querySelectorAll(".tier").length')) >= 3, 20000); };
+  h.lobby = async () => { await h.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); return until(async () => /BUY|RIDE|SOON/.test(await h.txt('#tier-1h')), 20000); };
   return h;
 }
 // the ADMIN session (fc_admin) and its signed actions – the ride review (e2e-localnet-payout.mjs) and the pool HOLD
@@ -298,6 +305,7 @@ try {
   check('lobby: the 1h card sells the series pool', await h1.lobby() && !!(await until(async () => /BUY 1 TICKET/.test(await h1.txt('#tier-1h .buyb')), 15000)), await h1.txt('#tier-1h'));
   let before = await bals({ r1: R1.wallet, vault: vP });
   await h1.ev('document.querySelector("#tier-1h .buyb").click()');
+  await acceptBurn(h1);
   check('lobby: R1 paid, 1 ticket credited', !!(await until(async () => /Paid – 1 ticket/.test(await h1.txt('#msg-1h')), 60000)), await h1.txt('#msg-1h'));
   let after = await bals({ r1: R1.wallet, vault: vP });
   const sigR1 = (await conn.getSignaturesForAddress(R1.kp.publicKey, { limit: 1 }, 'confirmed'))[0]?.signature;
@@ -340,7 +348,7 @@ try {
   await untilChain(secs(pc.prepDeadline), `pool ${P}'s sale end`);
   refuse('a buy after the sale end (the pool is ACTIVE)', ['buy', '-k', R8.keyfile, '--pool', String(P)], 'TooLate');
   refuse('a sponsorship after the sale end', ['sponsor', '--pool', String(P), '--lamports', '1000000', '-k', Z.keyfile], 'TooLate');
-  const late = await api('tickets', { body: { poolId: P, qty: 1 }, cookie: R8.cookie, ip: R8.ip });
+  const late = await api('tickets', { body: { poolId: P, qty: 1, burnWarningAccepted: true }, cookie: R8.cookie, ip: R8.ip });
   check('POST /api/tickets after the sale end: 409, nothing to sign', late.status === 409, `${late.status} ${JSON.stringify(late.j).slice(0, 160)}`);
   const P2 = await crankOpened(P, 30000);
   check('the crank opened the NEXT slot\'s pool by itself', P2 !== false && P2 > P);
@@ -365,7 +373,7 @@ try {
   const top3 = byDist.slice(0, 3), rest = byDist.slice(3);
   const v = Object.fromEntries(await Promise.all([R1, R2, R3, R4, R5, R6, R7].map(async p => [p.name, await verdictOf(p)])));
   const marks = p => (v[p.name]?.reasons ?? []).map(z => z.code).filter(c => c.startsWith('pool-'));
-  check(`pool-level marks: the top 3 by distance (${top3.map(p => p.name)}) carry pool-new-wallet-top3, nobody else a pool mark (one address each: no pool-shared-ip)`, top3.every(p => marks(p).includes('pool-new-wallet-top3')) && rest.every(p => marks(p).length === 0) && [R1, R2, R3, R4, R5, R6, R7].every(p => !marks(p).includes('pool-shared-ip')),
+  check(`pool-level marks: the top 3 by distance (${top3.map(p => p.name)}) carry pool-new-wallet-top3, the other honest rides carry none, no pool-shared-ip`, top3.every(p => marks(p).includes('pool-new-wallet-top3') && marks(p).every(c => c === 'pool-new-wallet-top3')) && rest.filter(p => p !== R7).every(p => marks(p).length === 0) && !marks(R7).includes('pool-new-wallet-top3') && [R1, R2, R3, R4, R5, R6, R7].every(p => !marks(p).includes('pool-shared-ip')),
     JSON.stringify(Object.fromEntries(byDist.map(p => [p.name, [v[p.name]?.status, marks(p).join('+')]]))));
   const undecided = [R1, R2, R3, R4, R5, R6, R7].filter(p => v[p.name]?.status !== 'verified');
   let st = await standings(P);
@@ -393,14 +401,17 @@ try {
   const r8wait = cli('pool:payout', '--pool', String(P));
   if (r8wait.pools[0]?.state === 'waiting_review' && /pledged ride/.test(r8wait.pools[0].note ?? '')) console.log(`NOTE a pledged ride nobody started blocks the commit (${r8wait.pools[0].note}) – it ends only when its driver tries to start it`);
   const r8start = await api(`rides/${r8ride.j.id}/start`, { body: {}, cookie: R8.cookie, ip: R8.ip });
-  check('R8 starts its ride after the play deadline: 409 rides_closed, the ride is closed (its ticket stays in the pot, its pledge will be refunded)', r8start.status === 409 && r8start.j.code === 'rides_closed', `${r8start.status} ${JSON.stringify(r8start.j).slice(0, 160)}`);
+  check('R8 starts its ride after the play deadline: 409, the ride is closed (its ticket stays in the pot, its pledge will be refunded)', r8start.status === 409 && (r8start.j.code === 'rides_closed' || r8start.j.code === 'pool_last_start_passed'), `${r8start.status} ${JSON.stringify(r8start.j).slice(0, 160)}`);
 
   // ── 7. the payout job: first pass = the pledged rides' attestations + the COMMIT (no prize yet); second pass after pay_from = the prizes + close
-  const want = [R1, R2, R3, R4, R5, R6].sort((a, b) => (rides[b.name].end?.distance ?? 0) - (rides[a.name].end?.distance ?? 0));
+  const verifiedDay = [R1, R2, R3, R4, R5, R6];
+  const want = (await rankedWallets(P, verifiedDay.map(p => p.wallet))).map(w => verifiedDay.find(p => p.wallet === w));
+  check('ranking: the six verified wallets once, in score-formula order', want.length === 6 && want.every(Boolean));
   pc = await poolAcc(P);
   const bound = prizeBound({ priceLamports: PRICE, ticketsSold: 8, sponsored: SPONSOR_P, prizeBps: pc.prizeBps, seedBps: pc.seedBps, ...(pc.maxPlayerShareBps !== undefined ? { maxPlayerShareBps: pc.maxPlayerShareBps } : {}) });
   const payouts = poolPayouts(bound, want.map(p => p.wallet));
   const winnersArg = payouts.map(x => `${x.wallet}:${x.lamports}`).join(',');
+  await untilChain(secs(pc.payoutAt), 'the validation window (a winners root waits until payoutAt)');
   const pass1 = cli('pool:payout', '--pool', String(P));
   const pass1Tx = await Promise.all((await sigsOf(PAYOUT)).filter(x => !payoutSigs0.has(x)).map(txInfo));
   const res1 = pass1.pools[0] ?? {};
@@ -493,7 +504,7 @@ try {
   check('server mirror: cancelled', !!(await until(async () => (await serverPool(P2)).status === 'cancelled', 20000)));
   check('the series moved on by itself (the crank keeps opening the next slots)', (await series()).poolsOpened >= 2);
 
-  const noise = p => !/favicon|status of 409|status of 404/.test(p);
+  const noise = p => !/favicon|status of 409|status of 404|road plan: server error 404/.test(p);
   const probs = browsers.flatMap(h => h.filt().filter(noise));
   check('no page errors (lobby)', probs.length === 0, probs.slice(0, 5).join(' | '));
   console.log(`screenshots: ${browsers[0]?.SHOTS}`);

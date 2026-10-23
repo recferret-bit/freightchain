@@ -5,7 +5,8 @@ export const DEVNET_BLOCKCHAIN_ID = 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1';
 export const ACTION_VERSION = '2.4';
 
 export const TIER_LABEL: Record<PaidTierId, string> = { '1h': '1 HOUR', '4h': '4 HOURS', '8h': '8 HOURS' };
-const PAID: PaidTierId[] = ['1h', '4h', '8h'];
+/** 4h and 8h stay in the label table. A blink must not sell them: the ticket order refuses both as tier_retired. */
+const SOLD: ReadonlySet<PaidTierId> = new Set(['1h']);
 
 export const SHIFT_DESCRIPTION = 'Buy one ticket into an escrowed skill-prize pool on Solana devnet. You drive the shift. Distance on the board splits the pool. Not a wager. Devnet SOL has no value. The buyer pays the network fee. Accept the 18+ and loss terms on the site before a buy button will build a transaction.';
 const NO_SALE = ' No paid pool is on sale right now.';
@@ -58,7 +59,7 @@ export function solLabel(lamports: number): string {
 
 /** One sellable pool per paid tier: the sale that ends soonest. `only` keeps a single tier. A registered selling pool counts; the tier `onSale` flag does not. */
 export function sellableOffers(pools: readonly OfferPool[], now: Date, only?: PaidTierId | null): SellableTier[] {
-  const tiers = only ? [only] : PAID;
+  const tiers = (only ? [only] : (['1h', '4h', '8h'] as const)).filter((tier) => SOLD.has(tier));
   const out: SellableTier[] = [];
   for (const tier of tiers) {
     const candidates = pools.filter((p) => p.tier === tier && p.whyNotSellable(now, 1, 0) === null);

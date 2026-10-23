@@ -83,7 +83,16 @@ apiTest(test, 'POOL-T-01..16 pool schedule, last start, burn checkbox, mismatch 
     const alerts = await db.alertOutbox.count({ where: { kind: 'pool_schedule_mismatch' } });
     assert.ok(alerts >= 1);
 
-    await db.pool.update({ where: { id: POOL }, data: { lastStartAt: null, playDeadline: new Date(now.getTime() + 30_000) } });
+    // The 75 min lead has to fit. A 30 s play window would clamp last start to play close, which is still ahead.
+    const opened = new Date(now.getTime() - 3 * 3600_000);
+    const latePlay = new Date(now.getTime() + 60 * 60_000);
+    await db.pool.update({
+      where: { id: POOL },
+      data: {
+        lastStartAt: null, playCloseAt: null, opensAt: null, createdAt: opened,
+        playDeadline: latePlay, prepDeadline: new Date(latePlay.getTime() - 2 * 3600_000),
+      },
+    });
     const rideId = randomUUID();
     await db.ride.create({
       data: {

@@ -42,11 +42,31 @@ npm run deploy          # checks → plan → confirm → upload → build → b
 | `deploy/.env.example` | yes | dummy values, `CHANGE_ME…` placeholders, every key documented |
 | `deploy/.env` | **no** (gitignored) | the real values; `deploy:init` creates it from the example |
 
-`SOLANA_RPC` must be a **devnet** endpoint: the env check asks it for its genesis hash and refuses anything else (the server builds the payment transactions from it, so mainnet would charge real SOL; `ALLOW_NON_DEVNET=1` overrides). `DEMO_WALLETS` = the wallets whose paid shifts run `DEMO_SCALE`× shorter (the demo payer).
+`SOLANA_RPC` must be a **devnet** endpoint: the env check asks it for its genesis hash and refuses anything else (the server builds the payment transactions from it, so mainnet would charge real SOL; `ALLOW_NON_DEVNET=1` overrides). `DEMO_WALLETS` = the wallets whose paid shifts run `DEMO_SCALE`× shorter (the demo payer). Production strict mode refuses any value, including `*`.
 `POSTHOG_KEY` is the PostHog project token (`phc_…`). Empty turns analytics off. A bad value, including a personal `phx_…` key, is logged and ignored and does not stop the API. A project token alone does not send: `POSTHOG_ENABLED` must be `1` or `true` (empty, `0`, or `false` stays off). `POSTHOG_HOST` defaults to `https://eu.i.posthog.com` (project 297915 is EU Cloud; the US ingest host drops events on the wrong continent). `POSTHOG_DISABLED=1` is the kill switch and wins over the opt-in. `POSTHOG_PROJECT_ID` (`297915`) is notes only and is not sent on capture. The two env files differ: local `server/.env` pins `POSTHOG_ENABLED=0` (and the local compose file does not run the API), production `deploy/.env` sets `POSTHOG_ENABLED=1`. The tracked examples match that split and keep the key blank. The schema declares the keys, and compose lists them so the container receives the opt-in. See `docs/insights/analytics/index.html`. After a deploy, `bash .claude/skills/posthog-prod/check.sh` checks the boot line and one ingest.
 `DEPLOY_*` keys stay on your machine; everything else is uploaded as `/srv/freightchain/.env` (chmod 600).
 `APP_DOMAIN`, `APP_ORIGIN`, `APP_PORT`, `COOKIE_DOMAIN`, `CORS_ORIGINS` are derived from `DEPLOY_DOMAIN` / `DEPLOY_APP_PORT` – do not set them. Any value still starting with `CHANGE_ME` makes the scripts refuse to run.
 `deploy/secrets/treasury.json` (gitignored) is the treasury **private key** – back it up; losing it means losing the entry fees.
+
+## Production env gate
+
+`npm run deploy` runs `scripts/validate-env.mjs` before it uploads anything. That script calls `strictModeIssues` in `backend/server/src/infrastructure/config/env.schema.ts` with `NODE_ENV=production`. A missing key is judged by the **schema default**, not by the `${VAR:-…}` fallback in `docker-compose.prod.yml`. The check refuses `main` after `76e347ce` (waves 3–5). The 2026-10-23 indexing release is `20261023-102408-0f4b3cf2`, built on the previous production commit `56a92dd6`, so this file did not have to change. The server file had the same keys as `deploy/.env`, plus the derived `APP_DOMAIN`, `APP_ORIGIN`, `APP_PORT`, `COOKIE_DOMAIN`, and `CORS_ORIGINS`. Values stay in `deploy/.env` only. This file names keys and the shape of the 2026-10-23 file, never a secret.
+
+Set these in `deploy/.env` before the next deploy:
+
+| Key | Production must be | 2026-10-23 file | Setting it changes |
+|---|---|---|---|
+| `DEMO_WALLETS` | empty | one wallet. Left as it was for the 2026-10-23 indexing deploy | that wallet's paid rides run full length |
+| `LIVE_FREE_DONATIONS` | `off` | missing. Schema default `on` fails. Compose fallback is already `off` | a donation is a real devnet SOL transfer to the driver |
+| `LIVE_EFFECTS` | `off` | missing. Schema default `all` fails. Compose fallback `free` also fails | donation night, day, and holes do not change a ride. Tips still follow `LIVE_DONATIONS`. A TEN4 time or weather burn ignores this switch |
+| `EDITOR_JWT_SECRET` | set, at least 32 characters, different from `JWT_SECRET` and from `ADMIN_JWT_SECRET`, when `ADMIN_WALLETS`, `MODERATOR_WALLETS`, or `EDITOR_WALLETS` is non-empty | missing. The admin and editor allowlists are set. `ADMIN_JWT_SECRET` is already set | editor sessions stop using the key derived from `JWT_SECRET`. Current editor sign-ins end |
+| `ADMIN_ALERT_TELEGRAM_BOT_TOKEN` | set when an allowlist is set | missing | admin alerts can reach that bot. A real token, only in `deploy/.env` |
+| `ADMIN_ALERT_TELEGRAM_CHAT_ID` | set when an allowlist is set | missing | the chat that receives those alerts |
+| `FREE_RIDE_SECONDS` | `180` for the 2026-10-11 levels | already `180` | leave it. `60` would make the old code run 3 / 9 / 30 min |
+
+Also refused: `EDITOR_FAKE_LLM=1`. `ADMIN_IP_ALLOWLIST` is required only when `SOLANA_RPC` contains `mainnet-beta`. This deploy stays on devnet.
+
+`EDITOR_JWT_SECRET` can be `openssl rand -hex 32`. Nothing in the repo can invent the Telegram bot or the chat id.
 
 ## Commands
 | command | what it does |

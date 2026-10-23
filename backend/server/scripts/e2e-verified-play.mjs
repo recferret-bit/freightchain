@@ -9,6 +9,8 @@
 // Usage: BASE=http://localhost:3111 CHROME_PORT=9340 CLI=dist/cli/index.js DATABASE_URL=… FREE_RIDE_SECONDS=40 node scripts/e2e-verified-play.mjs
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep, answerPrompts, driveHook } from '../../../frontend/client/tools/cdp.mjs';
 import { honestRoad } from './road-damage.mjs';
@@ -29,6 +31,12 @@ async function signIn() {
   return { wallet, cookie: res.headers.get('set-cookie').split(';')[0] };
 }
 const codes = v => (v?.reasons ?? []).map(x => x.code);
+/** The same traffic sim the verdict steps, so a straight recording can leave a lane before a car is in it. */
+async function trafficFor(ride) {
+  if (!process.env.ROAD_PLAN_BUILD || ride?.seed == null) return null;
+  const { TrafficSimulator } = await import(pathToFileURL(path.resolve(process.env.ROAD_PLAN_BUILD, 'domain/verdict/traffic-sim.js')).href);
+  return TrafficSimulator.forRide(ride.seed, ride.trip ?? null);
+}
 
 /* ───────────── C. API-level drivers: the recording built by hand ───────────── */
 /** Drive a free shift over the API: `inputs` human | none, `answer` human | instant | none, `mutate(batch)` edits a batch before it is hashed/sent
@@ -37,8 +45,8 @@ async function apiDrive({ name, inputs = 'human', answer = 'human', mutate = () 
   const who = await signIn();
   const { j: ride } = await call('POST', 'rides', { body: { tier: 'free' }, ...who });
   await call('POST', `rides/${ride.id}/start`, { body: {}, ...who });
-  const d = { ...who, id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, prompts: [], receipts: [], refused: null, road: honestRoad(BASE, ride.id) };   // road: the hull loss the game takes at the server's planned holes
-  const row = (t, s, v) => [r(t, 2), r(s, 1), 2.4, 0, r(v, 2), Math.round(900 + v * 50), 6, 100, 0.6, 0, 0, 0, 12, 1 | 2 | 8];
+  const d = { ...who, id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, prompts: [], receipts: [], refused: null, lat: 2.4, prevSample: null, sim: await trafficFor(ride), road: honestRoad(BASE, ride.id, ride) };   // road: the hull loss the game takes at the server's planned holes
+  const row = (t, s, v, lat = 2.4) => [r(t, 2), r(s, 1), r(lat, 2), 0, r(v, 2), Math.round(900 + v * 50), 6, 100, 0.6, 0, 0, 0, 12, 1 | 2 | 8];
   const cut = async () => {
     await d.road.take(d.samples);
     const base = { seq: d.seq++, prevHash: d.prevHash, t0: r(d.bt0, 2), t1: r(d.t, 2), samples: d.samples, inputs: d.inputs };
@@ -64,7 +72,15 @@ async function apiDrive({ name, inputs = 'human', answer = 'human', mutate = () 
     await sleep(100);
     const now = Date.now(), dt = Math.min(0.1, (now - wall) / 1000); wall = now;   // the GAME clock: frames are clamped, one sample a 0.1 s – a stalled loop (an upload, a busy machine) is no gap in game time
     d.t += dt; d.s += speed * dt;
-    d.samples.push(row(d.t, d.s, speed));
+    if (d.sim) {
+      const close = (lane, span) => d.sim.cars.some(a => Math.abs(a.lat - lane) < 2.2 && Math.abs(a.s - d.s) < span);
+      const target = close(2.4, d.lat < 0 ? 16 : 34) && !close(-2.4, 46) ? -2.4 : (close(2.4, 16) ? d.lat : 2.4);
+      d.lat += Math.sign(target - d.lat) * Math.min(Math.abs(target - d.lat), 1.2);
+    }
+    const sample = row(d.t, d.s, speed, d.lat);
+    if (d.sim && d.prevSample) d.sim.stepSamplePair(d.prevSample, sample);
+    d.prevSample = sample;
+    d.samples.push(sample);
     const ms = now - d.t0;
     if (inputs === 'human' && ms >= nextKey) {   // gas in long jittered holds, a steering tap now and then – what a person's hands do
       if (!gasDown) { d.inputs.push([r(ms, 1), 'KeyW', 1]); gasDown = true; nextKey = ms + 1500 + Math.random() * 3000; }
@@ -122,8 +138,10 @@ async function chromeDrive({ port, shotsDir, mode }) {
   for (let i = 0; i < 100 && !(await tab.ev('!!window.__game')); i++) await sleep(200);
   const booted = await tab.ev('!!window.__game');
   await tab.ev('document.getElementById("go").click()'); await sleep(800);
-  // headless can't really drive: grow the distance with the GAME clock at 20 m/s (under the governor)
-  await tab.ev(driveHook(20));
+  // headless can't really drive: grow the distance with the GAME clock at 20 m/s (under the governor).
+  // A person holds 7th with the pedal down, or the carried-speed check flags a coast. The bot stays metronomic.
+  const hold = 'st.park=false;st.keyOn=true;st.engineOn=true;st.gear=7;st.clutch=0;st.gas=1;st.brake=0;st.temp=85;g.input.gas=1;g.input.brake=0;';
+  await tab.ev(driveHook(20, mode === 'human' ? hold : ''));
   const press = async (code, key, hold) => { await tab.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(hold); await tab.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); };
   const KEYS = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];
   const answered = [];
@@ -145,7 +163,7 @@ async function chromeDrive({ port, shotsDir, mode }) {
   await tab.shot(`${mode}-done`);
   const { j: end } = await call('GET', `rides/${ride.id}`, who);
   const refused = await tab.ev('__game.telemetry.refused === null') ? null : await tab.ev('JSON.stringify(__game.telemetry.refused)');   // (a null value does not survive ev's ?? fallback)
-  const problems = tab.filt();
+  const problems = tab.filt().filter(p => !/road plan|\/road\?from=/.test(p));   // a running ride's public road route is 404; the game rolls the seed locally
   return { tab, ride, booted, complete, text, end, answered, promptsSeen, promptShot, refused, problems };
 }
 
@@ -191,7 +209,7 @@ check('C byte budget: a recording bigger than the time since the start allows is
 if (process.env.CLI && process.env.DATABASE_URL) {
   const cli = (...args) => JSON.parse(execFileSync('node', [process.env.CLI, ...args], { env: { ...process.env, NODE_ENV: 'test' }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }));
   const dry = cli('verdict:rejudge', '--dry-run', '--status', 'all');
-  check('D CLI verdict:rejudge --dry-run lists every completed shift and judges none', dry.dryRun === true && dry.scanned >= 10 && dry.judged === 0, JSON.stringify(dry));
+  check('D CLI verdict:rejudge --dry-run lists every completed shift and judges none', dry.dryRun === true && dry.scanned >= 9 && dry.judged === 0, JSON.stringify(dry));   // this file finishes nine: the person, the bot, and seven API rides
   const real = cli('verdict:rejudge', '--status', 'all');
   check('D CLI verdict:rejudge judges them all again at the same rules: nothing changes', real.judged === dry.scanned && real.changed.length === 0 && real.skipped === 0, JSON.stringify(real));
   const flagged = cli('verdict:rejudge', '--dry-run', '--status', 'flagged');

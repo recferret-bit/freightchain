@@ -37,14 +37,14 @@ export async function simulate({ base = 'http://localhost:3000', drive = 2, aban
     const who = await signIn();
     const { j: ride } = await call('POST', 'rides', { body: { tier: 'free' }, ...who });
     await call('POST', `rides/${ride.id}/start`, { body: {}, ...who });
-    drivers.push({ ...who, role, id: ride.id, minSeconds: ride.minSeconds, completeDist: ride.completeDist, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, done: false, ended: null });
+    drivers.push({ ...who, role, id: ride.id, seed: ride.seed, trip: ride.trip, minSeconds: ride.minSeconds, completeDist: ride.completeDist, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, done: false, ended: null });
     log({ event: 'driver', role, ride: ride.id, wallet: who.wallet });
   }
 
   // a 10 Hz sample row: [t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch, clock, flags] (flags: engine + key + headlights)
   const row = (t, s, v) => [r(t, 2), r(s, 1), 2.4, 0, r(v, 2), Math.round(900 + v * 50), v > 0 ? 6 : 0, 100, v > 0 ? 0.6 : 0, 0, 0, 0, 12, 1 | 2 | 8];
   const cut = async d => {
-    await (d.road ??= honestRoad(base, d.id)).take(d.samples);   // the hull loss the game takes at the server's planned holes (the verdict checks it)
+    await (d.road ??= honestRoad(base, d.id, d)).take(d.samples);   // the hull loss the game takes at the server's planned holes (the verdict checks it)
     const body = { seq: d.seq++, prevHash: d.prevHash, t0: r(d.bt0, 2), t1: r(d.t, 2), samples: d.samples, inputs: d.inputs };
     const hash = sha256(JSON.stringify({ seq: body.seq, prevHash: body.prevHash, t0: body.t0, t1: body.t1, samples: body.samples, inputs: body.inputs }));
     d.prevHash = hash; d.samples = []; d.inputs = []; d.bt0 = d.t;

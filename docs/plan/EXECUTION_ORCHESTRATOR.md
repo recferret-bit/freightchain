@@ -1,7 +1,7 @@
 # Parallel Execution Orchestrator (Up to 4 Concurrent Agents)
 
 > **How to use this file:** Point your agent (or `/goal` / `/teamwork-preview`) at **`docs/plan/EXECUTION_ORCHESTRATOR.md`**.
-> This file is a self-contained multi-agent runbook that coordinates [`docs/plan/E2E_HEADLESS_PLAN.md`](./E2E_HEADLESS_PLAN.md) (**Plan 1: 64 E2E tasks**) and [`docs/plan/SPEC_COMPLIANCE_PLAN.md`](./SPEC_COMPLIANCE_PLAN.md) (**Plan 2: 53 Spec tasks**) across **up to 4 parallel agents (`Lane 1` – `Lane 4`)** in **6 sequential Waves** with zero file-ownership collisions or database races.
+> This file is a self-contained multi-agent runbook that coordinates [`docs/plan/E2E_HEADLESS_PLAN.md`](./E2E_HEADLESS_PLAN.md) (**Plan 1: 64 E2E tasks**) and [`docs/plan/SPEC_COMPLIANCE_PLAN.md`](./SPEC_COMPLIANCE_PLAN.md) (**Plan 2: 53 Spec tasks**) across **up to 4 parallel agents (`Lane 1` – `Lane 4`)** in **7 sequential Waves** with zero file-ownership collisions or database races.
 
 ---
 
@@ -36,11 +36,12 @@ When invoked with `"work on docs/plan/EXECUTION_ORCHESTRATOR.md"`, the lead agen
 | Wave | Name | Active Lanes | Tasks | Status | Barrier Gate Command |
 |---|---|---|---|---|---|
 | **Wave 1** | **Red Gates, Contract Foundation & As-Built Lock (Part 1)** | 4 Lanes (`L1`–`L4`) | 18 | `[x] Done` | `npm run check && npm run server:integration` |
-| **Wave 2** | **As-Built HTTP Parity (151 Routes) & Headless Chrome Suite** | 4 Lanes (`L1`–`L4`) | 20 | `[~] In Progress` | `npm run check && npm run server:integration && bash .claude/skills/run-tests/e2e.sh` |
+| **Wave 2** | **As-Built HTTP Parity (151 Routes) & Headless Chrome Suite** | 4 Lanes (`L1`–`L4`) | 20 | `[x] Done` — four lanes were already done. The 2026-10-23 `test:ci:full` covered this barrier. | `npm run check && npm run server:integration && bash .claude/skills/run-tests/e2e.sh` |
 | **Wave 3** | **Admin Security (`F01..F18`), Dynamic Finish & Replays Backend** | 4 Lanes (`L1`–`L4`) | 23 | `[x] Done` | `npm run check && npm run server:integration && npm run test:e2e:block1` |
 | **Wave 4** | **Replay Controls `C1..C36`, EN/RU i18n, Pool v6 & Convoy/Airdrop** | 4 Lanes (`L1`–`L4`) | 25 | `[x] Done` | `npm run check && npm run server:integration && npm run test:e2e:block1 && npm run test:e2e:block2` |
 | **Wave 5** | **Anti-Cheat v2.1 (30 Hz Re-Sim, Salts, `F1..F10`) & Minigames** | 4 Lanes (`L1`–`L4`) | 21 | `[x] Done` | `npm run check && npm run server:integration && npm run test:e2e:block1` |
-| **Wave 6** | **Cheat Catalog `#1..#58`, `TrustScore`, CI Gates & Final Census** | 4 Lanes (`L1`–`L4`) | 10 | `[ ] Todo` | `npm run test:ci:full && node .claude/skills/test-census/census.mjs --self-test` |
+| **Wave 6** | **Cheat Catalog `#1..#58`, `TrustScore`, CI Gates & Final Census** | 4 Lanes (`L1`–`L4`) | 10 | `[x] Done` — `test:ci:fast` exit 0 in 153 s; `test:ci:full` exit 0 on 2026-10-23 (2954 s). | `npm run test:ci:full && node .claude/skills/test-census/census.mjs --self-test` |
+| **Wave 7** | **Spec-board truth, accepted cheat gaps, and a written 30 Hz cutover** | 4 Lanes (`L1`–`L4`) | 10 | `[ ] Todo` — do not start until asked. Defaults stay off / 10 Hz. | `npm run test:e2e:block3 && node .claude/skills/test-census/census.mjs --self-test` |
 
 ---
 
@@ -53,6 +54,7 @@ flowchart TD
   W3 --> W4["Wave 4 (4 Lanes): Admin Matrix (E2E-09) + Replay Player/i18n (SPC-04.7..9) + Pool v6/Appeals (SPC-05) + Convoy/Airdrop (SPC-08)"]
   W4 --> W5["Wave 5 (4 Lanes): Telemetry v2.1 & 30 Hz Re-Sim (SPC-06) + Minigames (SPC-07) + Convoy/Replay Chrome E2E"]
   W5 --> W6["Wave 6 (4 Lanes): Block 3 Driver Bots & Cheat #1..#58 (E2E-07) + Minigame E2E (E2E-08) + TrustScore/Terms + Final Census"]
+  W6 --> W7["Wave 7 (4 Lanes): Spec-board truth + accepted cheat gaps + written 30 Hz cutover"]
 ```
 
 ---
@@ -224,7 +226,7 @@ flowchart TD
 **Prisma Schema Serialization:** `Lane 3` executes a 5-minute **Wave 4 Schema Pre-Step** first, adding the schema changes for Wave 4 (`live.LiveChat.replayT/hiddenAt/hiddenBy`, `player.Player.chatBannedUntil/convoyHidden`, `pool.Pool` & `Series` schedule columns, `ride.RideAppeal`, `player.Referral` Convoy columns, `player.AirdropClaim`) in a single consolidated migration (`wave4_chat_pool_convoy_airdrop`) before Lanes 1–4 run in parallel.
 
 #### Wave 4 — `Lane 1` (Admin Security Matrix & Findings Regression `E2E-09.1..3`)
-- **Lane Status:** `[x] Done (Lane-1)` — Re-run on main 2026-10-20: `vitest.security.config.mjs` 7 tests exit 0, `vitest.security.integration.config.mjs` 1 test exit 0 on `freightchain_agent1_test`. The suite is the as-built subset: anonymous privileged routes are `404 not_found`, not `401`. `npm test` does not collect `test/security/`. `E2E-09.4` and `E2E-09.5` stay open (they are not this lane).
+- **Lane Status:** `[x] Done (Lane-1)` — Re-run on main 2026-10-20: `vitest.security.config.mjs` 7 tests exit 0, `vitest.security.integration.config.mjs` 1 test exit 0 on `freightchain_agent1_test`. The suite is the as-built subset: anonymous privileged routes are `404 not_found`, not `401`. `npm test` does not collect `test/security/`. `E2E-09.4` and `E2E-09.5` are Wave 6 Lane 4, not this lane.
 - **Owned Paths:** `backend/server/test/security/admin-surface-matrix.spec.ts`, `backend/server/test/security/admin-findings-regression.spec.ts`, `backend/server/test/security/admin-audit-alerts.integration.spec.ts`
 - **Tasks (in order):**
   - [x] [`E2E-09.1`](./e2e-headless/issues/E2E-09-admin-security-matrix-and-ci.md) — Build Automated Privileged Surface Matrix Runner (`ADM-T-01..12` × 54+ routes)
@@ -233,7 +235,7 @@ flowchart TD
 - **Lane 1 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent1_test" npx --prefix backend/server vitest run --config test/security/vitest.security.config.mjs && TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent1_test" npx --prefix backend/server vitest run --config test/security/vitest.security.integration.config.mjs`
 
 #### Wave 4 — `Lane 2` (Replay Controls `C1..C36`, Replay Chat & EN/RU Localization `SPC-04.7..9` + `E2E-06.2, 6, 7, 8`)
-- **Lane Status:** `[x] Done (Lane-2)` — merged 2026-10-20. Client replay test 3 pass. Chat, post-event, moderation, and live-features unit specs 16 pass. `tsc --noEmit` exit 0. The four block1 specs passed in the lane on port 3102 and were not re-run here. `E2E-06.3`–`06.5` stay open.
+- **Lane Status:** `[x] Done (Lane-2)` — merged 2026-10-20. Client replay test 3 pass. Chat, post-event, moderation, and live-features unit specs 16 pass. `tsc --noEmit` exit 0. The four block1 specs passed in the lane on port 3102 and were not re-run here. `E2E-06.3`–`06.5` are done on the e2e board.
 - **Owned Paths:** `frontend/client/site/replay-player.js`, `frontend/client/site/i18n.js`, `frontend/client/index.html`, `frontend/client/r.html`, `frontend/client/blink.html`, `backend/server/src/application/live/live-chat.service.ts`, `backend/server/src/application/live/chat-retention.scheduler.ts`, `tests/e2e/block1-offchain/replays-visibility.e2e.spec.ts`, `tests/e2e/block1-offchain/replay-chat.e2e.spec.ts`, `tests/e2e/block1-offchain/replay-donations.e2e.spec.ts`, `tests/e2e/block1-offchain/replay-receipts-pledges.e2e.spec.ts`
 - **Tasks (in order):**
   - [x] [`SPC-04.7`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) — Build replay player controls `C3, C6, C7, C8, C15, C16, C17, C18, C19, C36` and remove `C9, C26, C27, C32`
@@ -259,7 +261,7 @@ flowchart TD
 - **Lane 3 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent3_test" npm run test:e2e:block2`
 
 #### Wave 4 — `Lane 4` (Referral Convoy Rework & Pre-Season TEN4 Airdrop `SPC-08.1..4`)
-- **Lane Status:** `[x] Done (Lane-4)` — merged onto main 2026-10-20. Unit + manifest: 16 files, 40 tests, exit 0. Stores are in-memory until Lane 3's migration is applied. `SPC-08.5` and `SPC-08.6` stay open. `E2E-05.7` and `E2E-05.8` stay open.
+- **Lane Status:** `[x] Done (Lane-4)` — merged onto main 2026-10-20. Unit + manifest: 16 files, 40 tests, exit 0. Stores are in-memory until Lane 3's migration is applied. `SPC-08.5` and `SPC-08.6` stay open. `E2E-05.7` and `E2E-05.8` are the Wave 5 lane 4 convoy and airdrop tests.
 - **Owned Paths:** `backend/server/src/application/referral/`, `backend/server/src/presentation/referral/`, `backend/server/src/application/airdrop/`, `backend/server/src/infrastructure/social/`
 - **Tasks (in order):**
   - [x] [`SPC-08.1`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Convoy Referral state machine (`pending` 72h delete → `active` 60d window → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)`
@@ -297,7 +299,7 @@ flowchart TD
 - **Lane 2 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent2_test" npm run server:integration`
 
 #### Wave 5 — `Lane 3` (Phone `phone-sms` `SPC-07.1..5`)
-- **Lane Status:** `[x] Done (Lane-3)` — ported from the `phone-minigames` worktree on 2026-10-20. `tsc --noEmit` exit 0. Client phone tests 8 pass. Server minigame unit specs 32 pass. `MINIGAMES` defaults to `off`. The PostgreSQL integration suite was not re-run. `E2E-08.3` and `E2E-08.4` stay open.
+- **Lane Status:** `[x] Done (Lane-3)` — ported from the `phone-minigames` worktree on 2026-10-20. `tsc --noEmit` exit 0. Client phone tests 8 pass. Server minigame unit specs 32 pass. `MINIGAMES` defaults to `off`. The PostgreSQL integration suite was not re-run. `E2E-08.3` and `E2E-08.4` are done in Wave 6 Lane 3.
 - **Owned Paths:** `frontend/client/js/phone/`, `frontend/client/js/minigames/`, `frontend/client/shared/minigame-kinds.js`, `backend/server/src/domain/minigames/`, `backend/server/src/application/services/minigame-session.service.ts`
 - **Tasks (in order):**
   - [x] [`SPC-07.1`](./spec-compliance/issues/SPC-07-minigames-framework-and-catalog.md) — Port `mgSalt` commit–reveal and the `phone-sms` schedule (`2..4` arms, time gaps, null `slotS`). Source: branch `phone-minigames`. Do not build Appendix A.
@@ -327,37 +329,86 @@ flowchart TD
 **Prisma Schema Changes in Wave 6:** None (`0` migrations).
 
 #### Wave 6 — `Lane 1` (Block 3 Driver Bot Harness, 30 Hz Physics Parity, Telemetry v2.1 & World Integrity `E2E-07.1..4`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-1)` — `npm run test:e2e:block3` on 2026-10-22: 9 files, 153 tests, exit 0. The harness steps `@freightchain/shared` at 30 Hz through the game import and the kernel re-export. `REPLAY_SIM_HZ` stays 10. The config lives at `backend/server/vitest.block3.config.ts` because `tests/e2e/node_modules` has no vitest.
 - **Owned Paths:** `tests/e2e/block3-anticheat/harness/`, `tests/e2e/block3-anticheat/physics-parity.e2e.spec.ts`, `tests/e2e/block3-anticheat/telemetry-v21.e2e.spec.ts`, `tests/e2e/block3-anticheat/world-integrity.e2e.spec.ts`
 - **Tasks (in order):**
-  - [ ] [`E2E-07.1`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — Build `tests/e2e/block3-anticheat` harness with dual driver bot engines (`engine: 'game'` & `engine: 'kernel'`) + 5 behavioral profiles
-  - [ ] [`E2E-07.2`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — 30 Hz Deterministic Physics & Re-Sim Parity Suite (`AC-P1..P12`)
-  - [ ] [`E2E-07.3`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — Telemetry v2.1 Wire, HMAC & Deflate Stream Suite (`AC-T1..T16`)
-  - [ ] [`E2E-07.4`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — World Integrity, Salt Commit–Reveal & Digest Suite (`AC-W1..W18`)
-- **Lane 1 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent1_test" npx jest tests/e2e/block3-anticheat/physics-parity.e2e.spec.ts tests/e2e/block3-anticheat/telemetry-v21.e2e.spec.ts tests/e2e/block3-anticheat/world-integrity.e2e.spec.ts`
+  - [x] [`E2E-07.1`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — Build `tests/e2e/block3-anticheat` harness with dual driver bot engines (`engine: 'game'` & `engine: 'kernel'`) + 5 behavioral profiles
+  - [x] [`E2E-07.2`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — 30 Hz Deterministic Physics & Re-Sim Parity Suite (`AC-P1..P12`)
+  - [x] [`E2E-07.3`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — Telemetry v2.1 Wire, HMAC & Deflate Stream Suite (`AC-T1..T16`)
+  - [x] [`E2E-07.4`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — World Integrity, Salt Commit–Reveal & Digest Suite (`AC-W1..W18`)
+- **Lane 1 Verify Command:** `npm run test:e2e:block3`
 
 #### Wave 6 — `Lane 2` (Humanness `F1..F10`, Clock/Pause, 58-Vector Cheat Catalog & Retention/Sybil E2E `E2E-07.5..8`)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-2)` — same block3 run. Catalog rows the shipped code does not catch stay non-rejects (`verified` or no extra reason). No browser fingerprint.
 - **Owned Paths:** `tests/e2e/block3-anticheat/humanness-classifier.e2e.spec.ts`, `tests/e2e/block3-anticheat/clock-and-pause.e2e.spec.ts`, `tests/e2e/block3-anticheat/cheat-catalog.e2e.spec.ts`, `tests/e2e/block3-anticheat/retention-and-sybil.e2e.spec.ts`
 - **Tasks (in order):**
-  - [ ] [`E2E-07.5`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — Mechanical Input Humanness (`F1..F10`) & 5 Physical-Impossibility Reject Rules (`AC-H1..H3`, `ACH-T-02..03`)
-  - [ ] [`E2E-07.6`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — Pause, Slow-Mo, Wall-Clock & 90-Minute Timeout Suite (`AC-F1..F11`, `AC-R1..R8`)
-  - [ ] [`E2E-07.7`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — Full 58-Vector Cheat Catalog Regression Suite (`#1..#58` in `anticheat.md` §9)
-  - [ ] [`E2E-07.8`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — 90-Day Input Trace Retention, Top-20 Clustering & Anti-Sybil `TrustScore` E2E (`ACH-T-04`)
-- **Lane 2 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent2_test" npm run test:e2e:block3`
+  - [x] [`E2E-07.5`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — Mechanical Input Humanness (`F1..F10`) & 5 Physical-Impossibility Reject Rules (`AC-H1..H3`, `ACH-T-02..03`)
+  - [x] [`E2E-07.6`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — Pause, Slow-Mo, Wall-Clock & 90-Minute Timeout Suite (`AC-F1..F11`, `AC-R1..R8`)
+  - [x] [`E2E-07.7`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — Full 58-Vector Cheat Catalog Regression Suite (`#1..#58` in `anticheat.md` §9)
+  - [x] [`E2E-07.8`](./e2e-headless/issues/E2E-07-anticheat-bots-and-resim-e2e.md) — 90-Day Input Trace Retention, Top-20 Clustering & Anti-Sybil `TrustScore` E2E (`ACH-T-04`)
+- **Lane 2 Verify Command:** `npm run test:e2e:block3`
 
 #### Wave 6 — `Lane 3` (Phone-sms E2E `E2E-08.3..4`)
-- **Lane Status:** `[~] In Progress` — `test/scenarios/minigames.scenarios.ts` locks a free ride (null commit) and a 1h `phone-sms` (arm, open without a code field, `+20` after three wrong tries) on the in-memory HTTP harness. Salt reveal, cancel, and the rate limit are still open.
+- **Lane Status:** `[x] Done (Lane-3)` — `MGM-T-01..12` in the block3 run. Part 1 of `docs/spec/minigames.md` is the bar. Parking pockets, noisy PNGs, and a +45 s skip stay retired. `MINIGAMES` stays off.
 - **Owned Paths:** `tests/e2e/block3-anticheat/minigames-schedule.e2e.spec.ts`, `tests/e2e/block3-anticheat/minigames-challenges.e2e.spec.ts`
 - **Tasks (in order):**
-  - [ ] [`E2E-08.3`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Phone-sms schedule, cancel, and salt reveal E2E (`MGM-T-01..05`)
-  - [ ] [`E2E-08.4`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Phone-sms SVG, scoring, and rate-limit E2E (`MGM-T-06..12`)
-- **Lane 3 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent3_test" npx jest tests/e2e/block3-anticheat/minigames-schedule.e2e.spec.ts tests/e2e/block3-anticheat/minigames-challenges.e2e.spec.ts`
+  - [x] [`E2E-08.3`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Phone-sms schedule, cancel, and salt reveal E2E (`MGM-T-01..05`)
+  - [x] [`E2E-08.4`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Phone-sms SVG, scoring, and rate-limit E2E (`MGM-T-06..12`)
+- **Lane 3 Verify Command:** `npm run test:e2e:block3`
 
 #### Wave 6 — `Lane 4` (CI Fast/Full Scripts & Final 100% Green Census Gate `E2E-09.4..5`)
-- **Lane Status:** `[ ] Todo` (Wait for Wave 6 Lanes 1–3 before running `E2E-09.5`)
+- **Lane Status:** `[x] Done (Lane-4)` — 2026-10-23. `npm run test:ci:fast` exited 0 in 153.29 s (`/var/folders/zr/b6ccvm1n2yn1xhgjr2dfgb340000gn/T/grok-goal-e0330432f779/implementer/ci-fast.log`; the same stage inside the full run finished in about 151 s). `npm run test:ci:full` exited 0 in 2954 s, 09:43:42–10:32:56 CEST (`/var/folders/zr/b6ccvm1n2yn1xhgjr2dfgb340000gn/T/grok-goal-e0330432f779/implementer/ci-full.log`). That log shows block 2, block 3 (9 files), localnet, `honk-suite` (program tests, catalog drift, validator, verified ride), and `e2e.sh` all green. `PLT-T-10`, `PLT-T-12`, and `RPL-T-30..60` passed. Redis-down editor jobs return 429 `rate_limited` (shipped); the 2026-10-22 failure was status 0. `REF-T-01..22` / `TEN-T-10..15` and `RPL-T-16..29` passed in that block 1 run, so `E2E-05.7`, `E2E-05.8`, and `E2E-06.3`–`06.5` match the orchestrator. Census `--self-test` and `node docs/build-wiki.mjs` exited 0 (`/var/folders/zr/b6ccvm1n2yn1xhgjr2dfgb340000gn/T/grok-goal-e0330432f779/implementer/census-wiki.log`): 0 zero-scenario routes, 0 single-scenario routes, 178/178 HTTP routes on both runners, 9/9 HTML pages (the no-build `frontend/client/index.html` is excluded), 30/30 Anchor instructions, 81/81 required spec ids. Withdrawn: `E2E-T-01`, `E2E-T-06`. `TELEMETRY_V21` off, `MINIGAMES` off, `REPLAY_SIM_HZ` 10, `RULES_VERSION` 7. No Prisma migration. Not deployed.
 - **Owned Paths:** `package.json`, `.claude/skills/test-census/census.mjs`, `docs/testing/COVERAGE_CONTRACT.md`, `docs/wiki-catalog.js`
 - **Tasks (in order):**
-  - [ ] [`E2E-09.4`](./e2e-headless/issues/E2E-09-admin-security-matrix-and-ci.md) — Wire PR Fast-Gate (`npm run test:ci:fast`) & Nightly Full-Stack CI (`npm run test:ci:full`)
-  - [ ] [`E2E-09.5`](./e2e-headless/issues/E2E-09-admin-security-matrix-and-ci.md) — Final `census.mjs --self-test` 100% green audit across all 151+ routes, 28+ tables, 12 HTML pages, 19 Anchor instructions & 211 spec rules + `node docs/build-wiki.mjs`
+  - [x] [`E2E-09.4`](./e2e-headless/issues/E2E-09-admin-security-matrix-and-ci.md) — Wire PR Fast-Gate (`npm run test:ci:fast`) & Nightly Full-Stack CI (`npm run test:ci:full`)
+  - [x] [`E2E-09.5`](./e2e-headless/issues/E2E-09-admin-security-matrix-and-ci.md) — Final `census.mjs --self-test` 100% green audit across all 151+ routes, 28+ tables, 12 HTML pages, 19 Anchor instructions & 211 spec rules + `node docs/build-wiki.mjs`
 - **Lane 4 Verify Command:** `npm run test:ci:fast && node .claude/skills/test-census/census.mjs --self-test && node docs/build-wiki.mjs`
+
+> **WAVE 6 BARRIER GATE:** Passed 2026-10-23. `npm run test:ci:full` exited 0 and `node .claude/skills/test-census/census.mjs --self-test` exited 0. Do not start Wave 7 until asked.
+
+---
+
+### WAVE 7 — Spec-board truth, accepted cheat gaps, and a written 30 Hz cutover
+**Goal:** Make the spec board match the code Wave 5 already shipped behind flags, write down the cheat-catalog rows the verifier does not reject, and write the live 30 Hz cutover without performing it.
+**Do not start until asked.** `TELEMETRY_V21` stays `off`. `MINIGAMES` stays `off`. `REPLAY_SIM_HZ` stays 10. `RULES_VERSION` stays 7. `SPC-05.6` (`set_pool_rules` as an admin HTTP route) stays owner-blocked.
+**Prisma Schema Changes in Wave 7:** None (`0` migrations).
+
+#### Wave 7 — `Lane 1` (Spec board matches the shipped flags)
+- **Lane Status:** `[ ] Todo`
+- **Owned Paths:** `docs/plan/spec-compliance/STATUS.md`, `docs/plan/spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md`, `docs/plan/spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md`
+- **Forbidden Paths:** `backend/server/src/infrastructure/config/env.schema.ts`, `frontend/client/shared/physics.js`, `backend/server/src/domain/verdict/verdict-rules.ts`
+- **Tasks (in order):**
+  - [ ] [`SPC-06.1`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Status text matches `docs/spec/PRODUCT.md`: enforce mode has the named streams and the MAC; the default stays `off`
+  - [ ] [`SPC-06.3`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Status text matches the code: pause and slow-mo reject only when `TELEMETRY_V21=enforce`
+  - [ ] [`SPC-06.4`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Status text matches the code: salt commitments and `worldDigest32` exist; the 10 Hz road does not read them
+  - [ ] [`SPC-06.5`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md), [`SPC-06.6`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md), [`SPC-08.5`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md), [`SPC-08.6`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Status text matches Wave 5 Lane 2 (humanness, retention, `trustScore` from 60, `TermsGuard`). The spec summary counts change with those rows
+- **Lane 1 Verify Command:** `git diff -- backend/server/src/infrastructure/config/env.schema.ts frontend/client/shared/physics.js backend/server/src/domain/verdict/verdict-rules.ts` is empty
+
+#### Wave 7 — `Lane 2` (Cheat rows the verifier does not reject)
+- **Lane Status:** `[ ] Todo`
+- **Owned Paths:** `docs/spec/anticheat.md`, `tests/e2e/block3-anticheat/cheat-catalog.e2e.spec.ts`
+- **Forbidden Paths:** `backend/server/src/domain/verdict/`, `frontend/client/shared/physics.js`
+- **Tasks (in order):**
+  - [ ] Write the accepted non-rejects into `docs/spec/anticheat.md` §9. The block3 suite already locks them: `#02`, `#03`, `#05`, `#07`, `#14`, `#22`, `#25`–`#33`, `#47`, `#52`. A flag that does not reject stays a flag
+  - [ ] Do not add a reject and do not bump `RULES_VERSION`. `npm run test:e2e:block3` still exits 0
+- **Lane 2 Verify Command:** `npm run test:e2e:block3`
+
+#### Wave 7 — `Lane 3` (Written live-verifier cutover)
+- **Lane Status:** `[ ] Todo`
+- **Owned Paths:** `docs/spec/anticheat.md`, `docs/agents/server.md`
+- **Forbidden Paths:** `frontend/client/shared/physics.js`, `backend/server/src/infrastructure/config/env.schema.ts`, `backend/server/prisma/`
+- **Tasks (in order):**
+  - [ ] [`SPC-06.2`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Write the cutover: new rides would call `stepAt30Hz`, historical rides stay on the 10 Hz recording, `REPLAY_SIM_HZ` stays 10 until a later explicit ask
+  - [ ] Write the flag switch: `TELEMETRY_V21=enforce` and `MINIGAMES` leaving `off`. The schema defaults stay `off` in this wave
+- **Lane 3 Verify Command:** `git diff -- frontend/client/shared/physics.js backend/server/src/infrastructure/config/env.schema.ts backend/server/prisma` is empty
+
+#### Wave 7 — `Lane 4` (Board arithmetic)
+- **Lane Status:** `[ ] Todo`
+- **Owned Paths:** `docs/plan/spec-compliance/STATUS.md`, `docs/plan/EXECUTION_ORCHESTRATOR.md`
+- **Forbidden Paths:** `backend/`, `frontend/`, `programs/`
+- **Tasks (in order):**
+  - [ ] Spec summary counts match the rows after Lane 1. `SPC-05.6` stays `[!] Blocked`
+  - [ ] `node .claude/skills/test-census/census.mjs --self-test` still prints `self-test ok`
+- **Lane 4 Verify Command:** `node .claude/skills/test-census/census.mjs --self-test`
+
+> **WAVE 7 BARRIER GATE:** All 10 tasks above must be `[x] Done` and `npm run test:e2e:block3 && node .claude/skills/test-census/census.mjs --self-test` must exit `0`. The diff must not change `TELEMETRY_V21`, `MINIGAMES`, `REPLAY_SIM_HZ`, or `RULES_VERSION`.

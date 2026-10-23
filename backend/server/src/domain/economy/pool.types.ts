@@ -46,7 +46,7 @@ export interface PoolProps {
   opensAt?: Date | null;
   /** Null/absent = prepDeadline (the on-chain sales close). */
   salesCloseAt?: Date | null;
-  /** Null/absent = play close − 75 min. */
+  /** Null/absent = play close − 75 min, or play close when that lead is before the pool opened. */
   lastStartAt?: Date | null;
   /** Null/absent = playDeadline. */
   playCloseAt?: Date | null;

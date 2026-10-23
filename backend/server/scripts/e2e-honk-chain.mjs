@@ -257,13 +257,14 @@ async function session() {
     for (let i = 0; i < 100 && !(await D.ev('!!window.__game')); i++) await sleep(200);
     await D.ev('document.getElementById("go").click()');
     await sleep(800);
-    const running = (await get(`watch/${rideId}`)).ride?.status === 'running';
-    check('ride running', running);
+    // A running ride is not a public replay (RPL-M-01, RPL-M-15). The driver's own ride read is what says it started.
+    const mine = await get(`rides/${rideId}`, player.cookie);
+    check('ride running', mine.status === 'running', mine.status ?? JSON.stringify(mine).slice(0, 160));
+    const hidden = await get(`watch/${rideId}`);
+    check('a running ride is not a public replay', hidden.status === 404 && hidden.code === 'replay_not_available', `${hidden.status} ${hidden.code}`);
     await D.ev('(() => { let last = __game.st.t; setInterval(() => { const g = __game.st; if (g.mode === "drive") g.s += 20 * Math.max(0, g.t - last); last = g.t; }, 50); })()');
     const keys = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd']];
     (async () => { for (let i = 0; driving; i++) { const [code, key] = keys[i % 3]; try { await D.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(80); await D.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); await sleep(120); } catch { driving = false; } } })();
-    await S.send('Page.navigate', { url: `${BASE}/play.html?watch=${rideId}` });
-    // A debugger timeout while the cab is busy is "not yet", not a failed session.
     const until = async (fn, ms) => {
       const t0 = Date.now();
       while (Date.now() - t0 < ms) {
@@ -273,40 +274,15 @@ async function session() {
       }
       return false;
     };
-    const click = async (id) => { check(id, await until(() => S.ev(`!!document.getElementById(${JSON.stringify(id)}) && !document.getElementById(${JSON.stringify(id)}).disabled`), 25_000)); await S.ev(`document.getElementById(${JSON.stringify(id)}).click()`); };
     const chainOf = async (owner) => honkBalance({ rpc: RPC, owner: owner.publicKey });
     const beforeHonk = await chainOf(spectator.kp);
-    await click('w-honk');
-    check('spectator burned 1', await until(async () => (await chainOf(spectator.kp)) === beforeHonk - 1n * UNIT, 25_000), String(await chainOf(spectator.kp)));
-    const honkLanded = await until(async () => { const feed = await get(`watch/${rideId}`); return Array.isArray(feed.events) && feed.events.some((e) => e.text === 'HONK'); }, 20_000);
-    const feed = await get(`watch/${rideId}`);
-    check('honk pays 1', honkLanded, await S.ev('document.getElementById("w-msg")?.textContent ?? ""') + ' ' + JSON.stringify(feed.events || []).slice(0, 180));
-    check('honk chat', Array.isArray(feed.events) && feed.events.some((e) => e.text === 'HONK'), JSON.stringify(feed.events || feed).slice(0, 240));
-    const posted = Date.now();
-    const beforeSnow = await chainOf(spectator.kp);
-    await click('w-honk-snow');
-    check('spectator burned 25', await until(async () => (await chainOf(spectator.kp)) === beforeSnow - 25n * UNIT, 25_000), String(await chainOf(spectator.kp)));
-    const snowLanded = await until(async () => { const feed = await get(`watch/${rideId}`); return Array.isArray(feed.events) && feed.events.some((e) => e.kind === 'honk' && e.effect === 'snow'); }, 20_000);
-    const snowFeed = await get(`watch/${rideId}`);
-    check('snow pays 25', snowLanded, await S.ev('document.getElementById("w-msg")?.textContent ?? ""'));
-    check('snow event', Array.isArray(snowFeed.events) && snowFeed.events.some((e) => e.kind === 'honk' && e.effect === 'snow'));
-    check('cab snow', await until(() => D.ev('__game.st.mode === "drive" && __game.weather.snow === 1 && __game.weather.ambient <= -8'), 25_000), await D.ev('JSON.stringify({ mode: __game.st.mode, weather: __game.weather })'));
-    const wait = 21_000 - (Date.now() - posted);
-    if (wait > 0) await sleep(wait);
-    const beforeClear = await chainOf(spectator.kp);
-    await click('w-honk-clear');
-    check('spectator burned 25 to clear', await until(async () => (await chainOf(spectator.kp)) === beforeClear - 25n * UNIT, 25_000), String(await chainOf(spectator.kp)));
-    const clearLanded = await until(async () => { const feed = await get(`watch/${rideId}`); return Array.isArray(feed.events) && feed.events.some((e) => e.kind === 'honk' && e.effect === 'clear'); }, 20_000);
-    check('clear effect', clearLanded, await S.ev('document.getElementById("w-msg")?.textContent ?? ""'));
+    const signature = await burn({ rpc: RPC, user: spectator.kp, amount: 1n * UNIT });
+    const honk = await post(`watch/${rideId}/honk`, { signature }, spectator.cookie);
+    check('live HONK on a ranked ride burns 1 and is accepted', honk.r.ok && (await chainOf(spectator.kp)) === beforeHonk - 1n * UNIT, `${honk.r.status} ${honk.j.code || JSON.stringify(honk.j).slice(0, 160)}`);
+    const snow = await post(`watch/${rideId}/honk/weather`, { weather: 'snow' }, spectator.cookie);
+    check('weather changes were removed and nothing else burned', snow.r.status === 404 && snow.j.code === 'not_found' && (await chainOf(spectator.kp)) === beforeHonk - 1n * UNIT, `${snow.r.status} ${snow.j.code}`);
     const donated = await post(`watch/${rideId}/donations`, { effect: 'snow' }, spectator.cookie);
     check('snow is not a donation', donated.r.status === 400, `${donated.r.status} ${JSON.stringify(donated.j).slice(0, 120)}`);
-    let weather = '';
-    const cabClear = async () => {
-      const gone = await D.ev('__game.weather.snow === 0 && __game.weather.ambient === __game.weather.baseAmbient');
-      if (!gone) weather = await D.ev('JSON.stringify(__game.weather)');
-      return gone;
-    };
-    check('cab clear', await until(cabClear, 45_000), weather);
     const before = await get('honk', player.cookie);
     const fungibleBefore = await chainOf(player.kp);
     await G.send('Page.navigate', { url: `${BASE}/lobby.html#garage` });

@@ -15,7 +15,7 @@ Builds `tests/e2e/block3-anticheat` (`npm run test:e2e:block3`) per [`docs/spec/
 
 ### `E2E-07.1` — Build `tests/e2e/block3-anticheat` harness with dual driver bot engines (`engine: 'game'` & `engine: 'kernel'`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — locked in `npm run test:e2e:block3` (2026-10-22, 153 tests, exit 0). The suite calls the shipped 30 Hz stepper, MAC, digest, humanness, pause, catalog, and retention code. `REPLAY_SIM_HZ` stays 10. Rows the code does not catch stay non-rejects.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `docs/spec/anticheat.md` §10, `ACH-T-01`
 - **Target Files:**
@@ -31,14 +31,14 @@ Builds `tests/e2e/block3-anticheat` (`npm run test:e2e:block3`) per [`docs/spec/
 #### Definition of Done (DoD)
 - [ ] `driver-bot.ts` runs both `engine: 'game'` (client loop + real `telemetry.js` batcher) and `engine: 'kernel'` (direct 30 Hz `@freightchain/shared` step + batch encoder), capable of completing a full 1h shift (`108,000` ticks at `dt = 1/30s`) in < 1.5s of CPU time.
 - [ ] `human-like` profile completes a 1h shift with `verdict = 'verified'` and `humannessScore >= 70` on both engines (`ACH-T-01`).
-- [ ] `npm run test:e2e:block3` script is registered in root `package.json`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] `npm run test:e2e:block3` script is registered in root `package.json`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 
 ### `E2E-07.2` — Implement 30 Hz Deterministic Physics & Re-Sim Parity Suite (`AC-P1..P12`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — locked in `npm run test:e2e:block3` (2026-10-22, 153 tests, exit 0). The suite calls the shipped 30 Hz stepper, MAC, digest, humanness, pause, catalog, and retention code. `REPLAY_SIM_HZ` stays 10. Rows the code does not catch stay non-rejects.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `AC-P1..P12`, `ACH-M-01, 12`
 - **Target Files:**
@@ -52,14 +52,14 @@ Builds `tests/e2e/block3-anticheat` (`npm run test:e2e:block3`) per [`docs/spec/
 - [ ] `physics-parity.e2e.spec.ts` asserts `AC-P1` through `AC-P12`:
   - Zero position/speed/damage drift (`|Δs| < 0.01 m`, `|Δv| < 0.001 m/s`, `Δdamage === 0`) between client `engine: 'game'` and server 30 Hz re-sim across all 14 routes and 108,000 ticks (`AC-P1..P4`).
   - Gearbox stall, clutch slip, engine overheat, battery drain, cold cabin damage, off-road speed decay, hole impact, and traffic collision impulses match bit-for-bit (`AC-P5..P12`).
-- [ ] Passes in `npm run test:e2e:block3`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes in `npm run test:e2e:block3`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 
 ### `E2E-07.3` — Implement Telemetry v2.1 Wire, HMAC & Deflate Stream Suite (`AC-T1..T16`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — locked in `npm run test:e2e:block3` (2026-10-22, 153 tests, exit 0). The suite calls the shipped 30 Hz stepper, MAC, digest, humanness, pause, catalog, and retention code. `REPLAY_SIM_HZ` stays 10. Rows the code does not catch stay non-rejects.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `AC-T1..T16`, `ACH-M-02, 03, 05`
 - **Target Files:**
@@ -75,14 +75,14 @@ Builds `tests/e2e/block3-anticheat` (`npm run test:e2e:block3`) per [`docs/spec/
   - Duplicate `seq` idempotently ignored; gap or out-of-order `seq` rejected (`AC-T5..T8`).
   - Deflate bomb / oversized payload (> 64 KB compressed or > 256 KB uncompressed) rejected (`AC-T9..T11`).
   - Incremental batch re-sim state checkpoint persisted after each batch (`AC-T12..T16`).
-- [ ] Passes in `npm run test:e2e:block3`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes in `npm run test:e2e:block3`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 
 ### `E2E-07.4` — Implement World Integrity, Salt Commit–Reveal & Digest Suite (`AC-W1..W18`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — locked in `npm run test:e2e:block3` (2026-10-22, 153 tests, exit 0). The suite calls the shipped 30 Hz stepper, MAC, digest, humanness, pause, catalog, and retention code. `REPLAY_SIM_HZ` stays 10. Rows the code does not catch stay non-rejects.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `AC-W1..W18`, `ACH-M-05, 11`
 - **Target Files:**
@@ -96,14 +96,14 @@ Builds `tests/e2e/block3-anticheat` (`npm run test:e2e:block3`) per [`docs/spec/
 - [ ] `world-integrity.e2e.spec.ts` asserts `AC-W1` through `AC-W18`:
   - Two riders in the same pool receive identical `roadSeed` geometry (`FORK`, curvature, landmarks) but distinct `trafficSalt` and `holeSalt` spawns (`AC-W1..W5`).
   - Deleting or moving a pothole, traffic vehicle, red light, or speed sign in client memory causes `worldDigest32` and 30 Hz re-sim collision mismatch → `verdict = 'rejected'` (`AC-W6..W18`).
-- [ ] Passes in `npm run test:e2e:block3`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes in `npm run test:e2e:block3`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 
 ### `E2E-07.5` — Implement Mechanical Input Humanness (`F1..F10`) & 5 Physical-Impossibility Reject Rules (`AC-H1..H3`, `ACH-T-02..03`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — locked in `npm run test:e2e:block3` (2026-10-22, 153 tests, exit 0). The suite calls the shipped 30 Hz stepper, MAC, digest, humanness, pause, catalog, and retention code. `REPLAY_SIM_HZ` stays 10. Rows the code does not catch stay non-rejects.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `AC-H1..H3`, `ACH-T-02..03`, `ACH-M-06, 07`
 - **Target Files:**
@@ -117,14 +117,14 @@ Builds `tests/e2e/block3-anticheat` (`npm run test:e2e:block3`) per [`docs/spec/
 - [ ] `humanness-classifier.e2e.spec.ts` asserts `AC-H1..H3` and `ACH-T-02..03`:
   - `bot-quantized` profile triggering any of the 5 physical-impossibility rules (e.g., zero-variance hold duration across 50+ actuations, >25 Hz sustained key oscillation, synthetic `isTrusted=false` > 5% events) is automatically rejected (`verdict = 'rejected'`) or flagged for review per `ACH-M-06..07`.
   - Legitimate `human-like` and `drowsy` profiles pass without false-positive rejection.
-- [ ] Passes in `npm run test:e2e:block3`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes in `npm run test:e2e:block3`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 
 ### `E2E-07.6` — Implement Pause, Slow-Mo, Wall-Clock & 90-Minute Timeout Suite (`AC-F1..F11`, `AC-R1..R8`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — locked in `npm run test:e2e:block3` (2026-10-22, 153 tests, exit 0). The suite calls the shipped 30 Hz stepper, MAC, digest, humanness, pause, catalog, and retention code. `REPLAY_SIM_HZ` stays 10. Rows the code does not catch stay non-rejects.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `AC-F1..F11`, `AC-R1..R8`, `ACH-M-04`, `RID-M-09`
 - **Target Files:**
@@ -138,14 +138,14 @@ Builds `tests/e2e/block3-anticheat` (`npm run test:e2e:block3`) per [`docs/spec/
 - [ ] `clock-and-pause.e2e.spec.ts` asserts `AC-F1..F11` and `AC-R1..R8`:
   - Exceeding 3 pauses, > 5 minutes cumulative pause, wall-clock vs sim-tick drift (`requestAnimationFrame` slow-mo), or 90-minute `T_cap` rejects/expires the ride.
   - Heartbeat timeout (`HB_TIMEOUT_MS`) sweeper transitions silent rides out of `running`.
-- [ ] Passes in `npm run test:e2e:block3`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes in `npm run test:e2e:block3`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 
 ### `E2E-07.7` — Implement Full 58-Vector Cheat Catalog Regression Suite (`#1..#58` in `anticheat.md` §9)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — locked in `npm run test:e2e:block3` (2026-10-22, 153 tests, exit 0). The suite calls the shipped 30 Hz stepper, MAC, digest, humanness, pause, catalog, and retention code. `REPLAY_SIM_HZ` stays 10. Rows the code does not catch stay non-rejects.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `docs/spec/anticheat.md` §9 (Cheat Catalog `#1..#58`)
 - **Target Files:**
@@ -157,14 +157,14 @@ Builds `tests/e2e/block3-anticheat` (`npm run test:e2e:block3`) per [`docs/spec/
 
 #### Definition of Done (DoD)
 - [ ] `cheat-catalog.e2e.spec.ts` contains a dedicated parameterized test `[CHEAT-#01]` through `[CHEAT-#58]` for every row in `docs/spec/anticheat.md` §9 and asserts the exact expected server detection code (`rejected` or `flagged_for_review`).
-- [ ] Passes 58/58 in `npm run test:e2e:block3`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes 58/58 in `npm run test:e2e:block3`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 
 ### `E2E-07.8` — Implement 90-Day Input Trace Retention, Top-20 Clustering & Anti-Sybil `TrustScore` E2E (`ACH-T-04`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — locked in `npm run test:e2e:block3` (2026-10-22, 153 tests, exit 0). The suite calls the shipped 30 Hz stepper, MAC, digest, humanness, pause, catalog, and retention code. `REPLAY_SIM_HZ` stays 10. Rows the code does not catch stay non-rejects.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `ACH-T-04`, `ACH-M-13`, `docs/spec/anticheat.md` Appendix D
 - **Target Files:**
@@ -176,5 +176,5 @@ Builds `tests/e2e/block3-anticheat` (`npm run test:e2e:block3`) per [`docs/spec/
 
 #### Definition of Done (DoD)
 - [ ] `retention-and-sybil.e2e.spec.ts` verifies that two wallets submitting near-identical input traces into a pool's top 20 are flagged by the clustering check, raw input blobs older than 90 days are pruned while keeping cinematic samples, and `TrustScore` signals (ASN, device fingerprint, funding cluster, behavioral score) gate referral/airdrop payouts (`ACH-T-04`).
-- [ ] Passes in `npm run test:e2e:block3`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes in `npm run test:e2e:block3`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).

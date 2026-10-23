@@ -40,6 +40,12 @@ await h.send('Page.addScriptToEvaluateOnNewDocument', { source: process.env.STAN
 const size = (w, hgt, mobile) => h.send('Emulation.setDeviceMetricsOverride', { width: w, height: hgt, deviceScaleFactor: 1, mobile });
 const txt = sel => h.ev(`document.querySelector(${JSON.stringify(sel)})?.textContent ?? ''`);
 const click = sel => h.ev(`document.querySelector(${JSON.stringify(sel)}).click()`);
+// The lobby opens the burn dialog before it creates an order. The checkbox has to be on or BUY stays disabled.
+const acceptBurn = () => until(async () => {
+  if (!(await h.ev('!!document.getElementById("burn-warning")'))) return false;
+  await h.ev('(() => { const box = document.getElementById("burn-warning"); box.checked = true; box.dispatchEvent(new Event("change", { bubbles: true })); document.getElementById("burn-warning-accept").click(); })()');
+  return true;
+}, 10000);
 await size(1100, 900, false);
 
 // ── the stub: the wallet pays its own fee
@@ -51,6 +57,7 @@ check('an older failed pool no card shows: its own CLAIM REFUND row', /4H · wee
 check('sales on (tiers.paymentMode = program): BUY is live with the price, the stepper adds', (await txt('#tier-1h .buyb')) === 'BUY 1 TICKET · 0.050 SOL' && await (async () => { await click('#tier-1h .qty button:last-child'); return (await txt('#tier-1h .buyb')) === 'BUY 2 TICKETS · 0.100 SOL'; })(), await txt('#tier-1h .buyb'));
 await h.shot('stub-new-desktop');
 await click('#tier-1h .buyb');
+await acceptBurn();
 check('BUY: signed + sent by the wallet, confirmed, credited', await until(async () => /Paid – 2 tickets credited/.test(await txt('#msg-1h')), 30000), await txt('#msg-1h'));
 check('…the wallet was asked to sign AND send (it pays its own fee)', JSON.stringify(await h.ev('__asked')) === '["signAndSendTransaction"]', JSON.stringify(await h.ev('__asked')));
 check('…RIDE now has 3 tickets', (await txt('#tier-1h .go')) === 'RIDE (3 left)', await txt('#tier-1h .go'));
@@ -63,6 +70,7 @@ await h.shot('stub-ride-paid-desktop');
 await size(390, 844, true); await sleep(300); await h.shot('stub-ride-paid-phone'); await size(1100, 900, false);
 await h.ev('[...document.querySelectorAll("#tier-4h .qty button")][1].click(); [...document.querySelectorAll("#tier-4h .qty button")][1].click()');
 await click('#tier-4h .buyb');
+await acceptBurn();
 check('buying the last 3 of an open pool takes it LIVE: chip + RIDE (3 left)', await until(async () => (await txt('#tier-4h .st')) === 'LIVE' && (await txt('#tier-4h .go')) === 'RIDE (3 left)', 30000), `${await txt('#tier-4h .st')} / ${await txt('#tier-4h .go')}`);
 const d2 = await dlg(); await h.ev('document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))'); const d3 = await dlg();
 check('…the next buy replaced the dialog (3 tickets); Esc closes it', d2?.title === 'RIDE PAID' && !d3, `${JSON.stringify(d2)} → ${JSON.stringify(d3)}`);
@@ -82,11 +90,13 @@ const asked = () => h.ev('JSON.stringify(__asked)');
 // ── a second purchase on a fresh stub: the wallet signs AND sends, confirm
 await fresh(STUB + 2, {});
 await click('#tier-1h .buyb');
+await acceptBurn();
 check('BUY (fresh stub): signAndSendTransaction, confirm, credited', await until(async () => /Paid – 1 ticket credited/.test(await txt('#msg-1h')), 30000) && (await asked()) === '["signAndSendTransaction"]', `${await txt('#msg-1h')} ${await asked()}`);
 
 // ── a payment in flight survives a reload: GET /api/tickets/pending → the banner → RETRY CONFIRM (the signature this browser kept) → paid
 await fresh(STUB + 3, { CONFIRM_PENDING: '8' });
 await click('#tier-1h .buyb');
+await acceptBurn();
 await until(async () => /Waiting for the network/.test(await txt('#msg-1h')));
 await h.send('Page.reload'); await until(async () => (await h.ev('document.querySelectorAll(".tier").length')) === 4);
 check('after a reload: "a payment for 1 ticket is in flight" + RETRY CONFIRM', await until(async () => /A payment for 1 ticket is in flight/.test(await txt('#orderbox')) && (await txt('#orderbox button')) === 'RETRY CONFIRM'), await txt('#orderbox'));

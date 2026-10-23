@@ -33,6 +33,7 @@ import { HOST_GAP_ENV, hostGapScenarios } from '../scenarios/http-gaps-host.scen
 import { publicGapScenarios } from '../scenarios/http-gaps-public.scenarios.js';
 import { donationGapScenarios, liveGapScenarios } from '../scenarios/http-gaps-live.scenarios.js';
 import { economyGapScenarios } from '../scenarios/http-gaps-economy.scenarios.js';
+import { wave6GapScenarios } from '../scenarios/http-gaps-wave6.scenarios.js';
 import { PrismaService } from '../../src/infrastructure/prisma/prisma.service.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
 import { PromoRepositoryPort } from '../../src/application/ports/economy/promo.repository.port.js';
@@ -85,6 +86,7 @@ for (const [name, env, scenarios] of [
   ['http gaps: honk burns and mutes', LIVE_ENV, liveGapScenarios],
   ['http gaps: paid donation reconcile and solana pay', LIVE_FLAGS_ENV, donationGapScenarios],
   ['http gaps: tickets, pools, order solana pay', TICKET_ORDERS_ENV, economyGapScenarios],
+  ['http gaps: wave 6 routes', ADMIN_ENV, wave6GapScenarios],
 ] as const) {
   describe(`HTTP (PostgreSQL) · ${name}`, () => {
     let harness: Harness;

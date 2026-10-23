@@ -60,7 +60,7 @@ Verifies the target gameplay and pool rules: 1h-only shifts with dynamic `finish
 
 ### `E2E-08.3` — Phone-sms schedule, cancel, and salt reveal E2E (`MGM-T-01..05`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — `minigames-schedule.e2e.spec.ts` covers `MGM-T-01..05` in `npm run test:e2e:block3`. Part 1 of `docs/spec/minigames.md`. No parking pocket.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `MGM-T-01..05`, `AC-M1..M10`, `MGM-M-01..06`
 - **Target Files:**
@@ -76,14 +76,14 @@ Verifies the target gameplay and pool rules: 1h-only shifts with dynamic `finish
   - `tier='1h'` rides spawn `2..4` minigames with `>= 480s` spacing and `>= 300m` clearance from forks/construction/tunnels (`MGM-T-02..03`).
   - Two riders on the same `roadSeed` get different minigame types/values/positions (`mgSalt` per ride/wallet, `MGM-T-04`, `AC-M1..M4`).
   - Stopping inside the roadside parking pocket (`speed < 0.5 m/s`) is required to open the minigame UI; driving past without stopping records `missed` (`MGM-T-05`, `AC-M5..M10`).
-- [ ] Passes in `npm run test:e2e:block3`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes in `npm run test:e2e:block3`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 
 ### `E2E-08.4` — Phone-sms SVG, scoring, and rate-limit E2E (`MGM-T-06..12`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — `minigames-challenges.e2e.spec.ts` covers `MGM-T-06..12` in `npm run test:e2e:block3`. SVG slips, `+20` on the third wrong try, no `+45`, rate limit `mg_rate_limited`.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `MGM-T-06..09`, `AC-M11..M20`, `MGM-M-07..12`
 - **Target Files:**
@@ -99,8 +99,8 @@ Verifies the target gameplay and pool rules: 1h-only shifts with dynamic `finish
   - Correct answer within time window adds `0s` penalty; wrong answer adds `+20s` (`mgWrong++`); timeout/missed adds `+45s` (`mgMissed++`); >2 missed minigames marks ride `flagged_for_review` (`MGM-T-07..08`, `AC-M14..M18`).
   - Accessibility "more time" mode (`×2` timer) doubles the allowed response window and records `extendedTimerUsed = true` (`MGM-T-09`).
   - No minigame ever invokes `window.solana.signTransaction` or `signMessage` (`AC-M19..M20`).
-- [ ] Passes in `npm run test:e2e:block3`.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Passes in `npm run test:e2e:block3`.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 

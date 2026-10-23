@@ -151,12 +151,12 @@ echo "▸ scenario"
 DEVNET_ENV=(); { [ "$TARGET" = devnet ] || [ "${LIKE_DEVNET:-0}" = 1 ]; } && DEVNET_ENV=(FUND_FROM="$TMP/keys/mint.json" FUND_LAMPORTS="${FUND_LAMPORTS:-60000000}" SWEEP=1 PRICE_A="${PRICE_A:-2000000}" PRICE_B="${PRICE_B:-1000000}" \
   SPONSOR_A="${SPONSOR_A:-1000000}" SPONSOR_C="${SPONSOR_C:-1000000}" PLAY_A="${PLAY_A:-240}" PREP_B="${PREP_B:-70}" PREP_C="${PREP_C:-80}")
 if [ "$SCENARIO" = all ] || [ "$SCENARIO" = money ]; then
-(cd "$SERVER" && env ${DEVNET_ENV[@]+"${DEVNET_ENV[@]}"} BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" FIXTURES="$FIXTURES" COVERAGE="$COV" CHROME_PORT="$(free_port)" node scripts/e2e-localnet.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; exit 1; }
+(cd "$SERVER" && env ${DEVNET_ENV[@]+"${DEVNET_ENV[@]}"} DATABASE_URL="$URL" BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" FIXTURES="$FIXTURES" COVERAGE="$COV" CHROME_PORT="$(free_port)" node scripts/e2e-localnet.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; exit 1; }
 fi
 if [ "$SCENARIO" = all ] || [ "$SCENARIO" = payout ]; then
   [ "$TARGET" = devnet ] && fail "the payout scenario is local only (it pauses the program and hands its authority around)"
   echo "▸ scenario – ten riders, one pool: buys, rides, the cron, the payout job, ticket rents, the next seed, the rest of the program"
-  (cd "$SERVER" && BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" FIXTURES="$FIXTURES" COVERAGE="$COV" CHROME_PORT="$(free_port)" node scripts/e2e-localnet-payout.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; exit 1; }
+  (cd "$SERVER" && DATABASE_URL="$URL" BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" FIXTURES="$FIXTURES" COVERAGE="$COV" CHROME_PORT="$(free_port)" node scripts/e2e-localnet-payout.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; exit 1; }
 fi
 if [ "$SCENARIO" = chaos ]; then
   echo "▸ scenario – chaos: two servers on one database behind a fault-injecting RPC proxy, several crankers at once (the server started above is inert: no watcher)"
@@ -183,7 +183,7 @@ if [ "$PHASE3" = 1 ]; then
   # v4: initialize sets the floors (1 h review, 3 h to finish) – the day's grid is seconds wide, and every pool snapshots Config.min_review_secs when it opens,
   # so they go to 0 BEFORE the crank can open slot 1 (the series itself was written in phase 1 under floors of 0)
   (cd "$SERVER" && node scripts/pool-admin.mjs set-config --url "$RPC" -k "$TMP/keys/admin.json" --min-review-secs 0 --min-finish-secs 0 >/dev/null) || fail "set-config floors (phase 3)"
-  DAY_ENV=(PAYOUT_SECRET="$(cat "$TMP/keys/payout.json")" PAYOUT_INTERVAL_MS=0 TRUST_PROXY=1)   # the server AND the scenario's CLI passes (pool:payout) – same database, same keys
+  DAY_ENV=(PAYOUT_SECRET="$(cat "$TMP/keys/payout.json")" PAYOUT_INTERVAL_MS=0 TRUST_PROXY=1 PLEDGES_ENABLED=1)   # the server AND the scenario's CLI passes (pool:payout) – same database, same keys. Pledges stay off in the shipped default; the day turns them on.
   start_server "$DB_DAY" "$TMP/server-day.log" "${DAY_ENV[@]}" CRANK_INTERVAL_MS="${DAY_CRANK_MS:-2000}" DEMO_SCALE=48   # the day's rides are all over the API: a 1 050 m line, so every winner has the whole km the payout key attests (v4: on the ride's own attestation)
   echo "▸ scenario – the autonomous day: the crank opens the 1h pools on their slots, riders buy and ride, the review window, the payout key pays"
   (cd "$SERVER" && env "${DAY_ENV[@]}" DATABASE_URL="$URL_DAY" BASE="$BASE" RPC="$RPC" KEYS="$TMP/keys" COVERAGE="$COV" DAY="$TMP/accounts/day/day.json" CHROME_PORT="$(free_port)" node scripts/e2e-localnet-day.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server-day.log"; exit 1; }

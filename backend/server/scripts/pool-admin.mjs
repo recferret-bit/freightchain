@@ -76,7 +76,11 @@ const keypair = () => {
 const pk = name => { if (!opt[name]) die(`--${name} <pubkey> is required`); return new PublicKey(opt[name]).toBase58(); };
 const int = (name, dflt) => { const v = opt[name] ?? dflt; if (v === undefined || !/^\d+$/.test(String(v))) die(`--${name} needs a whole number`); return Number(v); };
 const chainNow = async () => Number((await conn.getAccountInfo(SYSVAR_CLOCK_PUBKEY)).data.readBigInt64LE(32));   // Clock.unix_timestamp
-const when = async name => { const v = opt[name]; if (!v) die(`--${name} <unix|+secs> is required`); return v.startsWith('+') ? (await chainNow()) + Number(v.slice(1)) : Number(v); };
+const when = async name => {   // a lagging validator clock would put a "+secs" deadline in the past for the server's wall clock
+  const v = opt[name]; if (!v) die(`--${name} <unix|+secs> is required`);
+  if (!v.startsWith('+')) return Number(v);
+  return Math.max(await chainNow(), Math.floor(Date.now() / 1000)) + Number(v.slice(1));
+};
 const account = async (name, address) => { const a = await conn.getAccountInfo(address); return a ? codec.decodeAccount(name, a.data) : null; };
 const config = () => account('Config', codec.configPda());
 // v4 winners: `wallet:lamports,…` or a JSON file of [{ wallet, lamports }] (rank = order) → the program's root and proofs (the server's winners-merkle.ts)

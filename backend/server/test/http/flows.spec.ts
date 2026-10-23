@@ -33,6 +33,7 @@ import { HOST_GAP_ENV, hostGapScenarios } from '../scenarios/http-gaps-host.scen
 import { publicGapScenarios } from '../scenarios/http-gaps-public.scenarios.js';
 import { donationGapScenarios, liveGapScenarios } from '../scenarios/http-gaps-live.scenarios.js';
 import { economyGapScenarios } from '../scenarios/http-gaps-economy.scenarios.js';
+import { wave6GapScenarios } from '../scenarios/http-gaps-wave6.scenarios.js';
 
 /* The whole HTTP surface on in-memory repositories (no Docker). test/integration/flows.integration.spec.ts runs these same scenarios on PostgreSQL. */
 for (const [name, env, scenarios] of [
@@ -75,6 +76,7 @@ for (const [name, env, scenarios] of [
   ['http gaps: honk burns and mutes', LIVE_ENV, liveGapScenarios],
   ['http gaps: paid donation reconcile and solana pay', LIVE_FLAGS_ENV, donationGapScenarios],
   ['http gaps: tickets, pools, order solana pay', TICKET_ORDERS_ENV, economyGapScenarios],
+  ['http gaps: wave 6 routes', ADMIN_ENV, wave6GapScenarios],
 ] as const) {
   describe(`HTTP (in-memory) · ${name}`, () => {
     let harness: Harness;

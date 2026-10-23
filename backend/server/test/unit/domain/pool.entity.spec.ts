@@ -265,6 +265,15 @@ describe('Pool.fromChain – the mirror row of an account', () => {
     expect(Pool.fromChain(state(), PLAY, pool({ rideSeed: 99 }), 31).rideSeed).toBe(99);
   });
 
+  it('a chain window shorter than 75 min from open stores play close as the last start; a week-long one stays play close − 75 min', () => {
+    const opened = new Date('2026-10-22T20:00:00.000Z');
+    const play = new Date(opened.getTime() + 240_000);
+    const short = Pool.fromChain(state({ createdAt: opened, prepDeadline: play, playDeadline: play, payoutAt: play }), play, null, 31);
+    expect(short.lastStartAt.getTime()).toBe(play.getTime());
+    expect(short.snapshot().lastStartAt?.getTime()).toBe(play.getTime());
+    expect(Pool.fromChain(state(), PLAY, null, 31).lastStartAt.getTime()).toBe(PLAY.getTime() - 75 * 60_000);
+  });
+
   it('refuses an unknown tier byte or broken rules', () => {
     expect(() => Pool.fromChain(state({ tier: 9 }), PLAY, null, 1)).toThrow(BadRequestError);
     expect(() => Pool.fromChain(state({ feeBps: 0 }), PLAY, null, 1)).toThrow(BadRequestError);

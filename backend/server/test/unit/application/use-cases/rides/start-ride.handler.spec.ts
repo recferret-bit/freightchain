@@ -99,19 +99,21 @@ describe('StartRideHandler', () => {
 
   it('a ticket ride ordered in time starts while it can still reach its finish line by the pool\'s play deadline – else 409 rides_closed, the ride is closed and the ticket stays in the pot (H6)', async () => {
     const { ctx, start } = setup();
-    const ticketRide = async (playIn: number) => {
+    const ticketRide = async (poolId: number, lastStartOffsetSec: number) => {
       const t = ctx.now().getTime(), id = ctx.entropy.uuid();
-      await ctx.pools.upsert(aPool({ id: playIn, status: 'active', prepDeadline: new Date(t - 60_000), playDeadline: new Date(t + playIn * 1000), payoutAt: new Date(t + playIn * 1000) }, ctx.now()));
+      const opened = new Date(t - 2 * 3600_000);   // the 75 min lead fits; a window shorter than the lead clamps last start to play close
+      const play = new Date(t + lastStartOffsetSec * 1000 + 75 * 60_000);
+      await ctx.pools.upsert(aPool({ id: poolId, status: 'active', createdAt: opened, prepDeadline: new Date(t - 60_000), playDeadline: play, payoutAt: play }, ctx.now()));
       await ctx.paidOrder('w');
-      const ride = Ride.createFromTicket({ id, wallet: 'w', tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, poolId: playIn, roundId: 1, now: ctx.now() });
+      const ride = Ride.createFromTicket({ id, wallet: 'w', tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, poolId, roundId: 1, now: ctx.now() });
       await ctx.rides.insert(ride);
       return id;
     };
-    const late = await ticketRide(4499);   // last start is play close − 75 min: one second past it
+    const late = await ticketRide(4499, -1);   // one second past last start (play close − 75 min)
     await expect(start(late)).rejects.toMatchObject({ errorCode: 'pool_last_start_passed' });
     expect(await ctx.reload(late)).toMatchObject({ status: RideStatus.Cancelled });
     await expect(start(late)).rejects.toThrow(/ride is cancelled/);
-    const inTime = await ticketRide(4500);   // exactly at last start: still allowed (now > lastStart is the cutoff)
+    const inTime = await ticketRide(4500, 0);   // exactly at last start: still allowed (now > lastStart is the cutoff)
     expect((await start(inTime)).status).toBe('running');
   });
 

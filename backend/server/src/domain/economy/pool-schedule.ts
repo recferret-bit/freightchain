@@ -34,13 +34,23 @@ export interface ScheduleSource {
   validationUntil?: Date | null;
 }
 
-/** Explicit columns win. A null column is the chain deadline it mirrors (or createdAt for opensAt, play close − 75 min for last start). */
+/**
+ * Play close − 75 min when that instant is at or after the pool opened.
+ * A window shorter than the lead cannot hold it (a localnet pool of a few minutes): the last start is play close.
+ * A week-long pool is unchanged.
+ */
+export function lastStartAtFor(playClose: Date, openedAt: Date): Date {
+  const lead = new Date(playClose.getTime() - LAST_START_MS);
+  return lead.getTime() < openedAt.getTime() ? playClose : lead;
+}
+
+/** Explicit columns win. A null column is the chain deadline it mirrors (or createdAt for opensAt, `lastStartAtFor` for last start). */
 export function derivedSchedule(p: ScheduleSource): PoolSchedule {
   const playCloseAt = p.playCloseAt ?? p.playDeadline;
   return {
     opensAt: p.opensAt ?? p.createdAt,
     salesCloseAt: p.salesCloseAt ?? p.prepDeadline,
-    lastStartAt: p.lastStartAt ?? new Date(playCloseAt.getTime() - LAST_START_MS),
+    lastStartAt: p.lastStartAt ?? lastStartAtFor(playCloseAt, p.createdAt),
     playCloseAt,
     validationUntil: p.validationUntil ?? p.payoutAt,
   };
@@ -74,7 +84,7 @@ export function scheduleMismatch(s: ScheduleSource, chain: Pick<PoolChainState, 
   if (chain && chain.prepDeadline.getTime() !== s.prepDeadline.getTime()) bad.push('salesCloseAt');
   if (chain && chain.payoutAt.getTime() !== s.payoutAt.getTime()) bad.push('validationUntil');
   if (s.playCloseAt && s.playCloseAt.getTime() !== play.getTime()) bad.push('playCloseAt');
-  if (s.lastStartAt && s.lastStartAt.getTime() !== play.getTime() - LAST_START_MS) bad.push('lastStartAt');
+  if (s.lastStartAt && s.lastStartAt.getTime() !== lastStartAtFor(play, created).getTime()) bad.push('lastStartAt');
   if (s.opensAt && s.opensAt.getTime() !== created.getTime()) bad.push('opensAt');
   if (s.salesCloseAt && s.salesCloseAt.getTime() !== prep.getTime()) bad.push('salesCloseAt');
   if (s.validationUntil && s.validationUntil.getTime() !== payout.getTime()) bad.push('validationUntil');

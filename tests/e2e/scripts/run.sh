@@ -17,7 +17,8 @@ export PORT
 export APP_DOMAIN="127.0.0.1:${PORT}"
 export APP_ORIGIN="$BASE"
 export SOL_USD=100
-export FREE_RIDE_SECONDS=180
+# Product default stays 180 (env.schema). This harness only shortens the nominal finish so a verified level-2 ride is not a 270s wall wait.
+export FREE_RIDE_SECONDS=15
 export POSTHOG_ENABLED=0
 export WATCH_INTERVAL_MS=0
 export CRANK_INTERVAL_MS=0

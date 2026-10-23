@@ -69,7 +69,7 @@ async function drive({ name, script = human, mutate = () => null, hashOf = (_b, 
   const { j: ride } = await call('POST', 'rides', { body: { tier: 'free' }, ...who });
   await call('POST', `rides/${ride.id}/start`, { body: {}, ...who });
   const speed = Math.max(5, Math.min(27, Math.max(ride.completeDist / ride.minSeconds, 0.5 * 28) * 1.12 + 1));   // at least the paid pace: the free run's line is shorter (0.25), and the free board ranks by metres
-  const d = { ...who, id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, receipts: [], bodies: [], held: [], road: honestRoad(BASE, ride.id) };   // road: the hull loss the game takes at the server's planned holes
+  const d = { ...who, id: ride.id, t0: Date.now(), t: 0, s: 0, seq: 0, prevHash: ride.id, samples: [], inputs: [], bt0: 0, receipts: [], bodies: [], held: [], road: honestRoad(BASE, ride.id, ride) };   // road: the hull loss the game takes at the server's planned holes
   const events = script(ride.minSeconds * 1000 + extra * 1000).sort((a, b) => a[0] - b[0]);
   const row = (t, s, v) => [r(sampleT(t), 2), r(sampleS(s), 1), 2.4, 0, r(v, 2), Math.round(900 + v * 50), 6, 100, 0.6, 0, 0, 0, 12, 1 | 2 | 8];
   const cut = async () => {
@@ -122,7 +122,7 @@ const SCENARIOS = [
   ['s outruns the speedometer (v halved)', { mutate: b => ({ ...b, samples: b.samples.map(row => [...row.slice(0, 4), r(row[4] / 2, 2), ...row.slice(5)]) }) }, 'rejected', ['speed-mismatch']],
   ['a gas bit no key pressed', { script: few, mutate: gasFlicker }, 'flagged', ['inputs-mismatch']],
   ['steering only, no gas', { script: steerOnly }, 'rejected', ['no-throttle-input']],
-  ['a sample row with 5 values', { mutate: b => (b.seq === 1 ? { ...b, samples: b.samples.map((row, i) => (i === 3 ? row.slice(0, 5) : row)) } : null) }, 'rejected', ['bad-sample']],
+  ['a sample row with 5 values', { mutate: b => (b.seq === 1 ? { ...b, samples: b.samples.map((row, i) => (i === 3 ? row.slice(0, 5) : row)) } : null) }, 'rejected', ['recording-incomplete']],   // a short row is refused at ingest (400 bad_batch), so the batch never lands and the ride is the gap
   ['a sample outside its batch', { mutate: b => (b.seq === 1 ? { ...b, samples: b.samples.map((row, i) => (i === 3 ? [row[0] + 60, ...row.slice(1)] : row)) } : null) }, 'rejected', ['sample-out-of-order']],
   ['batches sent only AFTER /end', { afterEnd: true, final: true }, 'verified', []],
   ['metronome holds (300 ms every time)', { script: uniform }, 'flagged', ['uniform-holds']],
@@ -194,6 +194,8 @@ const late = by['batches sent only AFTER /end'];
 check('A batches after /end: the verdict at /end was no-recording, the uploads re-judged it (nothing is left unjudged)', late.end.verdict?.status === 'rejected' && codes(late.end.verdict).includes('no-recording') && late.late.every(s => s === 200) && late.after.verdict?.status === 'verified', `at end ${codes(late.end.verdict)} → ${late.after.verdict?.status}, uploads ${late.late}`);
 check('A clean: every batch was stored (200), the ride was judged only after it completed', by.clean.receipts.length >= 2 && by.clean.receipts.every(s => s === 200) && by.clean.end.verdict.judgedAt > 0);
 check('A prompts are off here: no challenge reason on any ride', runs.every(x => !codes(x.end.verdict).some(c => c.startsWith('challenge'))));
+const shortRow = by['a sample row with 5 values'];
+check('A a 5-value sample is refused at ingest, so the verdict is the missing batch', shortRow.receipts.includes(400) && codes(shortRow.end.verdict).includes('recording-incomplete') && !codes(shortRow.end.verdict).includes('bad-sample'), shortRow.receipts.join(','));
 
 // B. the protocol
 check('B a batch before the ride started: 409', proto.beforeStart === 409, String(proto.beforeStart));
@@ -212,7 +214,7 @@ const stranger = await signIn();
 check('C the owner sees the verdict with its reasons', same((await call('GET', `rides/${flaggedRun.id}`, flaggedRun)).j.verdict, 'uniform-holds'));
 check('C another wallet cannot read the ride (404)', (await call('GET', `rides/${flaggedRun.id}`, stranger)).status === 404);
 const pub = await fetch(`${BASE}/api/watch/${flaggedRun.id}`).then(async res => ({ status: res.status, text: await res.text() }));
-check('C the PUBLIC watch payload is open but carries no verdict, no reasons and no input events', pub.status === 200 && !/verdict|uniform-holds|reasons|"KeyW"|"KeyA"/.test(pub.text), `${pub.status}, ${pub.text.length} bytes`);
+check('C a finished training ride is not a public replay', pub.status === 404 && /"code":"replay_not_available"/.test(pub.text) && !/uniform-holds|"KeyW"|"KeyA"/.test(pub.text), `${pub.status}, ${pub.text.length} bytes`);
 const board = (await call('GET', 'leaderboard?board=free&level=1')).j;   // the runs above are ordered with no level = EASY (no level on the board = HARD)
 const rows = JSON.stringify([board, (await call('GET', 'leaderboard?board=free&level=1&page=2')).j]);   // 25 a page: more shifts than one page here
 check('C the free board ranks completed free rides whatever their verdict (a rejected one too)', rows.includes(flaggedRun.wallet.slice(0, 4)) && rows.includes(rejectedRun.wallet.slice(0, 4)) && rows.includes(verifiedRun.wallet.slice(0, 4)), `verifiedOnly ${board.verifiedOnly}, ${(board.rows ?? board.entries ?? []).length} rows`);
@@ -292,7 +294,7 @@ if (process.env.CLI && process.env.DATABASE_URL) {
     check('F RE-JUDGE on the admin page refuses a ride whose recording was swept (409)', refused.status === 409, `${refused.status} ${JSON.stringify(refused.j).slice(0, 120)}`);
   }
   const swept = await fetch(`${BASE}/api/watch/${by.clean.id}`).then(async res => ({ status: res.status, j: await res.json().catch(() => ({})) }));
-  check('F a swept ride can still be opened on the watch page, without its recording (no batches, no verdict)', swept.status === 200 && (swept.j.batches ?? []).length === 0 && !('verdict' in swept.j), `${swept.status} keys ${Object.keys(swept.j).join(',')}`);
+  check('F a swept training ride stays off the public watch page', swept.status === 404 && swept.j.code === 'replay_not_available', `${swept.status} keys ${Object.keys(swept.j).join(',')}`);
   // the bulk re-judge: an old-rules verdict edited in by hand is found and changed; the swept rides are skipped
   sql(`UPDATE verdict."RideVerdict" SET status = 'verified', reasons = '[]', "rulesVersion" = 1 WHERE "rideId" = '${by['recording ends 400 m from the ride'].id}'`);
   sql(`UPDATE verdict."RideVerdict" SET status = 'verified', reasons = '[]', "rulesVersion" = 1 WHERE "rideId" = '${by.teleport?.id ?? by['three fixed gaps'].id}'`);

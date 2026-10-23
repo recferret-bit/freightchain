@@ -72,7 +72,7 @@ if (p.commit) {
   p = await plan();
 }
 if (!p.committedRoot) { console.error('the commit did not land – run it again'); process.exit(1); }
-if (!p.transactions.length && !p.close && p.payFrom) { await waitFor(Math.ceil(p.payFrom / 1000), 'the winners are public until'); p = await plan(); }
+if (p.payFrom && !p.close) { await waitFor(Math.ceil(p.payFrom / 1000), 'the winners are public until'); p = await plan(); }   // the server clock can offer pay_prize before the chain clock reaches pay_from
 if (p.note && !p.transactions.length && !p.close) { console.error(p.note); process.exit(1); }
 for (const t of p.transactions) console.log(`  pay_prize #${t.rank} → ${t.to} ${sol(t.lamports)}: ${await sendTx(t.transaction)}`);
 p = await plan();

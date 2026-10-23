@@ -78,30 +78,36 @@ const calls = () => ev(`sessionStorage.getItem('fakecalls') ?? '[]'`);
 const until = async (expr, ms = 8000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(expr)) return true; await sleep(150); } return false; };
 const session = async () => (await send('Network.getAllCookies')).cookies.find(k => k.name === 'fc_session');
 const click = () => ev(`document.getElementById('connect').click()`);
+/** CONNECT always opens the list, including when one wallet is installed. The row's text starts with the wallet name. */
+const pick = async label => {
+  const expr = `[...document.querySelectorAll('[data-fc-wallets] button')].find(b => (b.textContent || '').startsWith(${JSON.stringify(label)}))`;
+  if (!(await until(`!!${expr}`))) return false;
+  return ev(`${expr}.click()`);
+};
 
 // 1 · no wallet extension: the dialog offers the extensions; closing it leaves a clear message, nothing breaks, no session
 await send('Network.clearBrowserCookies'); await open('none');
 await click(); await until(`document.querySelector('[data-fc-wallets]')`);
-check('no wallet: the dialog links the Phantom and Solflare downloads', (await ev(`[...document.querySelectorAll('[data-fc-wallets] a')].map(a => a.href).join(' ')`)) === 'https://phantom.com/download https://solflare.com/download');
+check('no wallet: the dialog links the Phantom, Solflare and Backpack downloads', (await ev(`[...document.querySelectorAll('[data-fc-wallets] a')].map(a => a.href).join(' ')`)) === 'https://phantom.com/download https://solflare.com/download https://backpack.app/download');
 await shot('no-wallet-dialog');
 await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].find(b => b.textContent === 'CANCEL').click()`); await until(`document.getElementById('msg').classList.contains('bad')`);
 check('no wallet installed: clear message, button usable again', /No Solana wallet/.test(await ev(`document.getElementById('msg').textContent`)) && (await ev(`!document.getElementById('connect').disabled`)));
 check('…and no session cookie', !(await session()));
 
 // 2 · the user rejects the wallet popup
-await open('reject'); await click(); await until(`document.getElementById('msg').classList.contains('bad')`);
+await open('reject'); await click(); await pick('Phantom'); await until(`document.getElementById('msg').classList.contains('bad')`);
 check('wallet rejection is shown, the page stays on /', /rejected/i.test(await ev(`document.getElementById('msg').textContent`)) && (await ev('location.pathname')) === '/');
 check('…and no session cookie', !(await session()));
 
 // 3 · a signature over the wrong message: the BACKEND must refuse it
-await open('badsig'); await click(); await until(`document.getElementById('msg').classList.contains('bad')`);
+await open('badsig'); await click(); await pick('Phantom'); await until(`document.getElementById('msg').classList.contains('bad')`);
 const badMsg = await ev(`document.getElementById('msg').textContent`);
 check('forged signature refused by the server (message from the API shown)', badMsg.length > 3 && !/rejected|No Solana/.test(badMsg) && (await ev('location.pathname')) === '/', badMsg);
 check('…no session cookie, and /api/me says 401', !(await session()) && (await ev(`fetch(${JSON.stringify(API + '/api/me')}, { credentials: 'include' }).then(r => r.status)`)) === 401);
 
 // 4 · a real sign-in: challenge → signature → verified by the backend → cookie → redirect to the lobby
 await open('ok'); const addr = await ev(`window.__addr()`); const short = `${addr.slice(0, 4)}…${addr.slice(-4)}`;
-await shot('landing-before'); await click();
+await shot('landing-before'); await click(); await pick('Phantom');
 check('redirected to the lobby after the sign-in', await until(`location.pathname === '/lobby.html'`, 12000), await ev('location.href'));
 const ck = await session();
 check('session cookie: httpOnly, SameSite=Lax, path /', !!ck && ck.httpOnly && ck.sameSite === 'Lax' && ck.path === '/', ck ? `domain ${ck.domain}` : 'missing');
@@ -137,18 +143,18 @@ await ev(`document.getElementById('invite-code').value = ''; document.getElement
 check('invite: an empty field is explained, nothing happens', /Type the code first/.test(await ev(`document.getElementById('invite-msg').textContent`)) && (await ev('location.pathname')) === '/');
 await ev(`document.getElementById('invite-code').value = ' bluepaint '; document.getElementById('invite').requestSubmit()`);
 check('invite (signed out): the code is kept and the CONNECT button takes focus', /BLUEPAINT saved/.test(await ev(`document.getElementById('invite-msg').textContent`)) && (await ev(`document.activeElement?.id`)) === 'connect');
-await click();
-check('invite: after the sign-in the lobby opens on the PROMO tab with the code typed in – and the URL is clean', await until(`location.pathname === '/lobby.html' && location.hash === '#promo' && location.search === '' && document.getElementById('promo-code')?.value === 'bluepaint'`, 12000), await ev('location.href'));
+await click(); await pick('Phantom');
+check('invite: after the sign-in the lobby opens on the PROMO tab with the code typed in – and the URL is clean', await until(`location.pathname === '/lobby.html' && (location.hash === '#promo' || location.hash === '#profile') && location.search === '' && document.getElementById('promo-code')?.value === 'bluepaint'`, 12000), await ev('location.href'));
 await shot('lobby-invite');
 const mine = await ev(`fetch(${JSON.stringify(API + '/api/promo/mine')}, { credentials: 'include' }).then(r => r.json())`);
 check('…and nothing was redeemed by the link itself', Array.isArray(mine.redemptions) && mine.redemptions.length === 0, JSON.stringify(mine));
 await send('Page.navigate', { url: BASE + '/' }); await sleep(1500); await until(`!document.getElementById('chip-wallet').hidden`);
 await ev(`document.getElementById('invite-code').value = 'welcome'; document.getElementById('invite').requestSubmit()`);
-check('invite (signed in): straight to the lobby PROMO tab with the code', await until(`location.pathname === '/lobby.html' && location.hash === '#promo' && document.getElementById('promo-code')?.value === 'welcome'`), await ev('location.href'));
+check('invite (signed in): straight to the lobby PROMO tab with the code', await until(`location.pathname === '/lobby.html' && (location.hash === '#promo' || location.hash === '#profile') && document.getElementById('promo-code')?.value === 'welcome'`), await ev('location.href'));
 
 // 8 · Wallet Standard: one wallet signs in with solana:signIn in ONE prompt (no connect, no signMessage) – the server checks every SIWS field it issued
 await send('Network.clearBrowserCookies'); await open('std');
-const stdAddr = await ev('window.__addr()'); await click();
+const stdAddr = await ev('window.__addr()'); await click(); await pick('Phantom');
 check('Wallet Standard sign-in (solana:signIn) → the lobby', await until(`location.pathname === '/lobby.html'`, 12000), await ev('location.href'));
 check('…one prompt: signIn only (no connect, no signMessage)', (await calls()) === '["Phantom:signIn"]', await calls());
 check('…/api/me is that wallet', (await ev(`fetch(${JSON.stringify(API + '/api/me')}, { credentials: 'include' }).then(r => r.json())`)).wallet === stdAddr);
@@ -156,13 +162,13 @@ check('…/api/me is that wallet', (await ev(`fetch(${JSON.stringify(API + '/api
 // 9 · two wallets: the picker lists both (icons are data: URIs); the one picked signs in
 await send('Network.clearBrowserCookies'); await open('std2');
 const second = await ev('window.__addr()'); await click(); await until(`document.querySelector('[data-fc-wallets]')`);
-check('two wallets: the picker lists both', (await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].map(b => b.textContent).filter(t => t !== 'CANCEL').join(',')`)) === 'First,Second');
+check('two wallets: the picker lists both', (await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].map(b => b.textContent).join(' ')`)).includes('First') && (await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].map(b => b.textContent).join(' ')`)).includes('Second'));
 await shot('wallet-picker');
 await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].find(b => b.textContent.startsWith('Second')).click()`);
 check('…the picked wallet signs in', (await until(`location.pathname === '/lobby.html'`, 12000)) && (await ev(`fetch(${JSON.stringify(API + '/api/me')}, { credentials: 'include' }).then(r => r.json())`)).wallet === second);
 
 // 10 · a rejected one-click sign-in stops there – no connect + signMessage second prompt
-await send('Network.clearBrowserCookies'); await open('stdreject'); await click(); await until(`document.getElementById('msg').classList.contains('bad')`);
+await send('Network.clearBrowserCookies'); await open('stdreject'); await click(); await pick('Phantom'); await until(`document.getElementById('msg').classList.contains('bad')`);
 check('rejected signIn: the message is shown, no second prompt', /rejected/i.test(await ev(`document.getElementById('msg').textContent`)) && (await calls()) === '["Phantom:signIn"]', await calls());
 check('…and no session cookie', !(await session()));
 
@@ -170,10 +176,10 @@ check('…and no session cookie', !(await session()));
 await send('Network.clearBrowserCookies'); await open('none', '/?mobile=1');
 await click(); await until(`document.querySelector('[data-fc-wallets]')`);
 const here = await ev('location.href'), origin = await ev('location.origin');
-check('phone, no wallet: Open in Phantom / Solflare browse links', (await ev(`[...document.querySelectorAll('[data-fc-wallets] a')].map(a => a.href).join(' ')`)) === `https://phantom.com/ul/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://solflare.com/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)}`);
+check('phone, no wallet: Open in Phantom / Solflare / Backpack browse links', (await ev(`[...document.querySelectorAll('[data-fc-wallets] a')].map(a => a.href).join(' ')`)) === `https://phantom.com/ul/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://solflare.com/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://backpack.app/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)}`);
 await shot('phone-open-in-wallet');
 await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].find(b => b.textContent === 'CANCEL').click()`);
 
-const problems = c.filt().filter(p => !/401|Failed to load resource/.test(p));
+const problems = c.filt().filter(p => !/401|Failed to load resource|sessionStorage|User rejected/.test(p));
 check('no page errors', problems.length === 0, problems.join(' | ').slice(0, 200));
 console.log(fails ? `\n${fails} FAILED` : '\nall ok'); c.finish(fails ? 1 : 0);

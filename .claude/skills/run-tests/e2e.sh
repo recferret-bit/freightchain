@@ -21,6 +21,13 @@ cp -R "$ROOT/frontend/client/." "$CLIENT_OUT/"
 PID=""; EDITOR_WORKER_PID=""; MCP_PID=""
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,()=>{console.log(s.address().port);s.close()})'; }
 psql_admin() { docker exec "$PG_CONTAINER" psql -U freight -d postgres -v ON_ERROR_STOP=1 -tAc "$1"; }
+# Later suites share this database. Statistics asserts a game that has not been driven yet, so that suite starts from an empty one.
+reset_db() {
+  stop
+  psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null
+  psql_admin "CREATE DATABASE \"$DB\"" >/dev/null
+  (cd "$SERVER" && DATABASE_URL="$URL" ./node_modules/.bin/prisma migrate deploy >/dev/null)
+}
 SUITE=""
 # E2E_LOG_DIR (set by `npm run test:census -- run e2e…`): the server's request lines per suite, so the census can tell which routes each suite hit
 keep_log() { if [ -n "${E2E_LOG_DIR:-}" ] && [ -n "$SUITE" ] && [ -f "/tmp/fc-e2e-$DB.log" ]; then grep -F '"event":"request"' "/tmp/fc-e2e-$DB.log" >> "$E2E_LOG_DIR/$SUITE.log" || true; fi; }
@@ -46,7 +53,8 @@ printf '{ "extends": "./tsconfig.build.json", "compilerOptions": { "outDir": "./
 # start the server: $1 = FREE_RIDE_SECONDS, $2 = ADMIN_WALLETS, $EXTRA_ENV = more server env
 start() {
   PORT="${FIXED_PORT:-$(free_port)}"   # FIXED_PORT: a suite that must put the port into the env too (APP_ORIGIN)
-  (cd "$SERVER" && exec env ${EXTRA_ENV:-} DATABASE_URL="$URL" FREE_RIDE_SECONDS="$1" ADMIN_WALLETS="${2:-}" SOL_USD=118 TREASURY_PUBKEY="$TREASURY" PORT="$PORT" CLIENT_DIR="$CLIENT_OUT" LANDING_DIR="$LANDING_OUT" node "$BUILD/main.js" > "/tmp/fc-e2e-$DB.log" 2>&1) &   # exec: $! is the server itself, so stop() really stops it; EXTRA_ENV="K=V …" = more server env (the live flags suite)
+  # Auth bursts (verified play signs in many wallets at once) need a harness ceiling. The shipped defaults stay in env.schema.ts.
+  (cd "$SERVER" && exec env ${EXTRA_ENV:-} DATABASE_URL="$URL" FREE_RIDE_SECONDS="$1" ADMIN_WALLETS="${2:-}" SOL_USD=118 TREASURY_PUBKEY="$TREASURY" PORT="$PORT" CLIENT_DIR="$CLIENT_OUT" LANDING_DIR="$LANDING_OUT" THROTTLE_AUTH_RPS=100 THROTTLE_AUTH_LIMIT=10000 THROTTLE_LIMIT=10000 node "$BUILD/main.js" > "/tmp/fc-e2e-$DB.log" 2>&1) &   # exec: $! is the server itself, so stop() really stops it; EXTRA_ENV="K=V …" = more server env (the live flags suite)
   PID=$!
   for _ in $(seq 1 60); do curl -sf "http://localhost:$PORT/api/health/live" >/dev/null && return 0; sleep 0.5; done
   echo "server did not start:"; tail -30 "/tmp/fc-e2e-$DB.log"; exit 1
@@ -66,7 +74,7 @@ for suite in "${SUITES[@]}"; do
       EXTRA_ENV="THROTTLE_PROMO_LIMIT=100000" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" SEED=1 DATABASE_URL="$URL" CHROME_PORT="$(free_port)" node scripts/e2e-promo.mjs) || fails=$((fails + 1)) ;;
     watch)   start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-watch.mjs) || fails=$((fails + 1)) ;;
     replay)  start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-replay.mjs) || fails=$((fails + 1)) ;;
-    board)   EXTRA_ENV="TRUST_PROXY=1 HB_TIMEOUT_MS=15000" start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-live-board.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;   # online / live / replays fed by scripts/sim-rides.mjs
+    board)   EXTRA_ENV="TRUST_PROXY=1 HB_TIMEOUT_MS=15000" start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" ROAD_PLAN_BUILD="$BUILD" node scripts/e2e-live-board.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;   # sim-rides rebuilds holes from the server build; a running ride's public /road is 404
     flags)   # the LIVE_* flags in a real browser: production's (paid donations, effects on free rides only), then chat + donations off
       EXTRA_ENV="LIVE_FREE_DONATIONS=off LIVE_EFFECTS=free" start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" MODE=paid node scripts/e2e-live-flags.mjs) || fails=$((fails + 1)); stop
       EXTRA_ENV="LIVE_CHAT=off LIVE_DONATIONS=off" start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" MODE=off node scripts/e2e-live-flags.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
@@ -74,19 +82,22 @@ for suite in "${SUITES[@]}"; do
     wallet-split)   # the same on split hosts: landing on app.localhost, API on api.app.localhost, one cookie on the apex (Chrome resolves *.localhost, see the script's header)
       APP_DOMAIN=app.localhost COOKIE_DOMAIN=app.localhost CORS_ORIGINS=http://app.localhost,http://ride.app.localhost start 3
       (cd "$ROOT" && RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP api.app.localhost 127.0.0.1:$PORT" BASE=http://app.localhost API=http://api.app.localhost PORT="$(free_port)" node frontend/landing/tools/e2e-wallet.mjs) || fails=$((fails + 1)) ;;
-    close)   start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-close.mjs) || fails=$((fails + 1)) ;;   # a closed landing / lobby / watch page / game tab leaves the board at once
+    close)   EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false" start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-close.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;   # a closed landing / lobby / watch page / game tab leaves the board at once. Traffic proof is the traffic suite.
     close-split)   # the same on split hosts (the cookie on the apex, the beacons cross-subdomain to api.*) – what production does
+      EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false"
       APP_DOMAIN=app.localhost COOKIE_DOMAIN=app.localhost CORS_ORIGINS=http://app.localhost,http://ride.app.localhost start 20
-      (cd "$SERVER" && SERVER="http://localhost:$PORT" BASE=http://app.localhost RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP *.app.localhost 127.0.0.1:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-close.mjs) || fails=$((fails + 1)) ;;
+      (cd "$SERVER" && SERVER="http://localhost:$PORT" BASE=http://app.localhost RESOLVE="MAP app.localhost 127.0.0.1:$PORT, MAP *.app.localhost 127.0.0.1:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-close.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     traffic) EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=true VERDICT_ENFORCE=true CHALLENGE_INTERVAL_SECONDS=0" start 5; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-traffic-proof.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     verified)   # verified play, positive + negative: a person and a bot in Chrome, API-level bots, the CLI's bulk re-judge – a 40 s free shift with a dispatch prompt about every other heartbeat
-      EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false CHALLENGE_INTERVAL_SECONDS=8" start 40; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" CHROME_PORT2="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=40 node scripts/e2e-verified-play.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+      EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false CHALLENGE_INTERVAL_SECONDS=8 ROAD_PLAN_BUILD=$BUILD" start 40; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" CHROME_PORT2="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=40 ROAD_PLAN_BUILD="$BUILD" node scripts/e2e-verified-play.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     verified-deep)   # verified play, the DEEP pass: every verdict code, the upload protocol, who sees a verdict, the admin's hand, the profile in Chrome, retention + bulk re-judge – prompts OFF, a 30 s shift
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
-      EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false CHALLENGE_INTERVAL_SECONDS=0" start 30 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=30 node scripts/e2e-verified-deep.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+      EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false CHALLENGE_INTERVAL_SECONDS=0 ROAD_PLAN_BUILD=$BUILD" start 30 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=30 ROAD_PLAN_BUILD="$BUILD" node scripts/e2e-verified-deep.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     road)   # the SERVER's road: an honest driver and one with the holes taken out of its game (Chrome), a spectator's replay of both, the ride-audit tool on the database
       EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false CHALLENGE_INTERVAL_SECONDS=0" start 30; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" AUDIT_BUILD="$BUILD" DATABASE_URL="$URL" node scripts/e2e-road-check.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     stats)   # statistics end to end: a real game crashing into a car, API bots for the other ways a ride ends, the landing's tiles + the lobby's DRIVING RECORD, `stats:reconcile` on the live database
+      reset_db   # earlier suites in this process left rides in $DB; this suite's "starts at zero" is that empty database
+      (cd "$SERVER" && DATABASE_URL="$URL" node "$BUILD/cli/index.js" pool:seed --id 1 --tier 1h --status active --min 2 >/dev/null) || true   # a live pool, so the hero is not the long empty-pot label
       # a REAL Redis with a password (throwaway container, loopback port): the cache is exercised for real, and the suite stops it to prove the API survives a dead cache
       RPORT="$(free_port)"; RPW="$(node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))')"
       REDIS_CT="$(docker run -d --rm -p "127.0.0.1:$RPORT:6379" -e REDISCLI_AUTH="$RPW" redis:7-alpine redis-server --requirepass "$RPW" --save "")"; trap 'docker rm -f "$REDIS_CT" >/dev/null 2>&1; cleanup' EXIT

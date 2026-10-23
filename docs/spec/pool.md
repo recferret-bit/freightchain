@@ -16,7 +16,7 @@ The backend is `pool-registry.service.ts`, `Pool.fromChain`. `set_pool_rules` ha
 - **POOL-M-01** MUST: for now, one pool per week. The schedule is **configurable fields**, not constants:
   - `opens_at` (Tue evening by default);
   - `sales_close_at = prep_deadline` (close − 2 h);
-  - `last_start_at` (close − 1 h 15 min, decision 36);
+  - `last_start_at` (close − 1 h 15 min, decision 36; play close when that instant is before the pool opened, so a window shorter than the lead can still be entered);
   - `play_close_at = play_deadline` (Sun evening);
   - `validation_until = payout_at` (close + 1.5 days).
 - **POOL-M-02** MUST: the backend config (`POOL_SCHEDULE_*`) is used only when **creating** a pool. For a live pool, the source of truth is the on-chain account. A mismatch → the pool is not served, `409 pool_schedule_mismatch` + an alert in the admin.
@@ -95,7 +95,7 @@ Checked against `programs/freightchain_pools/src` (`origin/main` after PR #3 mer
 |---|---|---|
 | `opens_at` (sales and play open) | absent; the pool is open from `create_pool` / `open_next_pool` (a series slot) | Tue evening |
 | `sales_close_at` | **`prep_deadline`** | `play_close_at − 2 h` |
-| `last_start_at` | absent (backend) | `play_close_at − 3600 s − 15 min` (decision 36) |
+| `last_start_at` | absent (backend) | `play_close_at − 3600 s − 15 min` (decision 36); play close when that lead is before the pool opened |
 | `play_close_at` | **`play_deadline`** | Sun evening |
 | `validation_until` | **`payout_at`** | `play_close_at + 1.5 days` (129,600 s ≥ `min_review_secs`, default 3,600) |
 

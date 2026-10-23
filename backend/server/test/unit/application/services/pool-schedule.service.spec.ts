@@ -1,6 +1,6 @@
 import { ConflictError } from '../../../../src/domain/shared/errors.js';
 import { PoolScheduleService } from '../../../../src/application/services/pool-schedule.service.js';
-import { commitBlockReason, defaultWeeklySchedule, finishWindowFits, MAX_MIN_FINISH_SECS, scheduleMismatch } from '../../../../src/domain/economy/pool-schedule.js';
+import { commitBlockReason, defaultWeeklySchedule, derivedSchedule, finishWindowFits, LAST_START_MS, lastStartAtFor, MAX_MIN_FINISH_SECS, scheduleMismatch } from '../../../../src/domain/economy/pool-schedule.js';
 import { unitContext } from '../../../support/unit-context.js';
 import { aPool, chainPool } from '../../../support/pools.js';
 import type { AlertRecord } from '../../../../src/domain/admin/privileged-records.js';
@@ -27,6 +27,20 @@ describe('pool schedule', () => {
     expect(s.salesCloseAt.getTime()).toBe(s.playCloseAt.getTime() - 2 * 3600_000);
     expect(s.lastStartAt.getTime()).toBe(s.playCloseAt.getTime() - 75 * 60_000);
     expect(s.validationUntil.getTime()).toBe(s.playCloseAt.getTime() + 36 * 3600_000);
+  });
+
+  it('a window shorter than 75 min from open uses play close as the last start; a week-long window stays play close − 75 min', () => {
+    const opened = new Date('2026-10-22T20:00:00.000Z');
+    const play = new Date(opened.getTime() + 240_000);
+    expect(lastStartAtFor(play, opened).getTime()).toBe(play.getTime());
+    const exact = new Date(opened.getTime() + LAST_START_MS);
+    expect(lastStartAtFor(exact, opened).getTime()).toBe(opened.getTime());
+    const week = new Date(opened.getTime() + 14 * 86_400_000);
+    expect(lastStartAtFor(week, opened).getTime()).toBe(week.getTime() - LAST_START_MS);
+    const short = { createdAt: opened, prepDeadline: play, playDeadline: play, payoutAt: play, playCloseAt: play };
+    expect(derivedSchedule(short).lastStartAt.getTime()).toBe(play.getTime());
+    expect(scheduleMismatch({ ...short, lastStartAt: play }, null)).toBeNull();
+    expect(scheduleMismatch({ ...short, lastStartAt: new Date(play.getTime() - LAST_START_MS) }, null)).toMatch(/lastStartAt/);
   });
 
   it('a 2h play window fits min_finish 7200 and not 10800', () => {

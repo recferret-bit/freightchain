@@ -80,7 +80,7 @@ const sendDirect = async tx => {   // straight to the validator (the scenario's 
 };
 /** a self-paid purchase signed and sent DIRECTLY to the chain – nobody tells a server about it (no /confirm) */
 async function landSelfPaid(s, p, poolId, qty = 1) {
-  const o = await api(s, 'tickets', { body: { poolId, qty }, cookie: p.cookies[s.name] });
+  const o = await api(s, 'tickets', { body: { poolId, qty, burnWarningAccepted: true }, cookie: p.cookies[s.name] });
   const pay = await api(s, `tickets/orders/${o.j.id}/payment?selfPaid=1`, { cookie: p.cookies[s.name] });
   return { orderId: o.j.id, sig: await sendDirect(signedB64(pay.j.transaction, p.kp)) };
 }

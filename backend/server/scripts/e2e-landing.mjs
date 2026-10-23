@@ -52,6 +52,11 @@ const unpaid = !live?.pools?.length;
 check('the real hero does not throw', typeof real.pot === 'string' && typeof real.label === 'string', JSON.stringify(real));
 check('an empty escrow shows the unpaid fallback on the real page', !unpaid || (real.note === NOTE && real.label === 'ACCRUED THIS WEEK · NOT PAID'), JSON.stringify({ livePools: live?.pools?.length ?? null, real }));
 await page.shot('hero-live');
+
+await page.send('Page.navigate', { url: `${BASE}/pitchdeck.html` });
+check('pitchdeck.html paints the deck', await until(() => page.ev(`!!document.querySelector('#deck section.slide') && /PITCH DECK/.test(document.body?.innerText || '')`), 30000));
+await page.shot('pitchdeck');
+
 const noisy = page.filt().filter(p => !/favicon/.test(p) && !/\/api\/me/.test(p));
 check('no TypeError', !noisy.some(p => /TypeError/.test(p)), noisy.filter(p => /TypeError/.test(p)).join(' | '));
 check('no console or page errors', noisy.length === 0, noisy.join(' | '));

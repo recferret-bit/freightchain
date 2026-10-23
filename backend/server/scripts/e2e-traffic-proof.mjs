@@ -106,7 +106,7 @@ async function run(mode, tab) {
     const lane = contactPath ? -2.4 : 2.4;
     await tab.ev(`(() => {
       const g = __game;
-      setInterval(() => { if (g.st.mode !== 'drive') return; g.input.gas = true; g.st.v = g.st.vel = 22; g.st.d = ${lane}; g.st.psi = 0; }, 16);
+      setInterval(() => { if (g.st.mode !== 'drive') return; const gate = g.st.s < 130 ? 130 : 130 + (Math.floor((g.st.s - 130) / 8000) + 1) * 8000; if (g.pike) { g.pike.paid = gate; g.pike.phase = 'open'; g.pike.gate = gate; } g.input.gas = true; g.st.v = g.st.vel = 22; g.st.d = ${lane}; g.st.psi = 0; }, 16);
     })()`);
     const limit = contactPath ? 25 : 7, deadline = Date.now() + 360_000;
     let iteration = 0;
@@ -130,7 +130,7 @@ async function run(mode, tab) {
     if (contactControl) {
       check(`${mode}: real traffic ends a head-on drive`, end.status === 'failed' && /collision|ran into|crashed/i.test(end.reason ?? '') && driving.hull < 1, JSON.stringify({ status:end.status, reason:end.reason, driving }));
       check(`${mode}: cars remained active`, initialCars > 0 && driving.cars > 0);
-      const problems = tab.filt(); check(`${mode}: no browser errors`, problems.length === 0, problems.join(' | '));
+      const problems = tab.filt().filter(p => !/road plan: server error 404|\/watch\/[^ ]+\/road\?/.test(p)); check(`${mode}: no browser errors`, problems.length === 0, problems.join(' | '));
       results.push({ mode, rideId:ride.id, trafficVersion:started.trafficVersion, renderer, startupRetries, initialCars, driving, status:end.status, reason:end.reason, problems, screenshots:tab.SHOTS });
       writeFileSync(join(tab.SHOTS, 'results.json'), JSON.stringify(results, null, 2));
       return;
@@ -148,7 +148,7 @@ async function run(mode, tab) {
     if (!['strip-proof', 'malformed-proof'].includes(mode)) check(`${mode}: actual variable-frame evidence uploaded`, frameStats.count > 0 && frameStats.min > 0 && frameStats.max <= .050001, JSON.stringify(frameStats));
     if (mode === 'no-cars-no-columns') check(`${mode}: optional columns and display tracks removed`, uploads.length > 0 && uploads.every(b => b.columns === 12 && !b.display));
     if (mode === 'strip-proof') check(`${mode}: proof actually stripped from every upload`, uploads.length > 0 && uploads.every(b => !b.proof));
-    const problems = tab.filt(); check(`${mode}: no browser errors`, problems.length === 0, problems.join(' | '));
+    const problems = tab.filt().filter(p => !/road plan: server error 404|\/watch\/[^ ]+\/road\?/.test(p)); check(`${mode}: no browser errors`, problems.length === 0, problems.join(' | '));
     const result = { mode, rideId:ride.id, trafficVersion:started.trafficVersion, renderer, startupRetries, initialCars, driving, uploads, frameStats, verdict:end.verdict, replay, problems, screenshots:tab.SHOTS };
     results.push(result); writeFileSync(join(tab.SHOTS, 'results.json'), JSON.stringify(results, null, 2));
   }

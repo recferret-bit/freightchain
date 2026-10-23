@@ -41,11 +41,15 @@ export function rankRideResults<T extends RankableRide>(rows: readonly T[], vers
   return [...done, ...rest];
 }
 
-/** Verified payout wallets, reordered by the formula when result rows exist. Wallets with no row keep their previous order at the end. */
+/** Verified payout wallets, reordered by each wallet's best result when rows exist. Several rides are still one entry. A wallet with no row keeps its previous order at the end. */
 export function orderWalletsByResults<T extends RankableRide & { wallet: string }>(verifiedWallets: readonly string[], rows: readonly T[], version: number = SCORE_FORMULA_VERSION): string[] {
   if (!rows.length) return [...verifiedWallets];
   const known = new Set(verifiedWallets);
-  const ranked = rankRideResults(rows, version).map((row) => row.wallet).filter((wallet) => known.has(wallet));
+  const ranked: string[] = [];
+  for (const row of rankRideResults(rows, version)) {
+    if (!known.has(row.wallet) || ranked.includes(row.wallet)) continue;
+    ranked.push(row.wallet);
+  }
   for (const wallet of verifiedWallets) if (!ranked.includes(wallet)) ranked.push(wallet);
   return ranked;
 }

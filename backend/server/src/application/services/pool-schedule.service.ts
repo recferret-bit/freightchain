@@ -9,7 +9,7 @@ import { EntropyPort } from '../ports/shared/entropy.port.js';
 
 /**
  * Program-mode guard for a ticket buy or a pool-ride start. The chain account is the truth for prep / play / payout.
- * v6 `opens_at` / `last_start_at` are not on the shipped .so: last start is play close − 75 min, opens_at is the account's created_at.
+ * v6 `opens_at` / `last_start_at` are not on the shipped .so: last start is play close − 75 min (play close when that lead is before created_at), opens_at is the account's created_at.
  * A stored column that disagrees is `409 pool_schedule_mismatch` plus an admin alert. The alert is written outside the caller's transaction.
  */
 @Injectable()

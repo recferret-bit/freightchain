@@ -119,8 +119,8 @@ Enforced by the server (a refused post is `403 live_feature_off`) and sent to th
 |---|---|---|
 | `LIVE_CHAT` | `all` | Spectators' chat: `all` rides · `free` = only on free test rides · `off` |
 | `LIVE_DONATIONS` | `on` | `off` = no donations at all (tips and effects) |
-| `LIVE_FREE_DONATIONS` | code `on`, **prod compose `off`** | `on` = MOCK donations (nothing charged) · `off` = each donation is a real SOL transfer from the spectator to the driver, verified on chain before it counts |
-| `LIVE_EFFECTS` | code `all`, **prod compose `off`** | Donations that change the ride (night / day / holes): `all` rides · `free` = only free test rides, never paid ones · `off` = tips only. Strict mode (any `NODE_ENV` other than `development` or `test`) refuses anything but `off` |
+| `LIVE_FREE_DONATIONS` | code `on`, **prod compose `off`** | `on` = MOCK donations (nothing charged) · `off` = each donation is a real SOL transfer from the spectator to the driver, verified on chain before it counts. The deploy check uses the schema default when the key is absent, so `infra/deploy/.env` must say `off` even though compose would inject it |
+| `LIVE_EFFECTS` | code `all`, **prod compose fallback `free`** | Donations that change the ride (night / day / holes): `all` rides · `free` = only free test rides, never paid ones · `off` = tips only. Strict mode (any `NODE_ENV` other than `development` or `test`) refuses anything but `off`. Compose's `free` fallback fails that check, and a missing key fails as the schema default `all`, so `infra/deploy/.env` must say `off` |
 
 ### Weekly skill contest geo
 

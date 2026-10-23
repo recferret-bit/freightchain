@@ -35,7 +35,7 @@ async function up() {
   };
   server = spawn(process.execPath, ['dist/main.js'], { cwd: new URL('../', import.meta.url).pathname, env, stdio: 'ignore' });
   for (let i = 0; i < 60; i++) {
-    try { if ((await fetch(`${BASE}/api/health/live`)).ok) return; } catch { /* booting */ }
+    try { if ((await fetch(`${BASE}/api/health/live`, { signal: AbortSignal.timeout(2000) })).ok) return; } catch { /* booting */ }
     await sleep(500);
   }
   throw new Error('API did not start');

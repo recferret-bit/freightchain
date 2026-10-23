@@ -18,6 +18,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "oxlint --type-aware src/ test/",
     "test": "vitest run",
+    "test:block3": "vitest run --config vitest.block3.config.ts",
+    "test:security": "vitest run --config test/security/vitest.security.config.mjs",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",

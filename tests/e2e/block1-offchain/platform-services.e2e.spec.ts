@@ -558,10 +558,16 @@ test('PLT-T-01..14 platform services against PostgreSQL and Redis', { timeout: 3
       });
       kids.push(mcpProd);
       try {
+        // Importing the MCP SDK can take longer than 3s while the rest of block 1 is on the CPU.
+        // A fetch with no abort stays pending and the old 30×100ms loop recorded health 0.
         let health = 0;
-        for (let i = 0; i < 30; i++) {
-          try { health = (await fetch(`http://127.0.0.1:${mcpProdPort}/health`)).status; if (health) break; } catch { /* */ }
-          await sleep(100);
+        const deadline = Date.now() + 20_000;
+        while (Date.now() < deadline) {
+          try {
+            health = (await fetch(`http://127.0.0.1:${mcpProdPort}/health`, { signal: AbortSignal.timeout(1000) })).status;
+            if (health) break;
+          } catch { /* still booting, or this attempt timed out */ }
+          await sleep(200);
         }
         assert.equal(health, 503, 'production MCP health fails closed when Redis is down');
       } finally { stopPid(mcpProd.pid); }
@@ -642,10 +648,16 @@ test('PLT-T-01..14 platform services against PostgreSQL and Redis', { timeout: 3
         for (let i = 0; i < 6; i++) assert.equal((await api.call('/api/client-error', { body: { ...crash, value: `again ${i}` } })).json.accepted, 1);
         const capped = await api.call('/api/client-error', { body: crash });
         assert.equal(capped.json.accepted, 0);
-        await sleep(1500);
-        const flat = batches.flatMap((b) => b.batch ?? []);
-        assert.ok(flat.some((row) => row.event === '$exception'));
-        assert.ok(flat.some((row) => row.event === 'client_crashed'));
+        // The adapter flushes on a 1s timer. Under load that timer lands after a fixed 1500ms sleep, so poll until the stub has both events.
+        let flat = [];
+        const flushBy = Date.now() + 8_000;
+        while (Date.now() < flushBy) {
+          flat = batches.flatMap((b) => b.batch ?? []);
+          if (flat.some((row) => row.event === '$exception') && flat.some((row) => row.event === 'client_crashed')) break;
+          await sleep(200);
+        }
+        assert.ok(flat.some((row) => row.event === '$exception'), JSON.stringify(flat.map((row) => row.event)));
+        assert.ok(flat.some((row) => row.event === 'client_crashed'), JSON.stringify(flat.map((row) => row.event)));
         const blob = JSON.stringify(flat);
         assert.doesNotMatch(blob, /user:pass/);
         assert.doesNotMatch(blob, /\?x=1/);

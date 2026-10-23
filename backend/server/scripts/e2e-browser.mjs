@@ -19,14 +19,14 @@ await send('Network.setCookie', { name, value, url: BASE, httpOnly: true });
 await send('Page.navigate', { url: `${BASE}/play.html?ride=${ride.id}` });
 for (let i = 0; i < 100 && !(await ev('!!window.__game')); i++) await sleep(200);
 check('game booted', await ev('!!window.__game'));
-check('shift length comes from the server (the free run: 0.25 × 28 m/s × seconds)', (await ev('__game.CFG.RIDE_MIN_SECONDS')) === MIN && Math.abs((await ev('__game.CFG.COMPLETE_DIST')) - 0.25 * 28 * MIN) < 1e-6, `${await ev('__game.CFG.RIDE_MIN_SECONDS')} s · ${await ev('__game.CFG.COMPLETE_DIST')} m`);
+check('shift length comes from the server (the free run stores minSeconds and completeDist on the ride)', (await ev('__game.CFG.RIDE_MIN_SECONDS')) === ride.minSeconds && Math.abs((await ev('__game.CFG.COMPLETE_DIST')) - ride.completeDist) < 1e-6, `${await ev('__game.CFG.RIDE_MIN_SECONDS')} s · ${await ev('__game.CFG.COMPLETE_DIST')} m`);
 await ev('document.getElementById("go").click()'); await sleep(800);
 check('ride started on the server', (await (await fetch(`${BASE}/api/rides/${ride.id}`, { headers: { cookie } })).json()).status === 'running');
 check('road seed = the server seed', (await ev('__game.roads.seed')) === ride.seed, `${await ev('__game.roads.seed')} vs ${ride.seed}`);
 await shot('online-drive');
 check('the ride is being recorded', await ev('__game.telemetry.on === true && __game.telemetry.rideId === ' + JSON.stringify(ride.id)));
 // headless can't really drive: grow the distance with the GAME clock at 20 m/s (under the governor, so neither the heartbeat check nor the recording's teleport check trips)
-await ev(driveHook(20));
+await ev(driveHook(20, '__game.st.park=false;__game.st.keyOn=true;__game.st.engineOn=true;__game.st.gear=7;__game.st.clutch=0;__game.st.gas=1;__game.st.brake=0;__game.input.gas=1;__game.input.brake=0;'));
 // …and press keys the way a person does (real CDP key events through the game's own listeners, jittered holds and gaps) – the verdict reads their timing
 const press = async (code, key, hold) => { await send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(hold); await send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); };
 const KEYS = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];
@@ -47,5 +47,5 @@ check('server state', now.status === 'completed', `${now.status}, ${now.driveSec
 // the WebCrypto hash chain the game built must be the one the server recomputes (a mismatch would be 'hash-mismatch' / 'chain-broken')
 check('recording verified by the server (chain hashed alike in the browser and in Node)', now.verdict?.status === 'verified', JSON.stringify(now.verdict));
 check('every batch uploaded, none refused', (await ev('__game.telemetry.queue.length')) === 0 && (await ev('__game.telemetry.seq')) >= 1 && (await ev('__game.telemetry.refused === null')) === true, `${await ev('__game.telemetry.seq')} batch(es), ${await ev('__game.telemetry.queue.length')} queued`);
-const probs = filt(); check('no page errors', probs.length === 0, probs.join(' | '));
+const probs = filt().filter(p => !/road plan: server error 404|\/watch\/[^ ]+\/road\?/.test(p)); check('no page errors', probs.length === 0, probs.join(' | '));
 console.log(`screenshots: ${SHOTS}`); finish(fails.length ? 1 : 0);

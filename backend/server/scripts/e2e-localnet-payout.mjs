@@ -23,6 +23,7 @@ import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.cod
 import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
 import { closeSplit, prizeBound } from '../dist/domain/economy/vault-split.js';
 import { poolPayouts } from '../dist/domain/economy/pool-payouts.js';
+import { rankedWallets } from './localnet-rank.mjs';
 import { honestUntilClear, rechain, paceRecording, uploadBatches } from './honest-traffic.mjs';
 import { coverage } from './localnet-coverage.mjs';
 import { CU_LIMITS } from '../dist/infrastructure/solana/program-chain.adapter.js';
@@ -99,10 +100,16 @@ const sendSigned = async tx => { const sig = await conn.sendRawTransaction(tx.se
 const serverPool = async id => (await api(`pools/${id}`)).j;
 const myTickets = async (p, poolId) => ((await api('me', { cookie: p.cookie })).j.tickets ?? []).find(t => t.poolId === poolId);
 async function buySelf(p, poolId, qty = 1) {
-  const o = await api('tickets', { body: { poolId, qty }, cookie: p.cookie });
+  const o = await api('tickets', { body: { poolId, qty, burnWarningAccepted: true }, cookie: p.cookie });
   const pay = await api(`tickets/orders/${o.j.id}/payment`, { cookie: p.cookie });
   const sig = await sendSigned(signedB64(pay.j.transaction, p.kp));
   return { sig, paid: !!(await until(async () => (await api(`tickets/orders/${o.j.id}/confirm`, { body: { signature: sig }, cookie: p.cookie })).j.status === 'paid')) };
+}
+// The lobby opens the burn dialog before it creates an order. The checkbox has to be on or BUY stays disabled.
+async function acceptBurn(h) {
+  const up = await until(async () => !!(await h.ev('document.getElementById("burn-warning")')), 10000);
+  if (!up) return false;
+  return h.ev('(() => { const box = document.getElementById("burn-warning"); box.checked = true; box.dispatchEvent(new Event("change", { bubbles: true })); document.getElementById("burn-warning-accept").click(); return true; })()');
 }
 
 // ── a FINISHED RIDE over the player API. The frames are the server's traffic sim (trafficVersion 1), each wallet a different line
@@ -152,7 +159,7 @@ async function browser(p, port) {
   await h.send('Emulation.setDeviceMetricsOverride', { width: 1100, height: 900, deviceScaleFactor: 1, mobile: false });
   const [n, v] = p.cookie.split('='); await h.send('Network.setCookie', { name: n, value: v, url: BASE, httpOnly: true });
   h.txt = sel => h.ev(`document.querySelector(${JSON.stringify(sel)})?.textContent ?? ''`);
-  h.lobby = async () => { await h.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); return until(async () => (await h.ev('document.querySelectorAll(".tier").length')) >= 3, 20000); };
+  h.lobby = async () => { await h.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); return until(async () => /BUY|RIDE|SOON/.test(await h.txt('#tier-1h')), 20000); };
   return h;
 }
 async function gameRide(h, p) {
@@ -214,6 +221,7 @@ try {
   check('lobby: the 1h card offers pool D', await h1.lobby() && /BUY 1 TICKET/.test(await h1.txt('#tier-1h .buyb')), await h1.txt('#tier-1h .buyb'));
   let before = await bals({ r1: R1.wallet, vault: vD });
   await h1.ev('document.querySelector("#tier-1h .buyb").click()');
+  await acceptBurn(h1);
   check('lobby: R1 paid, 1 ticket credited', await until(async () => /Paid – 1 ticket/.test(await h1.txt('#msg-1h')), 60000), await h1.txt('#msg-1h'));
   let after = await bals({ r1: R1.wallet, vault: vD });
   const sigR1 = (await conn.getSignaturesForAddress(R1.kp.publicKey, { limit: 1 }, 'confirmed'))[0]?.signature;
@@ -258,7 +266,7 @@ try {
   const plan = {
     [R2.wallet]: [{ speed: 18, extra: 60 }], [R3.wallet]: [{ speed: 19, extra: 120 }], [R4.wallet]: [{ speed: 20, extra: 180 }], [R5.wallet]: [{ speed: 21, extra: 240 }], [R6.wallet]: [{ speed: 22, extra: 300 }],
     [R7.wallet]: [{ speed: 8, crashAt: 0.4 }],                     // crashes under the first TEN4 band: FAILED, never judged
-    [R8.wallet]: [{ speed: 24, extra: 30 }, { speed: 25, extra: 40 }],   // two tickets, two rides – the ranking sums them
+    [R8.wallet]: [{ speed: 24, extra: 30 }, { speed: 25, extra: 40 }],   // two tickets, two rides – the ranking keeps the best one
     [R9.wallet]: [{ speed: 23, extra: 360, hashOf: unhashed }],     // one batch the client "could not hash" → FLAGGED, the admin reviews it
     [R10.wallet]: [{ speed: 26, mutate: teleport }],                // +500 m in a tenth of a second → REJECTED
   };
@@ -299,22 +307,23 @@ try {
   // ── 5. the sale ends (v2: an ACTIVE pool stops selling too), the play deadline passes, the review window binds the admin too; then the payout job pays
   await untilChain(Number((await poolAcc(D)).prepDeadline.getTime() / 1000), 'pool D sale end');
   refuse('buy into the ACTIVE pool D after its sale end', ['buy', '-k', Z.keyfile, '--pool', String(D)], 'TooLate');
-  const lateBuy = await api('tickets', { body: { poolId: D, qty: 1 }, cookie: Z.cookie });
+  const lateBuy = await api('tickets', { body: { poolId: D, qty: 1, burnWarningAccepted: true }, cookie: Z.cookie });
   check('POST /api/tickets after the sale end: 409', lateBuy.status === 409, `${lateBuy.status} ${JSON.stringify(lateBuy.j).slice(0, 120)}`);
   await untilChain(Number((await poolAcc(D)).playDeadline.getTime() / 1000), 'pool D play deadline');
   pd = await poolAcc(D);
   const bound = prizeBound({ priceLamports: PRICE, ticketsSold: 11, sponsored: SPONSOR, prizeBps: SPLIT[0], seedBps: SPLIT[1] });
   check('the pot counts EVERY ticket – the crash\'s and the cheater\'s money stays in it', pd.ticketsSold === 11 && pd.sponsored === SPONSOR && bound === Math.floor((11 * PRICE + SPONSOR) * SPLIT[0] / 10_000));
-  // the expected ranking, from what each wallet drove in its counted rides (completed + verified, R9 by the admin's decision)
+  // the expected ranking: the counted verified wallets, once, in the score-formula order the payout handler pays (best ride)
   const counted = [R1, R2, R3, R4, R5, R6, R8, R9];
   const dist = p => rides[p.wallet].reduce((a, x) => a + (x.end?.distance ?? 0), 0);
-  const want = counted.slice().sort((a, b) => dist(b) - dist(a));
+  const want = (await rankedWallets(D, counted.map(p => p.wallet))).map(w => counted.find(p => p.wallet === w));
+  check('ranking: 8 counted wallets once, crash and cheater out', want.length === 8 && want.every(Boolean));
   const payouts = poolPayouts(bound, want.map(p => p.wallet));
   const winnersArg = payouts.map(x => `${x.wallet}:${x.lamports}`).join(',');
   // v4 (H5-B): the winners are committed at the PLAY deadline (inside the review window) – GET payout offers the commit, not prizes
   const adminCookie = await signIn(admin);
   let po = await api(`pools/${D}/payout`, { cookie: adminCookie });
-  check('GET payout at the play deadline (inside the review window): 8 ranked wallets by distance (crash + cheater out), amounts = the payout table, cap = the prize share; commit_winners offered, no prize yet',
+  check('GET payout at the play deadline (inside the review window): 8 ranked wallets by the score formula (crash + cheater out), amounts = the payout table, cap = the prize share; commit_winners offered, no prize yet',
     po.ok && po.j.prizeLamports === bound && po.j.ranks.map(x => x.wallet).join() === want.map(p => p.wallet).join() && po.j.ranks.map(x => x.lamports).join() === payouts.map(x => x.lamports).join() && !!po.j.commit && po.j.transactions.length === 0 && po.j.committedRoot === null,
     JSON.stringify(po.j.ranks ?? po.j).slice(0, 400));
   console.log(`     ranking: ${want.map((p, i) => `#${i + 1} ${p.name} ${Math.round(dist(p))} m → ${payouts[i].lamports}`).join(' · ')}`);
@@ -497,7 +506,7 @@ try {
   admintool(['accept-authority', ...adm]);
   check('…and back to the admin (the server\'s TREASURY_PUBKEY)', (await account('Config', codec.configPda())).authority === ADMIN);
 
-  const noise = p => !/favicon|status of 409|status of 404/.test(p);
+  const noise = p => !/favicon|status of 409|status of 404|road plan: server error 404/.test(p);
   const probs = browsers.flatMap(h => h.filt().filter(noise));
   check('no page errors (lobby + game)', probs.length === 0, probs.slice(0, 5).join(' | '));
   console.log(`screenshots: ${browsers[0]?.SHOTS}`);

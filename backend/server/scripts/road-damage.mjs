@@ -3,6 +3,8 @@
    through a planned hole at speed must lose the hull the game takes there, or the verdict says 'obstacle-ignored'. `honestRoad(BASE, rideId)` fetches the
    plan (GET /api/watch/:id/road – public, like the game's own road-plan.js) and `take(rows)` applies the game's damage (client/js/sim/damage.js hitHoles:
    per pit and axle once per ride, holeDamage of road-rules.ts) to the rows' hull column in place, carrying the loss on across batches. */
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { HOLES } from '../../../frontend/client/js/net/obstacles.js';
 
 const AXLES = [2.2, -0.4, -11.5], WHEEL = 1, REAR = 0.6, CRAWL = 3, MIN_HURT = 0.3, REF = 28, CH = 32;   // sim/damage.js – mirrored in server/src/domain/road/road-rules.ts
@@ -14,10 +16,18 @@ export function damageOf(type, v, axle) {
   return dmg >= MIN_HURT ? dmg : 0;
 }
 
-export function honestRoad(base, rideId) {
+export function honestRoad(base, rideId, ride = null) {
   const holes = new Map(), hit = new Set();
-  let lost = 0, loadedTo = 0, prev = null;
+  let lost = 0, loadedTo = 0, prev = null, planned = null;
   async function ensure(s) {
+    // A running ride's public /road is 404. The driver's holes are the same generator, loaded from the server build.
+    if (ride?.seed != null && process.env.ROAD_PLAN_BUILD) {
+      planned ??= await import(pathToFileURL(path.resolve(process.env.ROAD_PLAN_BUILD, 'domain/road/road-plan.js')).href);
+      const j = planned.roadPlanFor(ride.seed, ride.trip ?? null).window(rideId, 0, Math.max(loadedTo + 6000, s + 50));
+      for (const h of j.holes) holes.set(h.ci, h);
+      loadedTo = Math.max(loadedTo, j.to);
+      return;
+    }
     while (loadedTo < s + 50) {
       const res = await fetch(`${base}/api/watch/${encodeURIComponent(rideId)}/road?from=${loadedTo}&to=${loadedTo + 6000}`);
       if (!res.ok) throw new Error(`road plan ${res.status}`);

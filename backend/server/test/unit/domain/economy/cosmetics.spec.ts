@@ -43,7 +43,7 @@ describe('the cosmetics catalog', () => {
     for (const bad of [null, undefined, 'gold', 5, [], ['wheel']]) expect(parseLoadout(bad), String(bad)).toBeNull();
   });
 
-  it('the client mirror matches every slot it draws; a slot it does not draw yet is one of the new cab slots', () => {
+  it('TEN-T-09 the client mirror matches every slot it draws; a slot it does not draw yet is one of the new cab slots', () => {
     const block = /export const COSMETICS = \{([\s\S]*?)\n\};/.exec(clientSource())?.[1];
     expect(block, 'client/js/cosmetics.js must export COSMETICS').toBeTruthy();
     const mirror = Object.fromEntries([...(block ?? '').matchAll(/(\w+): \[([^\]]*)\]/g)].map(([, slot, items]) => [slot, [...(items ?? '').matchAll(/'([^']+)'/g)].map((m) => m[1])]));

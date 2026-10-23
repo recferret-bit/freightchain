@@ -15,7 +15,7 @@ class RecordingEmission extends HonkEmissionPort {
 }
 
 describe('ReleaseHonkHandler', () => {
-  it('credits a held 8h mint once the 48h have passed, and calls the chain after', async () => {
+  it('TEN-T-08 credits a held 8h mint once the 48h have passed, and calls the chain after', async () => {
     const ctx = unitContext();
     await ctx.player('w');
     const emission = new RecordingEmission();
@@ -42,7 +42,7 @@ describe('ReleaseHonkHandler', () => {
     expect(emission.calls).toEqual([]);
   });
 
-  it('cancels a pending 8h reservation whose verdict is no longer verified and survives chain RPC errors', async () => {
+  it('TEN-T-08 cancels a pending 8h reservation whose verdict is no longer verified and survives chain RPC errors', async () => {
     const ctx = unitContext();
     await ctx.player('w');
     const emission = new RecordingEmission();

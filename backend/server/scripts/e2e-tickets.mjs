@@ -58,7 +58,7 @@ if (!pool) {
   console.error('no sellable pool', JSON.stringify(listed.j).slice(0, 400));
   process.exit(1);
 }
-const ordered = await call('POST', 'tickets', { body: { poolId: pool.id, qty: 1 }, cookie: buyerCookie });
+const ordered = await call('POST', 'tickets', { body: { poolId: pool.id, qty: 1, burnWarningAccepted: true }, cookie: buyerCookie });
 if (ordered.status !== 200 || !ordered.j?.id || !ordered.j.reference) {
   console.error('order failed', ordered.status, JSON.stringify(ordered.j));
   process.exit(1);

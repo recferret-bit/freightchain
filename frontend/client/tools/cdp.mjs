@@ -16,14 +16,23 @@ export async function withEntities(url) {
     timer showed as a rise with the gas pedal up after each frame of drag – the verdict's 'accel-without-gas'. `extra` = statements run on every tick before
     (e.g. 'st.park = false; st.engineOn = true;'); `lane` = the d to hold once out on the main road – the depot turn before it is left to the game (default: hold
     where the truck started, all the way). window.__undrive() lets go (the physics' own speed again). */
-export const driveHook = (speed = 20, extra = '', lane = null) => `(() => { const g = __game, st = g.st, d0 = st.d, own = { v: st.v, vel: st.vel }; for (const k of ['v', 'vel']) Object.defineProperty(st, k, { configurable: true, enumerable: true, get: () => (st.mode === 'drive' ? ${speed} : own[k]), set: (x) => { own[k] = x; } }); window.__drive = setInterval(() => { if (st.mode !== 'drive') return; ${extra} ${lane === null ? 'st.d = d0; st.psi = 0;' : `if (st.s > g.net.Sm + 10) { st.d = ${lane}; st.psi = 0; }`} }, 40); window.__undrive = () => { clearInterval(window.__drive); for (const k of ['v', 'vel']) { const x = own[k]; delete st[k]; st[k] = x; } }; })()`;
+export const driveHook = (speed = 20, extra = '', lane = null) => `(() => { const g = __game, st = g.st, d0 = st.d, own = { v: st.v, vel: st.vel }; for (const k of ['v', 'vel']) Object.defineProperty(st, k, { configurable: true, enumerable: true, get: () => (st.mode === 'drive' ? ${speed} : own[k]), set: (x) => { own[k] = x; } }); window.__drive = setInterval(() => { if (st.mode !== 'drive') return; const gate = st.s < 130 ? 130 : 130 + (Math.floor((st.s - 130) / 8000) + 1) * 8000; if (g.pike) { g.pike.paid = gate; g.pike.phase = 'open'; g.pike.gate = gate; } ${extra} ${lane === null ? 'st.d = d0; st.psi = 0;' : `if (st.s > g.net.Sm + 10) { st.d = ${lane}; st.psi = 0; }`} }, 40); window.__undrive = () => { clearInterval(window.__drive); for (const k of ['v', 'vel']) { const x = own[k]; delete st[k]; st[k] = x; } }; })()`;
 
-export async function launch({ port, shotsDir, args = [], evalProblems = false, timeoutMs = 30_000 }) {
+export async function launch({ port, shotsDir, args = [], evalProblems = false, timeoutMs = 30_000, readyMs = 45_000 }) {
   const CH = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
   const prof = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-prof-')), SHOTS = process.env.SHOTS || path.join(os.tmpdir(), shotsDir); fs.mkdirSync(SHOTS, { recursive: true });
   const chrome = spawn(CH, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${prof}`, '--no-first-run', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--window-size=1280,720', ...args, 'about:blank'], { stdio: 'ignore' });
   process.on('exit', () => chrome.kill());
-  let tabs; for (let i = 0; i < 150; i++) { try { tabs = await (await fetch(`http://localhost:${port}/json`, { signal: AbortSignal.timeout(2000) })).json(); if (tabs.some(t => t.type === 'page')) break; } catch { /* not up yet */ } await sleep(200); }
+  // 127.0.0.1, not localhost: a slow ::1 lookup plus a 2s abort never reaches the IPv4 port, and 150 of those outlive the parent timeout.
+  let tabs;
+  const readyBy = Date.now() + readyMs;
+  while (Date.now() < readyBy) {
+    try {
+      tabs = await (await fetch(`http://127.0.0.1:${port}/json`, { signal: AbortSignal.timeout(1000) })).json();
+      if (tabs.some(t => t.type === 'page')) break;
+    } catch { /* not up yet */ }
+    await sleep(200);
+  }
   if (!tabs?.some(t => t.type === 'page')) { chrome.kill(); throw new Error(`Chrome did not open a debugging port on :${port} (is another run still using it? set PORT=…)`); }
   const ws = new WebSocket(tabs.find(t => t.type === 'page').webSocketDebuggerUrl); await new Promise(r => ws.onopen = r);
   let id = 0; const pend = {}, problems = [];

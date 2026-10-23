@@ -1,6 +1,6 @@
 import { bindClient } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
-import { INPUT_BIT, recording, upload } from '../support/recording.js';
+import { INPUT_BIT, ownLaneHoles, recording, upload } from '../support/recording.js';
 import { SAMPLE_INPUT_COL } from '../../src/domain/telemetry/telemetry-rules.js';
 import { TREASURY } from '../support/fake-chain.js';
 import { setTierOnSaleForTest } from '../../src/domain/rides/ride-tier.js';
@@ -88,6 +88,9 @@ export function liveScenarios(h: () => Harness): void {
   it('the ride\'s obstacle plan is public once it started – the holes the server rebuilt from the seed; every watched batch says what the truck did at them', async () => {
     const { driver, ride } = await onTheRoad();
     await anon().get(`/api/watch/${ride.id}/road`).query({ from: 0, to: 6000 }).expect(404);
+    const holeS = ownLaneHoles(ride.seed, 1, 0, ride.trip ?? null)[0];
+    const distance = Math.ceil(holeS + 40), seconds = Math.ceil(distance / 20);
+    sec(seconds); // before /end: a jump afterwards can pass the 60s recording grace and the late batches come back 409
     await end(driver, ride.id);
     const plan = (await anon().get(`/api/watch/${ride.id}/road`).query({ from: 0, to: 6000 }).expect(200)).body;
     expect(plan).toMatchObject({ rideId: ride.id, seed: ride.seed, from: 0, to: 6016, chunk: 32 });
@@ -100,8 +103,6 @@ export function liveScenarios(h: () => Harness): void {
     const fresh = (await unstarted.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
     await anon().get(`/api/watch/${fresh.id}/road`).query({ from: 0, to: 6000 }).expect(404); // no road before the start
     const own = plan.holes.find((x: { lat: number }) => Math.abs(x.lat - 2.4) < 0.01);
-    const distance = Math.ceil(own.s + 40), seconds = Math.ceil(distance / 20);
-    sec(seconds);
     await upload(driver.agent, ride.id, recording(ride.id, { seconds, distance })); // hull 100 throughout: the hole was not in this game
     const road = (await anon().get(`/api/watch/${ride.id}`).expect(200)).body.batches.flatMap((b: { road?: unknown[] }) => b.road ?? []);
     expect(road).toContainEqual(expect.objectContaining({ hole: own.id, outcome: 'ignored', got: 0 }));

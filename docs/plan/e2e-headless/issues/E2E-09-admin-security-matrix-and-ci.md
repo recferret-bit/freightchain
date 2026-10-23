@@ -95,7 +95,7 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
 
 ### `E2E-09.4` — Wire PR Fast-Gate & Nightly Full-Stack CI (`E2E-T-01..07`)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — 2026-10-23. `npm run test:ci:fast` exited 0 in 153.29 s (check, PostgreSQL integration, block 1, and the security suite, no retry). `npm run test:ci:full` exited 0 in 2954 s and ran block 2, block 3, localnet, `honk-suite`, and `e2e.sh`. `PLT-T-10` passes as 429 `rate_limited` on a Redis-down editor job (shipped; the old failure was status 0). `PLT-T-12` and `RPL-T-30..60` passed. `negative-matrix` still runs inside `npm run check`.
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `E2E-T-01..07`, `docs/spec/e2e.md`, `COVERAGE_CONTRACT` §4
 - **Target Files:**
@@ -104,20 +104,20 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
 - **Depends On:** `E2E-01` .. `E2E-08`
 
 #### Definition of Ready (DoR)
-- [ ] All suites (`npm run check`, `npm run server:integration`, `npm run test:e2e:block1`, `npm run test:e2e:block2`, `npm run test:e2e:block3`, `bash .claude/skills/run-tests/e2e.sh`) are green locally.
+- [x] All suites (`npm run check`, `npm run server:integration`, `npm run test:e2e:block1`, `npm run test:e2e:block2`, `npm run test:e2e:block3`, `bash .claude/skills/run-tests/e2e.sh`) are green locally.
 
 #### Definition of Done (DoD)
-- [ ] Root `package.json` exposes standardized scripts:
+- [x] Root `package.json` exposes standardized scripts:
   - `npm run test:ci:fast` (`npm run check` + `npm run server:integration` + `npm run test:e2e:block1` + `negative-matrix` + `admin-surface-matrix`) completing in < 5 minutes.
   - `npm run test:ci:full` (adds `test:e2e:block2`, `test:e2e:block3`, `test:localnet`, `honk-suite`, and `bash .claude/skills/run-tests/e2e.sh`).
-- [ ] Both commands exit `0` with deterministic output and zero flaky retries.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Both commands exit `0` with deterministic output and zero flaky retries.
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
 ---
 
 ### `E2E-09.5` — Final `census.mjs` 100% Green Audit
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — 2026-10-23. `census.mjs --self-test` and `node docs/build-wiki.mjs` exited 0. The self-test computed 0 zero-scenario routes, 0 single-scenario routes, 178/178 HTTP routes on both flow runners, 9/9 HTML pages (the no-build `frontend/client/index.html` is excluded), 30/30 Anchor instructions, and 81/81 still-required spec ids. Withdrawn ids `E2E-T-01` and `E2E-T-06` are not counted as passes. The older headline of 12 pages, 19 instructions, and 211 rules is not what the self-test counts.
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2–4
 - **Target Files:**
@@ -126,14 +126,14 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
 - **Depends On:** `E2E-09.1`, `E2E-09.2`, `E2E-09.3`, `E2E-09.4`
 
 #### Definition of Ready (DoR)
-- [ ] All 63 preceding tasks in `E2E-01` through `E2E-09.4` are `[x] Done`.
+- [x] All 63 preceding tasks in `E2E-01` through `E2E-09.4` are `[x] Done`.
 
 #### Definition of Done (DoD)
-- [ ] `node .claude/skills/test-census/census.mjs --self-test` reports:
+- [x] `node .claude/skills/test-census/census.mjs --self-test` reports:
   - `0` zero-scenario HTTP routes
   - `0` single-scenario HTTP routes
   - `100%` of routes covered on both In-Memory and PostgreSQL
   - `100%` of HTML pages covered in Headless Chrome (`e2e.sh`)
-  - `100%` of Anchor instructions (`19/19`) covered on local validator
+  - `100%` of Anchor instructions covered on the local validator (the self-test counts the IDL: `30/30`, not a fixed `19/19`)
   - `100%` of `*-T-*` and `AC-*` spec test IDs mapped to passing test files.
-- [ ] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
+- [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).

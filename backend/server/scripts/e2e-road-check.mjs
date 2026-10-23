@@ -8,6 +8,8 @@
 //   D. the ride-audit tool (scripts/ride-audit.mjs) on the same database: the honest ride OK (exit 0), the cheater NOT OK (exit 1), --latest lists both
 // Usage: BASE=http://localhost:3111 CHROME_PORT=9370 AUDIT_BUILD=.e2e-build-123 DATABASE_URL=… node scripts/e2e-road-check.mjs   (~5–8 min: the trucks must reach the holes)
 import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
 
@@ -35,18 +37,39 @@ async function drive({ port, mode }) {
   await tab.send('Network.setCookie', { name, value, url: BASE, httpOnly: true });
   await tab.send('Page.navigate', { url: `${BASE}/play.html?ride=${ride.id}` });
   for (let i = 0; i < 100 && !(await tab.ev('!!window.__game')); i++) await sleep(200);
-  await tab.ev('__game.CFG.TRAFFIC = false');   // no cars: a crash with one would end the ride before the holes (traffic is the browser's, not judged)
   await tab.ev('document.getElementById("go").click()'); await sleep(800);
-  for (let i = 0; i < 50 && !(await tab.ev('__game.holes.plan.holes.size > 0')); i++) await sleep(200);   // the server's plan for the first 6 km arrived
-  const planLoaded = await tab.ev('__game.holes.plan.holes.size');
-  // the server's holes in the right-hand lane ahead – the ones a truck cruising there drives into
-  const { j: plan } = await call('GET', `watch/${ride.id}/road?from=0&to=9000`);
+  // A running ride's public road route is 404. The holes the judge uses are the shared generator, which the game rolls locally until a plan arrives.
+  const road = await call('GET', `watch/${ride.id}/road?from=0&to=9000`);
+  const build = process.env.AUDIT_BUILD || 'dist';
+  const { roadPlanFor } = await import(pathToFileURL(path.resolve(build, 'domain/road/road-plan.js')).href);
+  const plan = roadPlanFor(ride.seed, ride.trip).window(ride.id, 0, 9000);
   const own = plan.holes.filter(h => Math.abs(h.lat - LANE) < 0.01).slice(0, HOLES_TO_CROSS), target = (own.at(-1)?.s ?? 1000) + 40;
   if (mode === 'cheat') await tab.ev(`(() => { const g = __game; g.roadPlan.rideId = null; g.CFG.HOLES = false; g.holes.plan.seed = -1; g.holes.clearHoleCache(); for (const ci of [...g.chunks.keys()]) g.roadObjects.rebuild(ci); })()`);   // what an injected script does: no holes in this game
   const holesInGame = await tab.ev(`__game.holes.holesNear(${own[0]?.s ?? 0} - 5, ${own[0]?.s ?? 0} + 5).length`);
   // cruise in the lane at SPEED with the gas held (a person's keys go down too – the verdict wants real presses); the truck's own physics moves it
   await tab.ev('__game.trip.finish = false');   // the free run would end itself at its (short) line before the holes – drive on past it
-  await tab.ev(`(() => { const g = __game; g.st.park = false; setInterval(() => { if (g.st.mode !== 'drive') return; g.input.gas = true; g.st.v = Math.max(g.st.v, ${SPEED}); g.st.d = ${LANE}; g.st.psi = 0; }, 16); })()`);
+  // 7th, warm, pedal down: a pinned speed with the pedal up is a coasting flag, and a cold engine at that speed wears the hull (the cheater must stay unmarked).
+  // A car in this lane gets a step into the oncoming lane; both lanes busy, the truck eases off instead of driving through it. Back in lane for each hole.
+  const holeS = JSON.stringify(own.map(h => h.s));
+  await tab.ev(`(() => { const g = __game, HOLES = ${holeS}, LANE = ${LANE}, SPEED = ${SPEED}; g.st.park = false; g.st._holdV = 0; setInterval(() => {
+    if (g.st.mode !== 'drive') return;
+    const gate = g.st.s < 130 ? 130 : 130 + (Math.floor((g.st.s - 130) / 8000) + 1) * 8000;
+    if (g.pike) { g.pike.paid = gate; g.pike.phase = 'open'; g.pike.gate = gate; }
+    g.st.park = false; g.st.keyOn = true; g.st.engineOn = true; g.st.gear = 7; g.st.clutch = 0; g.st.gas = 1; g.st.brake = 0; g.st.temp = 85; g.st.noStall = 2;
+    g.input.gas = 1; g.input.brake = 0;
+    const s = g.st.s, cars = g.traffic || [];
+    const close = (lat, span) => cars.some(a => a && Math.abs(a.lat - lat) < 2.2 && Math.abs(a.s - s) < span);
+    const nearHole = HOLES.some(h => Math.abs(h - s) < 22);
+    const threat = close(LANE, g.st._dodge ? 20 : 36);
+    if (!nearHole && threat && !close(-LANE, 50)) g.st._dodge = true; else if (!threat || nearHole) g.st._dodge = false;
+    let want = SPEED;
+    if (!nearHole && threat && !g.st._dodge) { const ahead = cars.filter(a => a.dir > 0 && a.s > s && a.s - s < 40 && Math.abs(a.lat - LANE) < 2.2).sort((a, b) => a.s - b.s); if (ahead[0]) want = Math.min(SPEED, Math.max(0, ahead[0].v - 1)); }
+    // A hole drops the recorded speed. Climb back no faster than 0.25 m/s per 0.1 s, or the torque check rejects the snap back to cruise.
+    const live = Math.min(g.st._holdV ?? g.st.v, g.st.v);
+    let base = want < live ? want : live;
+    if (want >= live && g.st.t - (g.st._holdT || 0) >= 0.1) { base = Math.min(want, live + 0.25); g.st._holdT = g.st.t; }
+    g.st._holdV = base; g.st.v = g.st.vel = base; g.st.d = g.st._dodge ? -LANE : LANE; g.st.psi = 0;
+  }, 16); })()`);
   const press = async (code, key, hold) => { await tab.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(hold); await tab.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); };
   const KEYS = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];
   const t0 = Date.now();
@@ -62,9 +85,9 @@ async function drive({ port, mode }) {
   const text = await tab.ev('document.getElementById("verdict")?.textContent');
   await tab.shot(`${mode}-done`);
   const { j: end } = await call('GET', `rides/${ride.id}`, who);
-  const problems = tab.filt().filter(p => !/road plan/.test(p));
+  const problems = tab.filt().filter(p => !/road plan|\/road\?from=/.test(p));
   tab.close?.();
-  return { who, ride, own, target, reached, hull, planLoaded, mismatches, holesInGame, text, end, problems };
+  return { who, ride, own, target, reached, hull, roadStatus: road.status, mismatches, holesInGame, text, end, problems };
 }
 
 /* ───────────── C: a spectator ───────────── */
@@ -103,22 +126,18 @@ const audit = (...a) => { const r = spawnSync(process.execPath, ['scripts/ride-a
 console.log(`the server's road e2e against ${BASE}`);
 const [honest, cheat] = await Promise.all([drive({ port: PORT, mode: 'honest' }), drive({ port: PORT + 1, mode: 'cheat' })]);
 
-check('A honest: the game loaded the server\'s obstacle plan, and it matches its own roll chunk for chunk', honest.planLoaded > 0 && honest.mismatches === 0, `${honest.planLoaded} chunks, ${honest.mismatches} mismatches`);
+check('A honest: the public road route is 404 while the ride is running, and the local roll matches the generator', honest.roadStatus === 404 && honest.mismatches === 0, `road ${honest.roadStatus}, ${honest.mismatches} mismatches`);
 check(`A honest: drove through ${HOLES_TO_CROSS} planned sinkholes in its lane`, honest.own.length === HOLES_TO_CROSS && honest.reached >= honest.target && honest.holesInGame > 0, `holes at ${honest.own.map(h => Math.round(h.s)).join(', ')} m, reached ${Math.round(honest.reached)} m`);
 check('A honest: the game took the damage', honest.hull < 90, `hull ${honest.hull?.toFixed?.(1)} %`);
 check('A honest: COMPLETED · VERIFIED (no road reason)', honest.end.verdict?.status === 'verified' && /VERIFIED/.test(String(honest.text)), `${honest.text} ${JSON.stringify(honest.end.verdict?.reasons)}`);
 check('A honest: no page errors', honest.problems.length === 0, honest.problems.join(' | '));
 check('B cheater: the holes were gone from its game', cheat.holesInGame === 0, `${cheat.holesInGame} holes near the first planned one`);
-check(`B cheater: drove through the same kind of stretch (${HOLES_TO_CROSS} planned holes in its lane) without a scratch`, cheat.own.length === HOLES_TO_CROSS && cheat.reached >= cheat.target && cheat.hull >= 99.9, `hull ${cheat.hull} %, reached ${Math.round(cheat.reached)} m`);
+check(`B cheater: drove through the same kind of stretch (${HOLES_TO_CROSS} planned holes in its lane) without the hole damage`, cheat.own.length === HOLES_TO_CROSS && cheat.reached >= cheat.target && cheat.hull >= 90, `hull ${cheat.hull} %, reached ${Math.round(cheat.reached)} m`);   // a sinkhole takes ~19%; a traffic graze beside the hole is not that
 check('B cheater: COMPLETED · REJECTED obstacle-ignored', cheat.end.status === 'completed' && cheat.end.verdict?.status === 'rejected' && codes(cheat.end.verdict).includes('obstacle-ignored'), `${cheat.text} ${codes(cheat.end.verdict).join(',')}`);
 check('B cheater: the end panel says REJECTED', /REJECTED/.test(String(cheat.text)), String(cheat.text));
 
-const [seeCheat, seeHonest] = await Promise.all([spectate({ port: PORT + 2, ride: cheat.ride, shot: 'replay-no-impact' }), spectate({ port: PORT + 3, ride: honest.ride, shot: 'replay-honest' })]);
-check('C spectator: the replay\'s holes are the server\'s plan (not the cheater\'s empty road)', seeCheat.planHoles > 0 && seeCheat.mismatches === 0 && seeCheat.serverHoleOnRoad === true, JSON.stringify({ plan: seeCheat.planHoles, mismatches: seeCheat.mismatches, onRoad: seeCheat.serverHoleOnRoad }));
-check('C spectator: a red timeline mark per hole driven through untouched, NO IMPACT in the panel', seeCheat.ignoredMarks >= HOLES_TO_CROSS && /NO IMPACT/.test(seeCheat.road), `${seeCheat.ignoredMarks} marks · ${seeCheat.road}`);
-check('C spectator: passing one stamps NO IMPACT on screen and rings the hole red (replay-no-impact.png)', seeCheat.stamp === true && seeCheat.redRing === true && /NO IMPACT/.test(seeCheat.stampText), JSON.stringify({ stamp: seeCheat.stamp, ring: seeCheat.redRing, text: seeCheat.stampText }));
-check('C spectator: the honest ride shows its hits and no NO IMPACT', seeHonest.ignoredMarks === 0 && seeHonest.hitMarks >= HOLES_TO_CROSS && !/NO IMPACT/.test(seeHonest.road), `${seeHonest.hitMarks} hits · ${seeHonest.road}`);
-check('C spectator: no page errors', seeCheat.problems.length === 0 && seeHonest.problems.length === 0, [...seeCheat.problems, ...seeHonest.problems].join(' | '));
+const [seeCheat, seeHonest] = await Promise.all([call('GET', `watch/${cheat.ride.id}`), call('GET', `watch/${honest.ride.id}`)]);
+check('C a finished training ride is not a public replay', seeCheat.status === 404 && seeCheat.j.code === 'replay_not_available' && seeHonest.status === 404 && seeHonest.j.code === 'replay_not_available', `${seeCheat.j.code} ${seeHonest.j.code}`);
 
 if (process.env.AUDIT_BUILD && process.env.DATABASE_URL) {
   const a = audit(honest.ride.id), b = audit(cheat.ride.id), l = audit('--latest', '5');
