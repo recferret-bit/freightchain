@@ -45,6 +45,7 @@ server {
     location ^~ /api/ { return 404; }
     location ~* ^/api/ { return 404; }   # /API/editor/… (nginx matches case-sensitively, the app does not)
     location ~ ^/(site/|r/) { return 302 https://__ROOT__$request_uri; }
+    location = /index.html { return 301 https://__ROOT__/; }   # the app would serve the landing here
     location ~ \.html$ {
         if ($uri != /viewer.html) { return 302 https://__ROOT__$request_uri; }
         proxy_pass http://127.0.0.1:__PORT__;

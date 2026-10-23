@@ -19,7 +19,7 @@ describe('configureApp', () => {
       enableShutdownHooks: () => undefined,
     } as unknown as INestApplication;
     configureApp(app);
-    expect(used).toEqual(['solanaPayCors', 'actionHeadersMiddleware', 'compression', 'requestIdMiddleware', 'requestLog', 'legacySession', 'jsonOnlyMiddleware', 'beaconBodyMiddleware', '/api/editor editorBodyParser', 'ridePageMiddleware']);
+    expect(used).toEqual(['solanaPayCors', 'actionHeadersMiddleware', 'compression', 'requestIdMiddleware', 'requestLog', 'legacySession', 'jsonOnlyMiddleware', 'beaconBodyMiddleware', '/api/editor editorBodyParser', 'searchAliasMiddleware', 'ridePageMiddleware']);
     expect(installed).toBe(logger);
   });
 });

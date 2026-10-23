@@ -40,5 +40,9 @@ server {
         proxy_read_timeout 60s;
     }
 
+    # /pitchdeck.html is this host's / (a 302 to the apex bounced back through the apex's own 301). /index.html is the landing.
+    location = /pitchdeck.html { return 301 /; }
+    location = /index.html { return 301 https://__ROOT__/; }
+
     location / { return 302 https://__ROOT__$request_uri; }
 }

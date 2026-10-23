@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { ridePageMiddleware } from '../../../../../src/infrastructure/http/middleware/ride-page.middleware.js';
 import type { PrismaService } from '../../../../../src/infrastructure/prisma/prisma.service.js';
 import type { EnvService } from '../../../../../src/infrastructure/config/env.service.js';
@@ -106,5 +109,20 @@ describe('ridePageMiddleware', () => {
     await new Promise((r) => setTimeout(r, 10));
 
     expect(sentBody).toContain('94.2 km on SIBERIA · COMPLETED (VERIFIED)');
+  });
+
+  it('drops the shell noindex and points canonical at the ride', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fc-r-'));
+    writeFileSync(join(dir, 'r.html'), '<!doctype html><html><head><meta name="robots" content="noindex">\n<link rel="canonical" href="https://freightchain.fun/"><title>old</title><meta property="og:url" content="https://freightchain.fun/"></head><body></body></html>');
+    const prisma = {
+      ride: { findUnique: async () => ({ wallet: 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn', tier: '1h', status: 'completed', route: 'route66', lastS: 1000, verdict: { status: 'verified' } }) },
+    } as unknown as PrismaService;
+    const middleware = ridePageMiddleware(prisma, { ...env, clientDir: dir } as EnvService);
+    let sentBody = '';
+    const res = { setHeader() { return undefined; }, status() { return this; }, type() { return this; }, send(body: string) { sentBody = body; } } as unknown as Response;
+    middleware({ method: 'GET', path: '/r/ride-9' } as unknown as Request, res, () => undefined);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(sentBody).not.toContain('noindex');
+    expect(sentBody).toContain('href="https://freightchain.fun/r/ride-9"');
   });
 });

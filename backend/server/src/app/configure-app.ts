@@ -12,6 +12,7 @@ import { solanaPayCors } from '../infrastructure/http/middleware/solana-pay-cors
 import { actionHeadersMiddleware, isActionRequest } from '../infrastructure/http/middleware/action-headers.middleware.js';
 import { apiPath } from '../infrastructure/http/api-path.js';
 import { ridePageMiddleware } from '../infrastructure/http/middleware/ride-page.middleware.js';
+import { searchAliasMiddleware } from '../infrastructure/http/middleware/search-alias.middleware.js';
 import { PrismaService } from '../infrastructure/prisma/prisma.service.js';
 import { ClockPort } from '../application/ports/shared/clock.port.js';
 import { JsonLogger } from '../infrastructure/logging/json-logger.js';
@@ -42,6 +43,7 @@ export function configureApp(app: INestApplication): void {
   // (wrapped: Nest skips its own global JSON parser when it finds a middleware NAMED jsonParser – the bare body-parser function would switch it off everywhere)
   const editorJson = json({ limit: EDITOR_BODY_LIMIT });
   app.use('/api/editor', function editorBodyParser(req: Request, res: Response, next: NextFunction) { editorJson(req, res, next); });
+  app.use(searchAliasMiddleware(env));   // /index.html, /r and a host's own .html file 301 to the one public URL (before the receipt renderer and static files)
   app.use(ridePageMiddleware(prisma, env, () => (clock ? clock.now().getTime() : Number.NEGATIVE_INFINITY)));   // public ride page (/r/:id) with dynamic Twitter Cards & OpenGraph tags
   app.useGlobalFilters(new ProblemDetailsFilter());
   app.enableShutdownHooks();

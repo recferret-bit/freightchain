@@ -5,7 +5,7 @@ import type { PrismaService } from '../../prisma/prisma.service.js';
 import type { EnvService } from '../../config/env.service.js';
 
 const RIDE_PAGE_ROUTE = /^\/r\/([a-zA-Z0-9_-]{1,64})$/;
-let cachedTemplate: string | null = null;
+const templates = new Map<string, string>();
 
 const escapeHtml = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -15,10 +15,12 @@ export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService
   const rHtmlPath = clientDir ? join(clientDir, 'r.html') : '';
 
   const getTemplate = (): string => {
-    if (!cachedTemplate && rHtmlPath && existsSync(rHtmlPath)) {
-      cachedTemplate = readFileSync(rHtmlPath, 'utf8');
-    }
-    return cachedTemplate ?? '<!doctype html><html><head><title>Freight Chain – Ride</title><meta property="og:url" content=""><meta property="og:title" content=""><meta property="og:description" content=""><meta name="twitter:title" content=""><meta name="twitter:description" content=""></head><body>Loading…</body></html>';
+    if (!rHtmlPath || !existsSync(rHtmlPath)) return '<!doctype html><html><head><title>Freight Chain – Ride</title><meta property="og:url" content=""><meta property="og:title" content=""><meta property="og:description" content=""><meta name="twitter:title" content=""><meta name="twitter:description" content=""></head><body>Loading…</body></html>';
+    const hit = templates.get(rHtmlPath);
+    if (hit !== undefined) return hit;
+    const text = readFileSync(rHtmlPath, 'utf8');
+    templates.set(rHtmlPath, text);
+    return text;
   };
 
   return function ridePageMiddleware(req: Request, res: Response, next: NextFunction): void {
@@ -84,6 +86,7 @@ export function ridePageMiddleware(prisma: PrismaService | null, env: EnvService
 
         res.setHeader('Cache-Control', 'public, max-age=86400');
         const html = template
+          .replace(/<meta name="robots" content="noindex">\s*/, '')   // the shell is noindex; a public ride is its own page
           .replace(/<title>[^<]*<\/title>/, () => `<title>${safeTitle}</title>`)
           .replace(/<link rel="canonical"[^>]*>/, () => `<link rel="canonical" href="${safeCanonical}">`)
           .replace(/<meta property="og:url" content="[^"]*"/, () => `<meta property="og:url" content="${safeCanonical}"`)

@@ -40,5 +40,9 @@ server {
         proxy_read_timeout 60s;
     }
 
+    # the file URLs are another page: /index.html is the landing, /whitepaper.html is this host's /
+    location = /index.html { return 301 https://__ROOT__/; }
+    location = /whitepaper.html { return 301 /; }
+
     location / { return 302 https://__ROOT__$request_uri; }
 }

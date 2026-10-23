@@ -53,9 +53,17 @@ test('JSON-LD parses: the game + organisation on the landing, the article on the
 test('noindex exactly where a page is not for search (lobby, model viewer, admin, the pitch deck), never on the public pages', () => {
   for (const p of ['lobby', 'viewer']) assert.match(pages[p], /<meta name="robots" content="noindex[^"]*">/, p);
   assert.match(read(join(client, 'admin.html')), /<meta name="robots" content="noindex/);
+  assert.match(read(join(client, 'blink.html')), /<meta name="robots" content="noindex/);
+  assert.match(read(join(client, 'r.html')), /<meta name="robots" content="noindex/);
   assert.match(read(join(root, 'pitchdeck.html')), /<meta name="robots" content="noindex[^"]*">/, 'pitchdeck');
   assert.doesNotMatch(sitemap + llms, /pitchdeck/, 'the deck is not advertised to search or AI crawlers');
   for (const p of Object.keys(URLS)) assert.doesNotMatch(pages[p], /name="robots"/, p);
+  // a copy with no canonical is "duplicate, user did not select a canonical" – name the page search should keep
+  assert.equal(canonical(pages.lobby), 'https://freightchain.fun/');
+  assert.equal(canonical(pages.viewer), 'https://storybook.freightchain.fun/');
+  assert.equal(canonical(read(join(client, 'blink.html'))), 'https://freightchain.fun/');
+  assert.equal(canonical(read(join(client, 'r.html'))), 'https://freightchain.fun/', 'the shell must not name /r/, which 404s');
+  assert.equal(canonical(read(join(root, 'pitchdeck.html'))), 'https://pitchdeck.freightchain.fun/');
 });
 
 test('robots.txt: everything open but the API, AI crawlers named and allowed, the sitemap absolute', () => {
