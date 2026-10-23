@@ -22,9 +22,9 @@ describe('searchAliasMiddleware', () => {
     expect(run('GET', '/index.html', 'ride.freightchain.fun').location).toBe('https://freightchain.fun/');
   });
 
-  it('folds a host file onto that host\'s / and leaves the local copies alone', () => {
-    expect(run('GET', '/whitepaper.html', 'whitepaper.freightchain.fun').location).toBe('/');
-    expect(run('GET', '/pitchdeck.html', 'pitchdeck.freightchain.fun').location).toBe('/');
+  it('leaves the host html files alone, because nginx serves / as that file', () => {
+    expect(run('GET', '/whitepaper.html', 'whitepaper.freightchain.fun').next).toBe(true);
+    expect(run('GET', '/pitchdeck.html', 'pitchdeck.freightchain.fun').next).toBe(true);
     expect(run('GET', '/whitepaper.html', 'localhost:3000').next).toBe(true);
     expect(run('GET', '/pitchdeck.html').next).toBe(true);
     expect(run('GET', '/play.html').next).toBe(true);
