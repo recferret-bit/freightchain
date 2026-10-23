@@ -46,7 +46,7 @@ test('the pitch deck (pitchdeck.<apex>): each image ≤ 120 kB, all of them ≤ 
   assert.doesNotMatch(code, /fetch\(|XMLHttpRequest|sendBeacon|WebSocket/, 'the deck makes no request of its own');
   assert.doesNotMatch(code, /<(img|video)\b[^>]*\ssrc=/, 'slide media are lazy: data-src in the markup, src only when a slide is near (hydrate)');
   assert.match(code, /data-src=/, 'slide media are lazy');
-  assert.doesNotMatch(html, /https?:\/\/(?!freightchain\.fun)/, 'no third-party host in the page');
+  assert.doesNotMatch(html, /https?:\/\/(?!(?:[a-z0-9-]+\.)?freightchain\.fun)/, 'no third-party host in the page');   // the deck's canonical is pitchdeck.<apex>, still our host
 });
 
 test('the live dash chunks are lazy: the entry bundle does not import the cockpit', { skip: !has }, () => {
