@@ -7,8 +7,8 @@ import { join } from 'node:path';
    noindex where a page is not for search. The production URLs are written out on purpose (a staging copy must point search at production, not compete with it). */
 const root = new URL('..', import.meta.url).pathname, client = join(root, '..', 'client');
 const read = f => readFileSync(f, 'utf8');
-const pages = { landing: read(join(root, 'index.html')), whitepaper: read(join(root, 'whitepaper.html')), play: read(join(client, 'play.html')), lobby: read(join(client, 'lobby.html')), viewer: read(join(client, 'viewer.html')) };
-const URLS = { landing: 'https://freightchain.fun/', whitepaper: 'https://whitepaper.freightchain.fun/', play: 'https://ride.freightchain.fun/play.html' };
+const pages = { landing: read(join(root, 'index.html')), whitepaper: read(join(root, 'whitepaper.html')), play: read(join(client, 'play.html')), pitchdeck: read(join(root, 'pitchdeck.html')), lobby: read(join(client, 'lobby.html')), viewer: read(join(client, 'viewer.html')) };
+const URLS = { landing: 'https://freightchain.fun/', whitepaper: 'https://whitepaper.freightchain.fun/', play: 'https://ride.freightchain.fun/play.html', pitchdeck: 'https://pitchdeck.freightchain.fun/' };
 const robots = read(join(root, 'public/robots.txt')), sitemap = read(join(root, 'public/sitemap.xml')), llms = read(join(root, 'public/llms.txt'));
 const meta = (html, attr, name) => html.match(new RegExp(`<meta ${attr}="${name.replace(/[:]/g, '\\$&')}" content="([^"]*)"`))?.[1];
 const canonical = html => html.match(/<link rel="canonical" href="([^"]+)">/)?.[1];
@@ -50,13 +50,12 @@ test('JSON-LD parses: the game + organisation on the landing, the article on the
   assert.equal(article.url, URLS.whitepaper); assert.equal(article.about['@id'], game['@id']);
 });
 
-test('noindex exactly where a page is not for search (lobby, model viewer, admin, the pitch deck), never on the public pages', () => {
+test('noindex exactly where a page is not for search (lobby, model viewer, admin, blink, the receipt shell), never on the public pages', () => {
   for (const p of ['lobby', 'viewer']) assert.match(pages[p], /<meta name="robots" content="noindex[^"]*">/, p);
   assert.match(read(join(client, 'admin.html')), /<meta name="robots" content="noindex/);
   assert.match(read(join(client, 'blink.html')), /<meta name="robots" content="noindex/);
   assert.match(read(join(client, 'r.html')), /<meta name="robots" content="noindex/);
-  assert.match(read(join(root, 'pitchdeck.html')), /<meta name="robots" content="noindex[^"]*">/, 'pitchdeck');
-  assert.doesNotMatch(sitemap + llms, /pitchdeck/, 'the deck is not advertised to search or AI crawlers');
+  assert.doesNotMatch(pages.pitchdeck, /name="robots"/, 'pitchdeck');
   for (const p of Object.keys(URLS)) assert.doesNotMatch(pages[p], /name="robots"/, p);
   // a copy with no canonical is "duplicate, user did not select a canonical" – name the page search should keep
   assert.equal(canonical(pages.lobby), 'https://freightchain.fun/');

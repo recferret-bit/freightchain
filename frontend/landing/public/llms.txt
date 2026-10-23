@@ -11,6 +11,7 @@ What is live, built or only planned changes week to week – the whitepaper's "S
 - [Landing](https://freightchain.fun/): the pitch, live boards (pot, trucks on the road, top 10, recent rides), the economy, the roadmap, an FAQ
 - [Whitepaper](https://whitepaper.freightchain.fun/): how to drive, rides and rules, rewards, the escrow program on Solana, validation and anti-cheat, live streams and replays, limits and risks
 - [Play](https://ride.freightchain.fun/play.html): the free run in the browser – no wallet, no download
+- [Pitch deck](https://pitchdeck.freightchain.fun/): the presentation
 
 ## Channels
 

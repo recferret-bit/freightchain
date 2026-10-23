@@ -117,7 +117,7 @@ All cross-host links and API calls in `client/` and `landing/` resolve through `
 3. **`api.<DEPLOY_DOMAIN>` (`API_BASE`)** — NestJS HTTP API (`/api/*`), Solana Actions (`/actions.json`, `/.well-known/actions.json`, `/api/actions/*`), and Solana Pay (`/api/solana-pay/*`).
 4. **`storybook.<DEPLOY_DOMAIN>` (`STORYBOOK_BASE`)** — 3D Entity Model Viewer & AI Model Editor (`client/viewer.html` mapped to `/`; nginx proxies only `/api/entities/` and `/api/editor/` and returns `404` for all other `/api/` paths).
 5. **`whitepaper.<DEPLOY_DOMAIN>` (`WHITEPAPER_BASE`)** — Standalone Whitepaper (`landing/whitepaper.html` mapped to `/`; `/api/` returns `404`, posts web vitals to `API_BASE`; `<apex>/whitepaper.html` 301-redirects here).
-6. **`pitchdeck.<DEPLOY_DOMAIN>` (`PITCHDECK_BASE`)** — Standalone Pitch Deck (`landing/pitchdeck.html` mapped to `/`; `noindex`, `/api/` returns `404`, posts anonymous analytics to `API_BASE`; `<apex>/pitchdeck.html` 301-redirects here).
+6. **`pitchdeck.<DEPLOY_DOMAIN>` (`PITCHDECK_BASE`)** — Standalone Pitch Deck (`landing/pitchdeck.html` mapped to `/`; indexed at that host, `/api/` returns `404`, posts anonymous analytics to `API_BASE`; `<apex>/pitchdeck.html` 301-redirects here).
 7. **`admin.<DEPLOY_DOMAIN>` (`ADMIN_BASE`)** — Signed Admin & Ops Console (`client/admin.html`, gated by nginx basic auth + `fc_admin` cookie + `AdminGuard` host check; API calls stay same-origin on `ADMIN_BASE`).
 
 `stripKnownSub(host)` in `client/js/hosts.js` strips `www.`, `ride.`, `api.`, `storybook.`, `whitepaper.`, `pitchdeck.`, and `admin.` when deriving the apex domain, and returns `''` (same-origin) on bare `localhost`, loopback IPs (`127.0.0.1`), or `file://`.
