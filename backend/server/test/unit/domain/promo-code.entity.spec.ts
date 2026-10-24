@@ -11,6 +11,9 @@ const restore = (over: Partial<PromoCodeProps> = {}) => PromoCode.restore({
 });
 
 describe('PromoCode – making codes', () => {
+  it('reserves the internal Convoy grant code from public/admin creation', () => {
+    expect(() => PromoCode.create({ ...base, code: 'system-convoy-1h', now: NOW })).toThrow(BadRequestError);
+  });
   it('normalizes what people type: case and spaces never matter', () => {
     expect(PromoCode.normalize(' early  Bird ')).toBe('EARLYBIRD');
     expect(PromoCode.isValidCode('early-bird')).toBe(true);

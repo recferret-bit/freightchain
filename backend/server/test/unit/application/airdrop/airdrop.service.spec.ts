@@ -73,6 +73,18 @@ function harness() {
 }
 
 describe('airdrop rules', () => {
+  it('does not award trust again when the same social accounts are reverified', async () => {
+    const h = harness();
+    const save = vi.spyOn(h.players, 'save');
+    await h.svc.recordVerifiedRide('ada', 'free-2c');
+    await h.svc.verifyTelegram('ada', '42');
+    await h.svc.verifyTelegram('ada', '42');
+    h.x.postUser = '99';
+    h.x.text = `@FreightChainSol ${airdropCode('ada')}`;
+    await h.svc.verifyX('ada', 'ada', 'post');
+    await h.svc.verifyX('ada', 'ada', 'post');
+    expect(save).toHaveBeenCalledTimes(2);
+  });
   it('builds a stable code and checks age, followers, and the quote', () => {
     expect(airdropCode('ada')).toBe(airdropCode('ada'));
     expect(airdropCode('ada')).toMatch(/^FC-[A-Z2-9]{4}$/);

@@ -21,6 +21,8 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
   - `expiresAt`: `null` (never expires) or a `Date` strictly in the future (`expiresAt > now` and `expiresAt > startsAt`, else `400 bad_promo_code`).
   - **Immutability**: Once created, a `PromoCode` row's `effect` and parameters are immutable except for `redeemed` increments and `disabledAt` (`POST /api/admin/promos/:code/disable`), guaranteeing the redemption audit trail always matches the granted effect.
 
+**Convoy system grant:** `SYSTEM-CONVOY-1H` is reserved from public/admin code creation and is disabled for public redemption. Capped Convoy activation issues its 1h `PromoRideGrant` directly inside the same transaction; ordering consumes it through the normal promo path.
+
 ### 1.2 The Four `PromoEffect` Kinds (`PROMO_KINDS`)
 1. **Free Paid-Tier Shift (`{ kind: 'ride', tier: '1h' | '4h' | '8h' }`) — Active**:
    - Grants one free shift of `tier` (`player.PromoRideGrant` row for `(wallet, code, tier)`), redeemable once per wallet (`perWallet === 1`).

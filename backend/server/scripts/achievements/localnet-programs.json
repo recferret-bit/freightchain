@@ -1,0 +1,25 @@
+{
+  "source": "Solana devnet program dump; read-only snapshot 2026-10-25",
+  "programs": [
+    {
+      "name": "bubblegum",
+      "address": "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY",
+      "sha256": "e054423179cc57281d5c2fc9fdb7e3cfcf2ef70cdbb0c4d36ab52696e51157b1"
+    },
+    {
+      "name": "core",
+      "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d",
+      "sha256": "7e033fd24ce189d9e7dc2600152c6c88ce80d662deeeb7ecc64f0c8437867cf7"
+    },
+    {
+      "name": "compression",
+      "address": "mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW",
+      "sha256": "3586e2852ea61311611e3941bb3af037aaf495b2f38503049b40b89065226fd4"
+    },
+    {
+      "name": "noop",
+      "address": "mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3",
+      "sha256": "10d275edf5a3181eb4ac187c07d37efd0279c7a6fe0cb222b1ac97804bc14b8b"
+    }
+  ]
+}

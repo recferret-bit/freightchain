@@ -3,11 +3,12 @@
 //   node design/achievements/generate.mjs            all SVG + metadata + PNG
 //   node design/achievements/generate.mjs --no-png   SVG + metadata only (fast iteration)
 //   node design/achievements/generate.mjs --only=century-3,free-hard
-import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync, existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+//   node design/achievements/generate.mjs --png-only --only=convoy  preserve the existing SVG and metadata
+import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createServer } from 'node:net';
+import { launch, sleep } from '../../client/tools/cdp.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..');
@@ -22,6 +23,7 @@ for (const d of [SVG_DIR, PNG_DIR, META_DIR]) mkdirSync(d, { recursive: true });
 
 const args = process.argv.slice(2);
 const NO_PNG = args.includes('--no-png');
+const PNG_ONLY = args.includes('--png-only');
 const ONLY = (args.find((a) => a.startsWith('--only=')) ?? '').slice(7).split(',').filter(Boolean);
 
 /* ---------- palette (landing/src/style.css) ---------- */
@@ -311,12 +313,13 @@ const list = ACHIEVEMENTS.filter((a) => a.id !== 'top-20' && (!ONLY.length || ON
 const collection = { id: 'collection', family: 'road', tier: 4, name: 'FC Achievements', desc: 'Freight Chain achievements.' };
 const writes = [];
 for (const a of list) {
+  if (PNG_ONLY) { writes.push(a.id); continue; }
   writeFileSync(join(SVG_DIR, `${a.id}.svg`), badge(a, false));
   writeFileSync(join(SVG_DIR, `${a.id}-locked.svg`), badge(a, true));
   writeFileSync(join(META_DIR, `${a.id}.json`), JSON.stringify(metadata(a), null, 2) + '\n');
   writes.push(a.id);
 }
-if (!ONLY.length) {
+if (!ONLY.length && !PNG_ONLY) {
   writeFileSync(join(OUT, 'collection.svg'), badge(collection, false, { name: 'FC ACHIEVEMENTS', bottom: 'SOULBOUND · cNFT' }));
   writeFileSync(join(META_DIR, 'collection.json'), JSON.stringify({
     name: 'Freight Chain Achievements',
@@ -329,7 +332,7 @@ if (!ONLY.length) {
   }, null, 2) + '\n');
 }
 // contact sheet: a row per family, a column per tier, earned over locked
-if (!ONLY.length) {
+if (!ONLY.length && !PNG_ONLY) {
   const fams = [...new Set(ACHIEVEMENTS.filter((a) => a.id !== 'top-20').map((a) => a.family))];
   const rows = fams.map((f) => `<h2>${esc(FAMILY_NAMES[f])}</h2><div class="row">${ACHIEVEMENTS.filter((a) => a.family === f && a.id !== 'top-20').map((a) => `<figure><img src="../../client/site/img/achievements/${a.id}.svg" alt=""><img src="../../client/site/img/achievements/${a.id}-locked.svg" alt=""><figcaption>${esc(a.id)}</figcaption></figure>`).join('')}</div>`).join('');
   writeFileSync(join(HERE, 'preview.html'), `<!doctype html><meta charset="utf-8"><title>Freight Chain achievements</title><style>body{background:${BG};color:${CREAM};font:14px ${FONT};margin:24px}h2{color:${AMBER};margin:18px 0 6px;letter-spacing:4px;text-transform:uppercase}.row{display:flex;gap:14px}figure{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:6px;width:420px}figure img{width:100%;border-radius:8px}figcaption{grid-column:1/3;color:${DIM}}</style><h1>FREIGHT CHAIN · achievement badges</h1>${rows}`);
@@ -338,24 +341,31 @@ console.log(`${list.length} badge(s): SVG → ${SVG_DIR}, metadata → ${META_DI
 
 if (!NO_PNG) {
   if (!existsSync(CHROME)) { console.error(`Chrome not found at ${CHROME} (set CHROME=…); PNGs skipped`); process.exit(1); }
-  const profile = mkdtempSync(join(tmpdir(), 'fc-ach-'));
-  // headless Chrome sometimes lingers after it has written the screenshot: wait for the file to settle, then stop the process
-  const shot = (svg, png) => new Promise((done, fail) => {
-    rmSync(png, { force: true });
-    const p = spawn(CHROME, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1', `--user-data-dir=${profile}`, '--window-size=1024,1024', `--screenshot=${png}`, `file://${svg}`], { stdio: 'ignore' });
-    let last = -1, settled = 0;
-    const t0 = Date.now();
-    const poll = setInterval(() => {
-      const size = existsSync(png) ? statSync(png).size : 0;
-      settled = size > 0 && size === last ? settled + 1 : 0;
-      last = size;
-      if (settled >= 2 || p.exitCode !== null && size > 0) { clearInterval(poll); p.kill('SIGKILL'); done(); }
-      else if (Date.now() - t0 > 60_000) { clearInterval(poll); p.kill('SIGKILL'); fail(new Error(`no screenshot for ${svg}`)); }
-    }, 400);
+  const port = await new Promise((resolve, reject) => {
+    const server = createServer(); server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => { const port = server.address().port; server.close(() => resolve(port)); });
   });
+  const browser = await launch({ port, shotsDir: 'fc-achievement-render', evalProblems: true });
+  const shot = async (svg, png) => {
+    const url = pathToFileURL(svg).href;
+    await browser.send('Page.navigate', { url });
+    let ready = false;
+    for (let i = 0; i < 100; i++) {
+      ready = await browser.ev(`location.href === ${JSON.stringify(url)} && document.readyState === 'complete' && document.documentElement.tagName === 'svg'`);
+      if (ready) break;
+      await sleep(100);
+    }
+    if (!ready) throw new Error(`SVG did not load: ${svg}`);
+    await browser.ev('document.fonts.ready.then(() => true)');
+    const image = await browser.send('Page.captureScreenshot', { format: 'png' });
+    if (!image.data) throw new Error(`no screenshot for ${svg}`);
+    writeFileSync(png, Buffer.from(image.data, 'base64'));
+  };
   try {
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 1024, height: 1024, deviceScaleFactor: 1, mobile: false });
     for (const id of writes) await shot(join(SVG_DIR, `${id}.svg`), join(PNG_DIR, `${id}.png`));
     if (!ONLY.length) await shot(join(OUT, 'collection.svg'), join(PNG_DIR, 'collection.png'));
-  } finally { rmSync(profile, { recursive: true, force: true }); }
+    if (browser.filt().length) throw new Error(browser.filt().join(' | '));
+  } finally { await browser.close(); }
   console.log(`PNG → ${PNG_DIR}`);
 }

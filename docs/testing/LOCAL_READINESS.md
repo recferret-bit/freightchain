@@ -43,7 +43,7 @@ The full block-1 run skipped `RPL-T-70..90`: the runner does not configure its r
 
 The aggregate's 27 other Chrome scripts reported success, including `sim` with zero captured errors. That original sim run did not assert its initial engine/movement outcomes; its logged engine-off/neutral/zero-speed state is a coverage failure, not proof of working controls. Corrected road and controls runs are recorded separately. A fresh, unchanged `test:ci:full` invocation is still required for the final local gate.
 
-Screenshots inspected from the OS temporary directory: localnet ticket purchase/refund, guest completion, model viewer camera, editor published revision, desktop cockpit and admin phone layout. The phone audit text overflows horizontally; this remains an open UI issue. Inspecting these examples does not close the full visual matrix.
+Screenshots inspected from the OS temporary directory: localnet ticket purchase/refund, guest completion, model viewer camera, editor published revision, desktop cockpit and admin phone layout. The initial phone alert banner overflowed horizontally; the follow-up below fixes and verifies it. Inspecting these examples does not close the full visual matrix.
 
 ## Fixes made during baseline
 
@@ -64,6 +64,16 @@ The real six-service production-mode Docker smoke passed all **14 checks**: migr
 Repeat with `npm run test:production:local` (builds current images; included in `test:ci:full`). It uses generated credentials, a disposable database and no external runtime network. RPC transactions, real Telegram/AI delivery and the complete final local gate remain separate open checks. Real production env files were not changed.
 
 The corrected whitepaper release-config paragraph passed real Chrome. Its first run exposed a fixed-400-ms lazy-image wait; the harness now scrolls each image into view and waits for actual dimensions. The rerun passed, and the diagram screenshot was inspected. Logs: `/private/tmp/fc-production-whitepaper-chrome.log` (pass), `fc-production-whitepaper-chrome-initial.log` (initial failure).
+
+## Durable social and replay follow-up — 25 October 2026
+
+Convoy and campaign runtime repositories now use PostgreSQL. Tests prove second-connection persistence, transaction rollback, concurrent invite/global promo caps, unique Telegram/X bindings and idempotent 48-hour campaign claims. Convoy activation issues a usable 1h promo grant instead of incrementing the retired free-ride counter. Its reserved code cannot be created or redeemed publicly. Repeat social verification cannot repeatedly increase trust. Real social-provider verification, full target trust rules and chain reward settlement remain open.
+
+The complete PostgreSQL run passed **59 files / 626 tests** (`/private/tmp/fc-launch-integration.log`). Focused final regressions passed **5 files / 42 tests** (`/private/tmp/fc-launch-focused.log`). The first root check exposed a stale migration model inventory; that inventory was corrected. The aggregate rerun passed the root checks, PostgreSQL, security, block 1, block 2, block 3, Rust and production startup stages, and is still running the chain/Chrome stages (`/private/tmp/fc-launch-full.log`). Its first attempt found a block-1 caller bypassing replay database isolation; that caller was fixed. These results do not close the complete local gate.
+
+Real Chrome passed eligible replay playback/control/chat and phone checks (`/private/tmp/fc-launch-replay-controls.log`), the corrected bounded phone admin alert banner (`/private/tmp/fc-launch-admin.log`), and a genuinely signed local-validator replay tip (`/private/tmp/fc-launch-replay-tips.log`). The 0.01 SOL tip credited 9,500,000 lamports to the driver and 500,000 to treasury; duplicate confirmation changed neither balance. The tip fixture is a historical paid replay, not evidence of a completed verified ride. Phone replay/admin and paid-tip screenshots were inspected. Both new replay suites are included in the default **30-suite** Chrome runner.
+
+All 44 earnable badges now have valid 1024×1024 PNGs and metadata templates. Offline `upload-irys.mjs --prepare` confirms 31 published URIs and 13 missing; upload preserves existing URIs and refuses mixed networks. No metadata was published and no remote chain state changed. The new `npm run test:nft:localnet` subsequently passed real Bubblegum/MPL-Core minting and PostgreSQL worker checks, with pinned public program hashes, valid on-chain leaf proof, exact collection-freeze refusal and a successful unfrozen transfer control. It also proves pre-broadcast claim handling, 48h delay, rejected-completion exclusion, durable receipt recovery and duplicate protection. Evidence: `/private/tmp/fc-launch-nft-localnet.log` and the printed `fc-nft-local-*/result.json`. The read-only program download was the only remote chain access; no remote transaction was sent.
 
 ## Feature acceptance matrix
 
@@ -97,7 +107,7 @@ Commands below are reproducible entrypoints; their presence is not a claim that 
 | Promo create/redeem/caps/expiry | `e2e promo wallet wallet-split`; server abuse scenarios | Partial: signed-admin creation/disable and browser redemption passed; full caps/expiry/abuse acceptance remains open |
 | Transfer-mode payments | Server payment scenarios; `e2e lobby` | Partial: separate real local-chain payment and browser evidence from injected chain responses |
 | Program ticket buy/confirm/reconcile | `npm run test:localnet`; `e2e-tickets.mjs`; block 2 | Partial: local chain purchases, confirm and webhook passed with exact balances; standalone reconcile script is outside full runner |
-| Solana Pay ride/order/tip | Server Solana Pay scenarios; `e2e-solana-pay.mjs` | Untested signed-tip Chrome script is outside full runner and still assumes a running watchable ride |
+| Solana Pay ride/order/tip | Server Solana Pay scenarios; `e2e-solana-pay.mjs` | Passed signed local-validator replay-tip Chrome journey, exact 95/5 balances, duplicate confirmation and both histories; included as `e2e replay-tips` |
 | Blinks discovery/buttons/wallet transaction | `e2e blinks`; server Actions scenarios | Partial: Dialect discovery/cards/buttons and transaction construction passed; executing that returned transaction in the wallet remains separate |
 | Pool lifecycle and all account checks | `npm run program:test`, `npm run test:localnet` | Passed current pool binary's 30 instructions and all 50 errors with LiteSVM; pinned-artifact mismatch remains open |
 | Target operator-funded activation and schedule | `SPC-05.5`, program/server schedule tests | Incomplete: Rust still requires min tickets and opens in `STATUS_OPEN`; comments do not implement v6 |
@@ -109,18 +119,18 @@ Commands below are reproducible entrypoints; their presence is not a claim that 
 | TEN4 referral/airdrop/treasury/team instructions | Rust HONK tests; built HONK IDL | Partial: 13 HONK instructions exist; several have no JS transaction encoder or local-validator app journey |
 | Garage part purchase, freeze and loadout | HONK suite; `e2e honk-garage lobby`; Rust `buy_part` | Partial: real-chain part mint/freeze and ledger-mode Chrome burn/equip passed separately; one signed-chain browser loadout journey is still required |
 | All achievement unlocks and progress | Server achievements tests; `e2e achievements` | Partial: browser suite exercises selected progress, not every tier |
-| cNFT metadata, delayed mint, retry and transfer refusal | Server mint tests; achievement scripts | Incomplete: 13/44 metadata URIs missing; no local Bubblegum/MPL-Core validator harness found |
+| cNFT metadata, delayed mint, retry and transfer refusal | Server mint tests; achievement scripts | Incomplete: all 44 badge assets validate offline, but 13/44 URIs still need first publication; real local Bubblegum/MPL-Core adapter/worker, proof, frozen refusal and retry/idempotency checks now pass; wallet display/DAS remains a provider check |
 | Legacy referral bind/qualification/gifts | Server referral scenarios; `e2e referral` | Passed verified MEDIUM finish, qualification, 2/3 credit gifts and the lobby state |
-| Convoy state/limits/leaderboard/privacy | Server Convoy tests and block 1 | Incomplete: production binding still uses process-local repository |
-| Airdrop/social binding/holds/claim | Server airdrop tests and block 1 | Incomplete: process-local storage and unconfigured real adapters; campaign-attempt wiring needs checking |
+| Convoy state/limits/leaderboard/privacy | Server Convoy tests and block 1 | Partial: PostgreSQL persistence, rollback, concurrent limits, privacy and usable 1h promo gift now pass; complete UI/reward-chain integration remains open |
+| Airdrop/social binding/holds/claim | Server airdrop tests and block 1 | Partial: PostgreSQL persistence, unique social bindings and 48h concurrent claim tests pass; real provider adapters and campaign-attempt wiring remain open |
 | Live board and online presence | `e2e board close close-split`; server live scenarios | Partial: visitor counts/leave/sweeper and hidden training rides passed; public eligible replay cards need a positive fixture |
 | Replay visibility, public samples and receipts | `e2e watch replay`; server replay/receipt scenarios | Partial: Chrome passed running/training refusals; accepted paid-replay visibility, receipt and payout-lock journey needs explicit evidence |
-| Replay playback/camera/HUD/share | `e2e replay`; `e2e-replay-controls.mjs` | Untested positive Chrome journey: the default replay suite currently exercises refusals only; add an eligible paid replay and phone viewport |
-| Replay chat, moderation and retention | Server live/chat scenarios; `e2e flags` | Partial: old `e2e-live.mjs` assumes running watch; actual replay browser checks needed |
-| Signed replay tips and donation history | Server donation scenarios; signed Solana Pay script | Partial: prove real 95/5 transfers and history through UI; mock tip success is insufficient |
+| Replay playback/camera/HUD/share | `e2e replay`; `e2e-replay-controls.mjs` | Passed eligible paid-replay Chrome fixture: real-time playback, seek, speed/camera/keyboard controls, public input redaction and phone viewport; included as `e2e replay-controls` |
+| Replay chat, moderation and retention | Server live/chat scenarios; `e2e flags` | Partial: replay-controls now proves browser chat and persisted replay timestamp; complete moderation/retention acceptance remains open |
+| Signed replay tips and donation history | Server donation scenarios; signed Solana Pay script | Passed signed local-validator Chrome tip: exact 95/5 transfer, confirmed signature, duplicate protection and sender/driver API histories; real wallet extension remains manual |
 | Pledges on/off and settle/refund | Localnet autonomous day; server pledge scenarios | Partial: signed-chain settle/refund and server scenarios passed; complete optional-mode browser and off-state acceptance separately |
 | Phone OS, apps, GULP, PIKE and phone-sms | Client phone tests; server minigames; `block3` | Partial: browser app controls/challenge renderer are not covered by block3 alone |
-| Admin roles/host/signatures/revocation | Security gate; `e2e admin`; server scenarios | Partial: security, signed actions, host/allowlist and immediate revocation passed; phone screenshot has horizontally overflowing audit wallet text |
+| Admin roles/host/signatures/revocation | Security gate; `e2e admin`; server scenarios | Partial: security, signed actions, host/allowlist and immediate revocation passed; phone alert overflow fixed and Chrome width/height assertions passed |
 | Admin audit/alerts/dual approval | Fixed security gate; server admin services | Partial: append-only/outbox passed; configured delivery and dual workflow need evidence |
 | Entity viewer, catalogue and bundle | `e2e viewer`; server entity tests | Passed all 144 model selections, camera interactions and expected signed-out editor refusal |
 | Editor edit/revision/publish/AI queue/MCP | `e2e editor`, server and MCP tests | Partial: real MCP, dedicated worker, queue/cancel, revisions, signed publish and refusal paths passed; scripted LLM does not prove real provider delivery |
@@ -134,7 +144,7 @@ Route inventory: [178-route manifest](../../backend/server/test/contract/routes.
 
 ## Next work after baseline
 
-1. Continue plan steps 3–5 (contract alignment, persistence and NFT integration), then complete the RPC-enabled production-mode rehearsal/provider checks. Core production startup/recovery passed; narrow-screen admin overflow and remaining controls assertions are still open.
+1. Continue plan steps 3–5 (contract alignment, persistence and NFT integration), then complete the RPC-enabled production-mode rehearsal/provider checks. Core production startup/recovery and the narrow-screen admin fix passed; remaining controls assertions are open.
 2. Execute and repair the remaining omitted Chrome harnesses, then wire them into a repeatable local gate. Guest, weekly, referral, viewer and sim are now wired in. Replace stale running-watch fixtures with permitted finished replays; a refusal test alone does not prove playback/tips/chat work. Configure block 1's skipped signed-tip RPC fixture and replace block 2's zero-balance TEN4 comparison with actual mint evidence.
 3. Complete real persistence, contract alignment and the missing token/NFT paths, with the required unit/PostgreSQL/HTTP/validator tests and product-doc updates.
 4. Run the normal-duration integrated ride and finish the remaining controls, optional modes, manual checks and provider checks. The local readiness claim remains open while any applicable cell lacks evidence.

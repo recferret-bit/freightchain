@@ -1,6 +1,7 @@
 /* Admin page – on top of lobby.css (same tokens). Dense tables, a log view, verdict badges. */
 footer{max-width:1180px;margin:0 auto;padding:0 16px 30px}
 main{max-width:1180px}
+#alert-banner{overflow-wrap:anywhere;max-height:220px;overflow-y:auto}
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
 .filters input,.filters select,textarea{font:inherit;font-size:13px;background:#0008;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 9px}
 .filters input{min-width:240px;flex:1}

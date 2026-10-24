@@ -1,3 +1,4 @@
+import { convoyConcurrencyScenarios } from '../support/convoy-concurrency.js';
 import { CommandBus } from '@nestjs/cqrs';
 import { ReconcileStatsCommand } from '../../src/application/use-cases/stats/reconcile-stats/reconcile-stats.command.js';
 import { SweepStaleRidesCommand } from '../../src/application/use-cases/rides/sweep-stale-rides/sweep-stale-rides.command.js';
@@ -798,5 +799,7 @@ describe('concurrency (PostgreSQL)', () => {
       prisma = harness.app.get(PrismaService, { strict: false });
     }
   });
+  convoyConcurrencyScenarios(() => harness);
+
 });
 

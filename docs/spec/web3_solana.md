@@ -149,8 +149,18 @@ Detailed pool rules live in [Pool & Escrow Specification](./pool.md). The Solana
 - **`SOL-T-14`**: `MintAchievementsHandler` re-check spec: when the ride that triggered an unlock is marked `rejected` before minting, processing the outbox marks the `achievement.AchievementMint` row `status = 'skipped'` (`revoked_by_verdict`) and never calls the minter adapter.
 - **`SOL-T-15`**: `MintAchievementsHandler` mint & retry spec: successful mint transitions `planned → sent → minted` with `txSignature`, `leafIndex`, and `assetId`; adapter failure records `status = 'failed'` and `error`, and `retry: true` re-attempts failed rows.
 
+### Metadata release preparation
+
+`node backend/server/scripts/achievements/upload-irys.mjs --prepare` is offline: it checks all 44 earnable metadata templates and 1024px PNGs, then lists missing published URIs without reading a key or contacting a provider. All 13 previously missing PNGs are now present. Publishing still requires the documented explicit upload command; existing leaf/collection URIs are frozen and never replaced by a rerun. Another network requires a separate reviewed map. `node frontend/design/achievements/generate.mjs --png-only --only=<ids>` renders existing artwork through Chrome without rewriting SVGs or metadata.
+
 ### 7.2 On-Chain Validator & E2E Tests (`programs/`, `e2e/`)
 - **`SOL-T-10`**: Anchor LiteSVM & validator suite (`programs/freightchain_pools/tests/` — 163 tests — & `npm run test:e2e:block2`): verifies `initialize`, `set_pool_rules`, `open_pool_from_series`, `buy_ticket`, and `paid_tickets_enabled` kill-switch.
 - **`SOL-T-11`**: Pool indexer & reconciliation E2E (`e2e/flows/07-pool-lifecycle-block1.e2e.mjs` & `09-chain-escrow-block2.e2e.mjs`): verifies ticket mirroring from on-chain events and sponsor pledge creation/refund.
 - **`SOL-T-12`**: Merkle payout & cold-admin veto E2E: verifies `seal_road`, `attest_ride`, `commit_winners_root`, `veto_winners_root` blocking claims during `review_window_s`, and `claim` succeeding with a valid Merkle proof after the lock window.
 - **`SOL-T-16`**: Architecture & repo hygiene check confirming no script or test mutates `~/.config/solana/id.json`.
+
+### Local cNFT acceptance (25 October 2026)
+
+`npm run test:nft:localnet` executes the real Bubblegum mint adapter and PostgreSQL mint worker on a disposable validator with hash-pinned public devnet Bubblegum, MPL Core, MPL compression and Noop programs. It proves the minted owner and Merkle leaf, `CollectionIsFrozen` transfer refusal, a successful unfrozen transfer control, pre-broadcast signature persistence, failed-claim non-broadcast, 48-hour delay, rejected-completion exclusion, recovery from receipt lookup failure and one mint after repeated worker passes. These are chain transactions; the ride facts are explicit database fixtures, not a full verified driving journey.
+
+The devnet `smoke-mint.mjs` now requires published metadata, checks the DAS owner/tree/index and verifies the minted leaf on chain before attempting transfer. Missing DAS, a successful transfer, or an unrelated transfer error fails the command. It was not executed remotely in the local readiness run. Wallet display/DAS indexing and the 13 unpublished metadata URIs remain release checks.

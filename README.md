@@ -10,6 +10,8 @@ Free training is unlimited with no wallet required (`play.html` starts the real 
 
 <img src="frontend/landing/public/media/day.webp" alt="Freight Chain cab in sixth gear on a desert highway, live CB up and the on-chain pool strip showing the road seal" width="780">
 
+> Achievement cNFT local acceptance: `npm run test:nft:localnet` (also in `test:ci:full`), using pinned public Bubblegum/MPL-Core binaries, a disposable validator and PostgreSQL. Details: [Web3 checks](docs/spec/web3_solana.md).
+
 ## Traction
 
 <!-- traction:start -->
@@ -320,7 +322,7 @@ Skills live in `.claude/skills/<name>/SKILL.md` (`game-audio` is also linked in 
 | `ride-audit` | Re-verify any ride from local or production DB (read-only): rebuild road/holes, re-hash batches, re-run verdict | `bash .claude/skills/ride-audit/run.sh <ride id>` · `… <ride id> --prod` · `… --latest 20 --prod` |
 | `ride-investigate` | Inspect a single player or ride on production across DB rows and matching logs | `npm run ops -- query ride <id>` · `npm run ops -- query wallet <address>` |
 | `ride-review` | Audit all `UNDER REVIEW` paid rides per pool with rank, distance, verdict reasons, and `ride-audit` (read-only) | `bash .claude/skills/ride-review/run.sh` · `… --pool N` · `… --pool N --prod` |
-| `run-tests` | Run local verification: `check`, PostgreSQL integration, and 28 real-Chrome suites, including guest, weekly grant, referral, viewer and sim controls | `npm run check`, then `npm run server:integration`, then `bash .claude/skills/run-tests/e2e.sh` |
+| `run-tests` | Run local verification: `check`, PostgreSQL integration, and 30 real-Chrome suites, including guest, weekly grant, referral, viewer, sim controls, replay controls/chat and signed local-chain replay tips | `npm run check`, then `npm run server:integration`, then `bash .claude/skills/run-tests/e2e.sh` |
 | `admin-coverage` | Verify that every admin API route is guarded and wired to the admin UI with no dead calls | `node .claude/skills/admin-coverage/check.mjs` |
 | `stats-reconcile` | Recompute and verify (or `--fix` locally) rider and global stats from ride records | `bash .claude/skills/stats-reconcile/run.sh [--fix]` · `--prod` |
 | `test-census` | Count tests by pyramid layer, grade feature/flow/route coverage, and update the Tests block and `docs/testing/test-coverage.md` | `npm run test:census` · `npm run test:census -- features` · `npm run test:census -- coverage` · `npm run test:census -- run` · `npm run test:census -- readme` |

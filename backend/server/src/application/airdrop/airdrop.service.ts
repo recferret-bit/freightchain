@@ -61,14 +61,14 @@ export class AirdropService {
   async verifyTelegram(wallet: string, telegramUserId: string, turnstileToken?: string): Promise<AirdropStatusDto> {
     return this.tx.run(async (tx) => {
       await this.lock(wallet, tx);
-      await this.requireRide(wallet, tx);
+      const row = await this.requireRide(wallet, tx);
       await this.requireTurnstile(turnstileToken);
       const member = await this.telegram.getChatMember({ telegramUserId, chatId: OFFICIAL_TELEGRAM_CHAT_ID });
       if (!telegramMember(member.status)) throw new BadRequestError('telegram membership was not found', 'telegram_not_member');
       this.assertSocial(await this.repo.claimTelegram(wallet, telegramUserId, tx));
       const saved = await this.must(wallet, tx);
       saved.telegramMember = true;
-      await this.noteSocial(wallet, tx);
+      if (!row.telegramUserId) await this.noteSocial(wallet, tx);
       if (this.turnstileEnabled) saved.turnstileOk = true;
       await this.repo.save(saved, tx);
       return this.view(wallet, saved);
@@ -89,7 +89,7 @@ export class AirdropService {
       const post = await this.x.quote(postId);
       if (!post || post.userId !== profile.userId || !xQuoteOk(post.text, row.code)) throw new BadRequestError('quote is missing the verification code', 'x_quote_missing');
       this.assertSocial(await this.repo.claimX(wallet, profile.userId, tx));
-      await this.noteSocial(wallet, tx);
+      if (!row.xUserId) await this.noteSocial(wallet, tx);
       const saved = await this.must(wallet, tx);
       saved.xHandle = profile.handle;
       saved.xAgeOk = true;

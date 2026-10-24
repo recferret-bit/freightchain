@@ -1,4 +1,5 @@
 // Uploads the achievement art + NFT metadata to Irys (Arweave) and writes server/src/domain/achievements/nft-metadata-uris.ts.
+//   node scripts/achievements/upload-irys.mjs --prepare  offline asset validation and missing-id manifest (no key or RPC)
 //   node scripts/achievements/upload-irys.mjs --keypair <file> --cluster devnet --rpc <url>          dry run: files, bytes, price
 //   node scripts/achievements/upload-irys.mjs --keypair <file> --cluster devnet --rpc <url> --yes    upload (funds the Irys balance if needed)
 // mainnet additionally needs --i-know-mainnet. --keypair is a Solana keypair file (JSON byte array) or a file holding a base58 secret; its contents are never printed.
@@ -6,10 +7,13 @@
 // Free tier: Irys charges nothing for a file under 100 KiB – our 1024 px PNGs are ~0.5 MB each, the metadata JSON is tiny, so the images are paid (fractions of a cent each).
 // Devnet Irys data is deleted after ~60 days and the devnet gateway differs – a devnet run is for rehearsal, never for URIs that mainnet mints will carry.
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import bs58 from 'bs58';
+import { ACHIEVEMENTS } from '../../src/domain/achievements/achievements.ts';
+import { NFT_METADATA_URIS, NFT_COLLECTION_URI } from '../../src/domain/achievements/nft-metadata-uris.ts';
+import { metadataRelease, mergeMetadataUris } from './metadata-release.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../../..');
@@ -19,9 +23,10 @@ const TARGET = join(ROOT, 'backend/server/src/domain/achievements/nft-metadata-u
 
 const flag = (name) => { const i = process.argv.indexOf(`--${name}`); return i < 0 ? null : (process.argv[i + 1]?.startsWith('--') ? true : process.argv[i + 1] ?? true); };
 const keypairPath = flag('keypair'), cluster = flag('cluster') ?? 'devnet', rpc = flag('rpc'), yes = flag('yes') === true;
-if (!keypairPath || typeof keypairPath !== 'string') { console.error('--keypair <file> is required'); process.exit(2); }
+const prepare = flag('prepare') === true;
+if (!prepare && (!keypairPath || typeof keypairPath !== 'string')) { console.error('--keypair <file> is required'); process.exit(2); }
 if (!['devnet', 'mainnet'].includes(cluster)) { console.error('--cluster devnet|mainnet'); process.exit(2); }
-if (cluster === 'devnet' && !rpc) { console.error('--rpc <url> is required on devnet (Irys needs the devnet RPC)'); process.exit(2); }
+if (!prepare && cluster === 'devnet' && !rpc) { console.error('--rpc <url> is required on devnet (Irys needs the devnet RPC)'); process.exit(2); }
 if (cluster === 'mainnet' && yes && flag('i-know-mainnet') !== true) { console.error('mainnet uploads spend real SOL: add --i-know-mainnet'); process.exit(2); }
 
 const GATEWAY = cluster === 'devnet' ? 'https://devnet.irys.xyz' : 'https://gateway.irys.xyz'; // devnet gateway: per Irys docs – check before relying on it
@@ -35,13 +40,18 @@ const secret = () => {
   return raw.startsWith('[') ? Uint8Array.from(JSON.parse(raw)) : bs58.decode(raw);
 };
 
-// ---- what goes up: images first, then each metadata JSON pointing at its image
-const ids = readdirSync(join(OUT, 'metadata')).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5)).sort();
-const images = ids.map((id) => { const file = join(OUT, 'png', `${id}.png`); if (!existsSync(file)) throw new Error(`missing ${file} – run design/achievements/generate.mjs`); const data = readFileSync(file); return { id, data, hash: sha(data) }; });
+// Validate the complete catalogue before any key read or network call; publish missing ids only.
+const release = metadataRelease({ catalogue: ACHIEVEMENTS, existing: NFT_METADATA_URIS, collectionUri: NFT_COLLECTION_URI, out: OUT, cluster });
+if (prepare) {
+  console.log(JSON.stringify({ earnable: release.earnable, published: release.published, missing: release.missing.map(a => ({ id: a.id, pngBytes: a.data.length, sha256: a.hash })), collectionPublished: !!NFT_COLLECTION_URI }, null, 2));
+  process.exit(0);
+}
+const images = release.missing;
+if (!images.length) { console.log('all metadata URIs are already published; nothing to change'); process.exit(0); }
 const pending = images.filter((i) => !cache[key(cluster, i.hash)]);
-const metaBytes = ids.length * 1200; // an estimate: the real bytes are known once the image ids are
+const metaBytes = images.length * 1200; // an estimate: the real bytes are known once the image ids are
 const bytes = pending.reduce((n, i) => n + i.data.length, 0) + metaBytes;
-console.log(`${ids.length} achievements (+ collection): ${images.length - pending.length} image(s) already uploaded, ${pending.length} to upload (${(bytes / 1024).toFixed(0)} KiB incl. metadata), cluster ${cluster}`);
+console.log(`${images.length} missing metadata entries: ${images.length - pending.length} image(s) already uploaded, ${pending.length} to upload (${(bytes / 1024).toFixed(0)} KiB incl. metadata), cluster ${cluster}`);
 
 const { Uploader } = await import('@irys/upload');
 const { Solana } = await import('@irys/upload-solana');
@@ -70,7 +80,7 @@ const upload = async (data, type, hash) => {
 };
 
 const uris = {};
-let collectionUri = '';
+let collectionUri = NFT_COLLECTION_URI;
 for (const img of images) {
   const imageId = await upload(img.data, 'image/png', img.hash);
   const json = readFileSync(join(OUT, 'metadata', `${img.id}.json`), 'utf8').replaceAll('__IMAGE__', `${GATEWAY}/${imageId}`);
@@ -82,7 +92,7 @@ for (const img of images) {
   console.log(`${img.id}: ${uri}`);
 }
 
-const body = Object.entries(uris).map(([id, uri]) => `  '${id}': '${uri}',`).join('\n');
+const body = Object.entries(mergeMetadataUris(NFT_METADATA_URIS, uris)).map(([id, uri]) => `  '${id}': '${uri}',`).join('\n');
 writeFileSync(TARGET, `/* GENERATED by server/scripts/achievements/upload-irys.mjs (${cluster}) – the Arweave / Irys URI of each achievement's NFT metadata (the collection's too). The URI is baked into
    every leaf minted, so once a mint went out an entry is FROZEN. Empty until the metadata is uploaded: the mint job leaves an achievement without a URI queued. */
 export const NFT_METADATA_URIS: Readonly<Record<string, string>> = {

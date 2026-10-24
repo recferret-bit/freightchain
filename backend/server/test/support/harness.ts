@@ -92,6 +92,10 @@ import { RideEventRepositoryPort } from '../../src/application/ports/live/ride-e
 import { WeeklyTicketRepositoryPort } from '../../src/application/ports/prize/weekly-ticket.repository.port.js';
 import { MemoryWeeklyTicketRepository } from './in-memory/memory-weekly-ticket.js';
 import { HonkReleaseScheduler } from '../../src/infrastructure/scheduling/honk-release.scheduler.js';
+import { ConvoyRepositoryPort } from '../../src/application/referral/convoy.repository.port.js';
+import { AirdropRepositoryPort } from '../../src/application/airdrop/airdrop.repository.port.js';
+import { MemoryConvoyRepository } from '../../src/infrastructure/social/memory-convoy.repository.js';
+import { MemoryAirdropRepository } from '../../src/infrastructure/social/memory-airdrop.repository.js';
 
 /** the real entropy, except that a test can fix the NEXT ride seed (a seed decides the route and the start hour) */
 class TestEntropy extends NodeEntropy {
@@ -153,6 +157,9 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const poolChain = new FakePoolChain();
   const payoutChain = new FakePoolPayoutChain(poolChain);
   const memory = new MemoryDb();
+  const convoy = new MemoryConvoyRepository();
+  convoy.columnPresent = true;
+  const airdrop = new MemoryAirdropRepository();
   const nameService = new StubNameServiceAdapter();
   const replayQueue = new MemoryReplayQueueAdapter();
   let server: (() => Server) | null = null;
@@ -164,6 +171,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
     builder = builder
       .overrideProvider(PrismaService).useValue({ $connect: async () => undefined, $disconnect: async () => undefined, $queryRaw: async () => [], $executeRaw: async () => 0 })
       .overrideProvider(PlayerRepositoryPort).useValue(new MemoryPlayerRepository(memory))
+      .overrideProvider(ConvoyRepositoryPort).useValue(convoy)
+      .overrideProvider(AirdropRepositoryPort).useValue(airdrop)
       .overrideProvider(ChallengeRepositoryPort).useValue(new MemoryChallengeRepository(memory))
       .overrideProvider(RideRepositoryPort).useValue(new MemoryRideRepository(memory))
       .overrideProvider(DailySeedRepositoryPort).useValue(new MemoryDailySeedRepository(memory))
@@ -223,6 +232,8 @@ export async function createHarness(persistence: Persistence, env: Record<string
       poolChain.reset();
       payoutChain.reset();
       memory.reset();
+      convoy.clear();
+      airdrop.clear();
       replayQueue.clear();
       nameService.reset();
       mcp.calls.length = 0; mcp.specCalls = 0;

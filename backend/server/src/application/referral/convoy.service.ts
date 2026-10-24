@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { grantReleasable } from '../../domain/anticheat/trust-score.js';
 import type { Player } from '../../domain/players/player.entity.js';
 import { RideStatus } from '../../domain/rides/ride-status.js';
+import { CONVOY_PROMO_CODE, PromoCode } from '../../domain/economy/promo-code.entity.js';
+import { PromoRepositoryPort } from '../ports/economy/promo.repository.port.js';
 import { ConflictError, NotFoundError } from '../../domain/shared/errors.js';
 import { utcDay } from '../../domain/shared/time.js';
 import { VerdictStatus } from '../../domain/verdict/verdict.dto.js';
@@ -87,6 +89,7 @@ export class ConvoyService {
     private readonly tx: TransactionPort,
     private readonly clock: ClockPort,
     private readonly names: NameServicePort,
+    private readonly promos: PromoRepositoryPort,
   ) {}
 
   async bind(referee: string, referrer: string): Promise<ConvoyBindDto> {
@@ -122,6 +125,7 @@ export class ConvoyService {
       if (!verified) return this.dropIfPendingExpired(ride.wallet, now, tx);
       await this.repo.recordRide({ rideId: ride.rideId, wallet: ride.wallet, at: now, trip: ride.trip, counted: isMediumOrHardTrip(ride.trip) }, tx);
       const row = await this.repo.getByReferee(ride.wallet, tx);
+      if (row?.referrer !== preview?.referrer) throw new ConflictError('referrer changed concurrently; retry progress', 'convoy_changed');
       if (!row) return { status: 'none', activated: false, expired: false, deletedPending: false, gift: idleGift(), milestones: { m1: false, m2: false } };
       if (row.status === 'pending') return this.activateOrDrop(row, now, isMediumOrHardTrip(ride.trip), tx);
       if (row.status === 'active' || row.status === 'qualified') return this.advance(row, now, tx);
@@ -138,12 +142,12 @@ export class ConvoyService {
       let deletedPending = 0;
       for (const row of pending) {
         const fresh = await this.repo.getByReferee(row.referee, tx);
-        if (fresh?.status === 'pending' && pendingExpired(fresh.expiresAt, now) && await this.repo.deleteReferee(fresh.referee, tx)) deletedPending += 1;
+        if (fresh?.referrer === row.referrer && fresh.status === 'pending' && pendingExpired(fresh.expiresAt, now) && await this.repo.deleteReferee(fresh.referee, tx)) deletedPending += 1;
       }
       let expiredActive = 0;
       for (const row of active) {
         const fresh = await this.repo.getByReferee(row.referee, tx);
-        if (fresh?.status !== 'active' || fresh.m1At || !fresh.qualifyExpiresAt || !pendingExpired(fresh.qualifyExpiresAt, now)) continue;
+        if (fresh?.referrer !== row.referrer || fresh.status !== 'active' || fresh.m1At || !fresh.qualifyExpiresAt || !pendingExpired(fresh.qualifyExpiresAt, now)) continue;
         fresh.status = 'expired';
         await this.repo.save(fresh, tx);
         expiredActive += 1;
@@ -241,6 +245,7 @@ export class ConvoyService {
   }
 
   private async grantPromo(row: ConvoyRow, now: Date, tx: TransactionHandle): Promise<ConvoyGiftDto> {
+    await this.repo.lockPromoBudget(tx);
     const rows = await this.repo.ledger(tx);
     const day = utcDay(now);
     const week = isoWeekKey(now);
@@ -254,10 +259,15 @@ export class ConvoyService {
     if (reason !== 'ok') return { granted: false, reason, referrerRideGift: 0 };
     const inserted = await this.repo.insertLedger(this.ledgerRow(`convoy:promo:${row.referee}`, 'promo_1h', row.referee, 1, 'ride', row, now), tx);
     if (!inserted) return { granted: false, reason: 'lifetime', referrerRideGift: 0 };
-    const player = await this.players.findByWalletForUpdate(row.referee, tx);
-    if (!player) throw new NotFoundError('player not found', 'player_not_found');
-    player.grantFreeRides(1);
-    await this.players.save(player, tx);
+    // Disabled for public redemption; only this capped, player-locked activation issues its grant.
+    const code = CONVOY_PROMO_CODE;
+    const existing = await this.promos.findByCode(code, tx);
+    if (existing && (existing.effect.kind !== 'ride' || existing.effect.tier !== '1h' || existing.snapshot().note !== 'internal:convoy')) throw new ConflictError('reserved Convoy grant code is occupied', 'convoy_grant_conflict');
+    if (!existing) {
+      await this.promos.insert(PromoCode.restore({ code, effect: { kind: 'ride', tier: '1h' }, description: 'Convoy activation', note: 'internal:convoy', perWallet: 1, maxRedemptions: null, startsAt: now, expiresAt: null, createdAt: now, redeemed: 0, disabledAt: now }), tx);
+    }
+    await this.promos.disable(code, now, tx);
+    await this.promos.insertGrant({ code, wallet: row.referee, n: 1, tier: '1h', rideId: null, createdAt: now }, tx);
     return { granted: true, reason: 'ok', referrerRideGift: 0 };
   }
 

@@ -1,62 +1,23 @@
 // Lane 4: a finished 1h recording in headless Chrome. Clock, camera, and seek are driven on that ride.
-// Removed controls C9, C26, C27, and C32 stay absent. Chrome missing is logged; a started page that lacks a control fails.
-import { spawn } from 'node:child_process';
+// Runs only through the isolated local e2e runner. A missing Chrome or control fails.
+import { randomUUID, createHash } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
+import { PrismaClient } from '@prisma/client';
 import { readFileSync } from 'node:fs';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
 
-const ROOT = new URL('../../..', import.meta.url);
-const PORT = process.env.PORT || '3104';
-const BASE = process.env.BASE || `http://127.0.0.1:${PORT}`;
+const BASE = process.env.BASE;
+const database = process.env.DATABASE_URL;
+if (!BASE || !database || !['localhost', '127.0.0.1'].includes(new URL(BASE).hostname) || !['localhost', '127.0.0.1'].includes(new URL(database).hostname) || !/^\/freightchain_e2e_\d+$/.test(new URL(database).pathname)) throw new Error('use e2e.sh replay-controls with its isolated local database');
+let chrome;
 const fails = [];
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
 const panel = readFileSync(new URL('../../../frontend/client/js/ui/watch-panel.js', import.meta.url), 'utf8');
 for (const id of ['w-live', 'w-honk-day', 'w-honk-night', 'w-honk-snow', 'w-honk-clear', 'w-pledges', 'pledgeForm']) check(`source has no ${id}`, !panel.includes(id));
 const actions = readFileSync(new URL('../../../frontend/client/js/ui/watch-actions.js', import.meta.url), 'utf8');
 check('C30 #w-qr is built for a chain tip', actions.includes("id: 'w-qr'"));
-
-const ownServer = !process.env.BASE;
-let server = null;
-const treasury = new URL('../../../backend/server/data/treasury.json', import.meta.url);
-let treasuryBak = null;
-
-async function up() {
-  if (!ownServer) return;
-  const { renameSync } = await import('node:fs');
-  try { renameSync(treasury, `${treasury.pathname}.lane4bak`); treasuryBak = `${treasury.pathname}.lane4bak`; } catch { /* no treasury file */ }
-  const env = {
-    ...process.env,
-    PORT,
-    DATABASE_URL: 'postgresql://freight:freight_dev_password@127.0.0.1:15434/freightchain_e2e',
-    REDIS_URL: 'redis://:freight_dev_redis@127.0.0.1:16381',
-    JWT_SECRET: 'freightchain-e2e-jwt-secret-32chars-min',
-    ADMIN_JWT_SECRET: 'freightchain-e2e-admin-jwt-secret-32ch',
-    NODE_ENV: 'development',
-    APP_DOMAIN: `127.0.0.1:${PORT}`,
-    APP_ORIGIN: BASE,
-    PAYMENT_MODE: 'transfer',
-    SOLANA_RPC: 'http://127.0.0.1:9',
-    POSTHOG_ENABLED: '0',
-    THROTTLE_LIMIT: '10000',
-    THROTTLE_AUTH_LIMIT: '10000',
-    THROTTLE_AUTH_RPS: '1000',
-    WATCH_INTERVAL_MS: '0',
-    CRANK_INTERVAL_MS: '0',
-    PAYOUT_INTERVAL_MS: '0',
-  };
-  server = spawn(process.execPath, ['dist/main.js'], { cwd: new URL('../', import.meta.url).pathname, env, stdio: 'ignore' });
-  for (let i = 0; i < 60; i++) {
-    try { if ((await fetch(`${BASE}/api/health/live`, { signal: AbortSignal.timeout(2000) })).ok) return; } catch { /* booting */ }
-    await sleep(500);
-  }
-  throw new Error('API did not start');
-}
-
-async function down() {
-  if (server) server.kill();
-  if (treasuryBak) { const { renameSync } = await import('node:fs'); try { renameSync(treasuryBak, treasury); } catch { /* already restored */ } }
-}
 
 const call = async (method, path, body, cookie, headers = {}) => {
   const r = await fetch(`${BASE}/api/${path}`, { method, headers: { 'content-type': 'application/json', ...headers, ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined });
@@ -79,47 +40,34 @@ function samples(t1) {
 }
 
 try {
-  await up();
-  const driver = await signIn();
-  const fan = await signIn();
-  await call('PUT', 'profile/agreements', { age18: true, loss: true }, driver.cookie);
-  let made = await call('POST', 'rides', { tier: '1h' }, driver.cookie, { 'x-fc-country': 'RS' });
-  if (made.status !== 200) {
-    const { PrismaClient } = await import('@prisma/client');
-    const db = new PrismaClient({ datasources: { db: { url: 'postgresql://freight:freight_dev_password@127.0.0.1:15434/freightchain_e2e' } } });
-    const now = new Date();
-    const play = new Date(now.getTime() + 4 * 3_600_000);
-    await db.pool.upsert({
-      where: { id: 910461 },
-      update: { status: 'active', playDeadline: play, prepDeadline: new Date(now.getTime() + 2 * 3_600_000), payoutAt: new Date(now.getTime() + 86_400_000) },
-      create: {
-        id: 910461, address: 'lane4replay910461', tier: '1h', label: '1h', priceLamports: 1n, minTickets: 1, maxTickets: 0, maxPerWallet: 5,
-        prepDeadline: new Date(now.getTime() + 2 * 3_600_000), playDeadline: play, payoutAt: new Date(now.getTime() + 86_400_000),
-        prizeBps: 8500, seedBps: 500, feeBps: 1000, feeTreasury: 'FeeTreasury11111111111111111111111111111111', seedTreasury: 'SeedTreasury1111111111111111111111111111111',
-        status: 'active', rideSeed: 7, createdAt: new Date(now.getTime() - 60_000), ticketsSold: 1,
-      },
-    });
-    await db.rideTicket.upsert({ where: { wallet_poolId: { wallet: driver.wallet, poolId: 910461 } }, update: { balance: 1 }, create: { wallet: driver.wallet, poolId: 910461, balance: 1, bought: 1 } });
-    await db.$disconnect();
-    made = await call('POST', 'rides', { tier: '1h' }, driver.cookie, { 'x-fc-country': 'RS' });
-  }
-  check('1h ride created', made.status === 200 && made.json.id, JSON.stringify(made.json).slice(0, 180));
-  const id = made.json.id;
-  const started = await call('POST', `rides/${id}/start`, {}, driver.cookie);
-  check('ride started', started.status === 200, JSON.stringify(started.json).slice(0, 120));
-  const batch = await call('POST', `rides/${id}/batches`, { seq: 0, prevHash: id, t0: 0, t1: 2, samples: samples(2), inputs: [[10, 'KeyW', 1]], hash: null }, driver.cookie);
-  check('recording batch stored', batch.status === 200 && batch.json.stored === true, JSON.stringify(batch.json).slice(0, 160));
-  const ended = await call('POST', `rides/${id}/end`, { outcome: 'failed', s: 20, t: 2, hull: 100 }, driver.cookie);
-  check('ride ended', ended.status === 200, JSON.stringify(ended.json).slice(0, 160));
+  const driver = await signIn(), fan = await signIn();
+  const id = randomUUID();
+  const db = new PrismaClient({ datasources: { db: { url: database } } });
+  const now = new Date(), startedAt = new Date(now.getTime() - 120000);
+  // Historical paid recording fixture. This checks playback, not ride verification or a chain purchase.
+  const rows = samples(60);
+  const body = { seq: 0, prevHash: id, t0: 0, t1: 60, samples: rows, inputs: [[10, 'KeyW', 1]] };
+  for (const row of rows) row[14] = 12345;
+  const json = JSON.stringify(body), hash = createHash('sha256').update(json).digest('hex');
+  try {
+    await db.ride.create({ data: {
+      id, wallet: driver.wallet, tier: '1h', seed: 7, minSeconds: 3600, completeDist: 60000,
+      status: 'failed', createdAt: startedAt, startedAt, endedAt: now, paidAt: startedAt,
+      lastS: 600, lastT: 60, driveSeconds: 60, hull: 100, route: 'siberia', trip: '1h', startHour: 12,
+      batches: { create: { seq: 0, prevHash: id, hash, serverHash: hash, hashOk: true, t0: 0, t1: 60,
+        samples: rows.length, inputs: 1, bytes: Buffer.byteLength(json), payload: gzipSync(json), receivedAt: now } },
+    } });
+  } finally { await db.$disconnect(); }
   const watch = await call('GET', `watch/${id}`);
   check('public replay of the recording', watch.status === 200 && watch.json.recording?.lastSeq === 0, JSON.stringify(watch.json).slice(0, 160));
 
-  let chrome;
+  check('public replay removes input bits and raw input events', watch.json.batches?.[0]?.samples?.every(row => row[14] === 0) && !('inputs' in (watch.json.batches?.[0] || {})));
+
   const chromeArgs = ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--disable-features=CalculateNativeWinOcclusion'];
   try { chrome = await launch({ port: Number(process.env.CHROME_PORT || 9374), shotsDir: 'fc-lane4-replay', evalProblems: true, args: chromeArgs }); }
   catch (error) {
     console.log(`Chrome did not start: ${error.message}`);
-    process.exit(fails.length ? 1 : 0);
+    throw error;
   }
   const [cn, cv] = fan.cookie.split('=');
   await chrome.send('Network.setCookie', { name: cn, value: cv, url: BASE, httpOnly: true });
@@ -147,12 +95,7 @@ try {
   if (await chrome.ev('!!__game.watch.playing')) await chrome.ev(`document.getElementById('w-play').click()`);
   const clock0 = Number(await chrome.ev('__game.watch.wt'));
   await chrome.ev(`document.getElementById('w-play').click()`);
-  let clockMoved = await until(`typeof __game.watch.wt === 'number' && __game.watch.wt > ${clock0} + 0.05`, 4000);
-  if (!clockMoved) {
-    console.log(`wall frames stalled at wt ${await chrome.ev('__game.watch.wt')} playing ${await chrome.ev('__game.watch.playing')}; granting virtual time to the shipped frame loop`);
-    await chrome.send('Emulation.setVirtualTimePolicy', { policy: 'advance', budget: 1500, maxVirtualTimeTaskStarvationCount: 100 });
-    clockMoved = await until(`typeof __game.watch.wt === 'number' && __game.watch.wt > ${clock0} + 0.05`, 8000);
-  }
+  const clockMoved = await until(`typeof __game.watch.wt === 'number' && __game.watch.wt > ${clock0} + 0.05`, 4000);
   const clock1 = await chrome.ev('__game.watch.wt');
   check('clock advances while playing', clockMoved && typeof clock1 === 'number' && clock1 > clock0, `${clock0} -> ${clock1}`);
   const cam0 = await chrome.ev('__game.st.watchCam');
@@ -171,13 +114,27 @@ try {
   const play1 = await chrome.ev('!!__game.watch.playing');
   check('C19 Space toggles play', play0 !== play1, `${play0} -> ${play1}`);
   check('C30 #w-qr stays out until a chain tip', !(await chrome.ev(`!!document.getElementById('w-qr')`)));
+  await chrome.ev(`if (__game.watch.playing) document.getElementById('w-play').click()`);
+  await chrome.ev(`document.getElementById('w-text').value = 'Road looks good'; document.querySelector('.w-say button').click()`);
+  check('replay chat submits from the browser', await until(`document.getElementById('w-feed')?.textContent.includes('Road looks good')`));
+  const feed = await call('GET', `watch/${id}`);
+  check('chat persists with replay time', feed.json.events?.some(e => e.text === 'Road looks good' && Number.isFinite(e.replayT)));
+  await chrome.shot('replay-desktop');
+  await chrome.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await sleep(400);
+  check('phone replay has no document overflow', await chrome.ev('document.documentElement.scrollWidth <= innerWidth + 1'));
+  const mobileCam = await chrome.ev('__game.st.watchCam');
+  await chrome.ev(`document.getElementById('w-cam').click()`);
+  check('phone camera responds', (await chrome.ev('__game.st.watchCam')) !== mobileCam);
+  await chrome.shot('replay-phone');
+  check('positive replay has no browser errors', chrome.filt().length === 0, chrome.filt().join(' | ').slice(0, 500));
   await chrome.send('Page.navigate', { url: `${BASE}/play.html?watch=00000000-0000-4000-8000-00000000c034` });
   check('C34 nothing to watch links to replays', await until(`(document.querySelector('#watch.w-error b')?.textContent || '').includes('NOTHING') && !!document.querySelector('#watch.w-error a[href*="#replays"]')`, 30000));
-  await chrome.close();
+  await chrome.close(); chrome = null;
 } catch (error) {
   console.log(`FAIL ${error.stack || error.message}`);
   fails.push('crash');
 } finally {
-  await down();
+  if (chrome) await chrome.close();
 }
 process.exit(fails.length ? 1 : 0);

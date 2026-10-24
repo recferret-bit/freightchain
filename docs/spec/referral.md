@@ -8,6 +8,8 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
 
 ## 1. Current Implementation on `main` (As-Built)
 
+**25 October readiness fixes:** the separate Convoy machine now uses PostgreSQL (`ConvoyInvite`, `ConvoyRide`, `ConvoyLedger`); campaign gates/holds/social ownership use `AirdropClaim`. They join the caller’s player-locked transaction. The shared promo budget is serialized across referrers, and activation grants one spendable 1h promo (no change to the retired free-ride counter). Privacy uses `Player.convoyHidden`. Social rechecks do not award trust again. Legacy referral behavior remains separate; external providers, full target UI and chain reward settlement are still open.
+
 ### 1.1 Data Model & Storage (`server/prisma/player/player.prisma` & `cosmetics.ts`)
 - **`player.ReferralCode` (`@@map("referral_codes")`, `ReferralCodeRecord`)**:
   - `wallet` (`String`, `@id`): Referrer wallet address (1:1 per player, FK to `player.Player`).

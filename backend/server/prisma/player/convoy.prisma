@@ -1,0 +1,44 @@
+// Separate from legacy referrals: pending Convoy invitations can expire and be rebound.
+model ConvoyInvite {
+  referee String @id
+  referrer String
+  status String
+  boundAt DateTime
+  expiresAt DateTime
+  activatedAt DateTime?
+  qualifyExpiresAt DateTime?
+  m1At DateTime?
+  m2At DateTime?
+
+  @@index([referrer, status])
+  @@index([status, expiresAt])
+  @@schema("player")
+}
+
+model ConvoyLedger {
+  id String @id
+  kind String
+  wallet String
+  referrer String
+  referee String
+  amount Int
+  unit String
+  at DateTime
+  dayKey String
+  weekKey String
+  releasedAt DateTime?
+
+  @@index([kind, weekKey])
+  @@schema("player")
+}
+
+model ConvoyRide {
+  rideId String @id
+  wallet String
+  at DateTime
+  trip String?
+  counted Boolean
+
+  @@index([wallet, at])
+  @@schema("player")
+}

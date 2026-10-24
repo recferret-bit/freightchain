@@ -4,6 +4,7 @@ import { COSMETIC_SLOTS, isCosmeticSlot, isUnlockableCosmetic } from './cosmetic
 import type { PromoCodeProps, PromoEffect, PromoState } from './promo.types.js';
 
 const CODE_RE = /^[A-Z0-9_-]{3,32}$/;
+export const CONVOY_PROMO_CODE = 'SYSTEM-CONVOY-1H';
 export const MAX_FREE_RIDES_PER_CODE = 20;
 export const MAX_DESCRIPTION = 200;
 export const MAX_NOTE = 500;
@@ -46,6 +47,7 @@ export class PromoCode {
     if (input.effect.kind === 'free_rides') throw new ConflictError('extra free-ride codes are retired; grant a 1h, 4h or 8h ride instead', 'promo_retired');
     if (input.effect.kind === 'ride' && input.perWallet !== 1) throw new BadRequestError('a ride code is redeemed once per wallet', 'bad_promo_code');
     const code = PromoCode.normalize(input.code);
+    if (code === CONVOY_PROMO_CODE) throw new BadRequestError('this code is reserved for Convoy activation', 'bad_promo_code');
     if (!CODE_RE.test(code)) throw new BadRequestError('a promo code is 3–32 letters, digits, "-" or "_"', 'bad_promo_code');
     PromoCode.assertEffect(input.effect);
     if (!Number.isInteger(input.perWallet) || input.perWallet < 1) throw new BadRequestError('perWallet must be at least 1', 'bad_promo_code');

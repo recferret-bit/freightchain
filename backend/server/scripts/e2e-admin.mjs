@@ -254,6 +254,8 @@ check('rides: the table lists the ride', await until(async () => (await A.ev('do
 await A.ev('location.hash = "#replays"');
 check('replays: the replay verification queue and sessions render', await until(async () => /REPLAY VERIFICATION · QUEUE/.test(await A.ev('document.querySelector("#view h2")?.textContent || ""')) && (await A.ev('document.getElementById("replay-table")?.textContent || ""')).includes(ride.id.slice(0, 8))));
 await size(A, 390, 844, true); await sleep(300); await A.shot('rides-phone');
+check('phone admin keeps long alert wallets inside the viewport', await A.ev('document.documentElement.scrollWidth <= innerWidth + 1'));
+check('phone alerts leave room for the admin tools', await A.ev('document.getElementById("alert-banner").getBoundingClientRect().height <= 220'));
 await A.ev(`location.hash = "#ride/${ride.id}"`); await sleep(800); await A.shot('ride-phone');
 
 // Host and signature, as the guard and AdminProofService actually answer. A split server (COOKIE_DOMAIN) 404s any host but admin.<apex>.

@@ -15,7 +15,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.1` — Implement Convoy Referral state machine (`pending` 72h expiry delete → `active` 60d window on first verified MEDIUM/HARD ride → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)`
 
-- **Status:** `[~] In Progress` — reopened on 24 October. Service/state-machine tests exist, but production DI still binds `MemoryConvoyRepository` after the schema migration. Restart persistence and PostgreSQL concurrency are unproven. The verified Chrome referral journey still gives the legacy +2/+3 gifts. See the [local readiness audit](../../../testing/LOCAL_READINESS.md).
+- **Status:** `[~] In Progress` — reopened on 24 October. Follow-up on 25 October: production DI now binds PostgreSQL; second-connection persistence, rollback, concurrent caps and HTTP activation passed. Full target UI/legacy replacement remains open. The verified Chrome referral journey still gives the legacy +2/+3 gifts. See the [local readiness audit](../../../testing/LOCAL_READINESS.md).
 - **Spec Rules:** `REF-M-01`, `REF-M-02`, `REF-M-03`, `REF-M-04`, `REF-M-05`, `REF-M-06`, `REF-M-07`, `REF-M-15` (`docs/spec/referral.md` §2)
 - **Paired Plan 1 Task:** `E2E-05.7`
 - **Target Files:**
@@ -40,7 +40,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.2` — Implement Convoy invitee 1h promo ride gift on activation (`3/day`, `10/week`, `500/week` global caps) + M1 (`100 TEN4` @ 2 ISO weeks) & M2 (`50 TEN4` @ 5 ISO weeks) rewards
 
-- **Status:** `[~] In Progress` — reopened on 24 October. Invitee promo and 100/50 ledger rewards have unit tests; durable atomic caps/milestones, restart safety and the required on-chain reward journey remain open with the memory repository binding.
+- **Status:** `[~] In Progress` — reopened on 24 October. Follow-up on 25 October: durable invitations/ledger/ride evidence and atomic caps passed PostgreSQL tests; activation issues a usable 1h PromoRideGrant. Automatic held-reward release and the required on-chain reward journey remain open.
 - **Spec Rules:** `REF-M-08`, `REF-M-09`, `REF-M-10`, `REF-M-11`, `REF-M-12`, `REF-M-15` (`docs/spec/referral.md` §2.3–2.5)
 - **Paired Plan 1 Task:** `E2E-05.7`
 - **Target Files:**

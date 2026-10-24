@@ -50,6 +50,8 @@ export interface ReferrerCounts {
 
 /** Convoy rows, the TEN4/ride ledger, and the optional privacy column. Not the legacy `Referral` table. */
 export abstract class ConvoyRepositoryPort {
+  /** Serialize the global promo cap after acquiring all affected player locks. */
+  abstract lockPromoBudget(tx: TransactionHandle): Promise<void>;
   abstract privacyColumn(): 'present' | 'missing';
   abstract getByReferee(referee: string, tx?: TransactionHandle): Promise<ConvoyRow | null>;
   abstract listByReferrer(referrer: string, tx?: TransactionHandle): Promise<ConvoyRow[]>;

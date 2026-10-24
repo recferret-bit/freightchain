@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { AirdropRepositoryPort, type SocialClaim } from '../../application/airdrop/airdrop.repository.port.js';
 import { emptyAirdrop, type AirdropRow } from '../../application/airdrop/airdrop-rules.js';
 
-/** Process-local airdrop rows. Social ids stay unique for the life of the process. No Prisma model yet. */
+/** Unit-test twin; runtime uses AirdropPrismaRepository and database-enforced social ownership. */
 @Injectable()
 export class MemoryAirdropRepository extends AirdropRepositoryPort {
+  clear(): void { this.rows.clear(); this.telegramOwner.clear(); this.xOwner.clear(); }
   private readonly rows = new Map<string, AirdropRow>();
   private readonly telegramOwner = new Map<string, string>();
   private readonly xOwner = new Map<string, string>();

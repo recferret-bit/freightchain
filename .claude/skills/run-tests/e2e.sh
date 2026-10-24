@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor|honk-garage|whitepaper|landing|achievements|guest|weekly|referral|viewer|sim ...]   (default: all twenty-eight)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|replay-controls|replay-tips|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor|honk-garage|whitepaper|landing|achievements|guest|weekly|referral|viewer|sim ...]   (default: all thirty)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/backend/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats blinks traffic editor honk-garage whitepaper landing achievements guest weekly referral viewer sim)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay replay-controls replay-tips flags wallet wallet-split board close close-split verified verified-deep road stats blinks traffic editor honk-garage whitepaper landing achievements guest weekly referral viewer sim)
 DB="freightchain_e2e_$$"
 PG_CONTAINER="${E2E_POSTGRES_CONTAINER:-freightchain-postgres}"
 PG_PORT="${E2E_POSTGRES_PORT:-15433}"
@@ -18,7 +18,7 @@ ADMIN_KP="$(mktemp -t fc-admin-XXXXXX).json"
 BUILD=".e2e-build-$$"; TSCONFIG=".e2e-tsconfig-$$.json"; LANDING_OUT="$(mktemp -d "${TMPDIR:-/tmp}/fc-landing-XXXXXX")"
 CLIENT_OUT="$(mktemp -d "${TMPDIR:-/tmp}/fc-client-XXXXXX")"
 cp -R "$ROOT/frontend/client/." "$CLIENT_OUT/"
-PID=""; EDITOR_WORKER_PID=""; MCP_PID=""
+PID=""; EDITOR_WORKER_PID=""; MCP_PID=""; VAL_PID=""; VAL_DIR=""
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,()=>{console.log(s.address().port);s.close()})'; }
 psql_admin() { docker exec "$PG_CONTAINER" psql -U freight -d postgres -v ON_ERROR_STOP=1 -tAc "$1"; }
 # Later suites share this database. Statistics asserts a game that has not been driven yet, so that suite starts from an empty one.
@@ -36,7 +36,8 @@ stop_editor() {
   for child in "$EDITOR_WORKER_PID" "$MCP_PID"; do if [ -n "$child" ]; then kill "$child" 2>/dev/null || true; wait "$child" 2>/dev/null || true; fi; done
   EDITOR_WORKER_PID=""; MCP_PID=""
 }
-cleanup() { stop_editor; stop; psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null 2>&1 || true; rm -rf "$ADMIN_KP" "$SERVER/$BUILD" "$SERVER/$TSCONFIG" "$LANDING_OUT" "$CLIENT_OUT"; }
+stop_validator() { if [ -n "$VAL_PID" ]; then kill "$VAL_PID" 2>/dev/null || true; wait "$VAL_PID" 2>/dev/null || true; fi; VAL_PID=""; if [ -n "$VAL_DIR" ]; then rm -rf "$VAL_DIR"; fi; VAL_DIR=""; }
+cleanup() { stop_editor; stop; stop_validator; psql_admin "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" >/dev/null 2>&1 || true; rm -rf "$ADMIN_KP" "$SERVER/$BUILD" "$SERVER/$TSCONFIG" "$LANDING_OUT" "$CLIENT_OUT"; }
 trap cleanup EXIT
 
 if ! nc -z localhost "$PG_PORT"; then
@@ -74,6 +75,22 @@ for suite in "${SUITES[@]}"; do
       EXTRA_ENV="THROTTLE_PROMO_LIMIT=100000" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" SEED=1 DATABASE_URL="$URL" CHROME_PORT="$(free_port)" node scripts/e2e-promo.mjs) || fails=$((fails + 1)) ;;
     watch)   start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-watch.mjs) || fails=$((fails + 1)) ;;
     replay)  start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-replay.mjs) || fails=$((fails + 1)) ;;
+    replay-controls) EXTRA_ENV="LIVE_CHAT=all LIVE_DONATIONS=on LIVE_FREE_DONATIONS=off LIVE_EFFECTS=off" start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" DATABASE_URL="$URL" CHROME_PORT="$(free_port)" node scripts/e2e-replay-controls.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+    replay-tips)
+      command -v solana-test-validator >/dev/null || { echo "replay-tips requires solana-test-validator"; exit 1; }
+      VAL_DIR="$(mktemp -d "${TMPDIR:-/tmp}/fc-replay-tips-XXXXXX")"
+      RPC_PORT=""
+      for _ in $(seq 1 40); do candidate=$((20000 + RANDOM % 30000)); if ! nc -z 127.0.0.1 "$candidate" && ! nc -z 127.0.0.1 $((candidate + 1)); then RPC_PORT="$candidate"; break; fi; done
+      [ -n "$RPC_PORT" ] || { echo "no free validator port pair"; exit 1; }
+      DYN=$((RPC_PORT < 40000 ? RPC_PORT + 2000 : RPC_PORT - 2000))
+      RPC="http://127.0.0.1:$RPC_PORT"
+      solana-test-validator --ledger "$VAL_DIR/ledger" --quiet --bind-address 127.0.0.1 --rpc-port "$RPC_PORT" --faucet-port "$(free_port)" --gossip-port "$(free_port)" --dynamic-port-range "$DYN-$((DYN + 30))" > "$VAL_DIR/validator.log" 2>&1 &
+      VAL_PID=$!
+      for _ in $(seq 1 60); do curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" | grep -q '"ok"' && break; kill -0 "$VAL_PID" 2>/dev/null || { tail -20 "$VAL_DIR/validator.log"; exit 1; }; sleep 1; done
+      curl -sf -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$RPC" | grep -q '"ok"' || { echo "validator not ready"; exit 1; }
+      EXTRA_ENV="SOLANA_RPC=$RPC LIVE_CHAT=all LIVE_DONATIONS=on LIVE_FREE_DONATIONS=off LIVE_EFFECTS=off" start 300
+      (cd "$SERVER" && BASE="http://localhost:$PORT" RPC="$RPC" TREASURY_PUBKEY="$TREASURY" DATABASE_URL="$URL" CHROME_PORT="$(free_port)" node scripts/e2e-solana-pay.mjs) || fails=$((fails + 1))
+      stop; stop_validator; EXTRA_ENV="" ;;
     board)   EXTRA_ENV="TRUST_PROXY=1 HB_TIMEOUT_MS=15000" start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" ROAD_PLAN_BUILD="$BUILD" node scripts/e2e-live-board.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;   # sim-rides rebuilds holes from the server build; a running ride's public /road is 404
     flags)   # the LIVE_* flags in a real browser: production's (paid donations, effects on free rides only), then chat + donations off
       EXTRA_ENV="LIVE_FREE_DONATIONS=off LIVE_EFFECTS=free" start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" MODE=paid node scripts/e2e-live-flags.mjs) || fails=$((fails + 1)); stop
@@ -130,7 +147,7 @@ for suite in "${SUITES[@]}"; do
     referral) EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP CHALLENGE_INTERVAL_SECONDS=0" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" node scripts/e2e-referral.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     viewer) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-viewer.mjs "http://localhost:$PORT/viewer.html") || fails=$((fails + 1)) ;;
     sim) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-chrome.mjs "http://localhost:$PORT/play.html?sim=1") || fails=$((fails + 1)) ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor | honk-garage | whitepaper | landing | achievements | guest | weekly | referral | viewer | sim)"; fails=$((fails + 1)) ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | replay-controls | replay-tips | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor | honk-garage | whitepaper | landing | achievements | guest | weekly | referral | viewer | sim)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

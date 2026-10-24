@@ -135,8 +135,8 @@ import { AirdropRepositoryPort } from '../application/airdrop/airdrop.repository
 import { TelegramMembershipPort } from '../application/airdrop/telegram.port.js';
 import { XAccountPort } from '../application/airdrop/x-account.port.js';
 import { TurnstilePort } from '../application/airdrop/turnstile.port.js';
-import { MemoryConvoyRepository } from './social/memory-convoy.repository.js';
-import { MemoryAirdropRepository } from './social/memory-airdrop.repository.js';
+import { ConvoyPrismaRepository } from './prisma/repositories/convoy.prisma.repository.js';
+import { AirdropPrismaRepository } from './prisma/repositories/airdrop.prisma.repository.js';
 import { TelegramBotAdapter } from './social/telegram-bot.adapter.js';
 import { TwitterApiIoAdapter } from './social/twitterapi-io.adapter.js';
 import { TurnstileAdapter } from './social/turnstile.adapter.js';
@@ -246,8 +246,8 @@ const ports: Provider[] = [
   { provide: DonationOrderRepositoryPort, useClass: DonationOrderPrismaRepository },
   { provide: ReferralRepositoryPort, useClass: ReferralPrismaRepository },
   { provide: RideAppealRepositoryPort, useClass: RideAppealPrismaRepository },
-  { provide: ConvoyRepositoryPort, useClass: MemoryConvoyRepository },
-  { provide: AirdropRepositoryPort, useClass: MemoryAirdropRepository },
+  { provide: ConvoyRepositoryPort, useClass: ConvoyPrismaRepository },
+  { provide: AirdropRepositoryPort, useClass: AirdropPrismaRepository },
   { provide: TelegramMembershipPort, useClass: TelegramBotAdapter },
   { provide: XAccountPort, useClass: TwitterApiIoAdapter },
   { provide: TurnstilePort, useClass: TurnstileAdapter },

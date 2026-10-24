@@ -1,3 +1,5 @@
+import { MemoryDb } from '../../../support/in-memory/memory-db.js';
+import { MemoryPromoRepository } from '../../../support/in-memory/memory-ledger-repositories.js';
 import { NameServicePort } from '../../../../src/application/ports/sns/name-service.port.js';
 import { PlayerRepositoryPort } from '../../../../src/application/ports/players/player.repository.port.js';
 import { ClockPort } from '../../../../src/application/ports/shared/clock.port.js';
@@ -46,8 +48,9 @@ function harness(names: Record<string, string> = {}) {
   const clock = new FakeClock(MONDAY);
   const players = new FakePlayers();
   const repo = new MemoryConvoyRepository();
-  const svc = new ConvoyService(repo, players, new FakeTx(), clock, new FakeNames(names));
-  return { clock, players, repo, svc };
+  const promos = new MemoryPromoRepository(new MemoryDb());
+  const svc = new ConvoyService(repo, players, new FakeTx(), clock, new FakeNames(names), promos);
+  return { clock, players, repo, svc, promos };
 }
 
 function fact(wallet: string, trip: string, status = 'completed', verdict = 'verified'): ConvoyRideFact {
@@ -144,7 +147,8 @@ describe('ConvoyService', () => {
     const progress = await h.svc.onVerifiedRide(fact('referee', 'free-2c'));
     expect(progress.activated).toBe(true);
     expect(progress.gift).toEqual({ granted: true, reason: 'ok', referrerRideGift: 0 });
-    expect(h.players.free('referee')).toBe(1);
+    expect(h.players.free('referee')).toBe(0);
+    expect(await h.promos.listUnspent('referee')).toEqual([expect.objectContaining({ tier: '1h', rideId: null })]);
     expect(h.players.free('ref')).toBe(0);
     const row = await h.repo.getByReferee('referee');
     expect(row?.status).toBe('active');
@@ -154,7 +158,8 @@ describe('ConvoyService', () => {
     expect(ledger.some((item) => item.wallet === 'ref' && item.unit === 'ride')).toBe(false);
     const again = await h.svc.onVerifiedRide(fact('referee', 'free-3'));
     expect(again.gift.reason).toBe('not_activation');
-    expect(h.players.free('referee')).toBe(1);
+    expect(h.players.free('referee')).toBe(0);
+    expect(await h.promos.listUnspent('referee')).toEqual([expect.objectContaining({ tier: '1h', rideId: null })]);
   });
 
   it('still activates when the promo cap is hit, and records no second ride credit', async () => {

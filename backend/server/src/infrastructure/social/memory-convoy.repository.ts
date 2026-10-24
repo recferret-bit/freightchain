@@ -1,12 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConvoyRepositoryPort, type ConvoyLedgerRow, type ConvoyRideRow, type ConvoyRow, type HiddenRead, type ReferrerCounts } from '../../application/referral/convoy.repository.port.js';
 
-/**
- * Process-local convoy store. The player.convoyHidden column is not in this tree (another lane owns the migration),
- * so `columnPresent` stays false and reads do not pretend the column was selected.
- */
+/** Unit-test twin; runtime uses ConvoyPrismaRepository. columnPresent also exercises historical missing-column responses. */
 @Injectable()
 export class MemoryConvoyRepository extends ConvoyRepositoryPort {
+  lockPromoBudget(): Promise<void> { return Promise.resolve(); }
+  clear(): void { this.rows.clear(); this.ledgerRows.length = 0; this.ledgerIds.clear(); this.rides.clear(); this.hidden.clear(); }
   columnPresent = false;
   private readonly rows = new Map<string, ConvoyRow>();
   private readonly ledgerRows: ConvoyLedgerRow[] = [];

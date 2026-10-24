@@ -3,17 +3,18 @@
 // so the donation is a real transfer. As-built the order row becomes status 'paid', not 'confirmed'.
 // The UI goes from the pay QR (#w-qr) to "Tip sent (paid)."
 //   RPC=http://127.0.0.1:8899 BASE=http://127.0.0.1:3103 CHROME_PORT=9233 DATABASE_URL=… node scripts/e2e-solana-pay.mjs
-import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
-import { Keypair, Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Keypair, PublicKey, Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { PrismaClient } from '@prisma/client';
 import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
 
 const BASE = process.env.BASE || 'http://127.0.0.1:3103';
 const RPC = process.env.RPC || process.env.SOLANA_RPC || 'http://127.0.0.1:8899';
 const PORT = +(process.env.CHROME_PORT || 9233);
-const SERVER = new URL('..', import.meta.url).pathname;
+const database = process.env.DATABASE_URL;
+if (!database || !['localhost', '127.0.0.1'].includes(new URL(BASE).hostname) || !['localhost', '127.0.0.1'].includes(new URL(RPC).hostname) || !['localhost', '127.0.0.1'].includes(new URL(database).hostname) || !/^\/freightchain_e2e_\d+$/.test(new URL(database).pathname)) throw new Error('use e2e.sh replay-tips with its isolated local validator and database');
 const fails = [];
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
 const until = async (fn, ms = 30000) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v) return v; if (Date.now() - t0 > ms) return false; await sleep(250); } };
@@ -64,21 +65,20 @@ const connection = new Connection(RPC, 'confirmed');
 const airdrop = await connection.requestAirdrop(spectator.kp.publicKey, 2 * LAMPORTS_PER_SOL);
 await connection.confirmTransaction(airdrop, 'confirmed');
 
-const code = `P3${Date.now().toString(36).toUpperCase()}`;
-execFileSync('node', ['dist/cli/index.js', 'promo:create', code, '--ride', '1h', '--desc', 'lane3 solana pay'], {
-  cwd: SERVER, env: { ...process.env, NODE_ENV: 'development' }, stdio: 'inherit',
-});
-const redeemed = await call('POST', 'promo/redeem', { body: { code }, cookie: driverCookie });
-const ordered = await call('POST', 'rides', { body: { tier: '1h' }, cookie: driverCookie });
-const started = ordered.j?.id ? await call('POST', `rides/${ordered.j.id}/start`, { body: {}, cookie: driverCookie }) : { status: 0, j: {} };
-if (redeemed.status !== 200 || started.status !== 200) {
-  console.error('setup failed', JSON.stringify({ redeemed, ordered: ordered.j, started }));
-  process.exit(1);
-}
-const rideId = ordered.j.id;
+const treasury = new PublicKey(process.env.TREASURY_PUBKEY);
+const funded = await connection.requestAirdrop(treasury, LAMPORTS_PER_SOL);
+await connection.confirmTransaction(funded, 'confirmed');
+const beforeDriver = await connection.getBalance(new PublicKey(driver));
+const beforeTreasury = await connection.getBalance(treasury);
+const rideId = randomUUID();
+const prisma = new PrismaClient({ datasources: { db: { url: database } } });
+const now = new Date(), startedAt = new Date(now.getTime() - 120000);
+// Eligible historical replay fixture, not proof of an honest complete ride.
+await prisma.ride.create({ data: { id: rideId, wallet: driver, tier: '1h', seed: 7, minSeconds: 3600, completeDist: 60000,
+  status: 'failed', createdAt: startedAt, startedAt, endedAt: now, paidAt: startedAt,
+  lastS: 600, lastT: 60, driveSeconds: 60, hull: 100, route: 'siberia', trip: '1h', startHour: 12 } });
 
 const tab = await launch({ port: PORT, shotsDir: 'fc-solanapay-shots', evalProblems: true });
-const prisma = new PrismaClient();
 try {
   await tab.send('Page.addScriptToEvaluateOnNewDocument', { source: phantom(spectator.address, spectator.kp.secretKey) });
   await tab.send('Network.enable');
@@ -86,8 +86,8 @@ try {
   await tab.send('Network.setCookie', { name, value, url: BASE, httpOnly: true });
   await tab.send('Emulation.setDeviceMetricsOverride', { width: 1200, height: 800, deviceScaleFactor: 1, mobile: false });
   await tab.send('Page.navigate', { url: `${BASE}/play.html?watch=${rideId}` });
-  check('watch page offers a chain tip', await until(async () => await tab.ev('!![...document.querySelectorAll("#w-me button")].find(b => /TIP/.test(b.textContent))'), 45000), await tab.ev('document.getElementById("w-me")?.textContent || ""'));
-  await tab.ev('[...document.querySelectorAll("#w-me button")].find(b => /TIP/.test(b.textContent)).click()');
+  check('watch page offers a chain tip', await until(async () => await tab.ev(`!!document.querySelector('#w-tips button[data-sol="0.01"]')`), 45000), await tab.ev('document.getElementById("w-me")?.textContent || ""'));
+  await tab.ev(`document.querySelector('#w-tips button[data-sol="0.01"]').click()`);
   let sawQr = false;
   const paidUi = await until(async () => {
     if (await tab.ev('!!document.getElementById("w-qr")')) sawQr = true;
@@ -100,13 +100,25 @@ try {
     return found?.status === 'paid' ? found : null;
   }, 15000);
   check('DB donation order is paid (as-built; not confirmed)', row?.status === 'paid' && !!row.signature, JSON.stringify({ status: row?.status, signature: row?.signature }));
+  if (!row) throw new Error('no paid donation');
+  const driverGain = (await connection.getBalance(new PublicKey(driver))) - beforeDriver;
+  const treasuryGain = (await connection.getBalance(treasury)) - beforeTreasury;
+  const amount = Number(row.lamports), fee = Math.floor(amount * 500 / 10000);
+  check('chain pays exactly 95% to the driver and 5% to treasury', driverGain === amount - fee && treasuryGain === fee, JSON.stringify({ amount, driverGain, treasuryGain }));
+  const confirmed = await connection.getParsedTransaction(row.signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 });
+  check('signed transaction confirmed without chain error', confirmed?.meta?.err === null);
+  const again = await call('POST', `watch/${rideId}/donation-orders/${row.id}/confirm`, { cookie: fanCookie, body: { signature: row.signature } });
+  check('duplicate confirmation is idempotent', again.status === 200 && again.j.status === 'paid' && await prisma.donationOrder.count({ where: { signature: row.signature } }) === 1);
+  const sent = await call('GET', 'me/donations', { cookie: fanCookie });
+  const received = await call('GET', 'me/donations', { cookie: driverCookie });
+  check('sender history includes the confirmed tip', sent.status === 200 && sent.j.sent?.some(t => t.signature === row.signature && t.lamports === amount));
+  check('driver history includes the confirmed tip', received.status === 200 && received.j.received?.some(t => t.signature === row.signature));
   const errors = pageErrors(tab);
   check('no page or console errors', errors.length === 0, errors.join(' | '));
   await tab.shot('solana-pay-paid');
 } finally {
   await prisma.$disconnect().catch(() => {});
   await tab.close();
-  await call('POST', `rides/${rideId}/end`, { cookie: driverCookie, body: { outcome: 'failed', reason: 'lane3 solana pay done' } }).catch(() => {});
 }
 if (fails.length) { console.error(`FAILED ${fails.length}: ${fails.join(', ')}`); process.exit(1); }
 console.log('e2e-solana-pay passed');

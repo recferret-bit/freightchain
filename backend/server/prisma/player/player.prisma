@@ -192,6 +192,8 @@ model AirdropClaim {
   telegramUserId String?  @unique
   xUserId        String?  @unique
   discordUserId  String?  @unique
+  xHandle        String?
+  heldAt         DateTime?
   rideVerifiedAt DateTime?
   telegramAt     DateTime?
   xAt            DateTime?
