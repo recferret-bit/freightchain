@@ -14,17 +14,17 @@ Free training is unlimited with no wallet required (`play.html` starts the real 
 
 <!-- traction:start -->
 
-Public numbers for a reviewer, read 2026-10-23 07:53 UTC. PostHog and the public stats endpoint were each read more than once. A count the second read did not support is not in a headline.
+Public numbers for a reviewer, read 2026-10-24 13:51 UTC. PostHog and the public stats endpoint were each read more than once. A count the second read did not support is not in a headline.
 
 <table><tr>
-<td align="center" width="50%"><h2>33</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
-<td align="center" width="50%"><h2>27.9 km</h2><b>driven</b><br>3 drivers · 5 crashes</td>
+<td align="center" width="50%"><h2>35</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
+<td align="center" width="50%"><h2>27.9 km</h2><b>driven</b><br>4 drivers · 5 crashes</td>
 </tr>
 <tr>
-<td align="center" width="20%"><h2>281</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-23 UTC</td>
-<td align="center" width="20%"><h2>23</h2><b>whitepaper readers</b><br>PostHog · same window</td>
-<td align="center" width="20%"><h2>84</h2><b>wallet sign-ins</b><br>real wallets · demo excluded</td>
-<td align="center" width="20%"><h2>4</h2><b>real shifts started</b><br>29 demo starts</td>
+<td align="center" width="20%"><h2>289</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-24 UTC</td>
+<td align="center" width="20%"><h2>27</h2><b>whitepaper readers</b><br>PostHog · same window</td>
+<td align="center" width="20%"><h2>87</h2><b>wallet sign-ins</b><br>real wallets · demo excluded</td>
+<td align="center" width="20%"><h2>6</h2><b>real shifts started</b><br>29 demo starts</td>
 <td align="center" width="20%"><h2>6</h2><b>shifts finished</b><br>6 demo · 0 real</td>
 </tr></table>
 
@@ -38,14 +38,14 @@ PostHog counts those 6 finished shifts as 6 demo-wallet finishes and 0 others. A
 
 | | |
 | --- | ---: |
-| Shifts started | 33 |
-| Free | 30 |
+| Shifts started | 35 |
+| Free | 32 |
 | Paid | 3 |
 | Finished | 6 |
 | Driven | 27.9 km |
 | Time | 1 h 9 min |
 | Crashes | 5 |
-| Drivers | 3 |
+| Drivers | 4 |
 | Stream donations | 0 |
 
 ### Analytics
@@ -58,7 +58,7 @@ Waiting: FC · Promo from an invite view; FC · Promo from a submitted code.
 | Window | Landing people | Real finishes | Demo finishes | Real sign-ins |
 | --- | ---: | ---: | ---: | ---: |
 | 8–12 Oct 2026 (judge board) | 106 | 0 | 6 | 54 |
-| 8 Oct 2026 through 2026-10-23 UTC | 281 | 0 | 6 | 84 |
+| 8 Oct 2026 through 2026-10-24 UTC | 289 | 0 | 6 | 87 |
 
 Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/insights/traction/latest.json`.
 
