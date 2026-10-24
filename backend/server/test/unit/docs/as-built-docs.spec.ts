@@ -17,6 +17,7 @@ const root = join(import.meta.dirname, '../../../../../');
 const docs = {
   product: readFileSync(join(root, 'docs/spec/PRODUCT.md'), 'utf8'),
   status: readFileSync(join(root, 'docs/plan/spec-compliance/STATUS.md'), 'utf8'),
+  issue: readFileSync(join(root, 'docs/plan/spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md'), 'utf8'),
   coverage: readFileSync(join(root, 'docs/testing/COVERAGE_CONTRACT.md'), 'utf8'),
 };
 const verdict = readFileSync(join(root, 'backend/server/src/application/services/verdict.service.ts'), 'utf8');
@@ -80,12 +81,12 @@ describe('as-built docs match the shipped defaults', () => {
     const weatherError = weather as NotFoundError;
     expect(timeError.statusCode).toBe(weatherError.statusCode);
     expect(timeError.errorCode).toBe(weatherError.errorCode);
-    const text = docs.product + docs.status;
+    const text = docs.product + docs.status + docs.issue;
     expect(timeError.statusCode).toBe(404);
     expect(text).toContain(String(timeError.statusCode));
     expect(text).toContain(timeError.errorCode);
-    expect(docs.product).toContain(timeError.message);
-    expect(docs.product).toContain(weatherError.message);
+    expect(text).toContain(timeError.message);
+    expect(text).toContain(weatherError.message);
     expect(text).toContain('honk/time');
     expect(text).toContain('honk/weather');
     expect(text).toContain('before any TEN4 debit');
