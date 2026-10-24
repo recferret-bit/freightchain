@@ -187,8 +187,8 @@ test('the landing image copies every repo file this test reads', () => {
 });
 
 test('numbers: the production live flags and the program facts the page states', () => {
-  const compose = src('infra/deploy/docker-compose.prod.yml'); assert.match(compose, /LIVE_FREE_DONATIONS[^\n]*off/); assert.match(compose, /LIVE_EFFECTS[^\n]*free/);
-  assert.match(text, /game effects on free rides only/);
+  const compose = src('infra/deploy/docker-compose.prod.yml'); assert.match(compose, /LIVE_FREE_DONATIONS[^\n]*off/); assert.match(compose, /LIVE_EFFECTS: \$\{LIVE_EFFECTS:-off\}/);
+  assert.match(text, /chat and paid tips for eligible replays; gameplay effects off/);
   const idl = JSON.parse(src('backend/programs/idl/freightchain_pools.json'));
   assert.equal(idl.instructions.length, 30, 'the page says 30 instructions'); assert.equal(idl.events.length, 28, '28 events'); assert.equal(idl.errors.length, 50, '50 error codes');
   assert.match(text, /30 instructions, 28 events, 50 error codes/);

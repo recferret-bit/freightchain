@@ -142,7 +142,7 @@ services:
       LIVE_CHAT: ${LIVE_CHAT:-all}                       # live streams: chat on every ride (all | free | off)
       LIVE_DONATIONS: ${LIVE_DONATIONS:-on}              # donations on (on | off)
       LIVE_FREE_DONATIONS: ${LIVE_FREE_DONATIONS:-off}   # no free mock donations in production: they must be a real SOL transfer to the driver
-      LIVE_EFFECTS: ${LIVE_EFFECTS:-free}                # ride-changing effects only on free test rides – never on paid ones (all | free | off). The server accepts tips only.
+      LIVE_EFFECTS: ${LIVE_EFFECTS:-off}                 # strict production mode accepts tips only; gameplay effects stay off.
       PLEDGES_ENABLED: ${PLEDGES_ENABLED:-0}             # 0 = pledges answer 403 pledges_disabled. 1 opts a localnet test back in.
       PRIZE_SANCTIONED_COUNTRIES: ${PRIZE_SANCTIONED_COUNTRIES:-}
       PRIZE_BLOCKED_COUNTRIES: ${PRIZE_BLOCKED_COUNTRIES:-}
@@ -155,12 +155,14 @@ services:
       MODERATOR_WALLETS: ${MODERATOR_WALLETS:-}
       ADMIN_IP_ALLOWLIST: ${ADMIN_IP_ALLOWLIST:-}
       ADMIN_APPROVAL_MODE: ${ADMIN_APPROVAL_MODE:-single}
+      ADMIN_ALERT_TELEGRAM_BOT_TOKEN: ${ADMIN_ALERT_TELEGRAM_BOT_TOKEN:-}
+      ADMIN_ALERT_TELEGRAM_CHAT_ID: ${ADMIN_ALERT_TELEGRAM_CHAT_ID:-}
       THROTTLE_ADMIN_AUTH_LIMIT: ${THROTTLE_ADMIN_AUTH_LIMIT:-10}
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-}   # empty = derived from JWT_SECRET
-      ADMIN_SESSION_TTL_MINUTES: ${ADMIN_SESSION_TTL_MINUTES:-120}
+      ADMIN_SESSION_TTL_MINUTES: ${ADMIN_SESSION_TTL_MINUTES:-60}
       EDITOR_WALLETS: ${EDITOR_WALLETS:-}
       EDITOR_JWT_SECRET: ${EDITOR_JWT_SECRET:-}   # empty = derived from JWT_SECRET
-      EDITOR_SESSION_TTL_MINUTES: ${EDITOR_SESSION_TTL_MINUTES:-240}
+      EDITOR_SESSION_TTL_MINUTES: ${EDITOR_SESSION_TTL_MINUTES:-60}
       EDITOR_IP_ALLOWLIST: ${EDITOR_IP_ALLOWLIST:-}
       # the AI model editor (docs/spec/platform_services.md): a provider is offered when its key is set – SECRETS, never logged
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -238,10 +240,16 @@ services:
       MINIGAMES: ${MINIGAMES:-off}
       MG_SECRET: ${MG_SECRET:-}
       MG_SALT_VERSION: ${MG_SALT_VERSION:-mg:v1}
+      LIVE_FREE_DONATIONS: ${LIVE_FREE_DONATIONS:-off}
+      LIVE_EFFECTS: ${LIVE_EFFECTS:-off}
       ADMIN_WALLETS: ${ADMIN_WALLETS:-}
       MODERATOR_WALLETS: ${MODERATOR_WALLETS:-}
       ADMIN_IP_ALLOWLIST: ${ADMIN_IP_ALLOWLIST:-}
       ADMIN_APPROVAL_MODE: ${ADMIN_APPROVAL_MODE:-single}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-}
+      EDITOR_JWT_SECRET: ${EDITOR_JWT_SECRET:-}
+      ADMIN_ALERT_TELEGRAM_BOT_TOKEN: ${ADMIN_ALERT_TELEGRAM_BOT_TOKEN:-}
+      ADMIN_ALERT_TELEGRAM_CHAT_ID: ${ADMIN_ALERT_TELEGRAM_CHAT_ID:-}
       THROTTLE_ADMIN_AUTH_LIMIT: ${THROTTLE_ADMIN_AUTH_LIMIT:-10}
       POSTHOG_ENABLED: "0"
       POSTHOG_DISABLED: "1"
@@ -291,6 +299,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS}
       POSTHOG_ENABLED: "0"
       POSTHOG_DISABLED: "1"
+      LIVE_FREE_DONATIONS: ${LIVE_FREE_DONATIONS:-off}
+      LIVE_EFFECTS: ${LIVE_EFFECTS:-off}
       # the AI model editor (docs/spec/platform_services.md): a provider is offered when its key is set – SECRETS, never logged
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

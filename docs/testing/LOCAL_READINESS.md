@@ -55,6 +55,16 @@ Screenshots inspected from the OS temporary directory: localnet ticket purchase/
 6. The road browser suite now requires frame-level traffic proof for both new rides. Its previous mode could flag an honest run through legacy reconstruction discrepancies. The dedicated rerun passed: honest verified, hole-removal client rejected, database audit agrees. The live judge remains 10 Hz, and historical review flags are unchanged.
 7. The controls harness now starts with the clutch held and asserts engine-on, first-gear forward movement and reverse movement. It waits for boot and fails if the game never appears. This fixes test setup and missing assertions; gameplay tuning is unchanged.
 
+## Production startup follow-up — 25 October 2026
+
+On top of `cd359673`, production Compose now defaults API/replay/editor workers to strict-safe live flags, forwards the required privileged session/alert settings, and uses 60-minute session defaults. Fresh env initialization creates three distinct session keys. Seven configuration/init regressions passed; root `npm run check` passed (456 server files, 2,583 tests) and PostgreSQL integration passed (57 files, 615 tests). Logs: `/private/tmp/fc-production-root-check.log`, `/private/tmp/fc-production-integration.log`.
+
+The real six-service production-mode Docker smoke passed all **14 checks**: migration, API/worker/MCP health, strict flag refusals, real PostgreSQL backup/restore, Redis fail-closed health and recovery, PostgreSQL readiness refusal/recovery, and application-process restarts. All test resources were cleaned up. Evidence: `/var/folders/zr/b6ccvm1n2yn1xhgjr2dfgb340000gn/T/fc-production-smoke-mx069o/result.json`; image IDs `b3f98d569497…` (server), `c3e4fbb9eb18…` (MCP). Initial harness attempts exposed exhausted default Docker subnet pools and insufficient temporary-container capacity; the final harness selects unused internal `/28` subnets.
+
+Repeat with `npm run test:production:local` (builds current images; included in `test:ci:full`). It uses generated credentials, a disposable database and no external runtime network. RPC transactions, real Telegram/AI delivery and the complete final local gate remain separate open checks. Real production env files were not changed.
+
+The corrected whitepaper release-config paragraph passed real Chrome. Its first run exposed a fixed-400-ms lazy-image wait; the harness now scrolls each image into view and waits for actual dimensions. The rerun passed, and the diagram screenshot was inspected. Logs: `/private/tmp/fc-production-whitepaper-chrome.log` (pass), `fc-production-whitepaper-chrome-initial.log` (initial failure).
+
 ## Feature acceptance matrix
 
 **Partial** means existing tests exercise part of the feature but the complete acceptance row is open. **Incomplete** means a required implementation is missing. **Untested** means the required runtime evidence is absent. **Pending** means this baseline has not finished. None of those labels is a complete feature pass.
@@ -117,14 +127,14 @@ Commands below are reproducible entrypoints; their presence is not a claim that 
 | Statistics and cache failure | `e2e stats`; server stats/concurrency scenarios | Partial: Chrome crash, API terminal paths, displayed totals and reconcile passed; complete donation/optional-path acceptance remains open |
 | Analytics opt-in and crash reports | Server/client unit/HTTP; posthog-test workflow | Partial: local fixtures only; live delivery remains separate |
 | Whitepaper and pitch deck | `e2e whitepaper`, landing tests | Partial: whitepaper title/anchors/SVG/images and pitch-deck load passed; deck controls/fullscreen/tilt need runtime/manual evidence |
-| Split hosts, startup, migrations and recovery | `e2e wallet-split close-split editor`; server config/deploy tests | Partial: compose's required alert env wiring and strict defaults still conflict |
+| Split hosts, startup, migrations and recovery | `e2e wallet-split close-split editor`; `npm run test:production:local`; server config/deploy tests | Partial: strict Compose wiring fixed; all 14 real Docker startup/migration/backup/outage/restart checks passed. RPC-enabled production-mode rehearsal and real provider delivery remain open |
 | Promo media/audio and audit tooling | `npm run media:check`; tool-specific suites | Tool checks are separate from app journeys; no claim of whole audit-tool verification |
 
 Route inventory: [178-route manifest](../../backend/server/test/contract/routes.manifest.ts), checked against the booted Nest graph. Existing feature census: [features.mjs](../../.claude/skills/test-census/features.mjs). Its generated grades mix source mappings with old browser/line evidence and are not this run's pass record. Pool instruction inventory: [committed IDL](../../backend/programs/idl/freightchain_pools.json); HONK's 13-name source/encoder contract is in [anchor-idl-drift.spec.ts](../../backend/server/test/architecture/anchor-idl-drift.spec.ts).
 
 ## Next work after baseline
 
-1. Fix local production-mode startup configuration (plan step 2), the observed narrow-screen admin overflow and the remaining controls outcome assertions. Baseline collection is complete; the full local gate remains open.
+1. Continue plan steps 3–5 (contract alignment, persistence and NFT integration), then complete the RPC-enabled production-mode rehearsal/provider checks. Core production startup/recovery passed; narrow-screen admin overflow and remaining controls assertions are still open.
 2. Execute and repair the remaining omitted Chrome harnesses, then wire them into a repeatable local gate. Guest, weekly, referral, viewer and sim are now wired in. Replace stale running-watch fixtures with permitted finished replays; a refusal test alone does not prove playback/tips/chat work. Configure block 1's skipped signed-tip RPC fixture and replace block 2's zero-balance TEN4 comparison with actual mint evidence.
 3. Complete real persistence, contract alignment and the missing token/NFT paths, with the required unit/PostgreSQL/HTTP/validator tests and product-doc updates.
 4. Run the normal-duration integrated ride and finish the remaining controls, optional modes, manual checks and provider checks. The local readiness claim remains open while any applicable cell lacks evidence.

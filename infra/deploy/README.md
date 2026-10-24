@@ -58,7 +58,7 @@ Set these in `deploy/.env` before the next deploy:
 |---|---|---|---|
 | `DEMO_WALLETS` | empty | one wallet. Left as it was for the 2026-10-23 indexing deploy | that wallet's paid rides run full length |
 | `LIVE_FREE_DONATIONS` | `off` | missing. Schema default `on` fails. Compose fallback is already `off` | a donation is a real devnet SOL transfer to the driver |
-| `LIVE_EFFECTS` | `off` | missing. Schema default `all` fails. Compose fallback `free` also fails | donation night, day, and holes do not change a ride. Tips still follow `LIVE_DONATIONS`. A TEN4 time or weather burn ignores this switch |
+| `LIVE_EFFECTS` | `off` | missing. Schema default `all` fails in the deploy env gate; current Compose fallback is `off` | only replay tips are accepted; tips never change gameplay |
 | `EDITOR_JWT_SECRET` | set, at least 32 characters, different from `JWT_SECRET` and from `ADMIN_JWT_SECRET`, when `ADMIN_WALLETS`, `MODERATOR_WALLETS`, or `EDITOR_WALLETS` is non-empty | missing. The admin and editor allowlists are set. `ADMIN_JWT_SECRET` is already set | editor sessions stop using the key derived from `JWT_SECRET`. Current editor sign-ins end |
 | `ADMIN_ALERT_TELEGRAM_BOT_TOKEN` | set when an allowlist is set | missing | admin alerts can reach that bot. A real token, only in `deploy/.env` |
 | `ADMIN_ALERT_TELEGRAM_CHAT_ID` | set when an allowlist is set | missing | the chat that receives those alerts |
@@ -66,7 +66,9 @@ Set these in `deploy/.env` before the next deploy:
 
 Also refused: `EDITOR_FAKE_LLM=1`. `ADMIN_IP_ALLOWLIST` is required only when `SOLANA_RPC` contains `mainnet-beta`. This deploy stays on devnet.
 
-`EDITOR_JWT_SECRET` can be `openssl rand -hex 32`. Nothing in the repo can invent the Telegram bot or the chat id.
+Fresh `deploy:init` files generate a distinct `EDITOR_JWT_SECRET`; existing files can use `openssl rand -hex 32` during an authorized env update. Nothing in the repo can invent the Telegram bot or the chat id. Compose passes these alert settings to the API and replay worker and defaults admin/editor sessions to 60 minutes.
+
+Local production-mode gate: `npm run test:production:local` builds the current images and runs the real Compose service configuration with generated test credentials in a unique Docker project. All runtime networks are internal, with unused small subnets; no ports are published. The check migrates a dedicated database, verifies API/worker/MCP health and strict refusals, restores a real PostgreSQL backup, stops/restarts Redis and PostgreSQL, and restarts every app process. Its containers, networks and database volume are removed afterward. The printed evidence directory holds logs, results and image IDs. It never reads `deploy/.env` or invokes a remote release. Real alert/provider delivery and chain transactions are separate checks.
 
 ## Commands
 | command | what it does |

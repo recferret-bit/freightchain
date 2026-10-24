@@ -1,6 +1,6 @@
 # Devnet soft launch readiness
 
-Updated 24 October 2026. First milestone: verify **every app feature locally across frontend, backend and blockchain**, following the accepted rules. Devnet readiness follows only after that local gate passes.
+Updated 25 October 2026. First milestone: verify **every app feature locally across frontend, backend and blockchain**, following the accepted rules. Devnet readiness follows only after that local gate passes.
 
 **Status: the complete local gate and integrated devnet readiness remain open.** The boards previously reported 117/117 tasks done. The 24 October audit reopened six implementation tasks: Plan 2 now has 47/53 marked done. Current test evidence and gaps are recorded below; task checkboxes and the green census do not establish complete feature readiness.
 
@@ -44,7 +44,7 @@ Use real Chrome against the real API and PostgreSQL/Redis. Chain flows must sign
 | NFTs | Metadata covers 31/44 earnable achievement badges. Complete the other 13 and verify the existing collection/tree, mint worker and wallet receipts. |
 | Referrals and campaign | Convoy/airdrop use in-memory repositories. X, Telegram and Turnstile adapters are not wired for real use. |
 | Validation and viewing | The accepted judge is 10 Hz. Production compose defaults to shadow verdict enforcement. Running rides are intentionally unavailable to spectators; replays are the accepted viewing surface. |
-| Deployment | Compose defaults conflict with strict startup and omit required admin Telegram alert credentials. Some coverage and status documents contradict the code. |
+| Deployment | Strict Compose defaults, alert-variable forwarding and new-env session keys are fixed; the six-service local production startup/recovery smoke passed 14 checks. RPC-enabled rehearsal, real alert/provider delivery and production env preparation remain open. |
 
 Evidence: [contract task](spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md), [repository wiring](../../backend/server/src/infrastructure/infrastructure.module.ts), [social adapters](../../backend/server/src/infrastructure/social/), [NFT metadata](../../backend/server/src/domain/achievements/nft-metadata-uris.ts), [compose](../../infra/deploy/docker-compose.prod.yml), [startup checks](../../backend/server/src/infrastructure/config/env.schema.ts).
 
@@ -52,6 +52,7 @@ Evidence: [contract task](spec-compliance/issues/SPC-05-pool-schedule-appeals-an
 
 - [x] **1. Inventory and baseline every feature.** Completed 24 October: [56-area matrix and execution record](../testing/LOCAL_READINESS.md), failures/skips documented, discovered app/test defects fixed and six implementation tasks reopened. The aggregate full run is not accepted as green; corrected road and controls runs passed separately. Missing feature coverage and implementation remain work for steps 3–7. Preserve Decisions 69/70: 10 Hz judge, telemetry v2.1/minigames off by default, pool rules through CLI. Any change to live spectating or these defaults needs its own decision.
 - [ ] **2. Fix deployment configuration.** Align compose, env schema and examples; pass required alert credentials; use `LIVE_EFFECTS=off`. Prove API and workers boot locally in production mode. Check migrations, Redis, RPC, alerts and backup/restore with test resources.
+  Local strict startup, migrations, real backup/restore, cache/database outages and process restarts passed on 25 October (`npm run test:production:local`). RPC-enabled production-mode rehearsal and real alert delivery remain open; real deployment env files were not changed.
 - [ ] **3. Complete contract rules.** Implement accepted pool activation, schedule, ticket expiry and payout rules across program and server. Pass LiteSVM, IDL/build checks and the local-validator lifecycle, including cancellation, appeals and duplicate payout protection. Keep the escrow open-items document current.
 - [ ] **4. Complete durable referrals and campaign integration.** Replace memory repositories with PostgreSQL adapters and transactional uniqueness. Wire real social verification and configured Turnstile. Verify restart persistence, concurrent claims, reward holds and accepted campaign-to-attempt rules. Track live provider checks separately from local fixtures.
 - [ ] **5. Complete token and NFT integration.** Prove verified paid rewards reach the correct wallet once; rejected/ineligible rides earn nothing. Verify burns and frozen garage parts, reconcile chain and ledger balances, supply all 44 badge URIs, and exercise cNFT delay, retry and rejected-ride exclusion.

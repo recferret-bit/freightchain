@@ -18,8 +18,11 @@ const anchors = await page.ev(`(() => {
   return { n: ids.length, missing };
 })()`);
 check('every in-page anchor resolves to a laid-out element', anchors.n >= 10 && anchors.missing.length === 0, anchors.missing.join(','));
-await page.ev(`document.querySelectorAll('figure.diagram img').forEach(img => img.scrollIntoView())`);
-await sleep(400);
+const imageCount = await page.ev(`document.querySelectorAll('figure.diagram img').length`);
+for (let i = 0; i < imageCount; i++) {
+  await page.ev(`document.querySelectorAll('figure.diagram img')[${i}].scrollIntoView()`);
+  await until(() => page.ev(`(() => { const img = document.querySelectorAll('figure.diagram img')[${i}]; return img.complete && img.naturalWidth > 0 && img.naturalHeight > 0; })()`));
+}
 const diagrams = await page.ev(`(() => {
   const svgs = [...document.querySelectorAll('figure.diagram svg')].map(svg => { const b = svg.getBoundingClientRect(); return b.width > 0 && b.height > 0; });
   const imgs = [...document.querySelectorAll('figure.diagram img')].map(img => ({ src: img.getAttribute('src'), w: img.naturalWidth, h: img.naturalHeight }));
