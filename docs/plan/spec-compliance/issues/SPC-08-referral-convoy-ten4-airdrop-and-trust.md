@@ -110,7 +110,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.5` — Implement Anti-Sybil `TrustScore` service (ASN, device fingerprint, funding cluster, humanness score, `<50` payout block, 48h reward hold queue)
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — `trustScore` starts at 60. Convoy and airdrop TEN4 credits wait 48 hours and release only when both wallets are still at least 50 with no rejected rides. It does not store a browser fingerprint and it does not implement the Appendix D point table. No ASN, device fingerprint, or funding-cluster detection.
 - **Spec Rules:** `docs/spec/anticheat.md` Appendix D, `REF-M-15`, `docs/plan/MASTER_PLAN.md` §8
 - **Paired Plan 1 Tasks:** `E2E-05.7`, `E2E-05.8`, `E2E-07.8`
 - **Target Files:**
@@ -131,7 +131,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.6` — Implement `TermsGuard` (`CURRENT_TERMS_VERSION` re-consent enforcement on all write routes) & scrub banned gambling terms across `frontend/`
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — TermsGuard: a player write whose terms or privacy version is missing or older is `403 terms_acceptance_required`. The banned-gambling-word scrub across `frontend/` is still open.
 - **Spec Rules:** `LEG-M-01..11` (`docs/spec/legal.md`)
 - **Paired Plan 1 Task:** `E2E-06.3`
 - **Target Files:**

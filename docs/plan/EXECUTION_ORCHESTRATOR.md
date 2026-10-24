@@ -41,7 +41,7 @@ When invoked with `"work on docs/plan/EXECUTION_ORCHESTRATOR.md"`, the lead agen
 | **Wave 4** | **Replay Controls `C1..C36`, EN/RU i18n, Pool v6 & Convoy/Airdrop** | 4 Lanes (`L1`–`L4`) | 25 | `[x] Done` | `npm run check && npm run server:integration && npm run test:e2e:block1 && npm run test:e2e:block2` |
 | **Wave 5** | **Anti-Cheat v2.1 (30 Hz Re-Sim, Salts, `F1..F10`) & Minigames** | 4 Lanes (`L1`–`L4`) | 21 | `[x] Done` | `npm run check && npm run server:integration && npm run test:e2e:block1` |
 | **Wave 6** | **Cheat Catalog `#1..#58`, `TrustScore`, CI Gates & Final Census** | 4 Lanes (`L1`–`L4`) | 10 | `[x] Done` — `test:ci:fast` exit 0 in 153 s; `test:ci:full` exit 0 on 2026-10-23 (2954 s). | `npm run test:ci:full && node .claude/skills/test-census/census.mjs --self-test` |
-| **Wave 7** | **Spec-board truth, accepted cheat gaps, and a written 30 Hz cutover** | 4 Lanes (`L1`–`L4`) | 10 | `[ ] Todo` — do not start until asked. Defaults stay off / 10 Hz. | `npm run test:e2e:block3 && node .claude/skills/test-census/census.mjs --self-test` |
+| **Wave 7** | **Spec-board truth, accepted cheat gaps, and a written 30 Hz cutover** | 4 Lanes (`L1`–`L4`) | 10 | `[x] Done` — docs only, 2026-10-23. Defaults stayed off / 10 Hz. The banned-word scrub in `SPC-08.6` is still open. | `npm run test:e2e:block3 && node .claude/skills/test-census/census.mjs --self-test` |
 
 ---
 
@@ -370,45 +370,45 @@ flowchart TD
 
 ### WAVE 7 — Spec-board truth, accepted cheat gaps, and a written 30 Hz cutover
 **Goal:** Make the spec board match the code Wave 5 already shipped behind flags, write down the cheat-catalog rows the verifier does not reject, and write the live 30 Hz cutover without performing it.
-**Do not start until asked.** `TELEMETRY_V21` stays `off`. `MINIGAMES` stays `off`. `REPLAY_SIM_HZ` stays 10. `RULES_VERSION` stays 7. `SPC-05.6` (`set_pool_rules` as an admin HTTP route) stays owner-blocked.
+**Started and finished 2026-10-23, docs only.** `TELEMETRY_V21` stays `off`. `MINIGAMES` stays `off`. `REPLAY_SIM_HZ` stays 10. `RULES_VERSION` stays 7. `SPC-05.6` (`set_pool_rules` as an admin HTTP route) stays owner-blocked. `SPC-06.2` stays todo. The banned-gambling-word scrub in `SPC-08.6` is still open.
 **Prisma Schema Changes in Wave 7:** None (`0` migrations).
 
 #### Wave 7 — `Lane 1` (Spec board matches the shipped flags)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-1)` — status text matches `docs/spec/PRODUCT.md`. Summary is 53 tasks: 1 todo (`SPC-06.2`), 0 in progress, 51 done, 1 blocked (`SPC-05.6`).
 - **Owned Paths:** `docs/plan/spec-compliance/STATUS.md`, `docs/plan/spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md`, `docs/plan/spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md`
 - **Forbidden Paths:** `backend/server/src/infrastructure/config/env.schema.ts`, `frontend/client/shared/physics.js`, `backend/server/src/domain/verdict/verdict-rules.ts`
 - **Tasks (in order):**
-  - [ ] [`SPC-06.1`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Status text matches `docs/spec/PRODUCT.md`: enforce mode has the named streams and the MAC; the default stays `off`
-  - [ ] [`SPC-06.3`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Status text matches the code: pause and slow-mo reject only when `TELEMETRY_V21=enforce`
-  - [ ] [`SPC-06.4`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Status text matches the code: salt commitments and `worldDigest32` exist; the 10 Hz road does not read them
-  - [ ] [`SPC-06.5`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md), [`SPC-06.6`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md), [`SPC-08.5`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md), [`SPC-08.6`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Status text matches Wave 5 Lane 2 (humanness, retention, `trustScore` from 60, `TermsGuard`). The spec summary counts change with those rows
+  - [x] [`SPC-06.1`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Status text matches `docs/spec/PRODUCT.md`: enforce mode has the named streams and the MAC; the default stays `off`
+  - [x] [`SPC-06.3`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Status text matches the code: pause and slow-mo reject only when `TELEMETRY_V21=enforce`
+  - [x] [`SPC-06.4`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Status text matches the code: salt commitments and `worldDigest32` exist; the 10 Hz road does not read them
+  - [x] [`SPC-06.5`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md), [`SPC-06.6`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md), [`SPC-08.5`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md), [`SPC-08.6`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Status text matches Wave 5 Lane 2 (humanness, retention, `trustScore` from 60, `TermsGuard`). The spec summary counts change with those rows. The banned-word scrub stays named as open.
 - **Lane 1 Verify Command:** `git diff -- backend/server/src/infrastructure/config/env.schema.ts frontend/client/shared/physics.js backend/server/src/domain/verdict/verdict-rules.ts` is empty
 
 #### Wave 7 — `Lane 2` (Cheat rows the verifier does not reject)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-2)` — `docs/spec/anticheat.md` §5.1. `npm run test:e2e:block3` exited 0 (9 files, 153 tests).
 - **Owned Paths:** `docs/spec/anticheat.md`, `tests/e2e/block3-anticheat/cheat-catalog.e2e.spec.ts`
 - **Forbidden Paths:** `backend/server/src/domain/verdict/`, `frontend/client/shared/physics.js`
 - **Tasks (in order):**
-  - [ ] Write the accepted non-rejects into `docs/spec/anticheat.md` §9. The block3 suite already locks them: `#02`, `#03`, `#05`, `#07`, `#14`, `#22`, `#25`–`#33`, `#47`, `#52`. A flag that does not reject stays a flag
-  - [ ] Do not add a reject and do not bump `RULES_VERSION`. `npm run test:e2e:block3` still exits 0
+  - [x] Write the accepted non-rejects into `docs/spec/anticheat.md` §9. The block3 suite already locks them: `#02`, `#03`, `#05`, `#07`, `#14`, `#22`, `#25`–`#33`, `#47`, `#52`. A flag that does not reject stays a flag
+  - [x] Do not add a reject and do not bump `RULES_VERSION`. `npm run test:e2e:block3` still exits 0
 - **Lane 2 Verify Command:** `npm run test:e2e:block3`
 
 #### Wave 7 — `Lane 3` (Written live-verifier cutover)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-3)` — the cutover and the flag switch are bullets in `docs/agents/server.md`. Defaults were not changed.
 - **Owned Paths:** `docs/spec/anticheat.md`, `docs/agents/server.md`
 - **Forbidden Paths:** `frontend/client/shared/physics.js`, `backend/server/src/infrastructure/config/env.schema.ts`, `backend/server/prisma/`
 - **Tasks (in order):**
-  - [ ] [`SPC-06.2`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Write the cutover: new rides would call `stepAt30Hz`, historical rides stay on the 10 Hz recording, `REPLAY_SIM_HZ` stays 10 until a later explicit ask
-  - [ ] Write the flag switch: `TELEMETRY_V21=enforce` and `MINIGAMES` leaving `off`. The schema defaults stay `off` in this wave
+  - [x] [`SPC-06.2`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Write the cutover: new rides would call `stepAt30Hz`, historical rides stay on the 10 Hz recording, `REPLAY_SIM_HZ` stays 10 until a later explicit ask
+  - [x] Write the flag switch: `TELEMETRY_V21=enforce` and `MINIGAMES` leaving `off`. The schema defaults stay `off` in this wave
 - **Lane 3 Verify Command:** `git diff -- frontend/client/shared/physics.js backend/server/src/infrastructure/config/env.schema.ts backend/server/prisma` is empty
 
 #### Wave 7 — `Lane 4` (Board arithmetic)
-- **Lane Status:** `[ ] Todo`
+- **Lane Status:** `[x] Done (Lane-4)` — summary counts match the rows. Census `--self-test` printed `self-test ok` (178/178 routes, 9/9 pages, 30/30 Anchor instructions, 81/81 required ids).
 - **Owned Paths:** `docs/plan/spec-compliance/STATUS.md`, `docs/plan/EXECUTION_ORCHESTRATOR.md`
 - **Forbidden Paths:** `backend/`, `frontend/`, `programs/`
 - **Tasks (in order):**
-  - [ ] Spec summary counts match the rows after Lane 1. `SPC-05.6` stays `[!] Blocked`
-  - [ ] `node .claude/skills/test-census/census.mjs --self-test` still prints `self-test ok`
+  - [x] Spec summary counts match the rows after Lane 1. `SPC-05.6` stays `[!] Blocked`
+  - [x] `node .claude/skills/test-census/census.mjs --self-test` still prints `self-test ok`
 - **Lane 4 Verify Command:** `node .claude/skills/test-census/census.mjs --self-test`
 
 > **WAVE 7 BARRIER GATE:** All 10 tasks above must be `[x] Done` and `npm run test:e2e:block3 && node .claude/skills/test-census/census.mjs --self-test` must exit `0`. The diff must not change `TELEMETRY_V21`, `MINIGAMES`, `REPLAY_SIM_HZ`, or `RULES_VERSION`.

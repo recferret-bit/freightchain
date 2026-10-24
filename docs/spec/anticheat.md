@@ -313,6 +313,28 @@ Status marks: **C** = caught (a reject, or the ride `failed`), **F** = caught on
 
 **Total: 45 rows.** 29 are caught (26 reject or `failed`, plus 3 flag only), 10 are not caught (#2, 4, 5, 7, 11, 30, 36, 39, 40, 41), and 6 are unknown or partial (#3, 29, 32, 34, 37, 45). An existing test covers about 24 rows, but every one of them lasts 6–40 s, and v1 is covered only in Chrome and in one scenario.
 
+### 5.1 What block 3 locks (accepted non-rejects)
+
+These ids are the block 3 `[CHEAT-#NN]` titles, not the rows in §5, and they do not change the status marks above. A flag which does not reject stays a flag. `RULES_VERSION` stays 7.
+
+- `[CHEAT-#02]` Cruise locked under the governor is not rejected (`maxSpeed` stays ≤ 28 and `checkSamples` returns no reasons). This behavior stays.
+- `[CHEAT-#03]` Power ×1.5 does not throw (`stepAt30Hz` still returns a finite `v`). This behavior stays.
+- `[CHEAT-#05]` The 30 Hz stepper has no lateral `d`. This behavior stays.
+- `[CHEAT-#07]` A lateral jump is not a 30 Hz stepper field. This behavior stays.
+- `[CHEAT-#14]` `checkSamples` does not return `pause-limit`. This behavior stays.
+- `[CHEAT-#22]` A null client hash flags `unhashed-batch` and does not reject. This behavior stays.
+- `[CHEAT-#25]` The 30 Hz stepper has no hull field. This behavior stays.
+- `[CHEAT-#26]` `classifyHumanness` does not return `traffic-collision-ignored` (the stepper also has no `traffic` field). This behavior stays.
+- `[CHEAT-#27]` The stepper returns longitudinal state only (`brake`, `clutch`, `engineOn`, `gas`, `gear`, `park`, `rev`, `rpm`, `v`). This behavior stays.
+- `[CHEAT-#28]` The stepper has no crash counter (`crashesVehicle`). This behavior stays.
+- `[CHEAT-#29]` The stepper does not model building crashes (`simulatedCrashesBuilding`). This behavior stays.
+- `[CHEAT-#30]` A damage cut is not a humanness reject (a human-like trace stays `verified`, with no damage reason). This behavior stays.
+- `[CHEAT-#31]` `classifyHumanness` does not return `obstacle-no-impact` or `obstacle-ignored`. This behavior stays.
+- `[CHEAT-#32]` A red light is not a humanness reject. This behavior stays.
+- `[CHEAT-#33]` `classifyHumanness` does not return `donated-obstacle-ignored` or `event-unapplied`. This behavior stays.
+- `[CHEAT-#47]` One short world-digest mismatch flags and does not reject (`judgeWorldDigest` stays `flag`). This behavior stays.
+- `[CHEAT-#52]` Untrusted input without an impossibility is review, not a reject (`flagged_for_review`, reason `untrusted-input` only). This behavior stays.
+
 ---
 
 ### 6. The main gaps (do not fix them in this block; only lock them in with `known-gap` tests)

@@ -15,7 +15,7 @@ Upgrades the anti-cheat pipeline from 10 Hz sample inspection to the full [`docs
 
 ### `SPC-06.1` — Implement Telemetry v2.1 wire protocol (`sessionKey` per-batch HMAC-SHA256, deflate streams `inp`/`clk`/`chk`/`mg`/`env`, `batch-mac-invalid`)
 
-- **Status:** `[~] In Progress` — shadow HMAC, then optional deflate-raw `streams` checked after the MAC (64 KB compressed, 256 KB uncompressed). The named `inp`/`clk`/`chk`/`mg`/`env` codec is not in. `RULES_VERSION` stays 7.
+- **Status:** `[x] Done` — Enforce mode has named deflate streams `inp`/`clk`/`chk`/`mg`/`env` and the HMAC-before-inflate. Default `TELEMETRY_V21` stays `off`. `off` and `shadow` do not require the streams.
 - **Spec Rules:** `ACH-M-02`, `ACH-M-03`, `ACH-M-05` (`docs/spec/anticheat.md` §3–4, Decisions 3, 4, 8)
 - **Paired Plan 1 Task:** `E2E-07.3`
 - **Target Files:**
@@ -37,7 +37,7 @@ Upgrades the anti-cheat pipeline from 10 Hz sample inspection to the full [`docs
 
 ### `SPC-06.2` — Upgrade client & server `ReplayEngine` to 30 Hz fixed-step deterministic simulation (`dt = 1/30s`) + incremental per-batch server re-sim
 
-- **Status:** `[ ] Todo`
+- **Status:** `[ ] Todo` — The live replay is still 10 Hz. `stepAt30Hz` is not the live rate.
 - **Spec Rules:** `ACH-M-01`, `ACH-M-08`, `ACH-M-09`, `ACH-M-10`, `ACH-M-12` (`docs/spec/anticheat.md` §2 & §5, Decisions 1, 2, 11, 12)
 - **Paired Plan 1 Tasks:** `E2E-07.1`, `E2E-07.2`
 - **Target Files:**
@@ -61,7 +61,7 @@ Upgrades the anti-cheat pipeline from 10 Hz sample inspection to the full [`docs
 
 ### `SPC-06.3` — Enforce pause (`≤3` pauses, `≤5 min` cumulative) and slow-motion (`dt` / wall-clock drift) anti-cheat bounds
 
-- **Status:** `[~] In Progress` — heartbeats store `pauseCount` and `pauseSeconds`. `TELEMETRY_V21=shadow` flags `pause-limit`, `pause-time`, and `time-dilation` (game/wall below 0.9 after 60 s outside pauses). None of them reject. `RULES_VERSION` stays 7.
+- **Status:** `[x] Done` — A fourth pause, more than five minutes paused, or sustained slow-motion rejects only when `TELEMETRY_V21=enforce`. `off` and `shadow` flag and do not reject. `RULES_VERSION` stays 7.
 - **Spec Rules:** `ACH-M-04` (`docs/spec/anticheat.md` §4.3, Decision 7)
 - **Paired Plan 1 Task:** `E2E-07.6`
 - **Target Files:**
@@ -80,7 +80,7 @@ Upgrades the anti-cheat pipeline from 10 Hz sample inspection to the full [`docs
 
 ### `SPC-06.4` — Implement shared pool `roadSeed` + per-ride `trafficSalt` & `holeSalt` commit–reveal (`HMAC-SHA256`) and `worldDigest32` verification
 
-- **Status:** `[~] In Progress` — start stores `trafficSaltCommit` and `holeSaltCommit`, re-derived from the ride id and session key. The 10 Hz road does not read them. `worldDigest32` is not in.
+- **Status:** `[x] Done` — Start stores traffic and hole salt commitments and enforce compares `worldDigest32` of spawned holes, junctions, and traffic. A short mismatch flags; one that lasts at least 10 seconds after three points rejects. The 10 Hz road rebuild does not read the salts.
 - **Spec Rules:** `ACH-M-05`, `ACH-M-11` (`docs/spec/anticheat.md` §6, Decisions 9, 10)
 - **Paired Plan 1 Task:** `E2E-07.4`
 - **Target Files:**
@@ -102,7 +102,7 @@ Upgrades the anti-cheat pipeline from 10 Hz sample inspection to the full [`docs
 
 ### `SPC-06.5` — Implement mechanical input humanness classifier (`F1..F10` → `humannessScore`), 5 physical-impossibility auto-reject rules, and `isTrusted=false` tracking
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — F1–F10 score 0–100. The five physical-impossibility cases reject. A borderline score or `isTrusted=false` is `flagged_for_review`. No browser fingerprint.
 - **Spec Rules:** `ACH-M-06`, `ACH-M-07`, `ACH-M-14`, `ACH-M-15`, `ACH-M-16` (`docs/spec/anticheat.md` §7, Decisions 13, 15, 16)
 - **Paired Plan 1 Tasks:** `E2E-07.5`, `E2E-07.7`
 - **Target Files:**
@@ -122,7 +122,7 @@ Upgrades the anti-cheat pipeline from 10 Hz sample inspection to the full [`docs
 
 ### `SPC-06.6` — Implement 90-day raw input trace retention job & pool top-20 cross-ride input trace clustering detector
 
-- **Status:** `[ ] Todo`
+- **Status:** `[x] Done` — Top-20 verified rides in an open validation window are compared. A similar pair raises `trace-cluster` and those rides are flagged for review. A copied trace of 50 or more intervals rejects. Raw `inp` older than 90 days can be deleted only after that pool's payout is finalized.
 - **Spec Rules:** `ACH-M-13` (`docs/spec/anticheat.md` §8, Decision 27)
 - **Paired Plan 1 Task:** `E2E-07.8`
 - **Target Files:**
