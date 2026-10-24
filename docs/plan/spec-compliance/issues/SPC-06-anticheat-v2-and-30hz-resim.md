@@ -61,7 +61,7 @@ Upgrades the anti-cheat pipeline from 10 Hz sample inspection to the full [`docs
 
 ### `SPC-06.3` — Enforce pause (`≤3` pauses, `≤5 min` cumulative) and slow-motion (`dt` / wall-clock drift) anti-cheat bounds
 
-- **Status:** `[x] Done` — A fourth pause, more than five minutes paused, or sustained slow-motion rejects only when `TELEMETRY_V21=enforce`. `off` and `shadow` flag and do not reject. `RULES_VERSION` stays 7.
+- **Status:** `[x] Done` — A fourth pause, more than five minutes paused, or sustained slow-motion: `off` adds no reasons, `shadow` flags, and `enforce` rejects. `RULES_VERSION` stays 7.
 - **Spec Rules:** `ACH-M-04` (`docs/spec/anticheat.md` §4.3, Decision 7)
 - **Paired Plan 1 Task:** `E2E-07.6`
 - **Target Files:**

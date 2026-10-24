@@ -44,13 +44,13 @@ These are real Chrome or a real validator. Keep them. Do not replace them with t
 
 ## Gaps that keep the bar red
 
-From the 2026-10-18 audit. Close these before calling the app covered. The order is [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
+From the 2026-10-18 audit, except the three commands below. Those three were green in the 2026-10-23 local `npm run test:ci:full` log. Close the holes that remain before calling the app covered. The order is [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
-**Red gates**
+**Gates green on 2026-10-23**
 
-- `npm --prefix client run test:parity` — 21 `veh|medic` meshes differ from baseline `353a5b7616f2`.
-- `npm --prefix server run test:tickets-stub` — 18/20. The stub has no `POST /api/tickets/orders/:id/reconcile` and no `GET /api/referrals`.
-- `node .claude/skills/test-census/census.mjs self-test` — stale headless count, 57 routes and 147 files unmapped, `mcp/` and `audit/` omitted.
+- `npm --prefix frontend/client run test:parity` — 11668 objects compared against golden.txt: identical.
+- `npm --prefix frontend/client run test:tickets-stub` — 20/20.
+- `node .claude/skills/test-census/census.mjs --self-test` — zero-scenario routes: 0, single-scenario routes: 0, http routes on both flow runners: 178/178, then self-test ok.
 
 **HTTP routes with no scenario** (unit tests of the controller with a mocked bus do not count)
 
@@ -136,4 +136,4 @@ Three calls exist and do not fill the cell:
 - The happy-dom block-1 file, when `E2E_BASE` is set, POSTs `/api/auth/guest` and GETs `/api/prize/board`. That run is not Chrome and it skips without `E2E_BASE`.
 - `POST /api/editor/auth/logout` is only a cross-origin 403.
 
-The Chrome cell is empty for the rows in "Chrome and chain holes." Three gates are red. The app is not fully covered.
+The Chrome cell is empty for the rows in "Chrome and chain holes." The app is not fully covered.
