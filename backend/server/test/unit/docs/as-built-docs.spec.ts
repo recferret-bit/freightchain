@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { EnvService } from '../../../src/infrastructure/config/env.service.js';
 import { pauseVerdict, slowMotionVerdict } from '../../../src/domain/rides/pause-bounds.js';
 import { BadRequestError, NotFoundError } from '../../../src/domain/shared/errors.js';
-import { replayDenial, type ReplaySubject } from '../../../src/domain/live/replay-visibility.js';
+import { isPublicReplay, replayDenial, type ReplaySubject } from '../../../src/domain/live/replay-visibility.js';
 import { LiveDonationService } from '../../../src/application/live/live-donation.service.js';
 import { BurnHonkTimeCommand, BurnHonkTimeHandler } from '../../../src/application/use-cases/honk/burn-honk-time.handler.js';
 import { BurnHonkWeatherCommand, BurnHonkWeatherHandler } from '../../../src/application/use-cases/honk/burn-honk-weather.handler.js';
@@ -23,6 +23,7 @@ const docs = {
   issue: read('docs/plan/spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md'),
   coverage: read('docs/testing/COVERAGE_CONTRACT.md'),
   logout: read('backend/server/test/scenarios/http-gaps-editor.scenarios.ts'),
+  history: read('backend/server/src/infrastructure/prisma/repositories/ride-query.prisma.repository.ts'),
 };
 const verdict = read('backend/server/src/application/services/verdict.service.ts');
 
@@ -136,16 +137,21 @@ describe('as-built docs match the shipped defaults', () => {
   });
 
   it('a finished free ride and editor logout follow the shipped result', () => {
-    const finishedFree = replayDenial(ride({ tier: 'free' }), null, new Date());
-    const running = replayDenial(ride({ status: 'running', tier: '1h', verdict: null }), 'driver', new Date());
-    expect(finishedFree?.code).toBe(running?.code);
-    const code = finishedFree?.code ?? '';
-    const watch = [
-      conflictRow(docs.product, 'Live watch'),
-      section(docs.product, '### Live board, watch, chat, donations, replays'),
-      tableRow(docs.coverage, 'Live and replay'),
-    ];
-    for (const span of watch) expectSpan(span, [code], ['Finished free rides stay in replays', 'including a finished free ride', 'stay in replays']);
+    const now = new Date();
+    const finishedFree = ride({ tier: 'free' });
+    const denial = replayDenial(finishedFree, null, now);
+    const running = replayDenial(ride({ status: 'running', tier: '1h', verdict: null }), 'driver', now);
+    expect(isPublicReplay(finishedFree, now, null)).toBe(false);
+    expect(denial?.code).toBe(running?.code);
+    const history = docs.history.slice(docs.history.indexOf('async history'), docs.history.indexOf('async staleRunning'));
+    expect(history).toContain("tier: '1h'");
+    const code = denial?.code ?? '';
+    const live = section(docs.product, '### Live board, watch, chat, donations, replays');
+    const listSentence = live.split(/(?<=\.)\s+/).find((sentence) => sentence.includes('GET /api/replays') && sentence.includes('omits'));
+    expect(listSentence).toBeTruthy();
+    expect(listSentence).not.toContain(code);
+    const watch = [conflictRow(docs.product, 'Live watch'), live, tableRow(docs.coverage, 'Live and replay')];
+    for (const span of watch) expectSpan(span, [code, 'omits'], ['Finished free rides stay in replays', 'including a finished free ride', 'stay in replays', 'on the public replay list']);
     const success = docs.logout.split('\n').find((line) => line.includes("'/api/editor/auth/logout'") && line.includes(".set(X, '1').expect("));
     const status = success?.match(/\.expect\((\d+)\)/)?.[1] ?? '';
     expect(status.length).toBeGreaterThan(0);
