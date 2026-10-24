@@ -133,6 +133,9 @@ describe('as-built docs match the shipped defaults', () => {
       'Four honk HTTP routes have no scenario',
       'in the zero-scenario list',
       'have no HTTP scenario',
+      'only a cross-origin 403',
+      '~25 s behind',
+      'close 17 zero-scenario',
     ]) {
       expect(text).not.toContain(banned);
     }

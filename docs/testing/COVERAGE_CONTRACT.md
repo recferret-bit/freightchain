@@ -113,6 +113,6 @@ Three calls exist and do not fill the Chrome cell:
 
 - `e2e-blinks.mjs` GETs `/api/actions/shift/2h` and expects 400. `GET /api/actions/shift/1h` has an HTTP scenario that expects the card. That run is not Chrome.
 - The happy-dom block-1 file, when `E2E_BASE` is set, POSTs `/api/auth/guest` and GETs `/api/prize/board`. That run is not Chrome and it skips without `E2E_BASE`.
-- `POST /api/editor/auth/logout` is only a cross-origin 403.
+- `POST /api/editor/auth/logout` has a same-origin `200` in `http-gaps-editor.scenarios.ts`. The happy-dom block-1 file still only shows a cross-origin 403, and that run is not Chrome.
 
 The Chrome cell is empty for the rows in "Chrome and chain holes." The app is not fully covered.
