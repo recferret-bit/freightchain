@@ -84,6 +84,16 @@ export function adminScenarios(h: () => Harness): void {
     await anon().post('/api/admin/auth/verify').set('x-fc-admin', '1').send({ wallet: ADMIN.address, signature: sign(ADMIN.kp, rider.message) }).expect(401);
   });
 
+  it('a saved admin token is already revoked when logout returns', async () => {
+    const { body } = await anon().post('/api/admin/auth/nonce').set('x-fc-admin', '1').send({ wallet: ADMIN.address }).expect(200);
+    const verified = await anon().post('/api/admin/auth/verify').set('x-fc-admin', '1').send({ wallet: ADMIN.address, signature: sign(ADMIN.kp, body.message) }).expect(200);
+    const raw = verified.headers['set-cookie'];
+    const cookie = (Array.isArray(raw) ? raw : [raw]).find((line) => line.startsWith('fc_admin='))!.split(';')[0]!;
+    await anon().get('/api/admin/overview').set('Cookie', cookie).expect(200);
+    await anon().post('/api/admin/auth/logout').set('x-fc-admin', '1').set('Cookie', cookie).expect(200);
+    expect((await anon().get('/api/admin/overview').set('Cookie', cookie).expect(401)).body.code).toBe('token_revoked');
+  });
+
   it('overview: counts, sign-ins of the last day, the verified-play switches', async () => {
     const admin = await asAdmin();
     const rider = await login();

@@ -1,6 +1,6 @@
 ---
 name: run-tests
-description: Run the WHOLE Freight Chain test suite locally, in order – lint/bundle/headless game check, landing tests, server unit + architecture audits, the PostgreSQL integration suite, then the real-Chrome end-to-end runs (game + lobby, admin, and live streams) against a freshly built server on a throwaway database – and report pass/fail with the failing output. Use before a commit, before a deploy, when asked to "run the tests", "check everything", or to verify a change end to end. This is the project's test automation (there is no CI).
+description: Run the Freight Chain test suite locally, in order – lint/bundle/headless game check, landing tests, server unit + architecture audits, PostgreSQL integration, then real-Chrome runs against a freshly built server on a throwaway database – and report pass/fail and remaining coverage gaps. Use before a commit, before a deploy, when asked to "run the tests", "check everything", or to verify a change end to end. This is the project's test automation (there is no CI).
 ---
 
 # Run every test (local, no CI)
@@ -38,8 +38,8 @@ If it fails with `P3009 … failed migrations` on `freightchain_test`: that data
 builds the landing + server into PRIVATE copies (`server/.e2e-build-<pid>/`, a temp dir for the landing – another session's `npm run build` /
 `npm run check` empties `server/dist` + `landing/dist` mid-run, which once killed a suite with "Cannot find module dist/main.js"), starts the server on a free port, runs `server/scripts/e2e-browser.mjs` (20 s ride, asserts COMPLETED · VERIFIED),
 `server/scripts/e2e-lobby.mjs` (3 s rides, the dev pool seeds via `SEED=1`, screenshots), `server/scripts/e2e-admin.mjs` (admin page: allowlist, queue, override, audit)
-`server/scripts/e2e-watch.mjs` (live streams, two Chromes: a driver + a spectator – replay, chat on the CB, mock NIGHT + SINKHOLE donations applied and seen in the replay; ~3 min)
-and `server/scripts/e2e-replay.mjs` (a finished ride's replay from the landing's ticker link: speeds, seeks, the night and the paid hole from history; ~4 min) and `server/scripts/e2e-live-flags.mjs` (the LIVE_* flags: production's paid donations with a fake wallet, then chat + donations off – two servers; all three are also the `replay-test` skill),
+`server/scripts/e2e-watch.mjs` (running and training replay refusals, driver + spectator)
+and `server/scripts/e2e-replay.mjs` (training/unknown replay refusals and removed donation effects) and `server/scripts/e2e-live-flags.mjs` (running free-ride watch/chat/donation refusals with flags on/off – two servers; all three are also the `replay-test` skill). These default fixtures do not establish a positive paid-replay playback/chat/tip journey,
 and `landing/tools/e2e-wallet.mjs` twice – `wallet` (one origin) and `wallet-split` (landing on `app.localhost`, API on `api.app.localhost`, one cookie on the apex): the landing's sign-in, the redirect and the promo invite block,
 and `server/scripts/e2e-live-board.mjs` (online / on the road / the replays history on the landing and in the lobby, fed by `scripts/sim-rides.mjs`; the `live-board-test` skill),
 and `server/scripts/e2e-close.mjs` twice – `close` (one origin) and `close-split` (landing + lobby on `app.localhost`, the game on `ride.app.localhost`, the API on
@@ -47,12 +47,13 @@ and `server/scripts/e2e-close.mjs` twice – `close` (one origin) and `close-spl
 back/forward cache and reloads, a COMPLETE shift whose tab closes is COMPLETED + VERIFIED (~2 min each),
 and `server/scripts/e2e-verified-play.mjs` (`verified`: the anti-bot checks with dispatch prompts – a person and a bot in Chrome, API-level bots, the CLI; ~3 min)
 and `server/scripts/e2e-verified-deep.mjs` (`verified-deep`: every verdict code one by one with the prompts off, the upload protocol, who sees a verdict, the admin's signed hand on a flagged ride, the lobby profile in Chrome, retention + bulk re-judge on the database; ~2.5 min)
-and `server/scripts/e2e-road-check.mjs` (`road`: the server's road – an honest driver and one with the holes taken out of its game in Chrome, a spectator's replay of both with the NO IMPACT marks, the `ride-audit` tool on the database; ~6 min) – all three are the `verified-play-test` skill,
+and `server/scripts/e2e-road-check.mjs` (`road`: honest/removed-hole drivers in Chrome with required frame proof, training replay refusal and database `ride-audit`; ~6–12 min on software WebGL) – all three are the `verified-play-test` skill,
 and `server/scripts/e2e-blinks.mjs` (`blinks`: the Solana Actions through Dialect's own blink client `@dialectlabs/blinks-core` – discovery, CORS + metadata as dial.to needs them, both cards, every button POSTed, the buy's devnet transaction; program mode with a seeded pool, needs the devnet RPC; also `READONLY=1 BASE=https://freightchain.fun` for production),
 then stops the server and drops the database – also on failure.
 
 ```sh
-bash .claude/skills/run-tests/e2e.sh            # all nineteen
+bash .claude/skills/run-tests/e2e.sh            # all twenty-eight, including guest, weekly grant, referral qualification, viewer and sim controls
+bash .claude/skills/run-tests/e2e.sh guest weekly referral viewer  # these four against a private server build and throwaway database
 bash .claude/skills/run-tests/e2e.sh editor     # the model editor on storybook: the REAL entity MCP + the server's scripted model (EDITOR_FAKE_LLM=1) – sign-in, hand edit, history, signed publish, a chat job, the spec gate
 bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor
 ```
@@ -60,7 +61,7 @@ bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admi
 Then **look at the screenshots** it prints (`fc-online-shots`, `fc-lobby-shots`, `fc-admin-shots`, `fc-watch-shots`, `fc-replay-shots`, `fc-flags-shots`, `fc-board-shots`, `fc-close-shots` in the OS temp dir) with the Read tool – the scripts
 cannot judge layout. Say plainly what passed, what failed (with output), and what still needs a human eye.
 
-The `traffic` suite covers strict version-1 frame validation with real honest and modified Chrome clients; the legacy API matrices in `verified`, `verified-deep` and the historical road-isolation suite explicitly run version 0. Private client snapshots prevent concurrent source changes from altering a running suite. Set `E2E_POSTGRES_CONTAINER` and `E2E_POSTGRES_PORT` to use a separate running test PostgreSQL container (same compose test credentials); only the throwaway database is created/dropped there.
+The `traffic` and `road` suites require strict version-1 frame validation with real honest and modified Chrome clients; the legacy API matrices in `verified` and `verified-deep` explicitly run version 0. Historical reconstruction discrepancies remain review flags. Private client snapshots prevent concurrent source changes from altering a running suite. Set `E2E_POSTGRES_CONTAINER` and `E2E_POSTGRES_PORT` to use a separate running test PostgreSQL container (same compose test credentials); only the throwaway database is created/dropped there.
 
 ## 4. Optional: the money on a local chain (~4 min)
 

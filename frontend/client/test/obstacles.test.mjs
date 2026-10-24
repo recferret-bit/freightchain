@@ -3,8 +3,7 @@ import assert from 'node:assert/strict';
 import { net } from '../js/net/network.js';
 import { rollHole, naturalHole, holesIn, holesNear, installPlan, planCovers, plan, placeHole, obstacleSpot, flagHole, flagged, clearHoleCache } from '../js/net/obstacles.js';
 
-/* Road holes as data: the server's obstacle plan (GET /api/watch/:id/road) is what online rides and replays drive over / draw; the local roll is the
-   offline path and the fallback until a stretch arrives. */
+/* The driver's local seeded roll matches the server's obstacle plan; eligible replays fetch that plan and fall back to the same roll until it arrives. */
 const SEED = 4242;
 const road = () => { net.setStyle({}); net.reset(SEED); clearHoleCache(); };
 const rolled = (from, to) => { const out = []; for (let ci = Math.floor(from / 32); ci * 32 < to; ci++) { const h = rollHole(ci); if (h) out.push({ id: h.id, ci: h.ci, type: h.type, s: h.s, lat: h.lat }); } return out; };

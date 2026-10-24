@@ -2,7 +2,7 @@
 //   node tools/e2e-viewer.mjs [url]      default http://localhost:8765/viewer.html (run ./serve.sh first); env: CHROME, SHOTS (default <tmp>/fc-viewer-shots)
 import { launch, sleep, withEntities } from './cdp.mjs';
 const PORT=+process.env.PORT||9334, URL=await withEntities(process.argv[2]||'http://localhost:8765/viewer.html');
-const { send, ev, shot, problems, SHOTS, finish } = await launch({ port: PORT, shotsDir: 'fc-viewer-shots' });
+const { send, ev, shot, problems, SHOTS, finish } = await launch({ port: PORT, shotsDir: 'fc-viewer-shots', evalProblems: true });
 const mouse=(type,x,y,extra={})=>send('Input.dispatchMouseEvent',{type,x,y,button:'left',buttons:type==='mouseReleased'?0:1,clickCount:1,...extra});
 const rmouse=(type,x,y,extra={})=>send('Input.dispatchMouseEvent',{type,x,y,button:'right',buttons:type==='mouseReleased'?0:2,clickCount:1,...extra});
 await send('Page.navigate',{url:URL}); await sleep(3000);
@@ -22,7 +22,11 @@ if(await ev('typeof window.__viewer')==='object'){
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'d'}); await sleep(200); await send('Input.dispatchKeyEvent',{type:'keyUp',key:'d'}); const c4=await ev('__viewer.cam.target.x');
   console.log('before',c0,'\nafter orbit',c1,'\nafter wheel dist',c2,'\nafter pan target.x',c3,'\nafter D-strafe target.x',c4); await sleep(300); await shot('07-after-input');
 }
-const p=problems.filter(x=>!/favicon/.test(x));
+if (new globalThis.URL(URL).searchParams.get('editor') !== 'off') {
+  const status=await ev(`fetch(new URL('/api/editor/me', location.href), { credentials: 'include' }).then(r => r.status)`);
+  if (status !== 404) bad.push(`signed-out editor session: expected 404, got ${status}`);
+}
+const p=problems.filter(x=>!/favicon/.test(x) && !(/^log\.error: Failed to load resource:.*status of 404/.test(x) && /\/api\/editor\/me$/.test(x)));
 for (const item of bad) p.push('select: '+item);
 console.log(p.length?'PROBLEMS:\n'+p.join('\n'):'no errors'); console.log('screenshots in',SHOTS);
 finish(p.length?1:0);

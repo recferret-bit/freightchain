@@ -33,7 +33,7 @@
     "test:e2e:block3": "npm --prefix backend/server run test:block3",
     "test:ci:security": "npm --prefix backend/server run test:security",
     "test:ci:fast": "bash scripts/ci-fast.sh",
-    "test:ci:full": "npm run test:ci:fast && npm run test:e2e:block2 && npm run test:e2e:block3 && npm run test:localnet && bash .claude/skills/honk-suite/run.sh && bash .claude/skills/run-tests/e2e.sh",
+    "test:ci:full": "npm run test:ci:fast && npm run test:e2e:block2 && npm run test:e2e:block3 && npm run program:test && npm run test:localnet && bash .claude/skills/honk-suite/run.sh && bash .claude/skills/run-tests/e2e.sh",
     "test:e2e:pages": "npm --prefix tests/e2e run test:pages",
     "test:census": "node .claude/skills/test-census/census.mjs",
     "program:idl": "cp backend/programs/target/idl/freightchain_pools.json backend/programs/idl/freightchain_pools.json",

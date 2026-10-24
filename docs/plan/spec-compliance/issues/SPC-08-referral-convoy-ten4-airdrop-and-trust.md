@@ -15,7 +15,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.1` — Implement Convoy Referral state machine (`pending` 72h expiry delete → `active` 60d window on first verified MEDIUM/HARD ride → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)`
 
-- **Status:** `[x] Done` — `ConvoyService` on main. A verified ride calls `onVerifiedRide` after the verdict commits. `ReferralExpiryScheduler` sweeps every 60s. Rows live in `MemoryConvoyRepository` until the Wave 4 migration is applied. The legacy +2/+3 gift is unchanged. Unit specs exit 0 on 2026-10-20.
+- **Status:** `[~] In Progress` — reopened on 24 October. Service/state-machine tests exist, but production DI still binds `MemoryConvoyRepository` after the schema migration. Restart persistence and PostgreSQL concurrency are unproven. The verified Chrome referral journey still gives the legacy +2/+3 gifts. See the [local readiness audit](../../../testing/LOCAL_READINESS.md).
 - **Spec Rules:** `REF-M-01`, `REF-M-02`, `REF-M-03`, `REF-M-04`, `REF-M-05`, `REF-M-06`, `REF-M-07`, `REF-M-15` (`docs/spec/referral.md` §2)
 - **Paired Plan 1 Task:** `E2E-05.7`
 - **Target Files:**
@@ -40,7 +40,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.2` — Implement Convoy invitee 1h promo ride gift on activation (`3/day`, `10/week`, `500/week` global caps) + M1 (`100 TEN4` @ 2 ISO weeks) & M2 (`50 TEN4` @ 5 ISO weeks) rewards
 
-- **Status:** `[x] Done` — invitee promo ride and ledger TEN4 (100 then 50). Not a chain mint. Same unit run.
+- **Status:** `[~] In Progress` — reopened on 24 October. Invitee promo and 100/50 ledger rewards have unit tests; durable atomic caps/milestones, restart safety and the required on-chain reward journey remain open with the memory repository binding.
 - **Spec Rules:** `REF-M-08`, `REF-M-09`, `REF-M-10`, `REF-M-11`, `REF-M-12`, `REF-M-15` (`docs/spec/referral.md` §2.3–2.5)
 - **Paired Plan 1 Task:** `E2E-05.7`
 - **Target Files:**
@@ -62,7 +62,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.3` — Implement 25-row Convoy leaderboard (`GET /api/referrals/leaderboard`) & `convoyHidden` privacy toggle (`PATCH /api/me/privacy`)
 
-- **Status:** `[x] Done` — routes are on the app. `convoyHidden` answers `column: 'missing'` until Lane 3's player column is migrated. No lobby tab.
+- **Status:** `[~] In Progress` — reopened on 24 October. API routes exist, but the leaderboard still depends on process-local Convoy data. The required lobby slot meter, milestone progress and leaderboard journey need completion and browser evidence. Applying the schema migration alone does not finish this task.
 - **Spec Rules:** `REF-M-13`, `REF-M-14`, `REF-M-15` (`docs/spec/referral.md` §2.6–2.7)
 - **Paired Plan 1 Task:** `E2E-05.7`
 - **Target Files:**
@@ -85,7 +85,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.4` — Implement Pre-Season TEN4 Airdrop campaign engine (MEDIUM/HARD ride gate, Telegram check, X verification via `twitterapi.io`, Turnstile, unique social ID binding)
 
-- **Status:** `[x] Done` — `GET /api/airdrop/status`, telegram, X, and claim. A verified MEDIUM/HARD ride calls `recordVerifiedRide`. `TwitterApiIoAdapter` does not call the network. Turnstile throws `turnstile_unconfigured` when no secret is set. Store is process-local. Claim settlement is `ledger`.
+- **Status:** `[~] In Progress` — reopened on 24 October. Endpoints and local service tests exist; production uses process-local storage, unconfigured Telegram/X adapters and a null-secret Turnstile binding. Durable social uniqueness, real adapters and chain settlement remain open. Claim settlement is currently `ledger`.
 - **Spec Rules:** `TEN-M-01..11` (`docs/spec/ten4.md` §4.2, [`docs/plan/DEVNET_PRESEASON.md`](../../DEVNET_PRESEASON.md))
 - **Paired Plan 1 Task:** `E2E-05.8`
 - **Target Files:**
@@ -110,7 +110,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.5` — Implement Anti-Sybil `TrustScore` service (ASN, device fingerprint, funding cluster, humanness score, `<50` payout block, 48h reward hold queue)
 
-- **Status:** `[x] Done` — `trustScore` starts at 60. Convoy and airdrop TEN4 credits wait 48 hours and release only when both wallets are still at least 50 with no rejected rides. It does not store a browser fingerprint and it does not implement the Appendix D point table. No ASN, device fingerprint, or funding-cluster detection.
+- **Status:** `[~] In Progress` — reopened on 24 October. `trustScore` starts at 60 and the 48-hour ledger hold checks both wallets remain at least 50 with no rejected rides. Appendix D's accepted score updates, ASN/funding signals and on-chain release evidence are missing. Browser fingerprinting remains rejected; reopening does not authorize adding it.
 - **Spec Rules:** `docs/spec/anticheat.md` Appendix D, `REF-M-15`, `docs/plan/MASTER_PLAN.md` §8
 - **Paired Plan 1 Tasks:** `E2E-05.7`, `E2E-05.8`, `E2E-07.8`
 - **Target Files:**

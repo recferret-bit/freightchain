@@ -7,17 +7,19 @@
 
 ## Summary Progress
 
+The 24 October [local readiness audit](../../testing/LOCAL_READINESS.md) reopened six implementation tasks. Other checked entries retain their earlier task status; they are not certification that every feature passed the current runtime gate.
+
 | Epic | Domain | Spec Docs | Total Tasks | Todo | In Progress | Done | Blocked |
 |---|---|---|---|---|---|---|---|
 | [`SPC-01`](./issues/SPC-01-backend-contract-and-validation.md) | Backend Contract, `@ZodResponse`, `.strict()` & Geo/Hero Fixes | `backend_contract.md`, `legal.md` | 6 | 0 | 0 | 6 | 0 |
 | [`SPC-02`](./issues/SPC-02-admin-and-privileged-security.md) | Admin & Privileged Security (`F01..F18`) | `admin_security.md` | 9 | 0 | 0 | 9 | 0 |
 | [`SPC-03`](./issues/SPC-03-rides-dynamic-finish-and-ride-result.md) | Rides, Dynamic 65 km/h Finish & `stats.RideResult` | `rides.md` | 6 | 0 | 0 | 6 | 0 |
 | [`SPC-04`](./issues/SPC-04-replays-streams-donations-and-i18n.md) | Replays, Tip-Only Donations, Controls `C1..C36`, Chat & EN/RU i18n | `replays_streams.md`, `legal.md` | 9 | 0 | 0 | 9 | 0 |
-| [`SPC-05`](./issues/SPC-05-pool-schedule-appeals-and-program-v6.md) | Pool Schedule, `last_start_at`, Appeals & Program v6 | `pool.md` | 6 | 0 | 0 | 6 | 0 |
+| [`SPC-05`](./issues/SPC-05-pool-schedule-appeals-and-program-v6.md) | Pool Schedule, `last_start_at`, Appeals & Program v6 | `pool.md` | 6 | 0 | 1 | 5 | 0 |
 | [`SPC-06`](./issues/SPC-06-anticheat-v2-and-30hz-resim.md) | Anti-Cheat v2.1, 30 Hz Server Re-Sim & Humanness `F1..F10` | `anticheat.md` | 6 | 0 | 0 | 6 | 0 |
 | [`SPC-07`](./issues/SPC-07-minigames-framework-and-catalog.md) | Phone `phone-sms` (ported, default off) | `minigames.md` | 5 | 0 | 0 | 5 | 0 |
-| [`SPC-08`](./issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) | Referral Convoy, TEN4 Airdrop, `TrustScore` & `TermsGuard` | `referral.md`, `ten4.md`, `promocodes.md`, `web3_solana.md`, `platform_services.md` | 6 | 0 | 0 | 6 | 0 |
-| **Total** | | | **53** | **0** | **0** | **53** | **0** |
+| [`SPC-08`](./issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) | Referral Convoy, TEN4 Airdrop, `TrustScore` & `TermsGuard` | `referral.md`, `ten4.md`, `promocodes.md`, `web3_solana.md`, `platform_services.md` | 6 | 0 | 5 | 1 | 0 |
+| **Total** | | | **53** | **0** | **6** | **47** | **0** |
 
 ---
 
@@ -81,7 +83,7 @@
 | `SPC-05.2` | Enforce `409 pool_last_start_passed` on ride start & `409 pool_schedule_mismatch` on DB vs on-chain PDA timestamp drift | `POOL-M-05`, `POOL-M-06`, `POOL-M-11` | `E2E-08.5` | `SPC-05.1` | `[x] Done` |
 | `SPC-05.3` | Add non-refundable ticket burn rule after `last_start_at` + lobby purchase warning modal & mandatory confirmation checkbox | `POOL-M-07` | `E2E-08.5` | `SPC-05.2` | `[x] Done` |
 | `SPC-05.4` | Implement pool validation & appeals workflow (`POST /api/rides/:id/appeal`, admin review queue, block `commit_winners_root` until `validation_until` & 0 open appeals) | `POOL-M-08`, `POOL-M-09` | `E2E-08.5` | `SPC-05.1` | `[x] Done` |
-| `SPC-05.5` | Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`) | `POOL-M-10`, `POOL-M-13, 14` | `E2E-08.5` | `SPC-05.1` | `[x] Done` |
+| `SPC-05.5` | Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`) | `POOL-M-10`, `POOL-M-13, 14` | `E2E-08.5` | `SPC-05.1` | `[~] In Progress` |
 | `SPC-05.6` | Resolve `set_pool_rules` governance conflict (`POOL-M-12`/`B8` Admin HTTP vs `ADM-M-07`/Decision 60 Squads multisig-only) | `POOL-M-12` vs `ADM-M-07` | `E2E-08.5`, `E2E-09.1` | Decision 70 | `[x] Done` — Decision 70 (24.10.2026): no admin HTTP route. `pool-admin.mjs set-pool-rules` sends it. On mainnet, Squads. |
 
 ### Epic SPC-06 — Anti-Cheat v2.1, 30 Hz Server Re-Sim & Humanness `F1..F10` ([`issues/SPC-06-anticheat-v2-and-30hz-resim.md`](./issues/SPC-06-anticheat-v2-and-30hz-resim.md))
@@ -109,9 +111,9 @@
 
 | Task ID | Title | Spec Rules | Paired Plan 1 Test | Depends On | Status |
 |---|---|---|---|---|---|
-| `SPC-08.1` | Implement Convoy Referral state machine (`pending` 72h expiry delete → `active` 60d window on first verified MEDIUM/HARD ride → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)` | `REF-M-01..07`, `REF-M-15` | `E2E-05.7` | — | `[x] Done` |
-| `SPC-08.2` | Implement Convoy invitee 1h promo ride gift on activation with `3/day`, `10/week` per-referrer and `500/week` global caps + M1 (`100 TEN4` @ 2 ISO weeks) & M2 (`50 TEN4` @ 5 ISO weeks) rewards | `REF-M-08..12`, `REF-M-15` | `E2E-05.7` | `SPC-08.1` | `[x] Done` |
-| `SPC-08.3` | Implement 25-row Convoy leaderboard (`GET /api/referrals/leaderboard`) & `convoyHidden` privacy toggle (`PATCH /api/me/privacy`) | `REF-M-13`, `REF-M-14`, `REF-M-15` | `E2E-05.7` | `SPC-08.2` | `[x] Done` |
-| `SPC-08.4` | Implement Pre-Season TEN4 Airdrop campaign engine (MEDIUM/HARD ride gate, Telegram check, X verification via `twitterapi.io`, Turnstile, unique social ID binding) | `TEN-M-01..11`, `DEVNET_PRESEASON` | `E2E-05.8` | `SPC-08.1` | `[x] Done` |
-| `SPC-08.5` | Implement Anti-Sybil `TrustScore` service (ASN, device fingerprint, funding cluster, humanness score, `<50` payout block, 48h reward hold queue) | `anticheat.md` Appendix D, `REF-M-15` | `E2E-05.7`, `E2E-05.8`, `E2E-07.8` | `SPC-06.5` | `[x] Done` — `trustScore` starts at 60. Convoy and airdrop TEN4 credits wait 48 hours and release only when both wallets are still at least 50 with no rejected rides. It does not store a browser fingerprint and it does not implement the Appendix D point table. No ASN, device fingerprint, or funding-cluster detection. |
+| `SPC-08.1` | Implement Convoy Referral state machine (`pending` 72h expiry delete → `active` 60d window on first verified MEDIUM/HARD ride → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)` | `REF-M-01..07`, `REF-M-15` | `E2E-05.7` | — | `[~] In Progress` |
+| `SPC-08.2` | Implement Convoy invitee 1h promo ride gift on activation with `3/day`, `10/week` per-referrer and `500/week` global caps + M1 (`100 TEN4` @ 2 ISO weeks) & M2 (`50 TEN4` @ 5 ISO weeks) rewards | `REF-M-08..12`, `REF-M-15` | `E2E-05.7` | `SPC-08.1` | `[~] In Progress` |
+| `SPC-08.3` | Implement 25-row Convoy leaderboard (`GET /api/referrals/leaderboard`) & `convoyHidden` privacy toggle (`PATCH /api/me/privacy`) | `REF-M-13`, `REF-M-14`, `REF-M-15` | `E2E-05.7` | `SPC-08.2` | `[~] In Progress` |
+| `SPC-08.4` | Implement Pre-Season TEN4 Airdrop campaign engine (MEDIUM/HARD ride gate, Telegram check, X verification via `twitterapi.io`, Turnstile, unique social ID binding) | `TEN-M-01..11`, `DEVNET_PRESEASON` | `E2E-05.8` | `SPC-08.1` | `[~] In Progress` |
+| `SPC-08.5` | Implement Anti-Sybil `TrustScore` service (ASN, device fingerprint, funding cluster, humanness score, `<50` payout block, 48h reward hold queue) | `anticheat.md` Appendix D, `REF-M-15` | `E2E-05.7`, `E2E-05.8`, `E2E-07.8` | `SPC-06.5` | `[~] In Progress` — 48h ledger hold exists; accepted scoring/ASN/funding signals and chain release remain open. Browser fingerprinting stays rejected. |
 | `SPC-08.6` | Implement `TermsGuard` (`CURRENT_TERMS_VERSION` re-consent enforcement on all write routes) & scrub banned gambling terms across `frontend/` | `LEG-M-01..11` | `E2E-06.3` | `SPC-01.5` | `[x] Done` — TermsGuard: a player write whose terms or privacy version is missing or older is `403 terms_acceptance_required`. UI copy has no `bet`, `wager`, `gamble`, `jackpot`, `casino`, `lottery`, or `raffle`. The only hit is a landing test that forbids those words. No separate scrub pass. |

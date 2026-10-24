@@ -2,15 +2,15 @@ import { API_BASE } from './hosts.js';
 import { installPlan, planCovers, plan } from './net/obstacles.js';
 import { roadObjects } from './world/chunks.js';
 
-/* The ride's OBSTACLE PLAN from the server (online rides and replays – opt-in like online.js / watch.js; offline nothing here runs and the game rolls its
-   own holes, which is the same function). GET /api/watch/:id/road?from&to returns the natural holes the server rebuilt from the ride's seed
-   (server/src/domain/road); net/obstacles.js uses them instead of the local roll, so the driver drives over – and a spectator sees – the SERVER's holes,
+/* An eligible replay's OBSTACLE PLAN from the server. Drivers roll the same seeded holes locally: the public watch endpoint refuses running and training rides.
+   GET /api/watch/:id/road?from&to returns the natural holes the server rebuilt from the ride's seed
+   (server/src/domain/road); net/obstacles.js uses them instead of the local roll, so a spectator sees the SERVER's holes,
    and the server judges the recording against the very same list. Loaded in WINDOW m stretches, AHEAD m before the truck (or the replay's playhead) needs them;
    a failed request is retried with a backoff, and until a stretch arrives the local roll answers for it (identical; `plan.fallback` lists those chunks). */
 const WINDOW = 6000, AHEAD = 3000, BACK = 400;
 export const roadPlan = { rideId: null, active: () => false, loading: null, failures: 0, retryAt: 0, plan };
 
-/** follow ride `rideId`'s plan once `active()` says so (the driver: after /start – the server hands out nothing before the ride started) */
+/** Follow a permitted replay's plan once `active()` says so. */
 export function followRoadPlan(rideId, active = () => true) {
   Object.assign(roadPlan, { rideId, active, loading: null, failures: 0, retryAt: 0 });
 }

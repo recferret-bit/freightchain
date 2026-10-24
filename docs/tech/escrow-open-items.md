@@ -4,6 +4,8 @@ Current state of `programs/freightchain_pools` and its server/ops integration. K
 
 Related: [deploy + operate](program-deploy.md) · [escrow spec](../spec/pool.md) · [contract reference](pool-program/index.html) · [localnet e2e](localnet-e2e/index.html) · [Oct 2026 audit fix plan](../insights/reviews/audit-2026-10/fix-plan.md).
 
+24 October local baseline: Rust/LiteSVM and the current pool binary's complete local-validator lifecycle passed. The binary differs from `verifiable-build.hash`; rebuild/provenance and target v6 acceptance remain open. `SPC-05.5` has been reopened. These local results do not verify or change the deployment records below. Evidence: [local readiness](../testing/LOCAL_READINESS.md).
+
 ## 1. Where things are
 
 | What | State |

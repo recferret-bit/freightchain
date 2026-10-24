@@ -1,6 +1,7 @@
 export default {
   test: {
     globals: true,
+    globalSetup: ['test/security/global-setup.ts'],
     include: ['test/security/admin-audit-alerts.integration.spec.ts'],
     fileParallelism: false,
     testTimeout: 60_000,

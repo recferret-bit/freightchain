@@ -1,6 +1,6 @@
 import { Injectable, Optional, type CallHandler, type ExecutionContext, type NestInterceptor } from '@nestjs/common';
 import type { Response } from 'express';
-import { map, type Observable } from 'rxjs';
+import { concatMap, map, type Observable } from 'rxjs';
 import type { LogoutResultDto } from '../../../application/use-cases/auth/logout/logout.command.js';
 import type { EditorSessionDto, EditorSignInResultDto } from '../../../application/use-cases/editor/verify-editor-signin/verify-editor-signin.command.js';
 import { EditorTokenPort } from '../../../application/ports/editor/editor-token.port.js';
@@ -43,8 +43,8 @@ export class ClearEditorCookieInterceptor implements NestInterceptor<LogoutResul
     const response = context.switchToHttp().getResponse<Response>();
     const request = context.switchToHttp().getRequest<RequestWithPlayer>();
     return next.handle().pipe(
-      map((result) => {
-        void this.revoke(request);
+      concatMap(async (result) => {
+        await this.revoke(request);
         response.clearCookie(cookieName(this.env), { httpOnly: true, sameSite: 'strict', secure: this.env.isProduction, path: cookiePath(this.env) });
         return result;
       }),

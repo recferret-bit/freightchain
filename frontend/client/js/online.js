@@ -58,7 +58,7 @@ export async function beginOnline(opts = {}) {
   try { started = await api(`rides/${online.ride.id}/start`, { trip: online.ride.trip ?? 'classic', mgMode, lang, ...(ranked ? { ranked: true } : {}) }); }   // (null = a ride from before trips = 'classic' – trips.js tripOf)
   catch (e) { online.started = false; if (e.status === 409 && e.code === RECHOSEN) { location.reload(); return new Promise(() => {}); } throw e; }   // re-chosen elsewhere: load it as it is now. Any other refusal can be retried.
   if (started.tutorial !== online.ride.tutorial || started.assist !== online.ride.assist) setGuide(started);   // (HARD's assist is refused by the server: false here too)
-  online.running = true;   // the server has started the ride: its road plan is served from now on (road-plan.js)
+  online.running = true;
   setLoadout(started.loadout);   // what the server stamped on the ride (what spectators and replays draw) – normally what the menu already wore
   startTelemetry(online.ride.id, started.trafficVersion ?? 0, started.sessionKey ?? null);   // inputs + 10 Hz samples. A session key (TELEMETRY_V21=shadow) also MACs each batch.
   resetPrompts();

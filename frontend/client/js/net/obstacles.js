@@ -6,8 +6,8 @@ export { HOLES };
 
 /* Road holes as DATA (no three.js – world/holes.js draws them, sim/damage.js drives over them, sim/traffic.js steers round them).
    WHERE the natural holes are is the server's call: a pure function of the ride's seed, which the server rebuilds on its own
-   (server/src/domain/road/road-plan.ts) and hands out as the ride's OBSTACLE PLAN (GET /api/watch/:id/road, js/road-plan.js). An online ride and a replay
-   use that plan; the local roll below is the same shared function (shared/road.js rollChunkHole), used offline and as a fallback for a stretch whose plan
+   (server/src/domain/road/road-plan.ts). Eligible replays fetch that OBSTACLE PLAN (GET /api/watch/:id/road, js/road-plan.js). Drivers use the local roll
+   below, the same shared function (shared/road.js rollChunkHole), also used offline and as a fallback for a replay stretch whose plan
    has not arrived yet (it never differs – `plan.mismatches` counts it if it ever did, and server/test/unit/domain/road/road-drift.spec.ts runs this file).
    The server judges the recording against ITS plan (verdict/world-checks.ts): a game that leaves a hole out still drove over the server's hole.
    Footprint: ells = ellipses { ds (along road, + = forward), dl (across, + = right), a (half length), b (half width) } relative to the hole's centre (s, lat).

@@ -8,15 +8,18 @@ import { launch, sleep, withEntities } from './cdp.mjs';
 const PORT=+process.env.PORT||9333, URL=await withEntities(process.argv[2]||'http://localhost:8765/play.html?sim=1');
 const { send, ev, shot, filt, problems, SHOTS, finish } = await launch({ port: PORT, shotsDir: 'fc-shots', args: ['--autoplay-policy=no-user-gesture-required'], evalProblems: true });
 const key=async(code,type)=>{ const map={KeyW:87,KeyS:83,KeyA:65,KeyD:68,KeyE:69,KeyQ:81,KeyI:73,KeyB:66,KeyR:82,KeyX:88,KeyV:86,KeyN:78,KeyL:76,KeyG:71,KeyC:67,KeyH:72,ShiftLeft:16}; await send('Input.dispatchKeyEvent',{type:type==='up'?'keyUp':'keyDown',code,key:code.replace('Key','').toLowerCase(),windowsVirtualKeyCode:map[code]}); };
-await send('Page.navigate',{url:URL}); await sleep(3500);
+await send('Page.navigate',{url:URL});
+for(let i=0;i<100 && await ev('typeof window.__game')!=='object';i++) await sleep(200);
+if(await ev('typeof window.__game')!=='object') problems.push('game did not boot within 20 seconds');
 console.log('title:',await ev('document.title'),'| __game:',await ev('typeof window.__game'));
 await shot('01-menu');
 if(await ev('typeof window.__game')==='object'){
   await ev('window.__game.devRun(); window.__game.startRide()');   // ?sim=1 keeps the local sim; devRun: the classic road + depot, no helpers
   // the scripted driver pops the clutch: use the pre-weight handling and a warm engine, or the truck stalls on launch (cold engine / MASS 2.5 are exercised by the climate checks below)
   await ev('Object.assign(__game.CFG.TRUCK,{MASS:1,BRAKE:9,STEER_RATE:1.8,STEER_RETURN:3.5,YAW_LAG:0,CENTRIF:.03}); __game.st.temp=__game.CFG.ENGINE_WARM+5');
-  await sleep(500); await key('KeyI'); await sleep(3500); if(await ev('__game.st.park')) await key('KeyB'); await shot('02-engine-running');
+  await sleep(500); await key('ShiftLeft'); await key('KeyI'); await sleep(3500); await key('KeyI','up'); if(await ev('__game.st.park')) await key('KeyB'); await shot('02-engine-running');
   console.log('after start:',await ev('JSON.stringify({eng:__game.st.engineOn,rpm:Math.round(__game.st.rpm),mode:__game.st.mode})'));
+  if(!await ev('__game.st.engineOn')) problems.push('engine did not start with the clutch held');
   // sound effects: the samples (client/audio/sfx, manifest + fingerprinted mp3) download + decode in the background and then play; a failed one stays silent
   { const man=JSON.parse(await ev(`fetch('audio/sfx/manifest.json').then(r=>r.text())`)).items, n=Object.keys(man).length;
     for(let i=0;i<40&&(await ev('Object.keys(__game.audio.bufs).length'))<n;i++) await sleep(250);
@@ -24,8 +27,10 @@ if(await ev('typeof window.__game')==='object'){
     if(got!==n) problems.push('sfx: '+got+' of '+n+' samples decoded');
     const cc=await ev(`fetch('audio/sfx/'+${JSON.stringify(Object.values(man)[0].file)}).then(r=>r.headers.get('content-type')+' '+r.headers.get('cache-control'))`); console.log('sfx headers:',cc);
     if(!await ev(`__game.audio.play('switch')`)) problems.push('sfx: play(switch) did not play'); }
+  const beforeLaunch=await ev('__game.st.s');
   await key('ShiftLeft'); await sleep(300); await key('KeyE'); await key('KeyW'); await sleep(300); await key('ShiftLeft','up'); await sleep(4000);
   console.log('moving:',await ev('JSON.stringify({v:+__game.st.v.toFixed(1),gear:__game.st.gear,d:+__game.st.d.toFixed(1),s:Math.round(__game.st.s)})')); await shot('03-driving');
+  if(!await ev(`__game.st.engineOn && __game.st.gear===1 && __game.st.vel>0 && __game.st.s>${beforeLaunch}`)) problems.push('first gear and throttle did not move the truck forwards');
   await key('KeyR'); await key('KeyX'); await sleep(1500); await shot('04-washer'); await key('KeyX','up'); await sleep(1500);
   await key('KeyN'); await key('KeyL'); await key('KeyC'); { const k=JSON.parse(await ev('JSON.stringify({map:__game.phone.open,head:__game.dn.head,cab:__game.dn.cab})')); console.log('N/L/C keys ->',JSON.stringify(k)); if(!k.map) problems.push('N did not open the phone map'); }   // N = the phone map (not night any more)
   await key('KeyN'); await key('KeyL'); await key('KeyC'); if(await ev('__game.phone.open')) problems.push('N did not close the phone map');
@@ -38,8 +43,10 @@ if(await ev('typeof window.__game')==='object'){
   if(await ev('__game.st.park')) await key('KeyB');
   await key('KeyW','up'); await key('ShiftLeft'); await key('KeyS'); await sleep(3000); await key('KeyS','up'); await key('ShiftLeft','up');
   if(!(await ev('__game.st.engineOn'))){ await key('ShiftLeft'); await key('KeyI'); await sleep(3500); await key('ShiftLeft','up'); }
+  const beforeReverse=await ev('__game.st.s');
   await key('ShiftLeft'); await sleep(600); await key('KeyG'); await key('KeyW'); await sleep(300); await key('ShiftLeft','up'); await sleep(3500);
   console.log('reverse:',await ev('JSON.stringify({gear:__game.st.gear,rev:__game.st.rev,v:+__game.st.v.toFixed(2),vel:+__game.st.vel.toFixed(2),s:Math.round(__game.st.s),eng:__game.st.engineOn,tyaw:+__game.st.tyaw.toFixed(2)})'));
+  if(!await ev(`__game.st.gear===-1 && __game.st.rev && __game.st.vel<0 && __game.st.s<${beforeReverse}`)) problems.push('reverse gear did not move the truck backwards');
   await shot('reverse'); await key('KeyW','up'); await key('KeyS'); await sleep(1500); await key('KeyS','up');
 }
 // route tour: every theme, one screenshot each (route-<id>.png) – look at them, the script can't judge visuals

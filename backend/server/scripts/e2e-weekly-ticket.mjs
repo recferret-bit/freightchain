@@ -12,6 +12,7 @@ import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
 const BASE = process.env.BASE || 'http://127.0.0.1:3103';
 const PORT = +(process.env.CHROME_PORT || 9233);
 const SERVER = new URL('..', import.meta.url).pathname;
+const CLI = process.env.CLI || 'dist/cli/index.js';
 const fails = [];
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
 const until = async (fn, ms = 25000) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v) return v; if (Date.now() - t0 > ms) return false; await sleep(250); } };
@@ -56,7 +57,7 @@ try {
   check('lobby chip shows the weekly 1h grant', await until(async () => /weekly 1h/.test(await tab.ev('document.getElementById("chip-free")?.textContent || ""'))), await tab.ev('document.getElementById("chip-free")?.textContent || ""'));
 
   const code = `W3${Date.now().toString(36).toUpperCase()}`;
-  execFileSync('node', ['dist/cli/index.js', 'promo:create', code, '--ride', '1h', '--desc', 'lane3 weekly precedence'], {
+  execFileSync('node', [CLI, 'promo:create', code, '--ride', '1h', '--desc', 'lane3 weekly precedence'], {
     cwd: SERVER, env: { ...process.env, NODE_ENV: 'development' }, stdio: 'inherit',
   });
   await tab.ev('location.hash = "#profile"');

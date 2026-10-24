@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor|honk-garage|whitepaper|landing|achievements ...]   (default: all twenty-three)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor|honk-garage|whitepaper|landing|achievements|guest|weekly|referral|viewer|sim ...]   (default: all twenty-eight)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/backend/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats blinks traffic editor honk-garage whitepaper landing achievements)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay flags wallet wallet-split board close close-split verified verified-deep road stats blinks traffic editor honk-garage whitepaper landing achievements guest weekly referral viewer sim)
 DB="freightchain_e2e_$$"
 PG_CONTAINER="${E2E_POSTGRES_CONTAINER:-freightchain-postgres}"
 PG_PORT="${E2E_POSTGRES_PORT:-15433}"
@@ -93,8 +93,8 @@ for suite in "${SUITES[@]}"; do
     verified-deep)   # verified play, the DEEP pass: every verdict code, the upload protocol, who sees a verdict, the admin's hand, the profile in Chrome, retention + bulk re-judge – prompts OFF, a 30 s shift
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
       EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false CHALLENGE_INTERVAL_SECONDS=0 ROAD_PLAN_BUILD=$BUILD" start 30 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" FREE_RIDE_SECONDS=30 ROAD_PLAN_BUILD="$BUILD" node scripts/e2e-verified-deep.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
-    road)   # the SERVER's road: an honest driver and one with the holes taken out of its game (Chrome), a spectator's replay of both, the ride-audit tool on the database
-      EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false CHALLENGE_INTERVAL_SECONDS=0" start 30; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" AUDIT_BUILD="$BUILD" DATABASE_URL="$URL" node scripts/e2e-road-check.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+    road)   # the SERVER's road: honest/removed-hole drivers with frame proof (Chrome), training replay refusal, database ride-audit
+      EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=true CHALLENGE_INTERVAL_SECONDS=0" start 30; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" AUDIT_BUILD="$BUILD" DATABASE_URL="$URL" node scripts/e2e-road-check.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     stats)   # statistics end to end: a real game crashing into a car, API bots for the other ways a ride ends, the landing's tiles + the lobby's DRIVING RECORD, `stats:reconcile` on the live database
       reset_db   # earlier suites in this process left rides in $DB; this suite's "starts at zero" is that empty database
       (cd "$SERVER" && DATABASE_URL="$URL" node "$BUILD/cli/index.js" pool:seed --id 1 --tier 1h --status active --min 2 >/dev/null) || true   # a live pool, so the hero is not the long empty-pot label
@@ -125,7 +125,12 @@ for suite in "${SUITES[@]}"; do
     whitepaper) start 3; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-whitepaper.mjs) || fails=$((fails + 1)) ;;
     landing) start 3; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-landing.mjs) || fails=$((fails + 1)) ;;
     achievements) EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false CHALLENGE_INTERVAL_SECONDS=0" start 3; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" node scripts/e2e-achievements.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor | honk-garage | whitepaper | landing | achievements)"; fails=$((fails + 1)) ;;
+    guest) EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" node scripts/e2e-guest-training.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+    weekly) EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" node scripts/e2e-weekly-ticket.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+    referral) EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP CHALLENGE_INTERVAL_SECONDS=0" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" node scripts/e2e-referral.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+    viewer) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-viewer.mjs "http://localhost:$PORT/viewer.html") || fails=$((fails + 1)) ;;
+    sim) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-chrome.mjs "http://localhost:$PORT/play.html?sim=1") || fails=$((fails + 1)) ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor | honk-garage | whitepaper | landing | achievements | guest | weekly | referral | viewer | sim)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

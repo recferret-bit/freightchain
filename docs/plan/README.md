@@ -4,6 +4,7 @@ Docs only. Authoritative product specifications and test plans live in [`docs/sp
 
 | File | Former working name(s) | Purpose |
 |---|---|---|
+| [`DEVNET_SOFT_LAUNCH.md`](DEVNET_SOFT_LAUNCH.md) | — | **Technical soft launch:** short readiness summary and ordered checklist for integrated devnet contracts, TEN4, NFTs, replays and ride validation |
 | [`OWNER_TASKS.md`](OWNER_TASKS.md) | `OWNER_TASKS.md` | **Start here:** Checklist of external accounts, API keys, DNS/Cloudflare, wallets & legal actions required from the owner by phase |
 | [`EXECUTION_ORCHESTRATOR.md`](EXECUTION_ORCHESTRATOR.md) | — | **Parallel Execution Orchestrator (Up to 4 Agents):** Single entry point (`work on docs/plan/EXECUTION_ORCHESTRATOR.md`) scheduling all 117 tasks from Plan 1 & Plan 2 across 6 Waves × 4 parallel conflict-free Agent Lanes (`Lane 1..4`) with DB/port isolation and barrier gates |
 | [`E2E_HEADLESS_PLAN.md`](E2E_HEADLESS_PLAN.md) | — | **Plan 1 — Full Set of E2E Headless Tests:** Multi-tier headless E2E development plan (Track A As-Built + Track B Target Spec `*-T-*` / `AC-*`), with status board [`e2e-headless/STATUS.md`](e2e-headless/STATUS.md) and 9 domain issue files (`E2E-01`..`E2E-09`) with explicit DoR/DoD |
@@ -20,6 +21,7 @@ Docs only. Authoritative product specifications and test plans live in [`docs/sp
 
 ## Cross-references
 
+- **Current local feature matrix and test results:** [`../testing/LOCAL_READINESS.md`](../testing/LOCAL_READINESS.md)
 - **Open legal, tax & product questions:** [`../spec/OPEN.md`](../spec/OPEN.md) (replaces `OPEN_QUESTIONS.md`)
 - **Authoritative domain specs & decisions:** [`../spec/README.md`](../spec/README.md), [`../spec/PRODUCT.md`](../spec/PRODUCT.md), [`../spec/DECISIONS.md`](../spec/DECISIONS.md)
 - **Legal templates (`../legal/`):** [`../spec/legal.md`](../spec/legal.md), [`../legal/TERMS.md`](../legal/TERMS.md), [`../legal/PRIVACY.md`](../legal/PRIVACY.md), [`../legal/OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md), [`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md), [`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md)

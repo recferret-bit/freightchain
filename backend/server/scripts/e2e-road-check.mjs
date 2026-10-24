@@ -1,10 +1,9 @@
 // The SERVER's road, end to end, against a RUNNING server (`bash .claude/skills/run-tests/e2e.sh road` starts one: FREE_RIDE_SECONDS=30, prompts off):
-//   A. an HONEST driver in real headless Chrome: the game loads the ride's obstacle plan from the server (GET /api/watch/:id/road), cruises in the right-hand
+//   A. an HONEST driver in real headless Chrome: the game rolls the server-seeded shared obstacle rules locally, cruises in the right-hand
 //      lane at ~80 km/h straight through the first planned sinkholes in it and takes the damage → COMPLETED · VERIFIED, the holes HIT
 //   B. a CHEATER in real headless Chrome: the same drive, but the holes are taken out of the game first (the plan follower stopped, CFG.HOLES off, the cache
 //      cleared – nothing on its road, nothing to hit) → the server still judges the recording on ITS holes: COMPLETED · REJECTED obstacle-ignored
-//   C. a SPECTATOR replays the cheater's ride: the holes on the replay's road are the server's (not the cheater's empty road), the timeline carries a red mark per
-//      hole driven through, the panel says NO IMPACT, and passing one stamps it on screen (screenshot replay-no-impact.png) – and the honest ride shows none
+//   C. both finished training rides remain unavailable as public replays
 //   D. the ride-audit tool (scripts/ride-audit.mjs) on the same database: the honest ride OK (exit 0), the cheater NOT OK (exit 1), --latest lists both
 // Usage: BASE=http://localhost:3111 CHROME_PORT=9370 AUDIT_BUILD=.e2e-build-123 DATABASE_URL=… node scripts/e2e-road-check.mjs   (~5–8 min: the trucks must reach the holes)
 import { spawnSync } from 'node:child_process';
@@ -38,7 +37,7 @@ async function drive({ port, mode }) {
   await tab.send('Page.navigate', { url: `${BASE}/play.html?ride=${ride.id}` });
   for (let i = 0; i < 100 && !(await tab.ev('!!window.__game')); i++) await sleep(200);
   await tab.ev('document.getElementById("go").click()'); await sleep(800);
-  // A running ride's public road route is 404. The holes the judge uses are the shared generator, which the game rolls locally until a plan arrives.
+  // A running ride's public road route is 404. The judge and driver use the same seeded shared generator.
   const road = await call('GET', `watch/${ride.id}/road?from=0&to=9000`);
   const build = process.env.AUDIT_BUILD || 'dist';
   const { roadPlanFor } = await import(pathToFileURL(path.resolve(build, 'domain/road/road-plan.js')).href);
@@ -126,6 +125,7 @@ const audit = (...a) => { const r = spawnSync(process.execPath, ['scripts/ride-a
 console.log(`the server's road e2e against ${BASE}`);
 const [honest, cheat] = await Promise.all([drive({ port: PORT, mode: 'honest' }), drive({ port: PORT + 1, mode: 'cheat' })]);
 
+check('both new rides require hashed frame-level traffic proof', honest.end.trafficVersion === 1 && cheat.end.trafficVersion === 1, `${honest.end.trafficVersion} / ${cheat.end.trafficVersion}`);
 check('A honest: the public road route is 404 while the ride is running, and the local roll matches the generator', honest.roadStatus === 404 && honest.mismatches === 0, `road ${honest.roadStatus}, ${honest.mismatches} mismatches`);
 check(`A honest: drove through ${HOLES_TO_CROSS} planned sinkholes in its lane`, honest.own.length === HOLES_TO_CROSS && honest.reached >= honest.target && honest.holesInGame > 0, `holes at ${honest.own.map(h => Math.round(h.s)).join(', ')} m, reached ${Math.round(honest.reached)} m`);
 check('A honest: the game took the damage', honest.hull < 90, `hull ${honest.hull?.toFixed?.(1)} %`);

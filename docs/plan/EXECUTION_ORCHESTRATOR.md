@@ -3,6 +3,8 @@
 > **How to use this file:** Point your agent (or `/goal` / `/teamwork-preview`) at **`docs/plan/EXECUTION_ORCHESTRATOR.md`**.
 > This file is a self-contained multi-agent runbook that coordinates [`docs/plan/E2E_HEADLESS_PLAN.md`](./E2E_HEADLESS_PLAN.md) (**Plan 1: 64 E2E tasks**) and [`docs/plan/SPEC_COMPLIANCE_PLAN.md`](./SPEC_COMPLIANCE_PLAN.md) (**Plan 2: 53 Spec tasks**) across **up to 4 parallel agents (`Lane 1` – `Lane 4`)** in **7 sequential Waves** with zero file-ownership collisions or database races.
 
+24 October audit update: `SPC-05.5` and `SPC-08.1..5` are reopened. Plan 2 now has 47 done and 6 in progress. Earlier wave/barrier results below are historical; current runtime evidence and remaining feature checks are in [local readiness](../testing/LOCAL_READINESS.md).
+
 ---
 
 ## 1. Multi-Agent Coordination Protocol (Mandatory for All Agents)
@@ -248,26 +250,26 @@ flowchart TD
 - **Lane 2 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent2_test" npm run test:e2e:block1`
 
 #### Wave 4 — `Lane 3` (Pool Schedule, `last_start_at`, Appeals & Program v6 `SPC-05.1..6` + `E2E-08.5`)
-- **Lane Status:** `[x] Done (Lane-3)` — merged 2026-10-20. Schedule unit specs and the route manifest passed on main. `tsc --noEmit` exit 0. Block 2 was green in the lane (46 pass) and was not re-run here. `SPC-05.6` stays blocked. The combined Wave 4 barrier was not re-run.
+- **Lane Status:** `[~] In Progress` — reopened 24 October: server schedule work and current-v5 chain tests do not implement `SPC-05.5`'s v6 program rules. Decision 70 resolves `SPC-05.6` as CLI-only. See the current local readiness record above.
 - **Owned Paths:** `backend/server/prisma/` (Wave 4 Pre-Step migration), `backend/programs/freightchain_pools/src/`, `backend/server/src/domain/pool/`, `backend/server/src/application/pools/`, `backend/server/src/presentation/admin/admin-appeals.controller.ts`, `tests/e2e/block2-chain/pool-schedule-appeals.e2e.spec.ts`
 - **Tasks (in order):**
   - [x] [`SPC-05.1`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Implement configurable weekly pool schedule (`opens_at`, `sales_close_at`, `last_start_at = close - 1h15m`, `play_close_at`, `validation_until`)
   - [x] [`SPC-05.2`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Enforce `409 pool_last_start_passed` on ride start & `409 pool_schedule_mismatch` on DB vs on-chain PDA drift
   - [x] [`SPC-05.3`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Add non-refundable ticket burn rule after `last_start_at` + lobby purchase warning checkbox
   - [x] [`SPC-05.4`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Implement pool validation & appeals workflow (`POST /api/rides/:id/appeal`, block `commit_winners_root` until `validation_until` & 0 open appeals)
-  - [x] [`SPC-05.5`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`)
-  - [!] [`SPC-05.6`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Resolve `set_pool_rules` governance conflict (`POOL-M-12`/`B8` vs `ADM-M-07`/Decision 60 — **Owner Decision Gate**; default to `ADM-M-07` Squads CLI-only until owner overrides)
+  - [~] [`SPC-05.5`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`)
+  - [x] [`SPC-05.6`](./spec-compliance/issues/SPC-05-pool-schedule-appeals-and-program-v6.md) — Decision 70: keep `set_pool_rules` CLI-only; no admin HTTP route, Squads on mainnet
   - [x] [`E2E-08.5`](./e2e-headless/issues/E2E-08-minigames-and-rides-ranking-e2e.md) — Implement Pool Schedule, `last_start_at` Cutoff, Ticket Burn UI & Appeals E2E (`POOL-T-01..16`)
 - **Lane 3 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent3_test" npm run test:e2e:block2`
 
 #### Wave 4 — `Lane 4` (Referral Convoy Rework & Pre-Season TEN4 Airdrop `SPC-08.1..4`)
-- **Lane Status:** `[x] Done (Lane-4)` — merged onto main 2026-10-20. Unit + manifest: 16 files, 40 tests, exit 0. Stores are in-memory until Lane 3's migration is applied. `SPC-08.5` and `SPC-08.6` stay open. `E2E-05.7` and `E2E-05.8` are the Wave 5 lane 4 convoy and airdrop tests.
+- **Lane Status:** `[~] In Progress` — reopened 24 October: the migration exists, but production still binds memory repositories and unconfigured social adapters. `SPC-08.1..4` require durable integration and browser/chain evidence beyond unit tests.
 - **Owned Paths:** `backend/server/src/application/referral/`, `backend/server/src/presentation/referral/`, `backend/server/src/application/airdrop/`, `backend/server/src/infrastructure/social/`
 - **Tasks (in order):**
-  - [x] [`SPC-08.1`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Convoy Referral state machine (`pending` 72h delete → `active` 60d window → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)`
-  - [x] [`SPC-08.2`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Convoy invitee 1h promo ride gift on activation (`3/d`, `10/wk`, `500/wk` caps) + M1 (`100 TEN4` @ 2w) & M2 (`50 TEN4` @ 5w) rewards
-  - [x] [`SPC-08.3`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — 25-row Convoy leaderboard (`GET /api/referrals/leaderboard`) & `convoyHidden` privacy toggle (`PATCH /api/me/privacy`)
-  - [x] [`SPC-08.4`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Pre-Season TEN4 Airdrop campaign engine (MEDIUM/HARD ride gate, Telegram check, X verification via `twitterapi.io`, Turnstile, unique social ID binding)
+  - [~] [`SPC-08.1`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Convoy Referral state machine (`pending` 72h delete → `active` 60d window → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)`
+  - [~] [`SPC-08.2`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Convoy invitee 1h promo ride gift on activation (`3/d`, `10/wk`, `500/wk` caps) + M1 (`100 TEN4` @ 2w) & M2 (`50 TEN4` @ 5w) rewards
+  - [~] [`SPC-08.3`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — 25-row Convoy leaderboard (`GET /api/referrals/leaderboard`) & `convoyHidden` privacy toggle (`PATCH /api/me/privacy`)
+  - [~] [`SPC-08.4`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Pre-Season TEN4 Airdrop campaign engine (MEDIUM/HARD ride gate, Telegram check, X verification via `twitterapi.io`, Turnstile, unique social ID binding)
 - **Lane 4 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent4_test" npm run server:integration`
 
 > **WAVE 4 BARRIER GATE:** All 25 tasks above (except owner-gated `SPC-05.6` if still pending) must be `[x] Done` and `npm run check && npm run server:integration && npm run test:e2e:block1 && npm run test:e2e:block2` must exit `0` before starting Wave 5.
@@ -289,12 +291,12 @@ flowchart TD
 - **Lane 1 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent1_test" npm run server:integration`
 
 #### Wave 5 — `Lane 2` (Humanness `F1..F10`, 90d Trace Clustering, `TrustScore` & `TermsGuard` `SPC-06.5..6` + `SPC-08.5..6`)
-- **Lane Status:** `[x] Done (Lane-2)` — F1–F10, the five §16.4 rejects including a copied trace, top-20 `trace-cluster` flagged for review, 90-day inp prune after payout, `trustScore` from 60 with a 48 h hold, and `TermsGuard`. No browser fingerprint and no live 30 Hz cutover.
+- **Lane Status:** `[~] In Progress` — `SPC-08.5` reopened 24 October: initial score/48h hold do not implement accepted ASN/funding signals, score updates and chain release. F1–F10, trace retention/clustering and TermsGuard retain their earlier status. No browser fingerprint and no live 30 Hz cutover.
 - **Owned Paths:** `backend/server/src/domain/anticheat/humanness-classifier.ts`, `frontend/client/js/input.js`, `backend/server/src/application/rides/trace-clustering.service.ts`, `backend/server/src/application/rides/telemetry-retention.scheduler.ts`, `backend/server/src/domain/anticheat/trust-score.ts`, `backend/server/src/application/anticheat/trust-score.service.ts`, `backend/server/src/presentation/common/guards/terms.guard.ts`
 - **Tasks (in order):**
   - [x] [`SPC-06.5`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Implement mechanical input humanness classifier (`F1..F10` → `humannessScore`), 5 physical-impossibility auto-reject rules, and `isTrusted=false` tracking
   - [x] [`SPC-06.6`](./spec-compliance/issues/SPC-06-anticheat-v2-and-30hz-resim.md) — Implement 90-day raw input trace retention job & pool top-20 cross-ride input trace clustering detector
-  - [x] [`SPC-08.5`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Implement Anti-Sybil `TrustScore` service (ASN, device fingerprint, funding cluster, humanness score, `<50` payout block, 48h reward hold queue)
+  - [~] [`SPC-08.5`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Implement Anti-Sybil `TrustScore` service (ASN, device fingerprint, funding cluster, humanness score, `<50` payout block, 48h reward hold queue)
   - [x] [`SPC-08.6`](./spec-compliance/issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) — Implement `TermsGuard` (`CURRENT_TERMS_VERSION` re-consent enforcement on all write routes) & scrub banned gambling terms across `frontend/`
 - **Lane 2 Verify Command:** `TEST_DATABASE_URL="postgresql://freight:freight_dev_password@127.0.0.1:15433/freightchain_agent2_test" npm run server:integration`
 

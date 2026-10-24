@@ -54,7 +54,7 @@ function frame(now) {
   const dt = Math.max(0, Math.min(0.05, (now - clock.last) / 1000)); clock.last = now;   // clamped: no time-jumps after tab stalls
   if (st.watch) stepWatch(dt);   // a spectator's replay (play.html?watch=<id>): st comes from the recording, nothing is simulated
   else if (st.mode === 'drive') { update(dt); tickTelemetry(dt); }   // tickTelemetry: online rides only (a no-op offline)
-  updateRoadPlan(st.s);   // online rides + replays: the server's obstacle plan for the road ahead (a no-op offline)
+  updateRoadPlan(st.s);   // eligible replays fetch the server plan; drivers use the same seeded local hole rules
   roads.update(dt); updateDayNight(dt); updateDisp(dt); updateFX(dt); audio.update(true); radio.update();   // road world: generation, streaming, signals
   if (guide.tutorial || guide.assist) updateGuide();   // the free ride's tutorial dialog + assist tips (guide.js)
   renderWorld(); drawCockpit();
@@ -76,7 +76,6 @@ const shift0 = { s: CFG.RIDE_MIN_SECONDS, d: CFG.COMPLETE_DIST };   // the shift
 if (!online.ride && trip.seconds) { CFG.RIDE_MIN_SECONDS = trip.seconds; CFG.COMPLETE_DIST = trip.k * CFG.MAX_SPEED * trip.seconds; }   // the guest run's own shift (online the server's ride sets both)
 if (online.ride) {
   const r = online.ride;   // no seed: the relay must not see it
-  followRoadPlan(r.id, () => online.running);   // the server's holes, once /start has answered (road-plan.js)
   track('ride_page_viewed', { ride_id: r.id, tier_id: r.tier, is_free: r.tier === 'free', time_scale: r.timeScale, min_ms: Math.round(r.minSeconds * 1000), complete_dist_m: Math.round(r.completeDist), level: Number.isInteger(r.level) ? r.level : null });
 } else if (online.error) {
   const stage = online.error.startsWith('not signed in') ? 'not_signed_in' : online.error.startsWith('this ride is') ? 'bad_status' : typeof online.status === 'number' ? 'http' : 'unknown';

@@ -64,6 +64,8 @@ try {
   const medium = await post('rides', { tier: 'free', level: 2 }, cookie);
   check('guest MEDIUM is 409 guest_easy_only', medium.status === 409 && medium.j.code === 'guest_easy_only', `${medium.status} ${medium.j.code}`);
   const errors = pageErrors(tab);
+  const roadRequests = await tab.ev(`performance.getEntriesByType('resource').filter(r => /\\/api\\/watch\\/[^/]+\\/road(?:\\?|$)/.test(r.name)).length`);
+  check('a driver never requests the spectator road endpoint', roadRequests === 0, String(roadRequests));
   check('no page or console errors', errors.length === 0, errors.join(' | '));
   await tab.shot('guest-done');
 } finally {

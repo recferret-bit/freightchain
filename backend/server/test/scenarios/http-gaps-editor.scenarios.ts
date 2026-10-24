@@ -32,6 +32,16 @@ export function editorGapScenarios(h: () => Harness): void {
     await editor.get('/api/editor/entities').expect(404);
   });
 
+  it('a saved editor token is already revoked when logout returns', async () => {
+    const { body } = await anon().post('/api/editor/auth/nonce').set(X, '1').send({ wallet: EDITOR.address }).expect(200);
+    const verified = await anon().post('/api/editor/auth/verify').set(X, '1').send({ wallet: EDITOR.address, signature: sign(EDITOR.kp, body.message) }).expect(200);
+    const raw = verified.headers['set-cookie'];
+    const cookie = (Array.isArray(raw) ? raw : [raw]).find((line) => line.startsWith('fc_editor='))!.split(';')[0]!;
+    await anon().get('/api/editor/me').set('Cookie', cookie).expect(200);
+    await anon().post('/api/editor/auth/logout').set(X, '1').set('Cookie', cookie).expect(200);
+    expect((await anon().get('/api/editor/me').set('Cookie', cookie).expect(401)).body.code).toBe('token_revoked');
+  });
+
   it('logout without the header is 403; a foreign Origin is 403 and does not end the session', async () => {
     const editor = await signIn();
     expect((await editor.post('/api/editor/auth/logout').expect(403)).body.code).toBe('forbidden');

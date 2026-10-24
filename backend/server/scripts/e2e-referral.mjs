@@ -99,6 +99,8 @@ try {
   await tab.send('Page.navigate', { url: `${BASE}/lobby.html#profile` });
   check('lobby invite row says qualified', await until(async () => /qualified/.test(await tab.ev('document.getElementById("ref-invites")?.textContent || ""')), 25000), await tab.ev('document.getElementById("ref-box")?.textContent || ""'));
   const errors = pageErrors(tab);
+  const roadRequests = await tab.ev(`performance.getEntriesByType('resource').filter(r => /\\/api\\/watch\\/[^/]+\\/road(?:\\?|$)/.test(r.name)).length`);
+  check('a driver never requests the spectator road endpoint', roadRequests === 0, String(roadRequests));
   check('no page or console errors', errors.length === 0, errors.join(' | '));
   await tab.shot('referral-done');
 } finally {

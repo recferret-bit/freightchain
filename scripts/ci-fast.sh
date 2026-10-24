@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Fast gate: every suite `npm run check` runs, then integration, block 1, and the security suite.
-# The three after check do not share a database or dist writer, so they overlap. check still finishes
-# its server build before block 1 reads dist. A failing suite fails this script. Nothing is retried.
+# The three after check use separate databases and can overlap once PostgreSQL is healthy.
+# check finishes its server build before block 1 reads dist. A failing suite fails this script.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 echo "=== npm run check ==="
 npm run check
+
+# Security's global setup creates and migrates its own database; the container must be ready first.
+npm run db:up
 
 echo "=== npm run server:integration ==="
 echo "=== npm run test:e2e:block1 ==="

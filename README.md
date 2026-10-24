@@ -199,7 +199,7 @@ On **13 Oct 2026**, twelve AI auditors (**Claude Opus 5.5, GPT-6.1 Sol, Gemini 3
 
 ## Roadmap, Pre-Season & Go-To-Market
 
-Detailed plans & legal rules: [`docs/plan/MASTER_PLAN.md`](docs/plan/MASTER_PLAN.md) · [`docs/plan/DEVNET_PRESEASON.md`](docs/plan/DEVNET_PRESEASON.md) · [`docs/legal/PRESEASON_RULES.md`](docs/legal/PRESEASON_RULES.md) · [`docs/legal/OFFICIAL_RULES.md`](docs/legal/OFFICIAL_RULES.md).
+Detailed plans & legal rules: [Devnet soft launch checklist](docs/plan/DEVNET_SOFT_LAUNCH.md) · [Local feature readiness](docs/testing/LOCAL_READINESS.md) · [`docs/plan/MASTER_PLAN.md`](docs/plan/MASTER_PLAN.md) · [`docs/plan/DEVNET_PRESEASON.md`](docs/plan/DEVNET_PRESEASON.md) · [`docs/legal/PRESEASON_RULES.md`](docs/legal/PRESEASON_RULES.md) · [`docs/legal/OFFICIAL_RULES.md`](docs/legal/OFFICIAL_RULES.md).
 
 | Phase | Window | Key Deliverables | Status |
 | --- | --- | --- | --- |
@@ -284,6 +284,7 @@ npm run test:localnet                                       # full escrow lifecy
 npm run test:e2e:block1                                     # fast code E2E (Postgres + Redis + API, chain off)
 npm run test:e2e:block2                                     # fast code E2E (program mode + local validator)
 bash .claude/skills/run-tests/e2e.sh                        # real headless Chrome end-to-end suites
+npm run test:ci:full                                       # full local gate, including both Rust programs, validator journeys and Chrome
 ```
 
 Run `npm run install:landing` and `npm run install:media` once before `npm run check`. Env reference: [`docs/tech/configuration.md`](docs/tech/configuration.md).
@@ -318,7 +319,7 @@ Skills live in `.claude/skills/<name>/SKILL.md` (`game-audio` is also linked in 
 | `ride-audit` | Re-verify any ride from local or production DB (read-only): rebuild road/holes, re-hash batches, re-run verdict | `bash .claude/skills/ride-audit/run.sh <ride id>` · `… <ride id> --prod` · `… --latest 20 --prod` |
 | `ride-investigate` | Inspect a single player or ride on production across DB rows and matching logs | `npm run ops -- query ride <id>` · `npm run ops -- query wallet <address>` |
 | `ride-review` | Audit all `UNDER REVIEW` paid rides per pool with rank, distance, verdict reasons, and `ride-audit` (read-only) | `bash .claude/skills/ride-review/run.sh` · `… --pool N` · `… --pool N --prod` |
-| `run-tests` | Run the full local verification suite: `check`, PostgreSQL integration, and real-Chrome E2E | `npm run check`, then `npm run server:integration`, then `bash .claude/skills/run-tests/e2e.sh` |
+| `run-tests` | Run local verification: `check`, PostgreSQL integration, and 28 real-Chrome suites, including guest, weekly grant, referral, viewer and sim controls | `npm run check`, then `npm run server:integration`, then `bash .claude/skills/run-tests/e2e.sh` |
 | `admin-coverage` | Verify that every admin API route is guarded and wired to the admin UI with no dead calls | `node .claude/skills/admin-coverage/check.mjs` |
 | `stats-reconcile` | Recompute and verify (or `--fix` locally) rider and global stats from ride records | `bash .claude/skills/stats-reconcile/run.sh [--fix]` · `--prod` |
 | `test-census` | Count tests by pyramid layer, grade feature/flow/route coverage, and update the Tests block and `docs/testing/test-coverage.md` | `npm run test:census` · `npm run test:census -- features` · `npm run test:census -- coverage` · `npm run test:census -- run` · `npm run test:census -- readme` |
