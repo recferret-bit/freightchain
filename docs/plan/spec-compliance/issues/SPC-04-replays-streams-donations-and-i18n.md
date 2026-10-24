@@ -75,7 +75,7 @@ Transforms the live stream & replay subsystem to match [`docs/spec/replays_strea
 
 ### `SPC-04.4` — Remove gameplay donation effects & remove `honk/time` and `honk/weather`
 
-- **Status:** `[x] Done` — Donation effects other than tip are `400 donation_effect`. `honk/time` and `honk/weather` still answer `200`, burn TEN4, and ignore `LIVE_EFFECTS`.
+- **Status:** `[x] Done` — Donation effects other than tip are `400 donation_effect`. `honk/time` and `honk/weather` throw `NotFoundError` (`404` `not_found`) before any TEN4 debit. They are not a live burn.
 - **Spec Rules:** `RPL-M-17`, `RPL-M-34` (Decisions 18, 51)
 - **Paired Plan 1 Task:** `E2E-06.7`
 - **Target Files:**
@@ -90,7 +90,7 @@ Transforms the live stream & replay subsystem to match [`docs/spec/replays_strea
 #### Definition of Done (DoD)
 - [ ] Spectators and players can no longer alter weather, time of day, or road obstacles in any ride:
   - Donation orders accept only `kind: 'tip'` (rejecting `night`, `day`, `potholes`, `trench`, `sinkhole` with `400`).
-  - `POST watch/:id/honk/time` and `POST watch/:id/honk/weather` answer `200`, burn TEN4, and ignore `LIVE_EFFECTS`. They are not removed and they are not `404`.
+  - `POST watch/:id/honk/time` and `POST watch/:id/honk/weather` throw `NotFoundError` (`404` `not_found`) before any TEN4 debit. The burn under that throw does not run.
   - Client `play.html` no longer polls or applies external effects during driving.
 - [ ] `docs/spec/PRODUCT.md` updated; status marked `[x] Done` in [`docs/plan/spec-compliance/STATUS.md`](../STATUS.md).
 

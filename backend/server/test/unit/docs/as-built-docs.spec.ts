@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { EnvService } from '../../../src/infrastructure/config/env.service.js';
 import { pauseVerdict, slowMotionVerdict } from '../../../src/domain/rides/pause-bounds.js';
+import { NotFoundError } from '../../../src/domain/shared/errors.js';
+import { BurnHonkTimeCommand, BurnHonkTimeHandler } from '../../../src/application/use-cases/honk/burn-honk-time.handler.js';
+import { BurnHonkWeatherCommand, BurnHonkWeatherHandler } from '../../../src/application/use-cases/honk/burn-honk-weather.handler.js';
 
 /** EnvService reads process.env at construction. Restore it before the assertion. */
 const withEnv = (vars: Record<string, string | undefined>) => {
@@ -16,7 +19,6 @@ const docs = {
   status: readFileSync(join(root, 'docs/plan/spec-compliance/STATUS.md'), 'utf8'),
   coverage: readFileSync(join(root, 'docs/testing/COVERAGE_CONTRACT.md'), 'utf8'),
 };
-const honk = readFileSync(join(root, 'backend/server/src/presentation/honk/honk.http.controller.ts'), 'utf8');
 const verdict = readFileSync(join(root, 'backend/server/src/application/services/verdict.service.ts'), 'utf8');
 
 const base = {
@@ -25,14 +27,10 @@ const base = {
   ADMIN_JWT_SECRET: undefined, ADMIN_SESSION_TTL_MINUTES: undefined, PLEDGES_ENABLED: undefined,
 };
 
-/** The decorator on the route method. The status sentence has to follow this, not a remembered 404. */
-function httpCodeFor(source: string, route: string): string {
-  const at = source.indexOf(`'${route}'`);
-  const window = source.slice(at, at + 80);
-  const code = window.match(/@HttpCode\((\d+)\)/);
-  if (!code) throw new Error(`no @HttpCode above ${route}`);
-  return code[1];
-}
+/** The handlers throw before they touch a dependency, so the unused ports stay unset. */
+const unused = undefined as never;
+const timeHandler = new BurnHonkTimeHandler(unused, unused, unused, unused, unused, unused, unused, unused);
+const weatherHandler = new BurnHonkWeatherHandler(unused, unused, unused, unused, unused, unused, unused, unused);
 
 describe('as-built docs match the shipped defaults', () => {
   const env = withEnv(base);
@@ -73,18 +71,24 @@ describe('as-built docs match the shipped defaults', () => {
     expect(text).toContain('enforce` rejects');
   });
 
-  it('honk time and weather status follows the controller status code', () => {
-    const time = httpCodeFor(honk, 'watch/:id/honk/time');
-    const weather = httpCodeFor(honk, 'watch/:id/honk/weather');
-    expect(time).toBe(weather);
+  it('honk time and weather status follows the handler throw', async () => {
+    const time = await timeHandler.execute(new BurnHonkTimeCommand('w', 'r', 'day')).then(() => null, (error: unknown) => error);
+    const weather = await weatherHandler.execute(new BurnHonkWeatherCommand('w', 'r', 'snow')).then(() => null, (error: unknown) => error);
+    expect(time).toBeInstanceOf(NotFoundError);
+    expect(weather).toBeInstanceOf(NotFoundError);
+    const timeError = time as NotFoundError;
+    const weatherError = weather as NotFoundError;
+    expect(timeError.statusCode).toBe(weatherError.statusCode);
+    expect(timeError.errorCode).toBe(weatherError.errorCode);
     const text = docs.product + docs.status;
-    expect(text).toContain(`\`${time}\``);
+    expect(text).toContain(String(timeError.statusCode));
+    expect(text).toContain(timeError.errorCode);
     expect(text).toContain('honk/time');
     expect(text).toContain('honk/weather');
-    expect(text).not.toContain('honk/weather` are `404`');
-    expect(text).not.toContain('honk/time` and `honk/weather` are `404`');
-    expect(docs.status).toContain('burn TEN4');
-    expect(docs.status).toContain('LIVE_EFFECTS');
+    expect(text).toContain('before any TEN4 debit');
+    expect(text).not.toContain('are `200` and burn TEN4');
+    expect(text).not.toContain('answer `200`, burn TEN4');
+    expect(docs.status).toContain('not a live burn');
   });
 
   it('the coverage contract keeps the 2026-10-23 green gate figures', () => {
