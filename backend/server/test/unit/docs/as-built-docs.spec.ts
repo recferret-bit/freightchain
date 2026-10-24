@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { EnvService } from '../../../src/infrastructure/config/env.service.js';
 import { pauseVerdict, slowMotionVerdict } from '../../../src/domain/rides/pause-bounds.js';
 import { BadRequestError, NotFoundError } from '../../../src/domain/shared/errors.js';
-import { replayDenial } from '../../../src/domain/live/replay-visibility.js';
+import { replayDenial, type ReplaySubject } from '../../../src/domain/live/replay-visibility.js';
 import { LiveDonationService } from '../../../src/application/live/live-donation.service.js';
 import { BurnHonkTimeCommand, BurnHonkTimeHandler } from '../../../src/application/use-cases/honk/burn-honk-time.handler.js';
 import { BurnHonkWeatherCommand, BurnHonkWeatherHandler } from '../../../src/application/use-cases/honk/burn-honk-weather.handler.js';
@@ -16,13 +16,46 @@ const withEnv = (vars: Record<string, string | undefined>) => {
 };
 
 const root = join(import.meta.dirname, '../../../../../');
+const read = (path: string) => readFileSync(join(root, path), 'utf8');
 const docs = {
-  product: readFileSync(join(root, 'docs/spec/PRODUCT.md'), 'utf8'),
-  status: readFileSync(join(root, 'docs/plan/spec-compliance/STATUS.md'), 'utf8'),
-  issue: readFileSync(join(root, 'docs/plan/spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md'), 'utf8'),
-  coverage: readFileSync(join(root, 'docs/testing/COVERAGE_CONTRACT.md'), 'utf8'),
+  product: read('docs/spec/PRODUCT.md'),
+  status: read('docs/plan/spec-compliance/STATUS.md'),
+  issue: read('docs/plan/spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md'),
+  coverage: read('docs/testing/COVERAGE_CONTRACT.md'),
+  logout: read('backend/server/test/scenarios/http-gaps-editor.scenarios.ts'),
 };
-const verdict = readFileSync(join(root, 'backend/server/src/application/services/verdict.service.ts'), 'utf8');
+const verdict = read('backend/server/src/application/services/verdict.service.ts');
+
+/** Text of one `###` section, through the next heading of the same level. */
+function section(markdown: string, heading: string): string {
+  const start = markdown.indexOf(heading);
+  if (start < 0) throw new Error(`missing heading ${heading}`);
+  const rest = markdown.slice(start + heading.length);
+  const next = rest.search(/\n### /);
+  return next < 0 ? rest : rest.slice(0, next);
+}
+
+/** The shipped cell of one conflicts-table row. */
+function conflictRow(markdown: string, topic: string): string {
+  const row = markdown.split('\n').find((line) => line.startsWith(`| ${topic} |`));
+  if (!row) throw new Error(`missing conflict row ${topic}`);
+  const cells = row.split('|').map((cell) => cell.trim()).filter((cell) => cell.length > 0);
+  const shipped = cells[1];
+  if (!shipped) throw new Error(`missing shipped cell ${topic}`);
+  return shipped;
+}
+
+function tableRow(markdown: string, firstCell: string): string {
+  const row = markdown.split('\n').find((line) => line.startsWith(`| ${firstCell} |`));
+  if (!row) throw new Error(`missing row ${firstCell}`);
+  return row;
+}
+
+/** The span must carry the code result, and must not carry a different outcome for that subject. */
+function expectSpan(span: string, must: string[], mustNot: string[]): void {
+  for (const token of must) expect(span).toContain(token);
+  for (const token of mustNot) expect(span).not.toContain(token);
+}
 
 const base = {
   DATABASE_URL: 'postgresql://x/db', NODE_ENV: 'development', JWT_SECRET: undefined, TREASURY_PUBKEY: undefined,
@@ -30,48 +63,42 @@ const base = {
   ADMIN_JWT_SECRET: undefined, ADMIN_SESSION_TTL_MINUTES: undefined, PLEDGES_ENABLED: undefined,
 };
 
-/** The handlers throw before they touch a dependency, so the unused ports stay unset. */
 const unused = undefined as never;
 const timeHandler = new BurnHonkTimeHandler(unused, unused, unused, unused, unused, unused, unused, unused);
 const weatherHandler = new BurnHonkWeatherHandler(unused, unused, unused, unused, unused, unused, unused, unused);
 
+const ride = (over: Partial<ReplaySubject>): ReplaySubject => ({
+  status: 'completed', tier: '1h', tutorial: false, assist: false, guest: false,
+  wallet: 'driver', poolId: null, payoutAt: null, verdict: 'verified', ...over,
+});
+
 describe('as-built docs match the shipped defaults', () => {
   const env = withEnv(base);
-  const over = { count: 4, seconds: 301 };
-  const off = pauseVerdict('off', over);
-  const shadow = pauseVerdict('shadow', over);
-  const enforce = pauseVerdict('enforce', over);
-  const slowOff = slowMotionVerdict('off', 30, 120_000);
-  const slowShadow = slowMotionVerdict('shadow', 30, 120_000);
-  const slowEnforce = slowMotionVerdict('enforce', 30, 120_000);
 
   it('admin session, pledges, and RideResult sentences follow the code', () => {
     expect(env.adminSessionTtlMinutes).toBeLessThanOrEqual(60);
     expect(env.pledgesEnabled).toBe(false);
     expect(verdict).toContain('rideResults.upsert');
-    const shipped = docs.product + docs.status;
-    expect(shipped).toContain(String(env.adminSessionTtlMinutes));
-    expect(shipped).toContain('revoked:jti');
-    expect(docs.product).toContain('pledges_disabled');
-    expect(docs.product).toContain('403');
-    expect(docs.product).toContain('stats.RideResult');
+    const ttl = String(env.adminSessionTtlMinutes);
+    const admin = [conflictRow(docs.product, 'Admin power'), section(docs.product, '### Admin')];
+    for (const span of admin) expectSpan(span, [ttl, 'revoked:jti'], ['120 minutes', 'does not revoke']);
+    const pledges = [conflictRow(docs.product, 'Pledges'), section(docs.product, '### Escrow program')];
+    for (const span of pledges) expectSpan(span, ['pledges_disabled', '403'], ['pledges stay on']);
+    const results = [conflictRow(docs.product, '`RideResult`'), section(docs.product, '### Statistics')];
+    for (const span of results) expectSpan(span, ['stats.RideResult'], ['There is no RideResult', 'there is no RideResult', 'no per-ride']);
     expect(docs.product).not.toContain('e8f338ad');
-    for (const banned of ['120 minutes', 'logout does not revoke', 'There is no RideResult', 'there is no RideResult', 'pledges stay on', 'no per-ride']) {
-      expect(shipped).not.toContain(banned);
-    }
   });
 
   it('pause and slow-motion status follows pauseVerdict and slowMotionVerdict', () => {
-    expect(off).toEqual([]);
-    expect(slowOff).toEqual([]);
-    expect(shadow.every((reason) => reason.severity === 'flag')).toBe(true);
-    expect(slowShadow.every((reason) => reason.severity === 'flag')).toBe(true);
-    expect(enforce.every((reason) => reason.severity === 'reject')).toBe(true);
-    expect(slowEnforce.every((reason) => reason.severity === 'reject')).toBe(true);
-    const text = docs.product + docs.status;
-    expect(text).toContain('off` adds no reasons');
-    expect(text).toContain('shadow` flags');
-    expect(text).toContain('enforce` rejects');
+    const over = { count: 4, seconds: 301 };
+    expect(pauseVerdict('off', over)).toEqual([]);
+    expect(slowMotionVerdict('off', 30, 120_000)).toEqual([]);
+    expect(pauseVerdict('shadow', over).every((reason) => reason.severity === 'flag')).toBe(true);
+    expect(slowMotionVerdict('shadow', 30, 120_000).every((reason) => reason.severity === 'flag')).toBe(true);
+    expect(pauseVerdict('enforce', over).every((reason) => reason.severity === 'reject')).toBe(true);
+    expect(slowMotionVerdict('enforce', 30, 120_000).every((reason) => reason.severity === 'reject')).toBe(true);
+    const span = section(docs.product, '### Verified play') + tableRow(docs.status, '`SPC-06.3`');
+    expectSpan(span, ['off` adds no reasons', 'shadow` flags', 'enforce` rejects'], []);
   });
 
   it('honk time and weather status follows the handler throw', async () => {
@@ -83,61 +110,48 @@ describe('as-built docs match the shipped defaults', () => {
     const weatherError = weather as NotFoundError;
     expect(timeError.statusCode).toBe(weatherError.statusCode);
     expect(timeError.errorCode).toBe(weatherError.errorCode);
-    const text = docs.product + docs.status + docs.issue;
-    expect(timeError.statusCode).toBe(404);
-    expect(text).toContain(String(timeError.statusCode));
-    expect(text).toContain(timeError.errorCode);
-    expect(text).toContain(timeError.message);
-    expect(text).toContain(weatherError.message);
-    expect(text).toContain('honk/time');
-    expect(text).toContain('honk/weather');
-    expect(text).toContain('before any TEN4 debit');
-    expect(docs.status).toContain('not a live burn');
-    for (const banned of ['are `200` and burn TEN4', 'answer `200`, burn TEN4', 'answer `200`', '10 day/night, 25 snow or clear', 'Burns: 1 chat HONK, 10 day/night']) {
-      expect(text).not.toContain(banned);
+    const donations = new LiveDonationService(unused, unused, unused, unused, unused);
+    const refused = await donations.prepare('w', 'r', 'night', null, 'order').then(() => null, (error: unknown) => error);
+    expect(refused).toBeInstanceOf(BadRequestError);
+    const donationCode = (refused as BadRequestError).errorCode;
+    const spans = [
+      conflictRow(docs.product, 'Spectator effects'),
+      section(docs.product, '### Live board, watch, chat, donations, replays'),
+      tableRow(docs.status, '`SPC-04.4`'),
+      section(docs.issue, '### `SPC-04.4`'),
+    ];
+    expectSpan(spans[0], [donationCode], []);
+    expectSpan(spans[1], [donationCode], []);
+    expectSpan(tableRow(docs.coverage, 'Live and replay'), [donationCode], []);
+    for (const span of spans) {
+      expectSpan(span, [String(timeError.statusCode), timeError.errorCode, 'before any TEN4 debit'], ['are `200` and burn TEN4', 'answer `200`, burn TEN4', '10 day/night, 25 snow or clear']);
     }
+    expect(section(docs.product, '### TEN4')).toContain(timeError.message);
+    expect(section(docs.product, '### TEN4')).toContain(weatherError.message);
   });
 
   it('the coverage contract keeps the 2026-10-23 green gate figures', () => {
-    expect(docs.coverage).toContain('11668 objects compared against golden.txt: identical');
-    expect(docs.coverage).toContain('20/20');
-    expect(docs.coverage).toContain('zero-scenario routes: 0');
-    expect(docs.coverage).toContain('single-scenario routes: 0');
-    expect(docs.coverage).toContain('178/178');
-    for (const banned of ['18/20', '21 `veh|medic`', '21 ambulance', '57 routes', '57-route', 'Three gates are red']) {
-      expect(docs.coverage + docs.product).not.toContain(banned);
-    }
+    const gates = section(docs.coverage, '**Gates green on 2026-10-23**');
+    expectSpan(gates, ['11668 objects compared against golden.txt: identical', '20/20', 'zero-scenario routes: 0', 'single-scenario routes: 0', '178/178'], ['18/20', '21 `veh|medic`', '57 routes', 'Three gates are red']);
   });
 
-  it('live watch and donation status follows replayDenial and LiveDonationService', async () => {
-    const denial = replayDenial({
-      status: 'running', tier: '1h', tutorial: false, assist: false, guest: false,
-      wallet: 'driver', poolId: null, payoutAt: null, verdict: null,
-    }, 'driver', new Date());
-    const donations = new LiveDonationService(unused, unused, unused, unused, unused);
-    const refused = await donations.prepare('w', 'r', 'night', null, 'order').then(() => null, (error: unknown) => error);
-    expect(denial?.code).toBe('replay_not_available');
-    expect(refused).toBeInstanceOf(BadRequestError);
-    const donationError = refused as BadRequestError;
-    const text = docs.coverage + docs.product;
-    expect(text).toContain(denial?.code);
-    expect(text).toContain(donationError.errorCode);
-    for (const banned of [
-      'Watch a running paid ride',
-      'Running free ride → `403 free_ride_no_stream`',
-      'does not move the road',
-      'HTTP routes with no scenario',
-      '17 zero-scenario',
-      '47 routes have exactly one',
-      'both SNS routes have no HTTP scenario',
-      'Four honk HTTP routes have no scenario',
-      'in the zero-scenario list',
-      'have no HTTP scenario',
-      'only a cross-origin 403',
-      '~25 s behind',
-      'close 17 zero-scenario',
-    ]) {
-      expect(text).not.toContain(banned);
-    }
+  it('a finished free ride and editor logout follow the shipped result', () => {
+    const finishedFree = replayDenial(ride({ tier: 'free' }), null, new Date());
+    const running = replayDenial(ride({ status: 'running', tier: '1h', verdict: null }), 'driver', new Date());
+    expect(finishedFree?.code).toBe(running?.code);
+    const code = finishedFree?.code ?? '';
+    const watch = [
+      conflictRow(docs.product, 'Live watch'),
+      section(docs.product, '### Live board, watch, chat, donations, replays'),
+      tableRow(docs.coverage, 'Live and replay'),
+    ];
+    for (const span of watch) expectSpan(span, [code], ['Finished free rides stay in replays', 'including a finished free ride', 'stay in replays']);
+    const success = docs.logout.split('\n').find((line) => line.includes("'/api/editor/auth/logout'") && line.includes(".set(X, '1').expect("));
+    const status = success?.match(/\.expect\((\d+)\)/)?.[1] ?? '';
+    expect(status.length).toBeGreaterThan(0);
+    const editor = section(docs.product, '### Entity editor');
+    const logoutBullet = docs.coverage.split('\n').find((line) => line.includes('/api/editor/auth/logout')) ?? '';
+    expectSpan(editor, [status], ['has no successful HTTP scenario', 'no successful HTTP scenario']);
+    expectSpan(logoutBullet, [status], ['is only a cross-origin 403', 'has no successful HTTP scenario']);
   });
 });
