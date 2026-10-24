@@ -153,5 +153,9 @@ describe('as-built docs match the shipped defaults', () => {
     const logoutBullet = docs.coverage.split('\n').find((line) => line.includes('/api/editor/auth/logout')) ?? '';
     expectSpan(editor, [status], ['has no successful HTTP scenario', 'no successful HTTP scenario']);
     expectSpan(logoutBullet, [status], ['is only a cross-origin 403', 'has no successful HTTP scenario']);
+    const pages = docs.product + docs.coverage;
+    for (const phrase of ['Finished free rides stay in replays', 'including a finished free ride', 'has no successful HTTP scenario']) {
+      expect(pages).not.toContain(phrase);
+    }
   });
 });
