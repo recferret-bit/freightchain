@@ -147,9 +147,9 @@ describe('as-built docs match the shipped defaults', () => {
     expect(history).toContain("tier: '1h'");
     const code = denial?.code ?? '';
     const live = section(docs.product, '### Live board, watch, chat, donations, replays');
-    const listSentence = live.split(/(?<=\.)\s+/).find((sentence) => sentence.includes('GET /api/replays') && sentence.includes('omits'));
-    expect(listSentence).toBeTruthy();
-    expect(listSentence).not.toContain(code);
+    const listSentences = live.split(/(?<=\.)\s+/).filter((sentence) => sentence.includes('GET /api/replays') || sentence.includes('public replay list'));
+    expect(listSentences.some((sentence) => sentence.includes('omits'))).toBe(true);
+    for (const sentence of listSentences) expect(sentence).not.toContain(code);
     const watch = [conflictRow(docs.product, 'Live watch'), live, tableRow(docs.coverage, 'Live and replay')];
     for (const span of watch) expectSpan(span, [code, 'omits'], ['Finished free rides stay in replays', 'including a finished free ride', 'stay in replays', 'on the public replay list']);
     const success = docs.logout.split('\n').find((line) => line.includes("'/api/editor/auth/logout'") && line.includes(".set(X, '1').expect("));
