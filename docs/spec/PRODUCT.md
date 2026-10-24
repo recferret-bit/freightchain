@@ -33,7 +33,7 @@ The Conflicts table is the list the owner still has to pick. A row that says Clo
 
 **Shipped.** `POST /api/auth/nonce` and `POST /api/auth/verify` open `fc_session`. `POST /api/auth/guest` opens a throwaway wallet that may play EASY only (`409 guest_easy_only` for MEDIUM, HARD, a promo, or a paid tier). Progress does not merge into a later wallet. SNS: `GET /api/sns/resolve` and `GET /api/sns/reverse`. Phone session pairing is shipped: the desktop `POST /api/auth/pair` opens a code, the phone `POST /api/auth/pair/:id/claim` after it has signed in, and the desktop `GET /api/auth/pair/:id` adopts that session. The QR and the extension popup are still manual (`docs/testing/MANUAL_TESTS.md`). WalletConnect is not used.
 
-Gap: guest and both SNS routes have no HTTP scenario. Phone-pair HTTP is already in `flow.scenarios.ts`. A real Chrome guest session is still open. See [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
+Guest, both SNS routes, and phone-pair have an HTTP scenario (`http-gaps-public.scenarios.ts`, `flow.scenarios.ts`). A real Chrome guest session is still open. See [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
 
 ### Free levels, tutorial, assist
 
@@ -159,7 +159,7 @@ The headless playthrough (`client/tools/headless-test.mjs`) drives the sim with 
 
 These are real and easy to miss. They are not separate games.
 
-- Receipt page `r.html` reads `GET /api/rides/:id/public`. That route is in the zero-scenario list.
+- Receipt page `r.html` reads `GET /api/rides/:id/public`. That route has an HTTP scenario in `http-gaps-public.scenarios.ts`.
 - `POST /api/client-error` is the crash beacon on every page, including the pitch deck and the model viewer. Caps: 3 per page, 10 per IP per minute, 2,000 per UTC day.
 - `POST /api/telemetry` is the analytics relay. It is not the ride recording.
 - Promo video and the chiptune synth live in `media/`. They are a toolchain. A clip is not a player flow, so the coverage contract does not ask for a Chrome test per clip. Byte checks stay in the media package tests.

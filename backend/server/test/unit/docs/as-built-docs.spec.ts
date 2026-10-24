@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { EnvService } from '../../../src/infrastructure/config/env.service.js';
 import { pauseVerdict, slowMotionVerdict } from '../../../src/domain/rides/pause-bounds.js';
-import { NotFoundError } from '../../../src/domain/shared/errors.js';
+import { BadRequestError, NotFoundError } from '../../../src/domain/shared/errors.js';
+import { replayDenial } from '../../../src/domain/live/replay-visibility.js';
+import { LiveDonationService } from '../../../src/application/live/live-donation.service.js';
 import { BurnHonkTimeCommand, BurnHonkTimeHandler } from '../../../src/application/use-cases/honk/burn-honk-time.handler.js';
 import { BurnHonkWeatherCommand, BurnHonkWeatherHandler } from '../../../src/application/use-cases/honk/burn-honk-weather.handler.js';
 
@@ -104,6 +106,35 @@ describe('as-built docs match the shipped defaults', () => {
     expect(docs.coverage).toContain('178/178');
     for (const banned of ['18/20', '21 `veh|medic`', '21 ambulance', '57 routes', '57-route', 'Three gates are red']) {
       expect(docs.coverage + docs.product).not.toContain(banned);
+    }
+  });
+
+  it('live watch and donation status follows replayDenial and LiveDonationService', async () => {
+    const denial = replayDenial({
+      status: 'running', tier: '1h', tutorial: false, assist: false, guest: false,
+      wallet: 'driver', poolId: null, payoutAt: null, verdict: null,
+    }, 'driver', new Date());
+    const donations = new LiveDonationService(unused, unused, unused, unused, unused);
+    const refused = await donations.prepare('w', 'r', 'night', null, 'order').then(() => null, (error: unknown) => error);
+    expect(denial?.code).toBe('replay_not_available');
+    expect(refused).toBeInstanceOf(BadRequestError);
+    const donationError = refused as BadRequestError;
+    const text = docs.coverage + docs.product;
+    expect(text).toContain(denial?.code);
+    expect(text).toContain(donationError.errorCode);
+    for (const banned of [
+      'Watch a running paid ride',
+      'Running free ride → `403 free_ride_no_stream`',
+      'does not move the road',
+      'HTTP routes with no scenario',
+      '17 zero-scenario',
+      '47 routes have exactly one',
+      'both SNS routes have no HTTP scenario',
+      'Four honk HTTP routes have no scenario',
+      'in the zero-scenario list',
+      'have no HTTP scenario',
+    ]) {
+      expect(text).not.toContain(banned);
     }
   });
 });

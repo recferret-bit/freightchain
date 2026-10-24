@@ -52,41 +52,20 @@ From the 2026-10-18 audit, except the three commands below. Those three were gre
 - `npm --prefix frontend/client run test:tickets-stub` — 20/20.
 - `node .claude/skills/test-census/census.mjs --self-test` — zero-scenario routes: 0, single-scenario routes: 0, http routes on both flow runners: 178/178, then self-test ok.
 
-**HTTP routes with no scenario** (unit tests of the controller with a mocked bus do not count)
+The 2026-10-23 census self-test reported 0 zero-scenario routes and 0 single-scenario routes. The routes that the 2026-10-18 audit listed as uncovered now have an HTTP scenario in `backend/server/test/scenarios/http-gaps-public.scenarios.ts`, `http-gaps-live.scenarios.ts`, `http-gaps-economy.scenarios.ts`, or `http-gaps-editor.scenarios.ts`. Do not list them as a zero-scenario gap. A Chrome run is still a separate cell where the holes below say so.
 
-1. `GET /api/actions/shift/:tier`
-2. `POST /api/auth/guest`
-3. `POST /api/tickets/orders/:id/reconcile`
-4. `POST /api/editor/auth/logout` (only a cross-origin 403 is tested)
-5. `GET /api/honk/catalog`
-6. `POST /api/watch/:id/honk`
-7. `POST /api/watch/:id/honk/time`
-8. `POST /api/watch/:id/honk/weather`
-9. `POST /api/watch/:id/donation-orders/:orderId/reconcile`
-10. `GET /api/prize/board`
-11. `GET /api/rides/:id/public`
-12. `GET /api/sns/reverse`
-13. `GET /api/sns/resolve`
-14. `GET /api/solana-pay/orders/:id`
-15. `POST /api/solana-pay/orders/:id`
-16. `GET /api/solana-pay/donations/:id`
-17. `POST /api/solana-pay/donations/:id`
-
-`GET` and `POST /api/solana-pay/rides/:id` already have a scenario in `server/test/scenarios/payments.scenarios.ts`, including the wrong-account 404. Do not list them as uncovered. They still have no Chrome run.
+`GET` and `POST /api/solana-pay/rides/:id` already have a scenario in `server/test/scenarios/payments.scenarios.ts`, including the wrong-account 404. They still have no Chrome run.
 
 Phone pairing (`POST /api/auth/pair`, `GET /api/auth/pair/:id`, `POST /api/auth/pair/:id/claim`) already has an HTTP scenario in `server/test/scenarios/flow.scenarios.ts`, including a poll without the secret cookie → 404. The extension popup and the phone QR stay manual. They are not an HTTP gap.
-
-Each zero-scenario route needs the positive and the negatives in the table above, in memory and on PostgreSQL. SNS unit specs mock the bus. They do not close the HTTP cell.
 
 **Chrome and chain holes on shipped behavior**
 
 - Whitepaper has no Chrome harness.
 - Guest EASY, the weekly 1h grant, and "training does not spend `freeRides`" are source or happy-dom checks, not a Chrome session against the server.
 - Referral qualify (a verified MEDIUM finish grants the referrer's free rides) is pending even in the happy-dom catalog.
-- Solana Pay GET/POST and SNS resolve/reverse have no HTTP scenario. The phone QR and the extension popup stay manual until a harness signs.
+- Solana Pay GET/POST and SNS resolve/reverse have an HTTP scenario and no Chrome run. The phone QR and the extension popup stay manual until a harness signs.
 - `program-check` pins IDL and the verifiable hash for `freightchain_pools` only. `freightchain_honk` has LiteSVM tests and no IDL drift pin.
-- Four honk HTTP routes have no scenario (`/api/honk/catalog` and the three `watch/:id/honk*`).
-- Editor logout has no successful 200 scenario. `editor-worker.ts` has no unit test. The Chrome editor suite drives the queue over HTTP. It does not cover that entrypoint. The entrypoint still needs a unit test that the process refuses to boot without `JWT_SECRET` and `EDITOR_MCP_TOKEN`.
+- `editor-worker.ts` has no unit test. The Chrome editor suite drives the queue over HTTP. It does not cover that entrypoint. The entrypoint still needs a unit test that the process refuses to boot without `JWT_SECRET` and `EDITOR_MCP_TOKEN`.
 - `nft-metadata-uris.ts` has no test that every achievement id has a URI.
 - No GitHub Actions workflow. Local commands remain the gate until phase 6 of the plan.
 
@@ -106,11 +85,11 @@ The negatives are the ones a person can hit, not a fuzz list. Add a row when a n
 | Guest and free levels | Bare `play.html` starts EASY `free-1c`. MEDIUM `free-2c`. HARD `free-3c`. | Guest on MEDIUM, HARD, a promo, or a paid tier → `409 guest_easy_only`. HARD with assist or tutorial → `409`. `free-g` is never stamped. `?sim=1` stays the tool sim. |
 | Weekly ticket | Inside the ranked week, with no 1h promo, the first 1h POST spends the grant and creates an unranked ride. A second POST while it is `created` returns that ride. | An unspent 1h promo is claimed instead, and the grant stays unspent. 4h and 8h grants stay off. After the ride ends, another 1h with no pool and no promo is `409 tier_not_on_sale`. `409 weekly_ticket_spent` is the lost-claim race. The grant does not mint TEN4. Ranked is opt-in at start. |
 | Ride life | Order, start, heartbeat, batches, end at the line. A closed tab ends the ride. A silent ride is swept. | Late start after the pool window → `409 rides_closed`. A re-chosen free ride → `409 ride_rechosen`. |
-| Tickets and Solana Pay | Buy, confirm, reconcile, refund when the pool fails, payout after review. Ride Solana Pay GET/POST already has an HTTP scenario. | Wrong wallet → 404. Reconcile of an unpaid order does not credit a ticket. Order and donation Solana Pay routes still need that pair. |
+| Tickets and Solana Pay | Buy, confirm, reconcile, refund when the pool fails, payout after review. Ride, order, and donation Solana Pay GET/POST have an HTTP scenario. | Wrong wallet → 404. Reconcile of an unpaid order does not credit a ticket. |
 | Pools program | The localnet day: open, buy, seal, ride, commit, pay, close. | `PaidTicketsDisabled`. Buy after `prep_deadline`. Veto of the winners root. |
 | TEN4 | Verified paid ride reserves the ledger amount. Local mint, swap, burn, frozen part. | Training, guest, and the weekly grant do not mint. A rejected rejudge before release deletes the row. |
 | Referrals | Bind, gift. The first verified finish qualifies and unlocks the paint. That finish grants the 2 and 3 free rides only when it is MEDIUM, inside 7 days, under the weekly cap. | Own code, second referrer, unknown code, no slots, bind after a started ride. A later MEDIUM does not grant the free rides. |
-| Live and replay | Watch a running paid ride ~25 s behind. Chat, mute, paid tip. Replay a finished ride, including a finished free ride. | Running free ride → `403 free_ride_no_stream`. With `LIVE_EFFECTS` not `all`, a donation night or hole does not move the road and the tip still pays. A mute cannot post. |
+| Live and replay | Replay a finished ride, including a finished free ride. Chat, mute, paid tip. | A running ride is `404 replay_not_available` on watch and `/road`, including for the driver. A donation whose effect is not `tip` is `400 donation_effect` before any road change. A post on a free ride is `403 free_ride_no_stream`. A mute cannot post. |
 | Promo | Admin signs a ride code. The player redeems one shift. | Unknown code. Second redeem. `kind: cosmetic` → `409 visuals_are_honk`. Retired `free_rides`. |
 | Garage | Apply a loadout. The cab draws it. | A partial loadout does not equip. A TEN4 part the wallet has not burned does not equip. |
 | Achievements | A finished ride unlocks the badge the facts earned. The lobby card shows progress. | A rejected ride does not mint. A guest wallet is skipped. An id is never retuned. |
@@ -128,11 +107,11 @@ The negatives are the ones a person can hit, not a fuzz list. Add a row when a n
 
 The 2026-10-18 audit ran the pyramid and recorded about 82.5% lines and 83.1% branches across 940 JS/TS files, 197 Rust tests, and a large Chrome harness. That is not this contract.
 
-A route is open until memory and PostgreSQL both assert the positive and each applicable negative. The audit's "scenario > 0" mark is not that. About 47 routes have exactly one scenario case. Closing the 17 zero-scenario routes does not close those 47.
+A route is open until memory and PostgreSQL both assert the positive and each applicable negative. The 2026-10-23 census self-test reported 0 zero-scenario routes and 0 single-scenario routes. That does not fill the Chrome cell.
 
-Three calls exist and do not fill the cell:
+Three calls exist and do not fill the Chrome cell:
 
-- `e2e-blinks.mjs` GETs `/api/actions/shift/2h` and expects 400. There is no GET of `1h`, `4h`, or `8h` that expects the card.
+- `e2e-blinks.mjs` GETs `/api/actions/shift/2h` and expects 400. `GET /api/actions/shift/1h` has an HTTP scenario that expects the card. That run is not Chrome.
 - The happy-dom block-1 file, when `E2E_BASE` is set, POSTs `/api/auth/guest` and GETs `/api/prize/board`. That run is not Chrome and it skips without `E2E_BASE`.
 - `POST /api/editor/auth/logout` is only a cross-origin 403.
 
