@@ -74,7 +74,7 @@ A live 1h grant is issued only inside the ranked week (Monday 00:00 UTC through 
 
 **Ledger shipped. Program local.** [`docs/spec/ten4.md`](ten4.md), [`docs/agents/ten4-localnet.md`](../agents/ten4-localnet.md).
 
-Ticker TEN4. Routes, tables, the crate, and `HONK_PROGRAM_ID` stay HONK. HONK is the chat verb. Supply 100,000,000. SOL still prices the ticket. TEN4 is reserved when a paid ride's verdict is verified. Until TGE the balance is PostgreSQL and the UI says points. New rides are `free` or `1h`. Era-1 finishes that already exist: 1h 100, 4h 500, 8h 1,200. An 8h mint waits 48 hours. Burns: 1 chat HONK, 10 day/night, 25 snow or clear. Cab parts 65 / 260. The local program is not deployed. There is no AMM on devnet.
+Ticker TEN4. Routes, tables, the crate, and `HONK_PROGRAM_ID` stay HONK. HONK is the chat verb. Supply 100,000,000. SOL still prices the ticket. TEN4 is reserved when a paid ride's verdict is verified. Until TGE the balance is PostgreSQL and the UI says points. New rides are `free` or `1h`. Era-1 finishes that already exist: 1h 100, 4h 500, 8h 1,200. An 8h mint waits 48 hours. The chat HONK still burns 1. Day/night and snow or clear do not: those two routes throw before the debit (`TEN4 time changes were removed`, `TEN4 weather changes were removed`). Cab parts 65 / 260. The local program is not deployed. There is no AMM on devnet.
 
 `GET /api/honk` can return `chain: null` when `HONK_PROGRAM_ID` is unset. That is the block-1 configuration, not a broken route.
 

@@ -81,14 +81,18 @@ describe('as-built docs match the shipped defaults', () => {
     expect(timeError.statusCode).toBe(weatherError.statusCode);
     expect(timeError.errorCode).toBe(weatherError.errorCode);
     const text = docs.product + docs.status;
+    expect(timeError.statusCode).toBe(404);
     expect(text).toContain(String(timeError.statusCode));
     expect(text).toContain(timeError.errorCode);
+    expect(docs.product).toContain(timeError.message);
+    expect(docs.product).toContain(weatherError.message);
     expect(text).toContain('honk/time');
     expect(text).toContain('honk/weather');
     expect(text).toContain('before any TEN4 debit');
-    expect(text).not.toContain('are `200` and burn TEN4');
-    expect(text).not.toContain('answer `200`, burn TEN4');
     expect(docs.status).toContain('not a live burn');
+    for (const banned of ['are `200` and burn TEN4', 'answer `200`, burn TEN4', 'answer `200`', '10 day/night, 25 snow or clear', 'Burns: 1 chat HONK, 10 day/night']) {
+      expect(text).not.toContain(banned);
+    }
   });
 
   it('the coverage contract keeps the 2026-10-23 green gate figures', () => {
