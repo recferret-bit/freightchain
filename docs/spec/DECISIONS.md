@@ -177,3 +177,11 @@ All recommendations 1–10 were accepted by the owner **as written** (2026-10-17
 67. ✅ **The specification in two layers.** *Decision:* `PRODUCT.md` is what the code does now. The MUST rules and decisions 1–66 are the target, until the code matches them. Tests lock the current behavior. The target enters the code only together with an edit of `PRODUCT.md` and of the tests. A conflict between two decisions is not settled in the course of a test: it is recorded in `PRODUCT.md`, and the choice is the owner's. The `*-T-*` catalog is a test plan, not tests already written.
 
 68. ✅ **The coverage bar.** *Decision:* a user path is checked in real headless Chrome, positive and negative, against a live server. Every HTTP route has a scenario in memory and on PostgreSQL: success and refusals (no session, someone else's id → 404, a conflict). A database write is an integration test; a new critical section is a race test. A program instruction is LiteSVM on the built `.so`. A flow that moves SOL or TEN4 also runs on `solana-test-validator`, with no devnet. happy-dom (`test:e2e:block1/2/pages`) stays a fast check of the modules and does not close the Chrome cell. E2E-M-01 and E2E-M-06 do not apply. The line threshold from backend decision 10 is not replaced by this bar, and this bar does not count as that threshold.
+
+---
+
+## Decisions 69–70 — ✅ 24.10.2026
+
+69. ✅ **The live replay stays at 10 Hz.** *Decision:* `ReplayEngine` keeps judging recorded samples at `REPLAY_SIM_HZ` 10, with two physics substeps. `stepAt30Hz` is not the live judge and will not become it. Decision 12's 30 Hz re-sim from raw input is not adopted for the pipeline. `TELEMETRY_V21` and `MINIGAMES` stay `off`. `RULES_VERSION` stays 7. Rides already recorded stay on the 10 Hz sample stream.
+
+70. ✅ **`set_pool_rules` stays off HTTP.** *Decision:* Decision 60 wins the conflict with backend decision 8 and `POOL-M-12`. There is no admin HTTP route. The path is `pool-admin.mjs set-pool-rules`, which the admin signs and sends. On mainnet the same instruction goes through Squads. Do not add `POST /api/admin/pools/:id/rules`.

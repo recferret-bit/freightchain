@@ -37,7 +37,7 @@ Upgrades the anti-cheat pipeline from 10 Hz sample inspection to the full [`docs
 
 ### `SPC-06.2` — Upgrade client & server `ReplayEngine` to 30 Hz fixed-step deterministic simulation (`dt = 1/30s`) + incremental per-batch server re-sim
 
-- **Status:** `[ ] Todo` — The live replay is still 10 Hz. `stepAt30Hz` is not the live rate.
+- **Status:** `[x] Done` — Decision 69 (24.10.2026): the live `ReplayEngine` stays at 10 Hz with two substeps. `stepAt30Hz` is not the judge and will not become it. Decision 12's 30 Hz re-sim is not the live pipeline.
 - **Spec Rules:** `ACH-M-01`, `ACH-M-08`, `ACH-M-09`, `ACH-M-10`, `ACH-M-12` (`docs/spec/anticheat.md` §2 & §5, Decisions 1, 2, 11, 12)
 - **Paired Plan 1 Tasks:** `E2E-07.1`, `E2E-07.2`
 - **Target Files:**

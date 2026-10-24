@@ -122,7 +122,7 @@ Updates the escrowed prize pool lifecycle and `freightchain_pools` Anchor progra
 
 ### `SPC-05.6` — Resolve `set_pool_rules` governance conflict (`POOL-M-12`/`B8` Admin HTTP vs `ADM-M-07`/Decision 60 Squads multisig-only)
 
-- **Status:** `[!] Blocked (awaiting owner decision)`
+- **Status:** `[x] Done` — Decision 70 (24.10.2026): Decision 60 wins. No admin HTTP route. `pool-admin.mjs set-pool-rules` is the signed command. On mainnet, Squads. Backend decision 8's HTTP pair is withdrawn.
 - **Spec Rules:** Conflict between `POOL-M-12` (`docs/spec/pool.md` / Backend Decision `B8`: expose `POST /api/admin/pools/:id/rules` to invoke `set_pool_rules`) and `ADM-M-07` (`docs/spec/admin_security.md` / Decision 60: cold-admin instructions like `set_pool_rules` and `veto_winners_root` must NEVER be exposed over Admin HTTP and must execute via Squads multisig CLI only)
 - **Paired Plan 1 Tasks:** `E2E-08.5`, `E2E-09.1`
 - **Target Files:**

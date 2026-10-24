@@ -1,6 +1,6 @@
 # Anti-cheat — spec and test plan
 
-> Telemetry v2.1, a server resimulation at 30 Hz, world integrity, mechanical input, verdicts. Decisions 1–16, 18, 24–27, 31, 33, 35. The full text of the plan (the former §1–12, §14–18 of `anticheat_test_plan.md` (superseded, merged into docs/spec)) is Appendix A, unchanged. Minigames — [`minigames.md`](minigames.md), rides and the ranking — [`rides.md`](rides.md), the pool — [`pool.md`](pool.md).
+> The live judge is the 10 Hz `ReplayEngine` (decision 69, 24.10.2026). `stepAt30Hz` is not that judge. Telemetry v2.1, world integrity, mechanical input, verdicts. Decisions 1–16, 18, 24–27, 31, 33, 35, 69. The full text of the plan (the former §1–12, §14–18 of `anticheat_test_plan.md` (superseded, merged into docs/spec)) is Appendix A, unchanged. Minigames — [`minigames.md`](minigames.md), rides and the ranking — [`rides.md`](rides.md), the pool — [`pool.md`](pool.md).
 
 ## Part 1. Spec
 ### 1.1 In the code now (`origin/main`)
@@ -16,7 +16,7 @@
 - Heartbeats count `pauseCount` and `pauseSeconds`. With `TELEMETRY_V21=shadow`, more than 3 pauses flags `pause-limit`, more than 5 minutes flags `pause-time`, and a game/wall ratio below 0.9 after 60 s outside pauses flags `time-dilation`. All three are flags. None of them reject the ride.
 
 ### 1.2 Rules
-- **ACH-M-01** MUST: the source of truth is the server. A ride's outcome is computed by **resimulation from raw input** at a fixed step of **30 Hz** (decision 12; the fallback is 20 Hz). The goal is a bitwise match. Tolerances remain only for v1 poses (decision 5).
+- **ACH-M-01** MUST: the source of truth is the server. The live outcome is the 10 Hz `ReplayEngine` on the recorded samples, two physics substeps per sample (decision 69, 24.10.2026). `stepAt30Hz` is not called by that replay. Decision 12's 30 Hz re-sim from raw input is not the live pipeline. Tolerances remain for v1 poses (decision 5).
 - **ACH-M-02** MUST: telemetry protocol v2.1:
   - a `sessionKey` per ride and an HMAC of every batch;
   - streams `inp` / `clk` / `chk` (with `worldDigest32`) / `mg` / `env`;

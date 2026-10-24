@@ -131,7 +131,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.6` — Implement `TermsGuard` (`CURRENT_TERMS_VERSION` re-consent enforcement on all write routes) & scrub banned gambling terms across `frontend/`
 
-- **Status:** `[x] Done` — TermsGuard: a player write whose terms or privacy version is missing or older is `403 terms_acceptance_required`. The banned-gambling-word scrub across `frontend/` is still open.
+- **Status:** `[x] Done` — TermsGuard: a player write whose terms or privacy version is missing or older is `403 terms_acceptance_required`. UI copy has no `bet`, `wager`, `gamble`, `jackpot`, `casino`, `lottery`, or `raffle`. The only hit is `frontend/landing/test/pools.test.js`, which forbids those words. No separate scrub pass.
 - **Spec Rules:** `LEG-M-01..11` (`docs/spec/legal.md`)
 - **Paired Plan 1 Task:** `E2E-06.3`
 - **Target Files:**

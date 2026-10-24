@@ -41,7 +41,7 @@ When invoked with `"work on docs/plan/EXECUTION_ORCHESTRATOR.md"`, the lead agen
 | **Wave 4** | **Replay Controls `C1..C36`, EN/RU i18n, Pool v6 & Convoy/Airdrop** | 4 Lanes (`L1`–`L4`) | 25 | `[x] Done` | `npm run check && npm run server:integration && npm run test:e2e:block1 && npm run test:e2e:block2` |
 | **Wave 5** | **Anti-Cheat v2.1 (30 Hz Re-Sim, Salts, `F1..F10`) & Minigames** | 4 Lanes (`L1`–`L4`) | 21 | `[x] Done` | `npm run check && npm run server:integration && npm run test:e2e:block1` |
 | **Wave 6** | **Cheat Catalog `#1..#58`, `TrustScore`, CI Gates & Final Census** | 4 Lanes (`L1`–`L4`) | 10 | `[x] Done` — `test:ci:fast` exit 0 in 153 s; `test:ci:full` exit 0 on 2026-10-23 (2954 s). | `npm run test:ci:full && node .claude/skills/test-census/census.mjs --self-test` |
-| **Wave 7** | **Spec-board truth, accepted cheat gaps, and a written 30 Hz cutover** | 4 Lanes (`L1`–`L4`) | 10 | `[x] Done` — docs only, 2026-10-23. Defaults stayed off / 10 Hz. The banned-word scrub in `SPC-08.6` is still open. | `npm run test:e2e:block3 && node .claude/skills/test-census/census.mjs --self-test` |
+| **Wave 7** | **Spec-board truth, accepted cheat gaps, and a written 30 Hz cutover** | 4 Lanes (`L1`–`L4`) | 10 | `[x] Done` — docs only. Decision 69 keeps the live replay at 10 Hz. Decision 70 keeps `set_pool_rules` off HTTP. | `npm run test:e2e:block3 && node .claude/skills/test-census/census.mjs --self-test` |
 
 ---
 
@@ -370,7 +370,7 @@ flowchart TD
 
 ### WAVE 7 — Spec-board truth, accepted cheat gaps, and a written 30 Hz cutover
 **Goal:** Make the spec board match the code Wave 5 already shipped behind flags, write down the cheat-catalog rows the verifier does not reject, and write the live 30 Hz cutover without performing it.
-**Started and finished 2026-10-23, docs only.** `TELEMETRY_V21` stays `off`. `MINIGAMES` stays `off`. `REPLAY_SIM_HZ` stays 10. `RULES_VERSION` stays 7. `SPC-05.6` (`set_pool_rules` as an admin HTTP route) stays owner-blocked. `SPC-06.2` stays todo. The banned-gambling-word scrub in `SPC-08.6` is still open.
+**Started and finished 2026-10-23, docs only.** `TELEMETRY_V21` stays `off`. `MINIGAMES` stays `off`. `REPLAY_SIM_HZ` stays 10. `RULES_VERSION` stays 7. Decision 69 (24.10.2026) declines the live 30 Hz cutover. Decision 70 declines the admin HTTP route for `set_pool_rules`. The gambling-word scrub found no UI copy to change.
 **Prisma Schema Changes in Wave 7:** None (`0` migrations).
 
 #### Wave 7 — `Lane 1` (Spec board matches the shipped flags)

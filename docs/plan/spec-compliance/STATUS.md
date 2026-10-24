@@ -13,11 +13,11 @@
 | [`SPC-02`](./issues/SPC-02-admin-and-privileged-security.md) | Admin & Privileged Security (`F01..F18`) | `admin_security.md` | 9 | 0 | 0 | 9 | 0 |
 | [`SPC-03`](./issues/SPC-03-rides-dynamic-finish-and-ride-result.md) | Rides, Dynamic 65 km/h Finish & `stats.RideResult` | `rides.md` | 6 | 0 | 0 | 6 | 0 |
 | [`SPC-04`](./issues/SPC-04-replays-streams-donations-and-i18n.md) | Replays, Tip-Only Donations, Controls `C1..C36`, Chat & EN/RU i18n | `replays_streams.md`, `legal.md` | 9 | 0 | 0 | 9 | 0 |
-| [`SPC-05`](./issues/SPC-05-pool-schedule-appeals-and-program-v6.md) | Pool Schedule, `last_start_at`, Appeals & Program v6 | `pool.md` | 6 | 0 | 0 | 5 | 1 |
-| [`SPC-06`](./issues/SPC-06-anticheat-v2-and-30hz-resim.md) | Anti-Cheat v2.1, 30 Hz Server Re-Sim & Humanness `F1..F10` | `anticheat.md` | 6 | 1 | 0 | 5 | 0 |
+| [`SPC-05`](./issues/SPC-05-pool-schedule-appeals-and-program-v6.md) | Pool Schedule, `last_start_at`, Appeals & Program v6 | `pool.md` | 6 | 0 | 0 | 6 | 0 |
+| [`SPC-06`](./issues/SPC-06-anticheat-v2-and-30hz-resim.md) | Anti-Cheat v2.1, 30 Hz Server Re-Sim & Humanness `F1..F10` | `anticheat.md` | 6 | 0 | 0 | 6 | 0 |
 | [`SPC-07`](./issues/SPC-07-minigames-framework-and-catalog.md) | Phone `phone-sms` (ported, default off) | `minigames.md` | 5 | 0 | 0 | 5 | 0 |
 | [`SPC-08`](./issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) | Referral Convoy, TEN4 Airdrop, `TrustScore` & `TermsGuard` | `referral.md`, `ten4.md`, `promocodes.md`, `web3_solana.md`, `platform_services.md` | 6 | 0 | 0 | 6 | 0 |
-| **Total** | | | **53** | **1** | **0** | **51** | **1** |
+| **Total** | | | **53** | **0** | **0** | **53** | **0** |
 
 ---
 
@@ -82,14 +82,14 @@
 | `SPC-05.3` | Add non-refundable ticket burn rule after `last_start_at` + lobby purchase warning modal & mandatory confirmation checkbox | `POOL-M-07` | `E2E-08.5` | `SPC-05.2` | `[x] Done` |
 | `SPC-05.4` | Implement pool validation & appeals workflow (`POST /api/rides/:id/appeal`, admin review queue, block `commit_winners_root` until `validation_until` & 0 open appeals) | `POOL-M-08`, `POOL-M-09` | `E2E-08.5` | `SPC-05.1` | `[x] Done` |
 | `SPC-05.5` | Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`) | `POOL-M-10`, `POOL-M-13, 14` | `E2E-08.5` | `SPC-05.1` | `[x] Done` |
-| `SPC-05.6` | Resolve `set_pool_rules` governance conflict (`POOL-M-12`/`B8` Admin HTTP vs `ADM-M-07`/Decision 60 Squads multisig-only) | `POOL-M-12` vs `ADM-M-07` | `E2E-08.5`, `E2E-09.1` | Owner Decision | `[!] Blocked` |
+| `SPC-05.6` | Resolve `set_pool_rules` governance conflict (`POOL-M-12`/`B8` Admin HTTP vs `ADM-M-07`/Decision 60 Squads multisig-only) | `POOL-M-12` vs `ADM-M-07` | `E2E-08.5`, `E2E-09.1` | Decision 70 | `[x] Done` — Decision 70 (24.10.2026): no admin HTTP route. `pool-admin.mjs set-pool-rules` sends it. On mainnet, Squads. |
 
 ### Epic SPC-06 — Anti-Cheat v2.1, 30 Hz Server Re-Sim & Humanness `F1..F10` ([`issues/SPC-06-anticheat-v2-and-30hz-resim.md`](./issues/SPC-06-anticheat-v2-and-30hz-resim.md))
 
 | Task ID | Title | Spec Rules | Paired Plan 1 Test | Depends On | Status |
 |---|---|---|---|---|---|
 | `SPC-06.1` | Implement Telemetry v2.1 wire protocol (`sessionKey` per-batch HMAC-SHA256, deflate streams `inp`/`clk`/`chk`/`mg`/`env`, `batch-mac-invalid`) | `ACH-M-02`, `ACH-M-03`, `ACH-M-05` | `E2E-07.3` | — | `[x] Done` — Enforce mode has named deflate streams `inp`/`clk`/`chk`/`mg`/`env` and the HMAC-before-inflate. Default `TELEMETRY_V21` stays `off`. `off` and `shadow` do not require the streams. |
-| `SPC-06.2` | Upgrade client & server `ReplayEngine` to 30 Hz fixed-step deterministic simulation (`dt = 1/30s`) + incremental per-batch server re-sim & background final verdict | `ACH-M-01`, `ACH-M-08..10`, `ACH-M-12` | `E2E-07.1`, `E2E-07.2` | `SPC-06.1` | `[ ] Todo` — The live replay is still 10 Hz. `stepAt30Hz` is not the live rate. |
+| `SPC-06.2` | Upgrade client & server `ReplayEngine` to 30 Hz fixed-step deterministic simulation (`dt = 1/30s`) + incremental per-batch server re-sim & background final verdict | `ACH-M-01`, `ACH-M-08..10`, `ACH-M-12` | `E2E-07.1`, `E2E-07.2` | `SPC-06.1` | `[x] Done` — Decision 69 (24.10.2026): the live `ReplayEngine` stays at 10 Hz. `stepAt30Hz` is not the judge. |
 | `SPC-06.3` | Enforce pause (`≤3` pauses, `≤5 min` cumulative) and slow-motion (`dt` / wall-clock drift) anti-cheat bounds | `ACH-M-04` | `E2E-07.6` | `SPC-06.2` | `[x] Done` — A fourth pause, more than five minutes paused, or sustained slow-motion rejects only when `TELEMETRY_V21=enforce`. `off` and `shadow` flag and do not reject. `RULES_VERSION` stays 7. |
 | `SPC-06.4` | Implement shared pool `roadSeed` + per-ride `trafficSalt` & `holeSalt` commit–reveal (`HMAC-SHA256`) and `worldDigest32` verification | `ACH-M-05`, `ACH-M-11` | `E2E-07.4` | `SPC-06.2` | `[x] Done` — Start stores traffic and hole salt commitments and enforce compares `worldDigest32` of spawned holes, junctions, and traffic. A short mismatch flags; one that lasts at least 10 seconds after three points rejects. The 10 Hz road rebuild does not read the salts. |
 | `SPC-06.5` | Implement mechanical input humanness classifier (`F1..F10` → `humannessScore`), 5 physical-impossibility auto-reject rules, and `isTrusted=false` tracking | `ACH-M-06`, `ACH-M-07`, `ACH-M-14..16` | `E2E-07.5`, `E2E-07.7` | `SPC-06.2` | `[x] Done` — F1–F10 score 0–100. The five physical-impossibility cases reject. A borderline score or `isTrusted=false` is `flagged_for_review`. No browser fingerprint. |
@@ -114,4 +114,4 @@
 | `SPC-08.3` | Implement 25-row Convoy leaderboard (`GET /api/referrals/leaderboard`) & `convoyHidden` privacy toggle (`PATCH /api/me/privacy`) | `REF-M-13`, `REF-M-14`, `REF-M-15` | `E2E-05.7` | `SPC-08.2` | `[x] Done` |
 | `SPC-08.4` | Implement Pre-Season TEN4 Airdrop campaign engine (MEDIUM/HARD ride gate, Telegram check, X verification via `twitterapi.io`, Turnstile, unique social ID binding) | `TEN-M-01..11`, `DEVNET_PRESEASON` | `E2E-05.8` | `SPC-08.1` | `[x] Done` |
 | `SPC-08.5` | Implement Anti-Sybil `TrustScore` service (ASN, device fingerprint, funding cluster, humanness score, `<50` payout block, 48h reward hold queue) | `anticheat.md` Appendix D, `REF-M-15` | `E2E-05.7`, `E2E-05.8`, `E2E-07.8` | `SPC-06.5` | `[x] Done` — `trustScore` starts at 60. Convoy and airdrop TEN4 credits wait 48 hours and release only when both wallets are still at least 50 with no rejected rides. It does not store a browser fingerprint and it does not implement the Appendix D point table. No ASN, device fingerprint, or funding-cluster detection. |
-| `SPC-08.6` | Implement `TermsGuard` (`CURRENT_TERMS_VERSION` re-consent enforcement on all write routes) & scrub banned gambling terms across `frontend/` | `LEG-M-01..11` | `E2E-06.3` | `SPC-01.5` | `[x] Done` — TermsGuard: a player write whose terms or privacy version is missing or older is `403 terms_acceptance_required`. The banned-gambling-word scrub across `frontend/` is still open. |
+| `SPC-08.6` | Implement `TermsGuard` (`CURRENT_TERMS_VERSION` re-consent enforcement on all write routes) & scrub banned gambling terms across `frontend/` | `LEG-M-01..11` | `E2E-06.3` | `SPC-01.5` | `[x] Done` — TermsGuard: a player write whose terms or privacy version is missing or older is `403 terms_acceptance_required`. UI copy has no `bet`, `wager`, `gamble`, `jackpot`, `casino`, `lottery`, or `raffle`. The only hit is a landing test that forbids those words. No separate scrub pass. |

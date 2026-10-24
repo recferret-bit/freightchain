@@ -1,6 +1,6 @@
 # Security of admin and privileged endpoints — spec and test plan
 
-> Owner decision 17.10.2026: "add a check and protection of the admin endpoints to the test". The source of truth for `/api/admin/*`, `/api/editor/*` (the storybook 3D editor), MCP callbacks, the chain webhook, health, administrator CLI commands, and the future moderation endpoints (decision 53) and `set_pool_rules` (backend decision B8).
+> Owner decision 17.10.2026: "add a check and protection of the admin endpoints to the test". The source of truth for `/api/admin/*`, `/api/editor/*` (the storybook 3D editor), MCP callbacks, the chain webhook, health, administrator CLI commands, and the future moderation endpoints (decision 53). `set_pool_rules` has no HTTP route (decision 70).
 >
 > The code was checked after the merge of PR #3 (`origin/main` `e8f338ad`). The merge did not add HTTP for `set_pool_rules` and did not add a TEN4 admin, so registry 1.2 did not change. Any later privileged route must enter registry 1.2 and the matrix ADM-T-01…12 from the first commit (ADM-M-21). Decisions 59–66 were accepted by the owner on 17.10.2026 ([`DECISIONS.md`](DECISIONS.md)); the rules below are the final norms, and "Role (target)" in 1.2 is the required role. Related rules: [`backend_contract.md`](backend_contract.md) API-M-03/04/07/13, [`replays_streams.md`](replays_streams.md) RPL-M-16/17/27, [`legal.md`](legal.md) LEG-M-04.
 
@@ -126,7 +126,7 @@ There are no metrics (`/metrics`) and no dev/debug routes in `origin/main`. Stre
 |---|---|---|---|---|
 | P01 | POST `/api/admin/chat/:eventId/hide` | decision 53, RPL-M-27 | moderator, admin | — |
 | P02 | POST `/api/admin/players/:wallet/chat-ban` (to lift — the same path with `{ban:false}`) | decision 53, RPL-M-27 | moderator, admin | — |
-| P03 | POST `/api/admin/pools/rules/challenge` + POST `/api/admin/pools/rules` (`set_pool_rules`) | B8, POOL-M-12 | admin + a second (decision 60) | **yes** (chain) |
+| P03 | No HTTP route. `set_pool_rules` is `pool-admin.mjs set-pool-rules`, and on mainnet Squads (decision 70, 24.10.2026). Backend decision 8's HTTP pair is withdrawn. | decision 60, decision 70 | admin key, off HTTP | **yes** (chain, CLI) |
 | P04 | POST `/api/admin/config/challenge` + POST `/api/admin/config` (`set_config` of the program, `pool-program.idl.ts:33`), if it appears over HTTP | IDL v5 | Squads only (decision 60) | **yes** (chain) |
 
 ### 1.3 Findings (`origin/main`)

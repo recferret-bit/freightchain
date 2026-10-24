@@ -10,7 +10,7 @@ The pool program v5 (`origin/main`, `programs/freightchain_pools`):
 - `DEFAULT_MIN_FINISH_SECS = 10_800`;
 - on a series, `sale_secs` is both the window and the cadence.
 
-The backend is `pool-registry.service.ts`, `Pool.fromChain`. `set_pool_rules` has no HTTP route (bug 6 in [`E2E_PLAN.md`](../testing/E2E_PLAN.md)).
+The backend is `pool-registry.service.ts`, `Pool.fromChain`. `set_pool_rules` has no HTTP route (decision 70, 24.10.2026). The admin signs `pool-admin.mjs set-pool-rules`.
 
 ### 1.2 Rules
 - **POOL-M-01** MUST: for now, one pool per week. The schedule is **configurable fields**, not constants:
@@ -29,7 +29,7 @@ The backend is `pool-registry.service.ts`, `Pool.fromChain`. `set_pool_rules` ha
 - **POOL-M-09** MUST: replays and the road plan of pool rides are public after `payout_at` (decision 34 → [`replays_streams.md`](replays_streams.md) RPL-M-04).
 - **POOL-M-10** MUST: for now, `Config.min_finish_secs ≤ 7 200` via `set_config`. In v6 — `opens_at`, `last_start_at` (or `start_buffer_secs`), and `period_secs` on the series. Existing fields are not renamed (decision 37).
 - **POOL-M-11** MUST: the rules of a paid pool (later) state explicitly where the money of unplayed tickets goes: Solana Pay → revenue `R`; on-chain `buy_ticket` → the pool bank (open, [`OPEN.md`](OPEN.md)).
-- **POOL-M-12** MUST: `set_pool_rules` has an admin HTTP route with a signed challenge → action pair (backend decision 8).
+- **POOL-M-12** MUST: `set_pool_rules` has no admin HTTP route (decision 70, 24.10.2026, which withdraws backend decision 8 for this route). The command is `pool-admin.mjs set-pool-rules`. On mainnet the instruction goes through Squads (decision 60).
 - **POOL-M-13** MUST: the pool's ranking formula is published before `opens_at` and does not change until `play_close_at` (decision 42 → RID-M-17).
 - **POOL-M-14** MUST: donations are not an entry into the pool and give no advantage (TERMS 14.5).
 
@@ -49,7 +49,7 @@ The backend is `pool-registry.service.ts`, `Pool.fromChain`. `set_pool_rules` ha
 | POOL-T-11 | M-09 | a replay before/after `payout_at` | = RPL-T-09 |
 | POOL-T-12 | M-10 | `create_pool` with a 2 h window at `min_finish_secs = 10 800` / 7,200 | `WindowTooShort` / success |
 | POOL-T-13 | M-11 | the text of the paid-pool rules | the money mode is named (a document check, [`legal.md`](legal.md)) |
-| POOL-T-14 | M-12 | `set_pool_rules` over HTTP: a valid signature / someone else's / a repeat | 200 / `404` / `409` |
+| POOL-T-14 | M-12 | No `POST /api/admin/pools/:id/rules`. `pool-admin.mjs set-pool-rules` is the signed CLI (decision 70). | The route is absent. |
 | POOL-T-15 | M-13 | changing the formula after `opens_at` | = RID-T-06 |
 | POOL-T-16 | M-14 | a donation during the pool | no ticket, no change to the ranking (= RPL-T-84) |
 
