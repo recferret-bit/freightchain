@@ -35,6 +35,23 @@ test('progress line: "sold / min committed" + what it means', () => {
   assert.match(progressText(pool({ status: 'refunding' }), NOW), /refunded in full/);
 });
 
+test('zero-minimum pools show ticket counts and keep sale close separate from the last ride start', () => {
+  const p = pool({ status: 'active', sold: 1, minTickets: 0, opensAt: NOW + DAY, prepDeadline: NOW + 2 * DAY, lastStartAt: NOW + 3 * DAY });
+  assert.equal(poolPhase(p, NOW), 'upcoming');
+  assert.equal(statusChip(p, NOW).text, 'UPCOMING');
+  assert.equal(phaseLine(p, NOW).text, 'OPENS IN · 24 h');
+  assert.equal(deadline(p, NOW).at, p.opensAt);
+  assert.equal(poolPhase(p, p.opensAt), 'selling');
+  assert.equal(progressText(p, p.opensAt), '1 ticket sold · live – rides count');
+  assert.equal(progressText({ ...p, sold: 2 }, p.opensAt), '2 tickets sold · live – rides count');
+  assert.equal(poolPhase(p, p.prepDeadline), 'riding');
+  assert.equal(phaseLine(p, p.prepDeadline).head, 'SALES CLOSED');
+  assert.equal(phaseLine(p, p.prepDeadline).at, p.lastStartAt);
+  assert.equal(deadline(p, p.prepDeadline).at, p.lastStartAt);
+  assert.equal(phaseLine(p, p.lastStartAt + 1).head, 'FINISHING');
+  assert.match(rulesText(p), /starts close \(2026-10-11\)/);
+});
+
 test('deadline: prep while open, play while active, none once it passed', () => {
   assert.deepEqual(deadline(pool(), NOW), { label: 'goes live if 10 commit by 2026-10-14 · ', at: NOW + 6 * DAY });
   assert.deepEqual(deadline(pool({ status: 'active' }), NOW), { label: 'new rides until 2026-10-14 · closes in ', at: NOW + 6 * DAY }, 'no new ride after the sale end');

@@ -1,3 +1,7 @@
+import { Ride } from '../../../../../src/domain/rides/ride.entity.js';
+import { RideVerdict } from '../../../../../src/domain/verdict/ride-verdict.entity.js';
+import { VerdictStatus } from '../../../../../src/domain/verdict/verdict.dto.js';
+import { FINISHED_LIMIT } from '../../../../../src/domain/lobby/lobby.dto.js';
 import { GetLiveHandler } from '../../../../../src/application/use-cases/lobby/get-live/get-live.handler.js';
 import { GetLiveQuery } from '../../../../../src/application/use-cases/lobby/get-live/get-live.query.js';
 import { unitContext } from '../../../../support/unit-context.js';
@@ -61,6 +65,26 @@ describe('GetLiveHandler', () => {
     expect(recent.map((r) => [r.wallet, r.status, r.distance])).toEqual([['bob', 'failed', 7], ['alice', 'failed', 12]]);
     expect(recent.some((r) => r.wallet === 'carol')).toBe(false);
     expect(Object.keys(recent[0] ?? {}).sort()).toEqual(['distance', 'endedAt', 'id', 'route', 'status', 'tier', 'wallet']);
+  });
+
+  it('applies public replay visibility before the ticker limit, even to the signed-in owner', async () => {
+    const ctx = unitContext();
+    const visible = await ctx.paidRide('public', true);
+    visible.finish('failed', 'x', ctx.now()); await ctx.rides.save(visible);
+    for (let i = 0; i < FINISHED_LIMIT + 1; i++) {
+      ctx.clock.advance(1);
+      const r = await ctx.freeRide(`training-${i}`, true);
+      r.finish('failed', 'x', ctx.now()); await ctx.rides.save(r);
+    }
+    for (const kind of ['rejected', 'tutorial', 'assist', 'locked'] as const) {
+      const r = await ctx.paidRide(kind, true); ctx.clock.advance(1);
+      r.finish('failed', 'x', ctx.now());
+      await ctx.rides.save(Ride.restore({ ...r.snapshot(), tutorial: kind === 'tutorial', assist: kind === 'assist', poolId: kind === 'locked' ? 42 : null }));
+      if (kind === 'rejected') await ctx.verdictRepo.save(RideVerdict.restore({ rideId: r.id, status: VerdictStatus.Rejected, reasons: [], scores: {} as never, rulesVersion: 1, judgedAt: ctx.now(), version: 1 }));
+    }
+    const handler = new GetLiveHandler(ctx.rideQuery, ctx.rules, ctx.clock, ctx.sitePresence, ctx.viewers, ctx.stats);
+    const result = await handler.execute(new GetLiveQuery('owner-visitor', 'lobby', '127.0.0.1', 'locked'));
+    expect(result.recent.map(r => r.id)).toEqual([visible.id]);
   });
 
   it('who is online: the polling page counts (≤ 3 ids per address), signed-in wallets and drivers are players, watchers from the watch pages', async () => {

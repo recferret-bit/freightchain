@@ -7,6 +7,7 @@
 // No wallet extension: a keypair signs the challenge and the session cookie is handed to Chrome. Paid payments can't be clicked through (no wallet) – covered by vitest / devnet-pay.mjs.
 // PORT = the first of four DevTools ports (default 9341); SHOTS = where the screenshots go (default $TMPDIR/fc-lobby-shots).
 import nacl from 'tweetnacl'; import bs58 from 'bs58'; import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
 const BASE = process.env.BASE || 'http://localhost:3111', CDP = +(process.env.PORT || 9341);
@@ -62,6 +63,13 @@ check('top box: the escrow across the pools on sale', /IN ESCROW/.test(await txt
 check('free card: START FREE RIDE', (await rider.ev('document.getElementById("start").textContent')) === 'START FREE RIDE');
 // pool cards: 1h LIVE. Retired 4h stays on /api/pools and off the lobby.
 check('1h card: LIVE chip, price from the pool, "2 / 2 committed"', (await txt(rider, '#tier-1h .st')) === 'LIVE' && (await txt(rider, '#tier-1h .pr')).startsWith(sol(live1h.priceLamports)) && (await txt(rider, '#tier-1h .ptext')).startsWith(`${live1h.sold} / ${live1h.minTickets} committed`), await txt(rider, '#tier-1h .ptext'));
+const zeroMinimumCard = await rider.ev(`(async () => {
+  const { poolCard } = await import('/site/lobby-pools.js');
+  const p = { ...${JSON.stringify(live1h)}, minTickets: 0, sold: 1, toGo: 0 };
+  const card = poolCard({ id: '1h', pool: p }, { name: 'STANDARD SHIFT', shift: '1:00:00' }, { me: { tickets: [], wallet: '' }, now: Date.now(), solUsd: 118, qty: 1, sales: true, act: {} });
+  return { text: card.querySelector('.ptext').textContent, progress: !!card.querySelector('[role="progressbar"]'), buy: card.querySelector('.buyb')?.disabled };
+})()`);
+check('zero-minimum pool DOM: one ticket sold, checkout enabled, no invalid progress maximum', zeroMinimumCard.text.startsWith('1 ticket sold') && !zeroMinimumCard.progress && zeroMinimumCard.buy === false, JSON.stringify(zeroMinimumCard));
 check('1h card: the phase line (ON SALE · n d left) and the series rule from the tier schedule (24 h sale · 3 h to finish · 48 h review)', /^ON SALE · \d+ d left$/.test(await txt(rider, '#tier-1h .phase')) && (await txt(rider, '#tier-1h .sched')) === 'a new pool every 24 h · sales and new rides close after 24 h · 3 h to finish · 48 h review before prizes', `${await txt(rider, '#tier-1h .phase')} | ${await txt(rider, '#tier-1h .sched')}`);
 check('pool card: escrow, 70/20/10 split, explorer link to the pool account (devnet)', (await txt(rider, '#tier-1h .esc')) === sol(live1h.vaultLamports) && /70% prizes/.test(await txt(rider, '#tier-1h .legend')) && (await rider.ev('document.querySelector("#tier-1h .addrs a").href')) === `https://explorer.solana.com/address/${live1h.address}?cluster=devnet`);
 const program = tiers.paymentMode === 'program';   // a server with the pool program sells tickets; without it BUY is SOON (buying itself: scripts/e2e-tickets-stub.mjs)
@@ -115,7 +123,9 @@ check('header online counter ≥ 1', /^[1-9]/.test(await txt(obs, '#chip-live'))
 await obs.shot('live-desktop'); await size(obs, 390, 844, true); await sleep(400); await obs.shot('live-phone');
 
 // ── cross the finish line: free rides end automatically, without another pause/end action.
-await rider.ev('__game.guide.hold = false; __game.st.s = __game.CFG.COMPLETE_DIST + 1');
+await rider.send('Page.bringToFront');
+await rider.ev('__game.guide.hold = false; window.__finishT = __game.st.t');
+check('synthetic finish advances within the driven-time progress bound', await until(async () => rider.ev('(() => { const g = __game; g.guide.hold = false; if (!g.st.complete) g.st.s += Math.max(0, g.st.t - window.__finishT) * 5; window.__finishT = g.st.t; return g.st.complete; })()'), 60000));
 check('the finish line ends the free ride', await until(async () => await rider.ev('__game.st.complete && !!document.getElementById("lobby")'), 40000));
 // Direct position injection is deliberately unverified; the strict traffic suite covers honest driving.
 check('server verdict COMPLETED + the recording check on the result screen', await until(async () => /^COMPLETED · (VERIFIED|FLAGGED|REJECTED)/.test(await rider.ev('document.getElementById("verdict")?.textContent || ""'))), await rider.ev('document.getElementById("verdict")?.textContent || ""'));
@@ -268,6 +278,7 @@ check('GARAGE: two parts picked together are saved together', await until(async 
 // the whole point of a part: the game wears what the ride was started with (start answer = what is stamped on the ride) – and a spectator / the replay draws the SAME from the public watch API
 const cosRide = await post('rides', { tier: 'free' }, P.cookie);
 await obs.send('Page.navigate', { url: `${BASE}/play.html?ride=${cosRide.j.id}` });
+check('cosmetic ride loaded for its owner', await until(async () => obs.ev(`window.__game?.online?.ride?.id === ${JSON.stringify(cosRide.j.id)}`)));
 check('PROMO: the game opens a ride of that wallet already wearing its parts (gold wheel, blue paint, pink dice)', await until(async () => JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')) === wornJson), JSON.stringify(await obs.ev('window.__game?.cosmetics ? { ...__game.cosmetics.loadout } : null')));
 await post(`rides/${cosRide.j.id}/start`, {}, P.cookie);
 check('TEN4: the started ride stamps all nine loadout slots', JSON.stringify((await get(`rides/${cosRide.j.id}`, P.cookie)).loadout) === wornJson);
@@ -283,6 +294,22 @@ check('TEN4: a training ride does not open as a public replay', await until(asyn
 await sleep(1200); await obs.shot('promo-in-game');
 check('…and no unexpected page errors (promo, garage)', problems(obs).length === 0, problems(obs).join(' | '));
 await obs.send('Page.navigate', { url: `${BASE}/lobby.html#new` }); await sleep(800);
+
+// Historical public finish fixture: the real rides above are training or still review-locked.
+// This proves ticker rendering, not a completed paid drive or a chain purchase.
+const database = process.env.DATABASE_URL;
+if (!database || !['localhost', '127.0.0.1'].includes(new URL(BASE).hostname) || !['localhost', '127.0.0.1'].includes(new URL(database).hostname) || !/^\/freightchain_e2e_\d+$/.test(new URL(database).pathname)) throw new Error('ticker fixture requires e2e.sh lobby with its isolated local database');
+const publicFinishId = randomUUID(), fixtureDb = new PrismaClient();
+const fixtureEnded = new Date(), fixtureStarted = new Date(fixtureEnded.getTime() - 120000);
+try {
+  await fixtureDb.ride.create({ data: {
+    id: publicFinishId, wallet: B.address, tier: '1h', seed: 7, minSeconds: 3600, completeDist: 60000,
+    status: 'failed', createdAt: fixtureStarted, startedAt: fixtureStarted, endedAt: fixtureEnded, paidAt: fixtureStarted,
+    lastS: 600, lastT: 60, driveSeconds: 60, hull: 100, route: 'siberia', trip: '1h', startHour: 12,
+  } });
+} finally { await fixtureDb.$disconnect(); }
+const tickerFeed = await get('live');
+check('ticker API includes the public historical finish and excludes the training ride', tickerFeed.recent.some(r => r.id === publicFinishId) && !tickerFeed.recent.some(r => r.id === cosRide.j.id));
 
 // ── LANDING (signed in: no forced redirect, CTA becomes the lobby link; public numbers agree with the API)
 await size(obs, 1100, 900, false); await open(obs, B, `${BASE}/`);

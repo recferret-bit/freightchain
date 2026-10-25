@@ -1,4 +1,5 @@
 import { CommandHandler, QueryHandler, type ICommandHandler, type IQueryHandler } from '@nestjs/cqrs';
+import { ConvoyService } from '../referral/convoy.service.js';
 import { AirdropService, type AirdropStatusDto } from './airdrop.service.js';
 import { ClaimAirdropCommand, GetAirdropStatusQuery, VerifyTelegramCommand, VerifyXCommand } from './airdrop.command.js';
 
@@ -12,17 +13,21 @@ export class GetAirdropStatusHandler implements IQueryHandler<GetAirdropStatusQu
 
 @CommandHandler(VerifyTelegramCommand)
 export class VerifyTelegramHandler implements ICommandHandler<VerifyTelegramCommand, AirdropStatusDto> {
-  constructor(private readonly airdrop: AirdropService) {}
-  execute({ wallet, telegramUserId, turnstileToken, proof }: VerifyTelegramCommand): Promise<AirdropStatusDto> {
-    return this.airdrop.verifyTelegram(wallet, telegramUserId, turnstileToken, proof);
+  constructor(private readonly airdrop: AirdropService, private readonly convoy: ConvoyService) {}
+  async execute({ wallet, telegramUserId, turnstileToken, proof }: VerifyTelegramCommand): Promise<AirdropStatusDto> {
+    const status = await this.airdrop.verifyTelegram(wallet, telegramUserId, turnstileToken, proof);
+    await this.convoy.refreshMilestones(wallet);
+    return status;
   }
 }
 
 @CommandHandler(VerifyXCommand)
 export class VerifyXHandler implements ICommandHandler<VerifyXCommand, AirdropStatusDto> {
-  constructor(private readonly airdrop: AirdropService) {}
-  execute({ wallet, handle, postId, turnstileToken }: VerifyXCommand): Promise<AirdropStatusDto> {
-    return this.airdrop.verifyX(wallet, handle, postId, turnstileToken);
+  constructor(private readonly airdrop: AirdropService, private readonly convoy: ConvoyService) {}
+  async execute({ wallet, handle, postId, turnstileToken }: VerifyXCommand): Promise<AirdropStatusDto> {
+    const status = await this.airdrop.verifyX(wallet, handle, postId, turnstileToken);
+    await this.convoy.refreshMilestones(wallet);
+    return status;
   }
 }
 

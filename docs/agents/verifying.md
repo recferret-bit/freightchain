@@ -82,3 +82,5 @@ Traffic anti-cheat end to end: `bash .claude/skills/run-tests/e2e.sh traffic` ru
 Chrome launch diagnostics include process exit/signal and stderr. If macOS kills the installed browser before DevTools opens, check its installation/signature and use the existing `CHROME=/absolute/path/to/browser` override with a separate official Chrome for Testing download. Do not suppress browser failures or modify the user's installed app to make a test pass. The October readiness rerun used Chrome for Testing 156.0.8078.47.
 
 The verified TEN4 local suite includes Convoy settlement against PostgreSQL and the real referral vault, with pre-broadcast failure, lost-response recovery, competing workers and the wallet cap. The fixtures seed earned milestones; they do not count as driven referral qualifications.
+
+The `weekly` Chrome suite boots through test-only `e2e-weekly-server.mjs` with an advancing Wednesday ClockPort and an isolated local database. It tests positive grant issuance on Sundays too; production clock and weekly closure rules are unchanged. HTTP/domain scenarios cover closed-week refusal.

@@ -32,18 +32,18 @@ export class ReleaseConvoyHandler implements ICommandHandler<ReleaseConvoyComman
     const pending = await this.repo.pendingSettlements(now, new Date(now.getTime() - HOLD_MS), 50);
     let paid = 0;
     for (const candidate of pending) {
-      const row = await this.transactions.run(async (tx) => {
-        const eligible = await this.lockAndCheck(candidate, tx);
-        const fresh = await this.repo.findLedger(candidate.id, tx);
-        const at = this.clock.now();
-        if (!fresh || fresh.chainState !== 'held' || (fresh.chainRetryAt && fresh.chainRetryAt > at)) return null;
-        const next = { ...fresh, chainLeaseId: this.entropy.uuid(), chainRetryAt: new Date(at.getTime() + LEASE_MS) };
-        if (!await this.repo.saveSettlement(next, fresh.chainLeaseId ?? null, tx)) return null;
-        // Reconcile an already signed transaction even if trust changed after it landed.
-        return eligible || fresh.chainSignature ? next : null;
-      });
-      if (!row) continue;
       try {
+        const row = await this.transactions.run(async (tx) => {
+          const eligible = await this.lockAndCheck(candidate, tx);
+          const fresh = await this.repo.findLedger(candidate.id, tx);
+          const at = this.clock.now();
+          if (!fresh || fresh.chainState !== 'held' || (fresh.chainRetryAt && fresh.chainRetryAt > at)) return null;
+          const next = { ...fresh, chainLeaseId: this.entropy.uuid(), chainRetryAt: new Date(at.getTime() + LEASE_MS) };
+          if (!await this.repo.saveSettlement(next, fresh.chainLeaseId ?? null, tx)) return null;
+          // Reconcile an already signed transaction even if trust changed after it landed.
+          return eligible || fresh.chainSignature ? next : null;
+        });
+        if (!row) continue;
         const result = await this.emission.settle({
           rewardId: row.id, wallet: row.wallet, baseAmount: BigInt(row.amount) * 1_000_000n, now: this.clock.now(),
           submitted: row.chainSignature && row.chainLastValidBlockHeight !== null && row.chainLastValidBlockHeight !== undefined ? { signature: row.chainSignature, lastValidBlockHeight: row.chainLastValidBlockHeight } : null,
@@ -70,7 +70,7 @@ export class ReleaseConvoyHandler implements ICommandHandler<ReleaseConvoyComman
         });
         if (credited) paid += 1;
       } catch {
-        this.log.warn({ event: 'convoy-settlement-pending', rewardId: row.id });
+        this.log.warn({ event: 'convoy-settlement-pending', rewardId: candidate.id });
       }
     }
     return paid;

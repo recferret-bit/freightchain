@@ -55,7 +55,7 @@ printf '{ "extends": "./tsconfig.build.json", "compilerOptions": { "outDir": "./
 start() {
   PORT="${FIXED_PORT:-$(free_port)}"   # FIXED_PORT: a suite that must put the port into the env too (APP_ORIGIN)
   # Auth bursts (verified play signs in many wallets at once) need a harness ceiling. The shipped defaults stay in env.schema.ts.
-  (cd "$SERVER" && exec env ${EXTRA_ENV:-} DATABASE_URL="$URL" FREE_RIDE_SECONDS="$1" ADMIN_WALLETS="${2:-}" SOL_USD=118 TREASURY_PUBKEY="$TREASURY" PORT="$PORT" CLIENT_DIR="$CLIENT_OUT" LANDING_DIR="$LANDING_OUT" THROTTLE_AUTH_RPS=100 THROTTLE_AUTH_LIMIT=10000 THROTTLE_LIMIT=10000 node "$BUILD/main.js" > "/tmp/fc-e2e-$DB.log" 2>&1) &   # exec: $! is the server itself, so stop() really stops it; EXTRA_ENV="K=V …" = more server env (the live flags suite)
+  (cd "$SERVER" && exec env ${EXTRA_ENV:-} DATABASE_URL="$URL" FREE_RIDE_SECONDS="$1" ADMIN_WALLETS="${2:-}" SOL_USD=118 TREASURY_PUBKEY="$TREASURY" PORT="$PORT" CLIENT_DIR="$CLIENT_OUT" LANDING_DIR="$LANDING_OUT" THROTTLE_AUTH_RPS=100 THROTTLE_AUTH_LIMIT=10000 THROTTLE_LIMIT=10000 node ${SERVER_ENTRY:-"$BUILD/main.js"} > "/tmp/fc-e2e-$DB.log" 2>&1) &   # exec: $! is the server itself, so stop() really stops it; EXTRA_ENV="K=V …" = more server env (the live flags suite)
   PID=$!
   for _ in $(seq 1 60); do curl -sf "http://localhost:$PORT/api/health/live" >/dev/null && return 0; sleep 0.5; done
   echo "server did not start:"; tail -30 "/tmp/fc-e2e-$DB.log"; exit 1
@@ -143,7 +143,7 @@ for suite in "${SUITES[@]}"; do
     landing) start 3; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-landing.mjs) || fails=$((fails + 1)) ;;
     achievements) EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=false CHALLENGE_INTERVAL_SECONDS=0" start 3; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" node scripts/e2e-achievements.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     guest) EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" node scripts/e2e-guest-training.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
-    weekly) EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" node scripts/e2e-weekly-ticket.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+    weekly) SERVER_ENTRY="scripts/e2e-weekly-server.mjs $BUILD" EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" node scripts/e2e-weekly-ticket.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     referral) EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP CHALLENGE_INTERVAL_SECONDS=0" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" node scripts/e2e-referral.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     viewer) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-viewer.mjs "http://localhost:$PORT/viewer.html") || fails=$((fails + 1)) ;;
     sim) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-chrome.mjs "http://localhost:$PORT/play.html?sim=1") || fails=$((fails + 1)) ;;

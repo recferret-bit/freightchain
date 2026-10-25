@@ -30,15 +30,15 @@ export class GetLiveHandler implements IQueryHandler<GetLiveQuery, LiveFeedDto> 
     else if (visitor && PAGES.has(page)) await this.presence.seen(source, visitor, page, wallet, now);
     const [rows, upcoming, finished, totals, site, watching] = await Promise.all([
       this.rideQuery.live(new Date(now.getTime() - this.rules.get().hbTimeoutMs), LIVE_FEED_LIMIT),
-      this.rideQuery.upcoming(UPCOMING_LIMIT), this.rideQuery.finished(FINISHED_LIMIT), this.stats.global(),
+      this.rideQuery.upcoming(UPCOMING_LIMIT),
+      this.rideQuery.history({ before: null, limit: FINISHED_LIMIT, wallet: null, status: null, board: { now, viewerWallet: null } }), this.stats.global(),
       this.presence.snapshot(now), this.viewers.watching(now),
     ]);
     const players = new Set([...site.wallets, ...rows.map((r) => r.wallet)]);
-    const recent = finished.filter((r) => r.tier === '1h' && (r.poolId == null || (r.payoutAt != null && r.payoutAt.getTime() <= now.getTime())));
     return {
       now: now.getTime(),
       upcoming: upcoming.map((r) => ({ wallet: r.wallet, tier: r.tier, minSeconds: r.minSeconds, paidAt: r.paidAt.getTime() })),
-      recent: recent.map((r) => ({ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, distance: Math.round(r.lastS), endedAt: r.endedAt?.getTime() ?? null })),
+      recent: finished.map((r) => ({ id: r.id, wallet: r.wallet, tier: r.tier, route: r.route, status: r.status, distance: Math.round(r.lastS), endedAt: r.endedAt?.getTime() ?? null })),
       totals: { shifts: totals.ridesCompleted, rides: totals.rides, ridesFree: totals.ridesFree, ridesPaid: totals.ridesPaid, metres: totals.metres, seconds: totals.seconds, drivers: totals.drivers, crashes: totals.crashes, donations: totals.donations },
       online: { total: site.visitors + watching + rows.length, browsing: site.visitors, watching, driving: rows.length, players: players.size },
       rides: [], // RPL-M-11: the public board has no cards for a ride that is still on the road. `online.driving` is the count.

@@ -116,6 +116,28 @@ describe('convoy rules', () => {
 });
 
 describe('ConvoyService', () => {
+  it('qualifies when social tasks finish last, without inserting a synthetic ride or extending the window', async () => {
+    const h = harness();
+    h.players.add('host'); h.players.add('friend');
+    await h.svc.bind('friend', 'host');
+    await h.svc.onVerifiedRide(fact('friend', 'free-2c'));
+    const paid = () => ({ ...fact('friend', '1h'), tier: '1h', ranked: true });
+    await h.svc.onVerifiedRide(paid());
+    h.clock.at = new Date(MONDAY.getTime() + 7 * DAY_MS);
+    await h.svc.onVerifiedRide(paid());
+    await h.svc.refreshMilestones('friend');
+    expect((await h.repo.ledger()).filter(r => r.unit === 'ten4')).toHaveLength(0);
+    await h.campaign.save({ ...emptyAirdrop('friend'), rideOk: true, telegramUserId: 'tg', telegramMember: true, xUserId: 'x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+    await h.svc.refreshMilestones('friend');
+    await h.svc.refreshMilestones('friend');
+    expect((await h.repo.ledger()).filter(r => r.unit === 'ten4')).toEqual([expect.objectContaining({ kind: 'm1', at: h.clock.at, chainState: 'held' })]);
+    expect(await h.repo.ridesOf('friend')).toHaveLength(3);
+    h.clock.at = new Date(MONDAY.getTime() + qualifyWindowMs() + 1);
+    await h.svc.refreshMilestones('friend');
+    expect((await h.repo.getByReferee('friend'))?.status).toBe('qualified');
+    await h.svc.refreshMilestones('no-invite');
+  });
+
   it('training never earns milestone weeks and recent counted activity expires from pending capacity', async () => {
     const h = harness();
     for (const wallet of ['ref', 'friend', 'next', 'later']) h.players.add(wallet);
