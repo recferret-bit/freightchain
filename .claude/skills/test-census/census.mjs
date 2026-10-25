@@ -1164,6 +1164,7 @@ const VALIDATOR_SCRIPTS = [
   'backend/server/scripts/localnet-coverage.mjs',
   'backend/server/scripts/localnet-fault-proxy.mjs',
   'backend/server/scripts/localnet-fixtures.mjs',
+  'backend/server/scripts/localnet-legacy-pledges.mjs',
   'backend/server/scripts/localnet-seal.mjs',
   'backend/server/scripts/pool-admin.mjs',
 ];
@@ -1314,7 +1315,7 @@ function anchorReport() {
     assert(existsSync(join(ROOT, rel)), `validator script missing: ${rel}`);
     return read(rel);
   }).join('\n');
-  const missed = idlNames.filter((name) => !new RegExp(`\\b${name}\\b`).test(blob));
+  const missed = idlNames.filter((name) => !new RegExp(`\\b${name.replaceAll('_', '[-_]')}\\b`).test(blob));
   return { total: idlNames.length, missed };
 }
 

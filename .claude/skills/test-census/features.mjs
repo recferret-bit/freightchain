@@ -248,7 +248,7 @@ export const FEATURES = [
     client: null,
     routes: /^GET \/api\/prize\/board$/,
     words: /ranked entry|prize week|weekly ticket|CF-IPCountry/i,
-    e2e: ['e2e-weekly-ticket.mjs'], skills: [],
+    e2e: ['e2e-weekly-ticket.mjs', 'e2e-weekly-server.mjs'], skills: [],
   },
   {
     id: 'agreements', title: '18+ and loss agreements',
