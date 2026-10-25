@@ -1,3 +1,4 @@
+import { unitContext } from '../../../backend/server/test/support/unit-context.js';
 import { describe, expect, it } from 'vitest';
 import { REPLAY_SIM_HZ } from '../../../frontend/client/shared/physics.js';
 import { SAMPLE_HZ } from '../../../backend/server/src/domain/telemetry/telemetry-rules.js';
@@ -101,8 +102,12 @@ describe('clock and pause', () => {
     expect(grantReleasable(parties({ rejectedA: 1 }))).toBe(false);
   });
 
-  it('AC-R5 applyTrust login from 60 is 61', () => {
-    expect(applyTrust(60, 'login')).toBe(61);
+  it('AC-R5 repeated session touches preserve trust below the payout threshold', async () => {
+    const ctx = unitContext();
+    const player = await ctx.player('returning');
+    player.setTrustScore(49);
+    await ctx.players.save(player);
+    for (let i = 0; i < 5; i++) expect((await ctx.sessions.touch('returning')).trustScore).toBe(49);
   });
 
   it('AC-R6 applyTrust rejected from 60 is 45', () => {

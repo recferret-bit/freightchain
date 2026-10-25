@@ -54,7 +54,6 @@ describe('ACH-T-04 retention and sybil', () => {
 
   it('ACH-T-04 applyTrust is only the legal events', () => {
     expect(applyTrust.length).toBe(2);
-    expect(applyTrust(60, 'login')).toBe(61);
     expect(applyTrust(60, 'verified')).toBe(65);
     expect(applyTrust(60, 'rejected')).toBe(45);
     expect(applyTrust(60, 'social')).toBe(65);

@@ -325,9 +325,9 @@ describe('cheat catalog shipped outcomes', () => {
 
   it('[CHEAT-#43] applyTrust is pure', () => {
     const score = 60;
-    expect(applyTrust(score, 'login')).toBe(61);
+    expect(applyTrust(score, 'verified')).toBe(65);
     expect(score).toBe(60);
-    expect(applyTrust(60, 'login')).toBe(applyTrust(60, 'login'));
+    expect(applyTrust(60, 'verified')).toBe(applyTrust(60, 'verified'));
   });
 
   it('[CHEAT-#44] STREAMS_COMPRESSED_MAX is 65536', () => {
