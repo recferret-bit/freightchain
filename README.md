@@ -93,7 +93,7 @@ Built solo in two weeks during the Colosseum hackathon (entering in the final 6 
 4. **Live Streams, Replays & Receipts**: Watch active paid shifts ~25 seconds behind in **LIVE** or at `1× / 4× / 16×` in **REPLAYS** (road rebuilt from the ride seed, no WebSockets), chat on CB radio, tip via Solana Pay QR, or open shareable ride receipts (`/r/:id`).
 5. **Run On-Chain & Anti-Cheat Suites Locally**:
    - `npm run test:localnet` — runs `freightchain_pools` on a local validator (pool creation, ticket buys, refunds, Merkle payouts, lamport checks; [walkthrough](docs/tech/localnet-e2e/index.html)).
-   - `bash .claude/skills/honk-suite/run.sh` — runs the `TEN4` (`freightchain_honk`) token suite (checkpoint mint, LP swap, cab/stream burns, soulbound parts).
+   - `bash .claude/skills/honk-suite/run.sh` — runs the `TEN4` (`freightchain_honk`) token suite (checkpoint mint and durable retry, LP swap, cab/stream burns, soulbound parts).
    - `bash .claude/skills/run-tests/e2e.sh traffic` — runs the 9-case headless Chrome anti-cheat matrix (honest runs vs. deleted cars, ignored damage, tampered frame proof).
 
 ---

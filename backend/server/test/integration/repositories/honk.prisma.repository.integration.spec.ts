@@ -1,3 +1,7 @@
+import { ReleaseHonkHandler } from '../../../src/application/use-cases/honk/release-honk.handler.js';
+import { ReleaseHonkCommand } from '../../../src/application/use-cases/honk/release-honk.command.js';
+import { PlayerPrismaRepository } from '../../../src/infrastructure/prisma/repositories/player.prisma.repository.js';
+import { TransactionPrismaAdapter } from '../../../src/infrastructure/prisma/transaction.prisma.adapter.js';
 import { HonkMintService } from '../../../src/application/services/honk-mint.service.js';
 import { HonkPrismaRepository } from '../../../src/infrastructure/prisma/repositories/honk.prisma.repository.js';
 import type { PrismaService } from '../../../src/infrastructure/prisma/prisma.service.js';
@@ -95,4 +99,37 @@ describe('HonkPrismaRepository (PostgreSQL)', () => {
     expect(await inTx(prisma, (tx) => mint.cancelPending('cancelled', tx))).toBe(1200n * U);
     expect(await repo.findMint('cancelled')).toBeNull();
   });
+  it('persists pending emissions atomically and leases one attempt across competing workers', async () => {
+    await seedPlayer(prisma, 'w');
+    const emission = { enabled: () => true, mint: vi.fn(async () => {}) };
+    const durable = new HonkMintService(repo, clock as ClockPort, emission);
+    await expect(inTx(prisma, async (tx) => { await durable.credit(ride('rolled-back'), tx); throw new Error('rollback'); })).rejects.toThrow('rollback');
+    expect(await repo.findMint('rolled-back')).toBeNull();
+    await inTx(prisma, (tx) => durable.credit(ride('recover'), tx));
+    const second = await testPrisma();
+    try {
+      const reopened = new HonkPrismaRepository(second);
+      expect(await reopened.listChainPending(clock.now(), 50)).toMatchObject([{ rideId: 'recover', amount: 100n * U }]);
+      let release!: () => void;
+      const blocked = new Promise<void>((resolve) => { release = resolve; });
+      let entered!: () => void;
+      const sending = new Promise<void>((resolve) => { entered = resolve; });
+      emission.mint.mockImplementationOnce(async () => { entered(); await blocked; throw new Error('response lost'); });
+      const worker = (db: PrismaService) => new ReleaseHonkHandler(new HonkPrismaRepository(db), durable, new PlayerPrismaRepository(db), new TransactionPrismaAdapter(db), emission, clock as ClockPort);
+      const first = worker(prisma).execute(new ReleaseHonkCommand());
+      await sending;
+      try {
+        await worker(second).execute(new ReleaseHonkCommand());
+        expect(emission.mint).toHaveBeenCalledTimes(1);
+      } finally { release(); await first; }
+      expect(await reopened.findMint('recover')).toMatchObject({ chainPending: true });
+      clock.ms += 121_000;
+      await worker(second).execute(new ReleaseHonkCommand());
+      expect(emission.mint).toHaveBeenCalledTimes(2);
+      expect(await repo.findMint('recover')).toMatchObject({ chainPending: false, chainSentAt: clock.now() });
+      expect(await repo.balance('w')).toBe(100n * U);
+      expect(await reopened.listChainPending(clock.now(), 50)).toEqual([]);
+    } finally { await second.$disconnect(); }
+  });
+
 });

@@ -185,10 +185,16 @@ The happy-dom catalog (`docs/testing/E2E_PLAN.md`, 159 checks) walks pages with 
 
 The local cNFT acceptance command (`npm run test:nft:localnet`) verifies real mint/worker persistence, valid ownership proof, a specific frozen-collection transfer refusal, successful unfrozen control transfer, delay, rejected-completion exclusion, receipt recovery and idempotency. Devnet smoke tests fail if DAS is unavailable or the transfer fails for an unrelated reason. This does not publish the 13 pending badge URIs.
 
-For program pools, schedule verification fails with service unavailable on an RPC outage; it does not label the mirror as drifted using legacy derived timestamps. Real schedule differences still produce `pool_schedule_mismatch` and an admin alert.
+Transfer-mode development pools use their stored schedule without querying a pool program. For program pools, schedule verification fails with service unavailable on an RPC outage; it does not label the mirror as drifted using legacy derived timestamps. Real schedule differences still produce `pool_schedule_mismatch` and an admin alert.
 
 ### Pre-season social verification (25 October 2026)
 
 Telegram verification requires a Telegram Login Widget proof signed by the configured bot: matching user ID, valid HMAC and at most five minutes old. Membership comes from the configured channel; a restricted account counts only with `is_member=true`. X facts use read-only twitterapi.io requests; the verification post must be authored by the bound account, mention `@FreightChainSol`, and include `FC-<full case-sensitive wallet>` as a complete token. The former four-character prefix code was not wallet-unique.
 
 Configuring a social provider requires server-side Turnstile verification for action `preseason` and the `APP_ORIGIN` hostname. Missing configuration, provider failures and malformed responses fail closed; provider calls have five-second deadlines and do not run under the player's database lock. Social ownership and progress still commit atomically under that lock. Claims remain a delayed ledger record: this change does not implement token settlement or the campaign UI.
+
+### Durable ride-token emission (25 October 2026)
+
+When an emitter is configured, a new ride reward records `HonkMint.chainPending` in the same transaction as its ledger reservation/credit. The 60-second release worker claims a two-minute retry lease under the player lock, sends outside the transaction and records a confirmed receipt afterward. Crashes, failed RPC and lost responses remain retryable. Existing ledger-only rewards are not retroactively queued when an emitter is enabled. Immediate verdicts still attempt low-latency delivery; the worker reconciles that receipt.
+
+Local TEN4 `mint_ride` accepts an optional expected amount; the server always supplies the reserved ledger amount. A different era/day cap calculation refuses atomically with `RewardMismatch` (6017), leaving the queue pending rather than silently paying a different amount. Ride receipts now bind the recipient, amount, tier and bands. The adapter validates the program owner, discriminator and complete receipt before acknowledging a retry; an `already in use` error alone is not success. These new local receipt layouts and instruction arguments require the matching fresh TEN4 program, not an in-place assumption about old receipts.

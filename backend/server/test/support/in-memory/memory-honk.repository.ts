@@ -60,6 +60,20 @@ export class MemoryHonkRepository extends HonkRepositoryPort {
       .slice(0, limit);
   }
 
+  async listChainPending(now: Date, limit: number): Promise<HonkMintRow[]> {
+    return [...this.db.honkMints.values()].filter((r) => r.released && r.chainPending && (!r.chainRetryAt || r.chainRetryAt <= now)).slice(0, limit);
+  }
+
+  async deferChain(rideId: string, until: Date): Promise<void> {
+    const row = this.db.honkMints.get(rideId);
+    if (row) row.chainRetryAt = until;
+  }
+
+  async markChainSent(rideId: string, at: Date): Promise<void> {
+    const row = this.db.honkMints.get(rideId);
+    if (row) { row.chainPending = false; row.chainSentAt = at; row.chainRetryAt = null; }
+  }
+
   async balance(wallet: string): Promise<bigint> {
     return this.db.honkAccounts.get(wallet)?.balance ?? 0n;
   }

@@ -87,3 +87,8 @@ if [ "${HONK_VERDICT:-0}" = 1 ]; then
   echo "▸ verified ride ($BASE)"
   (cd "$SERVER" && RPC="$RPC" KEYS="$TMP/keys" BASE="$BASE" DATABASE_URL="$URL" node scripts/e2e-honk-verdict.mjs) || { echo "--- server log (tail) ---"; tail -40 "$TMP/server.log"; fail "verdict"; }
 fi
+
+if [ "${HONK_VERDICT:-0}" = 1 ]; then
+  echo "▸ durable emission recovery"
+  (cd "$SERVER" && RPC="$RPC" KEYS="$TMP/keys" DATABASE_URL="$URL" node scripts/e2e-honk-recovery.mjs) || fail "emission recovery"
+fi

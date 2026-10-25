@@ -1,3 +1,4 @@
+import ts from 'typescript';
 import { sourceFiles } from './source-files.js';
 
 /* The HTTP contract rule, enforced statically: every controller method (a) declares every request part through a Zod-validated decorator,
@@ -54,7 +55,16 @@ describe('HTTP contract audit', () => {
   it('handlers never return void / unknown', () => {
     for (const f of files.filter((x) => x.path.endsWith('.handler.ts'))) {
       expect(f.text, f.path).not.toMatch(/I(?:Command|Query)Handler<[^>]*,\s*(void|unknown|any)\s*>/);
-      expect(f.text, f.path).not.toMatch(/Promise<(void|unknown|any)>/);
+      const source = ts.createSourceFile(f.path, f.text, ts.ScriptTarget.Latest, true);
+      const visit = (node: ts.Node) => {
+        if (ts.isMethodDeclaration(node) && node.name.getText(source) === 'execute') {
+          const returns = node.type?.getText(source).replace(/\s/g, '') ?? '';
+          expect(returns, f.path).not.toBe('');
+          expect(returns, f.path).not.toMatch(/^(?:Promise<)?(?:void|unknown|any)>?$/);
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
     }
   });
 

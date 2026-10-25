@@ -557,3 +557,21 @@ fn merkle_airdrop_claims_receipt_enforces_wallet_cap_and_burns_unclaimed_after_9
     let unclaimed = allocation - a1;
     assert_eq!(e.mint(&honk_mint_pda()).supply, supply_before - unclaimed);
 }
+
+#[test]
+fn reserved_reward_mismatch_rolls_back_and_receipt_binds_recipient() {
+    let mut e = Env::new();
+    let rider = Keypair::new().pubkey();
+    let emitter = e.payer();
+    let day = day_index(e.now());
+    let ride = [41u8; 16];
+    let before = e.amount(&emission_pda());
+    assert_err!(e.mint_ride_signed_amount(ride, 1, 7, &rider, &emitter, day, Some(99 * UNIT)), HonkError::RewardMismatch);
+    assert_eq!(e.amount(&emission_pda()), before);
+    assert!(e.svm.get_account(&ride_mint_pda(&ride)).is_none());
+    unwrap_tx(e.mint_ride_signed_amount(ride, 1, 7, &rider, &emitter, day, Some(100 * UNIT)));
+    let receipt = e.svm.get_account(&ride_mint_pda(&ride)).unwrap();
+    assert_eq!(receipt.data.len(), 52);
+    assert_eq!(&receipt.data[16..48], rider.as_ref());
+    assert_eq!(e.amount(&ata(&rider, &honk_mint_pda())), 100 * UNIT);
+}

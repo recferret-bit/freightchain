@@ -68,7 +68,7 @@ const HONK: HonkPin[] = [
     accounts: ['user', 'pool', 'honk_mint', 'vault', 'user_honk', 'token_program'], encoded: true },
   { name: 'burn', alias: 'burn_honk', args: ['amount:u64'],
     accounts: ['user', 'honk_mint', 'user_honk', 'token_program'], encoded: true },
-  { name: 'mint_ride', alias: 'mint_checkpoint', fn: 'mintRide', args: ['ride_id:[u8;16]', 'tier:u8', 'bands:u8', 'day_index:i64'],
+  { name: 'mint_ride', alias: 'mint_checkpoint', fn: 'mintRide', args: ['ride_id:[u8;16]', 'tier:u8', 'bands:u8', 'day_index:i64', 'expected_amount:option<u64>'],
     accounts: ['emitter', 'config', 'honk_mint', 'authority', 'emission_vault', 'rider', 'rider_honk', 'ride_mint', 'wallet_day', 'token_program', 'system_program', 'associated_token_program'], encoded: true },
   { name: 'pay_referral', args: ['reward_id:[u8;16]', 'base_amount:u64', 'month_index:i64'],
     accounts: ['emitter', 'config', 'honk_mint', 'authority', 'referral_vault', 'recipient', 'recipient_honk', 'referral_mint', 'wallet_month', 'token_program', 'system_program', 'associated_token_program'], encoded: false },
@@ -95,6 +95,7 @@ const RUST_TYPE: Record<string, string> = {
 function borshOf(rust: string): string {
   const array = rust.match(/^\[u8;\s*(\d+)\]$/);
   if (array) return `[u8;${array[1]}]`;
+  if (rust === 'Option<u64>') return 'option<u64>';
   if (rust === 'Vec<[u8; 32]>') return 'vec<[u8;32]>';
   const mapped = RUST_TYPE[rust];
   if (!mapped) throw new Error(`unpinned rust type ${rust}`);
@@ -114,7 +115,7 @@ function rustPrograms(): { name: string; args: string[]; accounts: string[] }[] 
   for (const m of lib.matchAll(/pub fn (\w+)\(([\s\S]*?)\) -> Result/g)) {
     const ctx = m[2]!.match(/Context<(\w+)>/);
     if (!ctx) throw new Error(`no context on ${m[1]}`);
-    const args = [...m[2]!.matchAll(/(\w+)\s*:\s*(\[[^\]]+\]|Vec<[^>]+>|[A-Za-z0-9_]+)/g)]
+    const args = [...m[2]!.matchAll(/(\w+)\s*:\s*(\[[^\]]+\]|(?:Vec|Option)<[^>]+>|[A-Za-z0-9_]+)/g)]
       .filter((a) => a[1] !== 'ctx')
       .map((a) => `${a[1]}:${borshOf(a[2]!.replace(/\s+/g, ' ').trim())}`);
     const accounts = structs.get(ctx[1]!);

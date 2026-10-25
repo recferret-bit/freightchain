@@ -73,8 +73,9 @@ pub mod freightchain_honk {
         tier: u8,
         bands: u8,
         day_index: i64,
+        expected_amount: Option<u64>,
     ) -> Result<()> {
-        instructions::mint_ride::handle_mint_ride(ctx, ride_id, tier, bands, day_index)
+        instructions::mint_ride::handle_mint_ride(ctx, ride_id, tier, bands, day_index, expected_amount)
     }
 
     pub fn pay_referral(

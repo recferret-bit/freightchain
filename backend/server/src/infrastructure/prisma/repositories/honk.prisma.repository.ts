@@ -44,8 +44,8 @@ export class HonkPrismaRepository extends HonkRepositoryPort {
   async insertMint(row: HonkMintRow, tx?: TransactionHandle): Promise<boolean> {
     // ON CONFLICT keeps the transaction open so the loser can read the winner's row. A thrown unique violation would abort it.
     const inserted = await clientFor(this.prisma, tx).$queryRaw<{ rideId: string }[]>`
-      INSERT INTO "economy"."HonkMint" ("rideId", "wallet", "tier", "amount", "band20", "band50", "band100", "createdAt", "releaseAt", "released")
-      VALUES (${row.rideId}, ${row.wallet}, ${row.tier}, ${row.amount}, ${row.band20}, ${row.band50}, ${row.band100}, ${row.createdAt}, ${row.releaseAt}, ${row.released})
+      INSERT INTO "economy"."HonkMint" ("rideId", "wallet", "tier", "amount", "band20", "band50", "band100", "createdAt", "releaseAt", "released", "chainPending")
+      VALUES (${row.rideId}, ${row.wallet}, ${row.tier}, ${row.amount}, ${row.band20}, ${row.band50}, ${row.band100}, ${row.createdAt}, ${row.releaseAt}, ${row.released}, ${row.chainPending ?? false})
       ON CONFLICT ("rideId") DO NOTHING
       RETURNING "rideId"`;
     return inserted.length === 1;
@@ -70,6 +70,18 @@ export class HonkPrismaRepository extends HonkRepositoryPort {
       ORDER BY m."releaseAt" ASC
       LIMIT ${limit}`;
     return rows.map((row) => ({ ...row, tier: row.tier }));
+  }
+
+  async listChainPending(now: Date, limit: number): Promise<HonkMintRow[]> {
+    return this.prisma.honkMint.findMany({ where: { released: true, chainPending: true, OR: [{ chainRetryAt: null }, { chainRetryAt: { lte: now } }] }, orderBy: [{ chainRetryAt: 'asc' }, { createdAt: 'asc' }], take: limit });
+  }
+
+  async deferChain(rideId: string, until: Date, tx?: TransactionHandle): Promise<void> {
+    await clientFor(this.prisma, tx).honkMint.update({ where: { rideId }, data: { chainRetryAt: until } });
+  }
+
+  async markChainSent(rideId: string, at: Date, tx?: TransactionHandle): Promise<void> {
+    await clientFor(this.prisma, tx).honkMint.update({ where: { rideId }, data: { chainPending: false, chainSentAt: at, chainRetryAt: null } });
   }
 
   async balance(wallet: string, tx?: TransactionHandle): Promise<bigint> {

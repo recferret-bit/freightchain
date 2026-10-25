@@ -216,7 +216,7 @@ export const FEATURES = [
     client: /^(?:frontend\/)?client\/site\/honk-sign\.js$/,
     routes: /^((GET|POST) \/api\/honk|POST \/api\/watch\/:id\/honk)/,
     words: /\bhonk\b|TEN4/i,
-    e2e: ['e2e-honk-chain.mjs', 'e2e-honk-verdict.mjs'], skills: ['localnet-e2e'],
+    e2e: ['e2e-honk-chain.mjs', 'e2e-honk-verdict.mjs', 'e2e-honk-recovery.mjs'], skills: ['honk-suite'],
   },
   {
     id: 'referrals', title: 'Referrals',

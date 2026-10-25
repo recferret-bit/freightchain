@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { bandAmounts, bandBits, clipPayout, dayStart, holdMs } from '../../domain/honk/tokenomics.js';
 import { HonkRepositoryPort, type HonkMintInput, type HonkMintRow } from '../ports/honk/honk.repository.port.js';
+import { HonkEmissionPort } from '../ports/honk/honk-emission.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
 import type { TransactionHandle } from '../ports/shared/transaction.port.js';
 
@@ -10,6 +11,7 @@ export class HonkMintService {
   constructor(
     private readonly honk: HonkRepositoryPort,
     private readonly clock: ClockPort,
+    @Optional() private readonly emission?: HonkEmissionPort,
   ) {}
 
   /** The amount just credited to the wallet, or null when nothing was credited (already minted, no band, a closed cap, or an 8h reservation). */
@@ -32,6 +34,7 @@ export class HonkMintService {
       band100: bands.some((b) => b.pct === 100 && b.reached),
       releaseAt: new Date(at.getTime() + wait),
       released: wait === 0,
+      chainPending: this.emission?.enabled() ?? false,
     };
     if (!(await this.honk.insertMint(row, tx))) return null;
     await this.honk.addEmission(amount, tx);

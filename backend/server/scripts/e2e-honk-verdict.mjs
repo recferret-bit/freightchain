@@ -10,6 +10,7 @@ import { Keypair } from '@solana/web3.js';
 import { PrismaClient } from '@prisma/client';
 import { honkBalance, vaultBalance } from './honk-program.mjs';
 import { driveVerified } from './honest-traffic.mjs';
+import { prizeWeek } from '../dist/domain/prize/prize-rules.js';
 
 const RPC = process.env.RPC, KEYS = process.env.KEYS, BASE = process.env.BASE;
 const UNIT = 1_000_000n; // ledger strings are whole TEN4; the chain balance is base units
@@ -102,6 +103,15 @@ await assertNoMint('free training ride', free, chain0);
 const agreed = await fetch(`${BASE}/api/profile/agreements`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie: player.cookie }, body: JSON.stringify({ age18: true, loss: true }) });
 const agreedBody = await agreed.text();
 check('age agreement', agreed.ok, `${agreed.status} ${agreedBody.slice(0, 160)}`);
+// This checks grant consumption and reward exclusion; calendar issuance has its own scenarios.
+const grants = new PrismaClient();
+try {
+  const now = new Date();
+  await grants.weeklyTicket.create({ data: {
+    wallet: player.address, weekId: prizeWeek(now).id, tier: '1h', periodStart: now,
+    expiresAt: new Date(now.getTime() + 3_600_000), createdAt: now,
+  } });
+} finally { await grants.$disconnect(); }
 const weekly = await driveVerified(callOf(player.cookie, { 'cf-ipcountry': 'CA' }), { tier: '1h' });
 check('weekly grant ride', weekly.end?.json?.weeklyGrant === true, weekly.error || JSON.stringify(weekly.end?.json).slice(0, 200));
 await assertNoMint('weekly grant ride', weekly, chain0);

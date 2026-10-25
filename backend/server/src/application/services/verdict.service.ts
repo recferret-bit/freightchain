@@ -205,7 +205,7 @@ export class VerdictService {
     const chain = await this.honk.chainOf(result.verdict.rideId);
     if (!chain) return;
     try {
-      await this.emission.mint(result.verdict.rideId, result.wallet, chain.tier, chain.bands, dayIndex(this.clock.now()));
+      await this.emission.mint(result.verdict.rideId, result.wallet, chain.tier, chain.bands, dayIndex(this.clock.now()), result.minted);
     } catch (error) {
       this.logger.warn(`chain mint after verdict failed for ride ${result.verdict.rideId}: ${error instanceof Error ? error.message : String(error)}`);
     }

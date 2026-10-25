@@ -58,6 +58,7 @@ pub struct Part {
 #[derive(InitSpace)]
 pub struct RideMint {
     pub amount: u64,
+    pub recipient: Pubkey,
     pub tier: u8,
     pub bands: u8,
     pub era: u8,

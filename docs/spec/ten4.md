@@ -76,6 +76,12 @@ Invariant: `55M + 15M + 10M + 8M + 8M + 4M === 100,000,000 TEN4`.
 
 ---
 
+### 2.5 Durable chain delivery (as built locally)
+
+`HonkMint` is also the emission outbox: new rewards created with an enabled emitter set `chainPending`; unreleased reservations cannot be sent. The minute release worker takes a two-minute lease under the player lock, submits outside the database transaction and records `chainSentAt` only after a matching confirmed PDA is verified. Failure or process restart retries the same ride ID. The migration defaults old rewards to unqueued, preserving ledger-only pre-TGE credits.
+
+The local program's optional `expected_amount` argument is mandatory in server submissions. If the current chain caps/era would produce a different payment, `RewardMismatch` (6017) aborts all changes. Such a row remains pending for reconciliation; the retry does not alter its reserved amount or the ledger. The 52-byte RideMint receipt includes its recipient and is checked against amount/tier/bands, owner and discriminator. This is a fresh-program ABI/layout change.
+
 ## 3. Burn Sinks & The 9-Slot Cab Garage (`parts-catalog.ts` & `cosmetics.ts`)
 
 ### 3.1 Burn Sinks (`visualPrice`, `HONK_STREAM_BURN`, `HONK_TIME_BURN`, `HONK_WEATHER_BURN`)

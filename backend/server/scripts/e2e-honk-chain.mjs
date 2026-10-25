@@ -240,7 +240,7 @@ async function session() {
   const port = +process.env.CHROME_PORT || 9341;
   // Headless Chrome throttles timers in a background tab. The driver's heartbeat is 10s and the sweeper ends the ride at 150s, so the cab never sees clear.
   const chromeArgs = ['--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
-  const D = await launch({ port, shotsDir: 'fc-honk-shots', args: chromeArgs });
+  const D = await launch({ port, shotsDir: 'fc-honk-shots', args: chromeArgs, evalProblems: true });
   const S = await launch({ port: port + 1, shotsDir: 'fc-honk-watch', args: chromeArgs });
   const G = await launch({ port: port + 2, shotsDir: 'fc-honk-garage', args: chromeArgs });
   let driving = true;
@@ -254,9 +254,17 @@ async function session() {
     const [sname, svalue] = spectator.cookie.split('=');
     await S.send('Network.setCookie', { name: sname, value: svalue, url: BASE, httpOnly: true });
     await D.send('Page.navigate', { url: `${BASE}/play.html?ride=${rideId}` });
-    for (let i = 0; i < 100 && !(await D.ev('!!window.__game')); i++) await sleep(200);
-    await D.ev('document.getElementById("go").click()');
-    await sleep(800);
+    const readyBy = Date.now() + 30_000;
+    const ready = '!!window.__game && !document.getElementById("overlay").classList.contains("booting") && document.getElementById("go")?.getBoundingClientRect().width > 0';
+    while (Date.now() < readyBy && !(await D.ev(ready))) await sleep(200);
+    if (!(await D.ev(ready))) throw new Error('driver start menu did not become visible');
+    const start = await D.ev('(() => { const r = document.getElementById("go").getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()');
+    await D.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...start, button: 'left', clickCount: 1 });
+    await D.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...start, button: 'left', clickCount: 1 });
+    const startBy = Date.now() + 30_000;
+    while (Date.now() < startBy && !(await D.ev('__game.online.running || __game.online.error'))) await sleep(200);
+    await D.shot('driver-start');
+    check('driver start has no page errors', D.filt().length === 0, D.filt().join(' | '));
     // A running ride is not a public replay (RPL-M-01, RPL-M-15). The driver's own ride read is what says it started.
     const mine = await get(`rides/${rideId}`, player.cookie);
     check('ride running', mine.status === 'running', mine.status ?? JSON.stringify(mine).slice(0, 160));

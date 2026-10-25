@@ -11,7 +11,7 @@ Run: `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token h
 - `swap_sol_for_honk` pays the constant-product out of the pool vault after a 25 bps fee. `burn` lowers the supply. The pool vault does not move on a burn or a ride payment. A ride payment leaves the emission vault.
 - Part NFTs are `buy_part`: a new classic SPL mint, decimals 0, supply 1, frozen. They are not this fungible mint.
 
-The suite calls `backend/server/scripts/honk-program.mjs`. The server does not mint with a keypair.
+The suite calls `backend/server/scripts/honk-program.mjs`. With `HONK_EMITTER_SECRET` configured, the server signs ride-reward transfers from the emission vault; token supply never increases. Garage parts still require the player signature.
 
 ## Part NFT
 
@@ -40,3 +40,9 @@ A paid ride that is actually running (not a free ride). The spectator is a diffe
 | In-session burn | spectator program `burn` of 1 | chat text `HONK`, pays `"1"` |
 | Weather | spectator program `burn` of 25, then 25 | event effect `snow`, then after the window `clear`; the driving cab's `weather.snow` follows |
 | Cab part | player program `buy_part` truck_color / blue burns 65; supply 1, decimals 0, frozen, transfer fails | ledger debit 65, response `chain` is null |
+
+## Recovery coverage
+
+The full `honk-suite` also runs `backend/server/scripts/e2e-honk-recovery.mjs` against the same disposable validator/database. It seeds two reward facts (not additional driven rides), loses one submission before broadcast and one response after the transfer lands, reconstructs the worker and verifies exactly one ledger credit and one chain payment. Only the retry lease is accelerated. A mismatched expected amount must fail with `RewardMismatch` and leave balances unchanged. The new 52-byte receipt binds recipient/amount/tier/bands; old local receipts are not accepted as current proof.
+
+The weekly reward-exclusion case seeds one unspent grant so it also runs after Sunday's issuance cutoff. It tests consumption and zero TEN4, not calendar issuance. The browser start waits for the visible start button and confirms a running ride without page errors.

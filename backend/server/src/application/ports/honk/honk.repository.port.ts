@@ -22,6 +22,10 @@ export interface HonkMintRow {
   releaseAt: Date;
   /** False while an 8h mint is reserved and not yet credited. Existing rows default true. */
   released: boolean;
+  /** Only rewards created with chain emission enabled enter the durable retry queue. */
+  chainPending?: boolean;
+  chainRetryAt?: Date | null;
+  chainSentAt?: Date | null;
 }
 
 export interface HonkAccountRow {
@@ -67,6 +71,9 @@ export abstract class HonkRepositoryPort {
   /** True only when an unreleased row was deleted. */
   abstract deleteMint(rideId: string, tx?: TransactionHandle): Promise<boolean>;
   abstract listDue(now: Date, limit: number): Promise<HonkMintRow[]>;
+  abstract listChainPending(now: Date, limit: number): Promise<HonkMintRow[]>;
+  abstract deferChain(rideId: string, until: Date, tx?: TransactionHandle): Promise<void>;
+  abstract markChainSent(rideId: string, at: Date, tx?: TransactionHandle): Promise<void>;
   abstract balance(wallet: string, tx?: TransactionHandle): Promise<bigint>;
   abstract account(wallet: string, tx?: TransactionHandle): Promise<HonkAccountRow>;
   /** False when the balance cannot cover it. Does not change the emission counter. */

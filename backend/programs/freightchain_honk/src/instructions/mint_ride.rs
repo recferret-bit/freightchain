@@ -62,6 +62,7 @@ pub fn handle_mint_ride(
     tier: u8,
     bands: u8,
     day_index: i64,
+    expected_amount: Option<u64>,
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     require!(now.div_euclid(DAY_SECS) == day_index, HonkError::BadDay);
@@ -73,6 +74,9 @@ pub fn handle_mint_ride(
     let era = era_index(config.emitted);
     let quote = quote_units(tier, bands, era)?;
     let amount = take_room(quote, config.emitted, config.day_emitted, ctx.accounts.wallet_day.amount)?;
+    if let Some(expected) = expected_amount {
+        require!(amount == expected, HonkError::RewardMismatch);
+    }
     let bump = [ctx.bumps.authority];
     let seeds: &[&[u8]] = &[AUTHORITY_SEED, &bump];
     token::transfer(
@@ -98,6 +102,7 @@ pub fn handle_mint_ride(
     ctx.accounts.wallet_day.bump = ctx.bumps.wallet_day;
     let ride = &mut ctx.accounts.ride_mint;
     ride.amount = amount;
+    ride.recipient = ctx.accounts.rider.key();
     ride.tier = tier;
     ride.bands = bands;
     ride.era = u8::try_from(era).unwrap_or(u8::MAX);

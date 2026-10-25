@@ -367,12 +367,21 @@ impl Env {
         emitter: &Keypair,
         day_index: i64,
     ) -> Res {
+        self.mint_ride_signed_amount(ride_id, tier, bands, rider, emitter, day_index, None)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn mint_ride_signed_amount(
+        &mut self, ride_id: [u8; 16], tier: u8, bands: u8, rider: &Pubkey,
+        emitter: &Keypair, day_index: i64, expected_amount: Option<u64>,
+    ) -> Res {
         let i = ix(
             instruction::MintRide {
                 ride_id,
                 tier,
                 bands,
                 day_index,
+                expected_amount,
             },
             accounts::MintRide {
                 emitter: emitter.pubkey(),

@@ -36,6 +36,8 @@ pub enum HonkError {
     BadMerkleProof,
     #[msg("Airdrop claim window is closed")]
     AirdropClosed,
+    #[msg("Ride reward differs from the reserved ledger amount")]
+    RewardMismatch,
 }
 
 #[cfg(test)]
@@ -61,5 +63,6 @@ mod tests {
         assert_eq!(u32::from(HonkError::BadMonth), 6014);
         assert_eq!(u32::from(HonkError::BadMerkleProof), 6015);
         assert_eq!(u32::from(HonkError::AirdropClosed), 6016);
+        assert_eq!(u32::from(HonkError::RewardMismatch), 6017);
     }
 }

@@ -25,6 +25,16 @@ describe('pool schedule', () => {
     await expect(svc.assertEntry(pool, ctx.now())).rejects.toBeInstanceOf(ServiceUnavailableError);
     expect(alerts.rows).toEqual([]);
   });
+  it('transfer-mode fixtures use their stored cutoff without requiring a pool program', async () => {
+    const ctx = unitContext();
+    const pool = aPool({ lastStartAt: new Date(ctx.now().getTime() + 1000) }, ctx.now());
+    const read = vi.spyOn(ctx.poolChain, 'readPool').mockRejectedValue(new ServiceUnavailableError('program not configured'));
+    const svc = new PoolScheduleService(ctx.poolChain, ctx.clock, ctx.entropy, undefined, { get: () => ({ ...ctx.rules.get(), paymentMode: 'transfer' }) });
+    await expect(svc.assertEntry(pool, ctx.now())).resolves.toBeUndefined();
+    await expect(svc.assertEntry(pool, new Date(pool.lastStartAt.getTime() + 1))).rejects.toMatchObject({ errorCode: 'pool_last_start_passed' });
+    expect(read).not.toHaveBeenCalled();
+  });
+
   it('default weekly fields are Tue 18:00, Sun 18:00, −2h, −75min, +1.5d', () => {
     const from = new Date('2026-10-21T12:00:00.000Z'); // Wednesday
     const s = defaultWeeklySchedule(from);

@@ -3,6 +3,7 @@ import type { Pool } from '../../domain/economy/pool.entity.js';
 import { scheduleMismatch } from '../../domain/economy/pool-schedule.js';
 import { ConflictError } from '../../domain/shared/errors.js';
 import { AlertOutboxRepositoryPort } from '../ports/admin/alert-outbox.repository.port.js';
+import { RulesConfigPort } from '../ports/config/rules-config.port.js';
 import { PoolChainPort } from '../ports/economy/pool-chain.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
 import { EntropyPort } from '../ports/shared/entropy.port.js';
@@ -19,9 +20,11 @@ export class PoolScheduleService {
     private readonly clock: ClockPort,
     private readonly entropy: EntropyPort,
     @Optional() private readonly alerts?: AlertOutboxRepositoryPort,
+    @Optional() private readonly rules?: RulesConfigPort,
   ) {}
 
   async assertSynced(pool: Pool): Promise<void> {
+    if (this.rules?.get().paymentMode === 'transfer') return;
     // RPC failure is unavailable, not schedule drift: v6 timestamps cannot be reconstructed from legacy defaults.
     const chain = await this.chain.readPool(pool.id);
     const why = scheduleMismatch(pool.snapshot(), chain);

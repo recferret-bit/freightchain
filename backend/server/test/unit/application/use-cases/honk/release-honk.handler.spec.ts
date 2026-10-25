@@ -1,4 +1,5 @@
 import { ReleaseHonkHandler } from '../../../../../src/application/use-cases/honk/release-honk.handler.js';
+import { HonkMintService } from '../../../../../src/application/services/honk-mint.service.js';
 import { ReleaseHonkCommand } from '../../../../../src/application/use-cases/honk/release-honk.command.js';
 import { HonkEmissionPort } from '../../../../../src/application/ports/honk/honk-emission.port.js';
 import { dayIndex } from '../../../../../src/domain/honk/tokenomics.js';
@@ -19,6 +20,7 @@ describe('ReleaseHonkHandler', () => {
     const ctx = unitContext();
     await ctx.player('w');
     const emission = new RecordingEmission();
+    ctx.honkMint = new HonkMintService(ctx.honkRepo, ctx.clock, emission);
     const handler = new ReleaseHonkHandler(ctx.honkRepo, ctx.honkMint, ctx.players, ctx.transactions, emission, ctx.clock);
     expect(await ctx.honkMint.credit({ rideId: 'r8', wallet: 'w', tier: '8h', distance: 10_000, completeDist: 10_000 })).toBeNull();
     expect(await handler.execute(new ReleaseHonkCommand())).toBe(0);
@@ -34,6 +36,7 @@ describe('ReleaseHonkHandler', () => {
   it('skips a wallet that has no player row', async () => {
     const ctx = unitContext();
     const emission = new RecordingEmission();
+    ctx.honkMint = new HonkMintService(ctx.honkRepo, ctx.clock, emission);
     const handler = new ReleaseHonkHandler(ctx.honkRepo, ctx.honkMint, ctx.players, ctx.transactions, emission, ctx.clock);
     await ctx.honkMint.credit({ rideId: 'gone', wallet: 'missing', tier: '8h', distance: 10_000, completeDist: 10_000 });
     ctx.clock.advance(48 * 3600);
@@ -46,6 +49,7 @@ describe('ReleaseHonkHandler', () => {
     const ctx = unitContext();
     await ctx.player('w');
     const emission = new RecordingEmission();
+    ctx.honkMint = new HonkMintService(ctx.honkRepo, ctx.clock, emission);
     emission.mint = async () => { throw new Error('rpc down'); };
     const handler = new ReleaseHonkHandler(ctx.honkRepo, ctx.honkMint, ctx.players, ctx.transactions, emission, ctx.clock, ctx.verdictRepo);
     await ctx.honkMint.credit({ rideId: 'bad-8h', wallet: 'w', tier: '8h', distance: 10_000, completeDist: 10_000 });
@@ -60,4 +64,35 @@ describe('ReleaseHonkHandler', () => {
     expect(await ctx.honkRepo.findMint('ok-8h')).toMatchObject({ released: true });
     expect(await ctx.honkRepo.balance('w')).toBe(800n * U);
   });
+  it('retries an immediate reward after failure and worker restart without crediting the ledger twice', async () => {
+    const ctx = unitContext();
+    await ctx.player('w');
+    const emission = new RecordingEmission();
+    ctx.honkMint = new HonkMintService(ctx.honkRepo, ctx.clock, emission);
+    await ctx.honkMint.credit({ rideId: 'retry', wallet: 'w', tier: '1h', distance: 100, completeDist: 100 });
+    const send = vi.spyOn(emission, 'mint').mockRejectedValueOnce(new Error('lost RPC response'));
+    const worker = () => new ReleaseHonkHandler(ctx.honkRepo, ctx.honkMint, ctx.players, ctx.transactions, emission, ctx.clock);
+    await worker().execute(new ReleaseHonkCommand());
+    expect(await ctx.honkRepo.findMint('retry')).toMatchObject({ chainPending: true });
+    await worker().execute(new ReleaseHonkCommand());
+    expect(send).toHaveBeenCalledTimes(1);
+    ctx.clock.advance(121);
+    await worker().execute(new ReleaseHonkCommand());
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send).toHaveBeenLastCalledWith('retry', 'w', '1h', 7, dayIndex(ctx.now()), 100n * U);
+    expect(await ctx.honkRepo.findMint('retry')).toMatchObject({ chainPending: false, chainSentAt: ctx.now() });
+    await worker().execute(new ReleaseHonkCommand());
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(await ctx.honkRepo.balance('w')).toBe(100n * U);
+  });
+
+  it('does not retroactively mint ledger-only credits when an emitter is configured later', async () => {
+    const ctx = unitContext();
+    await ctx.player('w');
+    await ctx.honkMint.credit({ rideId: 'points', wallet: 'w', tier: '1h', distance: 100, completeDist: 100 });
+    const emission = new RecordingEmission();
+    await new ReleaseHonkHandler(ctx.honkRepo, ctx.honkMint, ctx.players, ctx.transactions, emission, ctx.clock).execute(new ReleaseHonkCommand());
+    expect(emission.calls).toEqual([]);
+  });
+
 });

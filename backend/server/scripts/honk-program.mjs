@@ -125,7 +125,7 @@ export function withdrawLp() {
 }
 
 /** Ride reward. The program derives the amount from tier and band bits and pays it from the emission vault. */
-export async function mintRide({ rpc, emitter, rider, rideId, tier = 1, bands = 0b111, dayIndex }) {
+export async function mintRide({ rpc, emitter, rider, rideId, tier = 1, bands = 0b111, dayIndex, expectedAmount = null }) {
   const p = pdas();
   const riderPk = asPk(rider);
   const ride = rideId.length === 16 ? rideId : Buffer.from(rideId);
@@ -137,7 +137,7 @@ export async function mintRide({ rpc, emitter, rider, rideId, tier = 1, bands = 
     w(userHonk({ publicKey: riderPk })), w(pda([Buffer.from('ride-mint'), ride])), w(walletDay(riderPk, day)),
     ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId), ro(ASSOCIATED_TOKEN_PROGRAM_ID),
   ];
-  const data = [ride, Buffer.from([tier, bands]), dayBuf];
+  const data = [ride, Buffer.from([tier, bands]), dayBuf, expectedAmount === null ? Buffer.from([0]) : Buffer.concat([Buffer.from([1]), u64(expectedAmount)])];
   return send(connectionOf(rpc), new Transaction().add(ix('mint_ride', keys, data)), [emitter]);
 }
 

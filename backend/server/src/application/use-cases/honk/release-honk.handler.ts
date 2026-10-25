@@ -13,7 +13,7 @@ import { ReleaseHonkCommand } from './release-honk.command.js';
 
 const BATCH = 50;
 
-/** Releases due 8h reservations. Chain emission runs only after the wallet credit commits, and only for rows this call released. */
+/** Releases due 8h reservations. Chain emission runs only after the wallet credit commits, and retries every durable pending emission. */
 @CommandHandler(ReleaseHonkCommand)
 export class ReleaseHonkHandler implements ICommandHandler<ReleaseHonkCommand, number> {
   private readonly logger = new Logger(ReleaseHonkHandler.name);
@@ -53,16 +53,34 @@ export class ReleaseHonkHandler implements ICommandHandler<ReleaseHonkCommand, n
         }
         return out;
       });
-      const day = dayIndex(this.clock.now());
-      for (const row of paid) {
-        try {
-          await this.emission.mint(row.rideId, wallet, row.tier, bandBits(row), day);
-        } catch (error) {
-          this.logger.warn(`chain mint after 8h release failed for ride ${row.rideId}: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
       released += paid.length;
     }
+    await this.retryEmissions();
     return released;
+  }
+
+  private async retryEmissions(): Promise<void> {
+    if (!this.emission.enabled()) return;
+    const pending = await this.honk.listChainPending(this.clock.now(), BATCH);
+    for (const candidate of pending) {
+      const row = await this.transactions.run(async (tx) => {
+        if (!(await this.players.findByWalletForUpdate(candidate.wallet, tx))) return null;
+        const current = await this.honk.findMint(candidate.rideId, tx);
+        const now = this.clock.now();
+        if (!current?.released || !current.chainPending || (current.chainRetryAt && current.chainRetryAt > now)) return null;
+        // Persist a bounded lease before RPC; a crashed worker is retried by the next process.
+        await this.honk.deferChain(current.rideId, new Date(now.getTime() + 120_000), tx);
+        return current;
+      });
+      if (!row) continue;
+      try {
+        await this.emission.mint(row.rideId, row.wallet, row.tier, bandBits(row), dayIndex(this.clock.now()), row.amount);
+        await this.transactions.run(async (tx) => {
+          if (await this.players.findByWalletForUpdate(row.wallet, tx)) await this.honk.markChainSent(row.rideId, this.clock.now(), tx);
+        });
+      } catch {
+        this.logger.warn({ event: 'honk-emission-pending', rideId: row.rideId });
+      }
+    }
   }
 }

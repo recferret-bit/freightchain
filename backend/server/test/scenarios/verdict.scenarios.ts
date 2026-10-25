@@ -1,3 +1,6 @@
+import { HonkEmissionPort } from '../../src/application/ports/honk/honk-emission.port.js';
+import { HonkRepositoryPort } from '../../src/application/ports/honk/honk.repository.port.js';
+import { ReleaseHonkCommand } from '../../src/application/use-cases/honk/release-honk.command.js';
 import { CommandBus } from '@nestjs/cqrs';
 import { bindClient, newWallet, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
@@ -65,6 +68,24 @@ export function verdictScenarios(h: () => Harness): void {
     expect((await d.agent.get(`/api/rides/${end.id}`).expect(200)).body).toMatchObject({ verdict: { status: 'verified' }, review: 'accepted' });
     for (const board of ['round', 'all']) expect((await anon().get(`/api/leaderboard?board=${board}`).expect(200)).body.rows[0]).toMatchObject({ wallet: d.address, distance: 910 });
     expect((await d.agent.get('/api/profile').expect(200)).body.recent[0]).toMatchObject({ status: 'completed', verdict: 'verified', review: 'accepted' });
+  });
+
+  it('a verified HTTP finish survives a failed token submission and the worker settles its durable reward once', async () => {
+    const emission = h().app.get(HonkEmissionPort);
+    const enabled = vi.spyOn(emission, 'enabled').mockReturnValue(true);
+    const send = vi.spyOn(emission, 'mint').mockRejectedValueOnce(new Error('RPC unavailable')).mockResolvedValue(undefined);
+    try {
+      const d = await login(VERDICT_DEMO);
+      const end = await paidShift(d, {});
+      expect(end).toMatchObject({ verdict: { status: 'verified' }, honk: { pays: '100' } });
+      const repo = h().app.get(HonkRepositoryPort);
+      expect(await repo.findMint(end.id)).toMatchObject({ chainPending: true, amount: 100_000_000n });
+      await h().app.get(CommandBus).execute(new ReleaseHonkCommand());
+      expect(await repo.findMint(end.id)).toMatchObject({ chainPending: false });
+      await h().app.get(CommandBus).execute(new ReleaseHonkCommand());
+      expect(send).toHaveBeenCalledTimes(2);
+      expect(await repo.balance(d.address)).toBe(100_000_000n);
+    } finally { enabled.mockRestore(); send.mockRestore(); }
   });
 
   it('rules v4 over HTTP (audit 2026-10): batches wait their turn (429 + Retry-After); empty batches, and a position outrunning its speedometer, reject at /end', async () => {
