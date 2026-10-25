@@ -17,6 +17,7 @@ import { AttestationService } from './services/attestation.service.js';
 import { AdminProofService } from './services/admin-proof.service.js';
 import { GameSettingsService } from './services/game-settings.service.js';
 import { ReferralService } from './services/referral.service.js';
+import { ReleaseConvoyHandler } from './referral/release-convoy.handler.js';
 import { ConvoyService } from './referral/convoy.service.js';
 import { ReferralExpiryScheduler } from './referral/referral-expiry.scheduler.js';
 import { AirdropService } from './airdrop/airdrop.service.js';
@@ -169,7 +170,7 @@ const services: Provider[] = [
   EntityCatalogService, EntityWriteService,
   AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
   PoolTicketsService, PoolScheduleService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, ReplayAccessService, LiveDonationService, LiveChatService, ChatRetentionScheduler, PledgeService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService, RankedEntryService, WeeklyTicketService,
-  ReferralService, ReferralPayoutService, AdminApprovalService, ConvoyService, AirdropService, ReferralExpiryScheduler, MinigameRateService, MinigameSessionService,
+  ReferralService, ReferralPayoutService, AdminApprovalService, ConvoyService, ReleaseConvoyHandler, AirdropService, ReferralExpiryScheduler, MinigameRateService, MinigameSessionService,
 ];
 
 import { ReconcileStatsHandler } from './use-cases/stats/reconcile-stats/reconcile-stats.handler.js';

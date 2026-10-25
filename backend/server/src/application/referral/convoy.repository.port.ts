@@ -26,6 +26,14 @@ export interface ConvoyLedgerRow {
   weekKey: string;
   /** Null while the TEN4 credit is inside the 48 h trust hold. Absent on a promo ride credit, which is not held. */
   releasedAt?: Date | null;
+  chainState?: 'legacy' | 'held' | 'paid' | 'capped';
+  paidUnits?: bigint;
+  chainLeaseId?: string | null;
+  chainRetryAt?: Date | null;
+  chainSignature?: string | null;
+  chainLastValidBlockHeight?: number | null;
+  chainResolvedAt?: Date | null;
+  capReason?: string | null;
 }
 
 export interface ConvoyRideRow {
@@ -65,6 +73,10 @@ export abstract class ConvoyRepositoryPort {
   abstract insertLedger(row: ConvoyLedgerRow, tx?: TransactionHandle): Promise<boolean>;
   /** Marks a held TEN4 row released. False when the id is missing or already released. */
   releaseLedger(id: string, at: Date, tx?: TransactionHandle): Promise<boolean> { void id; void at; void tx; return Promise.resolve(false); }
+  abstract pendingSettlements(now: Date, heldBefore: Date, limit: number): Promise<ConvoyLedgerRow[]>;
+  abstract findLedger(id: string, tx?: TransactionHandle): Promise<ConvoyLedgerRow | null>;
+  /** Caller holds both player locks; compare the persisted lease before replacing mutable settlement fields. */
+  abstract saveSettlement(row: ConvoyLedgerRow, expectedLease: string | null, tx: TransactionHandle): Promise<boolean>;
   abstract ledger(tx?: TransactionHandle): Promise<ConvoyLedgerRow[]>;
   abstract recordRide(row: ConvoyRideRow, tx?: TransactionHandle): Promise<void>;
   abstract ridesOf(wallet: string, tx?: TransactionHandle): Promise<ConvoyRideRow[]>;

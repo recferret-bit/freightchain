@@ -147,6 +147,22 @@ export async function burn({ rpc, user, amount }) {
   return send(connectionOf(rpc), new Transaction().add(ix('burn', keys, [u64(amount)])), [user]);
 }
 
+/** Signed but not broadcast: the worker must persist its signature/expiry before sending. */
+export function referralPaymentTransaction({ emitter, recipient, rewardId, baseAmount, monthIndex, blockhash, lastValidBlockHeight }) {
+  const p = pdas(), owner = asPk(recipient), month = Buffer.alloc(8);
+  month.writeBigInt64LE(BigInt(monthIndex));
+  if (rewardId.length !== 16) throw new Error('referral reward id must contain 16 bytes');
+  const keys = [
+    w(emitter.publicKey, true), w(p.config), ro(p.honkMint), ro(p.authority), w(p.referral), ro(owner),
+    w(userHonk(owner)), w(pda([Buffer.from('referral-mint'), rewardId])), w(pda([Buffer.from('wallet-month'), owner.toBuffer(), month])),
+    ro(TOKEN_PROGRAM_ID), ro(SystemProgram.programId), ro(ASSOCIATED_TOKEN_PROGRAM_ID),
+  ];
+  const tx = new Transaction({ feePayer: emitter.publicKey, blockhash, lastValidBlockHeight });
+  tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }), ix('pay_referral', keys, [rewardId, u64(baseAmount), month]));
+  tx.sign(emitter);
+  return tx;
+}
+
 /** The program prices the pair. The new mint signs; its authority is cleared and the buyer's account is frozen. */
 export async function buyPart({ rpc, buyer, slot, item }) {
   const p = pdas();

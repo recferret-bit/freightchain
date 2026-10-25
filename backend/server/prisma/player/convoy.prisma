@@ -27,6 +27,17 @@ model ConvoyLedger {
   dayKey String
   weekKey String
   releasedAt DateTime?
+  // Historical ledger rows require operator review; only newly earned milestones enter settlement.
+  chainState String @default("legacy")
+  paidUnits BigInt @default(0)
+  chainLeaseId String?
+  chainRetryAt DateTime?
+  chainSignature String?
+  chainLastValidBlockHeight Int?
+  chainResolvedAt DateTime?
+  capReason String?
+
+  @@index([chainState, chainRetryAt, at])
 
   @@index([kind, weekKey])
   @@schema("player")

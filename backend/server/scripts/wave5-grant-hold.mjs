@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import { AirdropService } from '../dist/application/airdrop/airdrop.service.js';
 import { airdropCode } from '../dist/application/airdrop/airdrop-rules.js';
+import { ReleaseConvoyHandler } from '../dist/application/referral/release-convoy.handler.js';
+import { ReleaseConvoyCommand } from '../dist/application/referral/release-convoy.command.js';
 import { ConvoyService } from '../dist/application/referral/convoy.service.js';
 import { PlayerRepositoryPort } from '../dist/application/ports/players/player.repository.port.js';
 import { ClockPort } from '../dist/application/ports/shared/clock.port.js';
@@ -47,7 +49,8 @@ export async function runGrantHold() {
   await campaign.claimTelegram('referee', 'convoy-tg');
   await campaign.claimX('referee', 'convoy-x');
   await campaign.save({ ...(await campaign.get('referee')), rideOk: true, telegramMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
-  const convoy = new ConvoyService(new MemoryConvoyRepository(), players, new Tx(), clock, new Names(), promos, campaign);
+  const ledger = new MemoryConvoyRepository();
+  const convoy = new ConvoyService(ledger, players, new Tx(), clock, new Names(), promos, campaign);
   let seq = 0;
   const fact = (wallet, trip) => ({ rideId: `${wallet}-${seq += 1}`, wallet, status: 'completed', verdict: 'verified', trip });
   await convoy.onVerifiedRide(fact('ref', 'free-1c'));
@@ -58,9 +61,16 @@ export async function runGrantHold() {
   const paid = () => ({ ...fact('referee', '1h'), tier: '1h', ranked: true, endedAt: clock.now() });
   await convoy.onVerifiedRide(paid());
   clock.at = new Date(start.getTime() + 7 * DAY_MS);
-  const held = await convoy.onVerifiedRide(paid());
+  await convoy.onVerifiedRide(paid());
+  let balance = 0n;
+  // This fixture tests the hold; real chain receipts are exercised by the local-validator suite.
+  const emission = { enabled: () => true, settle: async (p) => { await p.onSubmitted({ signature: 'fixture', lastValidBlockHeight: 1 }); return { kind: 'paid', amount: p.baseAmount }; } };
+  const worker = new ReleaseConvoyHandler(ledger, players, new Tx(), emission, { credit: async (_wallet, amount) => { balance += amount; } }, clock, { uuid: () => `lease-${++seq}` });
+  await worker.execute(new ReleaseConvoyCommand());
+  const m1OnEarn = balance > 0n;
   clock.at = new Date(clock.at.getTime() + 48 * 3_600_000);
-  const released = await convoy.onVerifiedRide(paid());
+  await worker.execute(new ReleaseConvoyCommand());
+  const m1After48h = balance === 100_000_000n;
 
   const ada = new Players();
   ada.add('ada');
@@ -79,7 +89,7 @@ export async function runGrantHold() {
   const claimBefore48h = (await airdrop.claim('ada')).claimed;
   clock.at = new Date(clock.at.getTime() + 48 * 3_600_000);
   const claimAfter48h = (await airdrop.claim('ada')).claimed;
-  return { m1OnEarn: held.milestones.m1, m1After48h: released.milestones.m1, trustAfterSocial, claimBefore48h, claimAfter48h };
+  return { m1OnEarn, m1After48h, trustAfterSocial, claimBefore48h, claimAfter48h };
 }
 
 if (process.argv[1] && process.argv[1].endsWith('wave5-grant-hold.mjs')) {

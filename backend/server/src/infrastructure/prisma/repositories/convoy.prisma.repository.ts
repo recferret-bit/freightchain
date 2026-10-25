@@ -6,7 +6,7 @@ import { clientFor } from '../prisma-client.js';
 import { PrismaService } from '../prisma.service.js';
 
 const invite = (row: ConvoyInvite): ConvoyRow => ({ ...row, status: row.status as ConvoyRow['status'] });
-const ledger = (row: ConvoyLedger): ConvoyLedgerRow => ({ ...row, kind: row.kind as ConvoyLedgerRow['kind'], unit: row.unit as ConvoyLedgerRow['unit'] });
+const ledger = (row: ConvoyLedger): ConvoyLedgerRow => ({ ...row, kind: row.kind as ConvoyLedgerRow['kind'], unit: row.unit as ConvoyLedgerRow['unit'], chainState: row.chainState as ConvoyLedgerRow['chainState'] });
 
 @Injectable()
 export class ConvoyPrismaRepository extends ConvoyRepositoryPort {
@@ -54,6 +54,20 @@ export class ConvoyPrismaRepository extends ConvoyRepositoryPort {
 
   override async releaseLedger(id: string, at: Date, tx?: TransactionHandle): Promise<boolean> {
     return (await clientFor(this.prisma, tx).convoyLedger.updateMany({ where: { id, unit: 'ten4', releasedAt: null }, data: { releasedAt: at } })).count === 1;
+  }
+
+  async pendingSettlements(now: Date, heldBefore: Date, limit: number): Promise<ConvoyLedgerRow[]> {
+    return (await this.prisma.convoyLedger.findMany({ where: { chainState: 'held', at: { lte: heldBefore }, OR: [{ chainRetryAt: null }, { chainRetryAt: { lte: now } }] }, orderBy: [{ at: 'asc' }, { id: 'asc' }], take: limit })).map(ledger);
+  }
+
+  async findLedger(id: string, tx?: TransactionHandle): Promise<ConvoyLedgerRow | null> {
+    const row = await clientFor(this.prisma, tx).convoyLedger.findUnique({ where: { id } });
+    return row ? ledger(row) : null;
+  }
+
+  async saveSettlement(row: ConvoyLedgerRow, expectedLease: string | null, tx: TransactionHandle): Promise<boolean> {
+    const { chainState, paidUnits, chainLeaseId, chainRetryAt, chainSignature, chainLastValidBlockHeight, chainResolvedAt, capReason, releasedAt } = row;
+    return (await clientFor(this.prisma, tx).convoyLedger.updateMany({ where: { id: row.id, chainState: 'held', chainLeaseId: expectedLease }, data: { chainState, paidUnits, chainLeaseId, chainRetryAt, chainSignature, chainLastValidBlockHeight, chainResolvedAt, capReason, releasedAt } })).count === 1;
   }
 
   async ledger(tx?: TransactionHandle): Promise<ConvoyLedgerRow[]> {

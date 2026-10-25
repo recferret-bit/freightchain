@@ -1,5 +1,4 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { grantReleasable } from '../../domain/anticheat/trust-score.js';
 import type { Player } from '../../domain/players/player.entity.js';
 import { RideStatus } from '../../domain/rides/ride-status.js';
 import { CONVOY_PROMO_CODE, PromoCode } from '../../domain/economy/promo-code.entity.js';
@@ -86,7 +85,7 @@ const idleGift = (): ConvoyGiftDto => ({ granted: false, reason: 'not_activation
 
 /**
  * Target convoy machine. It does not write the legacy referral row and does not grant the live +2/+3 free rides.
- * Milestone TEN4 is a ledger row, not a chain mint.
+ * Milestones create held rewards; the settlement worker credits only confirmed chain receipts.
  */
 @Injectable()
 export class ConvoyService {
@@ -241,16 +240,9 @@ export class ConvoyService {
 
   private async ledger(row: ConvoyRow, kind: 'm1' | 'm2', amount: number, now: Date, tx: TransactionHandle): Promise<boolean> {
     const id = `convoy:${kind}:${row.referee}`;
-    const [referrer, referee] = await Promise.all([this.players.findByWallet(row.referrer, tx), this.players.findByWallet(row.referee, tx)]);
-    const scores = { trustA: referrer?.trustScore ?? 60, trustB: referee?.trustScore ?? 60, rejectedA: referrer?.rejectedRides ?? 0, rejectedB: referee?.rejectedRides ?? 0 };
-    const existing = (await this.repo.ledger(tx)).find((item) => item.id === id);
-    if (existing) {
-      if (existing.releasedAt || !grantReleasable({ ...scores, now, heldAt: existing.at })) return false;
-      if (!await this.repo.releaseLedger(id, now, tx)) return false;
-    } else {
-      await this.repo.insertLedger({ ...this.ledgerRow(id, kind, row.referrer, amount, 'ten4', row, now), releasedAt: null }, tx);
-      return false;
-    }
+    const inserted = await this.repo.insertLedger({ ...this.ledgerRow(id, kind, row.referrer, amount, 'ten4', row, now), releasedAt: null, chainState: 'held' }, tx);
+    if (!inserted) return false;
+    // Qualification is earned now; a 48h payment hold cannot push it past the 60-day eligibility window.
     if (kind === 'm1') row.m1At = now;
     else row.m2At = now;
     row.status = 'qualified';

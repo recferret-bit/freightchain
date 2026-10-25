@@ -92,3 +92,12 @@ if [ "${HONK_VERDICT:-0}" = 1 ]; then
   echo "▸ durable emission recovery"
   (cd "$SERVER" && RPC="$RPC" KEYS="$TMP/keys" DATABASE_URL="$URL" node scripts/e2e-honk-recovery.mjs) || fail "emission recovery"
 fi
+
+if [ "${HONK_VERDICT:-0}" = 1 ]; then
+  # Fixtures below exercise explicit competing workers; stop the API scheduler before inserting them.
+  kill "$SRV_PID" 2>/dev/null || true
+  wait "$SRV_PID" 2>/dev/null || true
+  SRV_PID=""
+  echo "▸ durable Convoy settlement"
+  (cd "$SERVER" && RPC="$RPC" KEYS="$TMP/keys" DATABASE_URL="$URL" node scripts/e2e-convoy-settlement.mjs) || fail "Convoy settlement"
+fi

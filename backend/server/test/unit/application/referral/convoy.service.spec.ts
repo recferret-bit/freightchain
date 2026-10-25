@@ -246,10 +246,11 @@ describe('ConvoyService', () => {
     expect((await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true })).milestones.m1).toBe(false);
     await h.campaign.save({ ...emptyAirdrop('referee'), rideOk: true, telegramUserId: 'tg', telegramMember: true, xUserId: 'x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
     const held = await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true });
-    expect(held.milestones.m1).toBe(false);
+    expect(held.milestones.m1).toBe(true);
     h.clock.at = new Date(h.clock.at.getTime() + 48 * 3_600_000);
     const m1 = await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true });
-    expect(m1).toMatchObject({ status: 'qualified', milestones: { m1: true, m2: false } });
+    expect(m1).toMatchObject({ status: 'qualified', milestones: { m1: false, m2: false } });
+    expect((await h.repo.ledger()).find((row) => row.kind === 'm1')).toMatchObject({ chainState: 'held', releasedAt: null });
     for (const day of [14, 21, 28]) {
       h.clock.at = new Date(MONDAY.getTime() + day * DAY_MS);
       await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true });

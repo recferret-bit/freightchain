@@ -1,4 +1,6 @@
 import { Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
+import { CommandBus } from '@nestjs/cqrs';
+import { ReleaseConvoyCommand } from './release-convoy.command.js';
 import { ConvoyService, type ConvoyExpiryDto } from './convoy.service.js';
 
 /** Deletes pending convoy rows past 72h and expires active rows past 60d without M1. The legacy gift sweeper is a different service. */
@@ -8,12 +10,14 @@ export class ReferralExpiryScheduler implements OnApplicationBootstrap, OnApplic
   private timer: NodeJS.Timeout | null = null;
   private stopped = false;
 
-  constructor(private readonly convoy: ConvoyService) {}
+  constructor(private readonly convoy: ConvoyService, private readonly commands: CommandBus) {}
 
   get intervalMs(): number { return 60_000; }
 
-  sweep(): Promise<ConvoyExpiryDto> {
-    return this.convoy.expireDue();
+  async sweep(): Promise<ConvoyExpiryDto> {
+    const expired = await this.convoy.expireDue();
+    await this.commands.execute(new ReleaseConvoyCommand());
+    return expired;
   }
 
   onApplicationBootstrap(): void {
