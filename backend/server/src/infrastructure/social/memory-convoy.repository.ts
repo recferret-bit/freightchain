@@ -1,3 +1,4 @@
+import type { TransactionHandle } from '../../application/ports/shared/transaction.port.js';
 import { Injectable } from '@nestjs/common';
 import { ConvoyRepositoryPort, type ConvoyLedgerRow, type ConvoyRideRow, type ConvoyRow, type HiddenRead, type ReferrerCounts } from '../../application/referral/convoy.repository.port.js';
 
@@ -60,6 +61,22 @@ export class MemoryConvoyRepository extends ConvoyRepositoryPort {
     const row = this.ledgerRows.find((item) => item.id === id);
     if (!row || row.releasedAt) return Promise.resolve(false);
     row.releasedAt = at;
+    return Promise.resolve(true);
+  }
+
+  pendingSettlements(now: Date, heldBefore: Date, limit: number): Promise<ConvoyLedgerRow[]> {
+    return Promise.resolve(this.ledgerRows.filter((row) => row.chainState === 'held' && row.at <= heldBefore && (!row.chainRetryAt || row.chainRetryAt <= now)).sort((a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id)).slice(0, limit).map((row) => ({ ...row })));
+  }
+
+  findLedger(id: string): Promise<ConvoyLedgerRow | null> {
+    const row = this.ledgerRows.find((item) => item.id === id);
+    return Promise.resolve(row ? { ...row } : null);
+  }
+
+  saveSettlement(row: ConvoyLedgerRow, expectedLease: string | null, _tx: TransactionHandle): Promise<boolean> {
+    const current = this.ledgerRows.find((item) => item.id === row.id);
+    if (!current || current.chainState !== 'held' || (current.chainLeaseId ?? null) !== expectedLease) return Promise.resolve(false);
+    Object.assign(current, row);
     return Promise.resolve(true);
   }
 

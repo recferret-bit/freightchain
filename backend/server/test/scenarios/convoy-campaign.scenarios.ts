@@ -1,3 +1,6 @@
+import { ReferralEmissionPort } from '../../src/application/ports/honk/referral-emission.port.js';
+import { ReleaseConvoyHandler } from '../../src/application/referral/release-convoy.handler.js';
+import { ReleaseConvoyCommand } from '../../src/application/referral/release-convoy.command.js';
 import { ConvoyService } from '../../src/application/referral/convoy.service.js';
 import { AirdropService } from '../../src/application/airdrop/airdrop.service.js';
 import { AirdropRepositoryPort } from '../../src/application/airdrop/airdrop.repository.port.js';
@@ -83,8 +86,20 @@ export function convoyCampaignScenarios(h: () => Harness): void {
     await campaign.claimX(friend.address, 'x-convoy');
     await campaign.save({ ...(await campaign.get(friend.address))!, rideOk: true, telegramMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
     await svc.onVerifiedRide(paid);
-    expect((await repo.ledger()).filter((row) => row.unit === 'ten4')).toEqual([expect.objectContaining({ kind: 'm1', releasedAt: null })]);
-    h().clock.advance(48 * 3600);
+    expect((await repo.ledger()).filter((row) => row.unit === 'ten4')).toEqual([expect.objectContaining({ kind: 'm1', releasedAt: null, chainState: 'held' })]);
+    const emission = h().app.get(ReferralEmissionPort);
+    const enabled = vi.spyOn(emission, 'enabled').mockReturnValue(true);
+    const settle = vi.spyOn(emission, 'settle').mockImplementation(async (p) => { await p.onSubmitted({ signature: 'fixture-signature', lastValidBlockHeight: 100 }); return { kind: 'paid', amount: 50_000_000n }; });
+    try {
+      const worker = h().app.get(ReleaseConvoyHandler);
+      expect(await worker.execute(new ReleaseConvoyCommand())).toBe(0);
+      h().clock.advance(48 * 3600);
+      expect(await worker.execute(new ReleaseConvoyCommand())).toBe(1);
+      expect(await worker.execute(new ReleaseConvoyCommand())).toBe(0);
+      const returningHost = await login({ kp: host.kp, address: host.address });
+      expect((await returningHost.agent.get('/api/honk').expect(200)).body.balance).toBe('50');
+      expect(await repo.findLedger(`convoy:m1:${friend.address}`)).toMatchObject({ chainState: 'paid', paidUnits: 50_000_000n });
+    } finally { enabled.mockRestore(); settle.mockRestore(); }
     await svc.onVerifiedRide(paid);
     const returning = await login({ kp: friend.kp, address: friend.address });
     expect((await returning.agent.get('/api/referrals/leaderboard').expect(200)).body.rows).toEqual([expect.objectContaining({ wallet: host.address, qualified: 1 })]);

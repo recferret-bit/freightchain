@@ -148,3 +148,5 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 - [ ] `TermsGuard` blocks authenticated player write endpoints with `403 terms_acceptance_required` whenever `termsVersion` or `privacyVersion` is missing or older than `CURRENT_TERMS_VERSION` / `CURRENT_PRIVACY_VERSION`.
 - [ ] Static copy check across `frontend/client/` and `frontend/landing/` passes with `0` banned gambling words (`LEG-T-01..11`).
 - [ ] `docs/spec/PRODUCT.md` updated; status marked `[x] Done` in [`docs/plan/spec-compliance/STATUS.md`](../STATUS.md).
+
+25 October settlement update: newly earned Convoy milestones now use a durable signed-submission queue and real `pay_referral` receipts after the 48h hold. PG concurrent-worker/rollback tests and local-validator payment/recovery/wallet-cap checks pass. Legacy ledger rows are excluded pending review. The overall task stays open for campaign settlement/UI, legacy referral replacement and accepted trust signals.
