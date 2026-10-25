@@ -39,7 +39,7 @@ Use real Chrome against the real API and PostgreSQL/Redis. Chain flows must sign
 
 | Area | What remains |
 |---|---|
-| Contracts | Local v6 activation, explicit schedule and cadence are implemented; the reproducible pinned build and full validator lifecycle passed. `SPC-05.5` remains open for optional on-chain pledge creation. Deployment records still describe devnet v3; fresh-program cutover and live verification require a separate authorized deployment. |
+| Contracts | Local v6 activation, explicit schedule and cadence are implemented; the reproducible pinned build and full validator lifecycle passed. New on-chain pledges are now refused and historical recovery passed; final merged acceptance remains open. Deployment records still describe devnet v3; fresh-program cutover and live verification require a separate authorized deployment. |
 | TEN4 | Local token tests exist; prove the app's ledger, on-chain rewards, burns and garage purchases work together on devnet. |
 | NFTs | Metadata covers 31/44 earnable achievement badges. All 44 assets now validate offline; publish the other 13 URIs and verify the remote collection/tree and wallet receipts. Real local Bubblegum/PostgreSQL mint-worker acceptance now passes. |
 | Referrals and campaign | Convoy/airdrop now persist in PostgreSQL with concurrency and HTTP coverage. Convoy milestone chain settlement and recovery now pass on a local validator. Real X, Telegram and Turnstile verification, campaign payouts/UI and legacy referral replacement remain open. |

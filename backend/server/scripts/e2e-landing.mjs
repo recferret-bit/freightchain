@@ -53,6 +53,15 @@ check('the real hero does not throw', typeof real.pot === 'string' && typeof rea
 check('an empty escrow shows the unpaid fallback on the real page', !unpaid || (real.note === NOTE && real.label === 'ACCRUED THIS WEEK · NOT PAID'), JSON.stringify({ livePools: live?.pools?.length ?? null, real }));
 await page.shot('hero-live');
 
+for (const width of [390, 320]) {
+  await page.send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: true });
+  await page.ev('scrollTo(0, 0)'); await sleep(500);
+  const layout = await page.ev(`(() => ({ viewport: innerWidth, scroll: document.documentElement.scrollWidth, nodes: [...document.querySelectorAll('.top, .top .cta, .hero-in, .lede, .hero .cta, .hero .stats')].map(el => { const r = el.getBoundingClientRect(); return { selector: el.className, left: r.left, right: r.right, width: r.width, clipped: el.scrollWidth > el.clientWidth + 1 }; }) }))()`);
+  check(`landing ${width}px: header, hero text and actions fit the viewport`, layout.viewport === width && layout.scroll <= width + 1 && layout.nodes.every(n => n.left >= -1 && n.right <= width + 1 && !n.clipped), JSON.stringify(layout));
+  await page.shot(`hero-phone-${width}`);
+}
+await page.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+
 await page.send('Page.navigate', { url: `${BASE}/pitchdeck.html` });
 check('pitchdeck.html paints the deck', await until(() => page.ev(`!!document.querySelector('#deck section.slide') && /PITCH DECK/.test(document.body?.innerText || '')`), 30000));
 await page.shot('pitchdeck');

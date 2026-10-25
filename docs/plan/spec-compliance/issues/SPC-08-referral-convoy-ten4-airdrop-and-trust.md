@@ -13,7 +13,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ## Tasks
 
-**25 October rule correction:** the older DoR bullets below misstate the authoritative `docs/spec/referral.md` §2.3–2.4. MEDIUM/HARD training activates an invite; milestone weeks require verified ranked paid-tier rides, excluding promos and gating weekly grants at trust 100 plus the runtime setting. M1/M2 require campaign tasks, not a training ride by the referrer. `A` means friends with counted activity in the last 30 days. Hidden referrers are omitted, and board ties use milestones then earliest achievement. These rules are implemented locally in the follow-up; automatic hold release, chain settlement and the full UI remain open.
+**25 October rule correction:** the older DoR bullets below misstate the authoritative `docs/spec/referral.md` §2.3–2.4. MEDIUM/HARD training activates an invite; milestone weeks require verified ranked paid-tier rides, excluding promos and gating weekly grants at trust 100 plus the runtime setting. M1/M2 require campaign tasks, not a training ride by the referrer. `A` means friends with counted activity in the last 30 days. Hidden referrers are omitted, and board ties use milestones then earliest achievement. These rules are implemented locally in the follow-up; automatic hold release and chain settlement now pass locally; the full UI remains open.
 
 ### `SPC-08.1` — Implement Convoy Referral state machine (`pending` 72h expiry delete → `active` 60d window on first verified MEDIUM/HARD ride → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)`
 
@@ -42,7 +42,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.2` — Implement Convoy invitee 1h promo ride gift on activation (`3/day`, `10/week`, `500/week` global caps) + M1 (`100 TEN4` @ 2 ISO weeks) & M2 (`50 TEN4` @ 5 ISO weeks) rewards
 
-- **Status:** `[~] In Progress` — reopened on 24 October. Follow-up on 25 October: durable invitations/ledger/ride evidence and atomic caps passed PostgreSQL tests; activation issues a usable 1h PromoRideGrant. Automatic held-reward release and the required on-chain reward journey remain open.
+- **Status:** `[~] In Progress` — reopened on 24 October. Follow-up on 25 October: durable invitations/ledger/ride evidence and atomic caps passed PostgreSQL tests; activation issues a usable 1h PromoRideGrant. Automatic held-reward release, confirmed on-chain credit, lost-response recovery and competing workers now pass on a local validator. Social-last qualification and concurrent duplicate prevention also pass. Full UI/legacy replacement remains open.
 - **Spec Rules:** `REF-M-08`, `REF-M-09`, `REF-M-10`, `REF-M-11`, `REF-M-12`, `REF-M-15` (`docs/spec/referral.md` §2.3–2.5)
 - **Paired Plan 1 Task:** `E2E-05.7`
 - **Target Files:**
