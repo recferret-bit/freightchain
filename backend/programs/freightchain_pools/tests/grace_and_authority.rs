@@ -15,7 +15,7 @@ use solana_signer::Signer;
 const GRACE_END: i64 = PLAY + SETTLE_GRACE_SECS;
 
 fn open_params() -> CreatePoolParams {
-    CreatePoolParams { min_tickets: 2, max_tickets: 0, max_per_wallet: 100, ..default_params() }
+    CreatePoolParams { min_tickets: 0, max_tickets: 0, max_per_wallet: 100, ..default_params() }
 }
 
 /// Active pool with two buyers (2 + 3 tickets). Not sponsored: a refund test can close once the tickets are back.
@@ -122,6 +122,7 @@ fn expire_refused_when_prizes_were_paid_or_pool_not_active() {
     let open = e.create_pool(default_params());
     e.warp(GRACE_END);
     let stranger = funded(&mut e.svm, SOL);
+    e.expire(open, &stranger).unwrap(); // no-sales operator pool uses the same 14-day safety net
     assert_err!(e.expire(open, &stranger), PoolError::PoolNotActive);
 }
 
@@ -238,7 +239,7 @@ fn permissionless_close_of_fully_refunded_pool() {
     let b = funded(&mut e.svm, 10 * SOL);
     e.buy(id, &b, 1).unwrap();
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     let stranger = funded(&mut e.svm, SOL);
     assert_err!(e.close_pool(id, &stranger), PoolError::RefundsPending);
     e.refund(id, &b.pubkey(), &b.pubkey()).unwrap();

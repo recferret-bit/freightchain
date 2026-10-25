@@ -27,7 +27,7 @@ fn create_pool_ok_funds_vault_and_emits() {
     assert_eq!(ev[0].fee_treasury, e.fee_t.pubkey());
     assert_eq!(e.config().pool_count, 1);
     let pool = e.pool(0);
-    assert_eq!((pool.status, pool.tickets_sold, pool.min_tickets), (0, 0, 3));
+    assert_eq!((pool.status, pool.tickets_sold, pool.min_tickets), (1, 0, 0));
     assert_eq!(pool.authority, e.authority.pubkey());
     // vault pre-funded with exactly the rent-exempt minimum
     assert_eq!(e.vault(0), e.rent_min());
@@ -47,10 +47,11 @@ fn create_pool_validation() {
     assert_err!(e.try_create_pool(p(|x| x.play_deadline = PREP - 1)), PoolError::InvalidParams);
     // the review window cannot end before the rides do
     assert_err!(e.try_create_pool(p(|x| x.payout_at = PLAY - 1)), PoolError::InvalidParams);
-    assert_err!(e.try_create_pool(p(|x| x.min_tickets = 0)), PoolError::InvalidParams);
+    assert_err!(e.try_create_pool(p(|x| x.min_tickets = 1)), PoolError::InvalidParams);
     assert_err!(e.try_create_pool(p(|x| x.price_lamports = 0)), PoolError::InvalidParams);
     assert_err!(e.try_create_pool(p(|x| x.price_lamports = 1_000)), PoolError::PriceBelowRentMin);
-    assert_err!(e.try_create_pool(p(|x| x.max_tickets = 2)), PoolError::InvalidParams);
+    assert_err!(e.try_create_pool(p(|x| x.last_start_at = PLAY)), PoolError::InvalidParams);
+    assert_err!(e.try_create_pool(p(|x| x.opens_at = PREP)), PoolError::InvalidParams);
     assert_err!(e.try_create_pool(p(|x| x.max_per_wallet = 0)), PoolError::InvalidParams);
     // a payout time beyond MAX_POOL_SECS would lock an Active pool's tickets that long
     assert_err!(e.try_create_pool(p(|x| x.payout_at = T0 + MAX_POOL_SECS + 1)), PoolError::InvalidParams);
@@ -58,8 +59,9 @@ fn create_pool_validation() {
     assert_eq!(e.config().pool_count, 0);
     // play_deadline == prep_deadline == payout_at is allowed, unlimited tickets (0) is allowed
     e.create_pool(p(|x| {
-        x.play_deadline = PREP;
-        x.payout_at = PREP;
+        x.play_deadline = PREP + 1;
+        x.last_start_at = PREP;
+        x.payout_at = PREP + 1;
         x.max_tickets = 0;
     }));
     // exactly MAX_POOL_SECS out is allowed
@@ -99,7 +101,7 @@ fn create_pool_refuses_unfunded_treasury() {
 }
 
 #[test]
-fn buy_to_exactly_min_activates() {
+fn buys_never_change_operator_funded_activation() {
     let mut e = Env::new();
     let id = e.create_pool(default_params()); // min 3
     let a = funded(&mut e.svm, 10 * SOL);
@@ -113,13 +115,12 @@ fn buy_to_exactly_min_activates() {
     assert_eq!((t.pool_id, t.buyer, t.qty, t.lamports), (id, a.pubkey(), 2, 2 * PRICE));
     assert_eq!((t.order_id, t.tickets_sold, t.activated), ([7u8; 16], 2, false));
     assert!(events::<PoolActivated>(&r.logs).is_empty());
-    assert_eq!(e.pool(id).status, 0, "still Open at min-1");
+    assert_eq!(e.pool(id).status, 1, "already Active before any sale");
 
     let r = e.buy(id, &b, 1).unwrap();
     let act = events::<PoolActivated>(&r.logs);
-    assert_eq!(act.len(), 1);
-    assert_eq!((act[0].pool_id, act[0].tickets_sold, act[0].at), (id, 3, T0));
-    assert!(events::<TicketBought>(&r.logs)[0].activated);
+    assert!(act.is_empty());
+    assert!(!events::<TicketBought>(&r.logs)[0].activated);
     let pool = e.pool(id);
     assert_eq!((pool.status, pool.tickets_sold, pool.buyers), (1, 3, 2));
     assert_eq!(e.vault(id), vault0 + 3 * PRICE);
@@ -201,6 +202,7 @@ fn buy_deadlines() {
         x.prep_deadline = PREP + 100_000;
         x.play_deadline = PLAY + 100_000;
         x.payout_at = PLAY + 100_000;
+        x.last_start_at = x.play_deadline - 1;
     }));
     e.buy(id2, &a, 3).unwrap();
     assert_eq!(e.pool(id2).status, 1);
@@ -323,7 +325,8 @@ fn pool_rules_are_snapshotted_and_paid_tickets_can_be_switched_off() {
     assert!(e.pool(id).paid_tickets_enabled);
     let a = e.authority_kp();
     e.set_pool_rules(&a, false, 7_000, 2_000, 1_000, 4_999, 2).unwrap();
-    assert_err!(e.try_create_pool(later(&e, default_params())), PoolError::InvalidParams); // tightened max 2 < min_tickets 3
+    let capped = e.create_pool(later(&e, default_params()));
+    assert_eq!(e.pool(capped).max_tickets, 2); // a small cap does not impose a minimum sale
     e.set_pool_rules(&a, false, 7_000, 2_000, 1_000, 4_999, 4).unwrap();
     assert_eq!(e.pool(id).prize_bps, 8_500, "an open pool keeps the rules it opened with");
     assert!(e.pool(id).paid_tickets_enabled);

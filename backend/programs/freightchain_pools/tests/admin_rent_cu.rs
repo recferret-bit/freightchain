@@ -68,7 +68,7 @@ fn pause_blocks_buys_and_pool_creation_not_refunds() {
     e.send(&[i], &sp, &[]).unwrap();
     e.set_config(&auth, Some(true), None, None).unwrap();
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     e.refund(id, &a.pubkey(), &a.pubkey()).unwrap();
     e.refund_sponsor(id, &sp.pubkey()).unwrap();
     e.close_pool(id, &stranger).unwrap();
@@ -247,7 +247,7 @@ fn migrate_config_v4_refuses_a_v4_config() {
 fn rent_rule_vault_never_left_between_zero_and_rent_min() {
     let mut e = Env::new();
     let id = e.create_pool(default_params().tap(|x| {
-        x.min_tickets = 2;
+        x.min_tickets = 0;
         x.max_tickets = 0;
         x.max_per_wallet = 100;
     }));
@@ -286,7 +286,7 @@ fn rent_rule_vault_never_left_between_zero_and_rent_min() {
 fn compute_units_are_in_budget() {
     let mut e = Env::new();
     let id = e.create_pool(default_params().tap(|x| {
-        x.min_tickets = 40;
+        x.min_tickets = 0;
         x.max_tickets = 0;
         x.max_per_wallet = 100;
     }));
@@ -298,7 +298,7 @@ fn compute_units_are_in_budget() {
     let b = funded(&mut e.svm, 20 * SOL);
     let gasless = e.buy_sponsored(id, &b, &sp, 1).unwrap().compute_units_consumed;
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     let refund = e.refund(id, &a.pubkey(), &a.pubkey()).unwrap().compute_units_consumed;
 
     let refund_sponsor = {
@@ -310,14 +310,14 @@ fn compute_units_are_in_budget() {
         println!("CU sponsor(first, receipt init)={sponsor}");
         assert!(sponsor < 40_000, "sponsor {sponsor}");
         e3.warp(PREP);
-        e3.fail(id3).unwrap();
+        e3.cancel_by_admin(id3).unwrap();
         e3.refund_sponsor(id3, &sp.pubkey()).unwrap().compute_units_consumed
     };
 
     // v4: pay_prize proves its leaf against a committed root – 20 winners, rank 0 carries the longest proof (5 nodes)
     let mut e2 = Env::new();
     let id2 = e2.create_pool(default_params().tap(|x| {
-        x.min_tickets = 2;
+        x.min_tickets = 0;
         x.max_tickets = 0;
         x.max_per_wallet = 100;
     }));
@@ -354,7 +354,7 @@ fn pay_prize_cu_for_the_largest_root() {
     // MAX_WINNERS = 64 ranks: the deepest proof is 6 nodes
     let mut e = Env::new();
     let id = e.create_pool(default_params().tap(|x| {
-        x.min_tickets = 2;
+        x.min_tickets = 0;
         x.max_tickets = 0;
         x.max_per_wallet = 100;
     }));
@@ -415,11 +415,12 @@ fn event_discriminators_match_the_idl() {
 fn events_decode_from_raw_logs_using_idl_discriminators() {
     // the reference decode path for the server: "Program data: <base64>" -> 8-byte IDL discriminator -> borsh
     let mut e = Env::new();
-    let id = e.create_pool(default_params().tap(|x| x.min_tickets = 1));
+    let created = e.try_create_pool(default_params()).unwrap();
+    let id = 0;
     let a = funded(&mut e.svm, 10 * SOL);
     let r = e.buy(id, &a, 2).unwrap();
     let raw = program_data(&r.logs);
-    assert_eq!(raw.len(), 2, "TicketBought + PoolActivated");
+    assert_eq!(raw.len(), 1, "TicketBought; activation was emitted at creation");
     let bought_disc = idl_discriminator("TicketBought");
     let act_disc = idl_discriminator("PoolActivated");
     let tb = raw.iter().find(|d| d[..8] == bought_disc[..]).expect("TicketBought log");
@@ -431,9 +432,10 @@ fn events_decode_from_raw_logs_using_idl_discriminators() {
     assert_eq!(u64::from_le_bytes(b[38..46].try_into().unwrap()), 2 * PRICE);
     assert_eq!(&b[46..62], &[7u8; 16]);
     assert_eq!(u32::from_le_bytes(b[62..66].try_into().unwrap()), 2);
-    assert_eq!(b[66], 1);
+    assert_eq!(b[66], 0);
     assert_eq!(b.len(), 67);
-    let pa = raw.iter().find(|d| d[..8] == act_disc[..]).expect("PoolActivated log");
+    let created_raw = program_data(&created.logs);
+    let pa = created_raw.iter().find(|d| d[..8] == act_disc[..]).expect("PoolActivated log");
     assert_eq!(pa.len(), 8 + 4 + 4 + 8);
     assert_eq!(i64::from_le_bytes(pa[16..24].try_into().unwrap()), T0);
 
@@ -444,7 +446,7 @@ fn events_decode_from_raw_logs_using_idl_discriminators() {
     let sp = funded(&mut e.svm, SOL);
     e.buy_sponsored(id, &buyer, &sp, 1).unwrap();
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     let r = e.refund(id, &buyer.pubkey(), &sp.pubkey()).unwrap();
     let raw = program_data(&r.logs);
     let rd = idl_discriminator("Refunded");
@@ -464,7 +466,7 @@ fn an_unlucky_buyers_ticket_bump_search_fits_the_server_limits() {
     // a wallet that needs >= 10 extra tries (1 wallet in 1 024) – the devnet rehearsal hit "exceeded CUs meter" with the old 30 000 / 18 000.
     let mut e = Env::new();
     let id = e.create_pool(default_params().tap(|x| {
-        x.min_tickets = 40;
+        x.min_tickets = 0;
         x.max_tickets = 0;
         x.max_per_wallet = 100;
     }));
@@ -475,7 +477,7 @@ fn an_unlucky_buyers_ticket_bump_search_fits_the_server_limits() {
     e.svm.airdrop(&unlucky.pubkey(), 20 * SOL).unwrap();
     let buy = e.buy(id, &unlucky, 1).unwrap().compute_units_consumed;
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     let refund = e.refund(id, &unlucky.pubkey(), &unlucky.pubkey()).unwrap().compute_units_consumed;
     println!("unlucky buyer (>= 10 extra bump tries): buy_ticket {buy} CU, refund {refund} CU");
     assert!(buy < 60_000, "buy_ticket {buy} CU must fit the server's 60 000 limit");

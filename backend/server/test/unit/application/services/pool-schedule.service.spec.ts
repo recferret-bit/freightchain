@@ -1,4 +1,4 @@
-import { ConflictError } from '../../../../src/domain/shared/errors.js';
+import { ConflictError, ServiceUnavailableError } from '../../../../src/domain/shared/errors.js';
 import { PoolScheduleService } from '../../../../src/application/services/pool-schedule.service.js';
 import { commitBlockReason, defaultWeeklySchedule, derivedSchedule, finishWindowFits, LAST_START_MS, lastStartAtFor, MAX_MIN_FINISH_SECS, scheduleMismatch } from '../../../../src/domain/economy/pool-schedule.js';
 import { unitContext } from '../../../support/unit-context.js';
@@ -17,6 +17,14 @@ class MemoryAlerts extends AlertOutboxRepositoryPort {
 }
 
 describe('pool schedule', () => {
+  it('an unavailable RPC blocks entry without inventing schedule drift or sending a money alert', async () => {
+    const ctx = unitContext(), alerts = new MemoryAlerts();
+    const pool = aPool({ lastStartAt: new Date(ctx.now().getTime() + 1000) }, ctx.now());
+    vi.spyOn(ctx.poolChain, 'readPool').mockRejectedValue(new ServiceUnavailableError('RPC unavailable'));
+    const svc = new PoolScheduleService(ctx.poolChain, ctx.clock, ctx.entropy, alerts);
+    await expect(svc.assertEntry(pool, ctx.now())).rejects.toBeInstanceOf(ServiceUnavailableError);
+    expect(alerts.rows).toEqual([]);
+  });
   it('default weekly fields are Tue 18:00, Sun 18:00, −2h, −75min, +1.5d', () => {
     const from = new Date('2026-10-21T12:00:00.000Z'); // Wednesday
     const s = defaultWeeklySchedule(from);
@@ -41,6 +49,14 @@ describe('pool schedule', () => {
     expect(derivedSchedule(short).lastStartAt.getTime()).toBe(play.getTime());
     expect(scheduleMismatch({ ...short, lastStartAt: play }, null)).toBeNull();
     expect(scheduleMismatch({ ...short, lastStartAt: new Date(play.getTime() - LAST_START_MS) }, null)).toMatch(/lastStartAt/);
+  });
+
+  it('compares explicit v6 timestamps with the chain, including future opens', () => {
+    const t = new Date('2030-01-01T00:00:00Z');
+    const chain = chainPool(t, { opensAt: new Date(t.getTime() + 1000), lastStartAt: new Date(t.getTime() + 100000) });
+    expect(scheduleMismatch(chain, chain)).toBeNull();
+    expect(scheduleMismatch({ ...chain, lastStartAt: new Date(t.getTime() + 99999) }, chain)).toBe('lastStartAt');
+    expect(scheduleMismatch({ ...chain, opensAt: t }, chain)).toBe('opensAt');
   });
 
   it('a 2h play window fits min_finish 7200 and not 10800', () => {

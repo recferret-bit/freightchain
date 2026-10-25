@@ -69,3 +69,8 @@ The audit harness (`audit/scripts/harness.mjs`) emits regex leads for the greppa
 
 One line per stage (✓/✗, the hash, test count, audit warnings count), then the review findings ranked by severity. Say plainly what was not checked
 (no deploy → no on-chain comparison; the scanner is a pattern pass, not an audit; the program is **not audited**).
+
+
+### 25 October 2026 dependency disposition
+
+`ctutils` is locked to patched 0.4.4 for RUSTSEC-2026-0385. RUSTSEC-2026-0387 affects `crypto-bigint` 0.5.5, pulled only by LiteSVM → Agave signature recovery → k256/elliptic-curve; that compatible line has no patched release. The automated gate reports an exception only after `cargo tree --workspace --edges normal,build --target all` confirms no production dependency path. A newly reachable path fails the audit. Local fixtures use disposable keys/public signature recovery; this is not a claim that the dependency is patched. Plain `cargo audit` continues to report it until upstream can be upgraded.

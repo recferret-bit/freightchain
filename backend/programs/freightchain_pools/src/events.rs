@@ -27,6 +27,8 @@ pub struct PoolCreated {
     /// v5 snapshot
     pub paid_tickets_enabled: bool,
     pub max_player_share_bps: u16,
+    pub opens_at: i64,
+    pub last_start_at: i64,
 }
 
 #[event]
@@ -46,6 +48,8 @@ pub struct SeriesSet {
     pub fee_treasury: Pubkey,
     pub seed_treasury: Pubkey,
     pub next_open_at: i64,
+    pub period_secs: i64,
+    pub start_buffer_secs: i64,
 }
 
 #[event]

@@ -1,4 +1,4 @@
-import { REFUND_BATCH, SETTLE_GRACE_MS, nextCrankStep } from '../../../../src/domain/economy/pool-crank.js';
+import { REFUND_BATCH, SETTLE_GRACE_MS, nextCrankStep, seriesDue } from '../../../../src/domain/economy/pool-crank.js';
 import { chainPool } from '../../../support/pools.js';
 
 describe('nextCrankStep – what the crank may do, by the chain clock', () => {
@@ -27,5 +27,21 @@ describe('nextCrankStep – what the crank may do, by the chain clock', () => {
     expect(nextCrankStep(pool(now, { status: 'settled' }), at(SETTLE_GRACE_MS * 9))).toBeNull();
     expect(nextCrankStep(pool(now, { status: 'cancelled' }), at(SETTLE_GRACE_MS * 9))).toBeNull();
     expect(REFUND_BATCH).toBe(8);
+  });
+});
+
+
+describe('v6 schedule crank', () => {
+  const now = new Date('2030-01-01T00:00:00Z');
+  it('stops sealing after last start so expiry is reachable', () => {
+    const p = chainPool(now, { status: 'active', sealSlot: 8, createdAt: new Date(0), lastStartAt: new Date(now.getTime() - 1), payoutAt: new Date(now.getTime() - SETTLE_GRACE_MS) });
+    expect(nextCrankStep(p, now)).toBe('expire_pool');
+    expect(nextCrankStep({ ...p, lastStartAt: now }, now)).toBe('seal_road');
+  });
+  it('opens on the weekly grid only while sales are still open, including a late crank', () => {
+    const s = { enabled: true, nextOpenAt: now, saleSecs: 5 * 86400, periodSecs: 7 * 86400 } as Parameters<typeof seriesDue>[0];
+    const at = (days: number) => new Date(now.getTime() + days * 86400000);
+    expect([-1, 0, 4, 5, 6, 7, 11, 12].map(d => seriesDue(s, at(d)))).toEqual([false, true, true, false, false, true, true, false]);
+    expect(seriesDue({ ...s, enabled: false }, now)).toBe(false);
   });
 });

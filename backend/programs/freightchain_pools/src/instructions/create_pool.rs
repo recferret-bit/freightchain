@@ -6,7 +6,7 @@ use anchor_lang::{
 use crate::{
     constants::*,
     error::PoolError,
-    events::PoolCreated,
+    events::{PoolActivated, PoolCreated},
     state::{cap_max_tickets, check_player_share, check_split, Config, Pool},
     vault::rent_min,
 };
@@ -19,12 +19,14 @@ pub struct CreatePoolParams {
     /// 0 = unlimited
     pub max_tickets: u32,
     pub max_per_wallet: u16,
-    /// end of the sale window: no ticket is sold from here on; under the minimum the pool can only fail (refunds)
+    /// end of the sale window: no ticket is sold from here on
     pub prep_deadline: i64,
     /// rides count until here
     pub play_deadline: i64,
     /// end of the review window: prizes and the close only from here on
     pub payout_at: i64,
+    pub opens_at: i64,
+    pub last_start_at: i64,
 }
 
 #[derive(Accounts)]
@@ -56,7 +58,7 @@ pub struct CreatePool<'info> {
 
 /// The money rules every pool keeps, whoever creates it (`create_pool`, `set_series`). The bps split lives on Config and is snapshotted in `init_pool`.
 pub fn check_money_rules(price_lamports: u64, min_tickets: u32, max_tickets: u32, max_per_wallet: u16) -> Result<()> {
-    require!(price_lamports > 0 && min_tickets >= 1, PoolError::InvalidParams);
+    require!(price_lamports > 0 && min_tickets == 0, PoolError::InvalidParams);
     // refunds must be able to land in an empty wallet: a price below the minimum would brick them
     require!(price_lamports >= rent_min()?, PoolError::PriceBelowRentMin);
     require!(max_tickets == 0 || max_tickets >= min_tickets, PoolError::InvalidParams);
@@ -87,7 +89,9 @@ pub fn handle_create_pool(ctx: Context<CreatePool>, p: CreatePoolParams) -> Resu
     let now = Clock::get()?.unix_timestamp;
     check_money_rules(p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet)?;
     require!(
-        p.prep_deadline > now && p.play_deadline >= p.prep_deadline && p.payout_at >= p.play_deadline,
+        p.opens_at > 0 && p.opens_at < p.prep_deadline && p.prep_deadline > now
+            && p.prep_deadline <= p.last_start_at && p.last_start_at < p.play_deadline
+            && p.payout_at >= p.play_deadline,
         PoolError::InvalidParams
     );
     require!(p.payout_at - now <= MAX_POOL_SECS, PoolError::InvalidParams);
@@ -104,6 +108,8 @@ pub fn handle_create_pool(ctx: Context<CreatePool>, p: CreatePoolParams) -> Resu
         prep_deadline: p.prep_deadline,
         play_deadline: p.play_deadline,
         payout_at: p.payout_at,
+        opens_at: p.opens_at,
+        last_start_at: p.last_start_at,
         fee_treasury: a.fee_treasury.key(),
         seed_treasury: a.seed_treasury.key(),
     };
@@ -125,6 +131,8 @@ pub struct PoolRules {
     pub payout_at: i64,
     pub fee_treasury: Pubkey,
     pub seed_treasury: Pubkey,
+    pub opens_at: i64,
+    pub last_start_at: i64,
 }
 
 /// The road seed's commitment: SHA-256(pool_id LE u32 || hash || slot LE u64) of one SlotHashes entry (`seal_road`, road.rs) – the server derives the
@@ -179,7 +187,9 @@ pub fn init_pool<'info>(
     pool.max_player_share_bps = config.max_player_share_bps;
     pool.fee_treasury = r.fee_treasury;
     pool.seed_treasury = r.seed_treasury;
-    pool.status = STATUS_OPEN;
+    pool.status = STATUS_ACTIVE;
+    pool.opens_at = r.opens_at;
+    pool.last_start_at = r.last_start_at;
     pool.tickets_sold = 0;
     pool.buyers = 0;
     pool.sponsored = 0;
@@ -228,6 +238,9 @@ pub fn init_pool<'info>(
         seed_slot_hash: [0; 32],
         paid_tickets_enabled: pool.paid_tickets_enabled,
         max_player_share_bps: pool.max_player_share_bps,
+        opens_at: pool.opens_at,
+        last_start_at: pool.last_start_at,
     });
+    emit!(PoolActivated { pool_id, tickets_sold: 0, at: now });
     Ok(pool_id)
 }

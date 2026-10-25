@@ -38,6 +38,8 @@ export interface PoolCreatedFields {
   /** 0 = unlimited */
   maxTickets?: number;
   maxPerWallet?: number;
+  opensAt?: Date;
+  lastStartAt?: Date;
   prepDeadline?: Date;
   playDeadline?: Date;
   payoutAt?: Date;
@@ -135,6 +137,9 @@ export interface PoolChainState {
   /** 0 = unlimited */
   maxTickets: number;
   maxPerWallet: number;
+  /** Explicit v6 schedule; absent on historical fixtures. */
+  opensAt?: Date;
+  lastStartAt?: Date;
   prepDeadline: Date;
   playDeadline: Date;
   /** the end of the review window – prizes and the close only from here on */
@@ -184,7 +189,9 @@ export interface SeriesChainState {
   minTickets: number;
   maxTickets: number;
   maxPerWallet: number;
-  /** sale window = cadence */
+  /** Sale window and cadence are separate in v6. */
+  periodSecs?: number;
+  startBufferSecs?: number;
   saleSecs: number;
   playSecs: number;
   verifySecs: number;

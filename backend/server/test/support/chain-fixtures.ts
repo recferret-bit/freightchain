@@ -40,7 +40,7 @@ export function expectedEvent(e: FixtureEvent): Record<string, unknown> {
     if (k === 'orderId') {
       const hex = Buffer.from(String(v), 'base64').toString('hex');
       out[k] = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-    } else if (['prepDeadline', 'playDeadline', 'payoutAt', 'nextOpenAt', 'saleSecs', 'playSecs', 'verifySecs', 'at', 'createdAt', 'recordedAt', 'committedAt', 'payFrom', 'settleFrom', 'minReviewSecs', 'minFinishSecs'].includes(k)) out[k] = new Date(Number(v) * 1000); // i64 decodes as a Date (durations too)
+    } else if (['opensAt', 'lastStartAt', 'periodSecs', 'startBufferSecs', 'prepDeadline', 'playDeadline', 'payoutAt', 'nextOpenAt', 'saleSecs', 'playSecs', 'verifySecs', 'at', 'createdAt', 'recordedAt', 'committedAt', 'payFrom', 'settleFrom', 'minReviewSecs', 'minFinishSecs'].includes(k)) out[k] = new Date(Number(v) * 1000); // i64 decodes as a Date (durations too)
     else if (k === 'paidMask') out[k] = BigInt(String(v));   // a u64 bitfield stays exact (the codec's BITFIELDS)
     else if (typeof v === 'string' && /^\d+$/.test(v)) out[k] = Number(v);
     else out[k] = v;

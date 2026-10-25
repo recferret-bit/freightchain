@@ -43,7 +43,7 @@ impl Open for freightchain_pools::CreatePoolParams {
     fn with_open(mut self) -> Self {
         self.max_tickets = 0;
         self.max_per_wallet = 100;
-        self.min_tickets = 2;
+        self.min_tickets = 0;
         self
     }
     fn reviewed(mut self) -> Self {
@@ -225,7 +225,8 @@ fn pay_prize_bounded_by_the_committed_total_and_the_prize_share() {
 #[test]
 fn pay_prize_needs_an_active_pool_a_committed_root_and_a_rent_exempt_receiver() {
     let mut e = Env::new();
-    let id = e.create_pool(default_params()); // Open
+    let id = e.create_pool(default_params());
+    e.cancel_by_admin(id).unwrap(); // terminal/refunding states cannot pay
     let a = e.authority_kp();
     e.warp(PLAY);
     let w = funded(&mut e.svm, SOL);
@@ -548,9 +549,9 @@ fn close_pool_guards() {
     // already settled
     assert_err!(e.close_pool(id, &auth), PoolError::PoolNotActive);
     assert_err!(e.pay_rank(id, 0), PoolError::PoolNotActive);
-    // an Open pool cannot be closed
+    // A newly active pool cannot close before its payout window
     let id2 = e.create_pool(later(&e, default_params()));
-    assert_err!(e.close_pool(id2, &auth), PoolError::PoolNotActive);
+    assert_err!(e.close_pool(id2, &auth), PoolError::TooEarly);
     // past payout_at with no root: the admin must commit first (a root of no winner at least)
     let lp = later(&e, default_params().with_open());
     let (id3, _) = active_pool_with(&mut e, 2, 3, lp);

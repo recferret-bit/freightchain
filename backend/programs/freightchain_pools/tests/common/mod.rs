@@ -162,13 +162,15 @@ pub fn daily_series(start_at: i64) -> SeriesParams {
         tier: 1,
         enabled: true,
         price_lamports: PRICE,
-        min_tickets: 3,
+        min_tickets: 0,
         max_tickets: 0,
         max_per_wallet: 4,
         sale_secs: DAY,
         play_secs: 2 * HOUR,
         verify_secs: 2 * DAY,
         start_at,
+        period_secs: DAY,
+        start_buffer_secs: 4_500,
     }
 }
 
@@ -184,12 +186,14 @@ pub fn default_params() -> CreatePoolParams {
     CreatePoolParams {
         tier: 1,
         price_lamports: PRICE,
-        min_tickets: 3,
+        min_tickets: 0,
         max_tickets: 10,
         max_per_wallet: 4,
         prep_deadline: PREP,
         play_deadline: PLAY,
         payout_at: PAYOUT,
+        opens_at: T0,
+        last_start_at: PLAY - 1,
     }
 }
 
@@ -402,6 +406,10 @@ impl Env {
         let c = clone_kp(&self.cranker);
         let i = self.fail_ix(id, &c.pubkey());
         self.send(&[i], &c, &[])
+    }
+
+    pub fn cancel_by_admin(&mut self, id: u32) -> Res {
+        self.cancel(id, &self.authority_kp())
     }
 
     pub fn cancel(&mut self, id: u32, who: &Keypair) -> Res {
@@ -984,5 +992,7 @@ pub fn later(e: &Env, mut p: CreatePoolParams) -> CreatePoolParams {
     p.prep_deadline = now + 1_000;
     p.play_deadline = now + 5_000;
     p.payout_at = now + 5_000;
+    p.opens_at = now;
+    p.last_start_at = p.play_deadline - 1;
     p
 }

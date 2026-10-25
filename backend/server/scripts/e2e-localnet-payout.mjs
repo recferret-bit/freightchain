@@ -1,6 +1,6 @@
 // TEN riders, one escrowed pool, the whole money loop on a LOCAL chain – started by .claude/skills/localnet-e2e/run.sh after e2e-localnet.mjs (or alone:
 // SCENARIO=payout). Real program transactions, real lamports, every balance asserted; explained in docs/tech/localnet-e2e/index.html ("Ten riders").
-//   1. pool D (1h, min 10, ≤ 2 per wallet) – 10 wallets buy 11 tickets: the lobby in headless Chrome and Node wallets (every wallet signs AND
+//   1. pool D (1h, operator-funded, ≤ 2 per wallet) – 10 wallets buy 11 tickets: the lobby in headless Chrome and Node wallets (every wallet signs AND
 //      sends, pays its own fee and Ticket rent; /confirm), one wallet 2 at once; open at 9, live at 10+; a sponsorship
 //   2. the rides – the FINISHED RIDES are made through the same API the game uses (no admin back door: a server that let an admin write recordings would let
 //      it mint winners): every bot signs in, spends its ticket, starts, heartbeats (answers the dispatch prompts), uploads hash-chained 10 Hz recordings that
@@ -200,7 +200,7 @@ try {
   check('Config: the admin is the program authority, nothing paused', cfg.authority === ADMIN && cfg.paused === false, JSON.stringify(cfg));
 
   // ── 1. pool D: three refused creations (each check of create_pool), then the real one
-  const mkArgs = (tier, price, min, max, per, prep, play, split = SPLIT.join('/'), t = treas) => ['create-pool', '--tier', tier, '--price', String(price), '--min', String(min), '--max', String(max), '--per-wallet', String(per), '--prep', `+${prep}`, '--play', `+${play}`, '--split', split, ...t, '-k', `${KEYS}/admin.json`];
+  const mkArgs = (tier, price, min, max, per, prep, play, split = SPLIT.join('/'), t = treas) => ['create-pool', '--tier', tier, '--price', String(price), '--min', '0', '--max', String(max), '--per-wallet', String(per), '--prep', `+${prep}`, '--play', `+${play}`, '--last-start', `+${play - 1}`, '--split', split, ...t, '-k', `${KEYS}/admin.json`];
   refuse('create_pool: shares that do not add up to 100 %', mkArgs('1h', PRICE, 10, 0, 2, 60, 120, '7000/2000/2000'), 'BpsSum');
   refuse('create_pool: a price below the rent minimum (a refund could not land)', mkArgs('1h', 1000, 10, 0, 2, 60, 120), 'PriceBelowRentMin');
   const empty = Keypair.generate().publicKey.toBase58();
@@ -209,7 +209,7 @@ try {
   const sealD = await sealRoad({ conn, codec, admintool, id: D, keyfile: `${KEYS}/admin.json` });   // v4 (L4): no ride before the road is sealed (the crank's job on a server)
   execFileSync('node', ['dist/cli/index.js', 'pool:register', String(D), '--label', 'TEN RIDERS'], { stdio: 'ignore' });
   const vD = codec.vaultPda(D).toBase58();
-  check(`pool D (#${D}, 1h, min 10, ≤ 2 per wallet): open on chain and on the server, vault = rent minimum, its road sealed`, (await poolAcc(D)).status === 0 && (await serverPool(D)).status === 'open' && (await bal(vD)) === RENT0 && Number(sealD?.pool.sealSlot) === 0 && Number(sealD.pool.seedSlot) > 0);
+  check(`pool D (#${D}, 1h, operator-funded, ≤ 2 per wallet): open on chain and on the server, vault = rent minimum, its road sealed`, (await poolAcc(D)).status === 1 && (await serverPool(D)).status === 'active' && (await bal(vD)) === RENT0 && Number(sealD?.pool.sealSlot) === 0 && Number(sealD.pool.seedSlot) > 0);
   refuse('seal_road of a pool already sealed', ['seal-road', '--pool', String(D), '-k', `${KEYS}/admin.json`], 'RoadAlreadySealed');
 
   // ── 2. ten wallets buy eleven tickets
@@ -232,7 +232,7 @@ try {
     check(`${p.name} buys 1 (/confirm): −(price + fee + Ticket rent) exactly`, paid && b - (await bal(p.wallet)) === PRICE + (await fee(sig)) + ticketRent);
   }
   let pd = await poolAcc(D);
-  check('chain: 9 tickets sold, pool D still OPEN (9 < min 10)', pd.ticketsSold === 9 && pd.status === 0, JSON.stringify({ sold: pd.ticketsSold, status: pd.status }));
+  check('chain: 9 tickets sold, pool D still ACTIVE with nine tickets', pd.ticketsSold === 9 && pd.status === 1, JSON.stringify({ sold: pd.ticketsSold, status: pd.status }));
   refuse('R8 buys 3 at once (≤ 2 per wallet)', ['buy', '-k', R8.keyfile, '--pool', String(D), '--qty', '3'], 'WalletCap');
   before = await bals({ r8: R8.wallet });
   const b8 = await buySelf(R8, D, 2);
@@ -250,7 +250,7 @@ try {
   check(`vault D = rent + 11 × price + sponsorship`, (await bal(vD)) === RENT0 + 11 * PRICE + SPONSOR);
   // a live pool is nobody's to fail, cancel, refund or settle early
   refuse('fail_pool on the live pool D', ['fail-pool', '--pool', String(D), '-k', Z.keyfile], 'NotFailable');
-  refuse('cancel_pool on the live pool D (only an open pool)', ['cancel-pool', '--pool', String(D), '-k', `${KEYS}/admin.json`], 'PoolNotOpen');
+  refuse('cancel_pool by a stranger on active pool D', ['cancel-pool', '--pool', String(D), '-k', Z.keyfile], 'Unauthorized');
   refuse('refund from the live pool D', ['refund', '--pool', String(D), '--buyer', R5.wallet, '-k', Z.keyfile], 'NotRefunding');
   refuse('close_ticket in the live pool D (only once settled)', ['close-ticket', '--pool', String(D), '--buyer', R5.wallet, '-k', Z.keyfile], 'NotSettled');
   // v4 (H5-B): a prize is paid only from a committed winners root – committed by the admin / payout key once the rides are over, public until its lock ends
@@ -417,7 +417,7 @@ try {
   check('the seed treasury sponsors pool E with exactly pool D\'s seed leg (+ its fee and the SponsorReceipt\'s rent)', after.vault - before.vault === seedFromD && before.seed - after.seed === seedFromD + (await fee(se.signature)) + receiptRent && se.pool.sponsored === seedFromD, `${before.seed - after.seed}`);
   const eBound = prizeBound({ priceLamports: PRICE, ticketsSold: 0, sponsored: seedFromD, prizeBps: SPLIT[0], seedBps: SPLIT[1] });
   check(`pool E's prize cap before a single ticket: ${eBound} lamports (70 % of the rolled-over seed)`, eBound === Math.floor(seedFromD * SPLIT[0] / 10_000) && eBound > 0);
-  check('server mirror: pool E open with the sponsorship', await until(async () => { const s = await serverPool(E); return s.status === 'open' && s.sponsoredLamports === seedFromD; }, 20000), JSON.stringify(await serverPool(E)).slice(0, 200));
+  check('server mirror: pool E open with the sponsorship', await until(async () => { const s = await serverPool(E); return s.status === 'active' && s.sponsoredLamports === seedFromD; }, 20000), JSON.stringify(await serverPool(E)).slice(0, 200));
   await h1.lobby();
   const seedTxt = `sponsored ${(seedFromD / 1e9).toFixed(seedFromD >= 1e9 ? 2 : 3)} SOL`;
   check(`lobby: the 1h card shows the next pool with "${seedTxt}"`, !!(await until(async () => (await h1.txt('#tier-1h')).includes(seedTxt), 15000)), (await h1.txt('#tier-1h')).slice(0, 240));
@@ -432,8 +432,9 @@ try {
   admintool(['set-config', '--paused', 'false', ...adm]);
   check('set_config: running again', (await account('Config', codec.configPda())).paused === false);
   // v4 floors: the cold admin may raise them – a new pool must then leave that long after its sale (min_finish_secs) / its play deadline (min_review_secs)
-  const fl = admintool(['set-config', '--min-finish-secs', '100000', ...adm]).config;
-  check('set_config: the finish floor raised to 100 000 s (FloorsSet)', ms(fl.minFinishSecs) === 100_000_000, JSON.stringify(fl.minFinishSecs));
+  refuse('set_config cannot raise the finish floor above two hours', ['set-config', '--min-finish-secs', '7201', ...adm], 'InvalidParams');
+  const fl = admintool(['set-config', '--min-finish-secs', '7200', ...adm]).config;
+  check('set_config: the finish floor raised to 7200 s (FloorsSet)', ms(fl.minFinishSecs) === 7_200_000, JSON.stringify(fl.minFinishSecs));
   refuse('create_pool with a play window under the finish floor', mkArgs('4h', PRICE, 1, 1, 1, 30, 40), 'WindowTooShort');
   admintool(['set-config', '--min-finish-secs', '0', ...adm]);
   refuse('migrate_config_v4 of a Config already in the v4 layout', ['migrate-config', ...adm], 'AlreadyMigrated');
@@ -482,7 +483,7 @@ try {
     const RA = FX.rearmPool, p0 = await poolAcc(RA);
     let slot = await conn.getSlot('confirmed');
     if (slot <= Number(p0.sealSlot) + 520) { console.log(`     … waiting for slot ${Number(p0.sealSlot) + 520} (the seal slot leaves the SlotHashes window)`); while ((slot = await conn.getSlot('confirmed')) <= Number(p0.sealSlot) + 520) await sleep(2000); }
-    check(`pool ${RA} (opened in phase 1, never sealed): open, its seal slot ${p0.sealSlot} has left the 512-slot SlotHashes window (slot ${slot})`, p0.status === 0 && Number(p0.sealSlot) > 0 && /^A+=*$/.test(p0.seedCommitment));
+    check(`pool ${RA} (opened in phase 1, never sealed): open, its seal slot ${p0.sealSlot} has left the 512-slot SlotHashes window (slot ${slot})`, p0.status === 1 && Number(p0.sealSlot) > 0 && /^A+=*$/.test(p0.seedCommitment));
     const rr = admintool(['seal-road', '--pool', String(RA), '-k', Z.keyfile]);
     const lines = codec.programData((await conn.getTransaction(rr.signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 })).meta.logMessages);
     const evs = lines === 'truncated' ? [] : lines.map(l => codec.decodeEvent(l.bytes)).filter(Boolean);

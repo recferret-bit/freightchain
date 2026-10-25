@@ -2,9 +2,9 @@
   "address": "8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p",
   "metadata": {
     "name": "freightchain_pools",
-    "version": "5.0.0",
+    "version": "6.0.0",
     "spec": "0.1.0",
-    "description": "Escrowed prize pools v5: no referral leg, admin pool rules snapshotted per pool"
+    "description": "Operator-funded prize pools v6: explicit sale and last-start times, independent series cadence"
   },
   "instructions": [
     {
@@ -3639,7 +3639,7 @@
           {
             "name": "min_finish_secs",
             "docs": [
-              "v4: the play window every new pool keeps after its sale (no sale, no new ride after it – the shifts on the road finish) (DEFAULT_MIN_FINISH_SECS)."
+              "Minimum play window after sales close (DEFAULT_MIN_FINISH_SECS); v6 limits this floor to two hours."
             ],
             "type": "i64"
           },
@@ -3729,7 +3729,7 @@
           {
             "name": "prep_deadline",
             "docs": [
-              "end of the sale window: no ticket is sold from here on; under the minimum the pool can only fail (refunds)"
+              "end of the sale window: no ticket is sold from here on"
             ],
             "type": "i64"
           },
@@ -3745,6 +3745,14 @@
             "docs": [
               "end of the review window: prizes and the close only from here on"
             ],
+            "type": "i64"
+          },
+          {
+            "name": "opens_at",
+            "type": "i64"
+          },
+          {
+            "name": "last_start_at",
             "type": "i64"
           }
         ]
@@ -4190,6 +4198,17 @@
               "v5 snapshot of `Config.max_player_share_bps`. Ticket lamports above the room this allows are not in the prize base; `close_pool` carries them to the seed treasury."
             ],
             "type": "u16"
+          },
+          {
+            "name": "opens_at",
+            "docs": [
+              "v6: explicit sale opening and last permitted ride start."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "last_start_at",
+            "type": "i64"
           }
         ]
       }
@@ -4401,6 +4420,14 @@
           {
             "name": "max_player_share_bps",
             "type": "u16"
+          },
+          {
+            "name": "opens_at",
+            "type": "i64"
+          },
+          {
+            "name": "last_start_at",
+            "type": "i64"
           }
         ]
       }
@@ -4717,8 +4744,7 @@
     {
       "name": "Series",
       "docs": [
-        "One schedule per tier, written by the admin (`set_series`): every pool `open_next_pool` creates takes these rules. Pools tile time:",
-        "the next one opens when this one stops selling (`next_open_at`), so a 24 h sale window = one pool a day."
+        "One schedule per tier, written by the admin (`set_series`): sale windows start on an independent period grid."
       ],
       "type": {
         "kind": "struct",
@@ -4753,7 +4779,7 @@
           {
             "name": "sale_secs",
             "docs": [
-              "sale window = cadence (seconds)"
+              "Sale window in seconds, at most `period_secs`."
             ],
             "type": "i64"
           },
@@ -4811,6 +4837,20 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "period_secs",
+            "docs": [
+              "v6: cadence independent of the sale window."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "start_buffer_secs",
+            "docs": [
+              "v6: last start is play_deadline minus this buffer."
+            ],
+            "type": "i64"
           }
         ]
       }
@@ -4873,6 +4913,14 @@
             "docs": [
               "the first sale slot starts here; 0 = keep the series' current `next_open_at` (refused for a new series)"
             ],
+            "type": "i64"
+          },
+          {
+            "name": "period_secs",
+            "type": "i64"
+          },
+          {
+            "name": "start_buffer_secs",
             "type": "i64"
           }
         ]
@@ -4941,6 +4989,14 @@
           },
           {
             "name": "next_open_at",
+            "type": "i64"
+          },
+          {
+            "name": "period_secs",
+            "type": "i64"
+          },
+          {
+            "name": "start_buffer_secs",
             "type": "i64"
           }
         ]

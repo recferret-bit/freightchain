@@ -4,13 +4,13 @@ mod common;
 use common::*;
 use freightchain_pools::{
     error::PoolError,
-    events::{PoolCancelled, PoolClosed, PoolFailed, Refunded, SponsorRefunded, Sponsored},
+    events::{PoolCancelled, PoolClosed, Refunded, SponsorRefunded, Sponsored},
 };
 use solana_keypair::Keypair;
 use solana_signer::Signer;
 
 /// Pool with min 3 and 2 buyers (1 + 1 tickets), each paid for by its own sponsor key. Still Open.
-fn failing_pool(e: &mut Env) -> (u32, Vec<(Keypair, Keypair)>) {
+fn cancellable_pool(e: &mut Env) -> (u32, Vec<(Keypair, Keypair)>) {
     let id = e.create_pool(default_params());
     let mut v = vec![];
     for _ in 0..2 {
@@ -25,19 +25,15 @@ fn failing_pool(e: &mut Env) -> (u32, Vec<(Keypair, Keypair)>) {
 #[test]
 fn fail_pool_conditions() {
     let mut e = Env::new();
-    let (id, _) = failing_pool(&mut e);
+    let (id, _) = cancellable_pool(&mut e);
     // before the deadline
     assert_err!(e.fail(id), PoolError::NotFailable);
     e.warp(PREP - 1);
     assert_err!(e.fail(id), PoolError::NotFailable);
-    // after the deadline, below min: anyone can crank
+    // Few sales never refund an operator-funded pool.
     e.warp(PREP);
-    let r = e.fail(id).unwrap();
-    let ev = events::<PoolFailed>(&r.logs);
-    assert_eq!((ev[0].pool_id, ev[0].tickets_sold), (id, 2));
-    assert_eq!(e.pool(id).status, 2);
-    // not twice
     assert_err!(e.fail(id), PoolError::NotFailable);
+    assert_eq!(e.pool(id).status, 1);
 
     // an Active pool (min reached) can never be failed, even past the deadline
     let id2 = e.create_pool(default_params().with(|x| {
@@ -64,11 +60,11 @@ impl With for freightchain_pools::CreatePoolParams {
 #[test]
 fn refund_returns_price_to_buyer_and_rent_to_rent_payer() {
     let mut e = Env::new();
-    let (id, buyers) = failing_pool(&mut e);
+    let (id, buyers) = cancellable_pool(&mut e);
     let vault_before = e.vault(id);
     assert_eq!(vault_before, e.rent_min() + 2 * PRICE);
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
 
     for (buyer, sponsor) in &buyers {
         let rent = e.bal(&ticket_pda(id, &buyer.pubkey()));
@@ -95,9 +91,9 @@ fn refund_returns_price_to_buyer_and_rent_to_rent_payer() {
 #[test]
 fn refund_to_wrong_accounts_is_rejected() {
     let mut e = Env::new();
-    let (id, buyers) = failing_pool(&mut e);
+    let (id, buyers) = cancellable_pool(&mut e);
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     let (b, s) = (&buyers[0].0, &buyers[0].1);
     let thief = Keypair::new();
     // price to someone else: the Ticket PDA is derived from the buyer account, so it does not even exist
@@ -110,7 +106,7 @@ fn refund_to_wrong_accounts_is_rejected() {
 #[test]
 fn refund_requires_refunding_state() {
     let mut e = Env::new();
-    let (id, buyers) = failing_pool(&mut e);
+    let (id, buyers) = cancellable_pool(&mut e);
     let (b, s) = (&buyers[0].0, &buyers[0].1);
     assert_err!(e.refund(id, &b.pubkey(), &s.pubkey()), PoolError::NotRefunding); // Open
     let a = funded(&mut e.svm, 10 * SOL);
@@ -121,9 +117,9 @@ fn refund_requires_refunding_state() {
 #[test]
 fn refund_twice_is_rejected_and_pays_nothing() {
     let mut e = Env::new();
-    let (id, buyers) = failing_pool(&mut e);
+    let (id, buyers) = cancellable_pool(&mut e);
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     let (b, s) = (&buyers[0].0, &buyers[0].1);
     e.refund(id, &b.pubkey(), &s.pubkey()).unwrap();
     let (v, bb, ss) = (e.vault(id), e.bal(&b.pubkey()), e.bal(&s.pubkey()));
@@ -136,7 +132,7 @@ fn refund_twice_is_rejected_and_pays_nothing() {
 fn batch_of_eight_refunds_and_resent_batch() {
     let mut e = Env::new();
     let id = e.create_pool(default_params().with(|x| {
-        x.min_tickets = 20;
+        x.min_tickets = 0;
         x.max_tickets = 0;
     }));
     let sponsor = funded(&mut e.svm, 10 * SOL);
@@ -147,7 +143,7 @@ fn batch_of_eight_refunds_and_resent_batch() {
         buyers.push(b);
     }
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     let before: Vec<u64> = buyers.iter().map(|b| e.bal(&b.pubkey())).collect();
     let s0 = e.bal(&sponsor.pubkey());
     let rent_total: u64 = buyers.iter().map(|b| e.bal(&ticket_pda(id, &b.pubkey()))).sum();
@@ -174,9 +170,9 @@ fn batch_of_eight_refunds_and_resent_batch() {
 fn resent_batch_after_partial_progress_is_rebuilt_from_remaining() {
     // one buyer was refunded by another cranker: the stale batch fails atomically, the rebuilt one lands
     let mut e = Env::new();
-    let (id, buyers) = failing_pool(&mut e);
+    let (id, buyers) = cancellable_pool(&mut e);
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     let c = clone_kp(&e.cranker);
     let all: Vec<_> = buyers.iter().map(|(b, s)| e.refund_ix(id, &c.pubkey(), &b.pubkey(), &s.pubkey())).collect();
     e.refund(id, &buyers[0].0.pubkey(), &buyers[0].1.pubkey()).unwrap();
@@ -190,7 +186,7 @@ fn resent_batch_after_partial_progress_is_rebuilt_from_remaining() {
 #[test]
 fn close_pool_after_refunds_returns_sponsorship_and_sweeps_rent() {
     let mut e = Env::new();
-    let (id, buyers) = failing_pool(&mut e);
+    let (id, buyers) = cancellable_pool(&mut e);
     let sp = funded(&mut e.svm, 10 * SOL);
     let r = {
         let i = e.sponsor_ix(id, &sp.pubkey(), 777_777);
@@ -199,7 +195,7 @@ fn close_pool_after_refunds_returns_sponsorship_and_sweeps_rent() {
     let ev = events::<Sponsored>(&r.logs);
     assert_eq!((ev[0].lamports, ev[0].sponsored_total), (777_777, 777_777));
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     let auth = e.authority_kp();
     // refunds still pending
     assert_err!(e.close_pool(id, &auth), PoolError::RefundsPending);
@@ -226,9 +222,9 @@ fn close_pool_after_refunds_returns_sponsorship_and_sweeps_rent() {
 
 /// audit s1-claude poc_05 (M8): two sponsors (one sponsoring twice = one receipt with the sum); a stranger cranks every refund.
 #[test]
-fn failed_pool_refunds_every_sponsor_before_it_closes() {
+fn cancelled_pool_refunds_every_sponsor_before_it_closes() {
     let mut e = Env::new();
-    let (id, buyers) = failing_pool(&mut e);
+    let (id, buyers) = cancellable_pool(&mut e);
     let a = funded(&mut e.svm, 10 * SOL);
     let b = funded(&mut e.svm, 10 * SOL);
     for (s, l) in [(&a, 2 * SOL), (&b, 300_000_000), (&a, 5)] {
@@ -242,7 +238,7 @@ fn failed_pool_refunds_every_sponsor_before_it_closes() {
     // not before the pool fails
     assert_err!(e.refund_sponsor(id, &a.pubkey()), PoolError::NotRefunding);
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     let stranger = funded(&mut e.svm, SOL);
 
     // the sponsors first: the ticket money stays for the buyers
@@ -364,7 +360,7 @@ fn close_sponsor_receipt_only_after_settled_returns_the_rent() {
 fn expired_pool_returns_the_sponsorship() {
     let mut e = Env::new();
     let id = e.create_pool(default_params().with(|x| {
-        x.min_tickets = 2;
+        x.min_tickets = 0;
         x.max_tickets = 0;
     }));
     let sponsor = funded(&mut e.svm, 10 * SOL);
@@ -388,24 +384,24 @@ fn expired_pool_returns_the_sponsorship() {
 }
 
 #[test]
-fn cancel_pool_authority_only_open_only_then_refunds() {
+fn cancel_pool_authority_only_active_only_then_refunds() {
     let mut e = Env::new();
-    let (id, buyers) = failing_pool(&mut e);
+    let (id, buyers) = cancellable_pool(&mut e);
     let stranger = funded(&mut e.svm, SOL);
     assert_err!(e.cancel(id, &stranger), PoolError::Unauthorized);
     let auth = e.authority_kp();
     let r = e.cancel(id, &auth).unwrap();
     assert_eq!(events::<PoolCancelled>(&r.logs)[0].tickets_sold, 2);
     assert_eq!(e.pool(id).status, 2);
-    assert_err!(e.cancel(id, &auth), PoolError::PoolNotOpen);
+    assert_err!(e.cancel(id, &auth), PoolError::PoolNotActive);
     // refunds work before any deadline for a cancelled pool
     e.refund(id, &buyers[0].0.pubkey(), &buyers[0].1.pubkey()).unwrap();
 
-    // an Active pool cannot be cancelled
+    // A sold pool can be cancelled before any prize payment
     let id2 = e.create_pool(default_params());
     let a = funded(&mut e.svm, 10 * SOL);
     e.buy(id2, &a, 3).unwrap();
-    assert_err!(e.cancel(id2, &auth), PoolError::PoolNotOpen);
+    e.cancel(id2, &auth).unwrap();
 }
 
 #[test]
@@ -441,7 +437,7 @@ fn sponsor_counted_and_state_checked() {
 #[test]
 fn refund_sponsor_counts_the_receipts_rent_toward_the_sponsors_minimum() {
     let mut e = Env::new();
-    let (id, buyers) = failing_pool(&mut e);
+    let (id, buyers) = cancellable_pool(&mut e);
     let sponsor = funded(&mut e.svm, SOL);
     let i = e.sponsor_ix(id, &sponsor.pubkey(), 1);
     e.send(&[i], &sponsor, &[]).unwrap();
@@ -449,7 +445,7 @@ fn refund_sponsor_counts_the_receipts_rent_toward_the_sponsors_minimum() {
     acc.lamports = 0;
     e.svm.set_account(sponsor.pubkey(), acc).unwrap();
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     for (b, rp) in &buyers {
         e.refund(id, &b.pubkey(), &rp.pubkey()).unwrap();
     }

@@ -241,11 +241,11 @@ async function checkOpened(id, label) {
   check(`${label}: the crank paid the Pool rent + the vault rent minimum + its fee, exactly; it is the pool's creator record`, open.change(addr('crank')) === -(POOL_RENT + RENT0 + open.fee) && p.authority === addr('crank') && open.change(codec.vaultPda(id).toBase58()) === RENT0, `${open.change(addr('crank'))} vs −${POOL_RENT + RENT0 + open.fee}`);
   const live = await config();
   // open_next_pool copies the Config split onto the pool. The series row keeps whatever set_series stored, which on this program is not that split.
-  check(`${label}: rules + deadlines from the series (sale ${D.saleSecs} s on the grid, play +${D.playSecs} s, review +${D.reviewSecs} s)`, p.status === 0 && p.tier === 1 && p.priceLamports === PRICE && p.minTickets === D.minTickets && p.maxPerWallet === D.maxPerWallet && p.prizeBps === live.prizeBps && p.seedBps === live.seedBps
+  check(`${label}: rules + deadlines from the series (sale ${D.saleSecs} s on the grid, play +${D.playSecs} s, review +${D.reviewSecs} s)`, p.status === 1 && p.tier === 1 && p.priceLamports === PRICE && p.minTickets === D.minTickets && p.maxPerWallet === D.maxPerWallet && p.prizeBps === live.prizeBps && p.seedBps === live.seedBps
     && secs(p.prepDeadline) === secs(sr.nextOpenAt) && secs(p.playDeadline) === secs(p.prepDeadline) + D.playSecs && secs(p.payoutAt) === secs(p.playDeadline) + D.reviewSecs && secs(p.createdAt) >= secs(p.prepDeadline) - D.saleSecs,
   JSON.stringify({ created: p.createdAt, prep: p.prepDeadline, play: p.playDeadline, payoutAt: p.payoutAt, nextOpenAt: sr.nextOpenAt }));
   const listed = await until(async () => (await api('pools')).j.pools?.find(x => x.id === id), 20000, 1000);
-  check(`${label}: the server mirror registered it (GET /api/pools: open, the same deadlines)`, listed?.status === 'open' && listed.tier === '1h' && listed.payoutAt === p.payoutAt.getTime() && listed.prepDeadline === p.prepDeadline.getTime(), JSON.stringify(listed).slice(0, 240));
+  check(`${label}: the server mirror registered it (GET /api/pools: open, the same deadlines)`, listed?.status === 'active' && listed.tier === '1h' && listed.payoutAt === p.payoutAt.getTime() && listed.prepDeadline === p.prepDeadline.getTime(), JSON.stringify(listed).slice(0, 240));
   return p;
 }
 
@@ -271,11 +271,11 @@ try {
   // ── 1. the admin's last signatures of the day
   const spa = admintool(['set-payout-authority', '--payout', PAYOUT, ...adm]);
   check('set_payout_authority by the admin: Config names the payout key', spa.config.payoutAuthority === PAYOUT);
-  const s4 = admintool(['set-series', '--tier', '4h', '--price', String(PRICE), '--min', '5', '--per-wallet', '2', '--sale-hours', '24', '--play-hours', '4', '--review-hours', '48', '--start', '+60', '--enabled', 'false', ...treas, ...adm]).series;
+  const s4 = admintool(['set-series', '--tier', '4h', '--price', String(PRICE), '--min', '0', '--per-wallet', '2', '--sale-hours', '24', '--play-hours', '4', '--review-hours', '48', '--start', '+60', '--enabled', 'false', ...treas, ...adm]).series;
   check('set_series by the admin: a 4h series, DISABLED', s4?.enabled === false && s4.tier === 2);
   refuse('open_next_pool of a disabled series', ['open-next-pool', '--tier', '4h', '-k', Z.keyfile], 'SeriesDisabled');
-  refuse('the payout key creates a pool', ['create-pool', '--tier', '1h', '--price', String(PRICE), '--min', '1', '--prep', '+600', '--play', '+700', ...treas, '-k', `${KEYS}/payout.json`], 'Unauthorized');
-  refuse('the payout key writes a series', ['set-series', '--tier', '4h', '--price', String(PRICE), '--min', '5', '--sale-hours', '24', '--play-hours', '4', '--review-hours', '48', ...treas, '-k', `${KEYS}/payout.json`], 'Unauthorized');
+  refuse('the payout key creates a pool', ['create-pool', '--tier', '1h', '--price', String(PRICE), '--min', '0', '--prep', '+600', '--play', '+700', ...treas, '-k', `${KEYS}/payout.json`], 'Unauthorized');
+  refuse('the payout key writes a series', ['set-series', '--tier', '4h', '--price', String(PRICE), '--min', '0', '--sale-hours', '24', '--play-hours', '4', '--review-hours', '48', ...treas, '-k', `${KEYS}/payout.json`], 'Unauthorized');
   refuse('the payout key names itself admin', ['propose-authority', '--new', PAYOUT, '-k', `${KEYS}/payout.json`], 'Unauthorized');
   const empty = cli('pool:payout');
   check('pool:payout with the payout key named: on, nothing to pay yet', empty.enabled === true && empty.refused === null && empty.pools.length === 0, JSON.stringify(empty));
@@ -356,7 +356,7 @@ try {
   check(`slot 2 starts where slot 1 stopped selling (prep ${secs(pool0.prepDeadline)} + ${D.saleSecs} s)`, secs(pool2.prepDeadline) === secs(pool0.prepDeadline) + D.saleSecs);
   const b9 = await bal(R9.wallet), x9 = await buySelf(R9, P2), fee9 = x9.sig ? (await txInfo(x9.sig)).fee : 0;
   const r9Paid = await bal(R9.wallet);
-  check(`R9 buys 1 of pool ${P2}: −(price + fee + Ticket rent); 1 < min ${D.minTickets}, it stays OPEN`, x9.paid && b9 - r9Paid === PRICE + fee9 + ticketRent && (await poolAcc(P2)).status === 0);
+  check(`R9 buys 1 of pool ${P2}: −(price + fee + Ticket rent); 1 < min ${D.minTickets}, it stays ACTIVE`, x9.paid && b9 - r9Paid === PRICE + fee9 + ticketRent && (await poolAcc(P2)).status === 1);
 
   // ── 5. the play deadline passes: v4 (H5-B) the payout job takes the pool now – the pool-level marks, every ride decided, then the winners root is COMMITTED
   //    (public for the review lock), then paid. Nobody pays before the root's pay_from, not even the payout key.
@@ -495,12 +495,13 @@ try {
   for (const k of ['r1', 'r7']) closes.push(await txInfo(admintool(['close-ride-attestation', ...rideArgs(k), '-k', Z.keyfile]).signature));
   check(`close_ride_attestation ×2 by a stranger: the payout key gets each attestation's rent back (${attRent}), AttestationClosed, the accounts are gone`, (await bal(PAYOUT)) - pBefore === 2 * attRent
     && closes.every(t => ev(t, 'AttestationClosed')?.rentTo === PAYOUT && ev(t, 'AttestationClosed')?.lamports === attRent) && (await attOf('r1')) === null && (await attOf('r7')) === null, JSON.stringify({ got: (await bal(PAYOUT)) - pBefore, ev: closes.map(t => ev(t, 'AttestationClosed')) }));
-  // ── 8. the next slot's pool missed its goal: the crank fails it, refunds R9 and closes it – by itself
+  // v6: low sales never refund. An explicit cold-admin cancellation releases the ticket.
   await untilChain(secs(pool2.prepDeadline), `pool ${P2}'s sale end`);
-  check(`pool ${P2}: cancelled on chain by the crank (seal + fail + refund + close), vault 0`, !!(await until(async () => (await poolAcc(P2))?.status === 4, 30000, 1000)) && (await bal(codec.vaultPda(P2).toBase58())) === 0, JSON.stringify(await poolAcc(P2)));
-  const steps = await Promise.all((await sigsOf(codec.poolPda(P2).toBase58())).slice(1).map(txInfo));
-  check(`…every step sent and paid for by the crank key: ${steps.map(t => t.ixs.join('+')).join(', ')}`, steps.map(t => t.ixs.join('+')).join() === 'seal_road,buy_ticket,fail_pool,refund,close_pool' && steps.filter(t => t.ixs[0] !== 'buy_ticket').every(t => t.feePayer === CRANK && !t.err), JSON.stringify(steps.map(t => [t.ixs, t.feePayer.slice(0, 6)])));
-  check('R9 got the price + its own Ticket rent back, paid nothing for it', (await bal(R9.wallet)) - r9Paid === PRICE + ticketRent, `${(await bal(R9.wallet)) - r9Paid}`);
+  check('one-ticket pool remains active after sales close', (await poolAcc(P2)).status === 1 && (await bal(R9.wallet)) === r9Paid);
+  refuse('v6 low sales cannot fail a pool', ['fail-pool', '--pool', String(P2), '-k', Z.keyfile], 'NotFailable');
+  admintool(['cancel-pool', '--pool', String(P2), ...adm]);
+  check('crank refunds and closes after explicit admin cancellation', !!(await until(async () => (await poolAcc(P2))?.status === 4, 30000, 1000)) && (await bal(codec.vaultPda(P2).toBase58())) === 0);
+  check('R9 receives ticket price and rent after admin cancellation', (await bal(R9.wallet)) - r9Paid === PRICE + ticketRent);
   check('server mirror: cancelled', !!(await until(async () => (await serverPool(P2)).status === 'cancelled', 20000)));
   check('the series moved on by itself (the crank keeps opening the next slots)', (await series()).poolsOpened >= 2);
 

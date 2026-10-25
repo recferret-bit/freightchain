@@ -20,7 +20,7 @@ pub struct Config {
     /// v4: the review window every new pool keeps after its play deadline, and the lock between a winners root's commit (or a ride attestation)
     /// and the first payment on it (DEFAULT_MIN_REVIEW_SECS; set by the cold admin only).
     pub min_review_secs: i64,
-    /// v4: the play window every new pool keeps after its sale (no sale, no new ride after it – the shifts on the road finish) (DEFAULT_MIN_FINISH_SECS).
+    /// Minimum play window after sales close (DEFAULT_MIN_FINISH_SECS); v6 limits this floor to two hours.
     pub min_finish_secs: i64,
     /// v5: copied onto each new pool. `false` makes `buy_ticket` fail; `sponsor` still funds the pool. Open pools keep the value they opened with.
     pub paid_tickets_enabled: bool,
@@ -34,8 +34,7 @@ pub struct Config {
     pub max_tickets: u32,
 }
 
-/// One schedule per tier, written by the admin (`set_series`): every pool `open_next_pool` creates takes these rules. Pools tile time:
-/// the next one opens when this one stops selling (`next_open_at`), so a 24 h sale window = one pool a day.
+/// One schedule per tier, written by the admin (`set_series`): sale windows start on an independent period grid.
 #[account]
 #[derive(InitSpace)]
 pub struct Series {
@@ -46,7 +45,7 @@ pub struct Series {
     /// 0 = unlimited
     pub max_tickets: u32,
     pub max_per_wallet: u16,
-    /// sale window = cadence (seconds). v6 would split cadence into `period_secs`; this field stays so the deployed account matches.
+    /// Sale window in seconds, at most `period_secs`.
     pub sale_secs: i64,
     /// after the sale ends, rides of the pool still count this long
     pub play_secs: i64,
@@ -62,6 +61,10 @@ pub struct Series {
     pub pools_opened: u32,
     pub last_pool_id: Option<u32>,
     pub bump: u8,
+    /// v6: cadence independent of the sale window.
+    pub period_secs: i64,
+    /// v6: last start is play_deadline minus this buffer.
+    pub start_buffer_secs: i64,
 }
 
 #[account]
@@ -122,6 +125,9 @@ pub struct Pool {
     pub paid_tickets_enabled: bool,
     /// v5 snapshot of `Config.max_player_share_bps`. Ticket lamports above the room this allows are not in the prize base; `close_pool` carries them to the seed treasury.
     pub max_player_share_bps: u16,
+    /// v6: explicit sale opening and last permitted ride start.
+    pub opens_at: i64,
+    pub last_start_at: i64,
 }
 
 #[account]
@@ -244,8 +250,8 @@ pub const POOL_STATUS_OFFSET: usize = 8 + 4 + 32 + 1 + 8 + 4 + 4 + 2 + 8 + 8 + 8
 
 // Anchor `InitSpace` for the v5 accounts. A mismatch here is a layout change the tests and the IDL must follow.
 const _: () = {
-    assert!(Series::INIT_SPACE == 132);
-    assert!(Pool::INIT_SPACE == 362);
+    assert!(Series::INIT_SPACE == 148);
+    assert!(Pool::INIT_SPACE == 378);
     assert!(Config::INIT_SPACE == 167);
 };
 
@@ -373,8 +379,8 @@ mod tests {
     fn split_is_exact() {
         // status is before the v4/v5 tail; a raw read of a grown account still lands on the same byte
         assert_eq!(POOL_STATUS_OFFSET, 157);
-        assert_eq!(Series::INIT_SPACE, 132);
-        assert_eq!(Pool::INIT_SPACE, 362);
+        assert_eq!(Series::INIT_SPACE, 148);
+        assert_eq!(Pool::INIT_SPACE, 378);
         assert_eq!(Config::INIT_SPACE, 167);
         let mut x: u64 = 0x9E3779B97F4A7C15;
         for _ in 0..1000 {

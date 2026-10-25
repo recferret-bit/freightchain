@@ -103,7 +103,7 @@ try {
   execFileSync('node', ['dist/cli/index.js', 'pool:crank'], { stdio: 'ignore' });
   const treas = ['--fee-treasury', addr('fee'), '--seed-treasury', addr('seed'), '-k', `${KEYS}/admin.json`];
   const PRICE = 40_000_000;
-  const mk = (min, prep, perWallet = 4) => admintool(['create-pool', '--tier', '8h', '--price', String(PRICE), '--min', String(min), '--max', '0', '--per-wallet', String(perWallet), '--prep', `+${prep}`, '--play', `+${prep + 60}`, '--split', '7000/2000/1000', ...treas]).poolId;
+  const mk = (min, prep, perWallet = 4) => admintool(['create-pool', '--tier', '8h', '--price', String(PRICE), '--min', '0', '--max', '0', '--per-wallet', String(perWallet), '--prep', `+${prep}`, '--play', `+${prep + 60}`, '--last-start', `+${prep + 59}`, '--split', '7000/2000/1000', ...treas]).poolId;
   const X = mk(1000, 900), Y = mk(5, 125), W = mk(5, 125), Z = mk(50, 235, 2);   // X stays open for the purchase tests; Y + W fail first (W has no tickets, id after Y); Z = the race
   // v4 (L4): every road sealed (the crank would do it first otherwise – its first steps here must be the ones under test), then registered
   for (const id of [X, Y, W, Z]) { await sealRoad({ conn, codec, admintool, id, keyfile: `${KEYS}/admin.json` }); execFileSync('node', ['dist/cli/index.js', 'pool:register', String(id), '--label', `CHAOS ${id}`], { stdio: 'ignore' }); }
@@ -155,13 +155,14 @@ try {
 
   // ── T5. getProgramAccounts refused: pool Y needs refunds (a read of its tickets), pool W (after it) only fail_pool + close_pool
   await untilChain(Number((await poolAcc(Y)).prepDeadline.getTime() / 1000), 'pool Y / W prep deadline');
+  for (const id of [Y, W]) admintool(['cancel-pool', '--pool', String(id), '-k', `${KEYS}/admin.json`]);
   const gpa = PC.fault({ method: 'getProgramAccounts', mode: 'error' });
   const swallow = PC.fault({ method: 'sendTransaction', mode: 'blackhole', times: 2 });   // the crank's first two sends are "accepted" and never forwarded
   const yb = { y1: await bal(y1.wallet), y2: await bal(y2.wallet), ys: await bal(ys.wallet) };
   const pass5 = await cranker();
   note(`T5 crank pass with getProgramAccounts refused: ${pass5.ok ? pass5.actions.filter(a => [Y, W].includes(a.poolId)).map(a => `${a.step}#${a.poolId}${a.error ? ' ✗ ' + a.error.slice(0, 60) : ''}`).join(', ') : 'the pass THREW – ' + pass5.stderr}`);
   check('T5 the pass survives the refused read (it does not throw) and reports pool Y\'s refund as failed', pass5.ok && stepsOf(pass5, Y).includes('refund✗'), stepsOf(pass5, Y) || pass5.stderr);
-  check('T5 …and the pools after Y are still served: W failed + closed in the same pass', stepsOf(pass5, W) === 'fail_pool close_pool' && (await poolAcc(W)).status === 4, stepsOf(pass5, W));
+  check('T5 …and the pools after Y are still served: W failed + closed in the same pass', stepsOf(pass5, W) === 'close_pool' && (await poolAcc(W)).status === 4, stepsOf(pass5, W));
   check('T5 the first two sends were swallowed (the crank was told "accepted"): its re-send loop still landed each step, exactly once', swallow.hits === 2 && (await poolAcc(Y)).status !== 0 && (await poolAcc(W)).status === 4, `swallowed ${swallow.hits}`);
   swallow.off();
   check('T5 pool Y is left refunding (failed, nothing refunded, nothing closed)', (await poolAcc(Y)).status === 2 && (await poolAcc(Y)).refunded === 0);
@@ -173,10 +174,11 @@ try {
 
   // ── T6. the race: Z has 10 tickets (two refund batches of 8). Three crank CLIs + a stranger's refund at once.
   await untilChain(Number((await poolAcc(Z)).prepDeadline.getTime() / 1000), 'pool Z prep deadline');
-  const zb = await Promise.all(zs.map(p => bal(p.wallet))), crank0 = await bal(addr('crank')), admin0 = await bal(addr('admin')), seed0 = await bal(addr('seed'));
+  const zb = await Promise.all(zs.map(p => bal(p.wallet))), crank0 = await bal(addr('crank')), seed0 = await bal(addr('seed'));
   // the stranger fails the pool first (permissionless, so the crankers would otherwise all lose that very first step to it): the race is then over the refund batches
-  const failedBy = await admintoolAsync(['fail-pool', '--pool', String(Z), '-k', strangerW.keyfile]);
-  check('T6 a stranger\'s fail_pool puts Z into refunding (anyone may)', (await poolAcc(Z)).status === 2 && !!failedBy.signature);
+  const failedBy = await admintoolAsync(['cancel-pool', '--pool', String(Z), '-k', `${KEYS}/admin.json`]);
+  check('T6 admin cancellation puts Z into refunding', (await poolAcc(Z)).status === 2 && !!failedBy.signature);
+  const admin0 = await bal(addr('admin'));
   const stranger = admintoolAsync(['refund', '--pool', String(Z), '--buyer', zs[1].wallet, '-k', strangerW.keyfile]).catch(e => ({ refused: String(e.stderr ?? e).slice(0, 80) }));   // a wallet that bought nothing: its own fees are not the buyers'
   const passes = await Promise.all([cranker(), cranker({ SOLANA_RPC: P2.url }), cranker({ SOLANA_RPC: RPC }), stranger]);
   const crankPasses = passes.slice(0, 3);

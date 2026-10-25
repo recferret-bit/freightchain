@@ -24,8 +24,9 @@ fn set_series_is_the_admins_and_checks_the_rules() {
     let (f, s) = (e.fee_t.pubkey(), e.seed_t.pubkey());
     assert_err!(e.set_series_as(&stranger, daily_series(START), f, s), PoolError::Unauthorized);
     assert_err!(e.set_series(with(|p| p.price_lamports = 1_000)), PoolError::PriceBelowRentMin);
-    assert_err!(e.set_series(with(|p| p.min_tickets = 0)), PoolError::InvalidParams);
-    assert_err!(e.set_series(with(|p| p.max_tickets = 2)), PoolError::InvalidParams);
+    assert_err!(e.set_series(with(|p| p.min_tickets = 1)), PoolError::InvalidParams);
+    assert_err!(e.set_series(with(|p| p.period_secs = p.sale_secs - 1)), PoolError::InvalidParams);
+    assert_err!(e.set_series(with(|p| p.start_buffer_secs = 0)), PoolError::InvalidParams);
     assert_err!(e.set_series(with(|p| p.max_per_wallet = 0)), PoolError::InvalidParams);
     assert_err!(e.set_series(with(|p| p.sale_secs = MIN_SALE_SECS - 1)), PoolError::InvalidParams);
     assert_err!(e.set_series(with(|p| p.sale_secs = MAX_SALE_SECS + 1)), PoolError::InvalidParams);
@@ -77,7 +78,7 @@ fn open_next_pool_opens_the_current_slot_from_the_series() {
     let id = e.config().pool_count - 1;
     e.next_pool = id + 1;
     let p = e.pool(id);
-    assert_eq!((p.status, p.tier, p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet), (0, 1, PRICE, 3, 0, 4));
+    assert_eq!((p.status, p.tier, p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet), (1, 1, PRICE, 0, 0, 4));
     assert_eq!((p.prep_deadline, p.play_deadline, p.payout_at), (START + DAY, START + DAY + 2 * HOUR, START + 3 * DAY + 2 * HOUR));
     // the pool snapshots the live Config (the test env's 6000/2500/1500), not a split stored on the series instruction
     assert_eq!((p.prize_bps, p.seed_bps, p.fee_bps, p.paid_tickets_enabled, p.max_player_share_bps), (6000, 2500, 1500, true, 4999));
@@ -342,7 +343,7 @@ fn a_day_of_the_one_hour_series() {
     e.commit_winners(id, &payout, &[(w, PRICE)]).unwrap();
 
     e.warp(e.pool(next).prep_deadline);
-    e.fail(next).unwrap();
+    e.cancel_by_admin(next).unwrap();
     e.refund(next, &b.pubkey(), &b.pubkey()).unwrap();
     assert_eq!(e.pool(next).status, 2);
 
@@ -364,34 +365,34 @@ fn a_day_of_the_one_hour_series() {
 #[test]
 fn set_series_refuses_windows_below_the_floors() {
     let mut e = Env::with_floors();
-    assert_eq!((e.config().min_finish_secs, e.config().min_review_secs), (3 * HOUR, HOUR));
-    // the old 1 h schedule (2 h to finish) is now too short
-    assert_err!(e.set_series(daily_series(START)), PoolError::WindowTooShort);
-    assert_err!(e.set_series(with(|p| p.play_secs = 3 * HOUR - 1)), PoolError::WindowTooShort);
+    assert_eq!((e.config().min_finish_secs, e.config().min_review_secs), (2 * HOUR, HOUR));
+    // The v6 default leaves two hours after ticket sales close.
+    assert_err!(e.set_series(with(|p| p.play_secs = 2 * HOUR - 1)), PoolError::WindowTooShort);
     assert_err!(e.set_series(with(|p| {
-        p.play_secs = 3 * HOUR;
+        p.play_secs = 2 * HOUR;
         p.verify_secs = HOUR - 1;
     })), PoolError::WindowTooShort);
     assert!(e.series(1).is_none());
     // exactly the floors is enough
     e.set_series(with(|p| {
-        p.play_secs = 3 * HOUR;
+        p.play_secs = 2 * HOUR;
         p.verify_secs = HOUR;
     }))
     .unwrap();
     // a floor raised later stops a rewrite, not the running series (open_next_pool trusts it)
     let a = e.authority_kp();
-    e.set_floors(&a, Some(2 * HOUR), Some(4 * HOUR)).unwrap();
+    assert_err!(e.set_floors(&a, None, Some(7_201)), PoolError::InvalidParams);
+    e.set_floors(&a, Some(2 * HOUR), None).unwrap();
     assert_err!(e.set_series(with(|p| {
         p.start_at = 0;
-        p.play_secs = 3 * HOUR;
+        p.play_secs = 2 * HOUR;
         p.verify_secs = HOUR;
     })), PoolError::WindowTooShort);
     e.warp(START);
     let opener = funded(&mut e.svm, 10 * SOL);
     let id = e.open_next_pool(1, &opener).unwrap();
     let p = e.pool(id);
-    assert_eq!((p.play_deadline - p.prep_deadline, p.payout_at - p.play_deadline), (3 * HOUR, HOUR));
+    assert_eq!((p.play_deadline - p.prep_deadline, p.payout_at - p.play_deadline), (2 * HOUR, HOUR));
 }
 
 #[test]
@@ -401,16 +402,17 @@ fn create_pool_refuses_windows_below_the_floors() {
     let pool = |finish: i64, review: i64| freightchain_pools::CreatePoolParams {
         prep_deadline: prep,
         play_deadline: prep + finish,
+        last_start_at: prep + finish - 1,
         payout_at: prep + finish + review,
         ..default_params()
     };
     // the default test pool: 4000 s after the sale, no review
     assert_err!(e.try_create_pool(default_params()), PoolError::WindowTooShort);
-    assert_err!(e.try_create_pool(pool(3 * HOUR - 1, HOUR)), PoolError::WindowTooShort);
-    assert_err!(e.try_create_pool(pool(3 * HOUR, HOUR - 1)), PoolError::WindowTooShort);
-    assert_err!(e.try_create_pool(pool(3 * HOUR, 0)), PoolError::WindowTooShort);
-    let id = e.create_pool(pool(3 * HOUR, HOUR));
-    assert_eq!(e.pool(id).payout_at, prep + 4 * HOUR);
+    assert_err!(e.try_create_pool(pool(2 * HOUR - 1, HOUR)), PoolError::WindowTooShort);
+    assert_err!(e.try_create_pool(pool(2 * HOUR, HOUR - 1)), PoolError::WindowTooShort);
+    assert_err!(e.try_create_pool(pool(2 * HOUR, 0)), PoolError::WindowTooShort);
+    let id = e.create_pool(pool(2 * HOUR, HOUR));
+    assert_eq!(e.pool(id).payout_at, prep + 3 * HOUR);
     // floors at 0 (localnet) let any window through
     let a = e.authority_kp();
     e.set_floors(&a, Some(0), Some(0)).unwrap();
@@ -423,7 +425,7 @@ fn the_lock_is_the_longer_of_the_review_window_and_min_review_secs() {
     let mut e = Env::with_floors();
     let prep = T0 + 1_000;
     let play = prep + 3 * HOUR;
-    let mk = |review: i64| freightchain_pools::CreatePoolParams { min_tickets: 1, prep_deadline: prep, play_deadline: play, payout_at: play + review, ..default_params() };
+    let mk = |review: i64| freightchain_pools::CreatePoolParams { min_tickets: 0, prep_deadline: prep, play_deadline: play, payout_at: play + review, ..default_params() };
     let wide = e.create_pool(mk(2 * HOUR)); // window 2 h > floor 1 h
     let tight = e.create_pool(mk(HOUR)); // window = floor
     let raised = e.create_pool(mk(HOUR)); // the floor is raised to 3 h after it opened – its lock stays its own (red-team v4 S2)
@@ -465,7 +467,7 @@ fn the_lock_is_the_longer_of_the_review_window_and_min_review_secs() {
 fn floored_pool(e: &mut Env, tickets: u16) -> u32 {
     let prep = e.now() + 1_000;
     let id = e.create_pool(freightchain_pools::CreatePoolParams {
-        min_tickets: 2,
+        min_tickets: 0,
         max_tickets: 0,
         max_per_wallet: 100,
         prep_deadline: prep,
@@ -611,7 +613,7 @@ fn audit_h5_cross_pool_proofs_and_wallet_substitution_are_refused() {
 fn audit_close_and_expire_guards_hold_with_a_committed_root() {
     let mut e = Env::new();
     let mk = |e: &mut Env| {
-        let id = e.create_pool(freightchain_pools::CreatePoolParams { min_tickets: 2, max_tickets: 0, max_per_wallet: 100, ..default_params() });
+        let id = e.create_pool(freightchain_pools::CreatePoolParams { min_tickets: 0, max_tickets: 0, max_per_wallet: 100, ..default_params() });
         let b = funded(&mut e.svm, 50 * SOL);
         e.buy(id, &b, 10).unwrap();
         e.cover_player_share(id);

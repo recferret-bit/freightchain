@@ -1,7 +1,7 @@
 import { Injectable, Optional } from '@nestjs/common';
 import type { Pool } from '../../domain/economy/pool.entity.js';
 import { scheduleMismatch } from '../../domain/economy/pool-schedule.js';
-import { ConflictError, ServiceUnavailableError } from '../../domain/shared/errors.js';
+import { ConflictError } from '../../domain/shared/errors.js';
 import { AlertOutboxRepositoryPort } from '../ports/admin/alert-outbox.repository.port.js';
 import { PoolChainPort } from '../ports/economy/pool-chain.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
@@ -9,7 +9,7 @@ import { EntropyPort } from '../ports/shared/entropy.port.js';
 
 /**
  * Program-mode guard for a ticket buy or a pool-ride start. The chain account is the truth for prep / play / payout.
- * v6 `opens_at` / `last_start_at` are not on the shipped .so: last start is play close − 75 min (play close when that lead is before created_at), opens_at is the account's created_at.
+ * v6 compares explicit chain opens/last-start; historical fixtures derive those timestamps from creation/play close.
  * A stored column that disagrees is `409 pool_schedule_mismatch` plus an admin alert. The alert is written outside the caller's transaction.
  */
 @Injectable()
@@ -22,13 +22,8 @@ export class PoolScheduleService {
   ) {}
 
   async assertSynced(pool: Pool): Promise<void> {
-    let chain: Awaited<ReturnType<PoolChainPort['readPool']>> = null;
-    try {
-      chain = await this.chain.readPool(pool.id);
-    } catch (error) {
-      // A down RPC still checks the mirror columns against each other. A readable account is compared field by field.
-      if (!(error instanceof ServiceUnavailableError)) throw error;
-    }
+    // RPC failure is unavailable, not schedule drift: v6 timestamps cannot be reconstructed from legacy defaults.
+    const chain = await this.chain.readPool(pool.id);
     const why = scheduleMismatch(pool.snapshot(), chain);
     if (!why) return;
     const now = this.clock.now();

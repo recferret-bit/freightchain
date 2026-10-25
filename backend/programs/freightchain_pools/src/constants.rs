@@ -46,11 +46,8 @@ pub const STATUS_CANCELLED: u8 = 4;
 /// minute-long pools on a real validator clock, so the floors cannot be constants):
 /// the review window every pool keeps after its play deadline, and the time between a winners root's commit and its first prize (audit H5).
 pub const DEFAULT_MIN_REVIEW_SECS: i64 = 3_600;
-/// the play window after the sale: no sale and no new ride after the sale end, so the shifts on the road need this long to finish (the last call).
-/// The weekly schedule wants this floor ≤ 7_200 (a 2 h sales-to-play gap). The shipped account still defaults to 10_800;
-/// `set_config` can lower it. v6 `opens_at`, `last_start_at` and series `period_secs` are enforced on the server until the next deploy,
-/// because changing the account layout would not match this .so.
-pub const DEFAULT_MIN_FINISH_SECS: i64 = 10_800;
+/// v6 default and ceiling for the sale-to-play finish window (2 hours).
+pub const DEFAULT_MIN_FINISH_SECS: i64 = 7_200;
 
 /// v5 defaults of the pool rules (`initialize` / `set_pool_rules`). The plan's weekly contest is 85% prizes / 5% carry / 10% final.
 /// `fee_bps` is that 10% leg: it is paid to `fee_treasury` (minus the snapshotted platform cut). Point `fee_treasury` at the final

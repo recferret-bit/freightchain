@@ -41,3 +41,7 @@ Security dependency overrides in `backend/server/package.json` pin undici 6.28.1
 Traffic verification: new starts stamp `trafficVersion=1` when `TRAFFIC_PROOF_REQUIRED=true` (default). The hashed `trafficProof` field is mandatory for those rides; body-level version claims cannot downgrade it. Protocol and browser tests: `docs/spec/anticheat.md`, `e2e.sh traffic`.
 
 Convoy/campaign runtime repositories are PostgreSQL-backed (migration `20261113000000_durable_convoy_campaign`), with shared promo-cap serialization, social ownership uniqueness and rollback. The Convoy activation gift is a spendable 1h promo; legacy referral rewards remain separate. See `docs/spec/referral.md` for remaining provider and chain-settlement gaps.
+
+Pool v6 schedule reads use explicit chain `opensAt` and `lastStartAt`; cadence uses `periodSecs`, independently of `saleSecs`. Cold-admin cancellation events can move an Active pool into refunding. The program remains local until a separately authorized fresh-program cutover.
+
+The v6 schedule guard propagates an RPC outage as unavailable: it cannot safely derive explicit opens/last-start fields from historical defaults. Road sealing reserves 80,000 CU for scanning the full SlotHashes window; local-validator coverage measures the late-slot case.

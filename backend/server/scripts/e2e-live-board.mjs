@@ -46,7 +46,12 @@ await B.send('Page.navigate', { url: `${BASE}/` });
 const chip = () => B.ev(`document.getElementById('chip-live')?.textContent ?? ''`);
 check('landing: the chip counts visitors and does not put a free ride on the road', await until(async () => /^\d+ ONLINE · 0 ON THE ROAD$/.test(await chip()), 20_000), await chip());
 check('landing: this page itself is counted online', await until(async () => (await api('live')).online.browsing >= 6, 15_000), JSON.stringify((await api('live')).online));
-check('landing: the ticker has no watch link for a ride that is not public', await until(() => B.ev(`document.querySelectorAll('.ticker a[href*="watch="]').length === 0 && !document.getElementById('board-live')`), 15_000));
+const privateRideIds = [...sim.drivers.map(d => d.id), mine.id];
+const publicReplayIds = ((await api('replays?limit=50')).rows ?? []).map(r => r.id);
+check('landing: ticker links only public replays and never these private rides', await until(() => B.ev(`(() => {
+  const links = [...document.querySelectorAll('.ticker a[href*="watch="]')].map(a => new URL(a.href).searchParams.get('watch'));
+  return links.every(id => !${JSON.stringify(privateRideIds)}.includes(id) && ${JSON.stringify(publicReplayIds)}.includes(id)) && !document.getElementById('board-live');
+})()`), 15_000));
 await shotOf('.boards', 'landing-boards');
 
 // ── the lobby: LIVE (sort, viewers, join) ──

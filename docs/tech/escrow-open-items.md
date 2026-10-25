@@ -4,7 +4,7 @@ Current state of `programs/freightchain_pools` and its server/ops integration. K
 
 Related: [deploy + operate](program-deploy.md) · [escrow spec](../spec/pool.md) · [contract reference](pool-program/index.html) · [localnet e2e](localnet-e2e/index.html) · [Oct 2026 audit fix plan](../insights/reviews/audit-2026-10/fix-plan.md).
 
-24 October local baseline: Rust/LiteSVM and the current pool binary's complete local-validator lifecycle passed. The binary differs from `verifiable-build.hash`; rebuild/provenance and target v6 acceptance remain open. `SPC-05.5` has been reopened. These local results do not verify or change the deployment records below. Evidence: [local readiness](../testing/LOCAL_READINESS.md).
+25 October local checkpoint: the reproducible v6 build and its complete local-validator lifecycle passed on the matching pinned artifact. Optional on-chain pledge creation and deployment acceptance remain open. `SPC-05.5` has been reopened. These local results do not verify or change the deployment records below. Evidence: [local readiness](../testing/LOCAL_READINESS.md).
 
 ## 1. Where things are
 
@@ -57,3 +57,10 @@ Full decision log: [`../spec/README.md`](../spec/README.md) and [`../spec/DECISI
 - **Q-A / Q-B / Q-F / Q-H / Q-K / Q10 / Q15:** `localnet-e2e` merged; devnet keys in `deploy/secrets/devnet/`; QuickNode devnet RPC with public RPC read fallbacks (`SOLANA_RPC_FALLBACKS`); pools opened on schedule by the crank from `Series` (1h tier: 24 h sale, 3 h finish window, 48 h review); payout job closes paid pools automatically with `PAYOUT_SECRET`; production switched to devnet program mode on Oct 11 (`PAYMENT_MODE=program`).
 - **Q14 (One road per pool):** every ticket ride of a pool drives the pool's committed `seed_commitment` (v3+) / `rideSeed`; target rules for ocultar/reveal and `holeSalt` when attempts > 1 are in [`../spec/anticheat.md`](../spec/anticheat.md) `ACH-M-11` and [`../spec/replays_streams.md`](../spec/replays_streams.md) `RPL-M-04`.
 
+
+
+### Local v6 checkpoint, 25 October 2026
+
+Schedule/activation code is implemented with six dedicated LiteSVM scenarios and regenerated IDL/transaction fixtures. Server codec/schedule checks pass (235 tests). The reproducible Docker build and 203 Rust tests passed. The complete purchase/payout/autonomous-day validator gate passed on pin `bc9d2a2dcf6d0dea0a3240e53c347983eb1d425ded3ab1ce7ca254b38683f1d7`: 29/30 successful instructions plus the refusing `fail_pool` tombstone, 26/28 events plus two documented exemptions, and all 50 errors with LiteSVM. Evidence: `/private/tmp/fc-v6-acceptance.log`. No remote deployment is authorized by this result. v6 uses 386-byte Pool and up-to-156-byte Series accounts; existing accounts need a separate migration or, as planned, a fresh program. Optional pledge creation remains in the program while launch APIs default off (Decision 51); removal is not claimed.
+
+The late SlotHashes scan measured 58,512 CU at 442 slots on the validator. The crank seal budget is now 80,000 CU (previously 40,000), with a regression assertion and the validator measurement retained. Schedule RPC outages propagate as unavailable instead of inventing drift from legacy derived timestamps.

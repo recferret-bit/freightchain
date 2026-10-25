@@ -8,7 +8,7 @@ export const SALES_LEAD_MS = 2 * 60 * 60 * 1000;
 export const VALIDATION_MS = 36 * 60 * 60 * 1000;
 /** A ride still going this long after play close is abandoned (POOL-M-04). */
 export const PLAY_GRACE_MS = 60 * 1000;
-/** Server ceiling for Config.min_finish_secs. The shipped .so still defaults to 10_800 until set_config. */
+/** Config.min_finish_secs ceiling and v6 default. */
 export const MAX_MIN_FINISH_SECS = 7_200;
 
 export const POOL_PHASES = ['upcoming', 'open', 'finishing', 'validating', 'paid', 'closed'] as const;
@@ -74,18 +74,20 @@ export function finishWindowFits(prep: Date, play: Date, minFinishSecs: number):
 }
 
 /** Names the deadlines that disagree. Null columns are not drift: they mean "use the chain value". */
-export function scheduleMismatch(s: ScheduleSource, chain: Pick<PoolChainState, 'createdAt' | 'prepDeadline' | 'playDeadline' | 'payoutAt'> | null): string | null {
+export function scheduleMismatch(s: ScheduleSource, chain: Pick<PoolChainState, 'createdAt' | 'opensAt' | 'lastStartAt' | 'prepDeadline' | 'playDeadline' | 'payoutAt'> | null): string | null {
   const play = chain?.playDeadline ?? s.playDeadline;
   const prep = chain?.prepDeadline ?? s.prepDeadline;
   const payout = chain?.payoutAt ?? s.payoutAt;
   const created = chain?.createdAt ?? s.createdAt;
+  const opens = chain?.opensAt ?? created;
+  const lastStart = chain?.lastStartAt ?? lastStartAtFor(play, created);
   const bad: string[] = [];
   if (chain && chain.playDeadline.getTime() !== s.playDeadline.getTime()) bad.push('playCloseAt');
   if (chain && chain.prepDeadline.getTime() !== s.prepDeadline.getTime()) bad.push('salesCloseAt');
   if (chain && chain.payoutAt.getTime() !== s.payoutAt.getTime()) bad.push('validationUntil');
   if (s.playCloseAt && s.playCloseAt.getTime() !== play.getTime()) bad.push('playCloseAt');
-  if (s.lastStartAt && s.lastStartAt.getTime() !== lastStartAtFor(play, created).getTime()) bad.push('lastStartAt');
-  if (s.opensAt && s.opensAt.getTime() !== created.getTime()) bad.push('opensAt');
+  if (s.lastStartAt && s.lastStartAt.getTime() !== lastStart.getTime()) bad.push('lastStartAt');
+  if (s.opensAt && s.opensAt.getTime() !== opens.getTime()) bad.push('opensAt');
   if (s.salesCloseAt && s.salesCloseAt.getTime() !== prep.getTime()) bad.push('salesCloseAt');
   if (s.validationUntil && s.validationUntil.getTime() !== payout.getTime()) bad.push('validationUntil');
   const unique = [...new Set(bad)];

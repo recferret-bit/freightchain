@@ -89,7 +89,14 @@ step "clippy on the program (-D warnings)"
 echo "✓ clippy"
 
 step "cargo audit (RustSec)"
-# Vulnerabilities fail; 'unmaintained' / 'unsound' warnings in Solana's transitive deps are printed, not fatal (reviewed in SKILL.md).
-(cd "$WS" && cargo audit --quiet 2>&1 | grep -E '^(Crate|ID|Warning|error)' | paste - - - | sed 's/^/  /') || true
-(cd "$WS" && cargo audit --quiet >/dev/null 2>&1) || fail "cargo audit found a vulnerability – (cd programs && cargo audit)"
-echo "✓ no RustSec vulnerabilities"
+# The legacy bigint advisory is confined to LiteSVM's public-signature recovery, never a program dependency.
+# Do not carry the exception into a production graph after a future dependency change.
+audit_args=()
+normal_tree="$(cd "$WS" && cargo tree --locked --workspace --edges normal,build --target all --invert crypto-bigint --prefix none 2>/dev/null)" || fail "cannot check the crypto-bigint production dependency graph"
+if [ -z "$normal_tree" ]; then
+  audit_args=(--ignore RUSTSEC-2026-0387)
+  echo "! RUSTSEC-2026-0387: test-only LiteSVM signature recovery; no production dependency path. Awaiting an upstream compatible fix."
+fi
+(cd "$WS" && cargo audit --quiet "${audit_args[@]}" 2>&1 | grep -E '^(Crate|ID|Warning|error)' | paste - - - | sed 's/^/  /') || true
+(cd "$WS" && cargo audit --quiet "${audit_args[@]}" >/dev/null 2>&1) || fail "cargo audit found a vulnerability – (cd programs && cargo audit)"
+echo "✓ RustSec gate passed with the explicitly reported test-only exception (if any)"

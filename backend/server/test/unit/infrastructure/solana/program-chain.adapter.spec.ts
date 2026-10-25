@@ -80,14 +80,11 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
     void ixs;
   });
 
-  it('a refund (+ fail_pool) reads the ticket\'s rent payer; refused when there is no ticket', async () => {
+  it('a refund after admin cancellation reads the ticket rent payer; no ticket is refused', async () => {
     const { adapter } = adapterWith({ getAccountInfo: async () => accountInfo('ticket pool 1 C') });
-    const built = await adapter.buildRefundTransaction({ caller: fx.keys.d, poolId: 1, buyer: fx.keys.c, needsFail: true });
-    expectIxs(built, fixtureTx('fail_pool + refund').instructions);
-    expect(built).toMatchObject({ feePayer: fx.keys.d, computeUnits: CU_LIMITS.refund + CU_LIMITS.fail_pool });
-    const noFail = await adapter.buildRefundTransaction({ caller: fx.keys.d, poolId: 1, buyer: fx.keys.c, needsFail: false });
-    expect(noFail.feePayer).toBe(fx.keys.d);
-    expectIxs(noFail, [fixtureTx('fail_pool + refund').instructions[1]!]);
+    const built = await adapter.buildRefundTransaction({ caller: fx.keys.d, poolId: 1, buyer: fx.keys.c, needsFail: false });
+    expectIxs(built, [fixtureTx('cancel_pool + refund').instructions[1]!]);
+    expect(built).toMatchObject({ feePayer: fx.keys.d, computeUnits: CU_LIMITS.refund });
     const none = adapterWith({ getAccountInfo: async () => null }).adapter;
     await expect(none.buildRefundTransaction({ caller: fx.keys.d, poolId: 1, buyer: fx.keys.c, needsFail: false })).rejects.toMatchObject({ statusCode: 409, errorCode: 'no_ticket' });
   });
@@ -138,7 +135,7 @@ describe('ProgramChainAdapter – builds what the program accepted', () => {
     expect(CU_LIMITS.buy).toBeGreaterThanOrEqual(measured('buy_ticket') * 1.25);
     expect(CU_LIMITS.pay_prize).toBeGreaterThanOrEqual(measured('pay_prize') * 1.25);
     expect(CU_LIMITS.close_pool).toBeGreaterThanOrEqual(measured('close_pool') * 1.25);
-    expect(CU_LIMITS.refund + CU_LIMITS.fail_pool).toBeGreaterThanOrEqual(fixtureTx('fail_pool + refund').computeUnits * 1.25);
+    expect(CU_LIMITS.refund).toBeGreaterThanOrEqual(fixtureTx('cancel_pool + refund').computeUnits * 1.25);
     expect(CU_LIMITS.open_next_pool).toBeGreaterThanOrEqual(measured('open_next_pool') * 1.25); // two PDA inits (pool + vault funding)
     for (const k of ['commit_winners', 'veto_winners', 'record_ride_attestation', 'settle_pledge', 'refund_pledge', 'seal_road', 'refund_sponsor'] as const) expect(CU_LIMITS[k], k).toBeGreaterThanOrEqual(measured(k) * 1.25);
   });
@@ -217,7 +214,8 @@ describe('ProgramChainAdapter – reads', () => {
     const d = pool.decoded;
     expect(state).toEqual({
       poolId: 0, address: pool.address, status: 'active', ticketsSold: 3, buyers: 2, sponsored: 50_000_000, prizesPaid: 0, refunded: 0, vaultLamports: vault, escrowLamports: 350_000_000,
-      vault: fixtureTx('buy_ticket self-paid').instructions[0]!.accounts[4]!.pubkey, authority: fx.keys.authority, tier: 1, priceLamports: 100_000_000, minTickets: 3, maxTickets: 10, maxPerWallet: 4,
+      vault: fixtureTx('buy_ticket self-paid').instructions[0]!.accounts[4]!.pubkey, authority: fx.keys.authority, tier: 1, priceLamports: 100_000_000, minTickets: 0, maxTickets: 10, maxPerWallet: 4,
+      opensAt: new Date(Number(d['opensAt']) * 1000), lastStartAt: new Date(Number(d['lastStartAt']) * 1000),
       prepDeadline: new Date(Number(d['prepDeadline']) * 1000), playDeadline: new Date(Number(d['playDeadline']) * 1000), payoutAt: new Date(Number(d['payoutAt']) * 1000), prizeBps: 6000, seedBps: 2500, feeBps: 1500, paidTicketsEnabled: true, maxPlayerShareBps: 4999,
       feeTreasury: fx.keys.feeTreasury, seedTreasury: fx.keys.seedTreasury, createdAt: new Date(Number(d['createdAt']) * 1000),
       seedCommitment: String(d['seedCommitment']), seedSlot: 1008, seedSlotHash: bs58.encode(Buffer.from(String(d['seedSlotHash']), 'base64')),
@@ -250,7 +248,7 @@ describe('ProgramChainAdapter – reads', () => {
     const pool = fixtureAccount('pool 4 open (series)');
     expect(Buffer.from(String(pool.decoded['seedCommitment']), 'base64').every((b) => b === 0)).toBe(true);
     const state = await adapterWith({ getMultipleAccountsInfo: async () => [accountInfo('pool 4 open (series)'), { lamports: 890_880 }] }).adapter.readPool(4);
-    expect(state).toMatchObject({ poolId: 4, address: pool.address, status: 'open', authority: fx.keys.cranker, sealSlot: 1927, winnersRoot: null, payFrom: null, paidMask: 0n, escrowLamports: 0 });
+    expect(state).toMatchObject({ poolId: 4, address: pool.address, status: 'active', authority: fx.keys.cranker, sealSlot: 1927, winnersRoot: null, payFrom: null, paidMask: 0n, escrowLamports: 0 });
     expect(state?.seedCommitment).toBeUndefined();
     expect(state?.seedSlot).toBeUndefined();
     expect(state?.seedSlotHash).toBeUndefined();

@@ -67,11 +67,11 @@ if (process.env.MIGRATE) {
   const info1 = await conn.getAccountInfo(codec.configPda(), 'confirmed'), c = codec.decodeAccount('Config', info1.data);
   const fee = (await conn.getTransaction(m.signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 })).meta.fee;
   const topUp = (await conn.getMinimumBalanceForRentExemption(info1.data.length)) - info0.lamports;
-  check('migrate_config_v4 by the admin: the Config grows to the v4 layout, every v3 field kept, the floors at their defaults (3600 / 10 800 s), the admin paid the extra rent + its fee',
+  check('migrate_config_v4 by the admin: the Config grows to the v4 layout, every v3 field kept, the floors at their defaults (3600 / 7200 s), the admin paid the extra rent + its fee',
     info1.data.length > V3_CONFIG_LEN && c.authority === pub('admin') && c.platformTreasury === pub('plat') && c.platformFeeBps === 500 && c.poolCount === 3 && c.paused === false && c.payoutAuthority === null
-    && secs(c.minReviewSecs) === 3600 && secs(c.minFinishSecs) === 10_800 && a0 - (await conn.getBalance(new PublicKey(pub('admin')), 'confirmed')) === topUp + fee && topUp > 0, JSON.stringify({ len: info1.data.length, c, topUp }));
+    && secs(c.minReviewSecs) === 3600 && secs(c.minFinishSecs) === 7200 && a0 - (await conn.getBalance(new PublicKey(pub('admin')), 'confirmed')) === topUp + fee && topUp > 0, JSON.stringify({ len: info1.data.length, c, topUp }));
   refuse('migrate_config_v4 of a Config already migrated', ['migrate-config', '-k', adminKey], 'AlreadyMigrated');
-  refuse('create_pool with a 60 s play window under the default floors', ['create-pool', '--tier', '8h', '--price', '50000000', '--min', '1', '--prep', '+60', '--play', '+120', '--fee-treasury', pub('fee'), '--seed-treasury', pub('seed'), '-k', adminKey], 'WindowTooShort');
+  refuse('create_pool with a 60 s play window under the default floors', ['create-pool', '--tier', '8h', '--price', '50000000', '--min', '0', '--prep', '+60', '--play', '+120', '--fee-treasury', pub('fee'), '--seed-treasury', pub('seed'), '-k', adminKey], 'WindowTooShort');
   const fl = admin(['set-config', '--min-review-secs', '0', '--min-finish-secs', '0', '-k', adminKey]).config;
   check('set_config: the floors lowered to 0 again for the seconds-wide localnet pools', secs(fl.minReviewSecs) === 0 && secs(fl.minFinishSecs) === 0);
   process.exit(fails.length ? 1 : 0);
@@ -86,13 +86,13 @@ const init = admin(['initialize', '-k', `${KEYS}/upgrader.json`, '--admin', pub(
 check('initialize by the upgrade authority names the admin (not itself)', init.config.authority === pub('admin') && init.config.authority !== pub('upgrader'));
 // v4: initialize sets the floors (a 1 h review window, 3 h to finish after the sale) – the localnet pools are seconds wide, so the admin lowers them to 0
 const floors = admin(['set-config', '--min-review-secs', '0', '--min-finish-secs', '0', '-k', `${KEYS}/admin.json`]).config;
-check('set_config by the admin: the v4 floors (3600 / 10800 s after initialize) lowered to 0 for the seconds-wide localnet pools', secs(floors.minReviewSecs) === 0 && secs(floors.minFinishSecs) === 0, JSON.stringify({ review: floors.minReviewSecs, finish: floors.minFinishSecs }));
+check('set_config by the admin: the v4 floors (3600 / 7200 s after initialize) lowered to 0 for the seconds-wide localnet pools', secs(floors.minReviewSecs) === 0 && secs(floors.minFinishSecs) === 0, JSON.stringify({ review: floors.minReviewSecs, finish: floors.minFinishSecs }));
 
 // two pools that go live at once and whose play window ends in ~8 s
 const treas = ['--fee-treasury', pub('fee'), '--seed-treasury', pub('seed'), '-k', `${KEYS}/admin.json`];
 // buyers funded first: the buys must land before the (short) prep deadline
 const e1 = await newKey('expire-buyer-1', 2), e2 = await newKey('expire-buyer-2', 2), g1 = await newKey('grace-buyer', 2);
-const mk = (tier, min) => admin(['create-pool', '--tier', tier, '--price', '50000000', '--min', String(min), '--max', '0', '--per-wallet', '3', '--prep', '+25', '--play', '+27', '--split', '7000/2000/1000', ...treas]).poolId;
+const mk = (tier, min) => admin(['create-pool', '--tier', tier, '--price', '50000000', '--min', '0', '--max', '0', '--per-wallet', '3', '--prep', '+25', '--play', '+27', '--last-start', '+26', '--split', '7000/2000/1000', ...treas]).poolId;
 const X = mk('8h', 2), Y = mk('8h', 1);
 admin(['buy', '-k', e1, '--pool', String(X)]);                                            // pays its own Ticket rent
 admin(['buy', '-k', e2, '--pool', String(X)]);                                            // pays its own Ticket rent too
@@ -111,7 +111,7 @@ admin(['commit-winners', '-k', `${KEYS}/admin.json`, '--pool', String(Y), '--win
 admin(['pay-prize', '-k', stranger, '--pool', String(Y), '--winners', winners, '--rank', '1']);   // permissionless: the root decides who gets what
 // pool 2 "REARM": opened and NEVER sealed – in phase 2 its seal slot has long left the 512-slot SlotHashes window, so the first seal_road re-arms it
 // (SealRearmed). Its created_at is moved 30 days ahead in the dump: the crank seals a pool only 8 s after it was created, so it leaves this one alone.
-const RA = admin(['create-pool', '--tier', '8h', '--price', '50000000', '--min', '1', '--max', '0', '--per-wallet', '1', '--prep', '+86400', '--play', '+86460', '--split', '7000/2000/1000', ...treas]).poolId;
+const RA = admin(['create-pool', '--tier', '8h', '--price', '50000000', '--min', '0', '--max', '0', '--per-wallet', '1', '--prep', '+86400', '--play', '+86460', '--split', '7000/2000/1000', ...treas]).poolId;
 
 // dump: Config, both pools, their vaults, the three tickets; edit only the deadlines (16 days back), verify by decoding
 const PREP = 63, PLAY = 71, PAYOUT = 79, CREATED_AT = 190;   // … status u8 @157 | tickets_sold | buyers | sponsored | prizes_paid | refunded | created_at i64 @190   // Pool: disc 8 | pool_id u32 | authority 32 | tier u8 | price u64 | min u32 | max u32 | max_per_wallet u16 | prep i64 | play i64 | payout_at i64
@@ -124,15 +124,15 @@ const dump = async (label, address, edit) => {
   writeFileSync(file, JSON.stringify({ pubkey: address.toBase58(), account: { lamports: a.lamports, data: [data.toString('base64'), 'base64'], owner: a.owner.toBase58(), executable: false, rentEpoch: 0, space: data.length } }));
   dumps.push({ label, address: address.toBase58(), file, data });
 };
-const pastDeadlines = d => { for (const at of [PREP, PLAY, PAYOUT]) d.writeBigInt64LE(BigInt(back), at); };
+const pastDeadlines = d => { for (const at of [PREP, PLAY, PAYOUT, 370, 378]) d.writeBigInt64LE(BigInt(back), at); };
 await dump('config', codec.configPda());
 for (const [label, id] of [['pool-expire', X], ['pool-grace', Y]]) { await dump(label, codec.poolPda(id), pastDeadlines); await dump(`${label}-vault`, codec.vaultPda(id)); }
 for (const [label, id, buyer] of [['ticket-e1', X, 'expire-buyer-1'], ['ticket-e2', X, 'expire-buyer-2'], ['ticket-g1', Y, 'grace-buyer']]) await dump(label, codec.ticketPda(id, pub(buyer)));
 const rearmAt = Math.floor(Date.now() / 1000) + 30 * 86_400;
-await dump('pool-rearm', codec.poolPda(RA), d => d.writeBigInt64LE(BigInt(rearmAt), CREATED_AT)); await dump('pool-rearm-vault', codec.vaultPda(RA));
+await dump('pool-rearm', codec.poolPda(RA), d => { d.writeBigInt64LE(BigInt(rearmAt), CREATED_AT); d.writeBigInt64LE(BigInt(rearmAt + 1000), 378); }); await dump('pool-rearm-vault', codec.vaultPda(RA));
 {
   const p = codec.decodeAccount('Pool', dumps.find(x => x.label === 'pool-rearm').data);
-  check(`pool-rearm: decodes after the edit, open, unsealed (seal slot ${p?.sealSlot}), created_at 30 days ahead`, p && p.status === 0 && Number(p.sealSlot) > 0 && p.createdAt.getTime() === rearmAt * 1000, JSON.stringify({ status: p?.status, seal: p?.sealSlot, created: p?.createdAt }));
+  check(`pool-rearm: decodes after the edit, open, unsealed (seal slot ${p?.sealSlot}), created_at 30 days ahead`, p && p.status === 1 && Number(p.sealSlot) > 0 && p.createdAt.getTime() === rearmAt * 1000, JSON.stringify({ status: p?.status, seal: p?.sealSlot, created: p?.createdAt }));
 }
 // the Config in the v3 LAYOUT (v4 = the same borsh fields + two i64 floors at the end): both Options are None here, so the v3 bytes are the first 82,
 // zero-padded to the v3 size – phase 2 migrates it with the real migrate_config_v4 (run.sh, MIGRATE=1) before the server starts
@@ -173,19 +173,19 @@ check('Config baked with pool_count = 3 (new pools get ids 3, 4, …), dumped in
 // series with the real set_series – min 4 tickets, ≤ 2 per wallet, play / review windows in seconds; the program wants a sale window of an hour at least,
 // so the DUMP gets only sale_secs shortened (the cadence: the next pool opens when this one stops selling). next_open_at is set at phase 3 (RETIME).
 const DAY_SALE = +(process.env.DAY_SALE || 120), DAY_PLAY = +(process.env.DAY_PLAY || 45), DAY_REVIEW = +(process.env.DAY_REVIEW || 45);
-const ser = admin(['set-series', '--tier', '1h', '--price', '100000000', '--min', '4', '--max', '0', '--per-wallet', '2', '--split', '7000/2000/1000',
-  '--sale-secs', '3600', '--play-secs', String(DAY_PLAY), '--review-secs', String(DAY_REVIEW), '--start', '+3600', ...treas]).series;
+const ser = admin(['set-series', '--tier', '1h', '--price', '100000000', '--min', '0', '--max', '0', '--per-wallet', '2', '--split', '7000/2000/1000',
+  '--sale-secs', '3600', '--period-secs', '3600', '--start-buffer-secs', '1', '--play-secs', String(DAY_PLAY), '--review-secs', String(DAY_REVIEW), '--start', '+3600', ...treas]).series;
 check('set_series by the admin: the 1h series is written by the real program (sale window = the program minimum, 3600 s)', ser?.enabled === true && secs(ser.saleSecs) === 3600 && secs(ser.playSecs) === DAY_PLAY && secs(ser.verifySecs) === DAY_REVIEW && ser.poolsOpened === 0, JSON.stringify(ser));
 mkdirSync(`${OUT}/day`, { recursive: true });
 {
   const a = await conn.getAccountInfo(codec.seriesPda(1), 'confirmed');
-  const data = Buffer.from(a.data); data.writeBigInt64LE(BigInt(DAY_SALE), SALE_SECS);
+  const data = Buffer.from(a.data); data.writeBigInt64LE(BigInt(DAY_SALE), SALE_SECS); data.writeBigInt64LE(BigInt(DAY_SALE), 136);
   const sr = codec.decodeAccount('Series', data);
-  check(`series dump: decodes after the edit with a ${DAY_SALE} s slot, everything else as the program wrote it`, sr && secs(sr.saleSecs) === DAY_SALE && secs(sr.playSecs) === DAY_PLAY && secs(sr.verifySecs) === DAY_REVIEW && sr.minTickets === 4 && sr.maxPerWallet === 2 && sr.feeTreasury === pub('fee') && sr.seedTreasury === pub('seed') && sr.enabled, JSON.stringify(sr));
+  check(`series dump: decodes after the edit with a ${DAY_SALE} s slot, everything else as the program wrote it`, sr && secs(sr.saleSecs) === DAY_SALE && secs(sr.playSecs) === DAY_PLAY && secs(sr.verifySecs) === DAY_REVIEW && sr.minTickets === 0 && sr.maxPerWallet === 2 && sr.feeTreasury === pub('fee') && sr.seedTreasury === pub('seed') && sr.enabled, JSON.stringify(sr));
   // set_series stores the live Config split. open_next_pool copies that onto the pool; the --split argument is not the pool's split.
   check('series split is the Config snapshot (prize + seed + fee = 10000)', sr.prizeBps + sr.seedBps + sr.feeBps === 10000 && sr.prizeBps === ser.prizeBps, `${sr.prizeBps}/${sr.seedBps}/${sr.feeBps}`);
   writeFileSync(`${OUT}/day/series-1h.json`, JSON.stringify({ pubkey: codec.seriesPda(1).toBase58(), account: { lamports: a.lamports, data: [data.toString('base64'), 'base64'], owner: a.owner.toBase58(), executable: false, rentEpoch: 0, space: data.length } }));
-  writeFileSync(`${OUT}/day/day.json`, JSON.stringify({ tier: '1h', saleSecs: DAY_SALE, playSecs: DAY_PLAY, reviewSecs: DAY_REVIEW, minTickets: 4, maxPerWallet: 2, price: 100_000_000, split: [sr.prizeBps, sr.seedBps, sr.feeBps] }));
+  writeFileSync(`${OUT}/day/day.json`, JSON.stringify({ tier: '1h', saleSecs: DAY_SALE, playSecs: DAY_PLAY, reviewSecs: DAY_REVIEW, minTickets: 0, maxPerWallet: 2, price: 100_000_000, split: [sr.prizeBps, sr.seedBps, sr.feeBps] }));
 }
 if (cov) { const sc = await cov.scan(conn, 'phase 1 (fixtures validator)'); console.log(`coverage: ${sc.transactions} program transactions on the fixtures validator`); }
 process.exit(fails.length ? 1 : 0);

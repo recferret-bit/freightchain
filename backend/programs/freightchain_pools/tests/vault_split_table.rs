@@ -39,12 +39,14 @@ fn pool_of(r: &Value) -> Pool {
         authority: Pubkey::default(),
         tier: 1,
         price_lamports: u(r, "price"),
-        min_tickets: 1,
+        min_tickets: 0,
         max_tickets: 0,
         max_per_wallet: 1,
         prep_deadline: 0,
         play_deadline: 0,
         payout_at: 0,
+        opens_at: 0,
+        last_start_at: 0,
         prize_bps: n(r, "prizeBps") as u16,
         seed_bps: n(r, "seedBps") as u16,
         fee_bps: n(r, "feeBps") as u16,
@@ -134,12 +136,14 @@ fn shared_table_matches_close_pool_on_chain() {
         let params = CreatePoolParams {
             tier: 1,
             price_lamports: price,
-            min_tickets: if cancelled { sold as u32 + 1 } else { sold as u32 },
+            min_tickets: 0,
             max_tickets: 0,
             max_per_wallet: sold,
             prep_deadline: PREP,
             play_deadline: PLAY,
             payout_at: PAYOUT,
+            opens_at: T0,
+            last_start_at: PLAY - 1,
         };
         let id = e.create_pool(params);
         // L8: the cut is fixed when the pool opens – changing the config afterwards does not move this pool's close
@@ -156,7 +160,7 @@ fn shared_table_matches_close_pool_on_chain() {
         let (want_vault, want_seed) = (u(&c, "vault"), u(&c, "seed"));
         if cancelled {
             e.warp(PREP);
-            e.fail(id).unwrap();
+            e.cancel_by_admin(id).unwrap();
             e.refund(id, &buyer.pubkey(), &buyer.pubkey()).unwrap();
             if sponsored > 0 {
                 // v4 (M8): the sponsor is refunded before the close (the table's close row is the vault after that)
@@ -198,7 +202,7 @@ fn shared_table_matches_close_pool_on_chain() {
 fn platform_cut_is_the_one_the_pool_opened_with() {
     let mut e = Env::with_platform_fee(1_000);
     let auth = e.authority_kp();
-    let id = e.create_pool(CreatePoolParams { min_tickets: 2, max_tickets: 0, ..default_params() });
+    let id = e.create_pool(CreatePoolParams { min_tickets: 0, max_tickets: 0, ..default_params() });
     assert_eq!(e.pool(id).platform_fee_bps, 1_000);
     let b = funded(&mut e.svm, 10 * SOL);
     e.buy(id, &b, 4).unwrap();

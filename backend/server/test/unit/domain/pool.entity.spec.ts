@@ -328,3 +328,20 @@ describe('Pool – the day of a pool: phase, hold, payout state', () => {
     expect(Pool.fromChain(state, T0, null, 1).payoutState).toBe('pending');
   });
 });
+
+
+describe('v6 operator-funded pool', () => {
+  it('mirrors explicit schedule dates instead of deriving them from creation', () => {
+    const existing = pool({ status: 'active' });
+    const opensAt = new Date(T0.getTime() + 1000), lastStartAt = new Date(PLAY.getTime() - 1000);
+    const state = { ...existing.snapshot(), poolId: existing.id, escrowLamports: 0, prizesPaid: 0, refunded: 0, authority: 'a', vault: 'v', tier: 1, opensAt, lastStartAt } as unknown as PoolChainState;
+    const p = Pool.fromChain(state, T0, existing, 777);
+    expect(p.opensAt).toEqual(opensAt);
+    expect(p.lastStartAt).toEqual(lastStartAt);
+  });
+  it('accepts the admin cancellation event on an active pool', () => {
+    const p = pool({ status: 'active', minTickets: 0 });
+    p.applyEvent(ev('PoolCancelled', { ticketsSold: 0 }));
+    expect(p.status).toBe('refunding');
+  });
+});

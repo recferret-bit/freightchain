@@ -25,6 +25,8 @@ pub struct SeriesParams {
     pub verify_secs: i64,
     /// the first sale slot starts here; 0 = keep the series' current `next_open_at` (refused for a new series)
     pub start_at: i64,
+    pub period_secs: i64,
+    pub start_buffer_secs: i64,
 }
 
 #[derive(Accounts)]
@@ -57,7 +59,9 @@ pub fn handle_set_series(ctx: Context<SetSeries>, p: SeriesParams) -> Result<()>
     let a = &ctx.accounts;
     check_money_rules(p.price_lamports, p.min_tickets, p.max_tickets, p.max_per_wallet)?;
     require!((MIN_SALE_SECS..=MAX_SALE_SECS).contains(&p.sale_secs), PoolError::InvalidParams);
-    require!(p.play_secs >= 0 && p.verify_secs >= 0, PoolError::InvalidParams);
+    require!(p.play_secs > 0 && p.verify_secs >= 0, PoolError::InvalidParams);
+    require!((p.sale_secs..=MAX_POOL_SECS).contains(&p.period_secs), PoolError::InvalidParams);
+    require!(p.start_buffer_secs > 0 && p.start_buffer_secs <= p.play_secs, PoolError::InvalidParams);
     // the floors are checked here, not at every open: raising one later does not stop a running series
     check_windows(&a.config, p.play_secs, p.verify_secs)?;
     crate::state::check_split(a.config.prize_bps, a.config.seed_bps, a.config.fee_bps)?;
@@ -90,6 +94,8 @@ pub fn handle_set_series(ctx: Context<SetSeries>, p: SeriesParams) -> Result<()>
     s.sale_secs = p.sale_secs;
     s.play_secs = p.play_secs;
     s.verify_secs = p.verify_secs;
+    s.period_secs = p.period_secs;
+    s.start_buffer_secs = p.start_buffer_secs;
     // recorded for inspection; `open_next_pool` snapshots the live Config, so a later `set_pool_rules` still reaches the next pool
     s.prize_bps = prize_bps;
     s.seed_bps = seed_bps;
@@ -115,6 +121,8 @@ pub fn handle_set_series(ctx: Context<SetSeries>, p: SeriesParams) -> Result<()>
         fee_treasury,
         seed_treasury,
         next_open_at: s.next_open_at,
+        period_secs: s.period_secs,
+        start_buffer_secs: s.start_buffer_secs,
     });
     Ok(())
 }
@@ -153,8 +161,8 @@ pub struct OpenNextPool<'info> {
 }
 
 /// Permissionless: once the series' slot has come, open the pool of the CURRENT slot from the series' rules. Slots sit on a fixed grid
-/// (`next_open_at + k * sale_secs`), so a late caller never shifts the schedule – a slot nobody opened in time is skipped, and the pool of
-/// the current slot just sells for what is left of it. One pool per slot: `next_open_at` moves to this pool's sale end.
+/// (`next_open_at + k * period_secs`), so a late caller never shifts the schedule – a slot nobody opened in time is skipped, and the pool of
+/// the current slot just sells for what is left of it. One pool per period; a gap after sales close is refused.
 pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()> {
     let a = &ctx.accounts;
     require!(!a.config.paused, PoolError::Paused);
@@ -163,9 +171,10 @@ pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()>
     let now = Clock::get()?.unix_timestamp;
     let s = &a.series;
     require!(now >= s.next_open_at, PoolError::TooEarly);
-    let missed = (now - s.next_open_at) / s.sale_secs;
-    let slot = s.next_open_at.checked_add(missed.checked_mul(s.sale_secs).ok_or(PoolError::MathOverflow)?).ok_or(PoolError::MathOverflow)?;
+    let missed = (now - s.next_open_at) / s.period_secs;
+    let slot = s.next_open_at.checked_add(missed.checked_mul(s.period_secs).ok_or(PoolError::MathOverflow)?).ok_or(PoolError::MathOverflow)?;
     let sale_end = slot.checked_add(s.sale_secs).ok_or(PoolError::MathOverflow)?;
+    require!(now < sale_end, PoolError::TooLate);
     let play = sale_end.checked_add(s.play_secs).ok_or(PoolError::MathOverflow)?;
     let payout = play.checked_add(s.verify_secs).ok_or(PoolError::MathOverflow)?;
     // the rent minimum can change between set_series and now: the money rules are checked again
@@ -181,6 +190,8 @@ pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()>
         prep_deadline: sale_end,
         play_deadline: play,
         payout_at: payout,
+        opens_at: slot,
+        last_start_at: play.checked_sub(s.start_buffer_secs).ok_or(PoolError::MathOverflow)?,
         fee_treasury: s.fee_treasury,
         seed_treasury: s.seed_treasury,
     };
@@ -189,7 +200,7 @@ pub fn handle_open_next_pool(ctx: Context<OpenNextPool>, tier: u8) -> Result<()>
     let a = ctx.accounts;
     let pool_id = init_pool(&mut a.config, &mut a.pool, &a.vault.to_account_info(), &creator, &a.system_program, rules, now, pool_bump, vault_bump, true)?;
     let s = &mut a.series;
-    s.next_open_at = sale_end;
+    s.next_open_at = slot.checked_add(s.period_secs).ok_or(PoolError::MathOverflow)?;
     s.pools_opened = s.pools_opened.checked_add(1).ok_or(PoolError::MathOverflow)?;
     s.last_pool_id = Some(pool_id);
     Ok(())

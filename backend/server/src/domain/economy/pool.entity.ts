@@ -50,9 +50,9 @@ export class Pool {
       seedCommitment: state.seedCommitment ?? existing?.p.seedCommitment ?? null,
       blockhash: state.seedSlotHash ?? existing?.p.blockhash ?? null,
       slot: state.seedSlot ?? existing?.p.slot ?? null,
-      opensAt: state.createdAt,
+      opensAt: state.opensAt ?? state.createdAt,
       salesCloseAt: state.prepDeadline,
-      lastStartAt: lastStartAtFor(state.playDeadline, state.createdAt),
+      lastStartAt: state.lastStartAt ?? lastStartAtFor(state.playDeadline, state.createdAt),
       playCloseAt: state.playDeadline,
       validationUntil: state.payoutAt,
       sealSlot: state.sealSlot ?? existing?.p.sealSlot ?? null,
@@ -241,8 +241,10 @@ export class Pool {
         this.p.vaultLamports = this.pot;
         return;
       case 'PoolFailed':
-      case 'PoolCancelled':
         this.moveTo('refunding', 'open');
+        return;
+      case 'PoolCancelled':
+        this.moveTo('refunding', 'open', 'active');
         return;
       case 'PoolExpired':
         this.moveTo('refunding', 'active');
@@ -288,9 +290,9 @@ export class Pool {
   }
 
   /** `from` → `to`; already at `to` is a replay and fine. */
-  private moveTo(to: PoolStatus, from: PoolStatus): void {
+  private moveTo(to: PoolStatus, ...from: PoolStatus[]): void {
     if (this.p.status === to) return;
-    this.mustBe(from);
+    this.mustBe(...from);
     this.p.status = to;
   }
 

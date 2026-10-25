@@ -21,8 +21,9 @@ const codec = new PoolProgramCodec(IDL.address);
 const ANCHOR_ERRORS = { 2006: 'ConstraintSeeds', 3007: 'AccountOwnedByWrongProgram', 3012: 'AccountNotInitialized' };
 /** what cannot happen on a fresh v4 validator – shown in the report with its reason, never silently skipped (a name listed here that DID run counts as covered) */
 export const EXEMPT = {
-  instructions: {},
+  instructions: { fail_pool: 'v6 always refuses NotFailable; low sales never release escrow (negative validator coverage required)' },
   events: {
+    PoolFailed: 'historical event: v6 has no low-sales failure path',
     AttestationRecorded: 'a v3 event kept in the IDL so old transactions still decode – no v4 instruction emits it (v4: RideAttestationRecorded)',
   },
 };

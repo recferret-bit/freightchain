@@ -26,10 +26,10 @@ function idlArgs(name: string, a: Record<string, unknown>): Record<string, unkno
     case 'set_config': return { paused: null, platform_treasury: null, platform_fee_bps: null, min_review_secs: BigInt(Number(a['minReviewSecs'])), min_finish_secs: BigInt(Number(a['minFinishSecs'])) };
     case 'migrate_config_v4': return {};
     case 'create_pool': return { params: { tier: a['tier'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'], max_per_wallet: a['maxPerWallet'],
-      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])) } };
+      prep_deadline: BigInt(Number(a['prepDeadline'])), play_deadline: BigInt(Number(a['playDeadline'])), payout_at: BigInt(Number(a['payoutAt'])), opens_at: a['opensAt'], last_start_at: a['lastStartAt'] } };
     case 'set_series': return { params: { tier: a['tier'], enabled: a['enabled'], price_lamports: BigInt(String(a['priceLamports'])), min_tickets: a['minTickets'], max_tickets: a['maxTickets'],
       max_per_wallet: a['maxPerWallet'], sale_secs: BigInt(Number(a['saleSecs'])), play_secs: BigInt(Number(a['playSecs'])), verify_secs: BigInt(Number(a['verifySecs'])),
-      start_at: BigInt(Number(a['startAt'])) } };
+      start_at: BigInt(Number(a['startAt'])), period_secs: a['periodSecs'], start_buffer_secs: a['startBufferSecs'] } };
     case 'set_pool_rules': return { paid_tickets_enabled: a['paidTicketsEnabled'], prize_bps: a['prizeBps'], seed_bps: a['seedBps'], fee_bps: a['feeBps'], max_player_share_bps: a['maxPlayerShareBps'], max_tickets: a['maxTickets'] };
     case 'open_next_pool': return { tier: a['tier'] }; // the seed commitment is the program's own (SlotHashes), not an argument
     case 'create_pledge': return { ride_id: b64(String(a['rideId'])), driver: a['driver'], max_lamports: BigInt(String(a['maxLamports'])), lamports_per_km: BigInt(String(a['lamportsPerKm'])), target_km: a['targetKm'] };
@@ -80,7 +80,7 @@ describe('PoolProgramCodec – events from real logs', () => {
     const evil = Keypair.generate().publicKey.toBase58();
     const forged = [`Program ${evil} invoke [1]`, data, `Program ${evil} success`, ...real.logs, `Program ${evil} invoke [1]`, `Program ${fx.programId} invoke [2]`, `Program ${fx.programId} success`, data, `Program ${evil} success`];
     const records = codec.poolEvents(forged, 'sig', 1);
-    expect(records !== 'truncated' && records.map((r) => r.kind)).toEqual(['TicketBought', 'PoolActivated']);
+    expect(records !== 'truncated' && records.map((r) => r.kind)).toEqual(['TicketBought']);
     expect(codec.poolEvents([data], 'sig', 1)).toEqual([]); // no invoke frame at all
   });
 
@@ -101,7 +101,7 @@ describe('PoolProgramCodec – instructions', () => {
   const all = fx.transactions.flatMap((t) => t.instructions);
 
   it('covers every instruction the server builds', () => {
-    for (const n of ['buy_ticket', 'fail_pool', 'refund', 'pay_prize', 'close_pool', 'open_next_pool', 'create_pledge', 'settle_pledge', 'refund_pledge', 'commit_winners', 'veto_winners', 'seal_road', 'record_ride_attestation', 'refund_sponsor', 'close_ride_attestation', 'close_sponsor_receipt', 'set_config']) expect(all.some((i) => i.name === n), n).toBe(true);
+    for (const n of ['buy_ticket', 'refund', 'pay_prize', 'close_pool', 'open_next_pool', 'create_pledge', 'settle_pledge', 'refund_pledge', 'commit_winners', 'veto_winners', 'seal_road', 'record_ride_attestation', 'refund_sponsor', 'close_ride_attestation', 'close_sponsor_receipt', 'set_config']) expect(all.some((i) => i.name === n), n).toBe(true);
   });
 
   for (const ix of all.filter((i, k) => all.findIndex((j) => j.name === i.name) === k)) {

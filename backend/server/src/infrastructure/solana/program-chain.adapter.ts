@@ -24,7 +24,7 @@ import { SolanaRpc, sleep } from './solana-rpc.js';
 export const CU_LIMITS = { buy: 60_000, refund: 45_000, fail_pool: 10_000, expire_pool: 10_000, pay_prize: 22_000, close_pool: 30_000, open_next_pool: 40_000, create_pledge: 30_000,
   settle_pledge: 25_000, refund_pledge: 25_000,
   // program v4 (LiteSVM: commit 8.8k, a 64-winner pay 15.5k, refund_sponsor 13.5k, sponsor with a new receipt 18.1k)
-  commit_winners: 15_000, veto_winners: 11_000, record_ride_attestation: 30_000, seal_road: 40_000, refund_sponsor: 25_000 } as const;
+  commit_winners: 15_000, veto_winners: 11_000, record_ride_attestation: 30_000, seal_road: 80_000, refund_sponsor: 25_000 } as const;
 const MAX_SIGNATURE_PAGES = 10;
 const STATUS = ['open', 'active', 'refunding', 'settled', 'cancelled'] as const;
 
@@ -45,6 +45,7 @@ export function poolStateOf(c: PoolProgramCodec, poolId: number, info: AccountIn
     sponsored: p['sponsored'] as number, prizesPaid: p['prizesPaid'] as number, refunded: p['refunded'] as number,
     vaultLamports, escrowLamports: escrowOf(vaultLamports, rentMin), vault: c.vaultPda(poolId).toBase58(), authority: p['authority'] as string, tier: p['tier'] as number,
     priceLamports: p['priceLamports'] as number, minTickets: p['minTickets'] as number, maxTickets: p['maxTickets'] as number, maxPerWallet: p['maxPerWallet'] as number,
+    ...('opensAt' in p ? { opensAt: p['opensAt'] as Date, lastStartAt: p['lastStartAt'] as Date } : {}),
     prepDeadline: p['prepDeadline'] as Date, playDeadline: p['playDeadline'] as Date, payoutAt: p['payoutAt'] as Date, prizeBps: p['prizeBps'] as number, seedBps: p['seedBps'] as number,
     feeBps: p['feeBps'] as number, ...('referralBps' in p ? { referralBps: Number(p['referralBps'] ?? 0) } : {}),
     ...('paidTicketsEnabled' in p ? { paidTicketsEnabled: Boolean(p['paidTicketsEnabled']) } : {}),
@@ -84,6 +85,7 @@ export function seriesStateOf(c: PoolProgramCodec, info: AccountInfo<Buffer> | n
   return {
     address, tier: s['tier'] as number, enabled: s['enabled'] as boolean, priceLamports: s['priceLamports'] as number, minTickets: s['minTickets'] as number,
     maxTickets: s['maxTickets'] as number, maxPerWallet: s['maxPerWallet'] as number, saleSecs: secs('saleSecs'), playSecs: secs('playSecs'), verifySecs: secs('verifySecs'),
+    ...('periodSecs' in s ? { periodSecs: secs('periodSecs'), startBufferSecs: secs('startBufferSecs') } : {}),
     prizeBps: s['prizeBps'] as number, seedBps: s['seedBps'] as number, feeBps: s['feeBps'] as number, ...('referralBps' in s ? { referralBps: Number(s['referralBps'] ?? 0) } : {}), feeTreasury: s['feeTreasury'] as string,
     seedTreasury: s['seedTreasury'] as string, nextOpenAt: s['nextOpenAt'] as Date, poolsOpened: s['poolsOpened'] as number, lastPoolId: (s['lastPoolId'] as number | null) ?? null,
   };

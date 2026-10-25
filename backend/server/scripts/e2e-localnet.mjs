@@ -187,7 +187,7 @@ try {
 
   // ── 1. pools created now by the admin: A (1h, goes live), B (4h, misses its goal), C (8h, misses its goal – left to the crank)
   const treas = ['--fee-treasury', addr('fee'), '--seed-treasury', addr('seed'), '-k', `${KEYS}/admin.json`];
-  const mk = (tier, price, min, prep, play, split, perWallet = 3) => admintool(['create-pool', '--tier', tier, '--price', String(price), '--min', String(min), '--max', '0', '--per-wallet', String(perWallet), '--prep', `+${prep}`, '--play', `+${play}`, '--split', split, ...treas]).poolId;
+  const mk = (tier, price, min, prep, play, split, perWallet = 3) => admintool(['create-pool', '--tier', tier, '--price', String(price), '--min', '0', '--max', '0', '--per-wallet', String(perWallet), '--prep', `+${prep}`, '--play', `+${play}`, '--last-start', `+${play - 1}`, '--split', split, ...treas]).poolId;
   const A = mk('1h', PRICE_A, 3, PREP_A, PLAY_A, '7000/2000/1000');
   const B = mk('4h', PRICE_B, 5, PREP_B, PREP_B + 60, '6000/2500/1500', 2);
   const C = mk('8h', PRICE_B, 5, PREP_C, PREP_C + 60, '7000/2000/1000', 2);
@@ -196,7 +196,7 @@ try {
   const seals = []; for (const id of [A, B, C]) seals.push(await sealRoad({ conn, codec, admintool, id, keyfile: `${KEYS}/admin.json` }));
   check('seal_road A / B / C: each road sealed from a later slot (seal_slot 0, a seed commitment)', seals.every(x => x && Number(x.pool.sealSlot) === 0 && !/^A+=*$/.test(x.pool.seedCommitment) && Number(x.pool.seedSlot) > 0), JSON.stringify(seals.map(x => x?.pool && { seal: x.pool.sealSlot, slot: x.pool.seedSlot })));
   for (const [id, label] of [[A, 'LOCAL 1H'], [B, 'LOCAL 4H'], [C, 'LOCAL 8H']]) execFileSync('node', ['dist/cli/index.js', 'pool:register', String(id), '--label', label], { stdio: 'ignore' });
-  check('…open on chain and on the server, vaults hold exactly the rent minimum', (await Promise.all([A, B, C].map(async id => (await poolAcc(id))?.status === 0 && (await serverPool(id)).status === 'open' && (await bal(codec.vaultPda(id))) === RENT0)))
+  check('…open on chain and on the server, vaults hold exactly the rent minimum', (await Promise.all([A, B, C].map(async id => (await poolAcc(id))?.status === 1 && (await serverPool(id)).status === 'active' && (await bal(codec.vaultPda(id))) === RENT0)))
     .every(Boolean));
   const vA = codec.vaultPda(A).toBase58(), vB = codec.vaultPda(B).toBase58(), vC = codec.vaultPda(C).toBase58();
   const [P1, P2, P3, P4, P5, P6, S, Z] = [await player(), await player(), await player(), await player(), await player(), await player(), await player(), await player()];   // Z = "anyone": closes pools it never paid into
@@ -226,14 +226,14 @@ try {
   check('P1 paid exactly 2 × price + its network fee + the Ticket rent, not a lamport more', !!sigB1 && before.p1 - after.p1 === 2 * PRICE_A + (await fee(sigB1)) + ticketRent, `${before.p1 - after.p1}`);
   check('vault A += 2 × price', after.vault - before.vault === 2 * PRICE_A, `${after.vault - before.vault}`);
   check('Ticket account: qty 2, rent_payer = the buyer', t1?.qty === 2 && t1?.rentPayer === P1.wallet, JSON.stringify(t1));
-  check('chain: pool A still open (2 < min 3)', (await poolAcc(A)).status === 0);
+  check('chain: pool A remains active with two tickets', (await poolAcc(A)).status === 1);
 
   // ── 3. P2 buys 1 from Node – the purchase that takes pool A live
   before = await bals({ p2: P2.wallet });
   const b2 = await buySelf(P2, A);
   check('self-paid order: the buyer is the fee payer; /confirm credits it', b2.pay.j.feePayer === P2.wallet && b2.paid);
   check('P2 paid price + fee + Ticket rent, exactly', before.p2 - (await bal(P2.wallet)) === PRICE_A + (await fee(b2.sig)) + ticketRent, `${before.p2 - (await bal(P2.wallet))}`);
-  check('chain: pool A ACTIVE (3 ≥ min 3)', (await poolAcc(A)).status === 1);
+  check('chain: pool A ACTIVE with three tickets', (await poolAcc(A)).status === 1);
   check('server: pool A active, 3 sold; P1 holds 2 ridable, P2 1', await until(async () => { const s = await serverPool(A); return s.status === 'active' && s.sold === 3; }) && (await myTickets(P1, A))?.balance === 2 && (await myTickets(P2, A))?.balance === 1);
 
   // ── 4. SPONSOR (anyone, no ticket): pool A gets 0.03 SOL – split like ticket money, so the prize cap grows
@@ -276,7 +276,10 @@ try {
 
   // ── 7. pool B missed its goal and NOBODY failed it yet: the lobby offers CLAIM REFUND at once (the refund transaction bundles fail_pool)
   await untilChain(Number((await poolAcc(B)).prepDeadline.getTime() / 1000), 'pool B prep deadline');
-  check('chain: pool B still open past its deadline (no crank has run)', (await poolAcc(B)).status === 0);
+  check('low sales do not fail pool B', (await poolAcc(B)).status === 1);
+  check('fail_pool is disabled', refuses(['fail-pool', '--pool', String(B), '-k', Z.keyfile], /NotFailable/, 'v6 low-sales refusal'));
+  admintool(['cancel-pool', '--pool', String(B), ...treas]);
+  await until(async () => (await serverPool(B)).status === 'refunding');
   const h3 = await browser(P3, CDP + 2);
   await h3.lobby();
   // GET /api/tiers lists free and 1h only, so a retired tier's failed pool has no card and CLAIM REFUND sits in #refunds. A painted card still counts.
@@ -285,7 +288,7 @@ try {
   const claimBtn = claimAt === 'strip' ? '#refunds button' : '#tier-4h .go', claimMsg = claimAt === 'strip' ? `#msg-refund-${B}` : '#msg-4h';
   before = await bals({ p3: P3.wallet });
   await h3.ev(`document.querySelector(${JSON.stringify(claimBtn)}).click()`);
-  check('lobby: refunded (fail_pool + refund signed and sent by the wallet)', await until(async () => /Refund(ed| sent)/.test(await h3.txt(claimMsg)) || (claimAt === 'strip' && !/CLAIM REFUND/.test(await h3.txt('#refunds'))), 60000), await h3.txt(claimMsg));
+  check('lobby: admin-cancelled ticket refunded by the wallet', await until(async () => /Refund(ed| sent)/.test(await h3.txt(claimMsg)) || (claimAt === 'strip' && !/CLAIM REFUND/.test(await h3.txt('#refunds'))), 60000), await h3.txt(claimMsg));
   await h3.shot('2-lobby-refunded');
   check('…the wallet was asked to sign AND send (self-paid)', (await h3.ev('JSON.stringify(__asked)')) === '["signAndSendTransaction"]');
   const sigR3 = (await conn.getSignaturesForAddress(P3.kp.publicKey, { limit: 1 }, 'confirmed'))[0]?.signature;
@@ -327,6 +330,7 @@ try {
   // an unsponsored pool's prize share is 0 under the player-share cap, so a positive total is PrizeExceedsShare before rule f. An empty root still has to be in time.
   if (FX) check('the baked unpaid pool: a winners root committed now could not be paid before its grace (CommitTooLate, rule f)', refuses(['commit-winners', '--pool', String(FX.expirePool), '--winners', 'none', '-k', `${KEYS}/admin.json`], /CommitTooLate|0x1794/, 'commit_winners on a pool past its settle grace'));
   const xb = FX ? { e1: addr('expire-buyer-1'), e2: addr('expire-buyer-2') } : {};
+  admintool(['cancel-pool', '--pool', String(C), ...treas]);
   before = await bals({ crank: addr('crank'), p5: P5.wallet, p6: P6.wallet, seed: addr('seed'), admin: addr('admin'), s: S.wallet, ...xb });
   const clockBefore = await chainNow();
   const pass = crankPass();
@@ -334,7 +338,7 @@ try {
   const ours = new Set([C, ...(FX ? [FX.expirePool] : [])]);
   const stepsOf = id => pass.actions.filter(a => a.poolId === id).map(a => `${a.step}${a.error ? '✗' : ''}`).join(' ');
   const others = pass.actions.filter(a => !ours.has(a.poolId));
-  check('crank pass: pool C fail + refund + refund_sponsor (v4, M8) + close' + (FX ? ', the baked pool expire + refund + close' : ''), stepsOf(C) === 'fail_pool refund refund_sponsor close_pool' && (!FX || stepsOf(FX.expirePool) === 'expire_pool refund close_pool')
+  check('crank pass: admin-cancelled pool C refund + refund_sponsor (v4, M8) + close' + (FX ? ', the baked pool expire + refund + close' : ''), stepsOf(C) === 'refund refund_sponsor close_pool' && (!FX || stepsOf(FX.expirePool) === 'expire_pool refund close_pool')
     && pass.actions.every(a => !a.error && a.settled === 'done'), pass.actions.map(a => `${a.step}#${a.poolId}${a.error ? `✗ ${a.error.slice(0, 200)}` : ''}`).join(' '));
   if (others.length) console.log(`NOTE the crank also handled other pools on this cluster: ${others.map(a => `${a.step}#${a.poolId}`).join(' ')} – the balance checks below are skipped where they would mix in`);
   // chainNow is read at the start of the pass. The transactions that follow move the validator clock, so the stamp has to sit between the read before the pass and the read after it.

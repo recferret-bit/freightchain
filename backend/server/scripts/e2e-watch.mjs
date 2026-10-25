@@ -2,7 +2,7 @@
 // The driver still plays. A second browser opening ?watch= must not receive the ride.
 // Usage: BASE=http://localhost:3111 node scripts/e2e-watch.mjs   (or: bash .claude/skills/run-tests/e2e.sh watch)
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
-import { launch, sleep, driveHook } from '../../../frontend/client/tools/cdp.mjs';
+import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
 const BASE = process.env.BASE || 'http://localhost:3111', CP = +process.env.CHROME_PORT || 9341;
 const fails = []; const check = (name, ok, extra = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${extra ? ' – ' + extra : ''}`); if (!ok) fails.push(name); };
 const call = async (method, path, body, cookie) => { const r = await fetch(`${BASE}/api/${path}`, { method, headers: { 'content-type': 'application/json', ...(cookie && { cookie }) }, body: body ? JSON.stringify(body) : undefined }); return { r, j: await r.json().catch(() => ({})) }; };
@@ -31,10 +31,10 @@ const hidden = await call('GET', `watch/${ride.id}`);
 check('a running ride is not a public replay', hidden.r.status === 404 && hidden.j.code === 'replay_not_available', `${hidden.r.status} ${hidden.j.code}`);
 const road = await call('GET', `watch/${ride.id}/road?from=0&to=6000`);
 check('a running ride has no public road plan', road.r.status === 404 && road.j.code === 'replay_not_available', `${road.r.status} ${road.j.code}`);
-await D.ev(driveHook(20));
-await until(() => D.ev('__game.st.complete'), 90_000);
-await D.ev('document.getElementById("endshift")?.click()');
-await sleep(800);
+// This is a visibility test. Completion/playback is exercised by replay-controls.
+// Unload the driver before ending through the API, so its heartbeat cannot race the fixture cleanup.
+await D.send('Page.navigate', { url: 'about:blank' });
+await sleep(300);
 const S = await launch({ port: CP + 1, shotsDir: 'fc-watch-shots', evalProblems: true });
 await S.send('Page.navigate', { url: `${BASE}/play.html?watch=${ride.id}` });
 check('spectator: the page does not open the running ride', await until(() => S.ev('!!window.__game && !__game.watch?.ride'), 20_000));

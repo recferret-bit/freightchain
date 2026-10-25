@@ -27,7 +27,9 @@ pub fn handle_seal_road(ctx: Context<SealRoad>, pool_id: u32) -> Result<()> {
     let pool = &mut ctx.accounts.pool;
     require!(pool.seal_slot != 0, PoolError::RoadAlreadySealed);
     require!(pool.status == STATUS_OPEN || pool.status == STATUS_ACTIVE, PoolError::PoolNotActive);
-    let now_slot = Clock::get()?.slot;
+    let clock = Clock::get()?;
+    require!(clock.unix_timestamp <= pool.last_start_at, PoolError::TooLate);
+    let now_slot = clock.slot;
     require!(now_slot > pool.seal_slot, PoolError::TooEarly);
 
     let data = ctx.accounts.slot_hashes.try_borrow_data()?;

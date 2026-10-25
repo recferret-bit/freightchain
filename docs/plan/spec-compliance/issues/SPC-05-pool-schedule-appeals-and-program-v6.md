@@ -101,7 +101,7 @@ Updates the escrowed prize pool lifecycle and `freightchain_pools` Anchor progra
 
 ### `SPC-05.5` — Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`) + operator-funded pool activation (no `min_tickets` low-sales refund)
 
-- **Status:** `[~] In Progress` — reopened by the 24 October [local readiness audit](../../../testing/LOCAL_READINESS.md). Server ceiling is 7200 seconds, but Rust edits are comments and the current program still opens with `STATUS_OPEN` / `min_tickets >= 1`; v6 schedule/activation constraints are absent. Rust/LiteSVM and the current binary's local-validator lifecycle passed on 24 October; those tests cover v5 behavior and do not complete this task. The binary also differs from the pinned verifiable-build hash.
+- **Status:** `[~] In Progress` — v6 now implements explicit schedule fields, independent cadence, ACTIVE creation with zero minimum tickets, low-sales failure refusal and the two-hour finish-floor ceiling. The pinned Docker build, 203 Rust/LiteSVM tests, root checks and 626 PostgreSQL tests passed. The complete purchase/payout/autonomous-day validator gate passed on the final pinned binary, including the measured seal compute budget fix. Optional on-chain pledge creation remains available, so the requested pledge removal and full soft-launch acceptance are not claimed. No remote deployment or account migration has occurred.
 - **Paired Plan 1 Task:** `E2E-08.5`
 - **Target Files:**
   - `backend/programs/freightchain_pools/src/`

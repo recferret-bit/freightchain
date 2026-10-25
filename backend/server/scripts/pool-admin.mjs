@@ -3,13 +3,13 @@
 //   node scripts/pool-admin.mjs show        --url <rpc> [--pool N]
 //   node scripts/pool-admin.mjs initialize  --url <rpc> -k <upgrade-authority.json> --admin <pubkey> --platform-treasury <pubkey> [--platform-fee-bps 0]
 //   node scripts/pool-admin.mjs create-pool --url <rpc> -k <admin.json> --tier 1h|4h|8h --price <lamports> [--min N] [--max 0] [--per-wallet 1]
-//                                           1h omits --min → 20 (ride-tier.ts). A smaller --min is a short test pool. 4h and 8h still require --min.
+//                                           --min is always 0 in v6 (operator-funded); --opens defaults to chain time, --last-start to max(prep, play minus 75 minutes).
 //                                           --prep <unix|+secs> --play <unix|+secs> [--payout <unix|+secs> (default = --play)] [--split 8500/500/1000] --fee-treasury <pubkey> --seed-treasury <pubkey>
 //                                           --split rewrites Config via set_pool_rules first (create_pool no longer takes bps). It also resets paid tickets on, player cap 4740, rules max 0 unless those flags are set.
 //   node scripts/pool-admin.mjs set-pool-rules --url <rpc> -k <admin.json> [--paid true|false] [--split 8500/500/1000] [--max-player-share 4740] [--rules-max 0]
 //                                           (authority only; snapshotted onto the NEXT pool. 0 rules-max = no extra ticket cap. Player share must be under 5000.)
 //   node scripts/pool-admin.mjs set-series  --url <rpc> -k <admin.json> --tier 1h|4h|8h --price <lamports> [--min N] [--max 0] [--per-wallet 1] [--split 8500/500/1000]
-//                                           [--sale-hours H --play-hours H --review-hours H] (1h default: the tier table's schedule, 24 / 2 / 48; --sale-secs / --play-secs / --review-secs
+//                                           [--sale-hours H --play-hours H --review-hours H] (1h default: 118 / 2 / 36; --period-hours defaults to 168, --start-buffer-secs to 4500; --sale-secs / --play-secs / --review-secs
 //                                           give seconds instead – the program still wants a sale window of at least an hour) --fee-treasury <pubkey> --seed-treasury <pubkey>
 //                                           [--start <unix|+secs>] (required for a new series; omitted = keep its schedule) [--enabled true|false]
 //   node scripts/pool-admin.mjs open-next-pool --url <rpc> -k <caller.json> --tier 1h   (permissionless once the series' slot has come – the crank does it; the caller pays the rents)
@@ -34,7 +34,7 @@
 //   node scripts/pool-admin.mjs fail-pool | expire-pool --url <rpc> -k <caller.json> --pool N   (permissionless cranks)
 //   node scripts/pool-admin.mjs refund      --url <rpc> -k <caller.json> --pool N --buyer <pubkey> [--rent-payer <pubkey>]   (permissionless: price → buyer, Ticket rent → its rent_payer)
 //   node scripts/pool-admin.mjs close-ticket --url <rpc> -k <caller.json> --pool N --buyer <pubkey>  (permissionless, Settled pool: Ticket rent → its rent_payer)
-//   node scripts/pool-admin.mjs cancel-pool --url <rpc> -k <admin.json> --pool N                    (admin, Open pool → Refunding)
+//   node scripts/pool-admin.mjs cancel-pool --url <rpc> -k <admin.json> --pool N                    (admin, Active pool with no prize paid → Refunding)
 //   node scripts/pool-admin.mjs propose-authority --url <rpc> -k <admin.json> --new <pubkey>  ·  accept-authority --url <rpc> -k <new-admin.json>
 // --program <id> (default: the IDL address). `+secs` is relative to the CHAIN clock (Clock sysvar), not this machine's. Prints one JSON line.
 // Never reads the global Solana config: --url and -k are required; a mainnet URL is refused. Phantom-signed admin actions are not covered here (keypair files only).
@@ -161,8 +161,9 @@ try {
     const sig = await send(admin, codec.instruction('create_pool', {
       authority: admin.publicKey, config: codec.configPda(), pool: codec.poolPda(id), vault: codec.vaultPda(id),
       fee_treasury: pk('fee-treasury'), seed_treasury: pk('seed-treasury'), platform_treasury: c.platformTreasury,
-    }, { params: { tier, price_lamports: int('price'), min_tickets: int('min', opt.tier === '1h' ? rideTier('1h', 0).minTickets : undefined), max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1),
-      prep_deadline: prep, play_deadline: play, payout_at: opt.payout ? await when('payout') : play } }));
+    }, { params: { tier, price_lamports: int('price'), min_tickets: int('min', 0), max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1),
+      prep_deadline: prep, play_deadline: play, payout_at: opt.payout ? await when('payout') : play,
+      opens_at: opt.opens ? await when('opens') : await chainNow(), last_start_at: opt['last-start'] ? await when('last-start') : Math.max(prep, play - 4500) } }));
     out({ signature: sig, poolId: id, pool: await account('Pool', codec.poolPda(id)) });
   } else if (cmd === 'set-series') {
     const admin = keypair();
@@ -170,15 +171,16 @@ try {
     if (opt.split !== undefined) await sendPoolRules(admin);
     const tier = TIERS[opt.tier]; if (!tier) die('--tier must be 1h, 4h or 8h');
     const def = rideTier(opt.tier, 0);
-    const sched = def.schedule ?? {};
+    const sched = opt.tier === '1h' ? { saleHours: 118, playHours: 2, reviewHours: 36 } : def.schedule ?? {};
     const secs = (name, d) => (opt[name.replace('hours', 'secs')] !== undefined ? int(name.replace('hours', 'secs')) : int(name, d) * 3600);   // --sale-secs etc. win over --sale-hours
     const existing = await account('Series', codec.seriesPda(tier));
     if (!existing && !opt.start) die('a new series needs --start <unix|+secs> (the first sale slot)');
     const sig = await send(admin, codec.instruction('set_series', {
       authority: admin.publicKey, config: codec.configPda(), series: codec.seriesPda(tier), fee_treasury: pk('fee-treasury'), seed_treasury: pk('seed-treasury'), platform_treasury: c.platformTreasury,
-    }, { params: { tier, enabled: opt.enabled === undefined ? true : opt.enabled === 'true', price_lamports: int('price'), min_tickets: int('min', def.minTickets ?? undefined),
+    }, { params: { tier, enabled: opt.enabled === undefined ? true : opt.enabled === 'true', price_lamports: int('price'), min_tickets: int('min', 0),
       max_tickets: int('max', 0), max_per_wallet: int('per-wallet', 1), sale_secs: secs('sale-hours', sched.saleHours), play_secs: secs('play-hours', sched.playHours),
-      verify_secs: secs('review-hours', sched.reviewHours), start_at: opt.start ? await when('start') : 0 } }));
+      verify_secs: secs('review-hours', sched.reviewHours), start_at: opt.start ? await when('start') : 0,
+      period_secs: secs('period-hours', 168), start_buffer_secs: int('start-buffer-secs', Math.min(4500, secs('play-hours', sched.playHours))) } }));
     out({ signature: sig, series: await account('Series', codec.seriesPda(tier)) });
   } else if (cmd === 'open-next-pool') {
     const caller = keypair();

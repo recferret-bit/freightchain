@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     constants::*,
     error::PoolError,
-    events::{PoolCancelled, PoolExpired, PoolFailed},
+    events::{PoolCancelled, PoolExpired},
     state::{Config, Pool},
 };
 
@@ -16,17 +16,10 @@ pub struct FailPool<'info> {
     pub pool: Account<'info, Pool>,
 }
 
-/// Low-sales fail stays in this .so. The server crank skips it when `min_tickets` is 0 (operator-funded). Only `cancel_pool` and `expire_pool` refund those.
+/// ABI tombstone: low sales never release operator-funded escrow. Cancellation and unpaid expiry are the refund exits.
 pub fn handle_fail_pool(ctx: Context<FailPool>, pool_id: u32) -> Result<()> {
-    let now = Clock::get()?.unix_timestamp;
-    let pool = &mut ctx.accounts.pool;
-    require!(
-        pool.status == STATUS_OPEN && now >= pool.prep_deadline && pool.tickets_sold < pool.min_tickets,
-        PoolError::NotFailable
-    );
-    pool.status = STATUS_REFUNDING;
-    emit!(PoolFailed { pool_id, tickets_sold: pool.tickets_sold });
-    Ok(())
+    let _ = (ctx, pool_id);
+    err!(PoolError::NotFailable)
 }
 
 #[derive(Accounts)]
@@ -41,7 +34,8 @@ pub struct CancelPool<'info> {
 
 pub fn handle_cancel_pool(ctx: Context<CancelPool>, pool_id: u32) -> Result<()> {
     let pool = &mut ctx.accounts.pool;
-    require!(pool.status == STATUS_OPEN, PoolError::PoolNotOpen);
+    require!(pool.status == STATUS_ACTIVE, PoolError::PoolNotActive);
+    require!(pool.prizes_paid == 0, PoolError::PrizesAlreadyPaid);
     pool.status = STATUS_REFUNDING;
     emit!(PoolCancelled { pool_id, tickets_sold: pool.tickets_sold });
     Ok(())

@@ -67,7 +67,7 @@ impl Open for CreatePoolParams {
     fn with_open(mut self) -> Self {
         self.max_tickets = 0;
         self.max_per_wallet = 100;
-        self.min_tickets = 2;
+        self.min_tickets = 0;
         self
     }
 }
@@ -873,8 +873,9 @@ fn record_ride_attestation_guards() {
     let payout = payout_key(&mut e);
     let auth = e.authority_kp();
     let driver = funded(&mut e.svm, SOL);
-    // OPEN pool: nothing to attest yet
+    // Cancelled pool: no longer eligible for an attestation
     let open = e.create_pool(default_params().with_open());
+    e.cancel_by_admin(open).unwrap();
     assert_err!(e.record_verified_ride(open, &auth, ride(1), &driver.pubkey(), 5), PoolError::PoolNotActive);
 
     let id = active_pool(&mut e);
@@ -1102,7 +1103,7 @@ fn pause_blocks_settle_only_before_the_grace_and_never_blocks_a_refund() {
 
     // refund_pledge is never paused
     e.warp(PREP);
-    e.fail(failing).unwrap();
+    e.cancel_by_admin(failing).unwrap();
     assert_refunded(&mut e, failing, failing_ride, &f_driver.pubkey(), &f_sponsor.pubkey(), 1_000_000);
 
     let caller = funded(&mut e.svm, SOL);
@@ -1125,7 +1126,7 @@ fn open_pledges_counts_create_settle_and_refund() {
     let id = e.create_pool(default_params().with_open());
     let buyer = funded(&mut e.svm, 20 * SOL);
     e.buy(id, &buyer, 1).unwrap();
-    assert_eq!(e.pool(id).status, STATUS_OPEN);
+    assert_eq!(e.pool(id).status, STATUS_ACTIVE);
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let (r1, r2, r3) = (ride(0xC1), ride(0xC2), ride(0xC3));
@@ -1256,7 +1257,7 @@ fn open_pool_with_pledge(e: &mut Env, ride_id: [u8; 32], max: u64) -> (u32, Keyp
     let id = e.create_pool(default_params().with_open());
     let buyer = funded(&mut e.svm, 20 * SOL);
     e.buy(id, &buyer, 1).unwrap();
-    assert_eq!(e.pool(id).status, STATUS_OPEN);
+    assert_eq!(e.pool(id).status, STATUS_ACTIVE);
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, max / 100, 100).unwrap();
@@ -1303,12 +1304,12 @@ fn refund_pledge_refused_while_the_pool_runs() {
 }
 
 #[test]
-fn refund_pledge_after_fail_pool() {
+fn refund_pledge_after_admin_cancellation() {
     let mut e = Env::new();
     let ride_id = [0x61; 32];
     let (id, _, driver, sponsor) = open_pool_with_pledge(&mut e, ride_id, 1_000_000);
     e.warp(PREP);
-    e.fail(id).unwrap();
+    e.cancel_by_admin(id).unwrap();
     assert_eq!(e.pool(id).status, STATUS_REFUNDING);
     assert_refunded(&mut e, id, ride_id, &driver.pubkey(), &sponsor.pubkey(), 1_000_000);
 }

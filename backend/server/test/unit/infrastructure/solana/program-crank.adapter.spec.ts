@@ -52,11 +52,18 @@ function asCompiled(expected: FixtureInstruction[]) {
 const rentPayerOf = (ix: FixtureInstruction) => ix.accounts[5]!.pubkey; // refund: caller, pool, vault, ticket, buyer, rent_payer, system
 
 describe('ProgramCrankAdapter – sends what the program accepted, signed and paid by the crank key', () => {
-  it('fail_pool and a refund batch: the fixture\'s instructions, the crank the only signer and fee payer', async () => {
+  it('sealing budgets for a seed near the end of the SlotHashes window', async () => {
     const { adapter, sent } = crankWith();
-    const fixture = fixtureTx('fail_pool + refund').instructions;
-    await adapter.send({ step: 'fail_pool', poolId: 1 });
-    expect(sentIxs(sent[0]!)).toEqual(asCompiled([fixture[0]!]));
+    await adapter.send({ step: 'seal_road', poolId: 1 });
+    const tx = VersionedTransaction.deserialize(sent[0]!);
+    const budget = Buffer.from(tx.message.compiledInstructions[0]!.data).readUInt32LE(1);
+    // Local validator measured 58,512 CU at 442 slots; reserve room for all 512 entries.
+    expect(budget).toBeGreaterThanOrEqual(75_000);
+    expect(budget).toBeLessThanOrEqual(100_000);
+  });
+  it('a refund batch uses the accepted instruction and only the crank signature', async () => {
+    const { adapter, sent } = crankWith();
+    const fixture = fixtureTx('cancel_pool + refund').instructions;
     await adapter.send({ step: 'refund', poolId: 1, tickets: [{ buyer: fx.keys.c, rentPayer: rentPayerOf(fixture[1]!), lamports: 1 }] });
     expect(sentIxs(sent.at(-1)!)).toEqual(asCompiled([fixture[1]!]));
   });
@@ -120,7 +127,7 @@ describe('ProgramCrankAdapter – sends what the program accepted, signed and pa
       ...expected.accounts.slice(5).map((a) => a.pubkey),
     ]);
     const series = await adapter.listSeries();
-    expect(series).toEqual([expect.objectContaining({ tier: 1, enabled: true, saleSecs: 86_400, playSecs: 7_200, verifySecs: 172_800, minTickets: 3, lastPoolId: null, feeTreasury: fx.keys.feeTreasury })]);
+    expect(series).toEqual([expect.objectContaining({ tier: 1, enabled: true, saleSecs: 86_400, playSecs: 7_200, verifySecs: 172_800, minTickets: 0, periodSecs: 86400, startBufferSecs: 4500, lastPoolId: null, feeTreasury: fx.keys.feeTreasury })]);
     await expect(adapter.send({ step: 'open_next_pool', poolId: -1 })).rejects.toMatchObject({ errorCode: 'bad_crank_step' });
   });
 });
