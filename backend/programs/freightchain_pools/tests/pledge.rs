@@ -6,7 +6,7 @@ use freightchain_pools::{
     accounts,
     constants::*,
     error::PoolError,
-    events::{PledgeCreated, PledgeRefunded, PledgeSettled},
+    events::{PledgeRefunded, PledgeSettled},
     instruction, CreatePoolParams, RideAttestation,
 };
 use litesvm::types::TransactionMetadata;
@@ -144,48 +144,17 @@ fn settle_ix(id: u32, ride_id: [u8; 32], caller: &Pubkey, driver: &Pubkey, spons
 }
 
 #[test]
-fn create_pledge_happy_path() {
+fn new_pledges_are_disabled_without_escrowing_funds_or_incrementing_the_pool() {
     let mut e = Env::new();
     let id = active_pool(&mut e);
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let ride_id = [42u8; 32];
-    let target_km = 100u32;
-    let rate = 10_000u64;
-    let max = rate * (target_km as u64); // 1_000_000
-
-    let s0 = e.bal(&sponsor.pubkey());
-    let r = e
-        .create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, rate, target_km)
-        .unwrap();
-
-    let pda = pledge_pda(&ride_id, &sponsor.pubkey());
-    let p = e.pledge(&ride_id, &sponsor.pubkey()).expect("pledge account exists");
-    assert_eq!(p.ride_id, ride_id);
-    assert_eq!(p.sponsor, sponsor.pubkey());
-    assert_eq!(p.driver, driver.pubkey());
-    assert_eq!(p.pool, pool_pda(id));
-    assert_eq!(p.max_lamports, max);
-    assert_eq!(p.lamports_per_km, rate);
-    assert_eq!(p.target_km, target_km);
-    assert!(!p.settled);
-    assert_eq!(p.earned_lamports, 0);
-    assert_eq!(p.refunded_lamports, 0);
-    assert_eq!(e.pool(id).open_pledges, 1, "v4 (L7): the pool counts its open pledges");
-
-    // Sponsor paid max_lamports + rent for pledge account
-    let s_after = e.bal(&sponsor.pubkey());
-    assert!(s0 - s_after >= max);
-    assert!(e.bal(&pda) >= max);
-
-    let evs = events::<PledgeCreated>(&r.logs);
-    assert_eq!(evs.len(), 1);
-    assert_eq!(evs[0].ride_id, ride_id);
-    assert_eq!(evs[0].sponsor, sponsor.pubkey());
-    assert_eq!(evs[0].driver, driver.pubkey());
-    assert_eq!(evs[0].max_lamports, max);
-    assert_eq!(evs[0].lamports_per_km, rate);
-    assert_eq!(evs[0].target_km, target_km);
+    let before = e.bal(&sponsor.pubkey());
+    assert_err!(e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100), PoolError::PledgesDisabled);
+    assert!(e.pledge(&ride_id, &sponsor.pubkey()).is_none());
+    assert_eq!(e.pool(id).open_pledges, 0);
+    assert!(before - e.bal(&sponsor.pubkey()) < 1_000_000, "only the network fee may be charged");
 }
 
 #[test]
@@ -239,7 +208,7 @@ fn create_pledge_refused_after_play_deadline() {
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     e.warp(PLAY - 1);
-    e.create_pledge(id, [44u8; 32], &driver.pubkey(), &sponsor, 1_000, 10, 100).unwrap();
+    e.seed_legacy_pledge(id, [44u8; 32], &driver.pubkey(), &sponsor, 1_000, 10, 100).unwrap();
     e.warp(PLAY);
     assert_err!(e.create_pledge(id, [45u8; 32], &driver.pubkey(), &sponsor, 1_000, 10, 100), PoolError::TooLate);
 }
@@ -254,7 +223,7 @@ fn settle_pledge_full_completion() {
     let ride_id = [1u8; 32];
     let max = 1_000_000u64;
 
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
     e.record_verified_ride(id, &auth, ride_id, &driver.pubkey(), 100).unwrap();
 
     let cranker = funded(&mut e.svm, SOL);
@@ -281,7 +250,7 @@ fn settle_pledge_partial_completion() {
     let ride_id = [2u8; 32];
     let max = 1_000_000u64;
 
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
     // 45 km of 100
     e.record_verified_ride(id, &auth, ride_id, &driver.pubkey(), 45).unwrap();
 
@@ -304,7 +273,7 @@ fn settle_pledge_zero_completion() {
     let ride_id = [3u8; 32];
     let max = 1_000_000u64;
 
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
     // written directly: verified_km = 0, status = VERIFIED (record_ride_attestation refuses it – ZeroVerifiedKm)
     set_ride_attestation(&mut e, id, ride_id, &driver.pubkey(), 0, ATTESTATION_STATUS_VERIFIED);
 
@@ -327,7 +296,7 @@ fn settle_pledge_surplus_completion_capped() {
     let ride_id = [4u8; 32];
     let max = 1_000_000u64;
 
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
     // 250 km driven, more than target_km
     e.record_verified_ride(id, &auth, ride_id, &driver.pubkey(), 250).unwrap();
 
@@ -352,7 +321,7 @@ fn settle_pledge_odd_rounding_zero_stranded_lamports() {
     // indivisible: 3 km target @ 333 lamports/km = 999
     let max = 999u64;
 
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 333, 3).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 333, 3).unwrap();
     e.record_verified_ride(id, &auth, ride_id, &driver.pubkey(), 1).unwrap();
 
     let caller = e.authority_kp();
@@ -372,7 +341,7 @@ fn settle_pledge_flagged_ride_yields_full_refund() {
     let ride_id = [6u8; 32];
     let max = 1_000_000u64;
 
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
     // the ride was flagged (cheated or disqualified)
     e.record_ride_attestation(id, &auth, ride_id, &driver.pubkey(), [9u8; 32], 100, ATTESTATION_STATUS_FLAGGED).unwrap();
 
@@ -395,7 +364,7 @@ fn settle_pledge_unverified_attestation_rejected() {
     let auth = e.authority_kp();
     let ride_id = [7u8; 32];
 
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     e.record_ride_attestation(id, &auth, ride_id, &driver.pubkey(), [0u8; 32], 100, ATTESTATION_STATUS_UNVERIFIED).unwrap();
 
     e.warp(PAYOUT);
@@ -417,7 +386,7 @@ fn settle_pledge_double_settlement_rejected() {
     let auth = e.authority_kp();
     let ride_id = [8u8; 32];
 
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     e.record_verified_ride(id, &auth, ride_id, &driver.pubkey(), 100).unwrap();
 
     e.warp(PAYOUT);
@@ -440,7 +409,7 @@ fn settle_pledge_account_mismatches() {
     let auth = e.authority_kp();
     let ride_id = [9u8; 32];
 
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     e.record_verified_ride(id, &auth, ride_id, &driver.pubkey(), 100).unwrap();
 
     e.warp(PAYOUT);
@@ -463,8 +432,8 @@ fn settle_pledge_multi_sponsors_on_same_ride() {
     let ride_id = [10u8; 32];
 
     // A: 10,000 lamports/km -> 1,000,000; B: 5,000 lamports/km -> 500,000
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor_a, 1_000_000, 10_000, 100).unwrap();
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor_b, 500_000, 5_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor_a, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor_b, 500_000, 5_000, 100).unwrap();
     assert_eq!(e.pool(id).open_pledges, 2);
     // 60 km
     e.record_verified_ride(id, &auth, ride_id, &driver.pubkey(), 60).unwrap();
@@ -499,7 +468,7 @@ fn settle_pledge_fuzz_zero_stranded_lamports() {
         let max_lamports = rate * (target_km as u64);
         let verified_km = rng.range(0, 600) as u32;
 
-        e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max_lamports, rate, target_km).unwrap();
+        e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, max_lamports, rate, target_km).unwrap();
         if verified_km > 0 {
             e.record_verified_ride(id, &auth, ride_id, &driver.pubkey(), verified_km).unwrap();
         } else {
@@ -563,7 +532,7 @@ fn challenge_exact_integer_math_primes_and_odds() {
         ride_id[1] = idx as u8;
         let max_lamports = rate * (target_km as u64);
 
-        e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max_lamports, rate, target_km)
+        e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, max_lamports, rate, target_km)
             .unwrap_or_else(|_| panic!("{}: create_pledge failed", label));
         if verified_km > 0 {
             e.record_verified_ride(id, &auth, ride_id, &driver.pubkey(), verified_km)
@@ -600,7 +569,7 @@ fn challenge_double_settlement_adversarial_callers() {
     let ride_id = [0xDD; 32];
     let max = 1_000_000u64;
 
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, 10_000, 100).unwrap();
     e.record_verified_ride(id, &auth, ride_id, &driver.pubkey(), 50).unwrap();
 
     let cranker1 = funded(&mut e.svm, SOL);
@@ -638,7 +607,7 @@ fn challenge_flagged_ride_scenarios() {
         let sponsor = funded(&mut e.svm, 5 * SOL);
         let mut ride_id = [0xFA; 32];
         ride_id[0] = idx as u8;
-        e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+        e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
         e.record_ride_attestation(id, &auth, ride_id, &driver.pubkey(), [0xCC; 32], verified_km, ATTESTATION_STATUS_FLAGGED).unwrap();
         runs.push((driver, sponsor, ride_id, verified_km));
     }
@@ -684,7 +653,7 @@ fn challenge_oracle_property_stress_matrix() {
             _ => rng.range(0, target_km as u64) as u32,
         };
 
-        e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max_lamports, rate, target_km).unwrap();
+        e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, max_lamports, rate, target_km).unwrap();
         if verified_km > 0 {
             e.record_verified_ride(id, &auth, ride_id, &driver.pubkey(), verified_km).unwrap();
         } else {
@@ -726,8 +695,8 @@ fn h4_a_pledge_on_an_unfinished_ride_is_not_paid_from_the_drivers_other_ride() {
     let (rate, target) = (10_000_000u64, 25u32); // 0.01 SOL per km, up to 25 km
     let cap = rate * target as u64;
     e.warp(PREP + 60);
-    e.create_pledge(id, ride_a, &driver.pubkey(), &sponsor_a, cap, rate, target).unwrap();
-    e.create_pledge(id, ride_b, &driver.pubkey(), &sponsor_b, cap, rate, target).unwrap();
+    e.seed_legacy_pledge(id, ride_a, &driver.pubkey(), &sponsor_a, cap, rate, target).unwrap();
+    e.seed_legacy_pledge(id, ride_b, &driver.pubkey(), &sponsor_b, cap, rate, target).unwrap();
     // ride A: driven to the line and verified; ride B abandoned – the server attests nothing for it
     e.warp(PLAY);
     e.record_ride_attestation(id, &payout, ride_a, &driver.pubkey(), [0xA1; 32], 25, ATTESTATION_STATUS_VERIFIED).unwrap();
@@ -767,8 +736,8 @@ fn h4_two_rides_of_one_driver_each_pledge_pays_its_own_km() {
     let driver = funded(&mut e.svm, SOL);
     let (sponsor_a, sponsor_b) = (funded(&mut e.svm, 5 * SOL), funded(&mut e.svm, 5 * SOL));
     let (ride_a, ride_b) = (ride(0xA), ride(0xB));
-    e.create_pledge(id, ride_a, &driver.pubkey(), &sponsor_a, 1_000_000, 10_000, 100).unwrap();
-    e.create_pledge(id, ride_b, &driver.pubkey(), &sponsor_b, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_a, &driver.pubkey(), &sponsor_a, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_b, &driver.pubkey(), &sponsor_b, 1_000_000, 10_000, 100).unwrap();
     e.warp(PLAY);
     e.record_verified_ride(id, &payout, ride_a, &driver.pubkey(), 120).unwrap();
     e.record_verified_ride(id, &payout, ride_b, &driver.pubkey(), 3).unwrap(); // crashed early
@@ -790,7 +759,7 @@ fn h4_a_rewrite_before_any_settle_changes_the_outcome_and_restarts_the_lock() {
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let r = ride(0x77);
-    e.create_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     e.record_ride_attestation(id, &payout, r, &driver.pubkey(), [7; 32], 100, ATTESTATION_STATUS_VERIFIED).unwrap();
     let first = e.ride_attestation(id, &r).unwrap();
     assert_eq!((first.status, first.verified_km, first.settled_pledges), (ATTESTATION_STATUS_VERIFIED, 100, 0));
@@ -821,8 +790,8 @@ fn h4_a_settled_on_attestation_is_final() {
     let driver = funded(&mut e.svm, SOL);
     let (sponsor_a, sponsor_b) = (funded(&mut e.svm, 5 * SOL), funded(&mut e.svm, 5 * SOL));
     let r = ride(0x78);
-    e.create_pledge(id, r, &driver.pubkey(), &sponsor_a, 1_000_000, 10_000, 100).unwrap();
-    e.create_pledge(id, r, &driver.pubkey(), &sponsor_b, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, r, &driver.pubkey(), &sponsor_a, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, r, &driver.pubkey(), &sponsor_b, 1_000_000, 10_000, 100).unwrap();
     e.record_verified_ride(id, &payout, r, &driver.pubkey(), 60).unwrap();
     let caller = funded(&mut e.svm, SOL);
     let a = settle_measured(&mut e, id, r, &caller, &driver.pubkey(), &sponsor_a.pubkey(), 1_000_000);
@@ -851,8 +820,8 @@ fn h4_a_rides_driver_is_fixed_and_must_match_the_pledge() {
     let (driver, other) = (funded(&mut e.svm, SOL), funded(&mut e.svm, SOL));
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let (r, forged) = (ride(0x79), ride(0x7A));
-    e.create_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
-    e.create_pledge(id, forged, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, forged, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     e.record_verified_ride(id, &payout, r, &driver.pubkey(), 50).unwrap();
     assert_err!(e.record_verified_ride(id, &payout, r, &other.pubkey(), 50), PoolError::AttestationMismatch);
 
@@ -921,7 +890,7 @@ fn l5_settle_waits_for_the_payout_time_and_the_review_lock_on_the_floors() {
     let (early, at_play, late) = (ride(0x51), ride(0x52), ride(0x53));
     e.warp(T0 + 1_010); // the play window
     for r in [early, at_play, late] {
-        e.create_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+        e.seed_legacy_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     }
 
     // poc_04: an attestation that exists mid-play; the driver cranks the settle at once
@@ -970,7 +939,7 @@ fn l5_a_rewrite_restarts_the_review_lock() {
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 10 * SOL);
     let r = ride(0x54);
-    e.create_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     e.record_verified_ride(id, &payout, r, &driver.pubkey(), 100).unwrap();
     // nobody settled at payout_at; the verdict is lowered 100 s later
     e.warp(payout_at + 100);
@@ -1000,7 +969,7 @@ fn l5_settle_waits_for_the_pools_review_window_so_a_flag_in_review_wins() {
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let r = ride(0x1111);
     e.warp(PREP + 60);
-    e.create_pledge(id, r, &driver.pubkey(), &sponsor, 250_000_000, 10_000_000, 25).unwrap();
+    e.seed_legacy_pledge(id, r, &driver.pubkey(), &sponsor, 250_000_000, 10_000_000, 25).unwrap();
 
     e.warp(PLAY - 60);
     e.record_ride_attestation(id, &payout, r, &driver.pubkey(), [7u8; 32], 25, ATTESTATION_STATUS_VERIFIED).unwrap();
@@ -1035,7 +1004,7 @@ fn l6_driver_below_the_rent_minimum_waits_until_the_grace_then_refunds_the_spons
     let ride_id = [11u8; 32];
     let max = 1_000u64;
 
-    e.create_pledge(id, ride_id, &driver, &sponsor, max, 10, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver, &sponsor, max, 10, 100).unwrap();
     e.record_verified_ride(id, &auth, ride_id, &driver, 100).unwrap();
 
     let caller = e.authority_kp();
@@ -1067,7 +1036,7 @@ fn l6_driver_below_the_rent_minimum_is_paid_once_the_wallet_is_topped_up() {
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let auth = e.authority_kp();
     let ride_id = [12u8; 32];
-    e.create_pledge(id, ride_id, &driver, &sponsor, 1_000, 10, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver, &sponsor, 1_000, 10, 100).unwrap();
     e.record_verified_ride(id, &auth, ride_id, &driver, 100).unwrap();
     e.warp(PAYOUT);
     let caller = e.authority_kp();
@@ -1091,7 +1060,7 @@ fn pause_blocks_settle_only_before_the_grace_and_never_blocks_a_refund() {
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let r = ride(0x90);
-    e.create_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     e.record_verified_ride(id, &auth, r, &driver.pubkey(), 50).unwrap();
     // a second pool that will fail, with its own pledge
     let failing_ride = ride(0x91);
@@ -1130,12 +1099,12 @@ fn open_pledges_counts_create_settle_and_refund() {
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let (r1, r2, r3) = (ride(0xC1), ride(0xC2), ride(0xC3));
-    e.create_pledge(id, r1, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, r1, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     assert_eq!(e.pool(id).open_pledges, 1);
     e.buy(id, &buyer, 1).unwrap();
     assert_eq!(e.pool(id).status, STATUS_ACTIVE);
-    e.create_pledge(id, r2, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
-    e.create_pledge(id, r3, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, r2, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, r3, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     assert_eq!(e.pool(id).open_pledges, 3);
 
     e.record_verified_ride(id, &auth, r1, &driver.pubkey(), 10).unwrap();
@@ -1163,8 +1132,8 @@ fn l7_close_ride_attestation_after_the_pool_is_settled_and_no_pledge_is_open() {
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let (attested, unfinished) = (ride(0xD1), ride(0xD2));
-    e.create_pledge(id, attested, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
-    e.create_pledge(id, unfinished, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, attested, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, unfinished, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     let p0 = e.bal(&payout.pubkey());
     e.record_verified_ride(id, &payout, attested, &driver.pubkey(), 30).unwrap();
     let pda = ride_attestation_pda(id, &attested);
@@ -1202,7 +1171,7 @@ fn l7_close_ride_attestation_of_an_expired_and_cancelled_pool() {
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let r = ride(0xD3);
-    e.create_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, r, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     e.record_ride_attestation(id, &auth, r, &driver.pubkey(), [0; 32], 0, ATTESTATION_STATUS_UNVERIFIED).unwrap();
     e.warp(PAYOUT + SETTLE_GRACE_SECS);
     let anyone = funded(&mut e.svm, SOL);
@@ -1260,7 +1229,7 @@ fn open_pool_with_pledge(e: &mut Env, ride_id: [u8; 32], max: u64) -> (u32, Keyp
     assert_eq!(e.pool(id).status, STATUS_ACTIVE);
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, max / 100, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, max, max / 100, 100).unwrap();
     (id, buyer, driver, sponsor)
 }
 
@@ -1343,7 +1312,7 @@ fn refund_pledge_settled_pool_without_attestation() {
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let ride_id = [0x64; 32];
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     // the driver never finished: no attestation; the admin settles the pool after the review window
     settle_pool(&mut e, id);
     assert_refunded(&mut e, id, ride_id, &driver.pubkey(), &sponsor.pubkey(), 1_000_000);
@@ -1356,7 +1325,7 @@ fn refund_pledge_active_pool_past_the_grace_without_attestation() {
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let ride_id = [0x65; 32];
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     // the operator is gone: nobody settles or closes the pool
     e.warp(PAYOUT + SETTLE_GRACE_SECS);
     assert_eq!(e.pool(id).status, STATUS_ACTIVE);
@@ -1372,7 +1341,7 @@ fn refund_pledge_refused_when_a_decided_attestation_exists() {
         let sponsor = funded(&mut e.svm, 5 * SOL);
         let auth = e.authority_kp();
         let ride_id = [0x66; 32];
-        e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+        e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
         e.record_ride_attestation(id, &auth, ride_id, &driver.pubkey(), [3u8; 32], 40, status).unwrap();
         settle_pool(&mut e, id);
 
@@ -1396,7 +1365,7 @@ fn refund_pledge_not_blocked_by_another_rides_attestation() {
     let driver = funded(&mut e.svm, SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let (good, pledged) = (ride(0xE1), ride(0xE2));
-    e.create_pledge(id, pledged, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, pledged, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     e.record_verified_ride(id, &auth, good, &driver.pubkey(), 120).unwrap();
     settle_pool(&mut e, id);
     assert_refunded(&mut e, id, pledged, &driver.pubkey(), &sponsor.pubkey(), 1_000_000);
@@ -1410,7 +1379,7 @@ fn refund_pledge_allowed_with_an_unverified_attestation() {
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let auth = e.authority_kp();
     let ride_id = [0x67; 32];
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     e.record_ride_attestation(id, &auth, ride_id, &driver.pubkey(), [0u8; 32], 0, ATTESTATION_STATUS_UNVERIFIED).unwrap();
     settle_pool(&mut e, id);
     // settle refuses an UNVERIFIED attestation, so refund must not
@@ -1430,7 +1399,7 @@ fn refund_then_a_late_attestation_cannot_pay_twice() {
     let driver = funded(&mut e.svm, 10 * SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let r = ride(0x2222);
-    e.create_pledge(id, r, &driver.pubkey(), &sponsor, 250_000_000, 10_000_000, 25).unwrap();
+    e.seed_legacy_pledge(id, r, &driver.pubkey(), &sponsor, 250_000_000, 10_000_000, 25).unwrap();
     let caller = funded(&mut e.svm, SOL);
     e.warp(PAYOUT + SETTLE_GRACE_SECS);
     let (d0, s0) = (e.bal(&driver.pubkey()), e.bal(&sponsor.pubkey()));
@@ -1455,7 +1424,7 @@ fn a_record_whose_lock_ends_too_close_to_the_grace_is_refused() {
     let driver = funded(&mut e.svm, 10 * SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let r = ride(0x3333);
-    e.create_pledge(id, r, &driver.pubkey(), &sponsor, 250_000_000, 10_000_000, 25).unwrap();
+    e.seed_legacy_pledge(id, r, &driver.pubkey(), &sponsor, 250_000_000, 10_000_000, 25).unwrap();
     let last = e.pool(id).grace_end().unwrap() - COMMIT_GRACE_MARGIN_SECS;   // floors 0, no review window: settle_from = now
     e.warp(last);
     e.record_verified_ride(id, &payout, r, &driver.pubkey(), 1).unwrap();   // the last moment it may
@@ -1478,7 +1447,7 @@ fn pledges_cannot_be_settled_or_refunded_across_pools() {
     let driver = funded(&mut e.svm, 10 * SOL);
     let sponsor = funded(&mut e.svm, 5 * SOL);
     let r = ride(0x3333);
-    e.create_pledge(a, r, &driver.pubkey(), &sponsor, 250_000_000, 10_000_000, 25).unwrap();
+    e.seed_legacy_pledge(a, r, &driver.pubkey(), &sponsor, 250_000_000, 10_000_000, 25).unwrap();
     e.warp(PLAY);
     e.record_verified_ride(b, &payout, r, &driver.pubkey(), 25).unwrap();
     let caller = funded(&mut e.svm, SOL);
@@ -1506,8 +1475,8 @@ fn refund_pledge_of_a_pledge_naming_another_driver_than_its_rides_attestation() 
     let (driver, griefer_pick) = (funded(&mut e.svm, SOL), funded(&mut e.svm, SOL));
     let (honest, griefer) = (funded(&mut e.svm, 5 * SOL), funded(&mut e.svm, 5 * SOL));
     let r = ride(0x4444);
-    e.create_pledge(id, r, &driver.pubkey(), &honest, 1_000_000, 10_000, 100).unwrap();
-    e.create_pledge(id, r, &griefer_pick.pubkey(), &griefer, 1, 1, 1).unwrap();
+    e.seed_legacy_pledge(id, r, &driver.pubkey(), &honest, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, r, &griefer_pick.pubkey(), &griefer, 1, 1, 1).unwrap();
     e.record_verified_ride(id, &payout, r, &driver.pubkey(), 50).unwrap();
     let caller = funded(&mut e.svm, SOL);
     settle_measured(&mut e, id, r, &caller, &driver.pubkey(), &honest.pubkey(), 1_000_000);
@@ -1527,7 +1496,7 @@ fn settle_pledge_refuses_an_account_marked_settled() {
     let id = active_pool(&mut e);
     let (driver, sponsor) = (funded(&mut e.svm, SOL), funded(&mut e.svm, 5 * SOL));
     let ride_id = [0x7a; 32];
-    e.create_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
+    e.seed_legacy_pledge(id, ride_id, &driver.pubkey(), &sponsor, 1_000_000, 10_000, 100).unwrap();
     set_ride_attestation(&mut e, id, ride_id, &driver.pubkey(), 50, ATTESTATION_STATUS_VERIFIED);
     let pda = pledge_pda(&ride_id, &sponsor.pubkey());
     let mut acc = e.svm.get_account(&pda).unwrap();
