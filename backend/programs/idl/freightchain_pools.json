@@ -3437,6 +3437,11 @@
       "code": 6049,
       "name": "PlayerShareCeiling",
       "msg": "Player share must be under 5000 bps"
+    },
+    {
+      "code": 6050,
+      "name": "PledgesDisabled",
+      "msg": "New pledges are disabled for the devnet launch"
     }
   ],
   "types": [

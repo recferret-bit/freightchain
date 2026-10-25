@@ -104,4 +104,6 @@ pub enum PoolError {
     PaidTicketsDisabled,
     #[msg("Player share must be under 5000 bps")]
     PlayerShareCeiling,
+    #[msg("New pledges are disabled for the devnet launch")]
+    PledgesDisabled,
 }

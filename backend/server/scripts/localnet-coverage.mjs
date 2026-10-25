@@ -21,8 +21,9 @@ const codec = new PoolProgramCodec(IDL.address);
 const ANCHOR_ERRORS = { 2006: 'ConstraintSeeds', 3007: 'AccountOwnedByWrongProgram', 3012: 'AccountNotInitialized' };
 /** what cannot happen on a fresh v4 validator – shown in the report with its reason, never silently skipped (a name listed here that DID run counts as covered) */
 export const EXEMPT = {
-  instructions: { fail_pool: 'v6 always refuses NotFailable; low sales never release escrow (negative validator coverage required)' },
+  instructions: { create_pledge: 'v6 refuses PledgesDisabled; legacy accounts still settle/refund (negative validator coverage required)', fail_pool: 'v6 always refuses NotFailable; low sales never release escrow (negative validator coverage required)' },
   events: {
+    PledgeCreated: 'historical event: v6 never creates new pledge accounts',
     PoolFailed: 'historical event: v6 has no low-sales failure path',
     AttestationRecorded: 'a v3 event kept in the IDL so old transactions still decode – no v4 instruction emits it (v4: RideAttestationRecorded)',
   },
@@ -131,6 +132,7 @@ export function report(file) {
     const where = [...(refusedBy[name] ?? []), ...(landedErr[name] ? [`${landedErr[name]}× in a landed transaction`] : [])];
     lines.push(`  ${v || s ? '✓' : '✗'} ${pad(`${name} ${code}`, 28)}${pad(v ? `${v}×` : '–', 22)}${pad(s ? 'yes' : '–', 9)}${where.slice(0, 2).join(' · ').slice(0, 90)}`);
   }
+  for (const name of ['NotFailable', 'PledgesDisabled']) if (!refusedBy[name]?.length && !landedErr[name]) missing.push(`tombstone refusal ${name} missing on validator`);
   const unexpected = refused.filter(r => !r.error);
   if (unexpected.length) missing.push(`${unexpected.length} refusal(s) without a program error: ${unexpected.map(r => r.step).join(' · ')}`);
   const unknown = Object.keys(ix).filter(k => k.startsWith('unknown')).concat(Object.keys(ev).filter(k => k === 'unknown'));

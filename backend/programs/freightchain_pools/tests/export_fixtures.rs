@@ -408,7 +408,7 @@ fn export_pool_program_fixtures() {
     let i = buy(&e, p4, &a.pubkey(), &a.pubkey(), 3, [5u8; 16]);
     rec.send(&mut e, "buy_ticket into pool 4 activates", vec![i], &a, &[], true).unwrap();
     record_cover(&mut e, &mut rec, p4, &brand);
-    //      v3 pledges while rides count: the brand pledges per km on the winner's ride and on C's (C never finishes)
+    //      Current creation refuses. Seed historical escrow explicitly to retain decoder/settlement coverage.
     let (ride_w, ride_c) = ([0x51u8; 32], [0x52u8; 32]);
     for (ride_id, driver, name) in [(ride_w, winner.pubkey(), "create_pledge (winner)"), (ride_c, c.pubkey(), "create_pledge (C)")] {
         let i = ix(
@@ -423,7 +423,8 @@ fn export_pool_program_fixtures() {
             },
         );
         let args = json!({"rideId": b64(&ride_id), "driver": driver.to_string(), "maxLamports": s(1_000_000), "lamportsPerKm": s(10_000), "targetKm": 100});
-        rec.send(&mut e, name, vec![(i, "create_pledge", args)], &brand, &[], true).unwrap();
+        rec.send(&mut e, name, vec![(i, "create_pledge", args)], &brand, &[], false).unwrap_err();
+        e.seed_legacy_pledge(p4, ride_id, &driver, &brand, 1_000_000, 10_000, 100).unwrap();
     }
     rec.account(&e, "pledge on the winner's ride", &pledge_pda(&ride_w, &brand.pubkey()));
     //      at the play deadline the payout key records the winner's RIDE attestation (60 km) and commits the winners; nobody pays before the lock
@@ -493,7 +494,7 @@ fn export_pool_program_fixtures() {
 
     let kinds: Vec<String> = rec.txs.iter().flat_map(|t| t["events"].as_array().unwrap().iter().map(|e| e["kind"].as_str().unwrap().to_string())).collect();
     for k in ["PoolCreated", "TicketBought", "PoolActivated", "Sponsored", "PoolCancelled", "PoolExpired", "Refunded", "PrizePaid", "PoolClosed", "AuthorityProposed",
-        "AuthorityChanged", "SeriesSet", "PayoutAuthoritySet", "PledgeCreated", "PledgeSettled", "PledgeRefunded", "FloorsSet", "RoadSealed", "SealRearmed", "WinnersCommitted",
+        "AuthorityChanged", "SeriesSet", "PayoutAuthoritySet", "PledgeSettled", "PledgeRefunded", "FloorsSet", "RoadSealed", "SealRearmed", "WinnersCommitted",
         "WinnersVetoed", "RideAttestationRecorded", "SponsorRefunded", "AttestationClosed"] {
         assert!(kinds.iter().any(|x| x == k), "no {k} recorded");
     }

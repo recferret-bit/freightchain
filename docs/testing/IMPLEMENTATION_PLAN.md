@@ -70,7 +70,7 @@ Exit: each new script exits 0 on its own. Then `bash .claude/skills/run-tests/e2
 
 1. IDL drift check for `programs/freightchain_honk`, the same shape as pools. A verifiable-build pin waits until someone asks to verify that program. Do not invent a hash.
 2. `npm run program:test` stays the instruction bar (LiteSVM on the built `.so`).
-3. `npm run test:localnet` stays the SOL bar: buy, fail-and-refund, commit, veto, pay, close, seal. Name `e2e-localnet-payout.mjs` for the Merkle pay and `e2e-localnet-day.mjs` for pledge settle and refund. Leave `B2-ADMIN-04` (`set_pool_rules`) pending until a validator transaction exists. Do not mark a happy-dom row covered by editing `E2E_PLAN.md` alone.
+3. `npm run test:localnet` stays the SOL bar: buy, fail-and-refund, commit, veto, pay, close, seal. Name `e2e-localnet-payout.mjs` for the Merkle pay and `localnet-legacy-pledges.mjs` for historical pledge settle and refund (`e2e-localnet-day.mjs` refuses new pledges). Leave `B2-ADMIN-04` (`set_pool_rules`) pending until a validator transaction exists. Do not mark a happy-dom row covered by editing `E2E_PLAN.md` alone.
 4. `bash .claude/skills/honk-suite/run.sh` stays the TEN4 bar, including one verified ride whose chain mint matches the ledger. Add the negative the suite does not already have: a training finish and a weekly-grant finish mint nothing.
 5. Pledge settle and refund run inside `test:localnet` if that script does not already drive them. If it does, cite the check in the contract instead of adding a second one.
 

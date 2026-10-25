@@ -94,7 +94,7 @@ export const FEATURES = [
     client: null,
     routes: /^GET \/api\/pools\/:id\/(refund|payout)$/,
     words: /refund|payout|crank|expire|close_pool|fail_pool/i,
-    e2e: ['e2e-localnet.mjs', 'e2e-localnet-chaos.mjs', 'e2e-localnet-day.mjs', 'e2e-localnet-payout.mjs', 'e2e-tickets-stub.mjs'], skills: ['localnet-e2e'],
+    e2e: ['e2e-localnet.mjs', 'e2e-localnet-chaos.mjs', 'localnet-legacy-pledges.mjs', 'e2e-localnet-day.mjs', 'e2e-localnet-payout.mjs', 'e2e-tickets-stub.mjs'], skills: ['localnet-e2e'],
   },
   {
     id: 'escrow-program', title: 'Escrow program (on-chain, Rust)',

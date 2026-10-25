@@ -129,6 +129,7 @@ export const POOL_PROGRAM_IDL: Idl = {
     {"code":6047,"name":"ConfigNotMigrated","msg":"The Config account is still in the v3 layout: run migrate_config_v4 first"},
     {"code":6048,"name":"PaidTicketsDisabled","msg":"Paid tickets are switched off for this pool"},
     {"code":6049,"name":"PlayerShareCeiling","msg":"Player share must be under 5000 bps"},
+    {"code":6050,"name":"PledgesDisabled","msg":"New pledges are disabled for the devnet launch"},
   ],
   types: [
     {"name":"Attestation","type":{"kind":"struct","fields":[{"name":"pool","type":"pubkey"},{"name":"driver","type":"pubkey"},{"name":"telemetry_root","type":{"array":["u8",32]}},{"name":"verified_km","type":"u32"},{"name":"status","type":"u8"},{"name":"recorded_at","type":"i64"},{"name":"bump","type":"u8"}]}},

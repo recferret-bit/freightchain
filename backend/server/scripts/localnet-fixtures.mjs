@@ -20,6 +20,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'; import crypto from 'node:crypto'; import { execFileSync } from 'node:child_process';
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { PoolProgramCodec } from '../dist/infrastructure/solana/pool-program.codec.js';
+import { recordLegacyAttestations, dumpLegacyPledges, settleLegacyPledges, closeLegacyAttestations } from './localnet-legacy-pledges.mjs';
 import { coverage } from './localnet-coverage.mjs';
 import { sealRoad } from './localnet-seal.mjs';
 import { POOL_PROGRAM_IDL } from '../dist/infrastructure/solana/pool-program.idl.js';
@@ -53,6 +54,11 @@ const newKey = async (name, sol) => {
   return `${KEYS}/${name}.json`;
 };
 
+if (process.env.CLOSE_LEGACY) {
+  const { legacy } = JSON.parse(readFileSync(`${OUT}/fixtures.json`, 'utf8'));
+  await closeLegacyAttestations({ conn, codec, admin, legacy, caller: `${KEYS}/stranger.json`, rentTo: pub('admin'), check });
+  process.exit(fails.length ? 1 : 0);
+}
 // MIGRATE=1 (run.sh, phase 2, before the server starts): the baked Config is in the v3 LAYOUT (the dump below) – the program's own migration, for real
 if (process.env.MIGRATE) {
   const cov = process.env.COVERAGE ? coverage(process.env.COVERAGE) : null;
@@ -74,6 +80,8 @@ if (process.env.MIGRATE) {
   refuse('create_pool with a 60 s play window under the default floors', ['create-pool', '--tier', '8h', '--price', '50000000', '--min', '0', '--prep', '+60', '--play', '+120', '--fee-treasury', pub('fee'), '--seed-treasury', pub('seed'), '-k', adminKey], 'WindowTooShort');
   const fl = admin(['set-config', '--min-review-secs', '0', '--min-finish-secs', '0', '-k', adminKey]).config;
   check('set_config: the floors lowered to 0 again for the seconds-wide localnet pools', secs(fl.minReviewSecs) === 0 && secs(fl.minFinishSecs) === 0);
+  const { legacy } = JSON.parse(readFileSync(`${OUT}/fixtures.json`, 'utf8'));
+  await settleLegacyPledges({ conn, codec, admin, legacy, caller: `${KEYS}/stranger.json`, cov, check });
   process.exit(fails.length ? 1 : 0);
 }
 // initialize: a stranger first (refused), then the upgrade authority naming the admin
@@ -106,6 +114,8 @@ const now = async () => Number((await conn.getAccountInfo(new PublicKey('SysvarC
 const play = Number(codec.decodeAccount('Pool', (await conn.getAccountInfo(codec.poolPda(Y))).data).playDeadline.getTime() / 1000);
 while ((await now()) < play + 1) await sleep(1000);
 // v4 (H5-B): the prize is paid from a committed winners root (one rank) – with the floors at 0 and payout_at = play, it pays from the commit on
+const legacyRides = recordLegacyAttestations({ admin, pool: Y, driver: pub('grace-buyer'), keyfile: `${KEYS}/admin.json` });
+await newKey('legacy-sponsor', 0);
 const winners = `${pub('grace-buyer')}:10000000`;
 admin(['commit-winners', '-k', `${KEYS}/admin.json`, '--pool', String(Y), '--winners', winners]);
 admin(['pay-prize', '-k', stranger, '--pool', String(Y), '--winners', winners, '--rank', '1']);   // permissionless: the root decides who gets what
@@ -165,8 +175,9 @@ for (const d of dumps.filter(x => /^pool-(expire|grace)$/.test(x.label))) {
   const p = codec.decodeAccount('Pool', d.data);
   check(`${d.label}: decodes after the edit, sale / play / review ends ${new Date(back * 1000).toISOString().slice(0, 10)}, still active`, p && p.status === 1 && [p.prepDeadline, p.playDeadline, p.payoutAt].every(t => t.getTime() === back * 1000), JSON.stringify({ status: p?.status, play: p?.playDeadline, payoutAt: p?.payoutAt }));
 }
+const legacy = await dumpLegacyPledges({ conn, codec, idl: POOL_PROGRAM_IDL, out: OUT, pool: Y, sponsor: pub('legacy-sponsor'), driver: pub('grace-buyer'), rides: legacyRides, back, dumps, dump, check });
 const cfg = codec.decodeAccount('Config', dumps[0].data);
-writeFileSync(`${OUT}/fixtures.json`, JSON.stringify({ expirePool: X, gracePool: Y, rearmPool: RA, v3Attestation: { pool: Y, driver: pub('grace-buyer') }, poolCount: cfg.poolCount, prizePaid: 10_000_000, back, accounts: dumps.map(d => d.file) }));
+writeFileSync(`${OUT}/fixtures.json`, JSON.stringify({ legacy, expirePool: X, gracePool: Y, rearmPool: RA, v3Attestation: { pool: Y, driver: pub('grace-buyer') }, poolCount: cfg.poolCount, prizePaid: 10_000_000, back, accounts: dumps.map(d => d.file) }));
 check('Config baked with pool_count = 3 (new pools get ids 3, 4, …), dumped in the v3 layout', cfg.poolCount === 3);
 
 // THE DAY's series (phase 3 only – nothing of it is loaded into phase 2, where it would open pools under the money scenarios): the admin writes the 1h

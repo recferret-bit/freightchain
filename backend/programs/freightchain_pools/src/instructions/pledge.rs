@@ -1,12 +1,9 @@
-use anchor_lang::{
-    prelude::*,
-    system_program::{transfer, Transfer},
-};
+use anchor_lang::prelude::*;
 
 use crate::{
     constants::*,
     error::PoolError,
-    events::{PledgeCreated, PledgeRefunded, PledgeSettled},
+    events::{PledgeRefunded, PledgeSettled},
     state::{Config, Pledge, Pool, RideAttestation},
     vault::rent_min,
 };
@@ -69,48 +66,10 @@ pub fn handle_create_pledge(
         PoolError::InvalidParams
     );
 
-    // Transfer escrowed lamports from sponsor into the pledge PDA
-    transfer(
-        CpiContext::new(
-            ctx.accounts.system_program.key(),
-            Transfer {
-                from: ctx.accounts.sponsor.to_account_info(),
-                to: ctx.accounts.pledge.to_account_info(),
-            },
-        ),
-        max_lamports,
-    )?;
-
-    let pool = &mut ctx.accounts.pool;
-    pool.open_pledges = pool.open_pledges.checked_add(1).ok_or(PoolError::MathOverflow)?;
-    let pool_key = pool.key();
-    let clock = Clock::get()?;
-    let pledge = &mut ctx.accounts.pledge;
-    pledge.ride_id = ride_id;
-    pledge.sponsor = ctx.accounts.sponsor.key();
-    pledge.driver = driver;
-    pledge.pool = pool_key;
-    pledge.max_lamports = max_lamports;
-    pledge.lamports_per_km = lamports_per_km;
-    pledge.target_km = target_km;
-    pledge.settled = false;
-    pledge.earned_lamports = 0;
-    pledge.refunded_lamports = 0;
-    pledge.created_at = clock.unix_timestamp;
-    pledge.bump = ctx.bumps.pledge;
-
-    emit!(PledgeCreated {
-        ride_id,
-        sponsor: pledge.sponsor,
-        driver,
-        pool: pledge.pool,
-        max_lamports,
-        lamports_per_km,
-        target_km,
-        created_at: pledge.created_at,
-    });
-
-    Ok(())
+    // Decision 51: retain the ABI and validation for old callers, but never escrow a new pledge.
+    // Existing pledge accounts still use settle_pledge/refund_pledge below.
+    let _ = ride_id;
+    err!(PoolError::PledgesDisabled)
 }
 
 #[derive(Accounts)]

@@ -766,6 +766,29 @@ impl Env {
         self.send(&[i], sponsor, &[])
     }
 
+    /// Test-only historical account fixture. Current v6 refuses create_pledge; settlement must still conserve old escrow.
+    pub fn seed_legacy_pledge(&mut self, pool_id: u32, ride_id: [u8; 32], driver: &Pubkey, sponsor: &Keypair, max_lamports: u64, lamports_per_km: u64, target_km: u32) -> Result<(), &'static str> {
+        use anchor_lang::{AccountSerialize, Space};
+        let (address, bump) = Pubkey::find_program_address(&[b"pledge", &ride_id, sponsor.pubkey().as_ref()], &pid());
+        assert!(self.svm.get_account(&address).is_none(), "duplicate legacy fixture");
+        let rent = self.svm.minimum_balance_for_rent_exemption(8 + Pledge::INIT_SPACE);
+        let mut account = self.svm.get_account(&sponsor.pubkey()).unwrap();
+        account.lamports = account.lamports.checked_sub(max_lamports + rent).unwrap();
+        self.svm.set_account(sponsor.pubkey(), account.clone()).unwrap();
+        let pledge = Pledge { ride_id, sponsor: sponsor.pubkey(), driver: *driver, pool: pool_pda(pool_id), max_lamports, lamports_per_km, target_km, settled: false, earned_lamports: 0, refunded_lamports: 0, created_at: self.svm.get_sysvar::<Clock>().unix_timestamp, bump };
+        account.lamports = max_lamports + rent;
+        account.owner = pid();
+        account.data = Vec::new();
+        pledge.try_serialize(&mut account.data).unwrap();
+        self.svm.set_account(address, account).unwrap();
+        let mut pool = self.pool(pool_id);
+        pool.open_pledges += 1;
+        let mut account = self.svm.get_account(&pool_pda(pool_id)).unwrap();
+        pool.try_serialize(&mut &mut account.data[..]).unwrap();
+        self.svm.set_account(pool_pda(pool_id), account).unwrap();
+        Ok(())
+    }
+
     pub fn settle_pledge(
         &mut self,
         pool_id: u32,
