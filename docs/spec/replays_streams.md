@@ -360,3 +360,5 @@ No browser, in Docker, following the PR #5 approach (code + compose, the wallet 
 | RPL-M-34 | T-53, T-102 | — |
 
 Total: 35 rules, all MUST / MUST NOT (decisions 45–58 accepted 17.10.2026). Planned ids: RPL-T-01…29, 30…60, 70…102 and 6 manual M-RPL-01…06. An id is not a written test. Some of these rules diverge from the built product ([`PRODUCT.md`](PRODUCT.md), conflicts). The executable bar is [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
+
+Replay polling validates the response before replacing its loaded snapshot. A malformed successful response or aborted JSON body keeps the existing recording available; a later valid response clears the transient error. Real-Chrome replay acceptance includes failed-refresh recovery.

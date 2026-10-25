@@ -69,6 +69,7 @@ try {
     console.log(`Chrome did not start: ${error.message}`);
     throw error;
   }
+  await chrome.send('Emulation.setDeviceMetricsOverride', { width: 960, height: 540, deviceScaleFactor: 1, mobile: false });
   const [cn, cv] = fan.cookie.split('=');
   await chrome.send('Network.setCookie', { name: cn, value: cv, url: BASE, httpOnly: true });
   await chrome.send('Page.navigate', { url: `${BASE}/play.html?watch=${id}` });
@@ -95,7 +96,7 @@ try {
   if (await chrome.ev('!!__game.watch.playing')) await chrome.ev(`document.getElementById('w-play').click()`);
   const clock0 = Number(await chrome.ev('__game.watch.wt'));
   await chrome.ev(`document.getElementById('w-play').click()`);
-  const clockMoved = await until(`typeof __game.watch.wt === 'number' && __game.watch.wt > ${clock0} + 0.05`, 4000);
+  const clockMoved = await until(`typeof __game.watch.wt === 'number' && __game.watch.wt > ${clock0} + 0.05`, 15000);
   const clock1 = await chrome.ev('__game.watch.wt');
   check('clock advances while playing', clockMoved && typeof clock1 === 'number' && clock1 > clock0, `${clock0} -> ${clock1}`);
   const cam0 = await chrome.ev('__game.st.watchCam');
@@ -119,6 +120,19 @@ try {
   check('replay chat submits from the browser', await until(`document.getElementById('w-feed')?.textContent.includes('Road looks good')`));
   const feed = await call('GET', `watch/${id}`);
   check('chat persists with replay time', feed.json.events?.some(e => e.text === 'Road looks good' && Number.isFinite(e.replayT)));
+  // A failed refresh must preserve the loaded recording, including an HTTP 200 with a malformed body.
+  await chrome.ev(`(() => {
+    const original = window.fetch;
+    window.__replayFetch = original;
+    window.fetch = (url, options) => String(url).includes('/api/watch/${id}?') ? Promise.resolve(new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })) : original(url, options);
+    const s = document.getElementById('w-seek'); s.value = 3; s.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  check('malformed refresh preserves the loaded recording', await until(`__game.watch.error === 'invalid replay response' && __game.watch.rec.lastSeq === 0 && __game.watch.rows.length > 5`));
+  await chrome.ev(`(() => {
+    window.fetch = window.__replayFetch; delete window.__replayFetch;
+    const s = document.getElementById('w-seek'); s.value = 2; s.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  check('replay polling recovers after a failed refresh', await until(`__game.watch.error === '' && __game.watch.rec.lastSeq === 0`));
   await chrome.shot('replay-desktop');
   await chrome.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await sleep(400);

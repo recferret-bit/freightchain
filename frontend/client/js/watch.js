@@ -52,13 +52,16 @@ export async function initWatch() {
 async function get(from) {
   const q = new URLSearchParams({ from: String(from), after: String(watch.cursor), since: String(watch.since), viewer: viewerId() });
   const r = await fetch(`${API_BASE}/api/watch/${encodeURIComponent(watch.id)}?${q}`, { credentials: 'include', signal: AbortSignal.timeout(8000) });
-  const j = await r.json().catch(() => ({}));
+  // A timeout can abort the body after successful headers. Never turn that into an empty snapshot.
+  const j = await r.json();
   if (!r.ok) throw new Error(r.status === 404 ? 'this ride does not exist or has not started yet' : j.detail || j.title || `server error ${r.status}`);
+  if (!j?.ride || j.ride.id !== watch.id || !j.recording || !Number.isFinite(j.recording.t1) || !(j.recording.lastSeq === null || Number.isInteger(j.recording.lastSeq)) || !Array.isArray(j.batches) || !Array.isArray(j.events) || !Number.isFinite(j.now)) throw new Error('invalid replay response');
   return j;
 }
 
 async function poll(from) {
   const j = await get(from);
+  watch.error = '';
   const first = !watch.ride;
   watch.ride = j.ride; watch.now = j.now; watch.skew = j.now - Date.now(); watch.rec = j.recording; watch.totals = j.totals; watch.viewers = j.viewers; if (j.features) watch.features = j.features;
   if (first) { CFG.RIDE_MIN_SECONDS = j.ride.minSeconds; CFG.COMPLETE_DIST = j.ride.completeDist; watch.follow = j.ride.live; setLoadout(j.ride.loadout); }
