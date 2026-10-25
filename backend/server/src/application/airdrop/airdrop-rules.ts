@@ -6,8 +6,7 @@ export const X_MIN_AGE_DAYS = 90;
 export const X_MIN_FOLLOWERS = 10;
 export const X_OFFICIAL = 'FreightChainSol';
 export const OFFICIAL_TELEGRAM_CHAT_ID = '@FreightChain';
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const MEMBER = new Set(['creator', 'administrator', 'member', 'restricted']);
+const MEMBER = new Set(['creator', 'administrator', 'member']);
 
 export interface AirdropRow {
   wallet: string;
@@ -34,14 +33,9 @@ export function emptyAirdrop(wallet: string): AirdropRow {
   };
 }
 
-/** Stable personal code. No entropy: the same wallet always shows the same `FC-XXXX`. */
+/** Bind the post to the complete, case-sensitive wallet; four prefix characters collide cheaply. */
 export function airdropCode(wallet: string): string {
-  let out = '';
-  for (const ch of wallet.toUpperCase()) {
-    if (CODE_ALPHABET.includes(ch)) out += ch;
-    if (out.length === 4) break;
-  }
-  return `FC-${out.padEnd(4, '2')}`;
+  return `FC-${wallet}`;
 }
 
 export function isMediumOrHardTrip(trip: string | null): boolean {
@@ -58,11 +52,12 @@ export function xFollowersOk(followers: number): boolean {
 }
 
 export function xQuoteOk(text: string, code: string): boolean {
-  return text.includes(code) && text.toLowerCase().includes(`@${X_OFFICIAL.toLowerCase()}`);
+  const codes: readonly string[] = text.match(/FC-[A-Za-z0-9]+/g) ?? [];
+  return codes.includes(code) && /(^|[^A-Za-z0-9_])@FreightChainSol(?![A-Za-z0-9_])/i.test(text);
 }
 
-export function telegramMember(status: string): boolean {
-  return MEMBER.has(status);
+export function telegramMember(status: string, isMember?: boolean): boolean {
+  return MEMBER.has(status) || (status === 'restricted' && isMember === true);
 }
 
 export function normalHandle(handle: string): string {

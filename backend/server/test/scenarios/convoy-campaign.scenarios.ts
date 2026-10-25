@@ -5,10 +5,12 @@ import { PlayerRepositoryPort } from '../../src/application/ports/players/player
 import { RideRepositoryPort } from '../../src/application/ports/rides/ride.repository.port.js';
 import { bindClient } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
+import { airdropProviderScenarios } from './airdrop-provider.scenarios.js';
 
 export function convoyCampaignScenarios(h: () => Harness): void {
   const { login } = bindClient(h);
   beforeEach(() => h().reset());
+  airdropProviderScenarios(h);
 
   it('Convoy activation grants a usable 1h promo exactly once and public privacy masks the wallet', async () => {
     const host = await login(), friend = await login(), viewer = await login();

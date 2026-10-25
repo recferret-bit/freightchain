@@ -8,7 +8,7 @@ import { AirdropRepositoryPort, type SocialClaim } from './airdrop.repository.po
 import {
   AIRDROP_CAMPAIGN, OFFICIAL_TELEGRAM_CHAT_ID, emptyAirdrop, isMediumOrHardTrip, normalHandle, telegramMember, xAgeOk, xFollowersOk, xQuoteOk, type AirdropRow,
 } from './airdrop-rules.js';
-import { TelegramMembershipPort } from './telegram.port.js';
+import { TelegramMembershipPort, type TelegramLoginProof } from './telegram.port.js';
 import { TurnstilePort } from './turnstile.port.js';
 import { XAccountPort } from './x-account.port.js';
 
@@ -30,7 +30,7 @@ export interface AirdropStatusDto {
  */
 @Injectable()
 export class AirdropService {
-  /** Off unless a test turns it on. The default path does not call `TurnstilePort`. */
+  /** Required when social providers are configured; isolated tests can supply their own verifier. */
   turnstileEnabled = false;
 
   constructor(
@@ -41,7 +41,7 @@ export class AirdropService {
     private readonly players: PlayerRepositoryPort,
     private readonly tx: TransactionPort,
     private readonly clock: ClockPort,
-  ) {}
+  ) { this.turnstileEnabled = turnstile.required; }
 
   async status(wallet: string): Promise<AirdropStatusDto> {
     return this.view(wallet, await this.repo.get(wallet));
@@ -58,13 +58,14 @@ export class AirdropService {
     });
   }
 
-  async verifyTelegram(wallet: string, telegramUserId: string, turnstileToken?: string): Promise<AirdropStatusDto> {
+  async verifyTelegram(wallet: string, telegramUserId: string, turnstileToken?: string, proof?: TelegramLoginProof): Promise<AirdropStatusDto> {
+    await this.requireRide(wallet);
+    await this.requireTurnstile(turnstileToken);
+    const member = await this.telegram.getChatMember({ telegramUserId, chatId: OFFICIAL_TELEGRAM_CHAT_ID, proof });
+    if (!telegramMember(member.status, member.isMember)) throw new BadRequestError('telegram membership was not found', 'telegram_not_member');
     return this.tx.run(async (tx) => {
       await this.lock(wallet, tx);
       const row = await this.requireRide(wallet, tx);
-      await this.requireTurnstile(turnstileToken);
-      const member = await this.telegram.getChatMember({ telegramUserId, chatId: OFFICIAL_TELEGRAM_CHAT_ID });
-      if (!telegramMember(member.status)) throw new BadRequestError('telegram membership was not found', 'telegram_not_member');
       this.assertSocial(await this.repo.claimTelegram(wallet, telegramUserId, tx));
       const saved = await this.must(wallet, tx);
       saved.telegramMember = true;
@@ -76,17 +77,19 @@ export class AirdropService {
   }
 
   async verifyX(wallet: string, handle: string, postId: string, turnstileToken?: string): Promise<AirdropStatusDto> {
+    const before = await this.requireRide(wallet);
+    await this.requireTurnstile(turnstileToken);
+    const profile = await this.x.lookup(normalHandle(handle));
+    if (!profile) throw new NotFoundError('x account was not found', 'x_account_not_found');
+    const now = this.clock.now();
+    if (!xAgeOk(profile.createdAt, now)) throw new BadRequestError('x account is younger than 90 days', 'x_account_too_new');
+    if (!xFollowersOk(profile.followers)) throw new BadRequestError('x account has fewer than 10 followers', 'x_too_few_followers');
+    if (!profile.followsOfficial) throw new BadRequestError('x account does not follow @FreightChainSol', 'x_not_following');
+    const post = await this.x.quote(postId);
+    if (!post || post.userId !== profile.userId || !xQuoteOk(post.text, before.code)) throw new BadRequestError('quote is missing the verification code', 'x_quote_missing');
     return this.tx.run(async (tx) => {
       await this.lock(wallet, tx);
       const row = await this.requireRide(wallet, tx);
-      await this.requireTurnstile(turnstileToken);
-      const profile = await this.x.lookup(normalHandle(handle));
-      if (!profile) throw new NotFoundError('x account was not found', 'x_account_not_found');
-      const now = this.clock.now();
-      if (!xAgeOk(profile.createdAt, now)) throw new BadRequestError('x account is younger than 90 days', 'x_account_too_new');
-      if (!xFollowersOk(profile.followers)) throw new BadRequestError('x account has fewer than 10 followers', 'x_too_few_followers');
-      if (!profile.followsOfficial) throw new BadRequestError('x account does not follow @FreightChainSol', 'x_not_following');
-      const post = await this.x.quote(postId);
       if (!post || post.userId !== profile.userId || !xQuoteOk(post.text, row.code)) throw new BadRequestError('quote is missing the verification code', 'x_quote_missing');
       this.assertSocial(await this.repo.claimX(wallet, profile.userId, tx));
       if (!row.xUserId) await this.noteSocial(wallet, tx);
@@ -103,6 +106,10 @@ export class AirdropService {
   }
 
   async claim(wallet: string, turnstileToken?: string): Promise<AirdropStatusDto> {
+    const before = await this.repo.get(wallet);
+    if (before?.claimedAt) return this.view(wallet, before);
+    await this.requireRide(wallet);
+    await this.requireTurnstile(turnstileToken);
     return this.tx.run(async (tx) => {
       await this.lock(wallet, tx);
       const existing = await this.repo.get(wallet, tx);
@@ -118,7 +125,6 @@ export class AirdropService {
         await this.repo.save(row, tx);
         return this.view(wallet, row);
       }
-      await this.requireTurnstile(turnstileToken);
       row.claimedAt = now;
       if (this.turnstileEnabled) row.turnstileOk = true;
       await this.repo.save(row, tx);
@@ -126,7 +132,7 @@ export class AirdropService {
     });
   }
 
-  private async requireRide(wallet: string, tx: TransactionHandle): Promise<AirdropRow> {
+  private async requireRide(wallet: string, tx?: TransactionHandle): Promise<AirdropRow> {
     const row = await this.repo.get(wallet, tx);
     if (!row?.rideOk) throw new ConflictError('complete a verified MEDIUM or HARD ride first', 'ride_required');
     return row;

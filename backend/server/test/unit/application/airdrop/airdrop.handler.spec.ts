@@ -16,7 +16,7 @@ describe('airdrop handlers', () => {
     await new VerifyXHandler(svc).execute(new VerifyXCommand('ada', 'ada', '55', 'tok'));
     await new ClaimAirdropHandler(svc).execute(new ClaimAirdropCommand('ada', 'tok'));
     expect(airdrop.status).toHaveBeenCalledWith('ada');
-    expect(airdrop.verifyTelegram).toHaveBeenCalledWith('ada', '100', 'tok');
+    expect(airdrop.verifyTelegram).toHaveBeenCalledWith('ada', '100', 'tok', undefined);
     expect(airdrop.verifyX).toHaveBeenCalledWith('ada', 'ada', '55', 'tok');
     expect(airdrop.claim).toHaveBeenCalledWith('ada', 'tok');
   });

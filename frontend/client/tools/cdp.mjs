@@ -21,19 +21,27 @@ export const driveHook = (speed = 20, extra = '', lane = null) => `(() => { cons
 export async function launch({ port, shotsDir, args = [], evalProblems = false, timeoutMs = 30_000, readyMs = 45_000 }) {
   const CH = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
   const prof = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-prof-')), SHOTS = process.env.SHOTS || path.join(os.tmpdir(), shotsDir); fs.mkdirSync(SHOTS, { recursive: true });
-  const chrome = spawn(CH, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${prof}`, '--no-first-run', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--window-size=1280,720', ...args, 'about:blank'], { stdio: 'ignore' });
-  process.on('exit', () => chrome.kill());
+  const chrome = spawn(CH, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${prof}`, '--no-first-run', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--window-size=1280,720', ...args, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  let startupLog = '', launchError = null;
+  chrome.stderr.on('data', data => { startupLog = (startupLog + data).slice(-4000); });
+  chrome.on('error', error => { launchError = error; });
+  const killOnExit = () => chrome.kill();
+  process.on('exit', killOnExit);
   // 127.0.0.1, not localhost: a slow ::1 lookup plus a 2s abort never reaches the IPv4 port, and 150 of those outlive the parent timeout.
   let tabs;
   const readyBy = Date.now() + readyMs;
   while (Date.now() < readyBy) {
+    if (launchError || chrome.exitCode !== null || chrome.signalCode !== null) break;
     try {
       tabs = await (await fetch(`http://127.0.0.1:${port}/json`, { signal: AbortSignal.timeout(1000) })).json();
       if (tabs.some(t => t.type === 'page')) break;
     } catch { /* not up yet */ }
     await sleep(200);
   }
-  if (!tabs?.some(t => t.type === 'page')) { chrome.kill(); throw new Error(`Chrome did not open a debugging port on :${port} (is another run still using it? set PORT=…)`); }
+  if (!tabs?.some(t => t.type === 'page')) {
+    chrome.kill(); process.off('exit', killOnExit);
+    throw new Error(`Chrome did not open a debugging port on :${port}; exit=${chrome.exitCode}, signal=${chrome.signalCode}, error=${launchError?.message ?? 'none'}\n${startupLog}`);
+  }
   const ws = new WebSocket(tabs.find(t => t.type === 'page').webSocketDebuggerUrl); await new Promise(r => ws.onopen = r);
   let id = 0; const pend = {}, problems = [];
   ws.onmessage = m => {
@@ -67,6 +75,7 @@ export async function launch({ port, shotsDir, args = [], evalProblems = false, 
   await send('Runtime.enable'); await send('Log.enable'); await send('Page.enable');
   let closing = null;
   const close = () => closing ??= (async () => {
+    process.off('exit', killOnExit);
     ws.close();
     if (chrome.exitCode === null) { const exited = new Promise(resolve => chrome.once('exit', resolve)); chrome.kill(); await Promise.race([exited, sleep(2000)]); }
     try { fs.rmSync(prof, { recursive: true, force: true }); } catch { /* Chrome may still be releasing its temporary profile */ }

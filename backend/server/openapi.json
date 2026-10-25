@@ -7326,6 +7326,57 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "proof": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "auth_date": {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      "first_name": {
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      "hash": {
+                        "pattern": "^[0-9a-f]{64}$",
+                        "type": "string"
+                      },
+                      "id": {
+                        "anyOf": [
+                          {
+                            "pattern": "^\\d{1,32}$",
+                            "type": "string"
+                          },
+                          {
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      "last_name": {
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      "photo_url": {
+                        "maxLength": 2048,
+                        "type": "string"
+                      },
+                      "username": {
+                        "maxLength": 256,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "auth_date",
+                      "first_name",
+                      "hash",
+                      "id"
+                    ],
+                    "type": "object"
+                  },
                   "telegramUserId": {
                     "pattern": "^\\d{1,32}$",
                     "type": "string"

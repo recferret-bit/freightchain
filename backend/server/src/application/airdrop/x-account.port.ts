@@ -11,7 +11,7 @@ export interface XPost {
   text: string;
 }
 
-/** X account facts. Implementations must not call twitterapi.io from this process. */
+/** Read-only X account facts; tests inject deterministic responses. */
 export abstract class XAccountPort {
   abstract lookup(handle: string): Promise<XProfile | null>;
   abstract quote(postId: string): Promise<XPost | null>;
