@@ -112,7 +112,7 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
 
     // 3. Player registration / daily credit grant & JWT session token issuance
     const session = await this.tokens.sign(wallet);
-    const player = await this.sessions.noteLogin(await this.sessions.touch(wallet, now));
+    const player = await this.sessions.touch(wallet, now);
 
     this.logger.log({ event: 'signin', msg: `signed in ${wallet}`, wallet, ip: maskIpSubnet(command.client.ip) });
     await this.signIns.insert({ wallet, at: now, ...command.client }).catch((error: unknown) => {

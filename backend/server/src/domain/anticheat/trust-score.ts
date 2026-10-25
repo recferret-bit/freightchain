@@ -1,11 +1,11 @@
-/** No browser fingerprint. Login, a verified ride, a rejected ride, and a social bind are the only inputs. */
+/** No browser fingerprint or sign-in reward. Current inputs are verified/rejected rides and a first social bind. */
 export const TRUST_INITIAL = 60;
 export const TRUST_PAYOUT_MIN = 50;
 export const GRANT_HOLD_MS = 48 * 60 * 60 * 1000;
 
-export type TrustEvent = 'login' | 'verified' | 'rejected' | 'social';
+export type TrustEvent = 'verified' | 'rejected' | 'social';
 
-const DELTA: Record<TrustEvent, number> = { login: 1, verified: 5, rejected: -15, social: 5 };
+const DELTA: Record<TrustEvent, number> = { verified: 5, rejected: -15, social: 5 };
 
 export function applyTrust(score: number, event: TrustEvent): number {
   return Math.max(0, Math.min(100, score + DELTA[event]));

@@ -1,4 +1,5 @@
 import { CommandBus } from '@nestjs/cqrs';
+import { PlayerRepositoryPort } from '../../src/application/ports/players/player.repository.port.js';
 import request from 'supertest';
 import { GrantDailyFreeRidesCommand } from '../../src/application/use-cases/players/grant-daily-free-rides/grant-daily-free-rides.command.js';
 import { bindClient, newWallet as wallet, sign } from '../support/client.js';
@@ -13,6 +14,18 @@ export function flowScenarios(h: () => Harness): void {
   beforeEach(() => h().reset());
 
   describe('sign-in with Solana', () => {
+    it('repeat sign-ins cannot raise trust or overwrite a below-threshold score', async () => {
+      const w = wallet();
+      const players = h().app.get(PlayerRepositoryPort);
+      await login(w);
+      const first = (await players.findByWallet(w.address))!;
+      expect(first.trustScore).toBe(60);
+      first.setTrustScore(49);
+      await players.save(first);
+      const before = (await players.findByWallet(w.address))!.snapshot();
+      for (let i = 0; i < 5; i++) { sec(61); await login(w, { offer: false }); }
+      expect((await players.findByWallet(w.address))!.snapshot()).toEqual(before);
+    });
     it('signs in, sets an httpOnly cookie, and starts with 10 free rides', async () => {
       const w = wallet(), agent = request.agent(server());
       const { body: ch } = await agent.post('/api/auth/nonce').send({ wallet: w.address }).expect(200);

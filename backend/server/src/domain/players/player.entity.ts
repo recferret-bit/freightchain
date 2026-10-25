@@ -70,7 +70,7 @@ export class Player {
     this.setTrustScore(applyTrust(this.trustScore, event));
   }
 
-  /** Stores the score `applyTrust` already computed. Callers on login, verdict, and social bind own the delta. */
+  /** Stores the score `applyTrust` already computed. Verdict and social-bind callers own the delta. */
   setTrustScore(score: number): void {
     this.props.trustScore = score;
   }

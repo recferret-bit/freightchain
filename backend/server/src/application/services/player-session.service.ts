@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { applyTrust } from '../../domain/anticheat/trust-score.js';
 import { Player } from '../../domain/players/player.entity.js';
 import { PlayerRepositoryPort } from '../ports/players/player.repository.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
@@ -33,12 +32,4 @@ export class PlayerSessionService {
     return player;
   }
 
-  /** A successful sign-in. Guest touch does not call this. */
-  async noteLogin(player: Player): Promise<Player> {
-    const fresh = player.isNewPlayer;
-    player.setTrustScore(applyTrust(player.trustScore, 'login'));
-    const saved = await this.players.save(player);
-    saved.markNewPlayer(fresh);
-    return saved;
-  }
 }

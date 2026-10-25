@@ -783,6 +783,8 @@ Today is 17.10. Until the devnet launch is ≈ 3 weeks (registration on 02.11, t
 
 > Status in the code ([`PRODUCT.md`](PRODUCT.md)): on `main`, the check "one person, many wallets" is not enabled as an automatic blocker; the layers below set the target layered defense against sybil farms going after pool prizes, free attempts, referrals, and the TEN4 airdrop ([`../plan/MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §8, §10, §12).
 
+The 25 October login fix removes sign-in trust points and the accompanying player save; repeated authentication cannot raise trust or overwrite a concurrent score change. The remaining Appendix D point table and signals are still targets.
+
 ### D.1 The layered model (8 layers)
 1. **Network signals (`player.SignIn.ipHash`, the ASN — with no `User-Agent` and no browser fingerprint)**:
    - An IP hash of `HMAC-SHA256(IP_HASH_SECRET, a /24 prefix for IPv4 or /48 for IPv6)`, kept for `90 days` (`antisybil_ip_retention_days = 90`; `SIGNIN_RETENTION_DAYS = 90` per [`../legal/PRIVACY.md`](../legal/PRIVACY.md)); `player.SignIn` holds no raw IP and no `User-Agent`, and **a browser fingerprint is rejected** ([`legal.md`](legal.md) `LEG-M-05`).

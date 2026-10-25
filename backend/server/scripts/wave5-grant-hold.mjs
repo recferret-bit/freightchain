@@ -43,7 +43,11 @@ export async function runGrantHold() {
   players.add('referee');
   const grants = [];
   const promos = { findByCode: async () => null, insert: async () => true, disable: async () => true, insertGrant: async (row) => { grants.push(row); } };
-  const convoy = new ConvoyService(new MemoryConvoyRepository(), players, new Tx(), clock, new Names(), promos);
+  const campaign = new MemoryAirdropRepository();
+  await campaign.claimTelegram('referee', 'convoy-tg');
+  await campaign.claimX('referee', 'convoy-x');
+  await campaign.save({ ...(await campaign.get('referee')), rideOk: true, telegramMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+  const convoy = new ConvoyService(new MemoryConvoyRepository(), players, new Tx(), clock, new Names(), promos, campaign);
   let seq = 0;
   const fact = (wallet, trip) => ({ rideId: `${wallet}-${seq += 1}`, wallet, status: 'completed', verdict: 'verified', trip });
   await convoy.onVerifiedRide(fact('ref', 'free-1c'));
@@ -51,11 +55,12 @@ export async function runGrantHold() {
   await convoy.onVerifiedRide(fact('referee', 'free-2c'));
   assert.equal(grants.length, 1);
   assert.equal(grants[0].tier, '1h');
+  const paid = () => ({ ...fact('referee', '1h'), tier: '1h', ranked: true, endedAt: clock.now() });
+  await convoy.onVerifiedRide(paid());
   clock.at = new Date(start.getTime() + 7 * DAY_MS);
-  await convoy.onVerifiedRide(fact('ref', 'free-3c'));
-  const held = await convoy.onVerifiedRide(fact('referee', 'free-3c'));
+  const held = await convoy.onVerifiedRide(paid());
   clock.at = new Date(clock.at.getTime() + 48 * 3_600_000);
-  const released = await convoy.onVerifiedRide(fact('referee', 'free-3c'));
+  const released = await convoy.onVerifiedRide(paid());
 
   const ada = new Players();
   ada.add('ada');
