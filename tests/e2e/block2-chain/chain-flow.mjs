@@ -7,7 +7,7 @@ import { SOLANA, adminMutateHeaders, adminSign, devAdmin, session, signInAdmin, 
 
 const exec = promisify(execFile);
 const SERVER = join(REPO, 'backend/server');
-const KEYS = join(REPO, 'tests/e2e/.keys');
+const KEYS = process.env.E2E_KEYS_DIR || join(REPO, 'tests/e2e/.keys');
 const PAYER = join(KEYS, 'payer.json');
 
 function pub(file) {
@@ -57,7 +57,7 @@ export async function liveSetPoolRules() {
 
 export async function redeemTicketPromo() {
   const { admin } = await ensureChain();
-  const made = await adminCli(['create-pool', '--tier', '1h', '--price', '1000000', '--min', '1', '--max', '0', '--per-wallet', '4',
+  const made = await adminCli(['create-pool', '--tier', '1h', '--price', '1000000', '--min', '0', '--max', '0', '--per-wallet', '4',
     '--prep', '+120', '--play', '+240', '--fee-treasury', admin, '--seed-treasury', admin, '--split', '8500/500/1000']);
   await exec('node', ['dist/cli/index.js', 'pool:register', String(made.poolId)], { cwd: SERVER, env: process.env });
   const api = session();
@@ -82,7 +82,7 @@ export async function payWinners() {
   const buyer = await pub(buyerFile);
   await exec('solana', ['airdrop', '--url', SOLANA, '--keypair', PAYER, '5', buyer]);
   const before = await balance(buyer);
-  const pool = await adminCli(['create-pool', '--tier', '1h', '--price', '1000000', '--min', '1', '--max', '0', '--per-wallet', '2',
+  const pool = await adminCli(['create-pool', '--tier', '1h', '--price', '1000000', '--min', '0', '--max', '0', '--per-wallet', '2',
     '--prep', '+40', '--play', '+70', '--fee-treasury', admin, '--seed-treasury', admin]);
   const bought = await adminCli(['buy', '-k', buyerFile, '--pool', String(pool.poolId), '--qty', '1']);
   if (!bought.signature) throw new Error(JSON.stringify(bought));

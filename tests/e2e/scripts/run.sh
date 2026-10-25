@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Local code e2e. Block 1: Postgres + Redis + API, chain adapters off.
-# Block 2: the same plus a host validator when solana-test-validator exists.
+# Block 2: the same plus a required disposable host validator.
 # Does not deploy to production and does not start Chrome.
 set -euo pipefail
 BLOCK="${1:-1}"
@@ -33,7 +33,17 @@ if [ "$BLOCK" = "2" ]; then
   export PAYMENT_MODE=program
   export TICKET_PROGRAM_ID="8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p"
   export HONK_PROGRAM_ID="GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx"
-  export SOLANA_RPC="${E2E_SOLANA_RPC:-http://127.0.0.1:8899}"
+  # Every run loads this checkout's bytes. A healthy shared validator may still run an older ABI.
+  CHAIN_TMP="$(mktemp -d -t fc-block2-XXXXXX)"
+  export E2E_LEDGER="$CHAIN_TMP/ledger" E2E_KEYS_DIR="$CHAIN_TMP/keys"
+  for _ in $(seq 1 40); do
+    E2E_RPC_PORT=$((20000 + RANDOM % 30000))
+    if ! nc -z 127.0.0.1 "$E2E_RPC_PORT" 2>/dev/null && ! nc -z 127.0.0.1 "$((E2E_RPC_PORT + 1))" 2>/dev/null; then break; fi
+  done
+  export E2E_RPC_PORT
+  export E2E_FAUCET_PORT="$(node -e 'const s=require("net").createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})')"
+  export E2E_GOSSIP_PORT="$(node -e 'const s=require("net").createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})')"
+  export SOLANA_RPC="http://127.0.0.1:$E2E_RPC_PORT"
 else
   export PAYMENT_MODE=transfer
   export SOLANA_RPC="http://127.0.0.1:9"
@@ -49,6 +59,7 @@ if [ "$BLOCK" = "1" ] && [ -f "$TREASURY_FILE" ]; then
   mv "$TREASURY_FILE" "$TREASURY_BAK"
 fi
 stop_server() {
+  local code=$?
   if [ -n "$SERVER_PID" ]; then
     kill "$SERVER_PID" 2>/dev/null || true
     wait "$SERVER_PID" 2>/dev/null || true
@@ -58,6 +69,10 @@ stop_server() {
   if [ -n "$TREASURY_BAK" ] && [ ! -f "$TREASURY_FILE" ]; then
     mv "$TREASURY_BAK" "$TREASURY_FILE"
     TREASURY_BAK=""
+  fi
+  if [ -n "${CHAIN_TMP:-}" ]; then
+    if [ -f "$E2E_LEDGER/validator.pid" ]; then kill "$(cat "$E2E_LEDGER/validator.pid")" 2>/dev/null || true; fi
+    if [ "$code" -eq 0 ]; then rm -rf "$CHAIN_TMP"; else echo "block-2 scratch kept: $CHAIN_TMP"; fi
   fi
 }
 trap stop_server EXIT
@@ -76,10 +91,10 @@ if [ "$BLOCK" = "2" ]; then
   set -e
   if [ "$vrc" -eq 0 ]; then
     export E2E_SOLANA_RPC="$SOLANA_RPC" E2E_REQUIRE_CHAIN=1
-    bash "$ROOT/tests/e2e/scripts/chain-init.sh" || true
+    bash "$ROOT/tests/e2e/scripts/chain-init.sh"
   else
-    unset E2E_SOLANA_RPC E2E_REQUIRE_CHAIN
-    echo "validator not used (exit $vrc); chain-only checks skip"
+    echo "block 2 requires its local validator (exit $vrc)" >&2
+    exit "$vrc"
   fi
 fi
 

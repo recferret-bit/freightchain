@@ -284,7 +284,7 @@ npm run program:test                                        # Rust LiteSVM tests
 npm run program:verify                                      # reproducible Solana build vs backend/programs/verifiable-build.hash
 npm run test:localnet                                       # full escrow lifecycle on local solana-test-validator
 npm run test:e2e:block1                                     # fast code E2E (Postgres + Redis + API, chain off)
-npm run test:e2e:block2                                     # fast code E2E (program mode + local validator)
+npm run test:e2e:block2                                     # fast code E2E (program mode + disposable local validator)
 bash .claude/skills/run-tests/e2e.sh                        # real headless Chrome end-to-end suites
 npm run test:ci:full                                       # full local gate, including both Rust programs, validator journeys and Chrome
 npm run test:production:local                              # disposable production-mode Docker startup, outages, backup/restore and restart checks

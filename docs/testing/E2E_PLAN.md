@@ -269,7 +269,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 
 ### Paid season week (block 2)
 
-1. Compose Postgres and Redis, then a host `solana-test-validator` (Agave, same as `localnet-e2e`). Deploy the pool and TEN4 programs when their `.so` files exist (`programs/target/deploy`, `e2e/scripts/chain-init.sh`). The TEN4 crate is `freightchain_honk`.
+1. Compose Postgres and Redis, then a disposable host `solana-test-validator` (Agave, same as `localnet-e2e`). The runner requires the current `backend/programs/target/deploy/freightchain_pools.so`, loads it in a fresh ledger on a free loopback port, and uses scratch keys. `tests/e2e/scripts/chain-init.sh` only funds the local payer and verifies the loaded pool; no deployment key is read. Missing CLI/build fails instead of skipping chain checks. Cleanup stops only this validator and retains failed-run artifacts. TEN4 emission is exercised separately by `honk-suite`.
 2. The server runs `PAYMENT_MODE=program` with both program ids. `GET /api/honk` returns `chain.programId`. `GET /api/chain/fees` answers. Tiers still list free, 1h, 4h, 8h.
 3. The landing hero says IN ESCROW when `/api/pool` has vaults. The lobby 1h card shows BUY. START FREE RIDE still posts `tier: 'free'`.
 4. A signed admin creates a ticket promo for the deployed pool. A player redeems it and the ticket balance for that pool goes up by one (`B2-PROMO-02`).
