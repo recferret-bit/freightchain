@@ -17,7 +17,10 @@ if(await ev('typeof window.__game')==='object'){
   await ev('window.__game.devRun(); window.__game.startRide()');   // ?sim=1 keeps the local sim; devRun: the classic road + depot, no helpers
   // the scripted driver pops the clutch: use the pre-weight handling and a warm engine, or the truck stalls on launch (cold engine / MASS 2.5 are exercised by the climate checks below)
   await ev('Object.assign(__game.CFG.TRUCK,{MASS:1,BRAKE:9,STEER_RATE:1.8,STEER_RETURN:3.5,YAW_LAG:0,CENTRIF:.03}); __game.st.temp=__game.CFG.ENGINE_WARM+5');
-  await sleep(500); await key('ShiftLeft'); await key('KeyI'); await sleep(3500); await key('KeyI','up'); if(await ev('__game.st.park')) await key('KeyB'); await shot('02-engine-running');
+  await sleep(500); await key('ShiftLeft'); await key('KeyI');
+  // Software WebGL can advance far less game time than wall time; hold the real starter until it catches.
+  for(let i=0;i<80 && !await ev('__game.st.engineOn');i++) await sleep(250);
+  await key('KeyI','up'); if(await ev('__game.st.park')) await key('KeyB'); await shot('02-engine-running');
   console.log('after start:',await ev('JSON.stringify({eng:__game.st.engineOn,rpm:Math.round(__game.st.rpm),mode:__game.st.mode})'));
   if(!await ev('__game.st.engineOn')) problems.push('engine did not start with the clutch held');
   // sound effects: the samples (client/audio/sfx, manifest + fingerprinted mp3) download + decode in the background and then play; a failed one stays silent
@@ -41,10 +44,13 @@ if(await ev('typeof window.__game')==='object'){
 if(await ev('typeof window.__game')==='object'){
   await ev('__game.st.mode="drive"; __game.st.s=__game.net.Sm+300; __game.st.d=2.4; __game.st.psi=0; document.getElementById("overlay").classList.add("hide")');
   if(await ev('__game.st.park')) await key('KeyB');
-  await key('KeyW','up'); await key('ShiftLeft'); await key('KeyS'); await sleep(3000); await key('KeyS','up'); await key('ShiftLeft','up');
+  await key('KeyW','up'); await key('ShiftLeft'); await key('KeyS');
+  for(let i=0;i<80 && Math.abs(await ev('__game.st.vel'))>.05;i++) await sleep(250);
+  await key('KeyS','up'); await key('ShiftLeft','up');
   if(!(await ev('__game.st.engineOn'))){ await key('ShiftLeft'); await key('KeyI'); await sleep(3500); await key('ShiftLeft','up'); }
   const beforeReverse=await ev('__game.st.s');
-  await key('ShiftLeft'); await sleep(600); await key('KeyG'); await key('KeyW'); await sleep(300); await key('ShiftLeft','up'); await sleep(3500);
+  await key('ShiftLeft'); await sleep(600); await key('KeyG'); await key('KeyW'); await sleep(300); await key('ShiftLeft','up');
+  for(let i=0;i<80 && !await ev(`__game.st.vel<0 && __game.st.s<${beforeReverse}`);i++) await sleep(250);
   console.log('reverse:',await ev('JSON.stringify({gear:__game.st.gear,rev:__game.st.rev,v:+__game.st.v.toFixed(2),vel:+__game.st.vel.toFixed(2),s:Math.round(__game.st.s),eng:__game.st.engineOn,tyaw:+__game.st.tyaw.toFixed(2)})'));
   if(!await ev(`__game.st.gear===-1 && __game.st.rev && __game.st.vel<0 && __game.st.s<${beforeReverse}`)) problems.push('reverse gear did not move the truck backwards');
   await shot('reverse'); await key('KeyW','up'); await key('KeyS'); await sleep(1500); await key('KeyS','up');

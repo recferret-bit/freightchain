@@ -5,9 +5,11 @@ const PORT=+process.env.PORT||9334, URL=await withEntities(process.argv[2]||'htt
 const { send, ev, shot, problems, SHOTS, finish } = await launch({ port: PORT, shotsDir: 'fc-viewer-shots', evalProblems: true });
 const mouse=(type,x,y,extra={})=>send('Input.dispatchMouseEvent',{type,x,y,button:'left',buttons:type==='mouseReleased'?0:1,clickCount:1,...extra});
 const rmouse=(type,x,y,extra={})=>send('Input.dispatchMouseEvent',{type,x,y,button:'right',buttons:type==='mouseReleased'?0:2,clickCount:1,...extra});
-await send('Page.navigate',{url:URL}); await sleep(3000);
-console.log('viewer:',await ev('typeof window.__viewer'),'| items:',await ev('__viewer.items.length'));
+await send('Page.navigate',{url:URL});
+for(let i=0;i<150 && await ev('typeof window.__viewer')!=='object';i++) await sleep(200);
+console.log('viewer:',await ev('typeof window.__viewer'),'| items:',await ev('window.__viewer?.items.length'));
 const bad=[];
+if(await ev('typeof window.__viewer')!=='object') bad.push('viewer did not boot within 30 seconds');
 if(await ev('typeof window.__viewer')==='object'){
   const ids=await ev('__viewer.items.map(i=>i.id)');
   for(const i of ids){ const r=await ev(`(()=>{try{__viewer.select('${i}');const b=new (Object.getPrototypeOf(__viewer.obj).constructor)();return __viewer.obj.children.length}catch(e){return 'ERR '+e.message}})()`); if(typeof r==='string') bad.push(i+': '+r); await sleep(30); }

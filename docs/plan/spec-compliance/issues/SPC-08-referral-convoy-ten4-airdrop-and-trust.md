@@ -62,7 +62,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.3` — Implement 25-row Convoy leaderboard (`GET /api/referrals/leaderboard`) & `convoyHidden` privacy toggle (`PATCH /api/me/privacy`)
 
-- **Status:** `[~] In Progress` — reopened on 24 October. API routes exist, but the leaderboard still depends on process-local Convoy data. The required lobby slot meter, milestone progress and leaderboard journey need completion and browser evidence. Applying the schema migration alone does not finish this task.
+- **Status:** `[~] In Progress` — reopened on 24 October. API routes now use durable PostgreSQL Convoy data, with privacy and usable-promo HTTP checks. The required lobby slot meter, milestone progress and leaderboard journey need completion and browser evidence. Applying the schema migration alone does not finish this task.
 - **Spec Rules:** `REF-M-13`, `REF-M-14`, `REF-M-15` (`docs/spec/referral.md` §2.6–2.7)
 - **Paired Plan 1 Task:** `E2E-05.7`
 - **Target Files:**
@@ -85,7 +85,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.4` — Implement Pre-Season TEN4 Airdrop campaign engine (MEDIUM/HARD ride gate, Telegram check, X verification via `twitterapi.io`, Turnstile, unique social ID binding)
 
-- **Status:** `[~] In Progress` — reopened on 24 October. Endpoints and local service tests exist; production uses process-local storage, unconfigured Telegram/X adapters and a null-secret Turnstile binding. Durable social uniqueness, real adapters and chain settlement remain open. Claim settlement is currently `ledger`.
+- **Status:** `[~] In Progress` — reopened on 24 October. Durable social uniqueness and real provider adapters now pass unit and HTTP checks: Telegram signed ownership/membership, wallet-bound X proof and site/action-bound Turnstile. Live provider setup/acceptance, campaign UI/attempt wiring and chain settlement remain open. Claim settlement is currently `ledger`.
 - **Spec Rules:** `TEN-M-01..11` (`docs/spec/ten4.md` §4.2, [`docs/plan/DEVNET_PRESEASON.md`](../../DEVNET_PRESEASON.md))
 - **Paired Plan 1 Task:** `E2E-05.8`
 - **Target Files:**

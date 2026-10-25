@@ -19,7 +19,7 @@ const signIn = async () => {
   const res = await post('auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) });
   return { wallet, cookie: res.headers.get('set-cookie').split(';')[0] };
 };
-const newRide = async who => (await post('rides', { tier: 'free' }, who.cookie)).json();
+const newRide = async who => (await post('rides', { tier: 'free', tutorial: false, assist: false }, who.cookie)).json();
 const stats = () => api('stats');
 const career = async who => (await api('profile', who.cookie)).career;
 const cli = (...args) => spawnSync('node', [CLI, ...args], { encoding: 'utf8', env: process.env });
@@ -58,14 +58,16 @@ await fitsAll('empty');
 
 // ── 1. a REAL game: drives into a car → the client's crash counter → the server's totals ──
 const first = await newRide(me);
+await B.send('Emulation.setDeviceMetricsOverride', { width: 640, height: 360, deviceScaleFactor: .5, mobile: false });
 await B.send('Page.navigate', { url: `${BASE}/play.html?ride=${first.id}` });
 await until(() => B.ev(`!!document.getElementById('go') && !!window.__game`), 30_000);
 await B.ev(`document.getElementById('go').click()`);
 await sleep(800);
 // headless can't drive: driveHook holds the truck at 14 m/s (under the governor) and the game moves it; the first car ahead is a parked sedan the truck rams
-await B.ev(driveHook(14, 'st.park = false; st.keyOn = true; st.engineOn = true;', 2.4));   // the right lane on the main road: the parked sedan is in it
+await B.ev('__game.trip.finish = false');
+await B.ev(driveHook(14, 'st.park = false; st.keyOn = true; st.engineOn = true; st.gear = 7; st.temp = 85; g.input.gas = true;', 2.4));   // the right lane on the main road: the parked sedan is in it
 check('game: the ride is running', await until(async () => (await api(`rides/${first.id}`, me.cookie)).status === 'running', 15_000));   // a training ride is not on the public live board
-const reached = await until(() => B.ev(`__game.st.s > __game.net.Sm + 30`), 60_000, 500);
+const reached = await until(() => B.ev(`__game.st.s > __game.net.Sm + 30`), 180_000, 500);
 check('game: the truck is out on the main road', reached, `s=${await B.ev('__game.st.s.toFixed(0)')}`);
 for (let i = 0; i < 12 && !(await B.ev('window.__car === true')); i++) { await B.ev(`(() => { const g = __game, car = g.spawn('sedan', 'slow', 'ahead', 12 + (${i} % 4) * 2, 2.4); if (car) car.v = 0; window.__car = !!car; })()`); await sleep(150); }   // a spot can be taken by the game's own traffic: try a few
 check('game: a car stands ahead', await B.ev('window.__car'));
@@ -79,6 +81,7 @@ check('server: the rider\'s record counted the failed ride – distance, time, t
 check('server: GET /api/stats = the same numbers (the game\'s totals are this rider\'s so far)', global1.rides === 1 && global1.metres === afterCrash.metres && global1.crashesVehicle === afterCrash.crashesVehicle && global1.drivers === 1, JSON.stringify(global1));
 
 // ── 2. the landing and the lobby show it ──
+await B.send('Emulation.clearDeviceMetricsOverride');
 await B.send('Page.navigate', { url: `${BASE}/` });
 const showed = await until(async () => { hero = await heroOf(); return parseFloat(hero.km) > 0; }, 20_000);
 check('landing: DRIVEN, ALL TIME is no longer 0.00 after a ride that did not complete (the production bug)', showed, JSON.stringify(hero));

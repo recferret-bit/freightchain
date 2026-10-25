@@ -87,13 +87,16 @@ describe('airdrop rules', () => {
   });
   it('builds a stable code and checks age, followers, and the quote', () => {
     expect(airdropCode('ada')).toBe(airdropCode('ada'));
-    expect(airdropCode('ada')).toMatch(/^FC-[A-Z2-9]{4}$/);
+    expect(airdropCode('ada')).toBe('FC-ada');
+    expect(airdropCode('ABCDone')).not.toBe(airdropCode('ABCDtwo'));
     expect(xAgeOk(new Date(NOW.getTime() - 90 * DAY_MS), NOW)).toBe(true);
     expect(xAgeOk(new Date(NOW.getTime() - 90 * DAY_MS + 1), NOW)).toBe(false);
     const code = airdropCode('ada');
     expect(xQuoteOk(`joined @FreightChainSol ${code}`, code)).toBe(true);
     expect(xQuoteOk(`joined @freightchainsol ${code}`, code)).toBe(true);
     expect(xQuoteOk('@FreightChainSol only', code)).toBe(false);
+    expect(xQuoteOk(`@FreightChainSolFake ${code}`, code)).toBe(false);
+    expect(xQuoteOk(`@FreightChainSol ${code}Extra`, code)).toBe(false);
   });
 });
 

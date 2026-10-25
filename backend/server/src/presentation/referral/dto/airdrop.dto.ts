@@ -5,6 +5,12 @@ const token = z.string().max(2048).optional();
 
 export const verifyTelegramBodySchema = z.object({
   telegramUserId: z.string().trim().regex(/^\d{1,32}$/),
+  proof: z.object({
+    id: z.union([z.string().regex(/^\d{1,32}$/), z.number().int().positive().safe()]),
+    auth_date: z.number().int().nonnegative().safe(), hash: z.string().regex(/^[0-9a-f]{64}$/),
+    first_name: z.string().max(256), last_name: z.string().max(256).optional(),
+    username: z.string().max(256).optional(), photo_url: z.string().max(2048).optional(),
+  }).strict().optional(),
   turnstileToken: token,
 }).strict();
 export type VerifyTelegramBody = z.infer<typeof verifyTelegramBodySchema>;

@@ -10,7 +10,7 @@ import { TermsGuard } from '../common/guards/terms.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
 import { airdropStatusResponse, claimAirdropBodySchema, verifyTelegramBodySchema, verifyXBodySchema, type ClaimAirdropBody, type VerifyTelegramBody, type VerifyXBody } from './dto/airdrop.dto.js';
 
-/** Pre-season airdrop. Ports are fakes in unit tests. This process does not call twitterapi.io. */
+/** Pre-season airdrop. Provider facts and ownership checks live behind application ports. */
 @Controller('api/airdrop')
 @UseGuards(PlayerAuthGuard, TermsGuard)
 export class AirdropHttpController {
@@ -26,7 +26,7 @@ export class AirdropHttpController {
   @HttpCode(200)
   @ZodResponse(airdropStatusResponse)
   verifyTelegram(@CurrentPlayer() player: PlayerIdentity, @ZodBody(verifyTelegramBodySchema) body: VerifyTelegramBody): Promise<AirdropStatusDto> {
-    return this.commandBus.execute<VerifyTelegramCommand, AirdropStatusDto>(new VerifyTelegramCommand(player.wallet, body.telegramUserId, body.turnstileToken));
+    return this.commandBus.execute<VerifyTelegramCommand, AirdropStatusDto>(new VerifyTelegramCommand(player.wallet, body.telegramUserId, body.turnstileToken, body.proof));
   }
 
   @Post('verify-x')

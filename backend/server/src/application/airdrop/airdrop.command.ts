@@ -1,9 +1,11 @@
+import type { TelegramLoginProof } from './telegram.port.js';
+
 export class GetAirdropStatusQuery {
   constructor(public readonly wallet: string) {}
 }
 
 export class VerifyTelegramCommand {
-  constructor(public readonly wallet: string, public readonly telegramUserId: string, public readonly turnstileToken?: string) {}
+  constructor(public readonly wallet: string, public readonly telegramUserId: string, public readonly turnstileToken?: string, public readonly proof?: TelegramLoginProof) {}
 }
 
 export class VerifyXCommand {

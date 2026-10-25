@@ -56,6 +56,10 @@ export const envSchema = z
     SNS_RPC_FALLBACKS: z.string().default(''),
     SNS_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86400),
     SNS_NEGATIVE_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(1800),
+    TWITTERAPI_IO_KEY: optional(z.string().min(1)),
+    TELEGRAM_BOT_TOKEN: optional(z.string().min(1)),
+    TELEGRAM_CHANNEL_ID: optional(z.string().regex(/^(@[A-Za-z0-9_]+|-?\d+)$/)),
+    TURNSTILE_SECRET_KEY: optional(z.string().min(1)),
     SOL_USD: optional(z.coerce.number().min(0)), // 0 = not pinned (live price), as before
     DEMO_WALLETS: z.string().default(''),
     DEMO_SCALE: z.coerce.number().positive().default(60),

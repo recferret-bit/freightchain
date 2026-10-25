@@ -25,13 +25,14 @@ async function signIn() {
   return { wallet, cookie: res.headers.get('set-cookie').split(';')[0] };
 }
 const codes = v => (v?.reasons ?? []).map(x => x.code);
-const LANE = 2.4, SPEED = 22, HOLES_TO_CROSS = 2;
+const LANE = 2.4, SPEED = 16, HOLES_TO_CROSS = 2;
 
 /* ───────────── A + B: a driver in Chrome ───────────── */
 async function drive({ port, mode }) {
   const who = await signIn();
   const { j: ride } = await call('POST', 'rides', { body: { tier: 'free', level: 2 }, ...who });   // MEDIUM: its sinkholes start 400 m in, mostly on 1+1 road (EASY has none within reach, and four lanes)
   const tab = await launch({ port, shotsDir: SHOTS, evalProblems: true });
+  await tab.send('Emulation.setDeviceMetricsOverride', { width: 640, height: 360, deviceScaleFactor: .5, mobile: false });
   const [name, value] = who.cookie.split('=');
   await tab.send('Network.setCookie', { name, value, url: BASE, httpOnly: true });
   await tab.send('Page.navigate', { url: `${BASE}/play.html?ride=${ride.id}` });
@@ -58,11 +59,11 @@ async function drive({ port, mode }) {
     g.input.gas = 1; g.input.brake = 0;
     const s = g.st.s, cars = g.traffic || [];
     const close = (lat, span) => cars.some(a => a && Math.abs(a.lat - lat) < 2.2 && Math.abs(a.s - s) < span);
-    const nearHole = HOLES.some(h => Math.abs(h - s) < 22);
-    const threat = close(LANE, g.st._dodge ? 20 : 36);
+    const nearHole = HOLES.some(h => h - s > -22 && h - s < 65);
+    const threat = close(LANE, g.st._dodge ? 30 : 65);
     if (!nearHole && threat && !close(-LANE, 50)) g.st._dodge = true; else if (!threat || nearHole) g.st._dodge = false;
     let want = SPEED;
-    if (!nearHole && threat && !g.st._dodge) { const ahead = cars.filter(a => a.dir > 0 && a.s > s && a.s - s < 40 && Math.abs(a.lat - LANE) < 2.2).sort((a, b) => a.s - b.s); if (ahead[0]) want = Math.min(SPEED, Math.max(0, ahead[0].v - 1)); }
+    if (threat && !g.st._dodge) { const ahead = cars.filter(a => a.s > s && a.s - s < 65 && Math.abs(a.lat - LANE) < 2.2).sort((a, b) => a.s - b.s); if (ahead[0]) want = Math.min(SPEED, Math.max(0, (ahead[0].dir > 0 ? ahead[0].v : 0) - 3), Math.max(0, (ahead[0].s - s - 25) / 3)); }
     // A hole drops the recorded speed. Climb back no faster than 0.25 m/s per 0.1 s, or the torque check rejects the snap back to cruise.
     const live = Math.min(g.st._holdV ?? g.st.v, g.st.v);
     let base = want < live ? want : live;

@@ -13,8 +13,8 @@ export class GetAirdropStatusHandler implements IQueryHandler<GetAirdropStatusQu
 @CommandHandler(VerifyTelegramCommand)
 export class VerifyTelegramHandler implements ICommandHandler<VerifyTelegramCommand, AirdropStatusDto> {
   constructor(private readonly airdrop: AirdropService) {}
-  execute({ wallet, telegramUserId, turnstileToken }: VerifyTelegramCommand): Promise<AirdropStatusDto> {
-    return this.airdrop.verifyTelegram(wallet, telegramUserId, turnstileToken);
+  execute({ wallet, telegramUserId, turnstileToken, proof }: VerifyTelegramCommand): Promise<AirdropStatusDto> {
+    return this.airdrop.verifyTelegram(wallet, telegramUserId, turnstileToken, proof);
   }
 }
 
