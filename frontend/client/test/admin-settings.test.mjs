@@ -25,6 +25,7 @@ const RANGES = [
   ['referral_ride_cap_lamports', 'referralRideCapLamports', 0, 2_000_000_000],
   ['referral_donation_share_bps', 'referralDonationShareBps', 0, 10_000],
   ['referral_donation_cap_lamports', 'referralDonationCapLamports', 0, 2_000_000_000],
+  ['referral_count_weekly_grant', 'referralCountWeeklyGrant', 0, 1],
   ['editor_jobs_per_day', 'editorJobsPerDay', 0, 100_000],
   ['editor_max_steps', 'editorMaxSteps', 0, 100_000],
   ['editor_max_output_tokens', 'editorMaxOutputTokens', 0, 100_000],

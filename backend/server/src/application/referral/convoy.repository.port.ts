@@ -46,6 +46,8 @@ export interface ReferrerCounts {
   referrer: string;
   qualified: number;
   active: number;
+  milestones: number;
+  firstMilestone: Date | null;
 }
 
 /** Convoy rows, the TEN4/ride ledger, and the optional privacy column. Not the legacy `Referral` table. */
@@ -66,6 +68,7 @@ export abstract class ConvoyRepositoryPort {
   abstract ledger(tx?: TransactionHandle): Promise<ConvoyLedgerRow[]>;
   abstract recordRide(row: ConvoyRideRow, tx?: TransactionHandle): Promise<void>;
   abstract ridesOf(wallet: string, tx?: TransactionHandle): Promise<ConvoyRideRow[]>;
+  abstract recentActiveCount(referrer: string, since: Date, until: Date, tx?: TransactionHandle): Promise<number>;
   abstract referrerCounts(tx?: TransactionHandle): Promise<ReferrerCounts[]>;
   abstract readHidden(wallet: string, tx?: TransactionHandle): Promise<HiddenRead>;
   abstract writeHidden(wallet: string, hidden: boolean, tx?: TransactionHandle): Promise<HiddenRead>;

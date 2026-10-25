@@ -21,6 +21,9 @@ describe('game settings', () => {
   });
 
   it('a referral knob keeps its own bounds: the referrer part stays the bigger part, and a lamport cap fits a signed int', () => {
+    expect(resolveSettings([]).referralCountWeeklyGrant).toBe(1);
+    expect(resolveSettings([{ key: 'referral_count_weekly_grant', value: 0 }]).referralCountWeeklyGrant).toBe(0);
+    expect(() => assertSettingValue('referral_count_weekly_grant', 2)).toThrow(BadRequestError);
     expect(() => assertSettingValue('referral_referrer_part_bps', 8000)).not.toThrow();
     expect(() => assertSettingValue('referral_referrer_part_bps', 5000)).toThrow(BadRequestError);
     expect(() => assertSettingValue('referral_ride_cap_lamports', 2_000_000_000)).not.toThrow();

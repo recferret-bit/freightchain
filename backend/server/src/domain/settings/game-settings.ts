@@ -11,6 +11,7 @@ export const SETTING_KEYS = [
   'referral_max', 'referral_invite_start', 'referral_invite_step', 'referral_shifts_per_step', 'referral_invite_ttl_days',
   'referral_free_ride_window_days', 'referral_free_rides_referrer', 'referral_free_rides_referee', 'referral_free_ride_weekly_cap',
   'referral_referrer_part_bps', 'referral_ride_cap_lamports', 'referral_donation_share_bps', 'referral_donation_cap_lamports',
+  'referral_count_weekly_grant',
 ] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 
@@ -41,6 +42,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, number> = {
   referral_ride_cap_lamports: 1_000_000_000,
   referral_donation_share_bps: 1000,
   referral_donation_cap_lamports: 500_000_000,
+  referral_count_weekly_grant: 1,
 };
 
 /** Per key. `GameSetting.value` is a signed 32-bit int, so a lamport cap stops at 2e9. */
@@ -71,6 +73,7 @@ export const SETTING_BOUNDS: Record<SettingKey, { min: number; max: number }> = 
   referral_ride_cap_lamports: { min: 0, max: 2_000_000_000 },
   referral_donation_share_bps: { min: 0, max: 10_000 },
   referral_donation_cap_lamports: { min: 0, max: 2_000_000_000 },
+  referral_count_weekly_grant: { min: 0, max: 1 },
 };
 
 export const SETTING_MIN = 0;
@@ -108,6 +111,7 @@ export interface GameSettings {
   referralRideCapLamports: number;
   referralDonationShareBps: number;
   referralDonationCapLamports: number;
+  referralCountWeeklyGrant: number;
 }
 
 const CAMEL: Record<SettingKey, keyof GameSettings> = {
@@ -137,6 +141,7 @@ const CAMEL: Record<SettingKey, keyof GameSettings> = {
   referral_ride_cap_lamports: 'referralRideCapLamports',
   referral_donation_share_bps: 'referralDonationShareBps',
   referral_donation_cap_lamports: 'referralDonationCapLamports',
+  referral_count_weekly_grant: 'referralCountWeeklyGrant',
 };
 
 export const isSettingKey = (key: string): key is SettingKey => (SETTING_KEYS as readonly string[]).includes(key);

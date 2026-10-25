@@ -80,12 +80,19 @@ export class MemoryConvoyRepository extends ConvoyRepositoryPort {
     const map = new Map<string, ReferrerCounts>();
     for (const row of this.rows.values()) {
       if (row.status !== 'qualified' && row.status !== 'active') continue;
-      const cur = map.get(row.referrer) ?? { referrer: row.referrer, qualified: 0, active: 0 };
+      const cur = map.get(row.referrer) ?? { referrer: row.referrer, qualified: 0, active: 0, milestones: 0, firstMilestone: null };
       if (row.status === 'qualified') cur.qualified += 1;
       else cur.active += 1;
+      cur.milestones += Number(!!row.m1At) + Number(!!row.m2At);
+      if (row.m1At && (!cur.firstMilestone || row.m1At < cur.firstMilestone)) cur.firstMilestone = row.m1At;
       map.set(row.referrer, cur);
     }
     return Promise.resolve([...map.values()]);
+  }
+
+  recentActiveCount(referrer: string, since: Date, until: Date): Promise<number> {
+    const friends = new Set([...this.rows.values()].filter((row) => row.referrer === referrer && ['active', 'qualified'].includes(row.status)).map((row) => row.referee));
+    return Promise.resolve(new Set([...this.rides.values()].filter((ride) => friends.has(ride.wallet) && ride.counted && ride.at >= since && ride.at <= until).map((ride) => ride.wallet)).size);
   }
 
   readHidden(wallet: string): Promise<HiddenRead> {

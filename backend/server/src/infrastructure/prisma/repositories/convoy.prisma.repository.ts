@@ -69,15 +69,24 @@ export class ConvoyPrismaRepository extends ConvoyRepositoryPort {
   }
 
   async referrerCounts(tx?: TransactionHandle): Promise<ReferrerCounts[]> {
-    const rows = await clientFor(this.prisma, tx).convoyInvite.groupBy({ by: ['referrer', 'status'], where: { status: { in: ['active', 'qualified'] } }, _count: true });
+    const rows = await clientFor(this.prisma, tx).convoyInvite.groupBy({ by: ['referrer', 'status'], where: { status: { in: ['active', 'qualified'] } }, _count: { _all: true, m1At: true, m2At: true }, _min: { m1At: true } });
     const counts = new Map<string, ReferrerCounts>();
     for (const row of rows) {
-      const count = counts.get(row.referrer) ?? { referrer: row.referrer, active: 0, qualified: 0 };
-      if (row.status === 'active') count.active += row._count;
-      else count.qualified += row._count;
+      const count = counts.get(row.referrer) ?? { referrer: row.referrer, active: 0, qualified: 0, milestones: 0, firstMilestone: null };
+      if (row.status === 'active') count.active += row._count._all;
+      else count.qualified += row._count._all;
+      count.milestones += row._count.m1At + row._count.m2At;
+      if (row._min.m1At && (!count.firstMilestone || row._min.m1At < count.firstMilestone)) count.firstMilestone = row._min.m1At;
       counts.set(row.referrer, count);
     }
     return [...counts.values()];
+  }
+
+  async recentActiveCount(referrer: string, since: Date, until: Date, tx?: TransactionHandle): Promise<number> {
+    const db = clientFor(this.prisma, tx);
+    const friends = await db.convoyInvite.findMany({ where: { referrer, status: { in: ['active', 'qualified'] } }, select: { referee: true } });
+    if (!friends.length) return 0;
+    return (await db.convoyRide.groupBy({ by: ['wallet'], where: { wallet: { in: friends.map((row) => row.referee) }, counted: true, at: { gte: since, lte: until } } })).length;
   }
 
   async readHidden(wallet: string, tx?: TransactionHandle): Promise<HiddenRead> {

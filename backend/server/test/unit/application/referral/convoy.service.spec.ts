@@ -1,3 +1,5 @@
+import { MemoryAirdropRepository } from '../../../../src/infrastructure/social/memory-airdrop.repository.js';
+import { emptyAirdrop } from '../../../../src/application/airdrop/airdrop-rules.js';
 import { MemoryDb } from '../../../support/in-memory/memory-db.js';
 import { MemoryPromoRepository } from '../../../support/in-memory/memory-ledger-repositories.js';
 import { NameServicePort } from '../../../../src/application/ports/sns/name-service.port.js';
@@ -6,7 +8,7 @@ import { ClockPort } from '../../../../src/application/ports/shared/clock.port.j
 import { TransactionPort, type TransactionHandle } from '../../../../src/application/ports/shared/transaction.port.js';
 import { MemoryConvoyRepository } from '../../../../src/infrastructure/social/memory-convoy.repository.js';
 import { ConvoyService, type ConvoyRideFact } from '../../../../src/application/referral/convoy.service.js';
-import { distinctWeeks, isMediumOrHardTrip, isoWeekKey, milestoneDecision, pendingCap, pendingTtlMs, promoDecision, qualifyWindowMs } from '../../../../src/application/referral/convoy-rules.js';
+import { countedRide, distinctWeeks, isMediumOrHardTrip, isoWeekKey, milestoneDecision, pendingCap, pendingTtlMs, promoDecision, qualifyWindowMs } from '../../../../src/application/referral/convoy-rules.js';
 import { qualifyDecision } from '../../../../src/domain/referral/referral-rules.js';
 import { Player } from '../../../../src/domain/players/player.entity.js';
 import { DAY_MS, utcDay } from '../../../../src/domain/shared/time.js';
@@ -49,8 +51,9 @@ function harness(names: Record<string, string> = {}) {
   const players = new FakePlayers();
   const repo = new MemoryConvoyRepository();
   const promos = new MemoryPromoRepository(new MemoryDb());
-  const svc = new ConvoyService(repo, players, new FakeTx(), clock, new FakeNames(names), promos);
-  return { clock, players, repo, svc, promos };
+  const campaign = new MemoryAirdropRepository();
+  const svc = new ConvoyService(repo, players, new FakeTx(), clock, new FakeNames(names), promos, campaign);
+  return { clock, players, repo, svc, promos, campaign };
 }
 
 function fact(wallet: string, trip: string, status = 'completed', verdict = 'verified'): ConvoyRideFact {
@@ -59,6 +62,17 @@ function fact(wallet: string, trip: string, status = 'completed', verdict = 'ver
 }
 
 describe('convoy rules', () => {
+  it('counts only ranked paid tiers, excludes promos, and gates weekly grants at trust 100', () => {
+    const paid = { tier: '1h', ranked: true };
+    expect(countedRide(paid, 60, true)).toBe(true);
+    expect(countedRide({ ...paid, tier: 'free' }, 100, true)).toBe(false);
+    expect(countedRide({ ...paid, ranked: false }, 100, true)).toBe(false);
+    expect(countedRide({ ...paid, promo: true }, 100, true)).toBe(false);
+    expect(countedRide({ ...paid, weeklyGrant: true }, 99, true)).toBe(false);
+    expect(countedRide({ ...paid, weeklyGrant: true }, 100, false)).toBe(false);
+    expect(countedRide({ ...paid, weeklyGrant: true }, 100, true)).toBe(true);
+    expect(countedRide({}, 100, true)).toBe(false);
+  });
   it('caps pending slots at min(100, 5 + 2A)', () => {
     expect(pendingCap(0)).toBe(5);
     expect(pendingCap(1)).toBe(7);
@@ -83,7 +97,7 @@ describe('convoy rules', () => {
     expect(promoDecision({ lifetime: false, day: 0, week: 0, globalWeek: 500 })).toBe('global');
   });
 
-  it('counts MEDIUM and HARD only, and M1 at 2 weeks / M2 at 5 inside the window', () => {
+  it('activates on MEDIUM/HARD and gates milestones by campaign tasks and distinct weeks', () => {
     expect(isMediumOrHardTrip('free-2c')).toBe(true);
     expect(isMediumOrHardTrip('free-3')).toBe(true);
     expect(isMediumOrHardTrip('free-1c')).toBe(false);
@@ -92,16 +106,35 @@ describe('convoy rules', () => {
     const until = new Date(MONDAY.getTime() + qualifyWindowMs());
     const rides = [0, 7, 14, 21, 28].map((day) => ({ at: new Date(MONDAY.getTime() + day * DAY_MS), counted: true }));
     expect(distinctWeeks(rides.slice(0, 2), from, until)).toBe(2);
-    expect(milestoneDecision({ m1At: null, m2At: null, qualifyExpiresAt: until, now: rides[1]!.at, refereeWeeks: 2, referrerCounted: false })).toMatchObject({ m1: false, expire: false });
-    expect(milestoneDecision({ m1At: null, m2At: null, qualifyExpiresAt: until, now: rides[1]!.at, refereeWeeks: 2, referrerCounted: true })).toMatchObject({ m1: true, m2: false });
-    expect(milestoneDecision({ m1At: null, m2At: null, qualifyExpiresAt: until, now: rides[4]!.at, refereeWeeks: 5, referrerCounted: true })).toMatchObject({ m1: true, m2: true });
+    expect(milestoneDecision({ m1At: null, m2At: null, qualifyExpiresAt: until, now: rides[1]!.at, refereeWeeks: 2, tasksComplete: false })).toMatchObject({ m1: false, expire: false });
+    expect(milestoneDecision({ m1At: null, m2At: null, qualifyExpiresAt: until, now: rides[1]!.at, refereeWeeks: 2, tasksComplete: true })).toMatchObject({ m1: true, m2: false });
+    expect(milestoneDecision({ m1At: null, m2At: null, qualifyExpiresAt: until, now: rides[4]!.at, refereeWeeks: 5, tasksComplete: true })).toMatchObject({ m1: true, m2: true });
     const past = new Date(until.getTime() + 1);
-    expect(milestoneDecision({ m1At: null, m2At: null, qualifyExpiresAt: until, now: past, refereeWeeks: 5, referrerCounted: true })).toMatchObject({ expire: true, m1: false });
-    expect(milestoneDecision({ m1At: MONDAY, m2At: null, qualifyExpiresAt: until, now: past, refereeWeeks: 5, referrerCounted: true })).toMatchObject({ expire: false, m2: false });
+    expect(milestoneDecision({ m1At: null, m2At: null, qualifyExpiresAt: until, now: past, refereeWeeks: 5, tasksComplete: true })).toMatchObject({ expire: true, m1: false });
+    expect(milestoneDecision({ m1At: MONDAY, m2At: null, qualifyExpiresAt: until, now: past, refereeWeeks: 5, tasksComplete: true })).toMatchObject({ expire: false, m2: false });
   });
 });
 
 describe('ConvoyService', () => {
+  it('training never earns milestone weeks and recent counted activity expires from pending capacity', async () => {
+    const h = harness();
+    for (const wallet of ['ref', 'friend', 'next', 'later']) h.players.add(wallet);
+    await h.svc.bind('friend', 'ref');
+    await h.svc.onVerifiedRide(fact('friend', 'free-2c'));
+    h.clock.at = new Date(MONDAY.getTime() + 7 * DAY_MS);
+    await h.svc.onVerifiedRide(fact('friend', 'free-3c'));
+    expect((await h.repo.ridesOf('friend')).every((ride) => !ride.counted)).toBe(true);
+    expect((await h.repo.ledger()).filter((row) => row.unit === 'ten4')).toEqual([]);
+    expect((await h.svc.bind('next', 'ref')).maxPending).toBe(5);
+    const endedAt = h.clock.now();
+    const paid = { ...fact('friend', '1h'), tier: '1h', ranked: true, endedAt };
+    await h.svc.onVerifiedRide(paid);
+    expect((await h.svc.bind('next', 'ref')).maxPending).toBe(7);
+    h.clock.at = new Date(endedAt.getTime() + 30 * DAY_MS + 1);
+    await h.svc.onVerifiedRide(paid);
+    expect((await h.svc.bind('later', 'ref')).maxPending).toBe(5);
+    expect((await h.repo.ridesOf('friend')).find((ride) => ride.rideId === paid.rideId)?.at).toEqual(endedAt);
+  });
   it('binds a pending row under the player locks and refuses own, full, and missing wallets', async () => {
     const h = harness();
     h.players.add('aaa');
@@ -208,17 +241,18 @@ describe('ConvoyService', () => {
     await h.svc.onVerifiedRide(fact('ref', 'free-1c'));
     await h.svc.bind('referee', 'ref');
     await h.svc.onVerifiedRide(fact('referee', 'free-2c'));
+    await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true });
     h.clock.at = new Date(MONDAY.getTime() + 7 * DAY_MS);
-    expect((await h.svc.onVerifiedRide(fact('referee', 'free-2c'))).milestones.m1).toBe(false);
-    await h.svc.onVerifiedRide(fact('ref', 'free-3c'));
-    const held = await h.svc.onVerifiedRide(fact('referee', 'free-3c'));
+    expect((await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true })).milestones.m1).toBe(false);
+    await h.campaign.save({ ...emptyAirdrop('referee'), rideOk: true, telegramUserId: 'tg', telegramMember: true, xUserId: 'x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+    const held = await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true });
     expect(held.milestones.m1).toBe(false);
     h.clock.at = new Date(h.clock.at.getTime() + 48 * 3_600_000);
-    const m1 = await h.svc.onVerifiedRide(fact('referee', 'free-3c'));
+    const m1 = await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true });
     expect(m1).toMatchObject({ status: 'qualified', milestones: { m1: true, m2: false } });
     for (const day of [14, 21, 28]) {
       h.clock.at = new Date(MONDAY.getTime() + day * DAY_MS);
-      await h.svc.onVerifiedRide(fact('referee', 'free-2c'));
+      await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true });
     }
     const ledger = await h.repo.ledger();
     expect(ledger.filter((row) => row.unit === 'ten4')).toEqual([
@@ -264,6 +298,7 @@ describe('ConvoyService', () => {
     h.players.add('ref');
     for (let i = 0; i < 48; i++) {
       await h.repo.insert({ referee: `q${i}`, referrer: 'ref', status: 'qualified', boundAt: MONDAY, expiresAt: MONDAY, activatedAt: MONDAY, qualifyExpiresAt: MONDAY, m1At: MONDAY, m2At: null });
+      await h.repo.recordRide({ rideId: `recent-${i}`, wallet: `q${i}`, at: MONDAY, trip: '1h', counted: true });
     }
     for (let i = 0; i < 100; i++) {
       h.players.add(`p${i}`);
@@ -273,7 +308,7 @@ describe('ConvoyService', () => {
     await expect(h.svc.bind('overflow', 'ref')).rejects.toMatchObject({ errorCode: 'no_slots' });
   });
 
-  it('ranks 25 referrers by qualified then active, and masks only when the privacy column exists', async () => {
+  it('ranks 25 referrers and omits hidden public rows while preserving the private row', async () => {
     const h = harness({ bee: 'bee.sol' });
     for (let i = 0; i < 26; i++) {
       const referrer = `r${String(i).padStart(2, '0')}`;
@@ -298,8 +333,7 @@ describe('ConvoyService', () => {
     ties.players.add('bee');
     expect(await ties.svc.setPrivacy('bee', true)).toEqual({ convoyHidden: true, column: 'present' });
     const ranked = await ties.svc.leaderboard('bee');
-    expect(ranked.rows.map((row) => row.displayName)).toEqual(['aye', ANONYMOUS, 'cee']);
-    expect(ranked.rows[1]).toMatchObject({ wallet: null, hidden: true, qualified: 2 });
+    expect(ranked.rows.map((row) => row.displayName)).toEqual(['aye', 'cee']);
     expect(ranked.me).toMatchObject({ wallet: 'bee', displayName: 'bee.sol', hidden: true, rank: 2 });
     const missing = harness();
     missing.players.add('bee');
@@ -307,6 +341,14 @@ describe('ConvoyService', () => {
     expect(await missing.svc.setPrivacy('bee', true)).toEqual({ convoyHidden: false, column: 'missing' });
     expect((await missing.svc.leaderboard('bee')).rows[0]?.wallet).toBe('bee');
   });
-});
 
-const ANONYMOUS = 'Anonymous Dispatcher';
+  it('breaks equal-qualified ties by milestones, then the earliest achievement, rather than active invites', async () => {
+    const h = harness();
+    for (const [referrer, day, m2] of [['early', 1, false], ['late', 2, false], ['both', 3, true]] as const) {
+      const when = new Date(MONDAY.getTime() + day * DAY_MS);
+      await h.repo.insert({ referee: `${referrer}-friend`, referrer, status: 'qualified', boundAt: MONDAY, expiresAt: MONDAY, activatedAt: MONDAY, qualifyExpiresAt: when, m1At: when, m2At: m2 ? when : null });
+    }
+    for (let i = 0; i < 3; i++) await h.repo.insert({ referee: `late-active-${i}`, referrer: 'late', status: 'active', boundAt: MONDAY, expiresAt: MONDAY, activatedAt: MONDAY, qualifyExpiresAt: MONDAY, m1At: null, m2At: null });
+    expect((await h.svc.leaderboard('early')).rows.map((row) => row.wallet)).toEqual(['both', 'early', 'late']);
+  });
+});

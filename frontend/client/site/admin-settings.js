@@ -25,6 +25,7 @@ export const SETTING_KNOBS = [
   ['referral_ride_cap_lamports', 'referralRideCapLamports', 'Inviter cap per pool', 'lamports; the most one inviter takes from one pool (1 SOL is 1 000 000 000)', 0, 2_000_000_000],
   ['referral_donation_share_bps', 'referralDonationShareBps', 'Donation share to the inviter', 'basis points of a spectator donation that go to the driver\'s inviter (10 000 is all of it)', 0, 10_000],
   ['referral_donation_cap_lamports', 'referralDonationCapLamports', 'Donation cap per friend', 'lamports; the lifetime cap of that share between one inviter and one friend', 0, 2_000_000_000],
+  ['referral_count_weekly_grant', 'referralCountWeeklyGrant', 'Weekly grants count for Convoy', '0 off; 1 counts verified ranked grants when friend trust is 100', 0, 1],
   ['editor_jobs_per_day', 'editorJobsPerDay', 'AI editor: jobs per day', 'model-editor requests per editor wallet per UTC day (storybook)', 0, 100_000],
   ['editor_max_steps', 'editorMaxSteps', 'AI editor: steps per job', 'model turns one request may take (each may call the MCP tools)', 0, 100_000],
   ['editor_max_output_tokens', 'editorMaxOutputTokens', 'AI editor: output tokens', 'total output tokens across all model turns in one job', 0, 100_000],

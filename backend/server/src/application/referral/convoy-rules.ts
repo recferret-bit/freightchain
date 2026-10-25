@@ -18,7 +18,6 @@ export const M2_TEN4 = 50;
 /** The referrer gets no free-ride gift on activation. The invitee gift is the only ride credit. */
 export const REFERRER_RIDE_GIFT = 0;
 export const LEADERBOARD_LIMIT = 25;
-export const ANONYMOUS_DISPATCHER = 'Anonymous Dispatcher';
 const HOUR_MS = 3_600_000;
 
 export type ConvoyStatus = 'pending' | 'active' | 'qualified' | 'expired';
@@ -27,16 +26,21 @@ export type PromoSkip = 'ok' | 'lifetime' | 'day' | 'week' | 'global';
 export const pendingTtlMs = (): number => CONVOY_PENDING_HOURS * HOUR_MS;
 export const qualifyWindowMs = (): number => CONVOY_WINDOW_DAYS * DAY_MS;
 
-/** `A` is active + qualified friends. Concurrent pending slots, not a lifetime cap. */
+/** `A` is friends with a counted ride in the last 30 days. */
 export function pendingCap(activeOrQualified: number): number {
   const a = Number.isFinite(activeOrQualified) ? Math.max(0, Math.floor(activeOrQualified)) : 0;
   return Math.min(CONVOY_PENDING_MAX, CONVOY_PENDING_BASE + CONVOY_PENDING_PER_ACTIVE * a);
 }
 
-/** MEDIUM or HARD training, including frozen trip ids. A paid 1h has no level and does not count. */
+/** MEDIUM or HARD training activates an invite; it never counts toward paid milestones. */
 export function isMediumOrHardTrip(trip: string | null): boolean {
   const level = levelOfTrip(trip);
   return level === 2 || level === 3;
+}
+
+export function countedRide(i: { tier?: string; ranked?: boolean; promo?: boolean; weeklyGrant?: boolean }, trust: number, weeklyEnabled: boolean): boolean {
+  if (!['1h', '4h', '8h'].includes(i.tier ?? '') || i.ranked !== true || i.promo === true) return false;
+  return i.weeklyGrant !== true || (weeklyEnabled && trust >= 100);
 }
 
 /** Monday of the ISO week, UTC, as YYYY-MM-DD. */
@@ -78,12 +82,12 @@ export function milestoneDecision(i: {
   qualifyExpiresAt: Date;
   now: Date;
   refereeWeeks: number;
-  referrerCounted: boolean;
+  tasksComplete: boolean;
 }): { m1: boolean; m2: boolean; expire: boolean } {
   const open = !windowClosed(i.qualifyExpiresAt, i.now);
   if (!open && !i.m1At) return { m1: false, m2: false, expire: true };
-  const m1 = open && !i.m1At && i.referrerCounted && i.refereeWeeks >= M1_WEEKS;
+  const m1 = open && !i.m1At && i.tasksComplete && i.refereeWeeks >= M1_WEEKS;
   const m1Done = i.m1At !== null || m1;
-  const m2 = open && m1Done && !i.m2At && i.refereeWeeks >= M2_WEEKS;
+  const m2 = open && m1Done && i.tasksComplete && !i.m2At && i.refereeWeeks >= M2_WEEKS;
   return { m1, m2, expire: false };
 }

@@ -65,6 +65,7 @@ Table `player.GameSetting` (`key` text, `value` integer). The migration seeds th
 | `referral_free_rides_referrer` / `referral_free_rides_referee` / `referral_free_ride_weekly_cap` | 2 / 3 / 10 | The bonus, and how many of them one referrer can receive per window. |
 | `referral_referrer_part_bps` | 8000 | The referrer's part of a sponsored rider's referral slice (5001..10000). |
 | `referral_ride_cap_lamports` | 1000000000 | Per referrer, per pool. |
+| `referral_count_weekly_grant` | 1 | Whether a verified ranked weekly grant counts for Convoy at referee trust 100; 0 disables it. |
 | `referral_donation_share_bps` / `referral_donation_cap_lamports` | 1000 / 500000000 | Spectator-tip share, and the lifetime cap of that share for one pair. |
 
 Change one with the signed admin API (`GET /api/admin/settings`, then the challenge and `POST /api/admin/settings`). Each key has its own bounds (`SETTING_BOUNDS`; the admin form shows them: a grant flag is only 0 or 1, a grant interval is at least 1 day). The same session can add or remove one signed-in wallet's free rides (`POST /api/admin/players/free-rides`). A result below 0 or above 100_000 is refused. The retired key `weekly_ticket_tier` is ignored. Detail of the invite rules: [`docs/spec/referral.md`](../spec/referral.md).

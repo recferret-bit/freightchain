@@ -378,7 +378,7 @@ export class VerdictService {
     const ride = await this.rides.findById(rideId);
     if (!ride) return;
     if (this.convoy) {
-      await this.convoy.onVerifiedRide({ rideId, wallet: ride.wallet, status: ride.status, verdict: status, trip: ride.trip })
+      await this.convoy.onVerifiedRide({ rideId, wallet: ride.wallet, status: ride.status, verdict: status, trip: ride.trip, tier: ride.tier, ranked: ride.ranked, promo: ride.isPromo, weeklyGrant: ride.isWeeklyGrant, endedAt: ride.endedAt ?? undefined })
         .catch((error: unknown) => this.logger.warn(`convoy progress deferred: ${error instanceof Error ? error.message : String(error)}`));
     }
     if (this.airdrop) {

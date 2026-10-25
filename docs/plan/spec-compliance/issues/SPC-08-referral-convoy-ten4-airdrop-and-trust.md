@@ -13,6 +13,8 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ## Tasks
 
+**25 October rule correction:** the older DoR bullets below misstate the authoritative `docs/spec/referral.md` §2.3–2.4. MEDIUM/HARD training activates an invite; milestone weeks require verified ranked paid-tier rides, excluding promos and gating weekly grants at trust 100 plus the runtime setting. M1/M2 require campaign tasks, not a training ride by the referrer. `A` means friends with counted activity in the last 30 days. Hidden referrers are omitted, and board ties use milestones then earliest achievement. These rules are implemented locally in the follow-up; automatic hold release, chain settlement and the full UI remain open.
+
 ### `SPC-08.1` — Implement Convoy Referral state machine (`pending` 72h expiry delete → `active` 60d window on first verified MEDIUM/HARD ride → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)`
 
 - **Status:** `[~] In Progress` — reopened on 24 October. Follow-up on 25 October: production DI now binds PostgreSQL; second-connection persistence, rollback, concurrent caps and HTTP activation passed. Full target UI/legacy replacement remains open. The verified Chrome referral journey still gives the legacy +2/+3 gifts. See the [local readiness audit](../../../testing/LOCAL_READINESS.md).

@@ -1,11 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { grantReleasable } from '../../domain/anticheat/trust-score.js';
 import type { Player } from '../../domain/players/player.entity.js';
 import { RideStatus } from '../../domain/rides/ride-status.js';
 import { CONVOY_PROMO_CODE, PromoCode } from '../../domain/economy/promo-code.entity.js';
 import { PromoRepositoryPort } from '../ports/economy/promo.repository.port.js';
 import { ConflictError, NotFoundError } from '../../domain/shared/errors.js';
-import { utcDay } from '../../domain/shared/time.js';
+import { DAY_MS, utcDay } from '../../domain/shared/time.js';
+import { AirdropRepositoryPort } from '../airdrop/airdrop.repository.port.js';
+import { GameSettingsService } from '../services/game-settings.service.js';
 import { VerdictStatus } from '../../domain/verdict/verdict.dto.js';
 import { NameServicePort } from '../ports/sns/name-service.port.js';
 import { PlayerRepositoryPort } from '../ports/players/player.repository.port.js';
@@ -13,7 +15,7 @@ import { ClockPort } from '../ports/shared/clock.port.js';
 import { TransactionPort, type TransactionHandle } from '../ports/shared/transaction.port.js';
 import { ConvoyRepositoryPort, type ConvoyLedgerRow, type ConvoyRow } from './convoy.repository.port.js';
 import {
-  ANONYMOUS_DISPATCHER, LEADERBOARD_LIMIT, M1_TEN4, M2_TEN4, REFERRER_RIDE_GIFT, distinctWeeks, isMediumOrHardTrip, isoWeekKey, milestoneDecision, pendingCap, pendingExpired, pendingTtlMs, promoDecision, qualifyWindowMs,
+  LEADERBOARD_LIMIT, M1_TEN4, M2_TEN4, REFERRER_RIDE_GIFT, countedRide, distinctWeeks, isMediumOrHardTrip, isoWeekKey, milestoneDecision, pendingCap, pendingExpired, pendingTtlMs, promoDecision, qualifyWindowMs,
   type ConvoyStatus, type PromoSkip,
 } from './convoy-rules.js';
 
@@ -23,6 +25,11 @@ export interface ConvoyRideFact {
   status: string;
   verdict: string;
   trip: string | null;
+  tier?: string;
+  ranked?: boolean;
+  promo?: boolean;
+  weeklyGrant?: boolean;
+  endedAt?: Date;
 }
 
 export interface ConvoyBindDto {
@@ -90,6 +97,8 @@ export class ConvoyService {
     private readonly clock: ClockPort,
     private readonly names: NameServicePort,
     private readonly promos: PromoRepositoryPort,
+    @Optional() private readonly campaign?: AirdropRepositoryPort,
+    @Optional() private readonly settings?: GameSettingsService,
   ) {}
 
   async bind(referee: string, referrer: string): Promise<ConvoyBindDto> {
@@ -103,9 +112,8 @@ export class ConvoyService {
       if (existing?.status === 'pending' || existing?.status === 'active' || existing?.status === 'qualified') throw new ConflictError('this wallet already has a referrer', 'already_bound');
       if (existing?.status === 'expired') throw new ConflictError('that invite expired', 'expired');
       const invites = await this.repo.listByReferrer(referrer, tx);
-      const activeOrQualified = invites.filter((row) => row.status === 'active' || row.status === 'qualified').length;
       const pending = invites.filter((row) => row.status === 'pending').length;
-      const maxPending = pendingCap(activeOrQualified);
+      const maxPending = pendingCap(await this.activeFriends(referrer, now, tx));
       if (pending >= maxPending) throw new ConflictError('that wallet has no invites left', 'no_slots');
       const row: ConvoyRow = {
         referee, referrer, status: 'pending', boundAt: now, expiresAt: new Date(now.getTime() + pendingTtlMs()),
@@ -121,9 +129,11 @@ export class ConvoyService {
     return this.tx.run(async (tx) => {
       const now = this.clock.now();
       const preview = await this.repo.getByReferee(ride.wallet, tx);
-      await this.lock(preview ? [ride.wallet, preview.referrer] : [ride.wallet], tx);
+      const players = await this.lock(preview ? [ride.wallet, preview.referrer] : [ride.wallet], tx);
       if (!verified) return this.dropIfPendingExpired(ride.wallet, now, tx);
-      await this.repo.recordRide({ rideId: ride.rideId, wallet: ride.wallet, at: now, trip: ride.trip, counted: isMediumOrHardTrip(ride.trip) }, tx);
+      const weeklyEnabled = (await this.settings?.current(tx))?.referralCountWeeklyGrant !== 0;
+      const counted = countedRide(ride, players.get(ride.wallet)?.trustScore ?? 0, weeklyEnabled);
+      await this.repo.recordRide({ rideId: ride.rideId, wallet: ride.wallet, at: ride.endedAt ?? now, trip: ride.trip, counted }, tx);
       const row = await this.repo.getByReferee(ride.wallet, tx);
       if (row?.referrer !== preview?.referrer) throw new ConflictError('referrer changed concurrently; retry progress', 'convoy_changed');
       if (!row) return { status: 'none', activated: false, expired: false, deletedPending: false, gift: idleGift(), milestones: { m1: false, m2: false } };
@@ -158,8 +168,10 @@ export class ConvoyService {
 
   async leaderboard(viewer: string): Promise<ConvoyLeaderboardDto> {
     const privacyColumn = this.repo.privacyColumn();
-    const ranked = (await this.repo.referrerCounts()).sort((a, b) => b.qualified - a.qualified || b.active - a.active || (a.referrer < b.referrer ? -1 : a.referrer > b.referrer ? 1 : 0));
-    const top = ranked.slice(0, LEADERBOARD_LIMIT);
+    const ranked = (await this.repo.referrerCounts()).sort((a, b) => b.qualified - a.qualified || b.milestones - a.milestones || (a.firstMilestone?.getTime() ?? Infinity) - (b.firstMilestone?.getTime() ?? Infinity) || a.referrer.localeCompare(b.referrer));
+    const visible = [];
+    for (const row of ranked) if (!(await this.repo.readHidden(row.referrer)).hidden) visible.push(row);
+    const top = visible.slice(0, LEADERBOARD_LIMIT);
     const mine = ranked.findIndex((row) => row.referrer === viewer);
     const wallets = [...new Set([...top.map((row) => row.referrer), viewer])];
     const sns = await this.names.reverseBatch(wallets);
@@ -168,10 +180,10 @@ export class ConvoyService {
     for (let i = 0; i < top.length; i++) {
       const row = top[i];
       if (!row) continue;
-      rows.push(await this.leaderRow(i + 1, row.referrer, row.qualified, row.active, await hiddenOf(row.referrer), sns.get(row.referrer) ?? null, false));
+      rows.push(this.leaderRow(i + 1, row.referrer, row.qualified, row.active, false, sns.get(row.referrer) ?? null));
     }
     const self = mine >= 0 ? ranked[mine] : undefined;
-    const me = await this.leaderRow(mine >= 0 ? mine + 1 : 0, viewer, self?.qualified ?? 0, self?.active ?? 0, await hiddenOf(viewer), sns.get(viewer) ?? null, true);
+    const me = this.leaderRow(mine >= 0 ? mine + 1 : 0, viewer, self?.qualified ?? 0, self?.active ?? 0, await hiddenOf(viewer), sns.get(viewer) ?? null);
     return { privacyColumn, rows, me };
   }
 
@@ -206,11 +218,12 @@ export class ConvoyService {
   private async applyMilestones(row: ConvoyRow, now: Date, tx: TransactionHandle): Promise<{ m1: boolean; m2: boolean }> {
     if (!row.activatedAt || !row.qualifyExpiresAt || (row.status !== 'active' && row.status !== 'qualified')) return { m1: false, m2: false };
     const refereeRides = await this.repo.ridesOf(row.referee, tx);
-    const referrerRides = await this.repo.ridesOf(row.referrer, tx);
+    const tasks = await this.campaign?.get(row.referee, tx);
+    const tasksComplete = !!(tasks?.rideOk && tasks.telegramUserId && tasks.telegramMember && tasks.xUserId && tasks.xAgeOk && tasks.xFollowersOk && tasks.xFollows && tasks.xQuoteOk);
     const decision = milestoneDecision({
       m1At: row.m1At, m2At: row.m2At, qualifyExpiresAt: row.qualifyExpiresAt, now,
       refereeWeeks: distinctWeeks(refereeRides, row.activatedAt, row.qualifyExpiresAt),
-      referrerCounted: referrerRides.some((ride) => ride.counted),
+      tasksComplete,
     });
     if (decision.expire) {
       row.status = 'expired';
@@ -294,14 +307,16 @@ export class ConvoyService {
 
   private async bindView(row: ConvoyRow, idempotent: boolean, tx: TransactionHandle): Promise<ConvoyBindDto> {
     const invites = await this.repo.listByReferrer(row.referrer, tx);
-    const activeOrQualified = invites.filter((item) => item.status === 'active' || item.status === 'qualified').length;
     const pending = invites.filter((item) => item.status === 'pending').length;
-    return { referee: row.referee, referrer: row.referrer, status: row.status, expiresAt: row.expiresAt.toISOString(), pending, maxPending: pendingCap(activeOrQualified), idempotent };
+    return { referee: row.referee, referrer: row.referrer, status: row.status, expiresAt: row.expiresAt.toISOString(), pending, maxPending: pendingCap(await this.activeFriends(row.referrer, this.clock.now(), tx)), idempotent };
   }
 
-  private async leaderRow(rank: number, wallet: string, qualified: number, active: number, hidden: boolean, sns: string | null, self: boolean): Promise<ConvoyLeaderRow> {
-    const masked = hidden && !self;
-    return { rank, wallet: masked ? null : wallet, displayName: masked ? ANONYMOUS_DISPATCHER : (sns ?? wallet), qualified, active, hidden };
+  private activeFriends(referrer: string, now: Date, tx: TransactionHandle): Promise<number> {
+    return this.repo.recentActiveCount(referrer, new Date(now.getTime() - 30 * DAY_MS), now, tx);
+  }
+
+  private leaderRow(rank: number, wallet: string, qualified: number, active: number, hidden: boolean, sns: string | null): ConvoyLeaderRow {
+    return { rank, wallet, displayName: sns ?? wallet, qualified, active, hidden };
   }
 
   private async lock(wallets: readonly string[], tx: TransactionHandle): Promise<Map<string, Player>> {

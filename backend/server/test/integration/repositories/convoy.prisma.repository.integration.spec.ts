@@ -46,6 +46,21 @@ describe('ConvoyPrismaRepository', () => {
     expect((await repo.readHidden('host')).hidden).toBe(false);
   });
 
+  it('counts each active friend once inside the inclusive recent window, excluding training and future evidence', async () => {
+    await repo.insert({ ...row, status: 'active' });
+    const fact = { wallet: 'friend', trip: '1h', counted: true };
+    await repo.recordRide({ ...fact, rideId: 'old', at: at(9) });
+    await repo.recordRide({ ...fact, rideId: 'future', at: at(21) });
+    await repo.recordRide({ ...fact, rideId: 'training', at: at(15), counted: false });
+    expect(await repo.recentActiveCount('host', at(10), at(20))).toBe(0);
+    await repo.recordRide({ ...fact, rideId: 'first', at: at(10) });
+    await repo.recordRide({ ...fact, rideId: 'second', at: at(20) });
+    expect(await repo.recentActiveCount('host', at(10), at(20))).toBe(1);
+    expect(await repo.recentActiveCount('other', at(10), at(20))).toBe(0);
+    await repo.save({ ...row, status: 'expired' });
+    expect(await repo.recentActiveCount('host', at(10), at(20))).toBe(0);
+  });
+
   it('keeps exact expiry boundaries and aggregates only active and qualified invitations', async () => {
     await repo.insert(row);
     expect(await repo.listPendingExpired(at(100))).toEqual([]);
@@ -53,9 +68,9 @@ describe('ConvoyPrismaRepository', () => {
     await repo.save({ ...row, status: 'active', activatedAt: at(1), qualifyExpiresAt: at(200) });
     expect(await repo.listActivePast(at(200))).toEqual([]);
     expect(await repo.listActivePast(at(201))).toHaveLength(1);
-    expect(await repo.referrerCounts()).toEqual([{ referrer: 'host', active: 1, qualified: 0 }]);
+    expect(await repo.referrerCounts()).toEqual([{ referrer: 'host', active: 1, qualified: 0, milestones: 0, firstMilestone: null }]);
     await repo.save({ ...row, status: 'qualified', m1At: at(2) });
-    expect(await repo.referrerCounts()).toEqual([{ referrer: 'host', active: 0, qualified: 1 }]);
+    expect(await repo.referrerCounts()).toEqual([{ referrer: 'host', active: 0, qualified: 1, milestones: 1, firstMilestone: at(2) }]);
     expect(await repo.listByReferrer('host')).toHaveLength(1);
     expect(await repo.deleteReferee('friend')).toBe(true);
     expect(await repo.deleteReferee('friend')).toBe(false);

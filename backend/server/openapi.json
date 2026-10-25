@@ -6299,6 +6299,9 @@
                     "freeRidesDailyMax": {
                       "type": "number"
                     },
+                    "referralCountWeeklyGrant": {
+                      "type": "number"
+                    },
                     "referralDonationCapLamports": {
                       "type": "number"
                     },
@@ -6365,6 +6368,7 @@
                     "editorMaxSteps",
                     "freeOnSignup",
                     "freeRidesDailyMax",
+                    "referralCountWeeklyGrant",
                     "referralDonationCapLamports",
                     "referralDonationShareBps",
                     "referralFreeRideWeeklyCap",
@@ -6463,6 +6467,9 @@
                         "freeRidesDailyMax": {
                           "type": "number"
                         },
+                        "referralCountWeeklyGrant": {
+                          "type": "number"
+                        },
                         "referralDonationCapLamports": {
                           "type": "number"
                         },
@@ -6529,6 +6536,7 @@
                         "editorMaxSteps",
                         "freeOnSignup",
                         "freeRidesDailyMax",
+                        "referralCountWeeklyGrant",
                         "referralDonationCapLamports",
                         "referralDonationShareBps",
                         "referralFreeRideWeeklyCap",
