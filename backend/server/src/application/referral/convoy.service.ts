@@ -142,6 +142,18 @@ export class ConvoyService {
     });
   }
 
+  /** Social tasks may finish after the counted rides; earning must not require an extra ride. */
+  async refreshMilestones(wallet: string): Promise<void> {
+    await this.tx.run(async (tx) => {
+      const preview = await this.repo.getByReferee(wallet, tx);
+      if (!preview) return;
+      await this.lock([wallet, preview.referrer], tx);
+      const row = await this.repo.getByReferee(wallet, tx);
+      if (!row || row.referrer !== preview.referrer) throw new ConflictError('referrer changed concurrently; retry progress', 'convoy_changed');
+      await this.applyMilestones(row, this.clock.now(), tx);
+    });
+  }
+
   async expireDue(): Promise<ConvoyExpiryDto> {
     const now = this.clock.now();
     return this.tx.run(async (tx) => {

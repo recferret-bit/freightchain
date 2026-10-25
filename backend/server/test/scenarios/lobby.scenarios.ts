@@ -1,3 +1,7 @@
+import { RideVerdictRepositoryPort } from '../../src/application/ports/verdict/ride-verdict.repository.port.js';
+import { RideVerdict } from '../../src/domain/verdict/ride-verdict.entity.js';
+import { VerdictStatus } from '../../src/domain/verdict/verdict.dto.js';
+import { FINISHED_LIMIT } from '../../src/domain/lobby/lobby.dto.js';
 import { CommandBus } from '@nestjs/cqrs';
 import { SweepStaleRidesCommand } from '../../src/application/use-cases/rides/sweep-stale-rides/sweep-stale-rides.command.js';
 import { bindClient, type Rider } from '../support/client.js';
@@ -56,6 +60,19 @@ export function lobbyScenarios(h: () => Harness): void {
       expect(rc.id).toBe(idC); expect(Object.keys(rc)).not.toContain('reason');
       expect(body.upcoming).toEqual([]);   // free rides are never "next up" – only paid, unstarted shifts
       expect(body.totals).toMatchObject({ shifts: expect.any(Number), metres: expect.any(Number), drivers: expect.any(Number) });
+    });
+
+    it('the public ticker excludes rejected rides and filters training before its limit', async () => {
+      const w = await login();
+      const ended = async (id: string) => { sec(2); await w.agent.post(`/api/rides/${id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200); };
+      const visible = await paidRide(w); await ended(visible);
+      const rejected = await paidRide(w); await ended(rejected);
+      await h().app.get(RideVerdictRepositoryPort).save(RideVerdict.restore({ rideId: rejected, status: VerdictStatus.Rejected, reasons: [], scores: {} as never, rulesVersion: 1, judgedAt: new Date(now()), version: 1 }));
+      for (let i = 0; i < FINISHED_LIMIT + 1; i++) await ended(await freeRide(w));
+      for (const agent of [anon(), w.agent]) {
+        const { body } = await agent.get('/api/live').expect(200);
+        expect(body.recent.map((r: { id: string }) => r.id)).toEqual([visible]);
+      }
     });
 
     it('a ride whose tab vanished is ENDED by the stale-ride sweep (failed · heartbeat lost): off the live feed, in the recent finishes, a late heartbeat refused', async () => {

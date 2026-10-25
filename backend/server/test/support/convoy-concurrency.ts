@@ -42,6 +42,25 @@ export function convoyConcurrencyScenarios(h: () => Harness): void {
     expect(await db.convoyRide.count()).toBe(2);
   });
 
+  it('late social progress and duplicate ride callbacks create only one milestone under both player locks', async () => {
+    const host = await login(), friend = await login();
+    const svc = h().app.get(ConvoyService), campaign = h().app.get(AirdropRepositoryPort);
+    await svc.bind(friend.address, host.address);
+    const fact = { wallet: friend.address, status: 'completed', verdict: 'verified', tier: '1h', ranked: true, trip: '1h' };
+    await svc.onVerifiedRide({ ...fact, rideId: 'activation', trip: 'free-2c', tier: 'free', ranked: false });
+    await svc.onVerifiedRide({ ...fact, rideId: 'week-one' });
+    h().clock.advance(7 * 86400);
+    await svc.onVerifiedRide({ ...fact, rideId: 'week-two' });
+    await h().app.get(AirdropService).recordVerifiedRide(friend.address, 'free-2c');
+    await campaign.claimTelegram(friend.address, 'late-tg');
+    await campaign.claimX(friend.address, 'late-x');
+    await campaign.save({ ...(await campaign.get(friend.address))!, telegramMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+    await Promise.all([svc.refreshMilestones(friend.address), svc.refreshMilestones(friend.address), svc.onVerifiedRide({ ...fact, rideId: 'week-two' })]);
+    const db = h().app.get(PrismaService);
+    expect(await db.convoyLedger.count({ where: { kind: 'm1', referee: friend.address } })).toBe(1);
+    expect((await db.convoyInvite.findUnique({ where: { referee: friend.address } }))?.status).toBe('qualified');
+  });
+
   it('campaign concurrent final claims retain one claim timestamp after the 48h hold', async () => {
     const rider = await login();
     const svc = h().app.get(AirdropService), repo = h().app.get(AirdropRepositoryPort);

@@ -37,7 +37,7 @@ export function poolCard(t, info, ctx) {
     el('div', { class: 'hd' }, el('span', { class: 'nm' }, info.name), chip(p, now)),
     el('span', { class: 'pr' }, sol(p.priceLamports), el('small', {}, ` per ticket ${usd(p.priceLamports, ctx.solUsd)}`)),
     ...paidShift(info),
-    el('div', { class: 'prog', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': p.minTickets, 'aria-valuenow': Math.min(p.sold, p.minTickets), 'aria-label': 'tickets committed' }, el('i', { style: `width:${p.progressPct}%` })),
+    p.minTickets > 0 ? el('div', { class: 'prog', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': p.minTickets, 'aria-valuenow': Math.min(p.sold, p.minTickets), 'aria-label': 'tickets committed' }, el('i', { style: `width:${p.progressPct}%` })) : '',
     el('span', { class: 'sub ptext' }, progress, ' · in escrow ', el('b', { class: 'esc' }, sol(p.vaultLamports))),
     phase(p, now),
     el('span', { class: 'mine' }, 'your tickets: ', el('b', {}, mine), other > 0 ? ` (+${other} in another live ${info.name} pool)` : '', ` · max ${p.maxPerWallet}`),

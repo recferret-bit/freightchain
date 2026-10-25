@@ -1,4 +1,6 @@
 import { createHash, createHmac } from 'node:crypto';
+import { ConvoyService } from '../../src/application/referral/convoy.service.js';
+import { ConvoyRepositoryPort } from '../../src/application/referral/convoy.repository.port.js';
 import { AirdropService } from '../../src/application/airdrop/airdrop.service.js';
 import { EnvService } from '../../src/infrastructure/config/env.service.js';
 import { bindClient } from '../support/client.js';
@@ -8,10 +10,21 @@ import type { Harness } from '../support/harness.js';
 export function airdropProviderScenarios(h: () => Harness): void {
   const { login } = bindClient(h);
   it('verifies signed Telegram ownership and wallet-bound X proof, then refuses reuse', async () => {
-    const rider = await login(), other = await login();
+    let rider = await login(), other = await login();
+    const host = await login();
     const svc = h().app.get(AirdropService), env = h().app.get(EnvService);
     await svc.recordVerifiedRide(rider.address, 'free-2c');
     await svc.recordVerifiedRide(other.address, 'free-2c');
+    const convoy = h().app.get(ConvoyService), ledger = h().app.get(ConvoyRepositoryPort);
+    await convoy.bind(rider.address, host.address);
+    await convoy.onVerifiedRide({ rideId: 'provider-activation', wallet: rider.address, trip: 'free-2c', status: 'completed', verdict: 'verified' });
+    const paid = { wallet: rider.address, trip: '1h', tier: '1h', ranked: true, status: 'completed', verdict: 'verified' };
+    await convoy.onVerifiedRide({ ...paid, rideId: 'provider-week-one' });
+    h().clock.advance(7 * 86400);
+    await convoy.onVerifiedRide({ ...paid, rideId: 'provider-week-two' });
+    expect((await ledger.ledger()).filter(r => r.unit === 'ten4')).toHaveLength(0);
+    rider = await login({ kp: rider.kp, address: rider.address });
+    other = await login({ kp: other.kp, address: other.address });
     const token = 'fixture-bot-token', auth_date = Math.floor(h().clock.now().getTime() / 1000);
     const hash = createHmac('sha256', createHash('sha256').update(token).digest()).update(`auth_date=${auth_date}\nfirst_name=Ada\nid=42`).digest('hex');
     const proof = { id: 42, auth_date, first_name: 'Ada', hash };
@@ -44,6 +57,9 @@ export function airdropProviderScenarios(h: () => Harness): void {
       const xBody = { handle: 'ada', postId: '55', turnstileToken: 'fixture' };
       expect((await other.agent.post('/api/airdrop/verify-x').send(xBody).expect(400)).body.code).toBe('x_quote_missing');
       expect((await rider.agent.post('/api/airdrop/verify-x').send(xBody).expect(200)).body.x.bound).toBe(true);
+      expect(await ledger.findLedger(`convoy:m1:${rider.address}`)).toMatchObject({ chainState: 'held', amount: 100, at: h().clock.now() });
+      await rider.agent.post('/api/airdrop/verify-x').send(xBody).expect(200);
+      expect((await ledger.ledger()).filter(r => r.unit === 'ten4')).toHaveLength(1);
       xCode = `FC-${other.address}`;
       expect((await other.agent.post('/api/airdrop/verify-x').send(xBody).expect(409)).body.code).toBe('social_account_already_bound');
       expect((await rider.agent.get('/api/airdrop/status').expect(200)).body).toMatchObject({ code: `FC-${rider.address}`, telegram: { bound: true }, x: { bound: true }, turnstile: { required: true, passed: true } });

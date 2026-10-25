@@ -202,3 +202,11 @@ When an emitter is configured, a new ride reward records `HonkMint.chainPending`
 Local TEN4 `mint_ride` accepts an optional expected amount; the server always supplies the reserved ledger amount. A different era/day cap calculation refuses atomically with `RewardMismatch` (6017), leaving the queue pending rather than silently paying a different amount. Ride receipts now bind the recipient, amount, tier and bands. The adapter validates the program owner, discriminator and complete receipt before acknowledging a retry; an `already in use` error alone is not success. These new local receipt layouts and instruction arguments require the matching fresh TEN4 program, not an in-place assumption about old receipts.
 
 Replay refreshes preserve the last valid recording when JSON decoding fails or the response is missing its recording, ride, batches or events. The next valid poll clears the transient error.
+
+Convoy settlement catches each reward's player-lock/lease acquisition failure as well as delivery failures, so one transient claim failure does not abort the remaining batch.
+
+Successful Telegram/X verification rechecks Convoy milestones against already persisted ride evidence, under both player locks. Completing social tasks last can qualify without another ride; duplicate social/ride callbacks cannot earn twice.
+
+Pool cards and purchase receipts show ticket counts for zero-minimum v6 pools instead of a sold/minimum ratio. Future pools show their opening time; sale close and the last permitted start have separate labels. The lobby omits the minimum-sales progress bar when no minimum exists.
+
+The public landing ticker uses the same replay visibility filter as the replay board before limiting results: training, tutorial/assist, guest, rejected and review-locked pool rides cannot appear, including for a signed-in owner. Newer hidden rides cannot displace older eligible finishes.

@@ -34,6 +34,7 @@ export const STATUS_CLS = { active: 'live', open: 'open', refunding: 'fail', set
 export function poolPhase(p, now) {
   if (p.status === 'settled' || p.status === 'cancelled') return 'closed';
   if (p.status === 'refunding') return 'failed';
+  if (Number.isFinite(p.opensAt) && now < p.opensAt) return 'upcoming';
   if (now < p.prepDeadline) return 'selling';
   if (p.status === 'open') return 'failed';
   if (now < p.playDeadline) return 'riding';
@@ -45,8 +46,10 @@ const PAYOUT_HEAD = { paid: 'PAID', paying: 'PAYING WINNERS', committed: 'WINNER
 /** The phase as one line: { phase, cls, head, at, pre, post } – the page writes `head · pre<countdown to at>post`; `text` is the same line now (tests, the landing). cls = live / open / fail / done. */
 export function phaseLine(p, now) {
   const ph = poolPhase(p, now), st = p.payout?.held ? 'held' : p.payout?.state;
-  const r = ph === 'selling' ? { cls: 'open', head: 'ON SALE', at: p.prepDeadline, pre: '', post: ' left' }
-    : ph === 'riding' ? { cls: 'live', head: 'FINISHING', at: p.playDeadline, pre: 'no new rides · ', post: ' left' }
+  const starts = p.lastStartAt ?? p.prepDeadline;
+  const r = ph === 'upcoming' ? { cls: 'open', head: 'OPENS IN', at: p.opensAt, pre: '', post: '' }
+    : ph === 'selling' ? { cls: 'open', head: 'ON SALE', at: p.prepDeadline, pre: '', post: ' left' }
+    : ph === 'riding' ? (now <= starts ? { cls: 'live', head: 'SALES CLOSED', at: starts, pre: 'start rides within ', post: '' } : { cls: 'live', head: 'FINISHING', at: p.playDeadline, pre: 'no new rides · ', post: ' left' })
       : ph === 'review' ? { cls: 'open', head: 'IN REVIEW', at: p.payoutAt, pre: 'winners paid in ', post: '' }
         : ph === 'payout' ? { cls: st === 'paid' ? 'done' : st === 'error' || st === 'held' ? 'fail' : 'live', head: PAYOUT_HEAD[st] ?? 'PAYING WINNERS' }
           : ph === 'failed' ? { cls: 'fail', head: p.status === 'refunding' ? 'REFUNDING' : 'MISSED ITS GOAL' }
@@ -72,6 +75,7 @@ export const scheduleText = s => [s.saleHours && `a new pool every ${s.saleHours
 export const hasStandings = (p, now) => { const ph = poolPhase(p, now); return ph === 'riding' || ph === 'review' || ph === 'payout' || (ph === 'closed' && p.status === 'settled'); };
 /** Status chip: { text, cls } – cls is one of live / open / fail / done. `now` = server-corrected epoch ms. */
 export function statusChip(p, now) {
+  if ((p.status === 'active' || p.status === 'open') && Number.isFinite(p.opensAt) && now < p.opensAt) return { text: 'UPCOMING', cls: 'open' };
   if (p.status === 'active') return now < p.playDeadline ? { text: 'LIVE', cls: 'live' } : now < (p.payoutAt ?? 0) ? { text: 'IN REVIEW', cls: 'open' } : { text: 'PAYOUT', cls: 'live' };
   if (p.status === 'open') return now >= p.prepDeadline ? { text: 'MISSED ITS GOAL', cls: 'fail' } : { text: `NEEDS ${p.toGo} MORE`, cls: 'open' };
   if (p.status === 'refunding') return { text: 'FAILED – REFUND', cls: 'fail' };
@@ -81,7 +85,8 @@ export function statusChip(p, now) {
 
 /** The progress line under the bar: "7 / 10 committed" + what it means. */
 export function progressText(p, now) {
-  const head = `${p.sold} / ${p.minTickets} committed`;
+  const head = p.minTickets > 0 ? `${p.sold} / ${p.minTickets} committed` : `${plural(p.sold, 'ticket')} sold`;
+  if ((p.status === 'active' || p.status === 'open') && Number.isFinite(p.opensAt) && now < p.opensAt) return `${head} · opens ${day(p.opensAt)} ${hhmm(p.opensAt)}`;
   if (p.status === 'active') return now < p.playDeadline ? `${head} · live – rides count` : `${head} · rides are over`;
   if (p.status === 'open') return now >= p.prepDeadline ? `${head} · missed its goal – refunds follow` : `${head} · needs ${plural(p.toGo, 'more rider')} to go live`;
   if (p.status === 'refunding') return `${head} · failed – every ticket is refunded in full`;
@@ -90,9 +95,11 @@ export function progressText(p, now) {
 
 /** The deadline that matters now: { label, at } (at = epoch ms, null = none). */
 export function deadline(p, now) {
+  if ((p.status === 'active' || p.status === 'open') && Number.isFinite(p.opensAt) && now < p.opensAt) return { label: 'sales open in ', at: p.opensAt };
+  const starts = p.lastStartAt ?? p.prepDeadline;
   if (p.status === 'open') return now >= p.prepDeadline ? { label: 'goal deadline passed', at: null } : { label: `goes live if ${p.minTickets} commit by ${day(p.prepDeadline)} · `, at: p.prepDeadline };
   if (p.status === 'active') return now >= p.playDeadline ? { label: 'play window closed – settling', at: null }
-    : now < p.prepDeadline ? { label: `new rides until ${day(p.prepDeadline)} · closes in `, at: p.prepDeadline } : { label: `no new rides – shifts finish by ${day(p.playDeadline)} · `, at: p.playDeadline };
+    : now <= starts ? { label: `new rides until ${day(starts)} · closes in `, at: starts } : { label: `no new rides – shifts finish by ${day(p.playDeadline)} · `, at: p.playDeadline };
   return { label: '', at: null };
 }
 
@@ -104,9 +111,9 @@ export const splitParts = p => [
 ];
 
 /** The rules copy on a pool card (§2.8). */
-export const rulesText = p => `We fund the major pool (> 50%), and paid tickets (< 50% cap) buy extra attempts in the pool’s vault on chain – not with us. Ticket purchases are final and non-refundable once bought, and unused tickets expire when starts close (${day(p.prepDeadline)}). Live pool: ${pct(p.split.prizeBps)} prizes, ${pct(p.split.seedBps)} seeds the next pool, ${pct(p.split.feeBps)} fees.`;
+export const rulesText = p => `We fund the major pool (> 50%), and paid tickets (< 50% cap) buy extra attempts in the pool’s vault on chain – not with us. Ticket purchases are final and non-refundable once bought, and unused tickets expire when starts close (${day(p.lastStartAt ?? p.prepDeadline)}). Live pool: ${pct(p.split.prizeBps)} prizes, ${pct(p.split.seedBps)} seeds the next pool, ${pct(p.split.feeBps)} fees.`;
 
-/** An unused ticket POST /api/rides can spend now: a live pool before its last start (`rideBy` – the sale end: no new rides after it; checked against this clock too – the list may be minutes old). */
+/** An unused ticket POST /api/rides can spend now: a live pool before its last start (`rideBy` – the last permitted start, independently of the sale end; checked against this clock too – the list may be minutes old). */
 export const canRide = (t, now) => t.status === 'active' && t.ridable !== false && !(t.rideBy <= now);
 
 /** What a wallet holds for one tier, across every pool of it (pools overlap). `ridable` = unused tickets that can be ridden now, `rideBy` = the soonest of their

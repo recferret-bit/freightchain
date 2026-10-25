@@ -36,6 +36,8 @@ async function signIn() {
 const prisma = new PrismaClient();
 const tab = await launch({ port: PORT, shotsDir: 'fc-weekly-shots', evalProblems: true });
 try {
+  const fixtureClock = (await call('GET', 'live')).j.now;
+  check('test server is inside the explicit Wednesday ranked-entry fixture', new Date(fixtureClock).toISOString().startsWith('2036-10-08T12:'));
   const who = await signIn();
   const agreed = await call('PUT', 'profile/agreements', { body: { age18: true, loss: true }, cookie: who.cookie });
   check('profile is 18+ and the loss offer is on', agreed.status === 200 && agreed.j.age18 === true && agreed.j.loss === true, JSON.stringify(agreed.j));
@@ -68,7 +70,7 @@ try {
   const first = await tab.ev(`(async () => { const r = await fetch('/api/rides', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tier: '1h' }) }); const j = await r.json(); return { status: r.status, id: j.id, promo: j.promo === true, weeklyGrant: j.weeklyGrant === true, tier: j.tier, code: j.code ?? null, detail: j.detail ?? null }; })()`);
   check('ride 1 is the promo shift, not the weekly ticket', first?.status === 200 && first.tier === '1h' && first.promo === true && first.weeklyGrant === false, JSON.stringify(first));
   const still = first?.id ? await prisma.weeklyTicket.findFirst({ where: { wallet: who.wallet, tier: '1h' } }) : null;
-  check('the weekly row is still unspent after the promo ride', still?.rideId == null, JSON.stringify(still));
+  check('the weekly row is still unspent after the promo ride', !!still && still.rideId == null, JSON.stringify(still));
   const started = await call('POST', `rides/${first.id}/start`, { cookie: who.cookie, body: {} });
   check('ride 1 starts', started.status === 200 && started.j.status === 'running', `${started.status} ${started.j.status || started.j.code}`);
   const ended = await call('POST', `rides/${first.id}/end`, { cookie: who.cookie, body: { outcome: 'failed', reason: 'lane3 close the promo ride' } });
@@ -77,7 +79,7 @@ try {
   const second = await tab.ev(`(async () => { const r = await fetch('/api/rides', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tier: '1h' }) }); const j = await r.json(); return { status: r.status, id: j.id, promo: j.promo === true, weeklyGrant: j.weeklyGrant === true, code: j.code ?? null, detail: j.detail ?? null }; })()`);
   check('ride 2 consumes the weekly ticket', second?.status === 200 && second.weeklyGrant === true && second.promo === false, JSON.stringify(second));
   const spent = second?.id ? await prisma.weeklyTicket.findFirst({ where: { wallet: who.wallet, tier: '1h' } }) : null;
-  check('DB weekly ticket rideId is ride 2', spent?.rideId === second?.id, JSON.stringify({ rideId: spent?.rideId, id: second?.id }));
+  check('DB weekly ticket rideId is ride 2', !!spent && !!second?.id && spent.rideId === second.id, JSON.stringify({ rideId: spent?.rideId, id: second?.id }));
   const row = second?.id ? await prisma.ride.findUnique({ where: { id: second.id } }) : null;
   check('ride 2 row is weeklyGrant and not a promo', row?.weeklyGrant === true && row?.promoCode == null, JSON.stringify({ weeklyGrant: row?.weeklyGrant, promoCode: row?.promoCode }));
   const errors = pageErrors(tab);

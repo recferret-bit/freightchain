@@ -17,6 +17,22 @@ async function harness() {
 }
 
 describe('ReleaseConvoyHandler', () => {
+  it('continues to healthy rewards after a player-lock failure and retries the failed reward later', async () => {
+    const h = await harness();
+    await h.ctx.player('c');
+    const row = (await h.repo.findLedger('convoy:m1:b'))!;
+    await h.repo.insertLedger({ ...row, id: 'convoy:m1:c', referee: 'c' });
+    h.ctx.clock.advance(48 * 3600);
+    const lock = vi.spyOn(h.ctx.players, 'findByWalletForUpdate').mockRejectedValueOnce(new Error('transient lock failure'));
+    expect(await h.run()).toBe(1);
+    expect((await h.repo.findLedger('convoy:m1:b'))?.chainState).toBe('held');
+    expect((await h.repo.findLedger('convoy:m1:c'))?.chainState).toBe('paid');
+    lock.mockRestore();
+    expect(await h.run()).toBe(1);
+    expect(await h.ctx.honkRepo.balance('a')).toBe(100_000_000n);
+    expect(await h.run()).toBe(0);
+  });
+
   it('holds for 48h then credits the clipped on-chain amount once, without requiring another ride', async () => {
     const h = await harness();
     expect(await h.run()).toBe(0);

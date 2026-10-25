@@ -257,3 +257,7 @@ Qualification timestamps record when M1/M2 was earned; a payout hold does not ca
 Only the program-owned, correctly sized/discriminated receipt for the reward and recipient credits `HonkAccount`, for its actual clipped amount. Receipt acknowledgement and credit commit together. Confirmed emission/monthly/wallet-cap refusals become terminal `capped` rows without spendable credit or backlog. A low-trust unsent reward remains held; an already submitted payment is still reconciled if trust changes. Configured but invalid emitters fail visibly and remain pending. With emission disabled new rewards remain held. The migration defaults old rows to `legacy` because earlier milestone evidence needs review; it never blindly mints them.
 
 `e2e-convoy-settlement.mjs` runs in the local TEN4 suite after its API stops: real token transfers, PostgreSQL restart after RPC failure, lost-response receipt recovery, competing workers and a terminal 1,000 TEN4 monthly wallet cap. These are seeded milestone facts, not additional driven rides. Provider fixture tests and this local acceptance do not establish live campaign/provider readiness.
+
+Settlement isolates acquisition failures per reward: a player-lock or row-claim failure leaves that reward retryable and does not stop later rewards in the same batch.
+
+Successful Telegram/X verification rechecks Convoy milestones against already persisted ride evidence, under both player locks. Completing social tasks last can qualify without another ride; duplicate social/ride callbacks cannot earn twice.
