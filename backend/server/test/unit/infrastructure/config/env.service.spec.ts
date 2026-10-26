@@ -18,7 +18,7 @@ describe('EnvService', () => {
   it('RESPONSE_SCHEMA_CHECK defaults strict outside production and warn in production; empty is unset', () => {
     expect(withEnv({ ...base, RESPONSE_SCHEMA_CHECK: undefined }).responseSchemaCheck).toBe('strict');
     expect(withEnv({ ...base, NODE_ENV: 'test', RESPONSE_SCHEMA_CHECK: undefined }).responseSchemaCheck).toBe('strict');
-    expect(withEnv({ ...base, NODE_ENV: 'production', JWT_SECRET: 'z'.repeat(40), TREASURY_PUBKEY: Keypair.generate().publicKey.toBase58(), TRUST_PROXY: '1', LIVE_FREE_DONATIONS: 'off', LIVE_EFFECTS: 'off', RESPONSE_SCHEMA_CHECK: undefined }).responseSchemaCheck).toBe('warn');
+    expect(withEnv({ ...base, NODE_ENV: 'production', IP_HASH_SECRET: 'a'.repeat(64), JWT_SECRET: 'z'.repeat(40), TREASURY_PUBKEY: Keypair.generate().publicKey.toBase58(), TRUST_PROXY: '1', LIVE_FREE_DONATIONS: 'off', LIVE_EFFECTS: 'off', RESPONSE_SCHEMA_CHECK: undefined }).responseSchemaCheck).toBe('warn');
     expect(withEnv({ ...base, RESPONSE_SCHEMA_CHECK: 'off' }).responseSchemaCheck).toBe('off');
   });
 

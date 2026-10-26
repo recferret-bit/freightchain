@@ -8,7 +8,7 @@ import { validateEnv } from '../../../src/infrastructure/config/env.schema.js';
 const compose = readFileSync(new URL('../../../../../infra/deploy/docker-compose.prod.yml', import.meta.url), 'utf8');
 const fixture: Record<string, string> = {
   POSTGRES_USER: 'freight', POSTGRES_PASSWORD: 'local-test-password', POSTGRES_DB: 'freightchain_production_smoke_test', REDIS_PASSWORD: 'a'.repeat(48),
-  JWT_SECRET: 'j'.repeat(48), ADMIN_JWT_SECRET: 'a'.repeat(48), EDITOR_JWT_SECRET: 'e'.repeat(48), EDITOR_MCP_TOKEN: 'm'.repeat(48),
+  IP_HASH_SECRET: 'b'.repeat(64), JWT_SECRET: 'j'.repeat(48), ADMIN_JWT_SECRET: 'a'.repeat(48), EDITOR_JWT_SECRET: 'e'.repeat(48), EDITOR_MCP_TOKEN: 'm'.repeat(48),
   ADMIN_ALERT_TELEGRAM_BOT_TOKEN: 'local-test-token', ADMIN_ALERT_TELEGRAM_CHAT_ID: 'local-test-chat',
   ADMIN_WALLETS: Keypair.generate().publicKey.toBase58(), EDITOR_WALLETS: Keypair.generate().publicKey.toBase58(),
   TREASURY_PUBKEY: Keypair.generate().publicKey.toBase58(), APP_DOMAIN: 'freightchain.localhost', APP_ORIGIN: 'https://freightchain.localhost', COOKIE_DOMAIN: 'freightchain.localhost', CORS_ORIGINS: 'https://freightchain.localhost',
@@ -38,7 +38,7 @@ describe('production Compose startup configuration', () => {
   for (const service of ['app', 'worker']) it(`${service} receives privileged session and alert configuration without bypassing missing-value checks`, () => {
     const config = validateEnv(environment(service));
     expect(config).toMatchObject({ ADMIN_JWT_SECRET: fixture.ADMIN_JWT_SECRET, EDITOR_JWT_SECRET: fixture.EDITOR_JWT_SECRET, ADMIN_ALERT_TELEGRAM_BOT_TOKEN: fixture.ADMIN_ALERT_TELEGRAM_BOT_TOKEN, ADMIN_ALERT_TELEGRAM_CHAT_ID: fixture.ADMIN_ALERT_TELEGRAM_CHAT_ID });
-    for (const key of ['ADMIN_JWT_SECRET', 'EDITOR_JWT_SECRET', 'ADMIN_ALERT_TELEGRAM_BOT_TOKEN', 'ADMIN_ALERT_TELEGRAM_CHAT_ID']) {
+    for (const key of ['IP_HASH_SECRET', 'ADMIN_JWT_SECRET', 'EDITOR_JWT_SECRET', 'ADMIN_ALERT_TELEGRAM_BOT_TOKEN', 'ADMIN_ALERT_TELEGRAM_CHAT_ID']) {
       expect(() => validateEnv(environment(service, { ...fixture, [key]: '' })), key).toThrow(key);
     }
   });
@@ -62,9 +62,9 @@ describe('production Compose startup configuration', () => {
       const first = run(); expect(first.status, first.stderr).toBe(0);
       const saved = readFileSync(join(deploy, '.env'), 'utf8');
       const values = Object.fromEntries([...saved.matchAll(/^([A-Z_]+)=(.*)$/gm)].map(([, key, value]) => [key, value]));
-      const keys = ['JWT_SECRET', 'ADMIN_JWT_SECRET', 'EDITOR_JWT_SECRET'].map(key => values[key]!);
+      const keys = ['IP_HASH_SECRET', 'JWT_SECRET', 'ADMIN_JWT_SECRET', 'EDITOR_JWT_SECRET'].map(key => values[key]!);
       expect(keys.every(key => /^[a-f0-9]{64}$/.test(key))).toBe(true);
-      expect(new Set(keys).size).toBe(3);
+      expect(new Set(keys).size).toBe(4);
       expect(keys.some(key => first.stdout.includes(key))).toBe(false);
       expect(run().status).toBe(1);
       expect(readFileSync(join(deploy, '.env'), 'utf8')).toBe(saved);

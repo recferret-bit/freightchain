@@ -72,20 +72,20 @@ describe('AdminDirectoryPrismaRepository (PostgreSQL)', () => {
     expect((await dir.topRiders(10)).map((r) => r.wallet)).toEqual(['a', 'b']);
   });
 
-  it('sessions: one row per wallet inside the window with the newest sign-in, the count and the newest ip / browser; newest first; the limit marks `truncated`', async () => {
+  it('sessions: one row per wallet inside the window with the newest sign-in, the count and the newest subnet hash; newest first; the limit marks `truncated`', async () => {
     for (const w of ['a', 'b', 'c']) await seedPlayer(prisma, w);
-    const signIn = (wallet: string, t: number, ip: string | null = null, userAgent: string | null = null) => prisma.signIn.create({ data: { wallet, at: at(t), ip, userAgent } });
+    const signIn = (wallet: string, t: number, ipHash: string | null = null) => prisma.signIn.create({ data: { wallet, at: at(t), ipHash } });
     await signIn('a', -1000, '9.9.9.9');           // before the window
-    await signIn('a', 10, '1.1.1.1', 'Safari');
-    await signIn('a', 30, '2.2.2.2', 'Chrome');
-    await signIn('b', 20, null, null);
-    await signIn('b', 20, '3.3.3.3', 'Firefox');   // same instant: the later row wins
+    await signIn('a', 10, '1.1.1.1');
+    await signIn('a', 30, '2.2.2.2');
+    await signIn('b', 20, null);
+    await signIn('b', 20, '3.3.3.3');   // same instant: the later row wins
     await signIn('c', -5000);                      // only before the window
     const d = await dir.sessions(at(0), 10);
     expect(d.truncated).toBe(false);
     expect(d.rows).toEqual([
-      { wallet: 'a', lastAt: at(30).getTime(), signIns: 2, ip: '2.2.2.2', userAgent: 'Chrome' },
-      { wallet: 'b', lastAt: at(20).getTime(), signIns: 2, ip: '3.3.3.3', userAgent: 'Firefox' },
+      { wallet: 'a', lastAt: at(30).getTime(), signIns: 2, ipHash: '2.2.2.2' },
+      { wallet: 'b', lastAt: at(20).getTime(), signIns: 2, ipHash: '3.3.3.3' },
     ]);
     const one = await dir.sessions(at(0), 1);
     expect(one.rows.map((r) => r.wallet)).toEqual(['a']);

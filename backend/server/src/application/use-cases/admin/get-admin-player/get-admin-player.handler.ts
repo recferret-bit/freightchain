@@ -49,7 +49,7 @@ export class GetAdminPlayerHandler implements IQueryHandler<GetAdminPlayerQuery,
       tickets: tickets.map((t) => ({ poolId: t.poolId, balance: t.balance, bought: t.bought })),
       grants: grants.map((g) => ({ poolId: g.poolId, delta: g.delta, source: g.source, ref: g.ref, at: g.at.getTime() })),
       payments,
-      signIns: signIns.map((s) => ({ wallet: s.wallet, at: s.at.getTime(), ip: s.ip, userAgent: s.userAgent })),
+      signIns: signIns.map((s) => ({ wallet: s.wallet, at: s.at.getTime(), ipHash: s.ipHash })),
       rides: rides.map(toAdminRideRow),
     };
   }

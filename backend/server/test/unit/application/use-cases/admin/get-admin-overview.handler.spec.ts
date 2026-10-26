@@ -8,8 +8,8 @@ describe('GetAdminOverviewHandler', () => {
     await judgedRide(ctx, 'alice');                     // verified, 6 batches
     await judgedRide(ctx, 'bob', { inputs: 'none' });  // rejected (moved without inputs)
     await ctx.freeRide('carol', true);                   // running
-    await ctx.signIns.insert({ wallet: 'alice', at: new Date(ctx.clock.ms - 2 * 86_400_000), ip: null, userAgent: null });
-    await ctx.signIns.insert({ wallet: 'bob', at: ctx.now(), ip: '1.1.1.1', userAgent: 'x' });
+    await ctx.signIns.insert({ wallet: 'alice', at: new Date(ctx.clock.ms - 2 * 86_400_000), ipHash: null });
+    await ctx.signIns.insert({ wallet: 'bob', at: ctx.now(), ipHash: '1.1.1.1' });
     const o = await new GetAdminOverviewHandler(ctx.adminQuery, ctx.signIns, ctx.rules, ctx.clock, ctx.cache).execute();
     expect(o).toMatchObject({
       now: ctx.clock.ms, players: 3, running: 1, signIns24h: 1, rides: { completed: 2, running: 1 }, verdicts: { verified: 1, rejected: 1 }, underReview: 0,   // free rides: only a flagged one would wait for review
@@ -27,7 +27,7 @@ describe('GetAdminOverviewHandler', () => {
     const h = new GetAdminOverviewHandler(counting, ctx.signIns, ctx.rules, ctx.clock, ctx.cache);
     expect((await h.execute()).players).toBe(1);
     await ctx.player('bob');
-    await ctx.signIns.insert({ wallet: 'bob', at: ctx.now(), ip: null, userAgent: null });
+    await ctx.signIns.insert({ wallet: 'bob', at: ctx.now(), ipHash: null });
     const again = await h.execute();
     expect([scans, again.players, again.signIns24h]).toEqual([1, 1, 1]);
     ctx.clock.advance(COUNTS_TTL_SECONDS + 1);

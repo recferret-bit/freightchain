@@ -47,7 +47,8 @@ describe('prisma migrations', () => {
     const RETIRED = /^DROP TABLE "(economy"\."SponsoredTx|player"\."OfflineRideUse)";$/gm; // gasless purchases and offline ride restriction ledger were removed
     const UNUSED_COLUMNS = /^ALTER TABLE "economy"\."Pool" DROP COLUMN "(stakedLamports|yieldEarned)";$/gm; // always 0: nothing stakes the vault (Oct 12)
     const PAYOUT_KEY = /^DROP INDEX IF EXISTS "economy"\."PoolPayout_poolId_wallet_key";$/gm; // replaced by (poolId, wallet, kind) so one wallet can be paid twice
-    expect(sql.replace(RETIRED, '').replace(UNUSED_COLUMNS, '').replace(PAYOUT_KEY, '')).not.toMatch(/\bDROP\s+(TABLE|COLUMN|SCHEMA|TYPE|INDEX)\b/i);
+    const SIGNIN_PRIVACY = /^ALTER TABLE "player"\."SignIn" DROP COLUMN "ip", DROP COLUMN "userAgent", ADD COLUMN "ipHash" TEXT;$/gm; // accepted privacy deletion; old raw data deliberately discarded
+    expect(sql.replace(RETIRED, '').replace(UNUSED_COLUMNS, '').replace(PAYOUT_KEY, '').replace(SIGNIN_PRIVACY, '')).not.toMatch(/\bDROP\s+(TABLE|COLUMN|SCHEMA|TYPE|INDEX)\b/i);
     expect(sql).not.toMatch(/\bRENAME\b|\bTRUNCATE\b/i);
   });
 });

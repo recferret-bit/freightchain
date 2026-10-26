@@ -237,8 +237,8 @@ async function signins(view) {
   view.replaceChildren(el('h2', {}, `SIGN-INS${w ? ` · ${short(w)}` : ''}`),
     el('p', { class: 'dim' }, 'One row per successful wallet sign-in. Sessions are signed cookies (7 days); a single session cannot be revoked – rotating JWT_SECRET signs everybody out.'),
     rows.length ? el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense' },
-      el('thead', {}, el('tr', {}, ...['when', 'rider', 'ip', 'browser'].map(h => el('th', {}, h)))),
-      el('tbody', {}, rows.map(s => el('tr', {}, el('td', { title: time(s.at) }, ago(s.at)), el('td', {}, el('a', { href: `?wallet=${s.wallet}#rides`, class: 'mono' }, short(s.wallet))), el('td', { class: 'mono' }, s.ip ?? '–'), el('td', { class: 'dim' }, s.userAgent ?? '–'))))))
+      el('thead', {}, el('tr', {}, ...['when', 'rider', 'subnet hash'].map(h => el('th', {}, h)))),
+      el('tbody', {}, rows.map(s => el('tr', {}, el('td', { title: time(s.at) }, ago(s.at)), el('td', {}, el('a', { href: `?wallet=${s.wallet}#rides`, class: 'mono' }, short(s.wallet))), el('td', { class: 'mono', title: s.ipHash ?? 'Network signal unavailable' }, s.ipHash ? s.ipHash.slice(0, 12) + '…' : 'unavailable'))))))
       : el('div', { class: 'card empty' }, 'No sign-ins yet.'));
 }
 

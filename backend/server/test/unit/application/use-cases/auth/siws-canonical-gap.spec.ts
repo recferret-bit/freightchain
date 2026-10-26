@@ -27,7 +27,7 @@ class StubTokens extends TokenSignerPort {
  */
 describe('SIWS canonical-text gap', () => {
   const ctx = unitContext();
-  const handler = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, ctx.signIns, new RecordingAnalytics(), ctx.meProfile);
+  const handler = new VerifySignInHandler(ctx.challenges, new NaclSignatureVerifier(), new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, ctx.signIns, new RecordingAnalytics(), ctx.meProfile, { hash: () => null });
   const challenge = new RequestChallengeHandler(ctx.challenges, ctx.rules, ctx.clock, ctx.entropy);
   const kp = nacl.sign.keyPair();
   const wallet = bs58.encode(kp.publicKey);

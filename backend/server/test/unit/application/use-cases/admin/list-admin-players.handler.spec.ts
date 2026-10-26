@@ -10,7 +10,7 @@ describe('ListAdminPlayersHandler', () => {
     await ctx.player('Alice1');
     ctx.clock.advance(60);
     await ctx.player('Bob2');
-    await ctx.signIns.insert({ wallet: 'Alice1', at: ctx.now(), ip: null, userAgent: null });
+    await ctx.signIns.insert({ wallet: 'Alice1', at: ctx.now(), ipHash: null });
     ctx.db.playerStats.set('Alice1', { totals: addStats(EMPTY_STATS, { ...EMPTY_STATS, rides: 4 }), updatedAt: ctx.now() });
     ctx.db.pools.set(1, poolProps());
     ctx.db.tickets.set('Alice1|1', { wallet: 'Alice1', poolId: 1, balance: 3, bought: 3, version: 1 });

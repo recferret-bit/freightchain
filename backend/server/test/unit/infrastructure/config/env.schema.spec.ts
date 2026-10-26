@@ -3,9 +3,16 @@ import { readFileSync } from 'node:fs';
 import { validateEnv } from '../../../../src/infrastructure/config/env.schema.js';
 
 const base = { DATABASE_URL: 'postgresql://x' };
-const prod = { ...base, NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), TREASURY_PUBKEY: Keypair.generate().publicKey.toBase58(), TRUST_PROXY: '1', LIVE_FREE_DONATIONS: 'off', LIVE_EFFECTS: 'off' };
+const prod = { ...base, NODE_ENV: 'production', IP_HASH_SECRET: 'a'.repeat(64), JWT_SECRET: 'x'.repeat(32), TREASURY_PUBKEY: Keypair.generate().publicKey.toBase58(), TRUST_PROXY: '1', LIVE_FREE_DONATIONS: 'off', LIVE_EFFECTS: 'off' };
 
 describe('validateEnv', () => {
+  it('requires a strong independent subnet key in production; missing locally disables hashing', () => {
+    expect(validateEnv(base).IP_HASH_SECRET).toBeUndefined();
+    expect(() => validateEnv({ ...prod, IP_HASH_SECRET: undefined })).toThrow('IP_HASH_SECRET');
+    expect(() => validateEnv({ ...base, IP_HASH_SECRET: 'short' })).toThrow('IP_HASH_SECRET');
+    expect(validateEnv(base).SIGNIN_RETENTION_DAYS).toBe(90);
+    for (const days of [0, 91, 180]) expect(() => validateEnv({ ...base, SIGNIN_RETENTION_DAYS: days })).toThrow('SIGNIN_RETENTION_DAYS');
+  });
   it('the deployed worker supplies the explicit production proxy setting required by its CLI EnvModule', () => {
     const compose = readFileSync(new URL('../../../../../../infra/deploy/docker-compose.prod.yml', import.meta.url), 'utf8');
     const worker = compose.split('\n  worker:\n')[1]!.split('\nnetworks:')[0]!;

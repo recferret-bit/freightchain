@@ -86,3 +86,5 @@ The verified TEN4 local suite includes Convoy settlement against PostgreSQL and 
 Pledge retirement: `test:localnet` refuses new pledges in the autonomous day (`403 pledges_disabled` / on-chain `PledgesDisabled`). Phase 2 uses explicit historical genesis escrow plus real phase-1 attestations to verify settlement, full refunds, duplicate refusal and rent recovery (`localnet-legacy-pledges.mjs`).
 
 The `weekly` Chrome suite boots through test-only `e2e-weekly-server.mjs` with an advancing Wednesday ClockPort and an isolated local database. It tests positive grant issuance on Sundays too; production clock and weekly closure rules are unchanged. HTTP/domain scenarios cover closed-week refusal.
+
+Sign-in privacy UI: `node frontend/client/tools/e2e-admin-privacy.mjs` runs real Chrome against inert local admin response fixtures, covering session/player subnet hashes and unavailable signals. HTTP and PostgreSQL suites verify the actual persistence and contracts; see `docs/testing/SIGNIN_PRIVACY.md`.

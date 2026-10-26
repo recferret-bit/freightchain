@@ -131,7 +131,7 @@ test('numbers: verdict thresholds equal verdict-rules.ts', () => {
   assert.match(src('backend/server/src/domain/rides/ride-challenge.ts'), /CHALLENGE_WINDOW_MS = 20_000/); assert.match(text, /that key within 20 s/);
   assert.match(src('backend/server/src/infrastructure/config/env.schema.ts'), /CHALLENGE_INTERVAL_SECONDS: z\.coerce\.number\(\)\.min\(0\)\.default\(240\)/); assert.match(text, /every 240 s of driving/);
   assert.match(text, /captcha before a paid shift/); assert.match(text, /CHALLENGE CHANNEL/); assert.match(text, /table is empty today/); assert.doesNotMatch(text, /FLASH YOUR HEADLIGHTS/);
-  assert.match(src('backend/server/src/infrastructure/config/env.schema.ts'), /SIGNIN_RETENTION_DAYS: z\.coerce\.number\(\)\.int\(\)\.min\(0\)\.default\(180\)/); assert.match(text, /the sign-in log after 180 days/);
+  assert.match(src('backend/server/src/infrastructure/config/env.schema.ts'), /SIGNIN_RETENTION_DAYS: z\.coerce\.number\(\)\.int\(\)\.min\(1\)\.max\(90\)\.default\(90\)/); assert.match(text, /the sign-in log after at most 90 days/);
   assert.match(text, /Protocol-specific budgets/); assert.match(text, /larger byte and batch budget than historical recordings/);
   assert.match(text, /NINE LAYERS, FROM CHEAPEST TO STRONGEST/); assert.equal((html.match(/NINE LAYERS[\s\S]*?<\/ol>/)[0].match(/<li>/g) ?? []).length, 9); assert.match(text, /docs\/tech\/anti-cheat\//);
 });

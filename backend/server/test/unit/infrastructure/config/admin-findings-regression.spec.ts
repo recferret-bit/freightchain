@@ -1,7 +1,7 @@
 import { isStrictNodeEnv, strictModeIssues, validateEnv } from '../../../../src/infrastructure/config/env.schema.js';
 
 const safe = {
-  DATABASE_URL: 'postgresql://x/db', JWT_SECRET: 'j'.repeat(40), TREASURY_PUBKEY: 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn', TRUST_PROXY: '1',
+  DATABASE_URL: 'postgresql://x/db', IP_HASH_SECRET: 'a'.repeat(64), JWT_SECRET: 'j'.repeat(40), TREASURY_PUBKEY: 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn', TRUST_PROXY: '1',
   LIVE_EFFECTS: 'off', LIVE_FREE_DONATIONS: 'off', DEMO_WALLETS: '', EDITOR_FAKE_LLM: '0',
 };
 

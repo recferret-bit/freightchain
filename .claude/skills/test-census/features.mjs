@@ -15,11 +15,11 @@
 export const FEATURES = [
   {
     id: 'auth', title: 'Sign-in + session',
-    server: /^(application\/use-cases\/auth\/|domain\/auth\/|infrastructure\/auth\/(jose\.token-signer|nacl\.signature-verifier)|infrastructure\/http\/(guards\/(player-auth|optional-session)|interceptors\/session-cookie)|infrastructure\/prisma\/repositories\/(challenge|sign-in)\.|application\/services\/player-session|domain\/players\/wallet-address)/,
+    server: /^(application\/use-cases\/auth\/|domain\/auth\/|infrastructure\/auth\/(jose\.token-signer|nacl\.signature-verifier|ip-prefix-hasher\.adapter)|infrastructure\/http\/(guards\/(player-auth|optional-session)|interceptors\/session-cookie)|infrastructure\/prisma\/repositories\/(challenge|sign-in)\.|application\/services\/player-session|domain\/players\/wallet-address)/,
     client: /^(?:frontend\/)?client\/(site\/(wallet|dev-wallet|wallet-picker|wallet-standard)\.js|js\/(hosts\.js|wallet\.js|wallet\/))/,
     routes: /^(POST \/api\/auth\/|GET \/api\/auth\/pair\/:id|GET \/api\/me$)/,
     words: /sign[- ]?in|session|nonce|cookie|SIWS/i,
-    e2e: ['e2e-wallet.mjs', 'e2e-browser.mjs', 'e2e-lobby.mjs', 'e2e-close.mjs'],
+    e2e: ['e2e-wallet.mjs', 'e2e-browser.mjs', 'e2e-lobby.mjs', 'e2e-close.mjs', 'e2e-admin-privacy.mjs'],
     skills: ['run-tests'],
   },
   {

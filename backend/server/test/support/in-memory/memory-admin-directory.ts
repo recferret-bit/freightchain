@@ -43,7 +43,7 @@ export class MemoryAdminDirectory extends AdminDirectoryPort {
     for (const s of [...this.db.signIns].reverse().filter((x) => x.at.getTime() >= since.getTime())) {   // insertion order = time order here
       const row = byWallet.get(s.wallet);
       if (row) row.signIns++;
-      else byWallet.set(s.wallet, { wallet: s.wallet, lastAt: s.at.getTime(), signIns: 1, ip: s.ip, userAgent: s.userAgent });
+      else byWallet.set(s.wallet, { wallet: s.wallet, lastAt: s.at.getTime(), signIns: 1, ipHash: s.ipHash });
     }
     const all = [...byWallet.values()].sort((a, b) => b.lastAt - a.lastAt || (a.wallet < b.wallet ? -1 : 1));
     return { rows: all.slice(0, limit), truncated: all.length > limit };

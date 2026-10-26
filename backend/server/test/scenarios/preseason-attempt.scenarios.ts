@@ -21,7 +21,7 @@ export function preseasonAttemptScenarios(h: () => Harness): void {
     expect(await h().app.get(PromoRepositoryPort).listUnspent(rider.address)).toEqual([]);
   });
   it('Telegram activity webhook is unavailable without a configured secret', async () => {
-    const absent = vi.spyOn(h().app.get(EnvService), 'telegramWebhookSecret', 'get').mockReturnValue(null);
+    const absent = vi.spyOn(h().app.get(EnvService), 'telegramWebhookSecret', 'get').mockReturnValue(undefined);
     try { await anon().post('/api/airdrop/telegram/webhook').send({ update_id: 11 }).expect(404); }
     finally { absent.mockRestore(); }
   });

@@ -41,6 +41,8 @@ import { LogBufferPort } from '../application/ports/ops/log-buffer.port.js';
 import { TransactionPort } from '../application/ports/shared/transaction.port.js';
 import { RideBatchRepositoryPort } from '../application/ports/telemetry/ride-batch.repository.port.js';
 import { RideVerdictRepositoryPort } from '../application/ports/verdict/ride-verdict.repository.port.js';
+import { IpPrefixHasherPort } from '../application/ports/auth/ip-prefix-hasher.port.js';
+import { IpPrefixHasherAdapter } from './auth/ip-prefix-hasher.adapter.js';
 import { SignInRepositoryPort } from '../application/ports/auth/sign-in.repository.port.js';
 import { AdminActionRepositoryPort } from '../application/ports/admin/admin-action.repository.port.js';
 import { AlertOutboxRepositoryPort } from '../application/ports/admin/alert-outbox.repository.port.js';
@@ -193,6 +195,7 @@ const ports: Provider[] = [
   { provide: RideVerdictRepositoryPort, useClass: RideVerdictPrismaRepository },
   { provide: RideReplayRepositoryPort, useClass: RideReplayPrismaRepository },
   { provide: ReplayQueuePort, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): ReplayQueuePort => (env.redisUrl ? new RedisReplayQueueAdapter(env.redisUrl, clock) : new MemoryReplayQueueAdapter()) },
+  { provide: IpPrefixHasherPort, useClass: IpPrefixHasherAdapter },
   { provide: SignInRepositoryPort, useClass: SignInPrismaRepository },
   { provide: AdminActionRepositoryPort, useClass: AdminActionPrismaRepository },
   { provide: AlertOutboxRepositoryPort, useClass: AlertOutboxPrismaRepository },
