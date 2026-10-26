@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // TEN4 on a local validator, through program GctCYSHbCnHN8sE1LjUL9cmSpFd5mcVdfaumRcaVWZZx. SCENARIO=chain | session | all.
 // RPC, KEYS (payer.json, player.json, spectator.json). Session also needs BASE, DATABASE_URL, CHROME_PORT. The server mints no second NFT.
 import { execFileSync } from 'node:child_process';
@@ -164,7 +165,7 @@ async function signIn(w) {
   const { j } = await post('auth/nonce', { wallet: w.address });
   const signature = bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), w.naclKp.secretKey));
   const { r } = await post('auth/verify', { wallet: w.address, signature });
-  const cookie = r.headers.get('set-cookie')?.split(';')[0];
+  const cookie = await acceptLocalTestTerms(BASE, r.headers.get('set-cookie')?.split(';')[0]);
   return { ...w, cookie };
 }
 

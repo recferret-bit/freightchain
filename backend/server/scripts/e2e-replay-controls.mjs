@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Lane 4: a finished 1h recording in headless Chrome. Clock, camera, and seek are driven on that ride.
 // Runs only through the isolated local e2e runner. A missing Chrome or control fails.
 import { randomUUID, createHash } from 'node:crypto';
@@ -27,7 +28,7 @@ const signIn = async () => {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const nonce = await call('POST', 'auth/nonce', { wallet });
   const ver = await call('POST', 'auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(nonce.json.message), kp.secretKey)) });
-  return { wallet, cookie: ver.cookie };
+  return { wallet, cookie: await acceptLocalTestTerms(BASE, ver.cookie) };
 };
 
 function samples(t1) {

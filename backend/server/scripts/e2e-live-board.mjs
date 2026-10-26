@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // "Who is online, what is on the road, what can be replayed" in REAL headless Chrome against a RUNNING server, fed by the ride simulator
 // (scripts/sim-rides.mjs – fake drivers, visitors and watchers over the API). Run with bash .claude/skills/live-board-test/run.sh, or by hand:
 //   TRUST_PROXY=1 HB_TIMEOUT_MS=15000 FREE_RIDE_SECONDS=20 SOL_USD=118 TREASURY_PUBKEY=<addr> PORT=3111 node dist/main.js   (+ npm run landing:build)
@@ -27,6 +28,7 @@ const kp = nacl.sign.keyPair(), me = bs58.encode(kp.publicKey);
 const post = async (path, body, cookie) => fetch(`${BASE}/api/${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...(cookie && { cookie }) }, body: JSON.stringify(body) });
 const ch = await (await post('auth/nonce', { wallet: me })).json();
 const cookie = (await post('auth/verify', { wallet: me, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) })).headers.get('set-cookie').split(';')[0];
+await acceptLocalTestTerms(BASE, cookie);
 const mine = await (await post('rides', { tier: 'free' }, cookie)).json();
 await post(`rides/${mine.id}/start`, {}, cookie); await sleep(1500);
 await post(`rides/${mine.id}/end`, { outcome: 'failed', s: 5, t: 1, reason: 'You ran off the road.' }, cookie);

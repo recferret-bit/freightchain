@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Full-stack check in REAL headless Chrome against a RUNNING server (no wallet extension: a tweetnacl keypair signs the challenge, the session cookie is
 // handed to Chrome): sign in → create a free ride → play.html?ride=… takes the server's seed + shift length → START → heartbeats → pause → END SHIFT → server verdict.
 // Usage: FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 node dist/main.js  (other terminal; PostgreSQL up + migrated: npm run db:up && npm run prisma:deploy)   then   BASE=http://localhost:3111 node scripts/e2e-browser.mjs
@@ -10,7 +11,7 @@ const post = async (path, body, cookie) => { const r = await fetch(`${BASE}/api/
 const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
 const { j: ch } = await post('auth/nonce', { wallet });
 const { r: vr } = await post('auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) });
-const cookie = vr.headers.get('set-cookie').split(';')[0]; check('sign-in (signature verified by the server)', vr.ok);
+const cookie = await acceptLocalTestTerms(BASE, vr.headers.get('set-cookie').split(';')[0]); check('sign-in (signature verified by the server)', vr.ok);
 const { j: ride } = await post('rides', { tier: 'free' }, cookie); check('free ride created', ride.status === 'created', JSON.stringify(ride));
 
 const { send, ev, shot, filt, SHOTS, finish } = await launch({ port: +process.env.CHROME_PORT || 9335, shotsDir: 'fc-online-shots', evalProblems: true });

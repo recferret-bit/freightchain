@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // The SERVER's road, end to end, against a RUNNING server (`bash .claude/skills/run-tests/e2e.sh road` starts one: FREE_RIDE_SECONDS=30, prompts off):
 //   A. an HONEST driver in real headless Chrome: the game rolls the server-seeded shared obstacle rules locally, cruises in the right-hand
 //      lane at ~80 km/h straight through the first planned sinkholes in it and takes the damage → COMPLETED · VERIFIED, the holes HIT
@@ -22,7 +23,7 @@ async function signIn() {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const { j: ch } = await call('POST', 'auth/nonce', { body: { wallet } });
   const res = await fetch(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) }) });
-  return { wallet, cookie: res.headers.get('set-cookie').split(';')[0] };
+  return { wallet, cookie: await acceptLocalTestTerms(BASE, res.headers.get('set-cookie').split(';')[0]) };
 }
 const codes = v => (v?.reasons ?? []).map(x => x.code);
 const LANE = 2.4, SPEED = 16, HOLES_TO_CROSS = 2;

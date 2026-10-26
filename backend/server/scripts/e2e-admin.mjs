@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // The admin page in REAL headless Chrome against a RUNNING server: a non-admin sees "not available" (the API answers 404), the admin sees the overview,
 // the review queue holds a flagged ride, the ride detail shows its reasons and batches, ACCEPT turns it verified (audited, the rider sees it), the POOLS tab
 // (every pool, its phase and winners; HOLD → RELEASE of the payout, both signed – on a live pool if there is one), sign-ins, logs and the audit tab render; screenshots at desktop + phone width. No wallet extension: keypairs sign the challenges.
@@ -19,7 +20,7 @@ const get = async (p, c) => { const r = await fetch(`${BASE}/api/${p}`, { header
 async function signIn(kp) {
   const address = bs58.encode(kp.publicKey), { j } = await post('auth/nonce', { wallet: address });
   const { r } = await post('auth/verify', { wallet: address, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) });
-  return { address, short: `${address.slice(0, 4)}…${address.slice(-4)}`, cookie: r.headers.get('set-cookie').split(';')[0] };
+  return { address, short: `${address.slice(0, 4)}…${address.slice(-4)}`, cookie: await acceptLocalTestTerms(BASE, r.headers.get('set-cookie').split(';')[0]) };
 }
 /** the admin sign-in from node (/api/admin/auth/*, the fc_admin cookie) – for the API-level checks; the page signs in through the fake wallet below */
 async function adminSignIn(kp) {

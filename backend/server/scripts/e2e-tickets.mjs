@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Ticket reconcile on the real server, in headless Chrome.
 // PAYMENT_MODE=program. SOLANA_RPC is a local validator with the pinned pools program already loaded
 // (not a devnet deploy) and a sellable pool registered in this database. The watcher is off, so the
@@ -36,7 +37,7 @@ async function signIn(naclKp, address) {
   const { j } = await call('POST', 'auth/nonce', { body: { wallet: address } });
   const res = await call('POST', 'auth/verify', { body: { wallet: address, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), naclKp.secretKey)) } });
   if (!res.cookie) throw new Error(`sign-in failed for ${address}: ${res.status} ${JSON.stringify(res.j)}`);
-  return res.cookie;
+  return await acceptLocalTestTerms(BASE, res.cookie);
 }
 
 const buyer = walletOf(Keypair.generate());

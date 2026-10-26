@@ -2,6 +2,8 @@
 
 Docs only. Authoritative product specifications and test plans live in [`docs/spec/`](../spec/README.md) (which supersedes `MASTER_PLAN.md` §§3, 5, 14 and the retired `OPEN_QUESTIONS.md`).
 
+**Paused 26 October:** replacement agents should start with the [current readiness handoff](READINESS_HANDOFF_2026-10-26.md): preserved worktrees, completed work, failed/pending acceptance and three independent worker lanes plus an integration coordinator. Do not restart the historical waves or agents automatically.
+
 | File | Former working name(s) | Purpose |
 |---|---|---|
 | [`DEVNET_SOFT_LAUNCH.md`](DEVNET_SOFT_LAUNCH.md) | — | **Technical soft launch:** short readiness summary and ordered checklist for integrated devnet contracts, TEN4, NFTs, replays and ride validation |

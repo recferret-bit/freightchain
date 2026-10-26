@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Achievement progress in real headless Chrome. The catalogue id is on-my-own-2 (solo ladder): completed free rides without assist.
 // A verdict of rejected drops that completion (and its metres) while VERDICT_ENFORCE is on. Starting still counts — first-mile reads starts, not the verdict.
 // Server: FREE_RIDE_SECONDS=3 TRAFFIC_PROOF_REQUIRED=false (a missing recording must not reject the two rides that should count).
@@ -15,7 +16,7 @@ const get = async (p, c) => { const r = await fetch(`${BASE}/api/${p}`, { header
 async function wallet() {
   const kp = nacl.sign.keyPair(), address = bs58.encode(kp.publicKey), { j } = await post('auth/nonce', { wallet: address });
   const { r } = await post('auth/verify', { wallet: address, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) });
-  return { address, cookie: r.headers.get('set-cookie').split(';')[0] };
+  return { address, cookie: await acceptLocalTestTerms(BASE, r.headers.get('set-cookie').split(';')[0]) };
 }
 const until = async (fn, ms = 20000) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v) return v; if (Date.now() - t0 > ms) return false; await sleep(250); } };
 const progress = (profile, id) => profile.achievements.find(a => a.id === id)?.progress;

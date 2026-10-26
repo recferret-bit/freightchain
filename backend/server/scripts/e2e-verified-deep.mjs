@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Verified play, the DEEP pass – every check of the verdict (docs/tech/verified-play/index.html), the upload protocol, the visibility of verdicts, the admin's hand on a
 // flagged ride, the profile in a real browser, the retention sweep and the bulk re-judge. The sibling e2e-verified-play.mjs covers the dispatch prompts (a person
 // and a bot in Chrome, instant answers); THIS one runs with the prompts OFF (CHALLENGE_INTERVAL_SECONDS=0) so each recording check is judged on its own.
@@ -35,7 +36,7 @@ async function signIn() {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const { j: ch } = await call('POST', 'auth/nonce', { body: { wallet } });
   const res = await fetch(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) }) });
-  return { wallet, cookie: res.headers.get('set-cookie').split(';')[0] };
+  return { wallet, cookie: await acceptLocalTestTerms(BASE, res.headers.get('set-cookie').split(';')[0]) };
 }
 
 /* ───────────── the input scripts (absolute ms since the start; what a person's hands – or a script – do) ───────────── */

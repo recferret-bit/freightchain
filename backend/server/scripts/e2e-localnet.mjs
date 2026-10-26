@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // The money flows end to end on a LOCAL chain – real program transactions, real lamports, every balance asserted. Started by .claude/skills/localnet-e2e/run.sh
 // (phase 1: fixtures made by the real program; phase 2: validator + program + the baked accounts + the server in program mode on a throwaway DB).
 // env: BASE, RPC, KEYS (scratch keypair dir), FIXTURES (phase 1's fixtures.json), CHROME_PORT. Explained in docs/tech/localnet-e2e/index.html.
@@ -71,7 +72,7 @@ async function player(lamports = +(process.env.FUND_LAMPORTS || 5e9)) {
   const { j } = await api('auth/nonce', { body: { wallet } });
   const r = await fetch(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) }) });
   if (!r.ok) throw new Error(`sign-in failed: ${r.status} ${await r.text()}`);
-  const cookie = r.headers.get('set-cookie').split(';')[0];
+  const cookie = await acceptLocalTestTerms(BASE, r.headers.get('set-cookie').split(';')[0]);
   const offer = await api('profile/agreements', { body: { age18: true, loss: true }, cookie, method: 'PUT' });
   if (!offer.ok) throw new Error(`agreements failed: ${offer.status}`);
   const keyfile = `${KEYS}/player-${wallet.slice(0, 8)}.json`; writeFileSync(keyfile, JSON.stringify([...kp.secretKey]));   // for pool-admin (pool sponsorship, buys)

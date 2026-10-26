@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Click-through of the whole loop FROM THE LOBBY in real headless Chrome (four browsers: a rider, an observer, another signed-in lobby, a ticket holder), screenshots of every tab at desktop and phone width.
 // Server (after `npm run landing:build` at the root – / is the Vite build): FREE_RIDE_SECONDS=3 SOL_USD=118 TREASURY_PUBKEY=<any address> PORT=3111 node dist/main.js  (PostgreSQL up + migrated: npm run db:up && npm run prisma:deploy)     then:   BASE=http://localhost:3111 node scripts/e2e-lobby.mjs
 // Escrowed pools (dev-only seeds, same DATABASE_URL as the server – or run this script with SEED=1 and that DATABASE_URL, it runs them and ignores "already exists"):
@@ -17,7 +18,7 @@ const get = async (p, c) => (await fetch(`${BASE}/api/${p}`, { headers: c ? { co
 async function wallet() {
   const kp = nacl.sign.keyPair(), address = bs58.encode(kp.publicKey), { j } = await post('auth/nonce', { wallet: address });
   const { r } = await post('auth/verify', { wallet: address, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) });
-  return { address, short: `${address.slice(0, 4)}…${address.slice(-4)}`, cookie: r.headers.get('set-cookie').split(';')[0] };
+  return { address, short: `${address.slice(0, 4)}…${address.slice(-4)}`, cookie: await acceptLocalTestTerms(BASE, r.headers.get('set-cookie').split(';')[0]) };
 }
 /** Test-only ledger credit. The product has no credit route. `honk` is whole TEN4. */
 async function creditHonk(wallet, honk) {
@@ -144,6 +145,8 @@ check('…and no page errors on that path', problems(third).length === 0, proble
 
 // ── TICKETS: promo → RIDE with a ticket → the game; the 409s read as sentences (fourth browser, wallet D)
 const D = await wallet(), tix = await launch({ port: CDP + 3, shotsDir: 'fc-lobby-shots', evalProblems: true }); await size(tix, 1100, 900, false);
+// Terms acceptance confirmed age; deliberately revoke the separate paid-play offer to test both switches below.
+check('paid-offer fixture revokes both confirmations', (await fetch(`${BASE}/api/profile/agreements`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie: D.cookie }, body: JSON.stringify({ age18: false, loss: false }) })).ok);
 await open(tix, D, `${BASE}/lobby.html#new`); await until(async () => (await tix.ev('document.querySelectorAll(".tier:not(.result)").length')) === 2);
 const redeem = async code => { await tix.ev('if (location.hash !== "#profile") location.hash = "#profile"'); await until(async () => await tix.ev('!!document.getElementById("promo-code")')); await tix.ev(`document.getElementById("promo-code").value = ${JSON.stringify(code)}; document.getElementById("promo-go").click()`); await until(async () => !/Redeeming/.test(await txt(tix, '#promo-msg')) && (await txt(tix, '#promo-msg')) !== ''); const message = await txt(tix, '#promo-msg'); await tix.ev('location.hash = "#new"'); await until(async () => (await tix.ev('document.querySelectorAll(".tier:not(.result)").length')) === 2); return message; };
 check('promo: an unknown code reads "Unknown promo code"', /Unknown promo code/.test(await redeem('NOPE-NOPE')), await txt(tix, '#promo-msg'));

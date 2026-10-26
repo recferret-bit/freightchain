@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Real headless Chrome -> hashed uploads -> PostgreSQL -> /end -> persisted replay verdict.
 // The injected driver controls pace/lane; only the negative cases alter cars, damage or evidence.
 import nacl from 'tweetnacl';
@@ -17,7 +18,7 @@ async function run(mode, tab) {
   const pair = nacl.sign.keyPair(), wallet = bs58.encode(pair.publicKey);
   const { value: nonce } = await api('auth/nonce', { wallet });
   const { res } = await api('auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(nonce.message), pair.secretKey)) });
-  const cookie = res.headers.get('set-cookie').split(';')[0], hostile = ['no-cars', 'no-cars-no-columns', 'ignore-damage'].includes(mode), contactControl = mode === 'honest-collision', contactPath = hostile || contactControl;
+  const cookie = await acceptLocalTestTerms(BASE, res.headers.get('set-cookie').split(';')[0]), hostile = ['no-cars', 'no-cars-no-columns', 'ignore-damage'].includes(mode), contactControl = mode === 'honest-collision', contactPath = hostile || contactControl;
   const { value: ride } = await api('rides', { tier: 'free', level: contactPath ? 2 : 1, tutorial: false, assist: false }, cookie);
   const startupRetries = [];
   {

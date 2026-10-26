@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // The WHOLE promo loop in real headless Chrome against a RUNNING server (PostgreSQL, the built landing): the admin makes a free-ride code and a ticket code on the admin page (the wallet signs each one),
 // different players redeem them from the lobby and from the landing, see what changed (free rides, tickets), then burn TEN4 for cab parts. The admin sees who used what – and the ways a code stops
 // working (expired, not started, used up, disabled, already redeemed) and is abused (spelling variants, double clicks, parallel wallets racing for the last use, hostile text).
@@ -30,7 +31,7 @@ const sign = (kp, text) => bs58.encode(nacl.sign.detached(new TextEncoder().enco
 async function signIn(kp = nacl.sign.keyPair()) {
   const address = bs58.encode(kp.publicKey), { j } = await post('auth/nonce', { wallet: address });
   const { r } = await post('auth/verify', { wallet: address, signature: sign(kp, j.message) });
-  return { kp, address, short: `${address.slice(0, 4)}…${address.slice(-4)}`, cookie: r.headers.get('set-cookie').split(';')[0] };
+  return { kp, address, short: `${address.slice(0, 4)}…${address.slice(-4)}`, cookie: await acceptLocalTestTerms(BASE, r.headers.get('set-cookie').split(';')[0]) };
 }
 async function adminSignIn(kp) {
   const address = bs58.encode(kp.publicKey), h = { 'x-fc-admin': '1' };

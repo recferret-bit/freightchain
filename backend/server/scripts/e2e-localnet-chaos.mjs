@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // CHAOS on the local chain: the server's view of the chain is made flaky (scripts/localnet-fault-proxy.mjs) and several servers / crankers work on the same pools
 // at once. Started by .claude/skills/localnet-e2e/run.sh (SCENARIO=chaos); the scenario itself talks to the validator DIRECTLY (balances, the clock, pool-admin), only
 // the servers it spawns here (S1, S2 – same database, own proxies) and the crank CLIs see the faults. Every assertion is money or a mirror, never a log line.
@@ -60,7 +61,7 @@ const signIn = async (s, kp) => {
   const wallet = kp.publicKey.toBase58(), { j } = await api(s, 'auth/nonce', { body: { wallet } });
   const r = await fetch(`${s.base}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) }) });
   if (!r.ok) throw new Error(`sign-in failed: ${r.status}`);
-  const cookie = r.headers.get('set-cookie').split(';')[0];
+  const cookie = await acceptLocalTestTerms(s.base, r.headers.get('set-cookie').split(';')[0]);
   const offer = await api(s, 'profile/agreements', { body: { age18: true, loss: true }, cookie, method: 'PUT' });   // paid play (tickets) needs the 18+ and loss offer
   if (!offer.ok) throw new Error(`agreements failed: ${offer.status}`);
   return cookie;

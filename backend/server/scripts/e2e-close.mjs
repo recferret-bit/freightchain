@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Closing a page, in REAL headless Chrome against a RUNNING server: every page that counts on the live board must say it left when it goes away
 // (the user's report: "closed the second browser, the counters stayed 2 / 1 for minutes"). The landing, the lobby and the watch page send their poll
 // once more with leave=1 on pagehide (client/site/presence.js leaveOnClose); the game tab sends a sendBeacon to /end (client/js/online.js).
@@ -23,7 +24,7 @@ const post = async (path, body, cookie) => fetch(`${SERVER}/api/${path}`, { meth
 const signIn = async () => {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey), ch = await (await post('auth/nonce', { wallet })).json();
   const res = await post('auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) });
-  return { wallet, cookie: res.headers.get('set-cookie').split(';')[0] };
+  return { wallet, cookie: await acceptLocalTestTerms(SERVER, res.headers.get('set-cookie').split(';')[0]) };
 };
 const ride = async who => { const r = await (await post('rides', { tier: 'free' }, who.cookie)).json(); return r; };
 const online = async () => (await api('live')).online;

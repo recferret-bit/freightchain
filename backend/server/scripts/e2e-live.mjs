@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Live negatives in headless Chrome. As-built codes, not the issue's 400 for both:
 //   self-donate  POST /api/watch/:id/donations     → 403 own_ride (LiveAccessService; free rides are free_ride_no_stream first)
 //   self-pledge  POST /api/pledges                 → 400 bad_request "sponsor cannot be the driver" (after agreements)
@@ -29,7 +30,7 @@ async function signIn() {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const { j } = await call('POST', 'auth/nonce', { body: { wallet } });
   const res = await call('POST', 'auth/verify', { body: { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) } });
-  return { wallet, cookie: res.cookie };
+  return { wallet, cookie: await acceptLocalTestTerms(BASE, res.cookie) };
 }
 async function openWatch(tab, who, id) {
   await tab.send('Network.enable');

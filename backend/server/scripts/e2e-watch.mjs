@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // A running ride is not a public stream (RPL-M-03). Training rides stay private after they end (RPL-M-02).
 // The driver still plays. A second browser opening ?watch= must not receive the ride.
 // Usage: BASE=http://localhost:3111 node scripts/e2e-watch.mjs   (or: bash .claude/skills/run-tests/e2e.sh watch)
@@ -10,7 +11,7 @@ const signIn = async () => {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const { j: ch } = await call('POST', 'auth/nonce', { wallet });
   const { r } = await call('POST', 'auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) });
-  const cookie = r.headers.get('set-cookie');
+  const cookie = await acceptLocalTestTerms(BASE, r.headers.get('set-cookie')?.split(';')[0]);
   if (!cookie) throw new Error(`sign-in failed ${r.status}`);
   return { wallet, cookie: cookie.split(';')[0] };
 };

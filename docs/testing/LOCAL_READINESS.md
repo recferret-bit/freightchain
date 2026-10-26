@@ -1,5 +1,7 @@
 # Local feature readiness
 
+**26 October pause:** the owner stopped the agents to change execution environment. [Current handoff and parallel restart plan](../plan/READINESS_HANDOFF_2026-10-26.md) records exact sources, tests and remaining work. Explicit consent changes are unmerged; HARD was stopped incomplete; the latest full paid ride failed from a test-driver lane-change collision. No final combined pass or production deployment is claimed.
+
 Assessment started 24 October 2026 against `35fe653aa1bc5e4d749d42cd89d337d84220c399` plus the working-tree changes described below. Parent checklist: [devnet soft launch](../plan/DEVNET_SOFT_LAUNCH.md). The acceptance bar is [COVERAGE_CONTRACT.md](COVERAGE_CONTRACT.md). The 24 October audit reopened `SPC-05.5` and `SPC-08.1..5`. The 26 October Convoy follow-up closes `SPC-08.1..3`; [Plan 2's current status](../plan/spec-compliance/STATUS.md) is **50/53 done**, with `SPC-05.5`, `SPC-08.4` and `SPC-08.5` still in progress.
 
 **The complete local gate is open.** Existing tests cover substantial behavior, but passing the current suite does not prove every app feature works. The latest aggregate run and replacement full-duration paid ride remain pending acceptance. Scheduler outage fixes and strengthened production/log-retention checks have separate branch evidence pending integration. Runtime checks, missing implementations and manual/provider checks are tracked separately below. A source assertion, mock or old log does not establish a current browser or chain pass.

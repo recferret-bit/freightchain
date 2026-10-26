@@ -55,6 +55,9 @@ if (phase === 'setup') {
   const signed = await api('auth/verify', { wallet: player.publicKey.toBase58(), signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(nonce.message), player.secretKey)) });
   assert.equal(signed.status, 200, JSON.stringify(signed)); assert.match(signed.cookie, /Secure/i);
   state.cookie = signed.cookie.split(';')[0]; save();
+  const terms = await ok('profile/terms');
+  assert.equal((await api('tickets', { poolId: state.pool, qty: 1, burnWarningAccepted: true })).status, 428);
+  await ok('profile/terms', { termsVersion: terms.termsVersion, privacyVersion: terms.privacyVersion, age18: true, accepted: true });
   assert.equal((await api('tickets', { poolId: state.pool, qty: 1, burnWarningAccepted: true })).status, 409);
   await ok('profile/agreements', { age18: true, loss: true }, 'PUT');
   await prepare();

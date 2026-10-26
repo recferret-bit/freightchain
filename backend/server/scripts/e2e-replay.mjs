@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // A finished training ride is not a public replay (RPL-M-02). Night and sinkhole donations are not accepted on a ride.
 // The driver plays a free shift. The spectator page must not receive it. A missing id is the same 404.
 // Usage: BASE=http://localhost:3111 node scripts/e2e-replay.mjs
@@ -10,7 +11,7 @@ const signIn = async () => {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const { j: ch } = await call('POST', 'auth/nonce', { wallet });
   const { r } = await call('POST', 'auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) });
-  const cookie = r.headers.get('set-cookie');
+  const cookie = await acceptLocalTestTerms(BASE, r.headers.get('set-cookie')?.split(';')[0]);
   if (!cookie) throw new Error(`sign-in failed ${r.status}`);
   return { wallet, cookie: cookie.split(';')[0] };
 };

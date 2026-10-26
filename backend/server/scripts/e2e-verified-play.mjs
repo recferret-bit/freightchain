@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Verified play – the anti-bot / anti-cheat checks end to end, POSITIVE and NEGATIVE, against a RUNNING server (start it with FREE_RIDE_SECONDS=40;
 // `bash .claude/skills/verified-play-test/run.sh` does all of it). CHALLENGE_KINDS is empty: heartbeats carry no challenge, the cab handler stays wired.
 //   A. a PERSON in real headless Chrome: drives the shift → COMPLETED · VERIFIED, no banner in the cab
@@ -28,7 +29,7 @@ async function signIn() {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const { j: ch } = await call('POST', 'auth/nonce', { body: { wallet } });
   const res = await fetch(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) }) });
-  return { wallet, cookie: res.headers.get('set-cookie').split(';')[0] };
+  return { wallet, cookie: await acceptLocalTestTerms(BASE, res.headers.get('set-cookie').split(';')[0]) };
 }
 const codes = v => (v?.reasons ?? []).map(x => x.code);
 /** The same traffic sim the verdict steps, so a straight recording can leave a lane before a car is in it. */

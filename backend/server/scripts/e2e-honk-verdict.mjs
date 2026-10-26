@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // A short verified paid ride on the suite's server. The shift is demo-scaled (DEMO_WALLETS=* DEMO_SCALE=60).
 // The recording is hash-chained and takes the server's holes. A verified verdict credits the ledger, then mint_ride
 // pays the same amount to the rider. The pool vault does not move. A second pass does not mint again.
@@ -41,7 +42,7 @@ async function signIn(w) {
   const { j } = await post('auth/nonce', { wallet: w.address });
   const signature = bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), w.naclKp.secretKey));
   const { r } = await post('auth/verify', { wallet: w.address, signature });
-  return { ...w, cookie: r.headers.get('set-cookie')?.split(';')[0] };
+  return { ...w, cookie: await acceptLocalTestTerms(BASE, r.headers.get('set-cookie')?.split(';')[0]) };
 }
 
 function callOf(cookie, extraHeaders) {

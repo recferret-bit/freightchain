@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Weekly 1h grant and ride-promo precedence, in headless Chrome, against the real handlers.
 // As-built: there is no TicketSource 'weekly' and no freeRideCredits. GET /api/me issues a WeeklyTicket row
 // (eligible 18+ wallet, allowed country). A `--ride 1h` promo grant is claimed before that ticket.
@@ -30,7 +31,7 @@ async function signIn() {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const { j } = await call('POST', 'auth/nonce', { body: { wallet } });
   const res = await call('POST', 'auth/verify', { body: { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) } });
-  return { wallet, cookie: res.cookie };
+  return { wallet, cookie: await acceptLocalTestTerms(BASE, res.cookie) };
 }
 
 const prisma = new PrismaClient();

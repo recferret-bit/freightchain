@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Real browser MEDIUM activation and Convoy profile; seeded ledger states test rendering only.
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
@@ -21,7 +22,7 @@ async function signIn() {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const { j } = await call('POST', 'auth/nonce', { body: { wallet } });
   const res = await call('POST', 'auth/verify', { body: { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) } });
-  return { wallet, cookie: res.cookie };
+  return { wallet, cookie: await acceptLocalTestTerms(BASE, res.cookie) };
 }
 
 const referrer = await signIn();

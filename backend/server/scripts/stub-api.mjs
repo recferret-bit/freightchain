@@ -74,6 +74,7 @@ function pay(o) {   // the chain confirmed the order's payment: credit the ticke
 /* ───── routes: [method, regex, handler(match, body) → { status?, body }] ───── */
 const R = [
   ['GET', /^me$/, () => ({ body: me() })],
+  ['GET', /^profile\/terms$/, () => ({ body: { required: false, termsVersion: 1, privacyVersion: 1, acceptedTermsVersion: 1, acceptedPrivacyVersion: 1 } })],
   ['GET', /^profile$/, () => ({ body: { ...me(), career: { rides: 3, ridesFree: 1, ridesPaid: 2, ridesCompleted: 1, seconds: 190, metres: 4200, crashesVehicle: 0, crashesBuilding: 0, donations: 0, donationLamports: 0 }, stats: { rides: 3, completed: 1, metres: 4200, bestMetres: 4200, paidRides: 2, spentLamports: 940_000_000, ticketsBought: [...tickets.values()].reduce((a, t) => a + t.bought, 0) }, recent: [], achievements: [], grants: [...grants].sort((a, b) => b.at - a.at).slice(0, 20) } })],
   ['GET', /^tiers$/, () => ({ body: { solUsd: SOL_USD, treasury: TREASURY.fee, paymentMode: SALES ? 'program' : 'transfer', tiers: TIERS.map(t => { const p = t.id === 'free' ? null : onSale(t.id); return { ...t, lamports: p?.priceLamports ?? null, available: true, pool: p && poolDto(p) }; }) } })],
   ['GET', /^pool$/, () => ({ body: { round: { id: 1, startsAt: t0 - 3 * DAY, endsAt: t0 + 4 * DAY }, entries: 0, split: { entries: 0, carry: 0, grand: 0, top20: 0, nextSeed: 0, fees: 0 }, settled: false, solUsd: SOL_USD, usd: { grand: 0, top20: 0, nextSeed: 0, fees: 0, entries: 0 }, pools: pools.filter(p => p.status === 'open' || p.status === 'active').map(poolDto) } })],

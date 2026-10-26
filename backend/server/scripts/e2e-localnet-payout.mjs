@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // TEN riders, one escrowed pool, the whole money loop on a LOCAL chain – started by .claude/skills/localnet-e2e/run.sh after e2e-localnet.mjs (or alone:
 // SCENARIO=payout). Real program transactions, real lamports, every balance asserted; explained in docs/tech/localnet-e2e/index.html ("Ten riders").
 //   1. pool D (1h, operator-funded, ≤ 2 per wallet) – 10 wallets buy 11 tickets: the lobby in headless Chrome and Node wallets (every wallet signs AND
@@ -84,7 +85,7 @@ async function signIn(kp) {
   const wallet = kp.publicKey.toBase58(), { j } = await api('auth/nonce', { body: { wallet } });
   const res = await fetchy(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) }) });
   if (!res.ok) throw new Error(`sign-in failed: ${res.status} ${await res.text()}`);
-  const cookie = res.headers.get('set-cookie').split(';')[0];
+  const cookie = await acceptLocalTestTerms(BASE, res.headers.get('set-cookie').split(';')[0]);
   const offer = await api('profile/agreements', { body: { age18: true, loss: true }, cookie, method: 'PUT' });
   if (!offer.ok) throw new Error(`agreements failed: ${offer.status}`);
   return cookie;

@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Solana Pay donation: the browser wallet signs the server's transfer and the watch page confirms it.
 // No devnet. SOLANA_RPC must be a local validator (this lane uses 127.0.0.1:8899). LIVE_FREE_DONATIONS=off
 // so the donation is a real transfer. As-built the order row becomes status 'paid', not 'confirmed'.
@@ -35,7 +36,7 @@ async function call(method, path, { body, cookie } = {}) {
 async function signIn(naclKp, address) {
   const { j } = await call('POST', 'auth/nonce', { body: { wallet: address } });
   const res = await call('POST', 'auth/verify', { body: { wallet: address, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), naclKp.secretKey)) } });
-  return res.cookie;
+  return await acceptLocalTestTerms(BASE, res.cookie);
 }
 const phantom = (address, secret) => `(() => {
   const address = ${JSON.stringify(address)};

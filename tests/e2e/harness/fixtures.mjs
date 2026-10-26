@@ -116,6 +116,7 @@ export function pageRoutes({ paid = false, admin = false, anon = false } = {}) {
     if (method === 'POST' && p === '/api/rides') return ok({ id: '11111111-1111-4111-8111-111111111111', status: 'created', tier: 'free', level: body?.level ?? 1, seed: 1 });
     if (method === 'POST' && p === '/api/auth/nonce') return ok({ message: 'sign in\nnonce', nonce: 'nonce-nonce' });
     if (method === 'POST' && p === '/api/auth/verify') return ok(ME);
+    if (method === 'GET' && p === '/api/profile/terms') return ok({ required: false, termsVersion: 1, privacyVersion: 1, acceptedTermsVersion: 1, acceptedPrivacyVersion: 1 });   // inert signed-in page fixture; actual consent is tested through Chrome/API
     if (method === 'POST' && p === '/api/auth/logout') return ok({ ok: true });
     if (method === 'GET' && p === '/api/pools') return ok({ pools: [], finished: [] });
     if (method === 'GET' && p === '/api/pool') return missing;

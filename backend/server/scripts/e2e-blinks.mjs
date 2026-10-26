@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Solana Actions / blinks through the REFERENCE blink client – @dialectlabs/blinks-core, the code dial.to and Dialect's X extension run – plus the CORS and
 // metadata a blink client needs (Origin https://dial.to, preflights, error bodies, discovery on every host). dial.to itself is paused and the Blinks
 // Inspector is gone (2026-10-12), so this is how a blink is tested. The client's default proxy (proxy.dial.to) is down too: it talks to the API directly.
@@ -215,7 +216,7 @@ async function signUp() {
   const post = (p, b, cookie, method = 'POST') => fetch(`${BASE}/api/${p}`, { method, headers: { 'content-type': 'application/json', ...(cookie && { cookie }) }, body: JSON.stringify(b) });
   const { message } = await (await post('auth/nonce', { wallet })).json();
   const v = await post('auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(message), kp.secretKey)) });
-  const cookie = v.headers.get('set-cookie').split(';')[0]; sessionCookie = cookie;
+  const cookie = await acceptLocalTestTerms(BASE, v.headers.get('set-cookie').split(';')[0]); sessionCookie = cookie;
   if (!(await post('profile/agreements', { age18: true, loss: true }, cookie, 'PUT')).ok) throw new Error('could not accept the terms');
   const ride = await (await post('rides', { tier: 'free' }, cookie)).json();
   return { account: wallet, ride: ride.id };

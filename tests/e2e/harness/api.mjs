@@ -2,6 +2,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
+import { acceptLocalTestTerms } from '../../../backend/server/scripts/local-test-terms.mjs';
 
 export const BASE = process.env.E2E_BASE || '';
 export const REQUIRE = process.env.E2E_REQUIRE === '1';
@@ -62,7 +63,7 @@ export function session(base = BASE) {
     try { json = text ? JSON.parse(text) : null; } catch { json = { raw: text }; }
     return { status: r.status, json };
   }
-  return { call, cookie: () => cookie };
+  return { call, cookie: () => cookie, base };
 }
 
 export async function signInPlayer(api, keys = keypair()) {
@@ -70,6 +71,7 @@ export async function signInPlayer(api, keys = keypair()) {
   if (nonce.status !== 200) throw new Error(`nonce ${nonce.status} ${JSON.stringify(nonce.json)}`);
   const ver = await api.call('/api/auth/verify', { body: { wallet: keys.wallet, signature: sign(keys.secretKey, nonce.json.message) } });
   if (ver.status !== 200) throw new Error(`verify ${ver.status} ${JSON.stringify(ver.json)}`);
+  await acceptLocalTestTerms(api.base, api.cookie());
   return { ...keys, me: ver.json };
 }
 

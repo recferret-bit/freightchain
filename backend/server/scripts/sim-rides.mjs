@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // A ride SIMULATOR for a running server – real API calls only, no browser: fake drivers sign in (a keypair each), take a free ride, start it, beat every
 // 10 s and upload the verified-play recording (chained, hashed batches of 10 Hz samples, the same canonical text as client/js/telemetry.js – so every ride
 // can be watched and replayed), and then do what they were told: keep driving, pause, ABANDON (stop beating – the stale-ride sweeper ends it), or
@@ -28,7 +29,7 @@ export async function simulate({ base = 'http://localhost:3000', drive = 2, aban
     const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey), from = ip(++ipn);
     const { j: ch } = await call('POST', 'auth/nonce', { body: { wallet }, from });
     const res = await fetch(`${base}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': from }, body: JSON.stringify({ wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) }) });
-    return { wallet, from, cookie: res.headers.get('set-cookie').split(';')[0] };
+    return { wallet, from, cookie: await acceptLocalTestTerms(base, res.headers.get('set-cookie').split(';')[0]) };
   };
 
   const plan = [...Array(drive).fill('drive'), ...Array(abandon).fill('abandon'), ...Array(complete).fill('complete'), ...Array(pause).fill('pause')];

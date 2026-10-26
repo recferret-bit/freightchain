@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // THE AUTONOMOUS DAY of the escrow program v2 on a LOCAL chain – phase 3 of .claude/skills/localnet-e2e/run.sh (SCENARIO=day, part of `all`). A fresh
 // validator holds the program + the 1h SERIES the admin wrote with the real set_series in phase 1 (its sale window – the cadence – shortened in the dump,
 // the only edit: a validator's clock cannot be moved); its own server + database with the payout key (PAYOUT_SECRET) and the crank on its SCHEDULE
@@ -97,7 +98,7 @@ async function signIn(kp, ip) {
   const wallet = kp.publicKey.toBase58(), { j } = await api('auth/nonce', { body: { wallet }, ip });
   const res = await fetchy(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': ip }, body: JSON.stringify({ wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) }) });
   if (!res.ok) throw new Error(`sign-in failed: ${res.status} ${await res.text()}`);
-  return res.headers.get('set-cookie').split(';')[0];
+  return await acceptLocalTestTerms(BASE, res.headers.get('set-cookie').split(';')[0]);
 }
 let nextIp = 10;
 async function player(name) {

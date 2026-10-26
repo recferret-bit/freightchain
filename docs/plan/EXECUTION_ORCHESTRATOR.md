@@ -1,5 +1,7 @@
 # Parallel Execution Orchestrator (Up to 4 Concurrent Agents)
 
+> **26 October handoff:** work is paused at the owner's request to change agents. Resume remaining readiness work through [READINESS_HANDOFF_2026-10-26.md](READINESS_HANDOFF_2026-10-26.md), which records uncommitted worktrees and current parallel lanes. The wave schedule and audit counts below are historical; current Plan 2 is 50/53 done. Do not automatically spawn agents from this document while paused.
+
 > **How to use this file:** Point your agent (or `/goal` / `/teamwork-preview`) at **`docs/plan/EXECUTION_ORCHESTRATOR.md`**.
 > This file is a self-contained multi-agent runbook that coordinates [`docs/plan/E2E_HEADLESS_PLAN.md`](./E2E_HEADLESS_PLAN.md) (**Plan 1: 64 E2E tasks**) and [`docs/plan/SPEC_COMPLIANCE_PLAN.md`](./SPEC_COMPLIANCE_PLAN.md) (**Plan 2: 53 Spec tasks**) across **up to 4 parallel agents (`Lane 1` – `Lane 4`)** in **7 sequential Waves** with zero file-ownership collisions or database races.
 

@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Garage + weekly skill board in real headless Chrome against a RUNNING server.
 // TEN4 is the token. The routes stay /api/honk and /api/honk/catalog. The skill board is GET /api/prize/board (not the distance leaderboard).
 //   BASE=http://localhost:3104 CHROME_PORT=9234 DATABASE_URL=… node scripts/e2e-honk-garage.mjs
@@ -16,7 +17,7 @@ const get = async (p, c) => { const r = await fetch(`${BASE}/api/${p}`, { header
 async function wallet() {
   const kp = nacl.sign.keyPair(), address = bs58.encode(kp.publicKey), { j } = await post('auth/nonce', { wallet: address });
   const { r } = await post('auth/verify', { wallet: address, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(j.message), kp.secretKey)) });
-  return { address, cookie: r.headers.get('set-cookie').split(';')[0] };
+  return { address, cookie: await acceptLocalTestTerms(BASE, r.headers.get('set-cookie').split(';')[0]) };
 }
 async function creditTen4(address, whole) {
   if (!process.env.DATABASE_URL) return;

@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Statistics, end to end (docs/spec/platform_services.md) in REAL headless Chrome against a RUNNING server on a fresh database:
 //   the landing's hero tiles (DRIVEN, ALL TIME was 0.00 km · 0 shifts on production while rides had driven – only COMPLETE shifts were counted), the lobby's
 //   DRIVING RECORD (per rider), GET /api/stats, and every way a ride ends and a donation lands – a REAL game driving into a car (the client's crash counter →
@@ -17,7 +18,7 @@ const post = async (path, body, cookie, x = {}) => fetch(`${BASE}/api/${path}`, 
 const signIn = async () => {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey), ch = await (await post('auth/nonce', { wallet })).json();
   const res = await post('auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) });
-  return { wallet, cookie: res.headers.get('set-cookie').split(';')[0] };
+  return { wallet, cookie: await acceptLocalTestTerms(BASE, res.headers.get('set-cookie').split(';')[0]) };
 };
 const newRide = async who => (await post('rides', { tier: 'free', tutorial: false, assist: false }, who.cookie)).json();
 const stats = () => api('stats');

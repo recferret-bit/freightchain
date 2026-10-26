@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Full normal-length MEDIUM or paid 1h: synthetic keyboard input, real physics/hashing and enforced verdict.
 // PIKE uses direct application handlers/internal payment codes; screen interaction is covered by e2e controls.
 import nacl from 'tweetnacl';
@@ -30,6 +31,7 @@ const keypair = nacl.sign.keyPair.fromSecretKey(kp.secretKey), wallet = bs58.enc
 let beforeChain, beforeEmission, beforeSupply, beforeLedger, order, signature;
 const challenge = await call('POST', 'auth/nonce', { wallet });
 await call('POST', 'auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(challenge.message), keypair.secretKey)) });
+await acceptLocalTestTerms(BASE, cookie);
 if (paid) {
   await call('PUT', 'profile/agreements', { age18: true, loss: true });
   order = await call('POST', 'tickets', { poolId: Number(process.env.NORMAL_PAID_POOL), qty: 1, burnWarningAccepted: true });

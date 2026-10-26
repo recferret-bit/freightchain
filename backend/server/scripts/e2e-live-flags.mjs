@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // LIVE_* flags no longer open a running ride. A running ride is 404 replay_not_available on watch, chat, and donations
 // whether the flags are the paid set or off (RPL-M-03). Chat and tips belong on a finished public replay.
 // Usage: MODE=paid|off BASE=http://localhost:3111 node scripts/e2e-live-flags.mjs
@@ -10,7 +11,7 @@ const signIn = async () => {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
   const { j: ch } = await call('POST', 'auth/nonce', { wallet });
   const { r } = await call('POST', 'auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(ch.message), kp.secretKey)) });
-  const cookie = r.headers.get('set-cookie');
+  const cookie = await acceptLocalTestTerms(BASE, r.headers.get('set-cookie')?.split(';')[0]);
   if (!cookie) throw new Error(`sign-in failed ${r.status}`);
   return { wallet, cookie: cookie.split(';')[0] };
 };
