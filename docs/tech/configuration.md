@@ -286,3 +286,5 @@ npm run server:dev                   # :3000, behind http://freightchain.localho
 - `deploy/.env.example` omits `CRANK_SECRET` / `PAYOUT_SECRET` / `POSTHOG_KEY` real values on purpose (dummies and an empty token) and does not list `COOKIE_DOMAIN` / `CORS_ORIGINS` / `APP_*` (derived).
 
 The MCP container receives `REDIS_URL=redis://fc-mcp@redis:6379`; it authenticates the restricted `fc-mcp` ACL user with `EDITOR_MCP_TOKEN`. This user can only increment and expire `fc:mcp-rl:*` counters. Its Redis healthcheck gates release success. Output-token settings are cumulative across an entire job, rather than a fresh allowance each turn.
+
+Optional evidence providers: `IPINFO_TOKEN` and `HELIUS_API_KEY` are credentials only. Signed admin flags `trust_network_evidence_enabled` / `trust_funding_evidence_enabled` default to 0 and separately opt in to provider requests. They are review-only, never automatic penalties. See `docs/testing/TRUST_PROVIDER_EVIDENCE.md` for retention, bounded requests and owner checks.

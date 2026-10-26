@@ -8,6 +8,17 @@ describe('SignInPrismaRepository (PostgreSQL)', () => {
   afterAll(() => prisma.$disconnect());
   beforeEach(async () => { await wipe(prisma); await seedPlayer(prisma, 'alice'); await seedPlayer(prisma, 'bob'); });
 
+  it('retains only sanitized network evidence and purges it with sign-in retention', async () => {
+    const network = { status: 'observed' as const, asn: 'AS15169', mobile: true, hosting: false, anonymous: false, excluded: 'mobile' as const };
+    await repo.insert({ wallet: 'alice', at: T0, ipHash: 'a'.repeat(64), network });
+    expect((await repo.recent(1))[0]).toEqual({ wallet: 'alice', at: T0, ipHash: 'a'.repeat(64), network });
+    expect(await repo.summaryOf(['alice'])).toEqual([{ wallet: 'alice', firstAt: T0, ips: [] }]);
+    const columns = await prisma.$queryRaw<{ column_name: string }[]>`SELECT column_name FROM information_schema.columns WHERE table_schema='player' AND table_name='SignIn'`;
+    expect(columns.map(r => r.column_name)).not.toContain('ip'); expect(columns.map(r => r.column_name)).not.toContain('userAgent');
+    expect(await repo.deleteBefore(at(1))).toBe(1);
+    expect(await repo.recent(1)).toEqual([]);
+  });
+
   it('stores sign-ins and lists them newest first (equal times: the later insert first), per wallet, with a limit; counts since a time', async () => {
     await repo.insert({ wallet: 'alice', at: T0, ipHash: '1.1.1.1' });
     await repo.insert({ wallet: 'bob', at: at(60), ipHash: null });

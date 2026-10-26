@@ -1,8 +1,11 @@
+import type { NetworkEvidence } from '../trust/evidence.js';
+
 /** One successful sign-in, kept for the admin page (sessions themselves are signed cookies – there is no session table). */
 export interface SignInRecord {
   wallet: string;
   at: Date;
   ipHash: string | null;
+  network?: NetworkEvidence;
 }
 
 /** Where the request came from – passed from the HTTP edge to the sign-in command. */

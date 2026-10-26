@@ -657,7 +657,7 @@ export class MemorySignInRepository extends SignInRepositoryPort {
   async summaryOf(wallets: readonly string[]): Promise<SignInSummary[]> {
     return [...new Set(wallets)].sort().flatMap((wallet) => {
       const mine = this.db.signIns.filter((s) => s.wallet === wallet);
-      return mine.length ? [{ wallet, firstAt: new Date(Math.min(...mine.map((s) => s.at.getTime()))), ips: [...new Set(mine.flatMap((s) => (s.ipHash ? [s.ipHash] : [])))].sort() }] : [];
+      return mine.length ? [{ wallet, firstAt: new Date(Math.min(...mine.map((s) => s.at.getTime()))), ips: [...new Set(mine.flatMap((s) => (s.ipHash && s.network?.mobile !== true ? [s.ipHash] : [])))].sort() }] : [];
     });
   }
 

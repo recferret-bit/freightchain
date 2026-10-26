@@ -1,3 +1,4 @@
+import type { NetworkEvidence, FundingEvidence } from '../trust/evidence.js';
 import type { DailyStatsDto, StatsDto } from '../stats/stats.js';
 import type { LogEntry } from '../ops/log-entry.js';
 import type { RideReplayDto } from '../verdict/ride-replay.entity.js';
@@ -105,6 +106,7 @@ export interface AdminReplaysDto {
 }
 
 export interface SignInRowDto {
+  network?: NetworkEvidence;
   wallet: string;
   at: number;
   ipHash: string | null;
@@ -146,6 +148,7 @@ export interface AdminPlayerRowDto {
 }
 
 export interface AdminPlayerDetailDto {
+  fundingEvidence?: FundingEvidence;
   player: { wallet: string; freeRides: number; freeRidesMax: number; freeDay: string; createdAt: number; tutorialPassedAt: number | null; age18At: number | null; lossAt: number | null };
   stats: StatsDto | null;
   tickets: { poolId: number; balance: number; bought: number }[];

@@ -3,6 +3,7 @@ import { BadRequestError } from '../shared/errors.js';
 
 /** Owner-tweakable integers in `player.GameSetting`. A missing or out-of-range row falls back to the code default. */
 export const SETTING_KEYS = [
+  'trust_network_evidence_enabled', 'trust_funding_evidence_enabled',
   'event_mode_enabled',
   'event_week_start_utc',
   'event_last_start_utc',
@@ -41,6 +42,7 @@ export const SETTING_KEYS = [
 export type SettingKey = (typeof SETTING_KEYS)[number];
 
 export const SETTING_DEFAULTS: Record<SettingKey, number> = {
+  trust_network_evidence_enabled: 0, trust_funding_evidence_enabled: 0,
   event_mode_enabled: 0,
   event_week_start_utc: 0,
   event_last_start_utc: 0,
@@ -97,6 +99,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, number> = {
 
 /** Per key. `GameSetting.value` is a signed 32-bit int, so a lamport cap stops at 2e9. */
 export const SETTING_BOUNDS: Record<SettingKey, { min: number; max: number }> = {
+  trust_network_evidence_enabled: { min: 0, max: 1 }, trust_funding_evidence_enabled: { min: 0, max: 1 },
   event_mode_enabled: { min: 0, max: 1 },
   event_week_start_utc: { min: 0, max: 2147483647 },
   event_last_start_utc: { min: 0, max: 2147483647 },
@@ -158,6 +161,8 @@ export const FREE_RIDES_HARD_MAX = 100_000;
 
 /** The resolved knobs the rest of the server reads. Camel case on the wire (`GET /api/admin/settings`). */
 export interface GameSettings {
+  trustNetworkEvidenceEnabled: number;
+  trustFundingEvidenceEnabled: number;
   eventModeEnabled: number;
   eventWeekStartUtc: number;
   eventLastStartUtc: number;
@@ -215,6 +220,7 @@ export interface GameSettings {
 }
 
 const CAMEL: Record<SettingKey, keyof GameSettings> = {
+  trust_network_evidence_enabled: 'trustNetworkEvidenceEnabled', trust_funding_evidence_enabled: 'trustFundingEvidenceEnabled',
   event_mode_enabled: 'eventModeEnabled',
   event_week_start_utc: 'eventWeekStartUtc',
   event_last_start_utc: 'eventLastStartUtc',

@@ -135,6 +135,11 @@ model SignIn {
   wallet    String
   player    Player   @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
   at        DateTime
+  networkStatus String?
+  networkAsn String?
+  networkMobile Boolean?
+  networkHosting Boolean?
+  networkAnonymous Boolean?
   ipHash    String? // HMAC-SHA256 of canonical IPv4 /24 or IPv6 /48; never raw IP or UA
 
   @@index([at])

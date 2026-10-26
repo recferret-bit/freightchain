@@ -1,3 +1,4 @@
+import { TrustEvidenceService } from '../../../services/trust-evidence.service.js';
 import { Optional } from '@nestjs/common';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import type { AdminPlayerDetailDto } from '../../../../domain/admin/admin.dto.js';
@@ -28,6 +29,7 @@ export class GetAdminPlayerHandler implements IQueryHandler<GetAdminPlayerQuery,
     private readonly admin: AdminQueryPort,
     @Optional() private readonly audit?: AdminActionRepositoryPort,
     @Optional() private readonly clock?: ClockPort,
+    @Optional() private readonly evidence?: TrustEvidenceService,
   ) {}
 
   async execute({ wallet, actor }: GetAdminPlayerQuery): Promise<AdminPlayerDetailDto> {
@@ -44,12 +46,13 @@ export class GetAdminPlayerHandler implements IQueryHandler<GetAdminPlayerQuery,
       });
     }
     return {
+      ...(this.evidence ? { fundingEvidence: await this.evidence.fundingOf(wallet) } : {}),
       player: { wallet, freeRides: player.freeRides, freeRidesMax: player.freeRidesMax, freeDay: player.freeDay, createdAt: player.createdAt.getTime(), tutorialPassedAt: player.tutorialPassedAt?.getTime() ?? null, age18At: player.age18At?.getTime() ?? null, lossAt: player.lossAt?.getTime() ?? null },
       stats: stats ? toStatsDto(stats.totals) : null,
       tickets: tickets.map((t) => ({ poolId: t.poolId, balance: t.balance, bought: t.bought })),
       grants: grants.map((g) => ({ poolId: g.poolId, delta: g.delta, source: g.source, ref: g.ref, at: g.at.getTime() })),
       payments,
-      signIns: signIns.map((s) => ({ wallet: s.wallet, at: s.at.getTime(), ipHash: s.ipHash })),
+      signIns: signIns.map((s) => ({ wallet: s.wallet, at: s.at.getTime(), ipHash: s.ipHash, ...(s.network ? { network: s.network } : {}) })),
       rides: rides.map(toAdminRideRow),
     };
   }

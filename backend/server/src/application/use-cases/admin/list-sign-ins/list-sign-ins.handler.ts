@@ -9,6 +9,6 @@ export class ListSignInsHandler implements IQueryHandler<ListSignInsQuery, Admin
   constructor(private readonly signIns: SignInRepositoryPort) {}
 
   async execute({ limit, wallet }: ListSignInsQuery): Promise<AdminListDto<SignInRowDto>> {
-    return { rows: (await this.signIns.recent(limit, wallet)).map((s) => ({ wallet: s.wallet, at: s.at.getTime(), ipHash: s.ipHash })) };
+    return { rows: (await this.signIns.recent(limit, wallet)).map((s) => ({ wallet: s.wallet, at: s.at.getTime(), ipHash: s.ipHash, ...(s.network ? { network: s.network } : {}) })) };
   }
 }

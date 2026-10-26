@@ -4,6 +4,8 @@
 
 /* key, camelCase field on GET /api/admin/settings, label, hint, min, max. Free-ride knobs stay 0..100_000. Each knob has its own range. */
 export const SETTING_KNOBS = [
+  ['trust_network_evidence_enabled', 'trustNetworkEvidenceEnabled', 'Trust: network evidence', '0 off by default; 1 opts in to IPinfo for transient sign-in IPs. Evidence only; no penalty', 0, 1],
+  ['trust_funding_evidence_enabled', 'trustFundingEvidenceEnabled', 'Trust: funding evidence', '0 off by default; 1 opts in to Helius lookup on admin player review. Evidence only; no penalty', 0, 1],
   ['event_mode_enabled', 'eventModeEnabled', 'Campaign: event enabled', '0 off by default; 1 permits only the reserved campaign 1h attempt', 0, 1],
   ['event_week_start_utc', 'eventWeekStartUtc', 'Campaign: first start (UTC seconds)', 'Unix epoch seconds; 0 leaves the event closed', 0, 2147483647],
   ['event_last_start_utc', 'eventLastStartUtc', 'Campaign: last start (UTC seconds)', 'Unix epoch seconds; must leave at least 75 minutes before event end', 0, 2147483647],
