@@ -133,8 +133,15 @@ try {
   compose(['start', 'redis']); await healthy(services);
   probe('mcp', 3100, '/health', 200);
   check('Redis and MCP recover without recreating the API', true);
+  const apiId = compose(['ps', '-q', 'app']).stdout.trim();
+  const apiState = () => docker(['inspect', '--format', '{{.State.Status}} {{.State.StartedAt}} {{.RestartCount}} {{.HostConfig.RestartPolicy.Name}}', apiId]).stdout.trim();
+  const beforeOutage = apiState();
+  check('API outage test disables automatic restarts', /^running .+ 0 no$/.test(beforeOutage));
   compose(['stop', 'postgres']);
-  await new Promise(resolve => setTimeout(resolve, 5000));
+  // The alert outbox polls every 30s; five seconds misses its unhandled-rejection path.
+  await new Promise(resolve => setTimeout(resolve, 45000));
+  check('API survives a complete alert poll during database outage without restarting', apiState() === beforeOutage);
+  check('the real alert timer catches and logs its database polling failure', compose(['logs', '--no-color', 'app']).stdout.includes('admin-alert.dispatch-failed'));
   probe('app', 3000, '/api/health/ready', 503);
   check('API readiness refuses traffic during a real PostgreSQL outage', true);
   compose(['start', 'postgres']); await healthy(services);
