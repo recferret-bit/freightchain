@@ -1,6 +1,7 @@
 /* The two boxes on PROFILE. Off until the rider ticks them. The server stores the stamps; this only paints and PUTs. */
 import { el } from './dom.js';
 import { api } from './wallet.js';
+import { t } from './i18n.js';
 import { track } from '../js/analytics.js';
 
 /** Both boxes on. Paid buttons read this off S.me so they do not fetch the profile again. */
@@ -13,8 +14,7 @@ export function blockPaid(me) {
   return true;
 }
 
-const NOTE_ON = 'Both boxes are on. SOL spent on a paid shift can be lost. A prize is not guaranteed.';
-const NOTE_OFF = 'Tick both before a paid shift. A paid button sends you here until they are on.';
+const translated = (tag, key) => el(tag, { 'data-i18n': key }, t(key));
 
 /** The PROFILE card. `me` is S.me: a successful PUT writes `me.agreements` so NEW RIDE sees it. */
 export function agreementsCard(me) {
@@ -22,10 +22,12 @@ export function agreementsCard(me) {
   const flags = { age18: !!me?.agreements?.age18, loss: !!me?.agreements?.loss };
   const age = el('input', { type: 'checkbox', id: 'agree-age', checked: flags.age18 });
   const loss = el('input', { type: 'checkbox', id: 'agree-loss', checked: flags.loss });
-  const note = el('p', { id: 'offer-note', class: 'bad' }, NOTE_OFF);
+  const note = el('p', { id: 'offer-note', class: 'bad', 'data-i18n': 'offer.off' }, t('offer.off'));
   const paint = () => {
     const accepted = offerAccepted(me);
-    note.textContent = accepted ? NOTE_ON : NOTE_OFF;
+    const key = accepted ? 'offer.on' : 'offer.off';
+    note.setAttribute('data-i18n', key);
+    note.textContent = t(key);
     note.className = accepted ? 'dim' : 'bad';
     if (accepted) age.disabled = loss.disabled = true;
   };
@@ -63,8 +65,8 @@ export function agreementsCard(me) {
   age.addEventListener('change', () => flip('age18', age));
   loss.addEventListener('change', () => flip('loss', loss));
   return el('div', { class: 'card', id: 'offer' },
-    el('h2', {}, 'BEFORE A PAID SHIFT'),
+    translated('h2', 'offer.title'),
     note,
-    el('label', { class: 'opt' }, age, el('span', {}, el('b', {}, 'I AM 18 OR OLDER'), el('small', {}, 'Required before any shift that spends SOL.'))),
-    el('label', { class: 'opt' }, loss, el('span', {}, el('b', {}, 'SOL SPENT ON A SHIFT CAN BE LOST'), el('small', {}, 'A prize is not guaranteed. This is not a deposit or an investment. This build is Solana devnet.'))));
+    el('label', { class: 'opt' }, age, el('span', {}, translated('b', 'offer.age'), translated('small', 'offer.ageHint'))),
+    el('label', { class: 'opt' }, loss, el('span', {}, translated('b', 'offer.loss'), translated('small', 'offer.lossHint'))));
 }

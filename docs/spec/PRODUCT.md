@@ -169,6 +169,8 @@ The headless playthrough (`client/tools/headless-test.mjs`) drives the sim with 
 
 **Shipped texts, lawyer review still open.** `docs/legal/TERMS.md`, `PRIVACY.md`, `PRESEASON_RULES.md`, `PRESEASON_RULES_RU.md`, `OFFICIAL_RULES.md`. The 2026-10-17 donation and replay edits are marked in those files. They describe the target in several clauses (no live watch, donation share). Where a clause and the Conflicts table disagree, the clause is the target text, not a statement that the code already matches. Placeholders and `[LAWYER]` items in [`OPEN.md`](OPEN.md) stay open.
 
+**Consent and legal pages (client).** The apex serves `/terms/`, `/privacy/`, `/rules/` (landing build, noindex): the repository `PRESEASON_RULES.md` and `PRESEASON_RULES_RU.md` verbatim, draft/template labels and placeholders included, with an EN/RU switch. Landing and lobby footers, the wallet picker and the campaign card link to them. For a signed-in wallet, `site/terms.js` reads `GET /api/profile/terms` after `GET /api/me`, and again when any call returns `428 terms_required` (never for `profile/terms` itself). If versions are stale it shows an EN/RU review dialog with an age-18 box; accept posts `{ termsVersion, privacyVersion, age18: true, accepted: true }`, decline leaves training and EASY usable. Acceptance never retries or signs the interrupted payment and never replaces the separate paid-loss profile box. The server half (428 guard, append-only audit, reset of automatic stamps) is the backend consent change; until it is integrated the client dialog is inert (`required` absent) and unverified in real Chrome.
+
 ### Other shipped pieces
 
 These are real and easy to miss. They are not separate games.

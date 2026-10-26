@@ -13,7 +13,7 @@ import { renderBoard } from './lobby-board.js';
 import { createNewRideTab } from './lobby-new.js';
 import { createLiveTab } from './lobby-live.js';
 import { createProfileTab } from './lobby-profile.js';
-import { API_BASE, GAME_BASE } from '../js/hosts.js';
+import { API_BASE, GAME_BASE, SITE_BASE } from '../js/hosts.js';
 import { track, flushSoon } from '../js/analytics.js';
 import { reportWebVitals } from '../js/web-vitals.js';
 import { store } from '../js/util.js';
@@ -64,6 +64,7 @@ function paintHeader() {
 }
 
 const takeMe = m => { S.me = m; paintHeader(); if ($('tiers')) newTab.paintTiers(); };
+addEventListener('fc:terms-accepted', () => { refreshMe(); if (S.tab === 'profile') profileTab.renderProfile(); });
 const refreshMe = () => { const gen = ++meGen; return api('me').then(m => { if (gen === meGen) takeMe(m); return m; }, () => {}); };
 
 const creditLocal = (poolId, qty) => {
@@ -212,6 +213,7 @@ for (const a of document.querySelectorAll('a[href="/play.html"]')) a.addEventLis
   track('offline_practice_clicked'); flushSoon();
 });
 bootI18n();
+for (const a of document.querySelectorAll('[data-legal]')) a.href = `${SITE_BASE}/${a.dataset.legal}/`;
 captureRef(store, location.search);
 { const next = searchWithoutRef(location.search); if (next != null) history.replaceState(null, '', `${location.pathname}${next}${location.hash}`); }
 try { S.me = await api('me'); } catch { flushSoon(); location.href = '/'; }

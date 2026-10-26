@@ -10,6 +10,8 @@ The existing [Pre-season plan](DEVNET_PRESEASON.md) describes an event with many
 
 ## What is needed from the owner
 
+Before authorized deployment, finalize the organizer, contact, publication date and other placeholders in the Pre-season EN/RU legal texts. Local versioned acceptance is technical evidence against explicitly labeled drafts; it is not legal approval or publication of a final policy.
+
 **Nothing is needed to start the local inventory, tests and fixes.** Use isolated test databases, local Redis, scratch wallets and `solana-test-validator`; no real funds or devnet deployment are required.
 
 Owner input is needed only for a specific unresolved product decision, unavailable external-service credentials for a real integration check, or wallet/phone interactions the harness cannot automate. Check existing configuration by key presence before requesting credentials; never put secret values into this checklist. Local provider fixtures prove application behavior, not real Telegram/X/Turnstile, AI-provider or analytics delivery. Record those live checks separately and keep them open until verified. Devnet deployment remains a later explicit request.

@@ -12,14 +12,14 @@ const files = has ? walk(dist) : [], gz = f => gzipSync(readFileSync(f)).length;
 const KB = 1024;
 
 test('JS: the eager bundle is small, nothing in dist/assets is large', { skip: !has }, () => {
-  const js = files.filter(f => f.endsWith('.js') && !/\/pitchdeck-/.test(f));   // the pitch deck's own script is on its own line below
+  const js = files.filter(f => f.endsWith('.js') && !/\/(pitchdeck|legal)-/.test(f));   // the pitch deck's and the legal pages' own scripts are on their own lines below
   // 34 → 36 kB: shared wallet handlers, referral capture, and weekly granted ticket & ranked competition UI in lobby.js / pools.js.
   for (const f of js) assert.ok(statSync(f).size <= 36 * KB, `${f} ${statSync(f).size} B > 36 kB`);
-  assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 79 * KB, 'all JS together ≤ 79 kB gzipped (incl. the lazy live-dash and QR chunks)');   // 78 → 79 on Oct 21: EN/RU lobby strings (site/i18n.js); 66 → 78 on Oct 17: desktop-to-phone QR sign-in (client/site/qr.js, ~8.2 kB gz, lazy) + floating wallet picker motion; 64 → 66 on Oct 17: referral helpers + shared wallet handlers; 62 → 64 on Oct 16: the unhandled-crash reporter (client/js/crash.js, ~1.3 kB gz) shares the web-vitals chunk; 61 → 62 on Oct 15: the footer's pitch deck link (PITCHDECK_BASE in hosts.js); 59 → 61 on Oct 13: mobile play restriction & spectator toast; 55 → 59 on Oct 13: Wallet Standard discovery + the wallet picker; 50 → 55 on Oct 12: UNDER THE HOOD canvas scenes; 40 → 44 on Oct 11: the cab radio's eleven stations
+  assert.ok(js.reduce((a, f) => a + gz(f), 0) <= 86 * KB, 'all JS together ≤ 86 kB gzipped (incl. the lazy live-dash and QR chunks)');   // 79 → 86 on Oct 26: the lazy consent review (client/site/terms.js, 1.3 kB gz) and the lobby dictionary it needs (site/i18n.js, 4.2 kB gz, no longer lobby-only because landing sign-in can open the review); the legal pages' own bundle is budgeted separately; 78 → 79 on Oct 21: EN/RU lobby strings (site/i18n.js); 66 → 78 on Oct 17: desktop-to-phone QR sign-in (client/site/qr.js, ~8.2 kB gz, lazy) + floating wallet picker motion; 64 → 66 on Oct 17: referral helpers + shared wallet handlers; 62 → 64 on Oct 16: the unhandled-crash reporter (client/js/crash.js, ~1.3 kB gz) shares the web-vitals chunk; 61 → 62 on Oct 15: the footer's pitch deck link (PITCHDECK_BASE in hosts.js); 59 → 61 on Oct 13: mobile play restriction & spectator toast; 55 → 59 on Oct 13: Wallet Standard discovery + the wallet picker; 50 → 55 on Oct 12: UNDER THE HOOD canvas scenes; 40 → 44 on Oct 11: the cab radio's eleven stations
 });
 
 test('CSS ≤ 15 kB gzipped (landing + whitepaper), HTML ≤ 15 kB gzipped (landing) / ≤ 34 kB (the whitepaper, a long read)', { skip: !has }, () => {
-  assert.ok(files.filter(f => f.endsWith('.css') && !/\/pitchdeck-/.test(f)).reduce((a, f) => a + gz(f), 0) <= 15 * KB);   // 14 → 15 on Oct 17: one shared amber hover/press halo, inlined into both stylesheets
+  assert.ok(files.filter(f => f.endsWith('.css') && !/\/(pitchdeck|legal)-/.test(f)).reduce((a, f) => a + gz(f), 0) <= 15 * KB);   // 14 → 15 on Oct 17: one shared amber hover/press halo, inlined into both stylesheets
   assert.ok(gz(join(dist, 'index.html')) <= 15 * KB);
   assert.ok(gz(join(dist, 'whitepaper.html')) <= 34 * KB);   // 33 → 34 on Oct 14 (chapter 08, the security check & contracts audit); 26 → 27 on Oct 10 (the free levels, forks and the phone map); 27 → 28 on Oct 11 (the soulbound cNFT badges); 28 → 29 on Oct 12 (Native SIWS & SNS identity); 29 → 31 (the achievements chapter); 31 → 33 (the 31 badge cards with descriptions and art)
 });
@@ -47,6 +47,16 @@ test('the pitch deck (pitchdeck.<apex>): each image ≤ 120 kB, all of them ≤ 
   assert.doesNotMatch(code, /<(img|video)\b[^>]*\ssrc=/, 'slide media are lazy: data-src in the markup, src only when a slide is near (hydrate)');
   assert.match(code, /data-src=/, 'slide media are lazy');
   assert.doesNotMatch(html, /https?:\/\/(?!(?:[a-z0-9-]+\.)?freightchain\.fun)/, 'no third-party host in the page');   // the deck's canonical is pitchdeck.<apex>, still our host
+});
+
+test('the legal pages (terms / privacy / rules): own script ≤ 10 kB gz (both verbatim repository texts in it) and ≤ 36 kB raw, CSS ≤ 1 kB gz, no network, no markup built from the text', { skip: !has }, () => {   // Oct 26: kept out of the landing's totals like the pitch deck: a visitor to / never downloads it
+  const js = files.filter(f => /\/legal-[\w-]+\.js$/.test(f)), css = files.filter(f => /\/legal-[\w-]+\.css$/.test(f));
+  assert.equal(js.length, 1); assert.equal(css.length, 1);
+  assert.ok(gz(js[0]) <= 10 * KB, `legal JS ${gz(js[0])} B gz`); assert.ok(statSync(js[0]).size <= 36 * KB);
+  assert.ok(gz(css[0]) <= 1 * KB);
+  const code = readFileSync(js[0], 'utf8');
+  assert.doesNotMatch(code, /fetch\(|XMLHttpRequest|sendBeacon|WebSocket|innerHTML/);
+  for (const page of ['terms', 'privacy', 'rules']) assert.ok(existsSync(join(dist, page, 'index.html')), page);
 });
 
 test('the live dash chunks are lazy: the entry bundle does not import the cockpit', { skip: !has }, () => {
