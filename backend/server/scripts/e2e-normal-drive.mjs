@@ -81,7 +81,7 @@ try {
   const settings = await tab.ev('JSON.stringify(__game.CFG)');
   await tab.ev(`(${installKeyboardDriver.toString()})(${laneMergeUnsafe.toString()})`);
   stopPrompts = answerPrompts(tab);
-  const finishBy = Date.now() + (paid ? 100 : 45) * 60_000;
+  const finishBy = Date.now() + (paid ? 100 : Math.max(45, Math.ceil(course.minSeconds * 3 / 60))) * 60_000;   // wall minutes; the browser clock ran ~0.6x wall on a Metal headless Chrome, so a 1800 s HARD shift needs more than 45 wall minutes
   for (;;) {
     await sleep(5000);
     const state = await tab.ev('({s:__game.st.s,t:__game.st.t,hull:__game.st.hull,v:__game.st.v,mode:__game.st.mode,d:__game.st.d,gear:__game.st.gear,driver:__keyboardDriver})');
