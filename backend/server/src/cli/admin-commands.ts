@@ -1,3 +1,4 @@
+import { replayWorkerLoop } from './replay-worker-loop.js';
 import { Module, type INestApplicationContext } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
@@ -62,18 +63,11 @@ async function runReplayWorker(cfg: ReplayWorkerArgs): Promise<number> {
     await noteCli(app, 'replay:worker', [`--limit`, String(cfg.limit)]);
     const commands = app.get(CommandBus);
     console.log(JSON.stringify({ event: 'replay-worker.start', limit: cfg.limit, concurrency: cfg.concurrency, intervalMs: cfg.intervalMs }));
-    while (!stopping) {
-      const res = await commands.execute(new ProcessReplayQueueCommand(cfg.limit, cfg.concurrency, null));
-      if (res.processed > 0 || res.failed > 0) {
-        console.log(JSON.stringify({ event: 'replay-worker.batch', ...res }));
-      }
-      if (stopping) break;
-      const waitMs = res.processed > 0 ? 50 : cfg.intervalMs;
-      await new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, waitMs);
-        if (stopping) { clearTimeout(timer); resolve(); }
-      });
-    }
+    await replayWorkerLoop({
+      processBatch: () => commands.execute(new ProcessReplayQueueCommand(cfg.limit, cfg.concurrency, null)),
+      stopping: () => stopping, intervalMs: cfg.intervalMs,
+      report: (event) => console.log(JSON.stringify(event)),
+    });
     return 0;
   } catch (error) {
     console.error(`[cli] ${error instanceof Error ? error.message : String(error)}`);

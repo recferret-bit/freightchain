@@ -290,7 +290,7 @@ npm run test:e2e:block1                                     # fast code E2E (Pos
 npm run test:e2e:block2                                     # fast code E2E (program mode + disposable local validator)
 bash .claude/skills/run-tests/e2e.sh                        # 31 real Chrome suites, including normal-physics keyboard controls
 npm run test:ci:full                                       # full local gate, including both Rust programs, validator journeys and Chrome
-npm run test:production:local                              # disposable production-mode Docker startup, outages, backup/restore and restart checks
+npm run test:production:local                              # disposable production Docker + real local RPC, signed payments, enforcement, outages and recovery
 ```
 
 Run `npm run install:landing` and `npm run install:media` once before `npm run check`. Env reference: [`docs/tech/configuration.md`](docs/tech/configuration.md).
