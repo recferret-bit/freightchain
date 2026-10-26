@@ -52,12 +52,20 @@ try {
   const port = await freePort(), base = `http://localhost:${port}`;
   const env = { ...safeEnv, ENV_FILE: envFile, DATABASE_URL: dbUrl, PORT: String(port), NODE_ENV: 'development', JWT_SECRET: randomBytes(32).toString('hex'), IP_HASH_SECRET: randomBytes(32).toString('hex'), APP_ORIGIN: base, APP_DOMAIN: `localhost:${port}`, SOLANA_RPC: rpc, SNS_RPC: 'http://127.0.0.1:9', PAYMENT_MODE: 'program', TICKET_PROGRAM_ID: POOL_PROGRAM_IDL.address, TREASURY_PUBKEY: key('fee').publicKey.toBase58(), FEE_TREASURY: key('fee').publicKey.toBase58(), SEED_TREASURY: key('seed').publicKey.toBase58(), WATCH_INTERVAL_MS: '500', CRANK_INTERVAL_MS: '0', PAYOUT_INTERVAL_MS: '0', SOL_USD: '118', PRIZE_DEV_DEFAULT_COUNTRY: 'KP', POSTHOG_ENABLED: '0', LIVE_EFFECTS: 'off', CLIENT_DIR: process.env.CLIENT_DIR || join(root, 'frontend/client'), LANDING_DIR: process.env.LANDING_DIR || join(root, 'frontend/landing/dist') };
   const log = openSync(join(out, 'server.log'), 'a', 0o600);
-  app = spawn(process.execPath, [join(build, 'main.js')], { cwd: server, env, stdio: ['ignore', log, log] });
-  let ready = false;
-  for (let i = 0; i < 90; i++) { assert.equal(app.exitCode, null, 'scratch API exited'); try { const r = await fetch(`${base}/api/pools/0`); if (r.ok) { ready = true; break; } } catch {} await sleep(500); }
-  assert(ready, 'watcher did not mirror the real pool');
+  async function startApi() {
+    app = spawn(process.execPath, [join(build, 'main.js')], { cwd: server, env, stdio: ['ignore', log, log] });
+    let ready = false;
+    for (let i = 0; i < 90; i++) { assert.equal(app.exitCode, null, 'scratch API exited'); try { const r = await fetch(`${base}/api/pools/0`); if (r.ok) { ready = true; break; } } catch {} await sleep(500); }
+    assert(ready, 'API did not expose the mirrored real pool');
+  }
+  await startApi();
   browser = spawn(process.execPath, ['scripts/e2e-blinks.mjs'], { cwd: server, env: { ...env, BASE: base, RPC: rpc, FUNDER_KEYPAIR: join(out, 'admin.json'), POOL_ID: '0', CHROME_PORT: String(await freePort()) }, stdio: 'inherit' });
   const code = await new Promise(resolve => browser.once('exit', resolve)); assert.equal(code, 0, 'Blink browser suite failed');
+  // Keep the real mirrored pool, then disable its watcher: only the owner's reconcile request may credit the next buyer.
+  await stop(app); env.WATCH_INTERVAL_MS = '0'; await startApi();
+  browser = spawn(process.execPath, ['scripts/e2e-tickets.mjs'], { cwd: server, env: { ...env, BASE: base, RPC: rpc, POOL_ID: '0', CHROME_PORT: String(await freePort()) }, stdio: 'inherit' });
+  const reconciled = await new Promise(resolve => browser.once('exit', resolve)); assert.equal(reconciled, 0, 'manual ticket reconciliation failed');
+  result.manualReconcile = 'real wallet-signed payment; watcher disabled; browser retry, foreign refusal and duplicate credit checks';
   result.passed = true;
 } catch (error) { result.error = error.message; console.error(error); process.exitCode = 1; }
 finally {

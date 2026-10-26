@@ -288,7 +288,7 @@ export function createNewRideTab({ S, view, now, dur, km, TIER_NAME, refreshMe, 
         const looked = await reconcileOrder(o.id).catch(() => null);
         const r = looked?.status === 'paid' ? looked : (sig ? await waitPaid(o.id, sig) : looked);
         S.order = r?.status === 'paid' ? null : (r?.order ?? o);
-        if (r?.status === 'paid') { await paidTickets(o, r.order); return; }
+        if (r?.status === 'paid') { paintOrder(); await paidTickets(o, r.order); return; }
       } catch (e) { const line = buyError(e); say('order', line, true); failDialog(S.tiers?.tiers.find(t => t.pool?.id === o.poolId)?.id, line); }
       paintOrder();
     });

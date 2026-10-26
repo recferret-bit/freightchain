@@ -2,7 +2,7 @@
 // PAYMENT_MODE=program. SOLANA_RPC is a local validator with the pinned pools program already loaded
 // (not a devnet deploy) and a sellable pool registered in this database. The watcher is off, so the
 // owner's POST /api/tickets/orders/:id/reconcile is what credits the ticket. Another wallet is 404 not_found.
-//   RPC=http://127.0.0.1:8899 BASE=http://127.0.0.1:3103 CHROME_PORT=9233 DATABASE_URL=… POOL_ID=0 node scripts/e2e-tickets.mjs
+// Run through scripts/blinks-localnet.mjs (also in e2e.sh blinks): owns the validator, pool, API and database.
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { Keypair, Connection, Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
@@ -10,7 +10,8 @@ import { PrismaClient } from '@prisma/client';
 import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
 
 const BASE = process.env.BASE || 'http://127.0.0.1:3103';
-const RPC = process.env.RPC || process.env.SOLANA_RPC || 'http://127.0.0.1:8899';
+const RPC = process.env.RPC;
+if (!RPC || new URL(RPC).hostname !== '127.0.0.1' || process.env.WATCH_INTERVAL_MS !== '0') throw new Error('manual reconcile acceptance requires an explicit scratch RPC and disabled watcher');
 const PORT = +(process.env.CHROME_PORT || 9233);
 const POOL_ID = process.env.POOL_ID ? Number(process.env.POOL_ID) : null;
 const fails = [];
@@ -50,7 +51,11 @@ if (agreed.status !== 200) {
   process.exit(1);
 }
 const airdrop = await connection.requestAirdrop(buyer.kp.publicKey, 2 * LAMPORTS_PER_SOL);
-await connection.confirmTransaction(airdrop, 'confirmed');
+async function confirm(signature) {
+  const ok = await until(async () => { const st = (await connection.getSignatureStatuses([signature])).value[0]; if (st?.err) throw new Error(JSON.stringify(st.err)); return ['confirmed', 'finalized'].includes(st?.confirmationStatus); });
+  if (!ok) throw new Error('local transaction confirmation timed out');
+}
+await confirm(airdrop);
 
 const listed = await call('GET', 'pools');
 const pool = (listed.j.pools ?? []).find((p) => (POOL_ID == null || p.id === POOL_ID) && (p.status === 'open' || p.status === 'active') && p.prepDeadline > Date.now());
@@ -64,24 +69,9 @@ if (ordered.status !== 200 || !ordered.j?.id || !ordered.j.reference) {
   process.exit(1);
 }
 const orderId = ordered.j.id;
-const pay = await call('GET', `tickets/orders/${orderId}/payment`, { cookie: buyerCookie });
-if (pay.status !== 200 || !pay.j.transaction) {
-  console.error('payment failed', pay.status, JSON.stringify(pay.j));
-  process.exit(1);
-}
-const tx = Transaction.from(Buffer.from(pay.j.transaction, 'base64'));
-tx.partialSign(buyer.kp);
-let signature;
-try {
-  signature = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: false });
-  await connection.confirmTransaction({ signature, blockhash: pay.j.blockhash, lastValidBlockHeight: Number(pay.j.lastValidBlockHeight) }, 'confirmed');
-} catch (error) {
-  console.error('buy_ticket failed', error?.message || error, error?.logs ? error.logs.slice(-8).join('\n') : '');
-  process.exit(1);
-}
-console.log(`buy_ticket ${signature} pool ${pool.id} order ${orderId}`);
 
 const prisma = new PrismaClient();
+let signature;
 const tab = await launch({ port: PORT, shotsDir: 'fc-tickets-shots', evalProblems: true });
 try {
   await tab.send('Network.enable');
@@ -95,18 +85,42 @@ try {
   check('the page shows the 404 without throwing', (await tab.ev('document.getElementById("reconcile-foreign")?.textContent || ""')) === '404 not_found');
 
   await tab.send('Network.setCookie', { name, value: buyerCookie.split('=')[1], url: BASE, httpOnly: true });
-  const own = await until(async () => {
-    const r = await tab.ev(`(async () => { const r = await fetch('/api/tickets/orders/${orderId}/reconcile', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: '{}' }); const j = await r.json(); return { status: r.status, bodyStatus: j.status || null, code: j.code || null }; })()`);
-    return r?.status === 200 && r.bodyStatus === 'paid' ? r : null;
-  }, 30000);
-  check('the owner reconcile is paid', own?.status === 200 && own?.bodyStatus === 'paid', JSON.stringify(own));
   await tab.send('Page.navigate', { url: `${BASE}/lobby.html#new` });
-  check('lobby loaded for the owner', await until(async () => await tab.ev('!!document.getElementById("chip-wallet")')));
+  check('owner sees the unpaid order and CHECK AGAIN button', await until(() => tab.ev('document.querySelector("#orderbox button")?.textContent === "CHECK AGAIN"')));
+  const pay = await call('GET', `tickets/orders/${orderId}/payment`, { cookie: buyerCookie });
+  if (pay.status !== 200 || !pay.j.transaction) {
+    throw new Error(`payment failed: ${pay.status} ${JSON.stringify(pay.j)}`);
+  }
+  const tx = Transaction.from(Buffer.from(pay.j.transaction, 'base64'));
+  tx.partialSign(buyer.kp);
+
+  try {
+    signature = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: false });
+    await confirm(signature);
+  } catch (error) {
+    throw new Error(`buy_ticket failed: ${error?.message || error}`);
+  }
+  console.log(`buy_ticket ${signature} pool ${pool.id} order ${orderId}`);
+  await sleep(1000);
+  const unpaid = await prisma.ticketOrder.findUnique({ where: { id: orderId } });
+  const before = await prisma.rideTicket.findUnique({ where: { wallet_poolId: { wallet: buyer.address, poolId: pool.id } } });
+  check('a confirmed payment stays uncredited while the watcher is disabled', unpaid?.status === 'awaiting_payment' && !before, JSON.stringify({ order: unpaid?.status, ticket: before?.balance ?? null }));
+  await tab.ev('document.querySelector("#orderbox button").click()');
+  check('owner CHECK AGAIN reconciles the actual confirmed transaction', await until(async () => (await prisma.ticketOrder.findUnique({ where: { id: orderId } }))?.status === 'paid'));
+  check('successful reconciliation clears the unfinished-order banner', await until(() => tab.ev('document.querySelector("#orderbox")?.textContent === ""')));
   const chip = await until(async () => /1 paid ride ticket/.test(await tab.ev('document.getElementById("chip-paid")?.textContent || ""')) ? await tab.ev('document.getElementById("chip-paid")?.textContent || ""') : null, 20000);
   check('the lobby shows the credited ticket', chip === '1 paid ride ticket' || chip === '1 paid ride ticket · waiting', String(chip));
   const mine = await until(async () => (await tab.ev(`document.querySelector("#tier-${pool.tier} .mine b")?.textContent || ""`)) === '1' ? '1' : null, 15000);
   check('the tier card shows one ticket held', mine === '1', String(mine));
 
+  for (let i = 0; i < 2; i++) {
+    const duplicate = await tab.ev(`(async()=>{const {reconcileOrder}=await import('/site/tickets-api.js');return reconcileOrder(${JSON.stringify(orderId)});})()`);
+    check(`repeat owner reconcile ${i + 1} stays paid`, duplicate?.status === 'paid');
+  }
+  const receipt = await connection.getTransaction(signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 });
+  const rent = await connection.getMinimumBalanceForRentExemption(87);
+  check('buyer pays exactly ticket price plus its own rent and fee', receipt?.meta?.err === null && receipt.meta.preBalances[0] - receipt.meta.postBalances[0] === ordered.j.lamports + rent + receipt.meta.fee);
+  check('duplicate reconciliation creates exactly one payment grant', await prisma.ticketGrant.count({ where: { wallet: buyer.address, poolId: pool.id, source: 'payment' } }) === 1);
   const row = await prisma.ticketOrder.findUnique({ where: { id: orderId } });
   const ticket = await prisma.rideTicket.findUnique({ where: { wallet_poolId: { wallet: buyer.address, poolId: pool.id } } });
   const grant = await prisma.ticketGrant.findFirst({ where: { wallet: buyer.address, poolId: pool.id, source: 'payment' } });
