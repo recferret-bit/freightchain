@@ -29,7 +29,8 @@ export function syncPike(at, gate) {
 }
 
 export function passPike(s) {
-  if (pike.phase === 'open' && pike.gate != null && s > pike.gate + 22) {
+  // The map already points gate at the next booth; clear against the one actually paid.
+  if (pike.phase === 'open' && pike.paid != null && s > pike.paid + 22) {
     pike.phase = 'idle'; pike.code = ''; pike.typed = ''; pike.at = false; pike.wrong = false;
   }
 }

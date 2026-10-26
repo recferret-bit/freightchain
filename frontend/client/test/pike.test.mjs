@@ -37,3 +37,24 @@ test('toll gates are fixed and the truck is held until the code matches', () => 
   assert.equal(pike.phase, 'idle');
   assert.equal(pike.code, '');
 });
+
+test('successive booths each require payment after the map advances to the next gate', () => {
+  resetPike();
+  for (const gate of [TOLL_FIRST, TOLL_FIRST + TOLL_EVERY, TOLL_FIRST + 2 * TOLL_EVERY]) {
+    st.mode = 'drive'; st.s = gate - 2; st.vel = 10; st.v = 10;
+    holdPike();
+    assert.equal(st.s, gate - 5.5);
+    syncPike(true, nextToll(st.s));
+    assert.equal(sendPike(), true);
+    for (const ch of pike.code) pushPike(ch);
+    assert.equal(confirmPike(), true);
+    // Match notePike's real update order, including the next-gate pointer at the arm.
+    syncPike(false, nextToll(gate));
+    passPike(gate);
+    assert.equal(pike.phase, 'open');
+    syncPike(false, nextToll(gate + 23));
+    passPike(gate + 23);
+    assert.equal(pike.phase, 'idle');
+    assert.equal(pike.paid, gate);
+  }
+});
