@@ -135,8 +135,7 @@ model SignIn {
   wallet    String
   player    Player   @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
   at        DateTime
-  ip        String? // the client's address as Express sees it (TRUST_PROXY)
-  userAgent String?
+  ipHash    String? // HMAC-SHA256 of canonical IPv4 /24 or IPv6 /48; never raw IP or UA
 
   @@index([at])
   @@index([wallet, at])

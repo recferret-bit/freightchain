@@ -11,7 +11,7 @@ import type { VerdictReason } from './verdict.dto.js';
  *   pool-distance-outlier  a wallet's total is more than OUTLIER_K (1.5) × the median total of the top POOL_TOP (20) – only when at least
  *                          OUTLIER_MIN_WALLETS (4) wallets rank (a median of two or three says nothing). Speed is governed (28 m/s), so a far larger
  *                          total means many more tickets driven or a recording worth a look; the admin compares it with the wallet's rides.
- *   pool-shared-ip         two different wallets in the top 20 share a sign-in IP (player.SignIn – kept SIGNIN_RETENTION_DAYS) – one person with
+ *   pool-shared-ip         two different wallets in the top 20 share a sign-in subnet HMAC (player.SignIn – kept SIGNIN_RETENTION_DAYS) – one person with
  *                          several wallets, or a shared network (a family, a café, a mobile carrier's NAT): the admin decides which.
  *   pool-new-wallet-top3   a top-3 wallet first seen (the earliest of Player.createdAt and its first kept sign-in) less than NEW_WALLET_HOURS (24) h
  *                          before its first ride in this pool.
@@ -109,7 +109,7 @@ export function walletMarks(poolId: number, rides: readonly PoolRideFacts[], sig
   const ranked = new Set(top.map((s) => s.wallet)), byIp = new Map<string, Set<string>>();
   for (const s of signIns) if (ranked.has(s.wallet)) for (const ip of s.ips) byIp.set(ip, (byIp.get(ip) ?? new Set()).add(s.wallet));
   const shared = new Set([...byIp.values()].filter((ws) => ws.size >= 2).flatMap((ws) => [...ws]));
-  for (const s of top) if (shared.has(s.wallet)) add(s.wallet, 'shared-ip', `signed in from the same network address as another wallet in the top ${POOL_TOP} of pool ${poolId}`);
+  for (const s of top) if (shared.has(s.wallet)) add(s.wallet, 'shared-ip', `signed in from the same network subnet as another wallet in the top ${POOL_TOP} of pool ${poolId}`);
 
   const seen = new Map(signIns.map((s) => [s.wallet, s.firstSeen]));
   for (const s of top.slice(0, NEW_WALLET_TOP)) {

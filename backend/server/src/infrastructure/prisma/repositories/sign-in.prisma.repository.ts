@@ -10,12 +10,12 @@ export class SignInPrismaRepository extends SignInRepositoryPort {
   }
 
   async insert(record: SignInRecord): Promise<void> {
-    await this.prisma.signIn.create({ data: { wallet: record.wallet, at: record.at, ip: record.ip, userAgent: record.userAgent } });
+    await this.prisma.signIn.create({ data: { wallet: record.wallet, at: record.at, ipHash: record.ipHash } });
   }
 
   async recent(limit: number, wallet?: string): Promise<SignInRecord[]> {
     const rows = await this.prisma.signIn.findMany({ where: wallet ? { wallet } : {}, orderBy: [{ at: 'desc' }, { id: 'desc' }], take: limit });
-    return rows.map((r) => ({ wallet: r.wallet, at: r.at, ip: r.ip, userAgent: r.userAgent }));
+    return rows.map((r) => ({ wallet: r.wallet, at: r.at, ipHash: r.ipHash }));
   }
 
   countSince(at: Date): Promise<number> {
@@ -26,9 +26,9 @@ export class SignInPrismaRepository extends SignInRepositoryPort {
     if (!wallets.length) return [];
     const [first, ips] = await Promise.all([
       this.prisma.signIn.groupBy({ by: ['wallet'], where: { wallet: { in: [...wallets] } }, _min: { at: true } }),
-      this.prisma.signIn.findMany({ where: { wallet: { in: [...wallets] }, ip: { not: null } }, distinct: ['wallet', 'ip'], select: { wallet: true, ip: true }, orderBy: [{ wallet: 'asc' }, { ip: 'asc' }] }),
+      this.prisma.signIn.findMany({ where: { wallet: { in: [...wallets] }, ipHash: { not: null } }, distinct: ['wallet', 'ipHash'], select: { wallet: true, ipHash: true }, orderBy: [{ wallet: 'asc' }, { ipHash: 'asc' }] }),
     ]);
-    return first.flatMap((g) => (g._min.at ? [{ wallet: g.wallet, firstAt: g._min.at, ips: ips.filter((r) => r.wallet === g.wallet).map((r) => r.ip as string) }] : []))
+    return first.flatMap((g) => (g._min.at ? [{ wallet: g.wallet, firstAt: g._min.at, ips: ips.filter((r) => r.wallet === g.wallet).map((r) => r.ipHash as string) }] : []))
       .sort((a, b) => (a.wallet < b.wallet ? -1 : a.wallet > b.wallet ? 1 : 0));
   }
 

@@ -17,7 +17,7 @@ const secret = () => randomBytes(32).toString('hex');
 const dockerEnv = Object.fromEntries(['PATH', 'HOME', 'DOCKER_CONFIG', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'TMPDIR'].filter(key => process.env[key]).map(key => [key, process.env[key]]));
 const fixture = {
   RELEASE: 'local-readiness', POSTGRES_USER: 'freight', POSTGRES_PASSWORD: secret(), POSTGRES_DB: 'freightchain_production_smoke_test', REDIS_PASSWORD: secret(),
-  JWT_SECRET: secret(), ADMIN_JWT_SECRET: secret(), EDITOR_JWT_SECRET: secret(), EDITOR_MCP_TOKEN: secret(),
+  IP_HASH_SECRET: secret(), JWT_SECRET: secret(), ADMIN_JWT_SECRET: secret(), EDITOR_JWT_SECRET: secret(), EDITOR_MCP_TOKEN: secret(),
   ADMIN_WALLETS: 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn', EDITOR_WALLETS: 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn',
   ADMIN_ALERT_TELEGRAM_BOT_TOKEN: 'local-test-token-not-real', ADMIN_ALERT_TELEGRAM_CHAT_ID: 'local-test-chat-not-real',
   TREASURY_PUBKEY: 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn', APP_DOMAIN: 'freightchain.localhost', APP_ORIGIN: 'https://freightchain.localhost', COOKIE_DOMAIN: 'freightchain.localhost', CORS_ORIGINS: 'https://freightchain.localhost',

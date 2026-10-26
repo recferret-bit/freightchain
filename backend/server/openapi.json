@@ -2166,13 +2166,7 @@
                           "at": {
                             "type": "number"
                           },
-                          "ip": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "userAgent": {
+                          "ipHash": {
                             "type": [
                               "string",
                               "null"
@@ -2184,8 +2178,7 @@
                         },
                         "required": [
                           "at",
-                          "ip",
-                          "userAgent",
+                          "ipHash",
                           "wallet"
                         ],
                         "type": "object"
@@ -6215,7 +6208,7 @@
                       "items": {
                         "additionalProperties": true,
                         "properties": {
-                          "ip": {
+                          "ipHash": {
                             "type": [
                               "string",
                               "null"
@@ -6227,21 +6220,14 @@
                           "signIns": {
                             "type": "number"
                           },
-                          "userAgent": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
                           "wallet": {
                             "type": "string"
                           }
                         },
                         "required": [
-                          "ip",
+                          "ipHash",
                           "lastAt",
                           "signIns",
-                          "userAgent",
                           "wallet"
                         ],
                         "type": "object"
@@ -6902,13 +6888,7 @@
                           "at": {
                             "type": "number"
                           },
-                          "ip": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "userAgent": {
+                          "ipHash": {
                             "type": [
                               "string",
                               "null"
@@ -6920,8 +6900,7 @@
                         },
                         "required": [
                           "at",
-                          "ip",
-                          "userAgent",
+                          "ipHash",
                           "wallet"
                         ],
                         "type": "object"

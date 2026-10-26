@@ -181,7 +181,9 @@ export function adminScenarios(h: () => Harness): void {
     const rider = await login();
     const all = (await admin.agent.get('/api/admin/signins').expect(200)).body.rows;
     expect(all.map((s: { wallet: string }) => s.wallet)).toEqual([rider.address, ADMIN.address]);
-    expect(typeof all[0].ip).toBe('string');
+    expect(all[0].ipHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(all[0]).not.toHaveProperty('ip');
+    expect(all[0]).not.toHaveProperty('userAgent');
     expect((await admin.agent.get(`/api/admin/signins?wallet=${rider.address}`).expect(200)).body.rows).toHaveLength(1);
     await admin.agent.get('/api/admin/signins?wallet=nope').expect(400);
   });

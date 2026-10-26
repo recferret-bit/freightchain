@@ -12,9 +12,10 @@ class StubTokens extends TokenSignerPort {
 describe('StartGuestHandler', () => {
   it('opens an anonymous EASY session on a fresh public key', async () => {
     const ctx = unitContext();
-    const handler = new StartGuestHandler(new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, ctx.signIns, ctx.analytics, ctx.meProfile, ctx.entropy);
+    const handler = new StartGuestHandler(new StubTokens(), ctx.sessions, ctx.rules, ctx.clock, ctx.signIns, ctx.analytics, ctx.meProfile, ctx.entropy, { hash: () => null });
     const result = await handler.execute(new StartGuestCommand({ ip: '1.2.3.4', userAgent: 'test' }));
     expect(result.profile.guest).toBe(true);
+    expect(ctx.db.signIns.at(-1)).toEqual({ wallet: result.profile.wallet, at: ctx.now(), ipHash: null });
     expect(() => new PublicKey(result.profile.wallet)).not.toThrow();
     expect(result.session.token).toBe(`t:${result.profile.wallet}`);
     expect((await ctx.storedPlayer(result.profile.wallet)).guest).toBe(true);

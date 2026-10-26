@@ -28,6 +28,7 @@ export const envSchema = z
     RESPONSE_SCHEMA_CHECK: optional(z.enum(['off', 'warn', 'strict'])),
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     JWT_SECRET: optional(z.string().min(32, 'JWT_SECRET must be at least 32 characters')),
+    IP_HASH_SECRET: optional(z.string().regex(/^[a-fA-F0-9]{64}$/, 'IP_HASH_SECRET must be 32 random bytes encoded as 64 hex characters')),
     SESSION_TTL_DAYS: z.coerce.number().int().positive().default(7),
     APP_DOMAIN: z.string().min(1).default('localhost:3000'),
     APP_ORIGIN: z.string().min(1).default('http://localhost:3000'),
@@ -163,8 +164,8 @@ export const envSchema = z
     TELEMETRY_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),
     /** off = v1 only. shadow = session key and a flag-only pause check. enforce = named streams, the enforce MAC, and pause/slow-mo rejects. Default stays off. The 10 Hz chain stays. */
     TELEMETRY_V21: z.enum(['off', 'shadow', 'enforce']).default('off'),
-    /** days the sign-in log (wallet, time, IP address, browser) is kept; 0 = forever */
-    SIGNIN_RETENTION_DAYS: z.coerce.number().int().min(0).default(180),
+    /** days pseudonymous player sign-ins are kept; 1–90, never unlimited */
+    SIGNIN_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(90),
     /** verified play: seconds of driving between two challenges, issued with the heartbeat when CHALLENGE_KINDS is non-empty; a short shift gets at most 4; 0 = off */
     CHALLENGE_INTERVAL_SECONDS: z.coerce.number().min(0).default(240),
     CHALLENGE_FREE_RIDES: z.enum(['on', 'off']).default('on'), // dispatch prompts on FREE rides too – prod compose: off (the one-minute free run is the onboarding ride; it ends itself at the line, so its prompts could never be judged, and the free board ranks every completed run whatever its verdict)
@@ -216,6 +217,7 @@ export const envSchema = z
       if (env.EDITOR_OPEN === '1') ctx.addIssue({ code: 'custom', path: ['EDITOR_OPEN'], message: 'EDITOR_OPEN is a local switch – never in production' });
       // without it the admin / storybook host walls switch off (they answer on any host, like localhost) – never with wallets that may sign in there
       if (!env.COOKIE_DOMAIN && (env.EDITOR_WALLETS.trim() || env.ADMIN_WALLETS.trim())) ctx.addIssue({ code: 'custom', path: ['COOKIE_DOMAIN'], message: 'COOKIE_DOMAIN must be set in production when ADMIN_WALLETS or EDITOR_WALLETS is (the admin and storybook host checks need it)' });
+      if (!env.IP_HASH_SECRET) ctx.addIssue({ code: 'custom', path: ['IP_HASH_SECRET'], message: 'IP_HASH_SECRET must be set in production' });
       if (!env.JWT_SECRET) ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'JWT_SECRET must be set in production' });
       if (!env.TREASURY_PUBKEY) ctx.addIssue({ code: 'custom', path: ['TREASURY_PUBKEY'], message: 'TREASURY_PUBKEY must be set in production' });
       // behind a reverse proxy req.ip is the proxy's: rate limits per IP would put every rider in one bucket. Make the deploy say how many hops to trust (0 = none).

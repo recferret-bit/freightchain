@@ -3,7 +3,7 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { AuthChallenge, extractNonce, parseSignInMessage } from '../../../../domain/auth/auth-challenge.entity.js';
 import { isLocalSignInDomain } from '../../../../domain/auth/sign-in-host.js';
 import { parseWalletAddress } from '../../../../domain/players/wallet-address.js';
-import { maskIpSubnet } from '../../../../domain/shared/ip-mask.js';
+import { IpPrefixHasherPort } from '../../../ports/auth/ip-prefix-hasher.port.js';
 import { UnauthorizedError } from '../../../../domain/shared/errors.js';
 import { ChallengeRepositoryPort } from '../../../ports/auth/challenge.repository.port.js';
 import { SignInRepositoryPort } from '../../../ports/auth/sign-in.repository.port.js';
@@ -34,6 +34,7 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     private readonly signIns: SignInRepositoryPort,
     private readonly analytics: AnalyticsPort,
     private readonly profile: MeProfileService,
+    private readonly ipHasher: IpPrefixHasherPort,
   ) {}
 
   async execute(command: VerifySignInCommand): Promise<SignInResultDto> {
@@ -114,9 +115,10 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     const session = await this.tokens.sign(wallet);
     const player = await this.sessions.touch(wallet, now);
 
-    this.logger.log({ event: 'signin', msg: `signed in ${wallet}`, wallet, ip: maskIpSubnet(command.client.ip) });
-    await this.signIns.insert({ wallet, at: now, ...command.client }).catch((error: unknown) => {
-      this.logger.warn(`sign-in of ${wallet} not recorded: ${error instanceof Error ? error.message : String(error)}`);
+    const ipHash = this.ipHasher.hash(command.client.ip);
+    this.logger.log({ event: 'signin', msg: `signed in ${wallet}`, wallet });
+    await this.signIns.insert({ wallet, at: now, ipHash }).catch(() => {
+      this.logger.warn(`sign-in of ${wallet} not recorded`);
     });
 
     emitAnalytics(this.analytics, () => playerSignedIn({

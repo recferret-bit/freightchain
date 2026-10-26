@@ -2,8 +2,7 @@
 export interface SignInRecord {
   wallet: string;
   at: Date;
-  ip: string | null;
-  userAgent: string | null;
+  ipHash: string | null;
 }
 
 /** Where the request came from – passed from the HTTP edge to the sign-in command. */

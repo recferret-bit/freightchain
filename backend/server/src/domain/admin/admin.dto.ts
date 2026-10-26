@@ -107,8 +107,7 @@ export interface AdminReplaysDto {
 export interface SignInRowDto {
   wallet: string;
   at: number;
-  ip: string | null;
-  userAgent: string | null;
+  ipHash: string | null;
 }
 
 export interface AdminActionDto {
@@ -195,8 +194,7 @@ export interface AdminSessionRowDto {
   wallet: string;
   lastAt: number;
   signIns: number;
-  ip: string | null;
-  userAgent: string | null;
+  ipHash: string | null;
 }
 
 export interface AdminSessionsDto {

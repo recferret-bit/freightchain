@@ -40,10 +40,10 @@ export class AdminDirectoryPrismaRepository extends AdminDirectoryPort {
     });
     const page = groups.slice(0, limit);
     const wallets = page.map((g) => g.wallet);
-    const latest = await this.prisma.$queryRaw<{ wallet: string; ip: string | null; userAgent: string | null }[]>`SELECT DISTINCT ON ("wallet") "wallet", "ip", "userAgent" FROM "player"."SignIn" WHERE "wallet" = ANY(${wallets}) AND "at" >= ${since} ORDER BY "wallet", "at" DESC, "id" DESC`;
+    const latest = await this.prisma.$queryRaw<{ wallet: string; ipHash: string | null }[]>`SELECT DISTINCT ON ("wallet") "wallet", "ipHash" FROM "player"."SignIn" WHERE "wallet" = ANY(${wallets}) AND "at" >= ${since} ORDER BY "wallet", "at" DESC, "id" DESC`;
     const where = new Map(latest.map((r) => [r.wallet, r]));
     return {
-      rows: page.map((g) => ({ wallet: g.wallet, lastAt: g._max.at!.getTime(), signIns: g._count._all, ip: where.get(g.wallet)?.ip ?? null, userAgent: where.get(g.wallet)?.userAgent ?? null })),
+      rows: page.map((g) => ({ wallet: g.wallet, lastAt: g._max.at!.getTime(), signIns: g._count._all, ipHash: where.get(g.wallet)?.ipHash ?? null })),
       truncated: groups.length > limit,
     };
   }

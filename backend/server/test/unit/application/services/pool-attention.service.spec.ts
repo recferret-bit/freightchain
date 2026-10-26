@@ -49,9 +49,9 @@ describe('PoolAttentionService', () => {
     const { ctx, service } = setup();
     await veterans(ctx);
     const a = await poolRide(ctx, 'a', 10), b = await poolRide(ctx, 'b', 11), c = await poolRide(ctx, 'c', 12), big = await poolRide(ctx, 'big', 40);
-    await ctx.signIns.insert({ wallet: 'a', at: ctx.now(), ip: '9.9.9.9', userAgent: null });
-    await ctx.signIns.insert({ wallet: 'b', at: ctx.now(), ip: '9.9.9.9', userAgent: null });
-    await ctx.signIns.insert({ wallet: 'c', at: ctx.now(), ip: '1.1.1.1', userAgent: null });
+    await ctx.signIns.insert({ wallet: 'a', at: ctx.now(), ipHash: '9.9.9.9' });
+    await ctx.signIns.insert({ wallet: 'b', at: ctx.now(), ipHash: '9.9.9.9' });
+    await ctx.signIns.insert({ wallet: 'c', at: ctx.now(), ipHash: '1.1.1.1' });
     const first = await service.markPool(7);
     expect(first).toMatchObject({ poolId: 7, rides: 4, wallets: 4, unchanged: 0, overridden: 0 });
     expect(first.marked.map((m) => [m.wallet, m.before, m.after, m.added]).sort()).toEqual([

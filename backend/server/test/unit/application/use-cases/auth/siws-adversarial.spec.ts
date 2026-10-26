@@ -36,6 +36,7 @@ describe('SIWS Adversarial Verification Suite', () => {
     ctx.signIns,
     analytics,
     ctx.meProfile,
+    { hash: () => null },
   );
   const challenge = new RequestChallengeHandler(ctx.challenges, ctx.rules, ctx.clock, ctx.entropy);
 

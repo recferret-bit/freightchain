@@ -160,6 +160,7 @@ export class EnvService {
   get verdictEnforce(): boolean { return this.env.VERDICT_ENFORCE; }
   get telemetryRetentionDays(): number { return this.env.TELEMETRY_RETENTION_DAYS; }
   get telemetryV21(): 'off' | 'shadow' | 'enforce' { return this.env.TELEMETRY_V21; }
+  get ipHashSecret(): string | null { return this.env.IP_HASH_SECRET ?? null; }
   get signInRetentionDays(): number { return this.env.SIGNIN_RETENTION_DAYS; }
   get challengeIntervalSeconds(): number { return this.env.CHALLENGE_INTERVAL_SECONDS; }
   get challengeFreeRides(): boolean { return this.env.CHALLENGE_FREE_RIDES === 'on'; }

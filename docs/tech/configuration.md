@@ -109,7 +109,8 @@ Change one with the signed admin API (`GET /api/admin/settings`, then the challe
 | `INITIAL_SEED_SOL` | `0` | SOL the very first prize round starts with |
 | `VERDICT_ENFORCE` | code `true`, **prod compose `false`** | `false` = shadow mode: rides are judged and shown but boards ignore the verdict |
 | `TELEMETRY_RETENTION_DAYS` | `90` | Recordings swept after this; flagged ones kept until reviewed; `0` = forever |
-| `SIGNIN_RETENTION_DAYS` | `180` | The sign-in log (wallet, time, IP, browser) is pruned after this, with the telemetry sweep; `0` = forever |
+| `SIGNIN_RETENTION_DAYS` | `90` | Pseudonymous player sign-ins are pruned daily; allowed 1–90 days, no unlimited retention |
+| `IP_HASH_SECRET` | unset locally | Required in production: independent random 32 bytes encoded as 64 hex characters; HMACs canonical IPv4 /24 and IPv6 /48. Missing locally means no network signal; rotate to break prior linkage |
 | `CHALLENGE_INTERVAL_SECONDS` | `240` | Verified play: seconds of driving between two challenges (issued on the heartbeat, 20 s window); a short shift gets at most 4; `0` = off. Kinds live in `CHALLENGE_KINDS` (`ride-challenge.ts`); **the table is empty today**, so nothing is issued. The verdict's prompt thresholds are in `verdict-rules.ts` |
 | `CHALLENGE_FREE_RIDES` | `on` (prod compose: `off`) | Challenges on FREE rides too. Production leaves them off: the free run is the one-minute onboarding ride, it ends itself at the line (a prompt still open then is never judged) and the free board ranks every completed run whatever its verdict |
 | `MINIGAMES` | `off` | Phone minigames on 1h paid rides. `off` issues nothing. `shadow` stores rows and does not change the verdict. `enforce` may flag an open the client called unsafe; it never rejects the ride |

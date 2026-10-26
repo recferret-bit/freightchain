@@ -49,7 +49,7 @@ async function playerTab(ctx, w) {
     el('h2', {}, `LATEST RIDES · ${d.rides.length}`),
     d.rides.length ? table(el, 'pl-rides', ['ride', 'tier', 'status', 'verdict', 'created'], d.rides.map(r => el('tr', {}, el('td', {}, link(el, `#ride/${r.id}`, r.id.slice(0, 8))), el('td', {}, r.tier), el('td', {}, `${r.status}${r.reason ? ` – ${r.reason}` : ''}`), el('td', {}, r.verdict ?? '–'), el('td', { title: time(r.createdAt) }, ago(r.createdAt))))) : el('div', { class: 'card empty' }, 'No rides.'),
     el('h2', {}, `LATEST SIGN-INS · ${d.signIns.length}`),
-    d.signIns.length ? table(el, 'pl-signins', ['when', 'ip', 'browser'], d.signIns.map(s => el('tr', {}, el('td', { title: time(s.at) }, ago(s.at)), el('td', { class: 'mono' }, s.ip ?? '–'), el('td', { class: 'dim' }, s.userAgent ?? '–')))) : el('div', { class: 'card empty' }, 'None on record (the log is pruned after SIGN_IN_RETENTION_DAYS).'));
+    d.signIns.length ? table(el, 'pl-signins', ['when', 'subnet hash'], d.signIns.map(s => el('tr', {}, el('td', { title: time(s.at) }, ago(s.at)), el('td', { class: 'mono', title: s.ipHash ?? 'Network signal unavailable' }, s.ipHash ? s.ipHash.slice(0, 12) + '…' : 'unavailable')))) : el('div', { class: 'card empty' }, 'None on record (the log is pruned after SIGNIN_RETENTION_DAYS (at most 90 days)).'));
 }
 
 /* ───────── POOLS ───────── */
@@ -101,6 +101,6 @@ export async function sessionsTab(ctx) {
     el('p', { class: 'dim' }, 'Sessions are signed cookies (SESSION_TTL_DAYS, 7 by default) – there is no session table. These wallets signed in inside the window, so a cookie of theirs may still be alive. One session cannot be revoked; rotating JWT_SECRET signs everybody out.'),
     truncated ? el('p', { class: 'bad', id: 'se-truncated' }, 'More wallets signed in than one list shows: the ones whose last sign-in is oldest are left out. Pick a shorter window.') : '',
     el('div', { class: 'filters' }, sel),
-    rows.length ? table(el, 'se-table', ['rider', 'last sign-in', 'sign-ins', 'ip', 'browser'], rows.map(r => el('tr', {}, el('td', {}, link(el, `#players/${r.wallet}`, `${r.wallet.slice(0, 4)}…${r.wallet.slice(-4)}`, r.wallet)), el('td', { title: time(r.lastAt) }, ago(r.lastAt)), el('td', {}, r.signIns), el('td', { class: 'mono' }, r.ip ?? '–'), el('td', { class: 'dim' }, r.userAgent ?? '–'))))
+    rows.length ? table(el, 'se-table', ['rider', 'last sign-in', 'sign-ins', 'subnet hash'], rows.map(r => el('tr', {}, el('td', {}, link(el, `#players/${r.wallet}`, `${r.wallet.slice(0, 4)}…${r.wallet.slice(-4)}`, r.wallet)), el('td', { title: time(r.lastAt) }, ago(r.lastAt)), el('td', {}, r.signIns), el('td', { class: 'mono', title: r.ipHash ?? 'Network signal unavailable' }, r.ipHash ? r.ipHash.slice(0, 12) + '…' : 'unavailable'))))
       : el('div', { class: 'card empty' }, 'Nobody signed in inside this window.'));
 }
