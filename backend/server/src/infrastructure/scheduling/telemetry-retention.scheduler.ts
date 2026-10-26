@@ -42,8 +42,9 @@ export class TelemetryRetentionScheduler implements OnApplicationBootstrap, OnAp
 
   async run(): Promise<void> {
     let delay: number;
+    let locked = false;
     try {
-      if (!this.cache || await this.cache.tryLock(LOCK_KEY, 5 * MINUTE_MS)) {
+      if (!this.cache || (locked = await this.cache.tryLock(LOCK_KEY, 5 * MINUTE_MS))) {
         const ownsWave5 = Boolean(this.batches);
         const { deleted, cutoff } = (await this.commands.execute(new SweepTelemetryCommand(ownsWave5))) as SweepTelemetryResultDto;
         if (deleted > 0) this.log.log({ event: 'telemetry-sweep', msg: `deleted ${deleted} recording batches of rides ended before ${cutoff}`, deleted, cutoff });
@@ -55,7 +56,7 @@ export class TelemetryRetentionScheduler implements OnApplicationBootstrap, OnAp
       const today = nextUtcMidnight(now).getTime() - DAY_MS + OFFSET_MS;
       delay = (today > now.getTime() ? today : today + DAY_MS) - now.getTime();
     } catch (error) {
-      await this.cache?.releaseLock(LOCK_KEY);
+      if (locked) await this.cache?.releaseLock(LOCK_KEY).catch(() => undefined);
       this.log.error(`telemetry sweep failed: ${error instanceof Error ? error.message : String(error)}`);
       delay = RETRY_MS;
     }

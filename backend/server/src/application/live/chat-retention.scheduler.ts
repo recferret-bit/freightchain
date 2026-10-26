@@ -29,13 +29,14 @@ export class ChatRetentionScheduler implements OnApplicationBootstrap, OnApplica
 
   async run(): Promise<number> {
     let deleted = 0;
+    let locked = false;
     try {
-      if (!this.cache || await this.cache.tryLock(LOCK_KEY, 5 * 60 * 1000)) {
+      if (!this.cache || (locked = await this.cache.tryLock(LOCK_KEY, 5 * 60 * 1000))) {
         deleted = await this.chat.purge();
         if (deleted > 0) this.log.log({ event: 'chat-retention', msg: `deleted ${deleted} chat lines older than 90 days`, deleted });
       }
     } catch (error) {
-      await this.cache?.releaseLock(LOCK_KEY);
+      if (locked) await this.cache?.releaseLock(LOCK_KEY).catch(() => undefined);
       this.log.error(`chat retention failed: ${error instanceof Error ? error.message : String(error)}`);
     }
     if (!this.stopped) {

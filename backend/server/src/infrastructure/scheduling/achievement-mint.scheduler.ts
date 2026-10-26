@@ -36,15 +36,17 @@ export class AchievementMintScheduler implements OnApplicationBootstrap, OnAppli
 
   /** One pass, then arm the next. */
   async run(): Promise<void> {
+    if (this.stopped) return;
     const ttl = Math.max(1000, Math.floor(this.env.achievementMintIntervalMs * 0.8));
-    if (!this.cache || await this.cache.tryLock(LOCK_KEY, ttl)) {
-      try {
+    let locked = false;
+    try {
+      if (!this.cache || (locked = await this.cache.tryLock(LOCK_KEY, ttl))) {
         const pass = (await this.commands.execute(new MintAchievementsCommand(this.env.achievementMintDelayMs, this.env.achievementMintBatch))) as MintPassDto;
         if (pass.failed) this.log.warn(`achievement mint: ${pass.failed} badge(s) ran out of attempts – \`achievement:mint --retry\` after looking at the cause`);
-      } catch (error) {
-        await this.cache?.releaseLock(LOCK_KEY);
-        this.log.error(`achievement mint pass failed: ${error instanceof Error ? error.message : String(error)}`);
       }
+    } catch (error) {
+      if (locked) await this.cache?.releaseLock(LOCK_KEY).catch(() => undefined);
+      this.log.error({ event: 'achievement-mint.failed', message: error instanceof Error ? error.name : 'unknown' });
     }
     if (this.stopped) return;
     this.timer = setTimeout(() => void this.run(), this.env.achievementMintIntervalMs);

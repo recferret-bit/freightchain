@@ -36,16 +36,18 @@ export class PoolCrankScheduler implements OnApplicationBootstrap, OnApplication
 
   /** One pass, then arm the next. */
   async run(): Promise<void> {
+    if (this.stopped) return;
     const ttl = Math.max(1000, Math.floor(this.env.crankIntervalMs * 0.8));
-    if (!this.cache || await this.cache.tryLock(LOCK_KEY, ttl)) {
-      try {
+    let locked = false;
+    try {
+      if (!this.cache || (locked = await this.cache.tryLock(LOCK_KEY, ttl))) {
         const pass = (await this.commands.execute(new CrankPoolsCommand())) as CrankPassDto;
         const failed = pass.actions.filter((a) => a.error);
         if (failed.length) this.log.warn(`crank: ${failed.length} step(s) failed – retried next pass`);
-      } catch (error) {
-        await this.cache?.releaseLock(LOCK_KEY);
-        this.log.error(`crank pass failed: ${error instanceof Error ? error.message : String(error)}`);
       }
+    } catch (error) {
+      if (locked) await this.cache?.releaseLock(LOCK_KEY).catch(() => undefined);
+      this.log.error({ event: 'pool-crank.failed', message: error instanceof Error ? error.name : 'unknown' });
     }
     if (this.stopped) return;
     this.timer = setTimeout(() => void this.run(), this.env.crankIntervalMs);

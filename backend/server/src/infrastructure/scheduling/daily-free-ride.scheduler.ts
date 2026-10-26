@@ -38,15 +38,16 @@ export class DailyFreeRideScheduler implements OnApplicationBootstrap, OnApplica
   /** One grant, then arm the next midnight (a failed grant is retried in a minute, not at the next midnight). */
   async run(): Promise<void> {
     let delay: number;
+    let locked = false;
     try {
-      if (!this.cache || await this.cache.tryLock(LOCK_KEY, 30 * SECOND_MS)) {
+      if (!this.cache || (locked = await this.cache.tryLock(LOCK_KEY, 30 * SECOND_MS))) {
         const { day, players } = (await this.commands.execute(new GrantDailyFreeRidesCommand())) as GrantDailyFreeRidesResultDto;
         if (players > 0) this.log.log(`daily free ride for ${day}: ${players} players`);
       }
       const now = this.clock.now();
       delay = nextUtcMidnight(now).getTime() - now.getTime() + MARGIN_MS;
     } catch (error) {
-      await this.cache?.releaseLock(LOCK_KEY);
+      if (locked) await this.cache?.releaseLock(LOCK_KEY).catch(() => undefined);
       this.log.error(`daily free ride grant failed: ${error instanceof Error ? error.message : String(error)}`);
       delay = RETRY_MS;
     }

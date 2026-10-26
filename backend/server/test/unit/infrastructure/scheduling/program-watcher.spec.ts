@@ -120,4 +120,20 @@ describe('ProgramWatcher', () => {
     await vi.advanceTimersByTimeAsync(10 * POOL_SYNC_MS);
     expect([polls.length, syncs.length]).toEqual([1, 1]);
   });
+  it.each(['poll', 'sync'] as const)('%s contains cache outages and resumes without releasing unowned locks', async (method) => {
+    const cache = { tryLock: vi.fn().mockRejectedValueOnce(new Error('cache down')).mockResolvedValue(true), releaseLock: vi.fn().mockRejectedValue(new Error('release down')) };
+    const bus = { execute: vi.fn().mockRejectedValueOnce(new Error('database down')).mockResolvedValue(method === 'poll' ? POLL : SYNC) };
+    const watcher = new ProgramWatcher(bus as never, chain, { watchIntervalMs: INTERVAL, paymentMode: 'program' } as never, cache as never);
+    await watcher[method]();
+    expect(bus.execute).not.toHaveBeenCalled();
+    expect(cache.releaseLock).not.toHaveBeenCalled();
+    const delay = method === 'poll' ? INTERVAL : POOL_SYNC_MS;
+    await vi.advanceTimersByTimeAsync(delay);
+    expect(cache.releaseLock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(delay);
+    expect(bus.execute).toHaveBeenCalledTimes(2);
+    watcher.onApplicationShutdown();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
 });

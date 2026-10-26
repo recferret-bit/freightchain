@@ -37,23 +37,29 @@ export class PoolPayoutScheduler implements OnApplicationBootstrap, OnApplicatio
 
   /** One pass, then arm the next. */
   async run(): Promise<void> {
+    if (this.stopped) return;
     const ttl = Math.max(1000, Math.floor(this.env.payoutIntervalMs * 0.8));
-    if (!this.cache || await this.cache.tryLock(LOCK_KEY, ttl)) {
-      try {
-        const pass = (await this.commands.execute(new PayPoolsCommand())) as PayoutPassDto;
-        const failed = pass.pools.filter((p) => p.state === 'error');
-        if (failed.length) this.log.warn(`payout: ${failed.length} pool(s) failed – retried next pass (${failed.map((p) => `#${p.poolId}: ${p.note ?? ''}`).join('; ')})`);
-      } catch (error) {
-        await this.cache?.releaseLock(LOCK_KEY);
-        this.log.error(`payout pass failed: ${error instanceof Error ? error.message : String(error)}`);
+    let locked = false;
+    try {
+      if (!this.cache || (locked = await this.cache.tryLock(LOCK_KEY, ttl))) {
+        try {
+          const pass = (await this.commands.execute(new PayPoolsCommand())) as PayoutPassDto;
+          const failed = pass.pools.filter((p) => p.state === 'error');
+          if (failed.length) this.log.warn(`payout: ${failed.length} pool(s) failed – retried next pass (${failed.map((p) => `#${p.poolId}: ${p.note ?? ''}`).join('; ')})`);
+        } catch (error) {
+          if (locked) await this.cache?.releaseLock(LOCK_KEY).catch(() => undefined);
+          this.log.error(`payout pass failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        try {
+          const pledges = (await this.commands.execute(new SyncPledgesCommand())) as PledgeSyncDto;
+          if (pledges.errors.length) this.log.warn(`pledges: ${pledges.errors.length} failed – retried next pass (${pledges.errors.map((e) => `${e.pledgeId}: ${e.note}`).join('; ')})`);
+        } catch (error) {
+          if (locked) await this.cache?.releaseLock(LOCK_KEY).catch(() => undefined);
+          this.log.error(`pledge pass failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
-      try {
-        const pledges = (await this.commands.execute(new SyncPledgesCommand())) as PledgeSyncDto;
-        if (pledges.errors.length) this.log.warn(`pledges: ${pledges.errors.length} failed – retried next pass (${pledges.errors.map((e) => `${e.pledgeId}: ${e.note}`).join('; ')})`);
-      } catch (error) {
-        await this.cache?.releaseLock(LOCK_KEY);
-        this.log.error(`pledge pass failed: ${error instanceof Error ? error.message : String(error)}`);
-      }
+    } catch (error) {
+      this.log.error({ event: 'pool-payout.failed', message: error instanceof Error ? error.name : 'unknown' });
     }
     if (this.stopped) return;
     this.timer = setTimeout(() => void this.run(), this.env.payoutIntervalMs);

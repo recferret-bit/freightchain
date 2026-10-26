@@ -89,14 +89,15 @@ export class ProgramWatcher implements OnApplicationBootstrap, OnApplicationShut
   async sync(): Promise<void> {
     if (this.syncing || this.stopped) return;
     this.syncing = true;
+    let locked = false;
     try {
-      if (!this.cache || await this.cache.tryLock(SYNC_LOCK_KEY, Math.floor(POOL_SYNC_MS * 0.8))) {
+      if (!this.cache || (locked = await this.cache.tryLock(SYNC_LOCK_KEY, Math.floor(POOL_SYNC_MS * 0.8)))) {
         const r = await this.commands.execute<SyncPoolsCommand, SyncPoolsResultDto>(new SyncPoolsCommand());
         for (const d of r.drifted) this.log.warn(`pool ${d.poolId} drifted from its account (the chain wins): ${d.changes.join(', ')}`);
         if (r.missing.length) this.log.debug(`pools not on chain: ${r.missing.join(', ')}`);
       }
     } catch (error) {
-      await this.cache?.releaseLock(SYNC_LOCK_KEY);
+      if (locked) await this.cache?.releaseLock(SYNC_LOCK_KEY).catch(() => undefined);
       this.log.error(`pool sync failed: ${message(error)}`);
     } finally {
       this.syncing = false;
@@ -106,8 +107,9 @@ export class ProgramWatcher implements OnApplicationBootstrap, OnApplicationShut
   }
 
   private async pollOnce(): Promise<void> {
-    if (this.cache && !(await this.cache.tryLock(POLL_LOCK_KEY, Math.max(500, Math.min(10_000, Math.floor(this.env.watchIntervalMs * 0.8)))))) return;
+    let locked = false;
     try {
+      if (this.cache && !(locked = await this.cache.tryLock(POLL_LOCK_KEY, Math.max(500, Math.min(10_000, Math.floor(this.env.watchIntervalMs * 0.8)))))) return;
       const r = await this.commands.execute<PollProgramCommand, PollProgramResultDto>(new PollProgramCommand());
       if (r.settled || r.finality.finalized || r.finality.dropped) {
         this.log.log(`program: ${r.settled} settled, ${r.finality.finalized} finalized, ${r.finality.dropped} dropped${r.pendingAt ? `, waiting for ${r.pendingAt}` : ''}`);
@@ -116,7 +118,7 @@ export class ProgramWatcher implements OnApplicationBootstrap, OnApplicationShut
     } catch (error) {
       this.log.error(`program poll failed: ${message(error)}`);
     } finally {
-      await this.cache?.releaseLock(POLL_LOCK_KEY);
+      if (locked) await this.cache?.releaseLock(POLL_LOCK_KEY).catch(() => undefined);
     }
   }
 
