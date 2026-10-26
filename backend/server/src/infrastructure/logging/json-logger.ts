@@ -47,6 +47,7 @@ export class JsonLogger implements LoggerService {
       const { msg, ...fields } = message as Record<string, unknown>;
       Object.assign(entry, fields, { msg: typeof msg === 'string' ? msg : '' });
     } else entry.msg = String(message);
+    entry.time = this.clock.now().toISOString(); // Structured fields cannot bypass log retention.
     if (stack) entry['stack'] = stack;
     this.ring.push(entry);
     this.sink(this.json ? JSON.stringify(entry) : this.pretty(entry));

@@ -1,19 +1,20 @@
-import { LogRing } from '../../../../src/infrastructure/logging/log-ring.js';
+import { FakeClock } from '../../../support/fake-clock.js';
+import { LOG_RETENTION_MS, LogRing } from '../../../../src/infrastructure/logging/log-ring.js';
 import type { LogEntry, LogLevel } from '../../../../src/domain/ops/log-entry.js';
 
-const entry = (i: number, level: LogLevel = 'log', extra: Record<string, unknown> = {}): LogEntry => ({ time: `t${i}`, level, context: 'X', msg: `m${i}`, ...extra });
+const entry = (i: number, level: LogLevel = 'log', extra: Record<string, unknown> = {}): LogEntry => ({ time: new Date(new FakeClock().ms - 1000 + i).toISOString(), level, context: 'X', msg: `m${i}`, ...extra });
 
 describe('LogRing', () => {
   it('keeps the newest `capacity` entries, newest first, and honours the limit', () => {
-    const ring = new LogRing(3);
+    const ring = new LogRing(new FakeClock(), 3);
     for (let i = 1; i <= 5; i++) ring.push(entry(i));
     expect(ring.recent({ limit: 10 }).map((e) => e.msg)).toEqual(['m5', 'm4', 'm3']);
     expect(ring.recent({ limit: 2 }).map((e) => e.msg)).toEqual(['m5', 'm4']);
-    expect(new LogRing(3).recent({ limit: 5 })).toEqual([]);
+    expect(new LogRing(new FakeClock(), 3).recent({ limit: 5 })).toEqual([]);
   });
 
   it('filters by minimum level and by text anywhere in the entry (case-insensitive)', () => {
-    const ring = new LogRing(10);
+    const ring = new LogRing(new FakeClock(), 10);
     ring.push(entry(1, 'log', { wallet: 'AbcWallet' }));
     ring.push(entry(2, 'warn'));
     ring.push(entry(3, 'error', { requestId: 'req-123' }));
@@ -22,4 +23,20 @@ describe('LogRing', () => {
     expect(ring.recent({ limit: 10, text: 'abcwallet' }).map((e) => e.msg)).toEqual(['m1']);
     expect(ring.recent({ limit: 10, text: 'REQ-123', minLevel: 'error' }).map((e) => e.msg)).toEqual(['m3']);
   });
+  it('evicts at the exact age boundary on reads and writes, including out-of-order entries', () => {
+    const clock = new FakeClock(), ring = new LogRing(clock, 5);
+    const fresh = { ...entry(1), time: clock.now().toISOString() };
+    ring.push(fresh);
+    ring.push({ ...entry(2), time: new Date(clock.ms - LOG_RETENTION_MS + 1).toISOString() });
+    clock.ms++;
+    expect(ring.recent({ limit: 5 })).toEqual([fresh]);
+    expect((ring as unknown as { items: unknown[] }).items.filter(Boolean)).toEqual([fresh]);
+    clock.advance(LOG_RETENTION_MS / 1000);
+    ring.push({ ...entry(3), time: clock.now().toISOString() });
+    expect(ring.recent({ limit: 5 }).map(e => e.msg)).toEqual(['m3']);
+    ring.push({ ...entry(4), time: 'invalid' });
+    ring.push({ ...entry(5), time: new Date(clock.ms + 1).toISOString() });
+    expect(ring.recent({ limit: 5 })).toHaveLength(1);
+  });
+
 });

@@ -4,7 +4,7 @@ import type { EnvService } from '../../../../src/infrastructure/config/env.servi
 import { FakeClock } from '../../../support/fake-clock.js';
 
 const setup = (production: boolean) => {
-  const lines: string[] = [], ring = new LogRing(10), clock = new FakeClock();
+  const lines: string[] = [], clock = new FakeClock(), ring = new LogRing(clock, 10);
   const logger = new JsonLogger(clock, ring, { isProduction: production } as EnvService, (l) => lines.push(l));
   return { logger, lines, ring, clock };
 };
@@ -35,6 +35,12 @@ describe('JsonLogger', () => {
     const { logger, lines } = setup(false);
     logger.log({ event: 'signin', msg: 'signed in W', wallet: 'W' }, 'SignIn');
     expect(lines[0]).toBe('2036-10-08T12:00:00.000Z LOG   [SignIn] signed in W {"event":"signin","wallet":"W"}');
+  });
+
+  it('structured fields cannot overwrite the retention timestamp', () => {
+    const { logger, lines, clock } = setup(true);
+    logger.log({ msg: 'clock-owned', time: '9999-01-01T00:00:00.000Z' });
+    expect(JSON.parse(lines[0] ?? '').time).toBe(clock.now().toISOString());
   });
 
   it('every entry also lands in the ring (newest first)', () => {

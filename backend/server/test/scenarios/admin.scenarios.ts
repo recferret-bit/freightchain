@@ -1,3 +1,4 @@
+import { LOG_RETENTION_MS, LogRing } from '../../src/infrastructure/logging/log-ring.js';
 import { bindClient, newWallet, sign, type Rider } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
@@ -141,6 +142,17 @@ export function adminScenarios(h: () => Harness): void {
     sec(1); // the rider's late final batch re-judges the ride – the admin's decision stays
     await rider.agent.post(`/api/rides/${id}/batches`).send(recording(id, { seconds: 10, distance: 140, batchSeconds: 5 })[1]).expect(200);
     expect((await admin.agent.get(`/api/admin/rides/${id}`).expect(200)).body.verdict).toMatchObject({ status: 'verified', override: { by: ADMIN.address } });
+  });
+
+  it('the admin log endpoint omits 30-day-old entries and physically evicts them', async () => {
+    const ring = h().app.get(LogRing);
+    ring.push({ time: h().clock.now().toISOString(), level: 'warn', context: 'HTTP', msg: 'retention-http-fixture' });
+    const admin = await asAdmin();
+    expect((await admin.agent.get('/api/admin/logs?q=retention-http-fixture').expect(200)).body.entries).toHaveLength(1);
+    sec(LOG_RETENTION_MS / 1000);
+    const renewed = await asAdmin();
+    expect((await renewed.agent.get('/api/admin/logs?q=retention-http-fixture').expect(200)).body.entries).toEqual([]);
+    expect(JSON.stringify((ring as unknown as { items: unknown[] }).items)).not.toContain('retention-http-fixture');
   });
 
   /** a completed demo paid 1 h shift (60 s, 910 m) with NO recording – the machine rejects it ('no-recording') */
