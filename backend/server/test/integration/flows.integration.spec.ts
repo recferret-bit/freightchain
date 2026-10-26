@@ -1,3 +1,4 @@
+import { preseasonAttemptScenarios } from '../scenarios/preseason-attempt.scenarios.js';
 import { convoyCampaignScenarios } from '../scenarios/convoy-campaign.scenarios.js';
 import { TRAFFIC_PROOF_ENV, trafficProofScenarios } from '../scenarios/traffic-proof.scenarios.js';
 import { createHarness, type Harness } from '../support/harness.js';
@@ -79,6 +80,7 @@ for (const [name, env, scenarios] of [
   ['solana actions: one program-mode ticket', ACTIONS_PROGRAM_ENV, actionsBuyScenarios],
   ['referrals: a code, one referrer, a gift colour', {}, referralScenarios],
   ['durable Convoy and campaign', {}, convoyCampaignScenarios],
+  ['Pre-season attempt and Telegram activity', {}, preseasonAttemptScenarios],
   ['phone minigames: phone-sms on a 1h ride', MINIGAMES_ENV, minigameScenarios],
   ['http gaps: admin directory and signed changes', ADMIN_ENV, adminGapScenarios],
   ['http gaps: editor logout and signed writes', EDITOR_ENV, editorGapScenarios],

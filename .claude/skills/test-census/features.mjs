@@ -221,10 +221,10 @@ export const FEATURES = [
   {
     id: 'referrals', title: 'Referrals',
     server: /^(application\/(services\/referral|use-cases\/referrals\/|referral\/|airdrop\/)|domain\/referral\/|infrastructure\/social\/|infrastructure\/solana\/referral-emission\.)/,
-    client: /^(?:frontend\/)?client\/site\/(lobby-referral|referral)\.js$/,
+    client: /^(?:frontend\/)?client\/site\/(lobby-referral|referral|campaign|campaign-copy|lobby-campaign)\.js$/,
     routes: /^((GET|POST) \/api\/referrals|(GET|POST) \/api\/airdrop\/|PATCH \/api\/me\/privacy$)/,
     words: /referral|invite code/i,
-    e2e: ['e2e-referral.mjs', 'e2e-convoy-settlement.mjs'], skills: [],
+    e2e: ['e2e-referral.mjs', 'e2e-convoy-settlement.mjs', 'e2e-campaign.mjs'], skills: [],
   },
   {
     id: 'solana-pay', title: 'Solana Pay',

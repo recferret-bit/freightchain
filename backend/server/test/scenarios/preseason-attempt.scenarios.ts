@@ -12,6 +12,19 @@ import type { Harness } from '../support/harness.js';
 
 export function preseasonAttemptScenarios(h: () => Harness): void {
   const { login, anon } = bindClient(h);
+  beforeEach(() => h().reset());
+  it('Pre-season claim refuses a disabled event and creates no attempt', async () => {
+    const rider = await login();
+    await h().app.get(AirdropService).recordVerifiedRide(rider.address, 'free-2c');
+    await h().app.get(SettingsRepositoryPort).upsert('event_mode_enabled', 0);
+    expect((await rider.agent.post('/api/airdrop/preseason/claim-attempt').send({ acceptedRules: true }).expect(409)).body.code).toBe('event_closed');
+    expect(await h().app.get(PromoRepositoryPort).listUnspent(rider.address)).toEqual([]);
+  });
+  it('Telegram activity webhook is unavailable without a configured secret', async () => {
+    const absent = vi.spyOn(h().app.get(EnvService), 'telegramWebhookSecret', 'get').mockReturnValue(null);
+    try { await anon().post('/api/airdrop/telegram/webhook').send({ update_id: 11 }).expect(404); }
+    finally { absent.mockRestore(); }
+  });
   it('Pre-season grants one usable event ride after authenticated group participation, consent and task completion', async () => {
     const rider = await login(undefined, { offer: false }), other = await login();
     const svc = h().app.get(AirdropService), repo = h().app.get(AirdropRepositoryPort), settings = h().app.get(SettingsRepositoryPort), env = h().app.get(EnvService);
