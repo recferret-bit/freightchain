@@ -1,3 +1,4 @@
+import { trustConcurrencyScenarios } from '../support/trust-concurrency.js';
 import { convoyConcurrencyScenarios } from '../support/convoy-concurrency.js';
 import { CommandBus } from '@nestjs/cqrs';
 import { ReconcileStatsCommand } from '../../src/application/use-cases/stats/reconcile-stats/reconcile-stats.command.js';
@@ -422,6 +423,7 @@ describe('concurrency (PostgreSQL)', () => {
     expect(results.map((r) => r.status).every((s) => s === 200 || s === 409)).toBe(true); // a batch that beat /end is 200; after it, within the grace minute, 200 too
     expect(await prisma.rideBatch.count({ where: { rideId: ride.id } })).toBe(batches.length);
     expect((await a.agent.get(`/api/rides/${ride.id}`).expect(200)).body.verdict).toMatchObject({ status: 'verified' });
+    expect((await prisma.player.findUnique({ where: { wallet: a.address } }))?.trustScore).toBe(75);
   });
 
   it('a pool attention mark racing the re-judges of late batches: the verdict that stays has seen every batch AND keeps the mark', async () => {
@@ -800,6 +802,7 @@ describe('concurrency (PostgreSQL)', () => {
     }
   });
   convoyConcurrencyScenarios(() => harness);
+  trustConcurrencyScenarios(() => harness);
 
 });
 

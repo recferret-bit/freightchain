@@ -1,3 +1,4 @@
+import { GameSettingsService } from './game-settings.service.js';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { AdminProof } from '../../domain/admin/admin-proof.js';
 import { RideStatus } from '../../domain/rides/ride-status.js';
@@ -28,7 +29,7 @@ import { AirdropService } from '../airdrop/airdrop.service.js';
 import { ConvoyService } from '../referral/convoy.service.js';
 import { TelemetryConfigPort } from '../ports/telemetry/telemetry-config.port.js';
 import { classifyHumanness } from '../../domain/anticheat/humanness.js';
-import { applyTrust } from '../../domain/anticheat/trust-score.js';
+import { applyTrust, trustPolicy } from '../../domain/anticheat/trust-score.js';
 import { judgeWorldDigest } from '../../domain/shared/index.js';
 import { pauseVerdict, slowMotionVerdict } from '../../domain/rides/pause-bounds.js';
 import { HasherPort } from '../ports/shared/hasher.port.js';
@@ -93,6 +94,7 @@ export class VerdictService {
     @Optional() private readonly telemetry?: TelemetryConfigPort,
     @Optional() private readonly hasher?: HasherPort,
     @Optional() private readonly deflate?: DeflatePort,
+    @Optional() private readonly settings?: GameSettingsService,
   ) {}
 
   /** null = nothing to judge (completed shifts, ranked attempts with distance, or paid shifts that reached a TEN4 band). A verdict an admin decided is returned as is. */
@@ -288,7 +290,9 @@ export class VerdictService {
     }
     const player = await this.players.findByWalletForUpdate(ride.wallet, tx);
     if (player && existing?.status !== verdict.status && (verdict.status === 'verified' || verdict.status === 'rejected')) {
-      if (verdict.status === 'verified') player.setTrustScore(applyTrust(player.trustScore, 'verified'));
+      if (verdict.status === 'verified') {
+        if (ride.isInStatus(RideStatus.Completed) && ride.endedAt) player.awardVerifiedFinish(ride.endedAt, trustPolicy(await this.settings?.current(tx)));
+      }
       else { player.setTrustScore(applyTrust(player.trustScore, 'rejected')); player.noteRejected(); }
       await this.players.save(player, tx);
     }

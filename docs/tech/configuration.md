@@ -65,6 +65,10 @@ Table `player.GameSetting` (`key` text, `value` integer). The migration seeds th
 | `referral_free_rides_referrer` / `referral_free_rides_referee` / `referral_free_ride_weekly_cap` | 2 / 3 / 10 | The bonus, and how many of them one referrer can receive per window. |
 | `referral_referrer_part_bps` | 8000 | The referrer's part of a sponsored rider's referral slice (5001..10000). |
 | `referral_ride_cap_lamports` | 1000000000 | Per referrer, per pool. |
+| `trust_finish_points` | 15 | Points for a UTC day with a verified completed ride; duplicate days do not count. |
+| `trust_finish_days_per_week` | 2 | Maximum credited completion days per ISO week (0–7). |
+| `trust_finish_cap` | 100 | Ceiling for finish points; never lowers an existing higher score. |
+| `trust_social_cap` | 30 | Combined lifetime social points: Telegram 5, X 20; Discord 15 is supported by the domain rule but has no verifier yet. |
 | `referral_count_weekly_grant` | 1 | Whether a verified ranked weekly grant counts for Convoy at referee trust 100; 0 disables it. |
 | `referral_donation_share_bps` / `referral_donation_cap_lamports` | 1000 / 500000000 | Spectator-tip share, and the lifetime cap of that share for one pair. |
 

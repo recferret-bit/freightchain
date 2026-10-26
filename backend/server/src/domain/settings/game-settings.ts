@@ -12,6 +12,10 @@ export const SETTING_KEYS = [
   'referral_free_ride_window_days', 'referral_free_rides_referrer', 'referral_free_rides_referee', 'referral_free_ride_weekly_cap',
   'referral_referrer_part_bps', 'referral_ride_cap_lamports', 'referral_donation_share_bps', 'referral_donation_cap_lamports',
   'referral_count_weekly_grant',
+  'trust_finish_points',
+  'trust_finish_days_per_week',
+  'trust_finish_cap',
+  'trust_social_cap',
 ] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 
@@ -43,6 +47,10 @@ export const SETTING_DEFAULTS: Record<SettingKey, number> = {
   referral_donation_share_bps: 1000,
   referral_donation_cap_lamports: 500_000_000,
   referral_count_weekly_grant: 1,
+  trust_finish_points: 15,
+  trust_finish_days_per_week: 2,
+  trust_finish_cap: 100,
+  trust_social_cap: 30,
 };
 
 /** Per key. `GameSetting.value` is a signed 32-bit int, so a lamport cap stops at 2e9. */
@@ -74,6 +82,10 @@ export const SETTING_BOUNDS: Record<SettingKey, { min: number; max: number }> = 
   referral_donation_share_bps: { min: 0, max: 10_000 },
   referral_donation_cap_lamports: { min: 0, max: 2_000_000_000 },
   referral_count_weekly_grant: { min: 0, max: 1 },
+  trust_finish_points: { min: 0, max: 100 },
+  trust_finish_days_per_week: { min: 0, max: 7 },
+  trust_finish_cap: { min: 0, max: 100 },
+  trust_social_cap: { min: 0, max: 100 },
 };
 
 export const SETTING_MIN = 0;
@@ -112,6 +124,10 @@ export interface GameSettings {
   referralDonationShareBps: number;
   referralDonationCapLamports: number;
   referralCountWeeklyGrant: number;
+  trustFinishPoints: number;
+  trustFinishDaysPerWeek: number;
+  trustFinishCap: number;
+  trustSocialCap: number;
 }
 
 const CAMEL: Record<SettingKey, keyof GameSettings> = {
@@ -142,6 +158,10 @@ const CAMEL: Record<SettingKey, keyof GameSettings> = {
   referral_donation_share_bps: 'referralDonationShareBps',
   referral_donation_cap_lamports: 'referralDonationCapLamports',
   referral_count_weekly_grant: 'referralCountWeeklyGrant',
+  trust_finish_points: 'trustFinishPoints',
+  trust_finish_days_per_week: 'trustFinishDaysPerWeek',
+  trust_finish_cap: 'trustFinishCap',
+  trust_social_cap: 'trustSocialCap',
 };
 
 export const isSettingKey = (key: string): key is SettingKey => (SETTING_KEYS as readonly string[]).includes(key);

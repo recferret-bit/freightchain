@@ -114,7 +114,7 @@ describe('wave 5 humanness, trust, and terms', () => {
 
   it('starts trust at 60, holds a grant for 48 hours, and refuses stale terms', () => {
     expect(TRUST_INITIAL).toBe(60);
-    expect(applyTrust(TRUST_INITIAL, 'verified')).toBe(65);
+    expect(applyTrust(TRUST_INITIAL, 'verified')).toBe(75);
     expect(applyTrust(10, 'rejected')).toBe(0);
     const heldAt = new Date('2026-10-01T00:00:00Z');
     const early = new Date(heldAt.getTime() + 47 * 3600 * 1000);

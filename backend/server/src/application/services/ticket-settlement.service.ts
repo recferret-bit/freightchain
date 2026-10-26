@@ -58,7 +58,7 @@ export class TicketSettlementService {
     const round = await this.rounds.ensureRound(); // outside the lock: it may insert
     return withVersionRetry(() => this.transactions.run(async (tx): Promise<SettleOutcome> => {
       const now = this.clock.now();
-      await this.players.findByWalletForUpdate(e.buyer, tx);
+      const player = await this.players.findByWalletForUpdate(e.buyer, tx);
       const pool = await this.pools.findByIdForUpdate(e.poolId, tx);
       if (!pool) return { outcome: 'unmatched', detail: `pool ${e.poolId} is not registered` };
       const done = await this.orders.findBySettlement(e.signature, e.index, tx);
@@ -87,6 +87,7 @@ export class TicketSettlementService {
         await this.tickets.appendGrant({ wallet: e.buyer, poolId: e.poolId, delta: -voided, source: 'void', ref: `pool ${e.poolId}`, at: now }, tx);
       }
       const saved = await this.tickets.save(ticket, tx);
+      if (player && e.lamports > 0 && e.qty > 0) { player.setTrustScore(100); await this.players.save(player, tx); } // verified paid acquisition; replayed events return above
       return why === null ? { outcome: 'settled', order, balance: saved.balance } : { outcome: 'applied', order, balance: saved.balance, detail: why };
     }));
   }

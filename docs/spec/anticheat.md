@@ -783,7 +783,7 @@ Today is 17.10. Until the devnet launch is ≈ 3 weeks (registration on 02.11, t
 
 > Status in the code ([`PRODUCT.md`](PRODUCT.md)): on `main`, the check "one person, many wallets" is not enabled as an automatic blocker; the layers below set the target layered defense against sybil farms going after pool prizes, free attempts, referrals, and the TEN4 airdrop ([`../plan/MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §8, §10, §12).
 
-The 25 October login fix removes sign-in trust points and the accompanying player save; repeated authentication cannot raise trust or overwrite a concurrent score change. The remaining Appendix D point table and signals are still targets.
+The 25 October login fix removes sign-in trust points and the accompanying player save; repeated authentication cannot raise trust or overwrite a concurrent score change. The local point table now awards +15 per distinct verified completion day, at most two days per ISO week, with persisted historical days preventing rejudge farming. First Telegram/X bindings grant +5/+20 within a shared 30-point social cap. Confirmed paid program-ticket acquisition raises trust to 100 once per unique chain event. The four numeric finish/social caps are signed admin settings. Discord verification, SGT ownership and network/funding signals remain targets.
 
 ### D.1 The layered model (8 layers)
 1. **Network signals (`player.SignIn.ipHash`, the ASN — with no `User-Agent` and no browser fingerprint)**:

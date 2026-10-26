@@ -1,4 +1,5 @@
 import { PoolRepositoryPort } from '../../src/application/ports/economy/pool.repository.port.js';
+import { PlayerRepositoryPort } from '../../src/application/ports/players/player.repository.port.js';
 import { TicketSettlementService, type PurchaseEvent } from '../../src/application/services/ticket-settlement.service.js';
 import type { PoolProps } from '../../src/domain/economy/pool.types.js';
 import { bindClient, type Rider } from '../support/client.js';
@@ -76,6 +77,7 @@ export function ticketOrderScenarios(h: () => Harness): void {
     expect(h().poolChain.built[0]).toMatchObject({ kind: 'buy', input: { payer: w.address, orderId: order.id, qty: 2 } });
     const sig = h().poolChain.addEvent('TicketBought', { poolId: 1, buyer: w.address, qty: 2, lamports: 100_000_000, orderId: order.id, ticketsSold: 2, activated: false });
     expect((await w.agent.post(`/api/tickets/orders/${order.id}/confirm`).send({ signature: sig }).expect(200)).body).toMatchObject({ status: 'paid', order: { status: 'paid' } });
+    expect((await h().app.get(PlayerRepositoryPort).findByWallet(w.address))?.trustScore).toBe(100);
     await w.agent.get(`/api/pools/1/refund`).expect(409); // still open, before its deadline
     const failed = h().poolChain.addEvent('PoolFailed', { poolId: 1, ticketsSold: 2 });
     expect((await w.agent.post('/api/chain/settle').send({ signature: failed }).expect(200)).body).toMatchObject({ status: 'done', events: [{ kind: 'PoolFailed', outcome: 'applied' }] });

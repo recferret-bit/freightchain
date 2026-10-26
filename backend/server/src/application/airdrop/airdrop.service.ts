@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { applyTrust, grantReleasable } from '../../domain/anticheat/trust-score.js';
+import { GameSettingsService } from '../services/game-settings.service.js';
+import { Injectable, Optional } from '@nestjs/common';
+import { grantReleasable, trustPolicy, type TrustSocial } from '../../domain/anticheat/trust-score.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../../domain/shared/errors.js';
 import { PlayerRepositoryPort } from '../ports/players/player.repository.port.js';
 import { ClockPort } from '../ports/shared/clock.port.js';
@@ -41,6 +42,7 @@ export class AirdropService {
     private readonly players: PlayerRepositoryPort,
     private readonly tx: TransactionPort,
     private readonly clock: ClockPort,
+    @Optional() private readonly settings?: GameSettingsService,
   ) { this.turnstileEnabled = turnstile.required; }
 
   async status(wallet: string): Promise<AirdropStatusDto> {
@@ -69,7 +71,7 @@ export class AirdropService {
       this.assertSocial(await this.repo.claimTelegram(wallet, telegramUserId, tx));
       const saved = await this.must(wallet, tx);
       saved.telegramMember = true;
-      if (!row.telegramUserId) await this.noteSocial(wallet, tx);
+      if (!row.telegramUserId) await this.noteSocial(wallet, 'telegram', tx);
       if (this.turnstileEnabled) saved.turnstileOk = true;
       await this.repo.save(saved, tx);
       return this.view(wallet, saved);
@@ -92,7 +94,7 @@ export class AirdropService {
       const row = await this.requireRide(wallet, tx);
       if (!post || post.userId !== profile.userId || !xQuoteOk(post.text, row.code)) throw new BadRequestError('quote is missing the verification code', 'x_quote_missing');
       this.assertSocial(await this.repo.claimX(wallet, profile.userId, tx));
-      if (!row.xUserId) await this.noteSocial(wallet, tx);
+      if (!row.xUserId) await this.noteSocial(wallet, 'x', tx);
       const saved = await this.must(wallet, tx);
       saved.xHandle = profile.handle;
       saved.xAgeOk = true;
@@ -153,11 +155,10 @@ export class AirdropService {
     if (!token || !(await this.turnstile.verify(token))) throw new BadRequestError('turnstile check failed', 'turnstile_failed');
   }
 
-  private async noteSocial(wallet: string, tx: TransactionHandle): Promise<void> {
+  private async noteSocial(wallet: string, provider: TrustSocial, tx: TransactionHandle): Promise<void> {
     const player = await this.players.findByWalletForUpdate(wallet, tx);
     if (!player) return;
-    player.setTrustScore(applyTrust(player.trustScore, 'social'));
-    await this.players.save(player, tx);
+    if (player.awardSocial(provider, trustPolicy(await this.settings?.current(tx)))) await this.players.save(player, tx);
   }
 
   private async lock(wallet: string, tx: TransactionHandle): Promise<void> {

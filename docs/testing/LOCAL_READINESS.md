@@ -83,6 +83,14 @@ Convoy now qualifies milestones when the last required social check succeeds, wi
 
 The main acceptance tail passed Rust, production-mode local smoke, escrow, full TEN4/recovery/Convoy, NFT and 28 of 30 Chrome suites. Lobby lacked an eligible public ticker fixture; weekly assumed the real date was inside ranked entry. Corrected isolated `lobby weekly` passed (`/private/tmp/fc-lobby-weekly-accepted.log`), including public ticker, zero-minimum DOM and exact grant consumption. Lobby synthetic progress is paced by the game's driven clock; it is not full-length honest-drive evidence. The weekly test uses a test-only Wednesday ClockPort; production schedule remains unchanged. Screenshot review found a separate mobile landing clipping issue: intrinsic grid sizing and a non-wrapping wallet CTA exceeded narrow screens. The fix passed real Chrome at 320px and 390px with explicit content-clipping assertions; screenshots were inspected (`/private/tmp/fc-mobile-landing.log`). The full merged gate and the remaining implementation/manual rows remain open.
 
+### 26 October trust follow-up
+
+Verified completions now award 15 points on at most two distinct UTC days per ISO week. Telegram awards 5 and X awards 20 once per provider, under the shared 30-point social cap. Confirmed positive paid-ticket acquisitions set trust to 100; replayed receipts cannot restore a later-reduced score. Finish/social history persists with the player under its row lock, including prior weeks, so retries and rejudging cannot replenish the allowance. Four signed-admin settings control finish points, days/week, finish cap and social cap. Existing historical awards are not backfilled.
+
+Root checks passed (460 server files / 2,656 tests), PostgreSQL passed (60 files / 639 tests), and block 3 passed (153 tests). Evidence: `/private/tmp/fc-trust-root.log`, `/private/tmp/fc-trust-integration.log`, `/private/tmp/fc-trust-block3.log`. The shared paid-ticket confirmation scenario also asserts persisted trust 100. SGT, Discord verification and ASN/funding signals remain open.
+
+The merged local gate reached the production smoke after passing fast checks, all three code E2E blocks and Rust, but Docker timed out fetching its Dockerfile frontend twice. A separate public frontend pull subsequently succeeded. This infrastructure failure does not establish a current container/chain/Chrome acceptance pass (`/private/tmp/fc-final-local-gate.log`, `/private/tmp/fc-final-local-tail.log`).
+
 ## Feature acceptance matrix
 
 **Partial** means existing tests exercise part of the feature but the complete acceptance row is open. **Incomplete** means a required implementation is missing. **Untested** means the required runtime evidence is absent. **Pending** means this baseline has not finished. None of those labels is a complete feature pass.
@@ -109,7 +117,7 @@ Commands below are reproducible entrypoints; their presence is not a claim that 
 | Full-length 1h ride and enforced result | Normal-speed Chrome ride against local program-mode API | Untested: short/accelerated tests do not prove this journey |
 | Optional telemetry v2.1 modes | Server protocol tests and `block3` | Partial: defaults remain off; optional helper checks are not a 30 Hz live judge |
 | Humanness, trace retention and clustering | `block3`, server unit/integration | Partial: document accepted non-rejects and actual persisted trace/job behavior |
-| TrustScore and anti-sybil | Server trust/Convoy/airdrop tests; anticheat Appendix D | Incomplete: current score starts at 60 with reward holds; ASN/funding detection and the target point table are absent. Browser fingerprinting remains rejected |
+| TrustScore and anti-sybil | Server trust/Convoy/airdrop tests; anticheat Appendix D | Partial: verified finishes award 15 on at most two distinct UTC days per ISO week; one-time Telegram/X points share a 30-point social cap; verified paid ticket acquisition sets 100. Persistence, duplicate and concurrent awards pass. SGT, Discord verification and ASN/funding signals remain open. Browser fingerprinting remains rejected |
 | Appeals and admin rejudge | Server appeal/scoring scenarios; `e2e admin verified-deep` | Partial: signed override/rejudge browser checks and server scenarios passed; integrated open-appeal payout hold needs explicit evidence |
 | Weekly 1h grant and promo precedence | `e2e weekly`, server weekly-ticket tests | Passed browser grant/spend/promo precedence and database assertions; full interval rollover UI remains separate |
 | Promo create/redeem/caps/expiry | `e2e promo wallet wallet-split`; server abuse scenarios | Partial: signed-admin creation/disable and browser redemption passed; full caps/expiry/abuse acceptance remains open |

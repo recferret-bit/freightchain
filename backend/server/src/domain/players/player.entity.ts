@@ -1,4 +1,4 @@
-import { applyTrust, TRUST_INITIAL, type TrustEvent } from '../anticheat/trust-score.js';
+import { applyTrust, TRUST_INITIAL, emptyTrustActivity, finishTrust, socialTrust, trustPolicy, type TrustActivity, type TrustPolicy, type TrustSocial, type TrustEvent } from '../anticheat/trust-score.js';
 import { FREE_RIDES_HARD_MAX } from '../settings/game-settings.js';
 import { BadRequestError, ConflictError } from '../shared/errors.js';
 import { utcDay } from '../shared/time.js';
@@ -24,6 +24,7 @@ export interface PlayerProps {
   termsVersion?: number | null;
   privacyVersion?: number | null;
   rejectedRides?: number;
+  trustActivity?: TrustActivity;
 }
 
 /** A rider, identified by the Solana wallet that signed in. Owns the free-ride credits. */
@@ -65,7 +66,7 @@ export class Player {
   get privacyVersion(): number | null { return this.props.privacyVersion === undefined ? 1 : this.props.privacyVersion; }
   get rejectedRides(): number { return this.props.rejectedRides ?? 0; }
 
-  /** Login, a verified ride, a rejected ride, or a social bind. No device fingerprint. */
+  /** Raw score adjustment. Verified finishes/social bindings use the tracked methods below. */
   applyTrustEvent(event: TrustEvent): void {
     this.setTrustScore(applyTrust(this.trustScore, event));
   }
@@ -73,6 +74,20 @@ export class Player {
   /** Stores the score `applyTrust` already computed. Verdict and social-bind callers own the delta. */
   setTrustScore(score: number): void {
     this.props.trustScore = score;
+  }
+
+  awardVerifiedFinish(endedAt: Date, policy: TrustPolicy = trustPolicy()): boolean {
+    const award = finishTrust(this.trustScore, this.props.trustActivity ?? emptyTrustActivity(), endedAt, policy);
+    if (!award) return false;
+    this.props.trustScore = award.score; this.props.trustActivity = award.activity;
+    return true;
+  }
+
+  awardSocial(provider: TrustSocial, policy: TrustPolicy = trustPolicy()): boolean {
+    const award = socialTrust(this.trustScore, this.props.trustActivity ?? emptyTrustActivity(), provider, policy);
+    if (!award) return false;
+    this.props.trustScore = award.score; this.props.trustActivity = award.activity;
+    return true;
   }
 
   noteRejected(): void { this.props.rejectedRides = this.rejectedRides + 1; }

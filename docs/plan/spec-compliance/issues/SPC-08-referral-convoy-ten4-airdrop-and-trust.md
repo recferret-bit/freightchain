@@ -112,7 +112,7 @@ Implements the Target Convoy Referral rework ([`docs/spec/referral.md`](../../..
 
 ### `SPC-08.5` — Implement Anti-Sybil `TrustScore` service (ASN, device fingerprint, funding cluster, humanness score, `<50` payout block, 48h reward hold queue)
 
-- **Status:** `[~] In Progress` — reopened on 24 October. `trustScore` starts at 60 and the 48-hour ledger hold checks both wallets remain at least 50 with no rejected rides. Appendix D's accepted score updates, ASN/funding signals and on-chain release evidence are missing. Browser fingerprinting remains rejected; reopening does not authorize adding it.
+- **Status:** `[~] In Progress` — reopened on 24 October. Convoy's 48-hour hold and on-chain release/recovery pass locally. The 26 October follow-up implements persisted finish-day awards (+15, two UTC days per ISO week), provider-specific one-time social awards (shared 30-point cap), and verified paid-ticket trust 100. Concurrent PostgreSQL awards and duplicate/rejudge protection pass. SGT, Discord verification and ASN/funding signals remain open. Browser fingerprinting remains rejected; reopening does not authorize adding it.
 - **Spec Rules:** `docs/spec/anticheat.md` Appendix D, `REF-M-15`, `docs/plan/MASTER_PLAN.md` §8
 - **Paired Plan 1 Tasks:** `E2E-05.7`, `E2E-05.8`, `E2E-07.8`
 - **Target Files:**

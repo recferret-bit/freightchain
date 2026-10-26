@@ -325,7 +325,7 @@ describe('cheat catalog shipped outcomes', () => {
 
   it('[CHEAT-#43] applyTrust is pure', () => {
     const score = 60;
-    expect(applyTrust(score, 'verified')).toBe(65);
+    expect(applyTrust(score, 'verified')).toBe(75);
     expect(score).toBe(60);
     expect(applyTrust(60, 'verified')).toBe(applyTrust(60, 'verified'));
   });

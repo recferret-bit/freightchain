@@ -36,6 +36,9 @@ describe('VerdictService', () => {
     expect(ride.holeSaltCommit).toBeNull();
     expect((await ctx.verdictRepo.findByRide(ride.id))?.snapshot()).toEqual(v?.snapshot());
     expect(ctx.db.honkMints.size).toBe(0); // a free ride mints no HONK
+    expect((await ctx.players.findByWallet('w'))?.trustScore).toBe(75);
+    await ctx.verdicts.judge(ride.id);
+    expect((await ctx.players.findByWallet('w'))?.trustScore).toBe(75);
   });
 
   it('shadow telemetry flags a fourth pause and does not reject for it', async () => {

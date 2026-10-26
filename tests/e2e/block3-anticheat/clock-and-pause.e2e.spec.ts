@@ -116,7 +116,7 @@ describe('clock and pause', () => {
 
   it('AC-R7 applyTrust reads a score and an event name, not a fingerprint', () => {
     expect(applyTrust.length).toBe(2);
-    expect(applyTrust(60, 'verified')).toBe(65);
+    expect(applyTrust(60, 'verified')).toBe(75);
   });
 
   it('AC-R8 TRUST_INITIAL is 60', () => {

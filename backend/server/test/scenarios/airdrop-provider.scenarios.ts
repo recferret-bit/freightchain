@@ -1,3 +1,4 @@
+import { PlayerRepositoryPort } from '../../src/application/ports/players/player.repository.port.js';
 import { createHash, createHmac } from 'node:crypto';
 import { ConvoyService } from '../../src/application/referral/convoy.service.js';
 import { ConvoyRepositoryPort } from '../../src/application/referral/convoy.repository.port.js';
@@ -54,12 +55,14 @@ export function airdropProviderScenarios(h: () => Harness): void {
       expect(fetchMock.mock.calls.some(([url]) => url.startsWith('https://api.telegram.org/'))).toBe(false);
       expect((await post(rider.agent, { proof }).expect(200)).body.telegram).toEqual({ bound: true, member: true });
       expect((await post(other.agent, { proof }).expect(409)).body.code).toBe('social_account_already_bound');
+      expect((await h().app.get(PlayerRepositoryPort).findByWallet(rider.address))?.trustScore).toBe(65);
       const xBody = { handle: 'ada', postId: '55', turnstileToken: 'fixture' };
       expect((await other.agent.post('/api/airdrop/verify-x').send(xBody).expect(400)).body.code).toBe('x_quote_missing');
       expect((await rider.agent.post('/api/airdrop/verify-x').send(xBody).expect(200)).body.x.bound).toBe(true);
       expect(await ledger.findLedger(`convoy:m1:${rider.address}`)).toMatchObject({ chainState: 'held', amount: 100, at: h().clock.now() });
       await rider.agent.post('/api/airdrop/verify-x').send(xBody).expect(200);
       expect((await ledger.ledger()).filter(r => r.unit === 'ten4')).toHaveLength(1);
+      expect((await h().app.get(PlayerRepositoryPort).findByWallet(rider.address))?.trustScore).toBe(85);
       xCode = `FC-${other.address}`;
       expect((await other.agent.post('/api/airdrop/verify-x').send(xBody).expect(409)).body.code).toBe('social_account_already_bound');
       expect((await rider.agent.get('/api/airdrop/status').expect(200)).body).toMatchObject({ code: `FC-${rider.address}`, telegram: { bound: true }, x: { bound: true }, turnstile: { required: true, passed: true } });

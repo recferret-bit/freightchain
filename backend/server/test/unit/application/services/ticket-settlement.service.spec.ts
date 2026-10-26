@@ -38,8 +38,11 @@ describe('TicketSettlementService', () => {
       const { ctx, svc, bought, order } = await setup();
       const o = await order();
       await svc.settlePurchase(bought({ orderId: o.id }));
+      const player = (await ctx.players.findByWallet(BUYER))!; expect(player.trustScore).toBe(100);
+      player.setTrustScore(40); await ctx.players.save(player);
       expect(await svc.settlePurchase(bought({ orderId: o.id }))).toMatchObject({ outcome: 'duplicate', order: { id: o.id } });
       expect((await ctx.tickets.find(BUYER, 1))?.balance).toBe(2);
+      expect((await ctx.players.findByWallet(BUYER))?.trustScore).toBe(40);
     });
 
     it('money in = tickets out: no order, a mismatching one or one already paid → a paid order is adopted; the named order stays as it was', async () => {
