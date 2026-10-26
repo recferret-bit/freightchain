@@ -2,17 +2,26 @@
 // metadata a blink client needs (Origin https://dial.to, preflights, error bodies, discovery on every host). dial.to itself is paused and the Blinks
 // Inspector is gone (2026-10-12), so this is how a blink is tested. The client's default proxy (proxy.dial.to) is down too: it talks to the API directly.
 //   Throwaway server (signs a fresh wallet in, accepts the 18+/loss terms, starts a free ride; POSTs every button, the buy too):
-//     BASE=http://localhost:3111 node scripts/e2e-blinks.mjs        (bash .claude/skills/run-tests/e2e.sh blinks runs it in program mode with a selling pool)
+//     node scripts/blinks-localnet.mjs (also run by the full Chrome runner; fresh validator, pool, API and database)
 //   Production, read-only (no sign-in, no buy POST – a buy would create an order; link buttons only answer a URL):
 //     BASE=https://freightchain.fun READONLY=1 [RIDE=<id>] [HOSTS=https://ride.freightchain.fun,https://www.freightchain.fun] node scripts/e2e-blinks.mjs
 // Then our own blink client, /blink.html, in headless Chrome (NO_CHROME=1 skips it; CHROME_PORT, SHOTS): both cards render, a link button opens its
-// page, and (not read-only) the buy is handed to a stub wallet and the card chains to its completed state. Screenshots in $TMPDIR/fc-blink-shots.
+// page, and (not read-only) a scratch wallet signs and broadcasts the returned buy, then the watcher credits it once. Screenshots in $TMPDIR/fc-blink-shots.
 // blinks-core 0.20.7 (+ nanoid) is fetched once from the npm registry, checked against its pinned sha512 and cached in $TMPDIR – not a dependency.
 import { createHash } from 'node:crypto'; import { execFileSync } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
-import { Transaction } from '@solana/web3.js'; import nacl from 'tweetnacl'; import bs58 from 'bs58';
+import { Connection, Keypair, SystemProgram, Transaction } from '@solana/web3.js'; import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
 
 const BASE = (process.env.BASE || 'http://localhost:3111').replace(/\/$/, ''), READONLY = process.env.READONLY === '1';
+const RPC = process.env.RPC;
+if (!READONLY && (!RPC || new URL(RPC).hostname !== '127.0.0.1' || !process.env.FUNDER_KEYPAIR)) throw new Error('mutating Blink acceptance requires the scratch blinks-localnet.mjs runner');
+const connection = RPC ? new Connection(RPC, 'confirmed') : null;
+let walletKey, sessionCookie;
+async function untilNode(fn, ms = 30000) { for (let i = 0; i < ms / 250; i++) { const value = await fn(); if (value) return value; await sleep(250); } return null; }
+async function confirmation(signature) {
+  return untilNode(async () => { const st = (await connection.getSignatureStatuses([signature])).value[0]; if (st?.err) throw new Error(JSON.stringify(st.err)); return ['confirmed', 'finalized'].includes(st?.confirmationStatus); });
+}
+const myTicket = async () => ((await (await fetch(`${BASE}/api/me`, { headers: { cookie: sessionCookie } })).json()).tickets || []).find(t => t.poolId === Number(process.env.POOL_ID));
 const HOSTS = (process.env.HOSTS || '').split(',').map(h => h.trim().replace(/\/$/, '')).filter(Boolean);
 const DEVNET = 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1', MEMO = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', DIAL = 'https://dial.to';
 const PKGS = [
@@ -106,7 +115,7 @@ async function card(core, siteUrl, expectApi, account) {
       check('  no memo instruction carries a non-signer (Memo v2 refuses the whole transaction)', tx.instructions.filter(i => i.programId.toBase58() === MEMO).every(m => m.keys.every(k => k.isSigner)));
       check('  a message for the user', typeof res.message === 'string' && res.message.length > 0, res.message);
       const next = await blink.chain(res.links.next, { signature: 'sig', account });
-      check('  after it lands the card chains to a completed state', next?.type === 'completed', next?.title);
+      check('  the declared next-card response is a completed state', next?.type === 'completed', next?.title);
     }
   }
 }
@@ -123,7 +132,7 @@ async function errors(origin) {
   }
 }
 
-/** /blink.html in real Chrome. The wallet is a stub that records what it was asked to sign; window.open records instead of opening. */
+/** Real Chrome with a scratch signing wallet and native RPC; window.open records external navigation. */
 async function page(account, ride) {
   console.log(`\n▸ ${BASE}/blink.html in headless Chrome`);
   const has = await fetch(`${BASE}/blink.html`).then(r => r.ok, () => false);
@@ -133,7 +142,17 @@ async function page(account, ride) {
     window.__opened = []; window.open = u => { window.__opened.push(u); return null; };
     const pk = { toString: () => ${JSON.stringify(account)}, toBase58: () => ${JSON.stringify(account)} };
     window.phantom = { solana: { isPhantom: true, publicKey: pk, connect: async () => ({ publicKey: pk }),
-      signAndSendTransaction: async tx => { window.__signed = { feePayer: tx.feePayer?.toBase58?.(), ixs: tx.instructions.length }; return { signature: '5'.repeat(88) }; } } };
+      signAndSendTransaction: async tx => {
+        if (window.__rejectNext !== false) { window.__rejectNext = false; throw Object.assign(new Error('Wallet rejected the transaction'), { code: 4001 }); }
+        const SECRET = ${JSON.stringify(walletKey ? [...walletKey.secretKey] : [])}, RPC = ${JSON.stringify(RPC || '')};
+        tx.partialSign(window.solanaWeb3.Keypair.fromSecretKey(Uint8Array.from(SECRET)));
+        let bytes = ''; for (const byte of tx.serialize()) bytes += String.fromCharCode(byte);
+        const raw = btoa(bytes);
+        const call = async (method, params) => { const r = await (await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })).json(); if (r.error) throw new Error(r.error.message); return r.result; };
+        const signature = await call('sendTransaction', [raw, { encoding: 'base64', preflightCommitment: 'confirmed' }]);
+        for (let i = 0; i < 120; i++) { const st = (await call('getSignatureStatuses', [[signature]])).value[0]; if (st?.err) throw new Error(JSON.stringify(st.err)); if (['confirmed', 'finalized'].includes(st?.confirmationStatus)) { window.__signed = { feePayer: tx.feePayer.toBase58(), ixs: tx.instructions.length, signature, raw }; return { signature }; } await new Promise(resolve => setTimeout(resolve, 250)); }
+        throw new Error('local transaction confirmation timed out');
+      } } };
     window.__fcDevWallet = window.phantom.solana;` });   // CONNECT opens the picker even for one wallet; the dev wallet skips it
   const shot = async name => { await t.ev(`document.querySelector('.blink .body')?.scrollIntoView({ block: 'center' })`); await sleep(150); await t.shot(name); };   // the buttons sit below the square icon
   const until = async (expr, ms = 15000) => { for (let i = 0; i < ms / 200; i++) { const v = await t.ev(expr); if (v) return v; await sleep(200); } return null; };
@@ -150,10 +169,23 @@ async function page(account, ride) {
   await shot('blink-shift');
   check('  "Drive free" opens the site', await click('Drive free') && (await until(`window.__opened[0]`)) === `${BASE}/`, await t.ev('JSON.stringify(window.__opened)'));
   const buy = labels.find(l => l.startsWith('Buy '));
+  if (!READONLY) check('  the scratch pool exposes a buy action', !!buy);
   if (buy && !READONLY) {
-    check(`  "${buy}" hands one transaction to the wallet, fee payer = the account`, await click(buy) && (await until('window.__signed?.feePayer', 30000)) === account, await t.ev('JSON.stringify(window.__signed)'));
+    check('  wallet rejection remains visible and leaves the buy retryable', await click(buy) && !!await until(`document.querySelector('[role=status]')?.textContent?.includes('Wallet rejected') && ![...document.querySelectorAll('.blink button')].find(b=>b.textContent.startsWith('Buy '))?.disabled`, 15000));
+    check('  a rejected wallet request credits no ticket', !(await myTicket()));
+    check(`  "${buy}" signs and broadcasts the returned transaction`, await click(buy) && (await until('window.__signed?.feePayer', 30000)) === account);
+    const signed = await t.ev('window.__signed');
     check('  then the card chains to its completed state', (await until(`document.querySelector('.blink h1')?.textContent?.startsWith('Sign and send') && document.querySelector('.blink h1').textContent`, 20000)) !== null);
-    check('  and keeps the explorer link of what was sent', /explorer\.solana\.com\/tx\/5{88}\?cluster=devnet/.test(await t.ev(`document.querySelector('.blink a[href*="explorer"]')?.href ?? ''`)));
+    check('  explorer link contains the actual confirmed signature', (await t.ev(`document.querySelector('.blink a[href*="explorer"]')?.href ?? ''`)) === `https://explorer.solana.com/tx/${signed?.signature}?cluster=devnet`);
+    check('  the real transaction confirmed without program error', !!signed?.signature && !!await confirmation(signed.signature));
+    const credited = await untilNode(async () => { const ticket = await myTicket(); return ticket?.bought === 1 && ticket.balance === 1 && ticket; });
+    check('  watcher credits exactly one Blink ticket without a confirm call', !!credited, JSON.stringify(credited));
+    const receipt = await connection.getTransaction(signed.signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 });
+    const rent = await connection.getMinimumBalanceForRentExemption(87);
+    check('  Blink wallet pays exactly ticket price, its own rent and network fee', receipt?.meta?.preBalances[0] - receipt?.meta?.postBalances[0] === 50000000 + rent + receipt?.meta?.fee);
+    for (let i = 0; i < 2; i++) { const r = await fetch(`${BASE}/api/chain/settle`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: sessionCookie }, body: JSON.stringify({ signature: signed.signature }) }); check(`  repeated settlement ${i + 1} succeeds`, r.ok); }
+    const duplicate = await myTicket(); check('  repeated settlement leaves one purchased ticket', duplicate?.bought === 1 && duplicate.balance === 1, JSON.stringify(duplicate));
+    console.log(`  confirmed local Blink signature: ${signed.signature}`);
     await shot('blink-bought');
   }
   for (const r of rules.filter(x => !['/', '/r/**', '/api/actions/**'].includes(x.pathPattern) && !/[*]/.test(x.pathPattern))) {
@@ -176,10 +208,14 @@ async function page(account, ride) {
 
 async function signUp() {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
+  walletKey = Keypair.fromSecretKey(kp.secretKey);
+  const funder = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(process.env.FUNDER_KEYPAIR))));
+  const funding = new Transaction({ feePayer: funder.publicKey, ...await connection.getLatestBlockhash() }).add(SystemProgram.transfer({ fromPubkey: funder.publicKey, toPubkey: walletKey.publicKey, lamports: 1e9 })); funding.sign(funder);
+  if (!await confirmation(await connection.sendRawTransaction(funding.serialize()))) throw new Error('scratch wallet funding did not confirm');
   const post = (p, b, cookie, method = 'POST') => fetch(`${BASE}/api/${p}`, { method, headers: { 'content-type': 'application/json', ...(cookie && { cookie }) }, body: JSON.stringify(b) });
   const { message } = await (await post('auth/nonce', { wallet })).json();
   const v = await post('auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(message), kp.secretKey)) });
-  const cookie = v.headers.get('set-cookie').split(';')[0];
+  const cookie = v.headers.get('set-cookie').split(';')[0]; sessionCookie = cookie;
   if (!(await post('profile/agreements', { age18: true, loss: true }, cookie, 'PUT')).ok) throw new Error('could not accept the terms');
   const ride = await (await post('rides', { tier: 'free' }, cookie)).json();
   return { account: wallet, ride: ride.id };
