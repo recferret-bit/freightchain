@@ -311,7 +311,7 @@ export const FEATURES = [
     client: /^(?:frontend\/)?(?:landing\/src\/(main|format|dash-live|dash-scenes|anchor|boards|chain-scenes|pitchdeck)\.js$|landing\/src\/pitchdeck\/|client\/site\/(effects|ui|qr)\.js$)/,
     routes: null,
     tests: /^(?:frontend\/)?landing\/test\/(page|budget|format|dash-scenes|hero-pool|pitchdeck-analytics|pitchdeck-coins|pitchdeck-tilt|seo|split-copy|chain-cards|pools|promos)\.test\.js$/,
-    e2e: ['e2e-wallet.mjs', 'e2e-replay.mjs', 'e2e-live-board.mjs', 'e2e-landing.mjs'], skills: ['run-tests'],
+    e2e: ['e2e-wallet.mjs', 'e2e-replay.mjs', 'e2e-live-board.mjs', 'e2e-landing.mjs', 'e2e-whitepaper.mjs', 'e2e-pitchdeck-checks.mjs'], skills: ['run-tests'],
   },
   {
     id: 'whitepaper', title: 'Whitepaper',

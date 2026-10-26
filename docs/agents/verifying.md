@@ -86,3 +86,5 @@ The verified TEN4 local suite includes Convoy settlement against PostgreSQL and 
 Pledge retirement: `test:localnet` refuses new pledges in the autonomous day (`403 pledges_disabled` / on-chain `PledgesDisabled`). Phase 2 uses explicit historical genesis escrow plus real phase-1 attestations to verify settlement, full refunds, duplicate refusal and rent recovery (`localnet-legacy-pledges.mjs`).
 
 The `weekly` Chrome suite boots through test-only `e2e-weekly-server.mjs` with an advancing Wednesday ClockPort and an isolated local database. It tests positive grant issuance on Sundays too; production clock and weekly closure rules are unchanged. HTTP/domain scenarios cover closed-week refusal.
+
+The `whitepaper` Chrome suite also verifies pitch-deck keyboard/button navigation, bounds, fullscreen entry/exit, lazy images on every slide, touch controls and portrait/tilt-prompt dismissal. Physical sensor permission and real device tilt remain manual checks.

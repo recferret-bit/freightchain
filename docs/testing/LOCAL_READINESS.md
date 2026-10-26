@@ -156,7 +156,7 @@ Commands below are reproducible entrypoints; their presence is not a claim that 
 | Editor edit/revision/publish/AI queue/MCP | `e2e editor`, server and MCP tests | Partial: real MCP, dedicated worker, queue/cancel, revisions, signed publish and refusal paths passed; scripted LLM does not prove real provider delivery |
 | Statistics and cache failure | `e2e stats`; server stats/concurrency scenarios | Partial: Chrome crash, API terminal paths, displayed totals and reconcile passed; complete donation/optional-path acceptance remains open |
 | Analytics opt-in and crash reports | Server/client unit/HTTP; posthog-test workflow | Partial: local fixtures only; live delivery remains separate |
-| Whitepaper and pitch deck | `e2e whitepaper`, landing tests | Partial: whitepaper title/anchors/SVG/images and pitch-deck load passed; deck controls/fullscreen/tilt need runtime/manual evidence |
+| Whitepaper and pitch deck | `e2e whitepaper`, landing tests | Passed whitepaper assets/anchors plus deck keyboard/button navigation, slide bounds, fullscreen, lazy images and phone controls/overflow/rotation prompts; physical sensor permission and motion remain manual |
 | Split hosts, startup, migrations and recovery | `e2e wallet-split close-split editor`; `npm run test:production:local`; server config/deploy tests | Partial: all 22 production Docker/RPC checks passed, including signed purchases/refunds and API/RPC/database recovery. Real provider delivery remains open |
 | Promo media/audio and audit tooling | `npm run media:check`; tool-specific suites | Tool checks are separate from app journeys; no claim of whole audit-tool verification |
 
@@ -232,3 +232,5 @@ Root checks passed (462 server files / 2,666 tests; `/private/tmp/fc-convoy-sett
 The isolated TEN4 local-validator journey also passed (`/private/tmp/fc-convoy-settings-chain.log`): real browser session and verified ride, durable emission recovery, configured 75/125 TEN4 Convoy transfers, pre-broadcast failure/restart, lost response after payment, competing workers and terminal wallet-month cap. Milestone rows are fixtures, not claims of two/five weeks of manual play. No remote validator, deployed program or original local keys were changed.
 
 Final client checks and the referral-only real Chrome rerun passed after clarifying that pending invites have no saved milestone promise yet (`/private/tmp/fc-convoy-settings-client-final.log`, `/private/tmp/fc-convoy-settings-referral-final.log`); the pending screenshot was inspected.
+
+The expanded whitepaper/deck browser checks passed (`/private/tmp/fc-pitchdeck-controls.log`), including touch-mode reload and real keyboard fullscreen gestures. Cab historical pledge display and empty-row retirement passed client checks and Chrome (`/private/tmp/fc-pledge-cab-client.log`, `/private/tmp/fc-pledge-cab-chrome.log`).

@@ -95,6 +95,7 @@ try {
   await tab.send('Page.navigate', { url: `${BASE}/lobby.html?convoy=${Date.now()}#profile` });
   check('lobby invite row says active', await until(async () => /active/.test(await tab.ev('document.getElementById("ref-invites")?.textContent || ""')), 25000), await tab.ev('document.getElementById("ref-box")?.textContent || ""'));
   check('one usable promo grant exists', await prisma.promoRideGrant.count({ where: { wallet: invitee.wallet, code: 'SYSTEM-CONVOY-1H', rideId: null } }) === 1);
+  check('campaign tasks load beside Convoy in the real profile', await until(() => tab.ev('!!document.getElementById("campaign-box")?.querySelector("button") && !document.getElementById("campaign-box").textContent.includes("Loading")')));
   check('profile explains milestones and caps', await tab.ev('document.getElementById("ref-box").textContent.includes("48-hour") && document.getElementById("ref-invites").textContent.includes("M1")'));
   await tab.ev('document.getElementById("ref-hidden").click()');
   check('privacy toggle persists', await until(async () => (await call('GET', 'referrals', { cookie: referrer.cookie })).j.hidden === true));

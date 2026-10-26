@@ -1,5 +1,6 @@
 // whitepaper.html in real headless Chrome. Nest serves the Vite build at /whitepaper.html (the whitepaper host's page, locally the same origin).
 //   BASE=http://localhost:3104 CHROME_PORT=9234 node scripts/e2e-whitepaper.mjs
+import { pitchdeckChecks } from './e2e-pitchdeck-checks.mjs';
 import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
 
 const BASE = process.env.BASE || 'http://localhost:3111';
@@ -31,6 +32,7 @@ const diagrams = await page.ev(`(() => {
 check('embedded SVG diagrams have a box', diagrams.svgs.length >= 3 && diagrams.svgs.every(Boolean), `${diagrams.svgs.filter(Boolean).length}/${diagrams.svgs.length}`);
 check('diagram images loaded', diagrams.imgs.length >= 2 && diagrams.imgs.every(img => img.w > 0 && img.h > 0), JSON.stringify(diagrams.imgs));
 await page.shot('whitepaper');
+await pitchdeckChecks(page, BASE, check);
 const problems = page.filt().filter(p => !/favicon/.test(p));
 check('no console or page errors', problems.length === 0, problems.join(' | '));
 console.log(fails.length ? `\n${fails.length} FAILED: ${fails.join('; ')}` : '\nall whitepaper checks passed');
