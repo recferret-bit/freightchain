@@ -2,7 +2,7 @@
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
 #   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|replay-controls|replay-tips|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor|honk-garage|whitepaper|landing|achievements|guest|weekly|referral|viewer|sim|controls ...]   (default: all thirty-one)
 # Needs: compose PostgreSQL (npm run db:up), server/landing dependencies, Chrome; blinks also native Solana, solana-verify and the pinned pool artifact.
-# Opt-in normal-drive is a full MEDIUM course; it is outside the default 31-suite list.
+# Opt-in normal-drive selects a full EASY/MEDIUM/HARD course (default MEDIUM); it is outside the default 31-suite list.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/backend/server"
@@ -151,7 +151,7 @@ for suite in "${SUITES[@]}"; do
     weekly) SERVER_ENTRY="scripts/e2e-weekly-server.mjs $BUILD" EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" node scripts/e2e-weekly-ticket.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     referral) SGT_FIXTURE_PORT="$(free_port)"; SERVER_ENTRY="scripts/e2e-sgt-server.mjs $BUILD" EXTRA_ENV="SGT_FIXTURE_PORT=$SGT_FIXTURE_PORT PRIZE_DEV_DEFAULT_COUNTRY=KP CHALLENGE_INTERVAL_SECONDS=0" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" SGT_FIXTURE_PORT="$SGT_FIXTURE_PORT" node scripts/e2e-referral.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     viewer) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-viewer.mjs "http://localhost:$PORT/viewer.html") || fails=$((fails + 1)) ;;
-    normal-drive) (cd "$SERVER" && node --test scripts/normal-drive-support.test.mjs); EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=true VERDICT_ENFORCE=true" start 180; (cd "$SERVER" && BASE="http://localhost:$PORT" NORMAL_PAID_KEY= CHROME_PORT="$(free_port)" node scripts/e2e-normal-drive.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+    normal-drive) (cd "$SERVER" && node --test scripts/normal-drive-support.test.mjs scripts/normal-drive-course.test.mjs scripts/lane-merge-safety.test.mjs); EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=true VERDICT_ENFORCE=true" start 180; (cd "$SERVER" && BASE="http://localhost:$PORT" NORMAL_PAID_KEY= CHROME_PORT="$(free_port)" node scripts/e2e-normal-drive.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     controls) start 3; (cd "$ROOT/frontend/client" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node tools/e2e-controls.mjs) || fails=$((fails + 1)) ;;
     sim) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-chrome.mjs "http://localhost:$PORT/play.html?sim=1") || fails=$((fails + 1)) ;;
     *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | replay-controls | replay-tips | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor | honk-garage | whitepaper | landing | achievements | guest | weekly | referral | viewer | sim | controls | normal-drive)"; fails=$((fails + 1)) ;;

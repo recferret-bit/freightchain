@@ -1,5 +1,5 @@
 import { acceptLocalTestTerms } from './local-test-terms.mjs';
-// Full normal-length MEDIUM or paid 1h: synthetic keyboard input, real physics/hashing and enforced verdict.
+// Full normal-length EASY/MEDIUM/HARD or paid 1h: synthetic keyboard input, real physics/hashing and enforced verdict.
 // PIKE uses direct application handlers/internal payment codes; screen interaction is covered by e2e controls.
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
@@ -9,7 +9,9 @@ import { honkBalance as readHonk, emissionBalance as readEmission, mintState as 
 import { launch, sleep, answerPrompts } from '../../../frontend/client/tools/cdp.mjs';
 import { finishFor } from '../../../frontend/client/shared/finish-for.js';
 import { boundedFetch, withDeadline } from './normal-drive-support.mjs';
+import { normalFreeCourse, assertNormalFreeCourse } from './normal-drive-course.mjs';
 import { installKeyboardDriver } from './keyboard-driver.mjs';
+import { laneMergeUnsafe } from './lane-merge-safety.mjs';
 
 const honkBalance = args => withDeadline(() => readHonk(args), 15_000, 'token balance');
 const emissionBalance = args => withDeadline(() => readEmission(args), 15_000, 'emission balance');
@@ -25,6 +27,7 @@ const call = async (method, path, body) => {
   return data;
 };
 const paid = !!process.env.NORMAL_PAID_KEY, rpc = process.env.RPC;
+const course = paid ? null : normalFreeCourse(process.env.NORMAL_DRIVE_LEVEL);
 if (paid && (!rpc || !['localhost', '127.0.0.1'].includes(new URL(rpc).hostname))) throw new Error('paid proof needs its scratch loopback validator');
 const kp = paid ? Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(process.env.NORMAL_PAID_KEY, 'utf8')))) : Keypair.generate();
 const keypair = nacl.sign.keyPair.fromSecretKey(kp.secretKey), wallet = bs58.encode(keypair.publicKey);
@@ -46,11 +49,13 @@ if (paid) {
   beforeSupply = (await mintState({ rpc })).supply; beforeLedger = await call('GET', 'honk');
   console.log(JSON.stringify({ purchase: { orderId: order.id, signature, wallet } }));
 }
-const ride = await call('POST', 'rides', paid ? { tier: '1h' } : { tier: 'free', level: 2, assist: false, tutorial: false });
-if (ride.minSeconds !== (paid ? 3600 : 300) || ride.timeScale !== 1 || Math.abs(ride.completeDist - (paid ? finishFor(ride.seed, ride.trip).finishS : 3360)) > 1e-6) throw new Error(`expected normal course: ${JSON.stringify(ride)}`);
+const ride = await call('POST', 'rides', paid ? { tier: '1h' } : { tier: 'free', level: course.level, assist: false, tutorial: false });
+if (paid) {
+  if (ride.minSeconds !== 3600 || ride.timeScale !== 1 || Math.abs(ride.completeDist - finishFor(ride.seed, ride.trip).finishS) > 1e-6) throw new Error(`expected normal paid course: ${JSON.stringify(ride)}`);
+} else assertNormalFreeCourse(ride, course);
 if (paid && (ride.poolId !== Number(process.env.NORMAL_PAID_POOL) || ride.weeklyGrant || ride.promo)) throw new Error('paid ride did not use the purchased pool ticket');
 console.log(JSON.stringify({ createdRide: ride }));
-const tab = await launch({ port: +process.env.CHROME_PORT || 19387, shotsDir: 'fc-normal-drive-shots', evalProblems: true, args: process.env.NORMAL_DRIVE_ANGLE === 'metal' ? ['--use-angle=metal'] : [] });
+const tab = await launch({ port: +process.env.CHROME_PORT || 19387, shotsDir: `fc-normal-drive-${paid ? 'paid' : course.name.toLowerCase()}-shots`, evalProblems: true, args: process.env.NORMAL_DRIVE_ANGLE === 'metal' ? ['--use-angle=metal'] : [] });
 let stopPrompts = () => {};
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { stopPrompts(); void tab.close().finally(() => process.exit(signal === 'SIGINT' ? 130 : 143)); });
 try {
@@ -74,7 +79,7 @@ try {
   if ((await call('GET', `rides/${ride.id}`)).trafficVersion !== 1 || !await tab.ev('__game.telemetry.trafficVersion === 1')) throw new Error('traffic frame proof must be required');
   if (paid && (!(await call('GET', `rides/${ride.id}`)).ranked || !await tab.ev('document.getElementById("chain")?.textContent.includes("✓ on chain")'))) throw new Error('paid ride must start ranked with its road seal independently checked on chain');
   const settings = await tab.ev('JSON.stringify(__game.CFG)');
-  await tab.ev(`(${installKeyboardDriver.toString()})()`);
+  await tab.ev(`(${installKeyboardDriver.toString()})(${laneMergeUnsafe.toString()})`);
   stopPrompts = answerPrompts(tab);
   const finishBy = Date.now() + (paid ? 100 : 45) * 60_000;
   for (;;) {
@@ -109,5 +114,5 @@ try {
     if (beforeEmission - await emissionBalance({ rpc }) !== 100_000_000n || (await mintState({ rpc })).supply !== beforeSupply || await honkBalance({ rpc, owner: kp.publicKey }) !== chain || Number((await call('GET', 'honk')).minted) !== Number(ledger.minted)) throw new Error('duplicate end/confirm changed rewards');
     console.log(JSON.stringify({ reward: { ledgerDelta: 100, chainBaseUnits: String(chain - beforeChain), supplyUnchanged: true, duplicateEndStatus: duplicate.status } }));
   }
-  console.log(`PASS normal-duration ${paid ? 'paid 1h' : 'MEDIUM'}: normal physics, enforced verdict and complete traffic proof`);
+  console.log(`PASS normal-duration ${paid ? 'paid 1h' : course.name}: normal physics, enforced verdict and complete traffic proof`);
 } finally { stopPrompts(); await tab.close(); }

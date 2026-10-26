@@ -291,7 +291,7 @@ npm run test:localnet                                       # full escrow lifecy
 npm run test:e2e:block1                                     # fast code E2E (Postgres + Redis + API, chain off)
 npm run test:e2e:block2                                     # fast code E2E (program mode + disposable local validator)
 bash .claude/skills/run-tests/e2e.sh                        # 31 real Chrome suites, including normal-physics keyboard controls and bounded phone UI fixtures
-bash .claude/skills/run-tests/e2e.sh normal-drive           # opt-in full normal MEDIUM, synthetic keyboard driver
+bash .claude/skills/run-tests/e2e.sh normal-drive           # opt-in normal MEDIUM; NORMAL_DRIVE_LEVEL=EASY|MEDIUM|HARD selects a free level
 node backend/server/scripts/normal-drive-localnet.mjs      # opt-in scratch-validator paid 1h acceptance (long)
 npm run test:ci:full                                       # full local gate, including both Rust programs, validator journeys and Chrome
 npm run test:production:local                              # isolated host log retention + production Docker/RPC, signed payments, enforcement, outages and recovery
