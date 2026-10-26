@@ -129,7 +129,24 @@ try {
   await tab.ev(`document.getElementById("ref-input").value = ${JSON.stringify(code)}; document.getElementById("ref-apply").click()`);
   check('manual valid invite shows pending steps', await until(async () => /pending/.test(await tab.ev('document.getElementById("ref-progress")?.textContent || ""'))));
   await tab.shot('convoy-pending');
-  const errors = pageErrors(tab).filter(e => !(/409 \(Conflict\)/.test(e) && /\/api\/referrals\/bind$/.test(e)));
+  // Real profile → authenticated API → binary Token-2022 fixture RPC → PostgreSQL.
+  const seeker = await signIn(), fixture = async mode => {
+    const result = await fetch(`http://127.0.0.1:${process.env.SGT_FIXTURE_PORT}`, { method: 'POST', body: JSON.stringify({ method: 'fixture', params: [seeker.wallet, mode] }) });
+    if (!result.ok) throw new Error('SGT fixture unavailable');
+  };
+  const [seekerCookie, seekerValue] = seeker.cookie.split('=');
+  await tab.send('Network.setCookie', { name: seekerCookie, value: seekerValue, url: BASE, httpOnly: true });
+  await tab.send('Page.navigate', { url: `${BASE}/lobby.html#profile` });
+  check('Seeker verification control loads', await until(async () => await tab.ev('!!document.getElementById("sgt-verify")')));
+  await fixture('empty'); await tab.ev('document.getElementById("sgt-verify").click()');
+  check('absent SGT gives a visible refusal', await until(async () => /no Seeker Genesis Token/.test(await tab.ev('document.getElementById("sgt-msg")?.textContent || ""'))));
+  await fixture('outage'); await tab.ev('document.getElementById("sgt-verify").click()');
+  check('SGT outage remains distinct from absent ownership', await until(async () => /temporarily unavailable/.test(await tab.ev('document.getElementById("sgt-msg")?.textContent || ""'))));
+  await fixture('held'); await tab.ev('document.getElementById("sgt-verify").click()');
+  check('verified SGT shows one-time shortcut and trust 100', await until(async () => /Current trust: 100/.test(await tab.ev('document.getElementById("sgt-box")?.textContent || ""'))));
+  check('SGT persisted once in PostgreSQL', await prisma.sgtTrustClaim.count({ where: { wallet: seeker.wallet } }) === 1);
+  await tab.ev('document.getElementById("sgt-box").scrollIntoView()'); await tab.shot('sgt-verified');
+  const errors = pageErrors(tab).filter(e => !(/409 \(Conflict\)/.test(e) && /\/api\/referrals\/bind$/.test(e)) && !/\/api\/me\/trust\/sgt$/.test(e));
   const roadRequests = await tab.ev(`performance.getEntriesByType('resource').filter(r => /\\/api\\/watch\\/[^/]+\\/road(?:\\?|$)/.test(r.name)).length`);
   check('a driver never requests the spectator road endpoint', roadRequests === 0, String(roadRequests));
   check('no page or console errors', errors.length === 0, errors.join(' | '));

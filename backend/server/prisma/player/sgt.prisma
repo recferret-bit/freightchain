@@ -1,0 +1,8 @@
+// Permanent device identity: retained across wallet transfers and subsequent trust penalties.
+model SgtTrustClaim {
+  mint String @id
+  wallet String @unique
+  slot Int
+  at DateTime
+  @@schema("player")
+}

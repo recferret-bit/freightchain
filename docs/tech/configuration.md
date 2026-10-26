@@ -144,6 +144,7 @@ Ranked starts read the country from edge headers (`CF-IPCountry` and `CF-Region-
 |---|---|---|
 | `TREASURY_PUBKEY` | – (**required in prod**) | PUBLIC address receiving fees. Dev: falls back to `server/data/treasury.json` from `npm run treasury:init` |
 | `SOLANA_RPC` | devnet public | **Devnet only** – deploy refuses others. A dedicated URL contains an API key → only in `deploy/.env` |
+| `SGT_RPC_URL` | empty / disabled | Separate read-only mainnet RPC for SGT ownership; fixed mainnet genesis and canonical group checked at runtime. No devnet fallback or transaction signing |
 | `SOLANA_WS` | derived from `SOLANA_RPC` | Websocket of the same provider |
 | `SOLANA_RPC_FALLBACKS` | empty | Comma-separated read-only fallbacks |
 | `SOLANA_COMMITMENT` | `confirmed` | or `finalized` |

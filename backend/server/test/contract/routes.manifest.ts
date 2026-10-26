@@ -15,6 +15,8 @@ export interface RouteDescriptor {
 export const routeKey = (route: Pick<RouteDescriptor, 'method' | 'path'>): string => `${route.method} ${route.path}`;
 
 export const ROUTES: readonly RouteDescriptor[] = [
+  { method: 'GET', path: '/api/me/trust/sgt', auth: 'player' },
+  { method: 'POST', path: '/api/me/trust/sgt', auth: 'player' },
   { method: 'GET', path: '/actions.json', auth: 'none' },
   { method: 'GET', path: '/api/actions/hello', auth: 'none' },
   { method: 'GET', path: '/api/actions/ride/:id', auth: 'none' },

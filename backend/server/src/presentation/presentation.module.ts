@@ -1,3 +1,4 @@
+import { SgtHttpController } from './trust/sgt.http.controller.js';
 import { Module } from '@nestjs/common';
 import { ApplicationModule } from '../application/application.module.js';
 import { AdminHttpController } from './admin/admin.http.controller.js';
@@ -42,6 +43,6 @@ import { EditorJobsHttpController } from './editor/editor-jobs.http.controller.j
 import { EditorMcpHttpController } from './editor/editor-mcp.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, MeController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminModerationHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, AdminAppealsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, HonkHttpController, PrizeHttpController, EntitiesHttpController, EditorAuthHttpController, EditorEntitiesHttpController, EditorJobsHttpController, EditorMcpHttpController, ReferralsHttpController, ConvoyHttpController, PrivacyHttpController, TelegramWebhookHttpController, AirdropHttpController],
+  controllers: [SgtHttpController, HealthHttpController, AuthHttpController, MeController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminModerationHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, AdminAppealsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, HonkHttpController, PrizeHttpController, EntitiesHttpController, EditorAuthHttpController, EditorEntitiesHttpController, EditorJobsHttpController, EditorMcpHttpController, ReferralsHttpController, ConvoyHttpController, PrivacyHttpController, TelegramWebhookHttpController, AirdropHttpController],
 })
 export class PresentationModule {}

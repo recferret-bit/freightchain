@@ -115,6 +115,7 @@ export class EnvService {
   get hbMinIntervalMs(): number { return this.env.HB_MIN_INTERVAL_MS; }
   get hbTimeoutMs(): number { return this.env.HB_TIMEOUT_MS; }
   get solanaRpc(): string { return this.env.SOLANA_RPC; }
+  get sgtRpcUrl(): string | undefined { return this.env.SGT_RPC_URL; }
   get snsRpc(): string { return this.env.SNS_RPC; }
   get snsRpcFallbacks(): string[] {
     return this.env.SNS_RPC_FALLBACKS.split(',').map((u) => u.trim()).filter((u) => u.length > 0);

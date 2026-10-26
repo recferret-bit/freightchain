@@ -53,6 +53,7 @@ export const envSchema = z
     HB_TIMEOUT_MS: z.coerce.number().int().min(5000).default(150_000), // no heartbeat for this long = the tab is gone: off the live feed, its next heartbeat would fail it, the stale-ride sweeper ends it (failed · heartbeat lost)
     TREASURY_PUBKEY: optional(z.string()),
     SOLANA_RPC: z.string().min(1).default('https://api.devnet.solana.com'),
+    SGT_RPC_URL: optional(z.string().url().refine(v => /^https?:/.test(v), 'must be an HTTP(S) mainnet RPC URL')),
     SNS_RPC: z.string().min(1).default('https://api.mainnet-beta.solana.com'),
     SNS_RPC_FALLBACKS: z.string().default(''),
     SNS_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86400),

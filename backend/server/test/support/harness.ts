@@ -1,3 +1,5 @@
+import { SgtRepositoryPort } from '../../src/application/trust/sgt.port.js';
+import { MemorySgtRepository } from './in-memory/memory-sgt.js';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import type { Server } from 'node:http';
@@ -132,7 +134,7 @@ export interface Harness {
 }
 
 /** Everything the app reads from the environment that a test may change – cleared before each harness so files can't leak into each other. */
-const TUNABLES = ['IP_HASH_SECRET', 'TWITTERAPI_IO_KEY', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHANNEL_ID', 'TURNSTILE_SECRET_KEY', 'TRAFFIC_PROOF_REQUIRED', 'THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'THROTTLE_PROMO_LIMIT', 'THROTTLE_ENTITIES_LIMIT', 'THROTTLE_EDITOR_LIMIT', 'THROTTLE_AUTH_RPS', 'THROTTLE_ENTITIES_RPS', 'THROTTLE_EDITOR_RPS', 'THROTTLE_MCP_LIMIT', 'THROTTLE_MCP_RPS', 'THROTTLE_ADMIN_AUTH_LIMIT', 'REDIS_URL', 'EDITOR_WALLETS', 'EDITOR_IP_ALLOWLIST', 'EDITOR_JWT_SECRET', 'EDITOR_SESSION_TTL_MINUTES', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GEMINI_API_KEY', 'ZAI_API_KEY', 'ZAI_BASE_URL', 'XAI_API_KEY', 'XAI_BASE_URL', 'EDITOR_DEFAULT_PROVIDER', 'EDITOR_MODEL_ANTHROPIC', 'EDITOR_MODEL_OPENAI', 'EDITOR_MODEL_GEMINI', 'EDITOR_MODEL_ZAI', 'EDITOR_MODEL_XAI', 'EDITOR_MCP_URL', 'EDITOR_MCP_TOKEN', 'EDITOR_JOB_TIMEOUT_MS', 'EDITOR_FAKE_LLM', 'HB_TIMEOUT_MS', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS', 'SIGNIN_RETENTION_DAYS', 'CHALLENGE_INTERVAL_SECONDS',
+const TUNABLES = ['IP_HASH_SECRET', 'SGT_RPC_URL', 'TWITTERAPI_IO_KEY', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHANNEL_ID', 'TURNSTILE_SECRET_KEY', 'TRAFFIC_PROOF_REQUIRED', 'THROTTLE_LIMIT', 'THROTTLE_AUTH_LIMIT', 'THROTTLE_PROMO_LIMIT', 'THROTTLE_ENTITIES_LIMIT', 'THROTTLE_EDITOR_LIMIT', 'THROTTLE_AUTH_RPS', 'THROTTLE_ENTITIES_RPS', 'THROTTLE_EDITOR_RPS', 'THROTTLE_MCP_LIMIT', 'THROTTLE_MCP_RPS', 'THROTTLE_ADMIN_AUTH_LIMIT', 'REDIS_URL', 'EDITOR_WALLETS', 'EDITOR_IP_ALLOWLIST', 'EDITOR_JWT_SECRET', 'EDITOR_SESSION_TTL_MINUTES', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GEMINI_API_KEY', 'ZAI_API_KEY', 'ZAI_BASE_URL', 'XAI_API_KEY', 'XAI_BASE_URL', 'EDITOR_DEFAULT_PROVIDER', 'EDITOR_MODEL_ANTHROPIC', 'EDITOR_MODEL_OPENAI', 'EDITOR_MODEL_GEMINI', 'EDITOR_MODEL_ZAI', 'EDITOR_MODEL_XAI', 'EDITOR_MCP_URL', 'EDITOR_MCP_TOKEN', 'EDITOR_JOB_TIMEOUT_MS', 'EDITOR_FAKE_LLM', 'HB_TIMEOUT_MS', 'FREE_RIDE_SECONDS', 'DEMO_WALLETS', 'DEMO_SCALE', 'INITIAL_SEED_SOL', 'HB_MIN_INTERVAL_MS', 'TRUST_PROXY', 'SOL_USD', 'TREASURY_PUBKEY', 'JWT_SECRET', 'CLIENT_DIR', 'COOKIE_DOMAIN', 'CORS_ORIGINS', 'ADMIN_WALLETS', 'ADMIN_JWT_SECRET', 'ADMIN_SESSION_TTL_MINUTES', 'VERDICT_ENFORCE', 'TELEMETRY_RETENTION_DAYS', 'SIGNIN_RETENTION_DAYS', 'CHALLENGE_INTERVAL_SECONDS',
   'CHALLENGE_FREE_RIDES', 'TELEMETRY_V21', 'MINIGAMES', 'MG_SECRET', 'MG_SALT_VERSION', 'LIVE_CHAT', 'LIVE_DONATIONS', 'LIVE_FREE_DONATIONS', 'LIVE_EFFECTS', 'PLEDGES_ENABLED', 'PAYMENT_MODE', 'TICKET_PROGRAM_ID', 'FEE_TREASURY', 'SEED_TREASURY', 'ORDER_TTL_MINUTES', 'WATCH_INTERVAL_MS', 'WEBHOOK_SECRET', 'CRANK_SECRET', 'CRANK_INTERVAL_MS', 'FEE_PAYER_SECRET', 'SOLANA_COMMITMENT',
   'POSTHOG_KEY', 'POSTHOG_HOST', 'POSTHOG_ENABLED', 'POSTHOG_DISABLED', 'POSTHOG_PROJECT_ID'];
 
@@ -157,6 +159,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
   const poolChain = new FakePoolChain();
   const payoutChain = new FakePoolPayoutChain(poolChain);
   const memory = new MemoryDb();
+  const sgt = new MemorySgtRepository();
   const convoy = new MemoryConvoyRepository();
   convoy.columnPresent = true;
   const airdrop = new MemoryAirdropRepository();
@@ -182,6 +185,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(AchievementRepositoryPort).useValue(new MemoryAchievementRepository(memory))
       .overrideProvider(AchievementMintRepositoryPort).useValue(new MemoryAchievementMintRepository(memory))
       .overrideProvider(AchievementMintChainPort).useValue(new FakeMintChain())
+      .overrideProvider(SgtRepositoryPort).useValue(sgt)
       .overrideProvider(PoolRepositoryPort).useValue(new MemoryPoolRepository(memory))
       .overrideProvider(PoolPayoutRepositoryPort).useValue(new MemoryPoolPayoutRepository(memory))
       .overrideProvider(PledgeRepositoryPort).useValue(new MemoryPledgeRepository(memory))
@@ -232,6 +236,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       poolChain.reset();
       payoutChain.reset();
       memory.reset();
+      sgt.rows.clear();
       convoy.clear();
       airdrop.clear();
       replayQueue.clear();

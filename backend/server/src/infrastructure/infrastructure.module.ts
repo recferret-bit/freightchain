@@ -1,3 +1,6 @@
+import { SgtOwnershipPort, SgtRepositoryPort } from '../application/trust/sgt.port.js';
+import { SgtOwnershipAdapter } from './solana/sgt-ownership.adapter.js';
+import { SgtPrismaRepository } from './prisma/repositories/sgt.prisma.repository.js';
 import { Module, type Provider } from '@nestjs/common';
 import { EnvService } from './config/env.service.js';
 import { AchievementMintRepositoryPort } from '../application/ports/achievements/achievement-mint.repository.port.js';
@@ -182,6 +185,8 @@ import { ClearEditorCookieInterceptor, SetEditorCookieInterceptor } from './http
 
 /** Every port the application layer declares is bound to its adapter here – the only place that knows which implementation runs. */
 const ports: Provider[] = [
+  { provide: SgtOwnershipPort, useClass: SgtOwnershipAdapter },
+  { provide: SgtRepositoryPort, useClass: SgtPrismaRepository },
   { provide: ClockPort, useClass: SystemClock },
   { provide: EntropyPort, useClass: NodeEntropy },
   { provide: HasherPort, useClass: NodeHasher },

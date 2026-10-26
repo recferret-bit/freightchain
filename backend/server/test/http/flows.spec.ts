@@ -1,3 +1,4 @@
+import { sgtScenarios } from '../scenarios/sgt.scenarios.js';
 import { preseasonAttemptScenarios } from '../scenarios/preseason-attempt.scenarios.js';
 import { convoyCampaignScenarios } from '../scenarios/convoy-campaign.scenarios.js';
 import { TRAFFIC_PROOF_ENV, trafficProofScenarios } from '../scenarios/traffic-proof.scenarios.js';
@@ -69,6 +70,7 @@ for (const [name, env, scenarios] of [
   ['solana actions: discovery, shift card, ride blink', {}, actionsScenarios],
   ['solana actions: one program-mode ticket', ACTIONS_PROGRAM_ENV, actionsBuyScenarios],
   ['referrals: a code, one referrer, a gift colour', {}, referralScenarios],
+  ['SGT authenticated mainnet trust', { SGT_RPC_URL: 'https://sgt.test' }, sgtScenarios],
   ['durable Convoy and campaign', {}, convoyCampaignScenarios],
   ['Pre-season attempt and Telegram activity', {}, preseasonAttemptScenarios],
   ['phone minigames: phone-sms on a 1h ride', MINIGAMES_ENV, minigameScenarios],

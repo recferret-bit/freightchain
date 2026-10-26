@@ -13,6 +13,11 @@ describe('validateEnv', () => {
     expect(validateEnv(base).SIGNIN_RETENTION_DAYS).toBe(90);
     for (const days of [0, 91, 180]) expect(() => validateEnv({ ...base, SIGNIN_RETENTION_DAYS: days })).toThrow('SIGNIN_RETENTION_DAYS');
   });
+  it('keeps SGT read-only RPC optional and accepts only HTTP(S) URLs', () => {
+    expect(validateEnv({ ...base, SGT_RPC_URL: '' }).SGT_RPC_URL).toBeUndefined();
+    expect(validateEnv({ ...base, SGT_RPC_URL: 'https://rpc.example/mainnet' }).SGT_RPC_URL).toBe('https://rpc.example/mainnet');
+    expect(() => validateEnv({ ...base, SGT_RPC_URL: 'file:///private/key' })).toThrow();
+  });
   it('the deployed worker supplies the explicit production proxy setting required by its CLI EnvModule', () => {
     const compose = readFileSync(new URL('../../../../../../infra/deploy/docker-compose.prod.yml', import.meta.url), 'utf8');
     const worker = compose.split('\n  worker:\n')[1]!.split('\nnetworks:')[0]!;

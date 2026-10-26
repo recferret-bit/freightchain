@@ -1,3 +1,4 @@
+import { GetSgtHandler, VerifySgtHandler } from './trust/sgt.handler.js';
 import { Module, type Provider } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module.js';
@@ -203,6 +204,7 @@ import { McpSaveDraftHandler } from './use-cases/editor/mcp-save-draft/mcp-save-
 import { GetEditorMeHandler } from './use-cases/editor/get-editor-me/get-editor-me.handler.js';
 
 const handlers: Provider[] = [
+  GetSgtHandler, VerifySgtHandler,
   CreateEditorJobHandler, CancelEditorJobHandler, ListEditorJobsHandler, GetEditorJobHandler, GetEditorJobEventsHandler, McpConfigsHandler, McpSaveDraftHandler,
   GetEntityBundleHandler, ListEntitiesHandler, GetEntityHandler, ListRevisionsHandler, GetRevisionHandler, SaveDraftHandler, RestoreRevisionHandler, RequestPublishChallengeHandler, PublishRevisionHandler, RequestEditorChallengeHandler, VerifyEditorSignInHandler, GetEditorMeHandler,
   GetStatsHandler, GetDailyStatsHandler, ReconcileStatsHandler,

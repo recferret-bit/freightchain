@@ -95,6 +95,7 @@ services:
       FREE_RIDE_SECONDS: ${FREE_RIDE_SECONDS:-180}
       TREASURY_PUBKEY: ${TREASURY_PUBKEY}
       SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
+      SGT_RPC_URL: ${SGT_RPC_URL:-}
       SNS_RPC: ${SNS_RPC:-https://api.mainnet-beta.solana.com}
       SNS_RPC_FALLBACKS: ${SNS_RPC_FALLBACKS:-}
       SNS_CACHE_TTL_SECONDS: ${SNS_CACHE_TTL_SECONDS:-86400}

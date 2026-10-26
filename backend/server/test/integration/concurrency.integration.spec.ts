@@ -1,3 +1,4 @@
+import { sgtConcurrencyScenarios } from '../support/sgt-concurrency.js';
 import { trustConcurrencyScenarios } from '../support/trust-concurrency.js';
 import { convoyConcurrencyScenarios } from '../support/convoy-concurrency.js';
 import { CommandBus } from '@nestjs/cqrs';
@@ -797,6 +798,7 @@ describe('concurrency (PostgreSQL)', () => {
     }
   });
   convoyConcurrencyScenarios(() => harness);
+  sgtConcurrencyScenarios(() => harness);
   trustConcurrencyScenarios(() => harness);
 
 });

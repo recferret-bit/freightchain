@@ -13490,6 +13490,102 @@
         ]
       }
     },
+    "/api/me/trust/sgt": {
+      "get": {
+        "operationId": "SgtHttpController.status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "claimed": {
+                      "type": "boolean"
+                    },
+                    "claimedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "trustScore": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "claimed",
+                    "claimedAt",
+                    "enabled",
+                    "trustScore"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "SgtHttpController"
+        ]
+      },
+      "post": {
+        "operationId": "SgtHttpController.verify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {},
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "claimed": {
+                      "type": "boolean"
+                    },
+                    "claimedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "trustScore": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "claimed",
+                    "claimedAt",
+                    "enabled",
+                    "trustScore"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "SgtHttpController"
+        ]
+      }
+    },
     "/api/pledges": {
       "post": {
         "operationId": "PledgesHttpController.create",

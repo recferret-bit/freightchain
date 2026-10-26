@@ -18,6 +18,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | controls, gameplay systems (holes, traffic, gearbox, battery, engine, damage…) | `docs/agents/gameplay.md` |
 | server rules, server checks, configuration | `docs/agents/server.md` |
 | verified play (telemetry, verdict, the server's road, 10 Hz replay verification) | `docs/spec/anticheat.md` |
+| Seeker trust: mainnet SGT proof, one-time device claim | `docs/agents/server.md`, `docs/spec/anticheat.md` Appendix D |
 | statistics | `docs/spec/platform_services.md` |
 | live board, live streams, replays, donations | `docs/spec/replays_streams.md` |
 | admin page, observing production | `docs/agents/admin-ops.md` |

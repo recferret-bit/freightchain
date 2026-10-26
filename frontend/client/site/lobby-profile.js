@@ -4,6 +4,7 @@ import { profileTickets } from './lobby-pools.js';
 import { careerTiles } from './lobby-career.js';
 import { agreementsCard } from './lobby-agreements.js';
 import { redemptionList } from './lobby-promo.js';
+import { trustSection } from './lobby-trust.js';
 import { campaignSection } from './lobby-campaign.js';
 import { referralSection } from './lobby-referral.js';
 import { $, el } from './dom.js';
@@ -77,6 +78,7 @@ export function createProfileTab({ S, view, getSeq, bumpMeGen, paintHeader, refr
       el('section', { class: 'prof-sec ch' }, ...careerTiles(p.career, p.stats, { km, sol })),
       el('section', { class: 'prof-sec ch' }, ...profileTickets(p, S.busy, refund)),
       el('section', { class: 'prof-sec ch' }, ...promoSection()),
+      el('section', { class: 'prof-sec ch' }, ...trustSection({ api, alive: () => my === getSeq() })),
       el('section', { class: 'prof-sec ch' }, ...campaignSection({ api, alive: () => my === getSeq() })),
       el('section', { class: 'prof-sec ch' }, ...referralSection({ api, short, base: SITE_BASE, origin: location.origin, alive: () => my === getSeq() })),
       el('section', { class: 'prof-sec ch' },
