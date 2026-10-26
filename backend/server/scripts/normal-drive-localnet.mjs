@@ -15,7 +15,9 @@ const env = { PATH: path, HOME: homedir(), ENV_FILE: join(scratch, 'empty.env') 
 writeFileSync(env.ENV_FILE, '');
 const run = (bin, args, extra = {}) => execFileSync(bin, args, { cwd: server, env: { ...env, ...extra }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 8 * 1024 * 1024, timeout: 180_000 });
 let postgres = null;
-const sql = query => run('docker', ['exec', postgres, 'psql', '-U', 'freight', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-tAc', query]);
+// The image's temporary initialization server listens only on a Unix socket; TCP proves final readiness.
+const databaseSql = (database, query) => run('docker', ['exec', '--env', 'PGPASSWORD=normal_paid_disposable', postgres, 'psql', '-h', '127.0.0.1', '-U', 'freight', '-d', database, '-v', 'ON_ERROR_STOP=1', '-tAc', query]);
+const sql = query => databaseSql('postgres', query);
 const reserved = new Set();
 const freePort = async () => { for (;;) { const port = await new Promise((ok, fail) => { const s = createServer(); s.on('error', fail); s.listen(0, '127.0.0.1', () => { const port = s.address().port; s.close(() => ok(port)); }); }); if (!reserved.has(port)) { reserved.add(port); return port; } } };
 const children = [];
@@ -93,7 +95,7 @@ try {
   sql(`CREATE DATABASE "${db}"`); created = true;
   const database = `postgresql://freight:normal_paid_disposable@127.0.0.1:${postgresPort}/${db}`;
   run('./node_modules/.bin/prisma', ['migrate', 'deploy'], { DATABASE_URL: database });
-  run('docker', ['exec', postgres, 'psql', '-U', 'freight', '-d', db, '-v', 'ON_ERROR_STOP=1', '-c', `UPDATE player."GameSetting" SET value=0 WHERE key='weekly_ticket_1h_enabled'`]);
+  databaseSql(db, `UPDATE player."GameSetting" SET value=0 WHERE key='weekly_ticket_1h_enabled'`);
   const port = await freePort(), base = `http://localhost:${port}`;
   const appEnv = { DATABASE_URL: database, CLIENT_DIR: join(snapshot, 'frontend/client'), PORT: String(port), NODE_ENV: 'development', PRIZE_DEV_DEFAULT_COUNTRY: 'CA', JWT_SECRET: 'normal-paid-local-test-only-generated-wallets', TREASURY_PUBKEY: pub, SOL_USD: '118', SOLANA_RPC: rpc, SOLANA_WS: rpc.replace('http:', 'ws:').replace(`:${rpcPort}`, `:${rpcPort + 1}`), SNS_RPC: 'http://127.0.0.1:9', PAYMENT_MODE: 'program', TICKET_PROGRAM_ID: POOL_PROGRAM_IDL.address, WATCH_INTERVAL_MS: '2000', CRANK_INTERVAL_MS: '0', PAYOUT_INTERVAL_MS: '0', VERDICT_ENFORCE: 'true', TRAFFIC_PROOF_REQUIRED: 'true', POSTHOG_ENABLED: '0', DEMO_WALLETS: '', HONK_PROGRAM_ID: PROGRAM_ID.toBase58(), HONK_EMITTER_SECRET: JSON.stringify([...payer.secretKey]), HONK_MINT: pdas().honkMint.toBase58(), LIVE_DONATIONS: 'off', LIVE_EFFECTS: 'off' };
   run('node', ['dist/cli/index.js', 'pool:register', String(pool.poolId), '--label', 'NORMAL LOCAL 1H'], appEnv);
@@ -112,7 +114,7 @@ try {
   const code = await withDeadline(() => Promise.race([browserExit, watchdog.failure]), 110 * 60_000, 'paid browser acceptance');
   watchdog.stop();
   if (code !== 0) throw new Error(`normal paid browser exited ${code}`);
-  const records = JSON.parse(run('docker', ['exec', postgres, 'psql', '-U', 'freight', '-d', db, '-v', 'ON_ERROR_STOP=1', '-tAc', `SELECT coalesce(json_agg(m), '[]'::json) FROM (SELECT "rideId", released, "chainPending", "chainSentAt" FROM economy."HonkMint" WHERE wallet='${player.publicKey.toBase58()}') m`]).trim());
+  const records = JSON.parse(databaseSql(db, `SELECT coalesce(json_agg(m), '[]'::json) FROM (SELECT "rideId", released, "chainPending", "chainSentAt" FROM economy."HonkMint" WHERE wallet='${player.publicKey.toBase58()}') m`).trim());
   if (records.length !== 1 || !records[0].released || records[0].chainPending || !records[0].chainSentAt) throw new Error('expected exactly one settled reward outbox record');
   const [receipt] = PublicKey.findProgramAddressSync([Buffer.from('ride-mint'), Buffer.from(records[0].rideId.replace(/-/g, ''), 'hex')], PROGRAM_ID);
   const account = await conn.getAccountInfo(receipt), data = account?.data;
