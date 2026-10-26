@@ -11,6 +11,7 @@ import { finishFor } from '../../../frontend/client/shared/finish-for.js';
 import { boundedFetch, withDeadline } from './normal-drive-support.mjs';
 import { normalFreeCourse, assertNormalFreeCourse } from './normal-drive-course.mjs';
 import { installKeyboardDriver } from './keyboard-driver.mjs';
+import { laneMergeUnsafe } from './lane-merge-safety.mjs';
 
 const honkBalance = args => withDeadline(() => readHonk(args), 15_000, 'token balance');
 const emissionBalance = args => withDeadline(() => readEmission(args), 15_000, 'emission balance');
@@ -78,7 +79,7 @@ try {
   if ((await call('GET', `rides/${ride.id}`)).trafficVersion !== 1 || !await tab.ev('__game.telemetry.trafficVersion === 1')) throw new Error('traffic frame proof must be required');
   if (paid && (!(await call('GET', `rides/${ride.id}`)).ranked || !await tab.ev('document.getElementById("chain")?.textContent.includes("✓ on chain")'))) throw new Error('paid ride must start ranked with its road seal independently checked on chain');
   const settings = await tab.ev('JSON.stringify(__game.CFG)');
-  await tab.ev(`(${installKeyboardDriver.toString()})()`);
+  await tab.ev(`(${installKeyboardDriver.toString()})(${laneMergeUnsafe.toString()})`);
   stopPrompts = answerPrompts(tab);
   const finishBy = Date.now() + (paid ? 100 : 45) * 60_000;
   for (;;) {

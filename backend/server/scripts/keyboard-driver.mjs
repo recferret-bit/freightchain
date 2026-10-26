@@ -1,5 +1,5 @@
 // Serialized into the browser by the acceptance harness. Observe the game; operate its input handlers only.
-export async function installKeyboardDriver() {
+export async function installKeyboardDriver(laneMergeUnsafe) {
   const g = window.__game, held = new Set();
   const { PikeApp } = await import('./js/phone/apps/pike.js');
   const pikeApp = new PikeApp(), original = JSON.stringify(g.CFG);
@@ -12,6 +12,8 @@ export async function installKeyboardDriver() {
     window.dispatchEvent(new KeyboardEvent(on ? 'keydown' : 'keyup', { code, key: code.startsWith('Key') ? code.slice(3).toLowerCase() : code.startsWith('Digit') ? code.slice(5) : 'Shift', bubbles: true }));
   };
   const tap = code => { key(code, true); key(code, false); };
+  // Closing speed and time gap in the TARGET lane over the lateral move; brake or hold instead of merging.
+  const mergeUnsafe = lat => laneMergeUnsafe(g.traffic, { s: g.st.s, v: g.st.v, d: g.st.d }, lat, { moveSeconds: Math.max(2, Math.abs(lat - g.st.d) / 1.5) });
   let shiftTo = null, releaseAt = 0, lastT = -1, started = false, target = 2.4, chooseAt = 0;
   const timer = setInterval(() => {
     const s = g.st, T = g.CFG.TRUCK;
@@ -41,7 +43,7 @@ export async function installKeyboardDriver() {
     const lanes = s.s > g.net.Sm + 30 ? Math.min(g.net.lanes(s.s, 1), g.net.lanes(s.s + 120, 1)) : 1;
     if (s.t > chooseAt || target > 2.4 + (lanes - 1) * 4.8) {
       const score = lat => {
-        if (Math.abs(lat - s.d) > 1 && g.traffic.some(c => c.road.main && Math.abs(c.lat - lat) < 3 && c.s - s.s > -45 && c.s - s.s < 30)) return -1000;
+        if (Math.abs(lat - s.d) > 1 && (g.traffic.some(c => c.road.main && Math.abs(c.lat - lat) < 3 && c.s - s.s > -45 && c.s - s.s < 30) || mergeUnsafe(lat))) return -1000;
         let out = lat === target ? 15 : 0;
         for (const c of g.traffic) if (c.road.main && Math.abs(c.lat - lat) < 3 && c.s > s.s && c.s - s.s < 100) out -= (100 - (c.s - s.s)) * Math.max(0, 22 - c.v);
         for (const h of g.holes.holesNear(s.s - 18, s.s + 100)) if (Math.abs(h.lat - lat) < 3) out -= 300;
@@ -50,6 +52,8 @@ export async function installKeyboardDriver() {
       target = Array.from({ length: lanes }, (_, i) => 2.4 + 4.8 * i).sort((a, b) => score(b) - score(a))[0];
       chooseAt = s.t + 2;
     }
+    // A merge already under way into a lane that has since filled is abandoned: hold the current lane.
+    if (Math.abs(target - s.d) > 1 && s.s > g.net.Sm - 5 && mergeUnsafe(target)) { target = lanes > 1 ? Array.from({ length: lanes }, (_, i) => 2.4 + 4.8 * i).sort((a, b) => Math.abs(a - s.d) - Math.abs(b - s.d))[0] : 2.4; chooseAt = s.t + 1; }
     let want = s.s < g.net.Sm + 20 ? 4 : 22;
     const k = g.curv(s.s), future = g.curv(s.s + Math.max(2, s.v * 1.2));
     if (Math.max(Math.abs(k), Math.abs(future)) > .014) want = 4;
@@ -58,7 +62,7 @@ export async function installKeyboardDriver() {
       if (Math.abs(hole.lat - s.d) < 3 && hole.s - s.s < Math.max(25, s.v * 4)) want = Math.min(want, 2.5);
     }
     if (s.s > g.net.Sm - 5) for (const car of g.traffic) {
-      if (!car.road.main || Math.abs(car.lat - s.d) > 2.5) continue;
+      if (!car.road.main || (Math.abs(car.lat - s.d) > 2.5 && !(Math.abs(target - s.d) > 1 && Math.abs(car.lat - target) <= 2.5))) continue;   // also the lane being entered
       const gap = car.s - s.s;
       if (gap > 0 && gap < 80) want = Math.min(want, Math.max(0, (gap - 18) / 3), car.dir > 0 ? car.v : 0);
     }
