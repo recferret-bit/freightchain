@@ -157,3 +157,10 @@ export class ServiceUnavailableError extends DomainError {
     this.errorCode = typeof checksOrCode === 'string' ? checksOrCode : 'service_unavailable';
   }
 }
+
+/** Explicit, current legal acceptance is required before starting gated actions. */
+export class TermsRequiredError extends DomainError {
+  readonly statusCode = 428;
+  readonly errorCode = 'terms_required';
+  constructor() { super('accept the current terms and privacy notice before continuing'); }
+}

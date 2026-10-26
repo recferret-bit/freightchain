@@ -5,8 +5,8 @@ import { enforceRequestTerms } from '../../../domain/players/terms.js';
 @Injectable()
 export class TermsGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest<{ method?: string; player?: { termsVersion?: number | null; privacyVersion?: number | null } }>();
-    enforceRequestTerms(req.method, req.player);
+    const req = context.switchToHttp().getRequest<{ method?: string; termsExempt?: boolean; player?: { termsVersion?: number | null; privacyVersion?: number | null } }>();
+    if (!req.termsExempt) enforceRequestTerms(req.method, req.player);
     return true;
   }
 }

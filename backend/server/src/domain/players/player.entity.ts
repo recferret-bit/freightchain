@@ -36,7 +36,7 @@ export class Player {
 
   /** First sight of a wallet. `freeOnSignup` is stored and unused: training rides are not counted. `guest` is only the anonymous EASY session. */
   static register(wallet: string, now: Date, freeOnSignup: number, freeRidesMax: number, guest = false): Player {
-    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), freeRidesMax, createdAt: now, tutorialPassedAt: null, age18At: null, lossAt: null, guest, trustScore: TRUST_INITIAL, termsVersion: 1, privacyVersion: 1, rejectedRides: 0 });
+    return new Player({ wallet, version: 1, freeRides: freeOnSignup, freeDay: utcDay(now), freeRidesMax, createdAt: now, tutorialPassedAt: null, age18At: null, lossAt: null, guest, trustScore: TRUST_INITIAL, termsVersion: 0, privacyVersion: 0, rejectedRides: 0 });
   }
 
   static restore(props: PlayerProps): Player {
@@ -44,8 +44,8 @@ export class Player {
       ...props,
       guest: props.guest === true,
       trustScore: props.trustScore ?? TRUST_INITIAL,
-      termsVersion: props.termsVersion === undefined ? 1 : props.termsVersion,
-      privacyVersion: props.privacyVersion === undefined ? 1 : props.privacyVersion,
+      termsVersion: props.termsVersion === undefined ? 0 : props.termsVersion,
+      privacyVersion: props.privacyVersion === undefined ? 0 : props.privacyVersion,
       rejectedRides: props.rejectedRides ?? 0,
     });
   }
@@ -62,9 +62,14 @@ export class Player {
   get lossAt(): Date | null { return this.props.lossAt; }
   get guest(): boolean { return this.props.guest === true; }
   get trustScore(): number { return this.props.trustScore ?? TRUST_INITIAL; }
-  get termsVersion(): number | null { return this.props.termsVersion === undefined ? 1 : this.props.termsVersion; }
-  get privacyVersion(): number | null { return this.props.privacyVersion === undefined ? 1 : this.props.privacyVersion; }
+  get termsVersion(): number | null { return this.props.termsVersion === undefined ? 0 : this.props.termsVersion; }
+  get privacyVersion(): number | null { return this.props.privacyVersion === undefined ? 0 : this.props.privacyVersion; }
   get rejectedRides(): number { return this.props.rejectedRides ?? 0; }
+
+  acceptTerms(termsVersion: number, privacyVersion: number, now: Date): void {
+    this.props.termsVersion = termsVersion; this.props.privacyVersion = privacyVersion;
+    this.props.age18At ??= now;
+  }
 
   /** Raw score adjustment. Verified finishes/social bindings use the tracked methods below. */
   applyTrustEvent(event: TrustEvent): void {

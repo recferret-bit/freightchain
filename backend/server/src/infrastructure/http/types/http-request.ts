@@ -19,6 +19,8 @@ export type PlayerAuthPayload = PlayerIdentity;
 
 export interface RequestWithPlayer extends Request {
   player: PlayerIdentity;
+  /** Internal route-policy result from authenticated guard, never client-controlled. */
+  termsExempt?: boolean;
 }
 
 /** Set by OptionalSessionGuard. Null when the cookie is missing or does not verify. */

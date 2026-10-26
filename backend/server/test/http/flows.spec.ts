@@ -1,3 +1,4 @@
+import { termsScenarios } from '../scenarios/terms.scenarios.js';
 import { sgtScenarios } from '../scenarios/sgt.scenarios.js';
 
 import { trustEvidenceScenarios, TRUST_EVIDENCE_ENV } from '../scenarios/trust-evidence.scenarios.js';
@@ -68,6 +69,7 @@ for (const [name, env, scenarios] of [
   ['chain: network fees', CHAIN_ENV, chainScenarios],
   ['chain: the webhook settles what the chain did', WEBHOOK_ENV, webhookScenarios],
   ['client telemetry relay', {}, analyticsScenarios],
+  ['explicit versioned consent and training exemption', {}, termsScenarios],
   ['profile: the 18+ and loss offer before a paid shift', AGREEMENTS_ENV, agreementsScenarios],
   ['solana actions: discovery, shift card, ride blink', {}, actionsScenarios],
   ['solana actions: one program-mode ticket', ACTIONS_PROGRAM_ENV, actionsBuyScenarios],

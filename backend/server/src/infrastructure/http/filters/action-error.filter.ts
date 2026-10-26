@@ -5,6 +5,7 @@ import { ZodError } from 'zod';
 import { DomainError, ServiceUnavailableError } from '../../../domain/shared/errors.js';
 
 const AGREE = 'Accept the 18+ and loss terms on the Freight Chain site, then press this again. Nothing was charged. Devnet SOL only.';
+const TERMS = 'Review and accept the current terms and privacy notice on the Freight Chain site, then press this again. Nothing was charged. Devnet SOL only.';
 const UNSOLD = 'Ticket sales are not on this server yet. Nothing was charged. Devnet only.';
 const ACCOUNT = 'Send the buyer’s Solana account (base58).';
 const FAILED = 'Something went wrong. Nothing was charged.';
@@ -17,6 +18,7 @@ export function actionError(exception: unknown): { status: number; message: stri
   if (exception instanceof ZodError) return { status: 400, message: FIELD[String(exception.issues[0]?.path[0] ?? '')] ?? INVALID };
   if (exception instanceof DomainError) {
     if (exception.errorCode === 'agreements_required') return { status: exception.statusCode, message: AGREE };
+    if (exception.errorCode === 'terms_required') return { status: exception.statusCode, message: TERMS };
     if (exception instanceof ServiceUnavailableError) return { status: exception.statusCode, message: /not configured|no pool program/i.test(exception.message) ? UNSOLD : 'The chain is not reachable. Nothing was charged. Devnet only.' };
     return { status: exception.statusCode, message: exception.message };
   }

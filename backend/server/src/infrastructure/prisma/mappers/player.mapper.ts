@@ -17,6 +17,6 @@ export class PlayerMapper {
 
   static toCreateData(player: Player) {
     const s = player.snapshot();
-    return { wallet: s.wallet, version: s.version, freeRides: s.freeRides, freeDay: s.freeDay, freeRidesMax: s.freeRidesMax, createdAt: s.createdAt, tutorialPassedAt: s.tutorialPassedAt, age18At: s.age18At, lossAt: s.lossAt, guest: s.guest === true, trustScore: s.trustScore ?? 60, termsVersion: s.termsVersion ?? 1, privacyVersion: s.privacyVersion ?? 1, trustSignals: PlayerMapper.trustData(player) };
+    return { wallet: s.wallet, version: s.version, freeRides: s.freeRides, freeDay: s.freeDay, freeRidesMax: s.freeRidesMax, createdAt: s.createdAt, tutorialPassedAt: s.tutorialPassedAt, age18At: s.age18At, lossAt: s.lossAt, guest: s.guest === true, trustScore: s.trustScore ?? 60, termsVersion: s.termsVersion ?? 0, privacyVersion: s.privacyVersion ?? 0, trustSignals: PlayerMapper.trustData(player) };
   }
 }

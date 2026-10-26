@@ -16920,6 +16920,139 @@
         ]
       }
     },
+    "/api/profile/terms": {
+      "get": {
+        "operationId": "LobbyHttpController.terms",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "acceptedPrivacyVersion": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "acceptedTermsVersion": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "privacyVersion": {
+                      "type": "number"
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "termsVersion": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "acceptedPrivacyVersion",
+                    "acceptedTermsVersion",
+                    "privacyVersion",
+                    "required",
+                    "termsVersion"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "LobbyHttpController"
+        ]
+      },
+      "post": {
+        "operationId": "LobbyHttpController.acceptTerms",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "accepted": {
+                    "const": true
+                  },
+                  "age18": {
+                    "const": true
+                  },
+                  "privacyVersion": {
+                    "exclusiveMinimum": 0,
+                    "type": "integer"
+                  },
+                  "termsVersion": {
+                    "exclusiveMinimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "accepted",
+                  "age18",
+                  "privacyVersion",
+                  "termsVersion"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "acceptedPrivacyVersion": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "acceptedTermsVersion": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "privacyVersion": {
+                      "type": "number"
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "termsVersion": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "acceptedPrivacyVersion",
+                    "acceptedTermsVersion",
+                    "privacyVersion",
+                    "required",
+                    "termsVersion"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "LobbyHttpController"
+        ]
+      }
+    },
     "/api/promo/mine": {
       "get": {
         "operationId": "PromosHttpController.mine",
