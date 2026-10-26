@@ -44,7 +44,7 @@ try {
   const training = await call('POST', 'rides', { tier: 'free', level: 1 }, cookie);
   check('training remains available after refusal', training.status === 200, JSON.stringify(training.json));
   check('profile legal copy follows Russian', await until('/МНЕ ИСПОЛНИЛОСЬ 18 ЛЕТ/.test(document.querySelector("#offer")?.textContent || "")'));
-  await chrome.ev('document.querySelector("#agree-loss").click()');
+  await chrome.ev('void import("/site/wallet.js").then(m => m.api("airdrop/claim", {}, { method: "POST", report: false })).catch(() => {})');   // a real protected write (agreements are consent-exempt by design); never awaited, the review waits on the modal
   check('a protected write opens consent again without silently accepting', await until('!!document.querySelector("#terms-dialog[open]")') && await count() === 0);
   await chrome.ev('document.querySelector("#terms-age").click(); document.querySelector("#terms-accept").click()');
   check('explicit acceptance closes the modal', await until('!document.querySelector("#terms-dialog")'));
@@ -63,10 +63,10 @@ try {
   check('loss agreement saves through the real API after consent', await until('document.querySelector("#agree-loss")?.checked && document.querySelector("#agree-loss")?.disabled'));
   check('both profile agreements persist', (await get('profile')).json.agreements.loss === true && (await get('profile')).json.agreements.age18 === true);
   await prisma.$executeRaw`UPDATE player."Player" SET "termsVersion"=0 WHERE wallet=${wallet}`;
-  await open('/lobby.html?lang=en#profile');
+  await open('/lobby.html?lang=en&stale=1#profile');   // a distinct query: the language switch already left ?lang=en in the URL, and a fragment-only navigation would not reload
   check('an older stored version requires consent again', await until('!!document.querySelector("#terms-dialog[open]")'));
   await chrome.ev('document.querySelector("#terms-decline").click()');
-  const refused = await call('PUT', 'profile/agreements', { age18: true, loss: true }, cookie);
+  const refused = await call('POST', 'airdrop/claim', {}, cookie);
   check('stale version refuses protected writes with 428 terms_required', refused.status === 428 && refused.json.code === 'terms_required');
   await open('/lobby.html?lang=ru#profile');
   assert(await until('!!document.querySelector("#terms-dialog[open]")'));
@@ -82,7 +82,7 @@ try {
   await chrome.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   check('legal text fits phone width', await chrome.ev('document.documentElement.scrollWidth <= innerWidth + 1'));
   await chrome.shot('legal-ru-phone');
-  const problems = chrome.filt().filter(x => !(/status of 428/.test(x) && /\/api\/profile\/agreements/.test(x)));
+  const problems = chrome.filt().filter(x => !(/status of 428/.test(x) && /\/api\/airdrop\/claim/.test(x)));
   check('no unexpected browser errors', !problems.length, problems.join(' | '));
   console.log('PASS explicit consent, refusal, re-consent, EN/RU and draft legal documents');
 } finally { if (chrome) await chrome.close(); await prisma.$disconnect(); }
