@@ -9,6 +9,8 @@ const RETRY_MS = [30_000, 60_000, 120_000, 300_000, 600_000, 1_800_000];
 @Injectable()
 export class TelegramAlertScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly log = new Logger('AdminAlert');
+  private dispatching = false;
+  private stopped = false;
   private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
@@ -23,10 +25,24 @@ export class TelegramAlertScheduler implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleDestroy(): void {
+    this.stopped = true;
     if (this.timer) clearInterval(this.timer);
   }
 
   async dispatch(): Promise<void> {
+    if (this.stopped || this.dispatching) return;
+    this.dispatching = true;
+    try {
+      await this.deliverDue();
+    } catch (error) {
+      // Database errors can contain connection details; keep the timer boundary diagnostic redacted.
+      this.log.error({ event: 'admin-alert.dispatch-failed', message: error instanceof Error ? error.name : 'unknown' });
+    } finally {
+      this.dispatching = false;
+    }
+  }
+
+  private async deliverDue(): Promise<void> {
     const token = this.env.adminAlertTelegramBotToken;
     const chat = this.env.adminAlertTelegramChatId;
     const now = this.clock.now();

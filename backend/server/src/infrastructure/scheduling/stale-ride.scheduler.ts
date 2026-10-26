@@ -33,15 +33,17 @@ export class StaleRideScheduler implements OnApplicationBootstrap, OnApplication
   }
 
   async run(): Promise<void> {
+    if (this.stopped) return;
     const ttl = Math.max(1000, Math.floor(this.intervalMs * 0.8));
-    if (!this.cache || await this.cache.tryLock(LOCK_KEY, ttl)) {
-      try {
+    let locked = false;
+    try {
+      if (!this.cache || (locked = await this.cache.tryLock(LOCK_KEY, ttl))) {
         const { ended } = (await this.commands.execute(new SweepStaleRidesCommand())) as SweepStaleRidesResultDto;
         if (ended > 0) this.log.log({ event: 'stale-sweep', msg: `ended ${ended} ride(s) whose tab vanished (failed · heartbeat lost)`, ended });
-      } catch (error) {
-        await this.cache?.releaseLock(LOCK_KEY);
-        this.log.error(`stale ride sweep failed: ${error instanceof Error ? error.message : String(error)}`);
       }
+    } catch (error) {
+      if (locked) await this.cache?.releaseLock(LOCK_KEY).catch(() => undefined);
+      this.log.error({ event: 'stale-sweep.failed', message: error instanceof Error ? error.name : 'unknown' });
     }
     if (this.stopped) return;
     this.timer = setTimeout(() => void this.run(), this.intervalMs);

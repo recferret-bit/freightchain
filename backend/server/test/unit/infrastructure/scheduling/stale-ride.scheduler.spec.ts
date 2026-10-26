@@ -22,4 +22,20 @@ describe('StaleRideScheduler', () => {
     await vi.advanceTimersByTimeAsync(120_000); expect(calls).toBe(3);
     expect(new StaleRideScheduler(busMock().bus as never, new FixedRules(unitRules({ hbTimeoutMs: 15_000 }))).intervalMs).toBe(5_000);   // a short test timeout sweeps faster
   });
+  it('survives cache acquisition and release outages, then resumes sweeping', async () => {
+    const cache = { tryLock: vi.fn().mockRejectedValueOnce(new Error('cache down')).mockResolvedValue(true), releaseLock: vi.fn().mockRejectedValue(new Error('release down')) };
+    const bus = { execute: vi.fn().mockRejectedValueOnce(new Error('database down')).mockResolvedValue({ ended: 0, skipped: 0 }) };
+    const scheduler = new StaleRideScheduler(bus as never, new FixedRules(unitRules({ hbTimeoutMs: 150_000 })), cache as never);
+    scheduler.onApplicationBootstrap();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(bus.execute).not.toHaveBeenCalled();
+    expect(cache.releaseLock).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(cache.releaseLock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(bus.execute).toHaveBeenCalledTimes(2);
+    scheduler.onApplicationShutdown();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
 });
