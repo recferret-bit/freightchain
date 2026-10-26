@@ -14,5 +14,8 @@ export interface TelegramLoginProof {
 
 /** Telegram Bot API `getChatMember`. Tests inject a fake. The process does not require a bot token to boot. */
 export abstract class TelegramMembershipPort {
-  abstract getChatMember(input: { telegramUserId: string; chatId: string; proof?: TelegramLoginProof }): Promise<TelegramMember>;
+  get loginBot(): string | null { return null; }
+  get channel(): string | null { return null; }
+  get group(): string | null { return null; }
+  abstract getChatMember(input: { telegramUserId: string; chatId: string; target?: 'channel' | 'group'; proof?: TelegramLoginProof }): Promise<TelegramMember>;
 }

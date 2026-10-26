@@ -12,12 +12,24 @@ const view = (row: AirdropClaim): AirdropRow => ({
   ...emptyAirdrop(row.wallet), telegramUserId: row.telegramUserId, xUserId: row.xUserId, xHandle: row.xHandle,
   rideOk: row.rideVerifiedAt !== null, telegramMember: row.telegramAt !== null, turnstileOk: row.turnstileAt !== null,
   xAgeOk: row.xAt !== null, xFollowersOk: row.xAt !== null, xFollows: row.xAt !== null, xQuoteOk: row.xAt !== null,
-  heldAt: row.heldAt, claimedAt: row.claimedAt,
+  heldAt: row.heldAt, claimedAt: row.claimedAt, telegramGroupMember: row.telegramGroupAt !== null, telegramActiveAt: row.telegramActiveAt, rulesAcceptedAt: row.rulesAcceptedAt, attemptGrantedAt: row.attemptGrantedAt, points: row.points, xAttemptAt: row.xAttemptAt, xVerifiedAt: row.xVerifiedAt, xPostId: row.xPostId,
 });
 
 @Injectable()
 export class AirdropPrismaRepository extends AirdropRepositoryPort {
   constructor(private readonly prisma: PrismaService, private readonly clock: ClockPort) { super(); }
+
+  async reserveXBudget(costCents: number, maxCents: number, tx: TransactionHandle): Promise<boolean> {
+    const db = clientFor(this.prisma, tx);
+    await db.campaignProviderBudget.createMany({ data: [{ campaign, reservedCents: 0 }], skipDuplicates: true });
+    const result = await db.campaignProviderBudget.updateMany({ where: { campaign, reservedCents: { lte: maxCents - costCents } }, data: { reservedCents: { increment: costCents } } });
+    return result.count === 1;
+  }
+
+  async findTelegramOwner(telegramUserId: string): Promise<string | null> {
+    const row = await this.prisma.airdropClaim.findUnique({ where: { telegramUserId } });
+    return row?.wallet ?? null;
+  }
 
   async get(wallet: string, tx?: TransactionHandle): Promise<AirdropRow | null> {
     const row = await clientFor(this.prisma, tx).airdropClaim.findUnique({ where: { wallet_campaign: { wallet, campaign } } });
@@ -31,6 +43,8 @@ export class AirdropPrismaRepository extends AirdropRepositoryPort {
     const progress = {
       rideVerifiedAt: row.rideOk ? existing?.rideVerifiedAt ?? now : null,
       telegramAt: row.telegramMember ? existing?.telegramAt ?? now : null,
+      telegramGroupAt: row.telegramGroupMember ? existing?.telegramGroupAt ?? now : null,
+      telegramActiveAt: row.telegramActiveAt, rulesAcceptedAt: row.rulesAcceptedAt, attemptGrantedAt: row.attemptGrantedAt, points: row.points, xAttemptAt: row.xAttemptAt, xVerifiedAt: row.xVerifiedAt, xPostId: row.xPostId,
       xAt: row.xAgeOk && row.xFollowersOk && row.xFollows && row.xQuoteOk ? existing?.xAt ?? now : null,
       turnstileAt: row.turnstileOk ? existing?.turnstileAt ?? now : null,
       xHandle: row.xHandle, heldAt: row.heldAt, claimedAt: row.claimedAt, updatedAt: now,

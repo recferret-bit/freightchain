@@ -13,6 +13,14 @@ export interface AirdropRow {
   code: string;
   telegramUserId: string | null;
   telegramMember: boolean;
+  telegramGroupMember: boolean;
+  telegramActiveAt: Date | null;
+  rulesAcceptedAt: Date | null;
+  attemptGrantedAt: Date | null;
+  points: number;
+  xAttemptAt: Date | null;
+  xVerifiedAt: Date | null;
+  xPostId: string | null;
   xUserId: string | null;
   xHandle: string | null;
   xAgeOk: boolean;
@@ -28,7 +36,7 @@ export interface AirdropRow {
 
 export function emptyAirdrop(wallet: string): AirdropRow {
   return {
-    wallet, code: airdropCode(wallet), telegramUserId: null, telegramMember: false, xUserId: null, xHandle: null,
+    wallet, code: airdropCode(wallet), telegramGroupMember: false, telegramActiveAt: null, rulesAcceptedAt: null, attemptGrantedAt: null, points: 0, xAttemptAt: null, xVerifiedAt: null, xPostId: null, telegramUserId: null, telegramMember: false, xUserId: null, xHandle: null,
     xAgeOk: false, xFollowersOk: false, xFollows: false, xQuoteOk: false, turnstileOk: false, rideOk: false, heldAt: null, claimedAt: null,
   };
 }
@@ -63,4 +71,14 @@ export function telegramMember(status: string, isMember?: boolean): boolean {
 export function normalHandle(handle: string): string {
   const trimmed = handle.trim();
   return trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
+}
+
+/** Required Season 1 campaign tasks; event chat activity and legal consent are additional gates. */
+export function campaignTasksComplete(row: AirdropRow | null): boolean {
+  return !!row && row.rideOk && row.telegramMember && row.telegramGroupMember && row.xAgeOk && row.xFollowersOk && row.xFollows && row.xQuoteOk;
+}
+
+/** Count of completed task categories, independent of any future points allocation. */
+export function campaignTaskCount(row: AirdropRow): number {
+  return Number(row.rideOk) + Number(row.telegramMember && row.telegramGroupMember) + Number(row.xAgeOk && row.xFollowersOk && row.xFollows && row.xQuoteOk);
 }

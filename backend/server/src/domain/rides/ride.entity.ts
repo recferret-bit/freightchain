@@ -1,3 +1,4 @@
+import { PRESEASON_PROMO_CODE } from '../settings/preseason-event.js';
 import type { Loadout } from '../economy/cosmetics.js';
 import { finishFor, FINISH_RULES_VERSION } from '../road/finish-for.js';
 import { ConflictError } from '../shared/errors.js';
@@ -16,7 +17,6 @@ import {
 } from './ride-rules.js';
 import { DEFAULT_FREE_LEVEL, FREE_LEVELS, assertAssistAllowed, assertTutorialAllowed, levelOfTrip, tripOf, type FreeLevel } from './ride-trip.js';
 import { notePause } from './pause-bounds.js';
-
 export interface RideProps {
   id: string;
   wallet: string;
@@ -96,10 +96,8 @@ export interface RideProps {
   trafficSaltCommit?: string | null;
   holeSaltCommit?: string | null;
 }
-
 /** What issuing a prompt needs from the caller: an id and a random draw (the entity stays pure). */
 export interface ChallengeDraw { id: string; rnd: number }
-
 /** `level`: the free LEVEL (ride-trip.ts FREE_LEVELS, default 1 = EASY) – its trip and finish-line K; `minSeconds` is the caller's (FREE_RIDE_SECONDS × the level's multiple) */
 export interface FreeRideInput { id: string; wallet: string; seed: number; minSeconds: number; now: Date; tutorial?: boolean; assist?: boolean; level?: FreeLevel }
 export interface TicketRideInput {
@@ -113,18 +111,15 @@ export interface PaidOrderInput {
 export interface PromoRideInput {
   id: string; wallet: string; tier: PaidTierId; seed: number; minSeconds: number; timeScale: number; promoCode: string; now: Date;
 }
-
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 /** A full-length 1h ride takes its line from finishFor. A shortened ride (a demo, a test) keeps K × speed × its own seconds. */
 const lineFor = (tier: string, seed: number, trip: string | null, minSeconds: number): number =>
   tier === '1h' && minSeconds >= 3600 ? finishFor(seed, trip ?? '1h', FINISH_RULES_VERSION).finishS : completeDist(minSeconds, completeDistK(tier, trip));
-
 /* A ride. The CLIENT does not decide whether a ride counts: it reports progress and the server judges it –
    complete = the reported distance ≥ completeDist (the finish line), where the distance may only grow at ≤ MAX_SPEED per second of the server's wall clock –
    that governor is the only time gate: a shift can't finish faster than completeDist / MAX_SPEED. This is server-timed telemetry, not a replay: a modified client can still lie within those bounds. */
 export class Ride {
   private constructor(private readonly p: RideProps) {}
-
   private static blank(): Omit<RideProps, 'id' | 'wallet' | 'tier' | 'seed' | 'minSeconds' | 'completeDist' | 'status' | 'createdAt'> {
     return {
       trafficVersion: 0, timeScale: 1, priceUsd: 0, lamports: 0, solUsd: null, quoteExpiresAt: null, roundId: null, poolId: null, paidAt: null, route: null, startHour: null, loadout: null, trip: null, tutorial: false, assist: false, nightSeconds: 0, crashesVehicle: 0, crashesBuilding: 0, paused: false,
@@ -132,7 +127,6 @@ export class Ride {
       seedCommitment: null, blockhash: null, slot: null, ranked: false, cleanMetres: null, prizeCountry: null, prizeRegion: null, promoCode: null, weeklyGrant: false,
     };
   }
-
   /** A free ride is ready at once (its credit is spent by the caller). Driven on its LEVEL's trip, to that level's finish line; TUTORIAL or ASSIST on a level that forbids it is refused (409). */
   static createFree(i: FreeRideInput): Ride {
     const level = FREE_LEVELS[i.level ?? DEFAULT_FREE_LEVEL];
@@ -141,7 +135,6 @@ export class Ride {
     assertTutorialAllowed(level.level, tutorial);
     return new Ride({ ...Ride.blank(), id: i.id, wallet: i.wallet, tier: 'free', trip: level.trip, route: level.route, startHour: worldFor(i.seed).startHour, seed: i.seed, minSeconds: i.minSeconds, completeDist: completeDist(i.minSeconds, completeDistK('free', level.trip)), status: RideStatus.Created, createdAt: i.now, tutorial, assist });
   }
-
   /** A paid ride bought with a pool ticket (the money is already in the pool's escrow): ready at once, ranked in the pool's round. The caller spends the ticket. */
   static createFromTicket(i: TicketRideInput): Ride {
     if (i.tier === 'free') throw new ConflictError('a free ride is not paid with a ticket');
@@ -343,6 +336,12 @@ export class Ride {
     this.p.reason = null;
   }
 
+  /** An event entry that can no longer start must not strand its wallet after the event. No grant is restored. */
+  closeExpiredEvent(now: Date): void {
+    this.mustBe(RideStatus.Created);
+    if (this.promoCode !== PRESEASON_PROMO_CODE) throw new ConflictError('only an event entry can expire this way');
+    this.close(RideStatus.Cancelled, 'event entry expired', now);
+  }
   expire(now: Date): void {
     this.mustBe(RideStatus.AwaitingPayment);
     this.close(RideStatus.Expired, null, now);

@@ -1,3 +1,5 @@
+import { SettingsRepositoryPort } from '../../src/application/ports/settings/settings.repository.port.js';
+import { preseasonAttemptScenarios } from './preseason-attempt.scenarios.js';
 import { PlayerRepositoryPort } from '../../src/application/ports/players/player.repository.port.js';
 import { createHash, createHmac } from 'node:crypto';
 import { ConvoyService } from '../../src/application/referral/convoy.service.js';
@@ -10,7 +12,9 @@ import type { Harness } from '../support/harness.js';
 /** Real provider adapters and HTTP/transaction flow; only the external HTTP responses are fixtures. */
 export function airdropProviderScenarios(h: () => Harness): void {
   const { login } = bindClient(h);
+  preseasonAttemptScenarios(h);
   it('verifies signed Telegram ownership and wallet-bound X proof, then refuses reuse', async () => {
+    await h().app.get(SettingsRepositoryPort).upsert('airdrop_x_check_cost_cents', 1);
     let rider = await login(), other = await login();
     const host = await login();
     const svc = h().app.get(AirdropService), env = h().app.get(EnvService);
@@ -32,6 +36,7 @@ export function airdropProviderScenarios(h: () => Harness): void {
     const spies = [
       vi.spyOn(env, 'telegramBotToken', 'get').mockReturnValue(token),
       vi.spyOn(env, 'telegramChannelId', 'get').mockReturnValue('@FreightChain'),
+      vi.spyOn(env, 'telegramGroupId', 'get').mockReturnValue('@FreightChainChat'),
       vi.spyOn(env, 'twitterApiIoKey', 'get').mockReturnValue('fixture-x-key'),
       vi.spyOn(env, 'turnstileSecretKey', 'get').mockReturnValue('fixture-turnstile'),
     ];
@@ -53,7 +58,7 @@ export function airdropProviderScenarios(h: () => Harness): void {
       const post = (agent: typeof rider.agent, body: object) => agent.post('/api/airdrop/verify-telegram').send({ telegramUserId: '42', turnstileToken: 'fixture', ...body });
       expect((await post(rider.agent, {}).expect(400)).body.code).toBe('telegram_proof_invalid');
       expect(fetchMock.mock.calls.some(([url]) => url.startsWith('https://api.telegram.org/'))).toBe(false);
-      expect((await post(rider.agent, { proof }).expect(200)).body.telegram).toEqual({ bound: true, member: true });
+      expect((await post(rider.agent, { proof }).expect(200)).body.telegram).toMatchObject({ bound: true, member: true, groupMember: true });
       expect((await post(other.agent, { proof }).expect(409)).body.code).toBe('social_account_already_bound');
       expect((await h().app.get(PlayerRepositoryPort).findByWallet(rider.address))?.trustScore).toBe(65);
       const xBody = { handle: 'ada', postId: '55', turnstileToken: 'fixture' };
@@ -63,6 +68,7 @@ export function airdropProviderScenarios(h: () => Harness): void {
       await rider.agent.post('/api/airdrop/verify-x').send(xBody).expect(200);
       expect((await ledger.ledger()).filter(r => r.unit === 'ten4')).toHaveLength(1);
       expect((await h().app.get(PlayerRepositoryPort).findByWallet(rider.address))?.trustScore).toBe(85);
+      h().clock.advance(601);
       xCode = `FC-${other.address}`;
       expect((await other.agent.post('/api/airdrop/verify-x').send(xBody).expect(409)).body.code).toBe('social_account_already_bound');
       expect((await rider.agent.get('/api/airdrop/status').expect(200)).body).toMatchObject({ code: `FC-${rider.address}`, telegram: { bound: true }, x: { bound: true }, turnstile: { required: true, passed: true } });

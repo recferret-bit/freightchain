@@ -1,5 +1,5 @@
-import { ClaimAirdropCommand, GetAirdropStatusQuery, VerifyTelegramCommand, VerifyXCommand } from '../../../../src/application/airdrop/airdrop.command.js';
-import { claimAirdropBodySchema, verifyTelegramBodySchema, verifyXBodySchema } from '../../../../src/presentation/referral/dto/airdrop.dto.js';
+import { ClaimPreseasonAttemptCommand, ClaimAirdropCommand, GetAirdropStatusQuery, VerifyTelegramCommand, VerifyXCommand } from '../../../../src/application/airdrop/airdrop.command.js';
+import { claimAttemptBodySchema, claimAirdropBodySchema, verifyTelegramBodySchema, verifyXBodySchema } from '../../../../src/presentation/referral/dto/airdrop.dto.js';
 import { AirdropHttpController } from '../../../../src/presentation/referral/airdrop.http.controller.js';
 import { busMock } from '../../../support/bus.js';
 
@@ -15,6 +15,9 @@ describe('AirdropHttpController', () => {
     expect(commands.last()).toEqual(new VerifyXCommand('ada', 'ada', '55', undefined));
     await controller.claim({ wallet: 'ada' }, claimAirdropBodySchema.parse({}));
     expect(commands.last()).toEqual(new ClaimAirdropCommand('ada', undefined));
+    await controller.claimAttempt({ wallet: 'ada' }, claimAttemptBodySchema.parse({ acceptedRules: true }));
+    expect(commands.last()).toEqual(new ClaimPreseasonAttemptCommand('ada', true));
+    expect(claimAttemptBodySchema.safeParse({ acceptedRules: false }).success).toBe(false);
     expect(verifyTelegramBodySchema.safeParse({ telegramUserId: 'nope' }).success).toBe(false);
     expect(claimAirdropBodySchema.safeParse({ turnstileToken: 't', extra: true }).success).toBe(false);
   });

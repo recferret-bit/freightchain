@@ -7120,24 +7120,104 @@
                     "code": {
                       "type": "string"
                     },
+                    "completedTasks": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "event": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "attemptGranted": {
+                          "type": "boolean"
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "lastStartAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rulesAccepted": {
+                          "type": "boolean"
+                        },
+                        "startsAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "attemptGranted",
+                        "enabled",
+                        "lastStartAt",
+                        "rulesAccepted",
+                        "startsAt"
+                      ],
+                      "type": "object"
+                    },
+                    "heldUntil": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "points": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "rideUnlocked": {
                       "type": "boolean"
                     },
                     "settlement": {
                       "const": "ledger"
                     },
+                    "tasksComplete": {
+                      "type": "boolean"
+                    },
                     "telegram": {
                       "additionalProperties": true,
                       "properties": {
+                        "active": {
+                          "type": "boolean"
+                        },
                         "bound": {
                           "type": "boolean"
+                        },
+                        "channel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "group": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "groupMember": {
+                          "type": "boolean"
+                        },
+                        "loginBot": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "member": {
                           "type": "boolean"
                         }
                       },
                       "required": [
+                        "active",
                         "bound",
+                        "channel",
+                        "group",
+                        "groupMember",
+                        "loginBot",
                         "member"
                       ],
                       "type": "object"
@@ -7150,11 +7230,18 @@
                         },
                         "required": {
                           "type": "boolean"
+                        },
+                        "siteKey": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
                         "passed",
-                        "required"
+                        "required",
+                        "siteKey"
                       ],
                       "type": "object"
                     },
@@ -7192,8 +7279,243 @@
                     "claimed",
                     "claimedAt",
                     "code",
+                    "completedTasks",
+                    "event",
+                    "heldUntil",
+                    "points",
                     "rideUnlocked",
                     "settlement",
+                    "tasksComplete",
+                    "telegram",
+                    "turnstile",
+                    "x"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AirdropHttpController"
+        ]
+      }
+    },
+    "/api/airdrop/preseason/claim-attempt": {
+      "post": {
+        "operationId": "AirdropHttpController.claimAttempt",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "acceptedRules": {
+                    "const": true
+                  },
+                  "turnstileToken": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "acceptedRules"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "campaign": {
+                      "const": "preseason"
+                    },
+                    "claimed": {
+                      "type": "boolean"
+                    },
+                    "claimedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "completedTasks": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "event": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "attemptGranted": {
+                          "type": "boolean"
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "lastStartAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rulesAccepted": {
+                          "type": "boolean"
+                        },
+                        "startsAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "attemptGranted",
+                        "enabled",
+                        "lastStartAt",
+                        "rulesAccepted",
+                        "startsAt"
+                      ],
+                      "type": "object"
+                    },
+                    "heldUntil": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "points": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "rideUnlocked": {
+                      "type": "boolean"
+                    },
+                    "settlement": {
+                      "const": "ledger"
+                    },
+                    "tasksComplete": {
+                      "type": "boolean"
+                    },
+                    "telegram": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "active": {
+                          "type": "boolean"
+                        },
+                        "bound": {
+                          "type": "boolean"
+                        },
+                        "channel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "group": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "groupMember": {
+                          "type": "boolean"
+                        },
+                        "loginBot": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "member": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "active",
+                        "bound",
+                        "channel",
+                        "group",
+                        "groupMember",
+                        "loginBot",
+                        "member"
+                      ],
+                      "type": "object"
+                    },
+                    "turnstile": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "required": {
+                          "type": "boolean"
+                        },
+                        "siteKey": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "passed",
+                        "required",
+                        "siteKey"
+                      ],
+                      "type": "object"
+                    },
+                    "x": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "ageOk": {
+                          "type": "boolean"
+                        },
+                        "bound": {
+                          "type": "boolean"
+                        },
+                        "followersOk": {
+                          "type": "boolean"
+                        },
+                        "follows": {
+                          "type": "boolean"
+                        },
+                        "quoteOk": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ageOk",
+                        "bound",
+                        "followersOk",
+                        "follows",
+                        "quoteOk"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "campaign",
+                    "claimed",
+                    "claimedAt",
+                    "code",
+                    "completedTasks",
+                    "event",
+                    "heldUntil",
+                    "points",
+                    "rideUnlocked",
+                    "settlement",
+                    "tasksComplete",
                     "telegram",
                     "turnstile",
                     "x"
@@ -7235,24 +7557,104 @@
                     "code": {
                       "type": "string"
                     },
+                    "completedTasks": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "event": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "attemptGranted": {
+                          "type": "boolean"
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "lastStartAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rulesAccepted": {
+                          "type": "boolean"
+                        },
+                        "startsAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "attemptGranted",
+                        "enabled",
+                        "lastStartAt",
+                        "rulesAccepted",
+                        "startsAt"
+                      ],
+                      "type": "object"
+                    },
+                    "heldUntil": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "points": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "rideUnlocked": {
                       "type": "boolean"
                     },
                     "settlement": {
                       "const": "ledger"
                     },
+                    "tasksComplete": {
+                      "type": "boolean"
+                    },
                     "telegram": {
                       "additionalProperties": true,
                       "properties": {
+                        "active": {
+                          "type": "boolean"
+                        },
                         "bound": {
                           "type": "boolean"
+                        },
+                        "channel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "group": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "groupMember": {
+                          "type": "boolean"
+                        },
+                        "loginBot": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "member": {
                           "type": "boolean"
                         }
                       },
                       "required": [
+                        "active",
                         "bound",
+                        "channel",
+                        "group",
+                        "groupMember",
+                        "loginBot",
                         "member"
                       ],
                       "type": "object"
@@ -7265,11 +7667,18 @@
                         },
                         "required": {
                           "type": "boolean"
+                        },
+                        "siteKey": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
                         "passed",
-                        "required"
+                        "required",
+                        "siteKey"
                       ],
                       "type": "object"
                     },
@@ -7307,8 +7716,13 @@
                     "claimed",
                     "claimedAt",
                     "code",
+                    "completedTasks",
+                    "event",
+                    "heldUntil",
+                    "points",
                     "rideUnlocked",
                     "settlement",
+                    "tasksComplete",
                     "telegram",
                     "turnstile",
                     "x"
@@ -7322,6 +7736,114 @@
         },
         "tags": [
           "AirdropHttpController"
+        ]
+      }
+    },
+    "/api/airdrop/telegram/webhook": {
+      "post": {
+        "operationId": "TelegramWebhookHttpController.receive",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "message": {
+                    "properties": {
+                      "chat": {
+                        "properties": {
+                          "id": {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          "type": {
+                            "maxLength": 32,
+                            "type": "string"
+                          },
+                          "username": {
+                            "maxLength": 64,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "type"
+                        ],
+                        "type": "object"
+                      },
+                      "date": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "forward_origin": {},
+                      "from": {
+                        "properties": {
+                          "id": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          "is_bot": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "is_bot"
+                        ],
+                        "type": "object"
+                      },
+                      "text": {
+                        "maxLength": 4096,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "chat",
+                      "date"
+                    ],
+                    "type": "object"
+                  },
+                  "update_id": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "update_id"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "TelegramWebhookHttpController"
         ]
       }
     },
@@ -7425,24 +7947,104 @@
                     "code": {
                       "type": "string"
                     },
+                    "completedTasks": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "event": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "attemptGranted": {
+                          "type": "boolean"
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "lastStartAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rulesAccepted": {
+                          "type": "boolean"
+                        },
+                        "startsAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "attemptGranted",
+                        "enabled",
+                        "lastStartAt",
+                        "rulesAccepted",
+                        "startsAt"
+                      ],
+                      "type": "object"
+                    },
+                    "heldUntil": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "points": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "rideUnlocked": {
                       "type": "boolean"
                     },
                     "settlement": {
                       "const": "ledger"
                     },
+                    "tasksComplete": {
+                      "type": "boolean"
+                    },
                     "telegram": {
                       "additionalProperties": true,
                       "properties": {
+                        "active": {
+                          "type": "boolean"
+                        },
                         "bound": {
                           "type": "boolean"
+                        },
+                        "channel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "group": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "groupMember": {
+                          "type": "boolean"
+                        },
+                        "loginBot": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "member": {
                           "type": "boolean"
                         }
                       },
                       "required": [
+                        "active",
                         "bound",
+                        "channel",
+                        "group",
+                        "groupMember",
+                        "loginBot",
                         "member"
                       ],
                       "type": "object"
@@ -7455,11 +8057,18 @@
                         },
                         "required": {
                           "type": "boolean"
+                        },
+                        "siteKey": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
                         "passed",
-                        "required"
+                        "required",
+                        "siteKey"
                       ],
                       "type": "object"
                     },
@@ -7497,8 +8106,13 @@
                     "claimed",
                     "claimedAt",
                     "code",
+                    "completedTasks",
+                    "event",
+                    "heldUntil",
+                    "points",
                     "rideUnlocked",
                     "settlement",
+                    "tasksComplete",
                     "telegram",
                     "turnstile",
                     "x"
@@ -7569,24 +8183,104 @@
                     "code": {
                       "type": "string"
                     },
+                    "completedTasks": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "event": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "attemptGranted": {
+                          "type": "boolean"
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "lastStartAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rulesAccepted": {
+                          "type": "boolean"
+                        },
+                        "startsAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "attemptGranted",
+                        "enabled",
+                        "lastStartAt",
+                        "rulesAccepted",
+                        "startsAt"
+                      ],
+                      "type": "object"
+                    },
+                    "heldUntil": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "points": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "rideUnlocked": {
                       "type": "boolean"
                     },
                     "settlement": {
                       "const": "ledger"
                     },
+                    "tasksComplete": {
+                      "type": "boolean"
+                    },
                     "telegram": {
                       "additionalProperties": true,
                       "properties": {
+                        "active": {
+                          "type": "boolean"
+                        },
                         "bound": {
                           "type": "boolean"
+                        },
+                        "channel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "group": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "groupMember": {
+                          "type": "boolean"
+                        },
+                        "loginBot": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "member": {
                           "type": "boolean"
                         }
                       },
                       "required": [
+                        "active",
                         "bound",
+                        "channel",
+                        "group",
+                        "groupMember",
+                        "loginBot",
                         "member"
                       ],
                       "type": "object"
@@ -7599,11 +8293,18 @@
                         },
                         "required": {
                           "type": "boolean"
+                        },
+                        "siteKey": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
                         "passed",
-                        "required"
+                        "required",
+                        "siteKey"
                       ],
                       "type": "object"
                     },
@@ -7641,8 +8342,13 @@
                     "claimed",
                     "claimedAt",
                     "code",
+                    "completedTasks",
+                    "event",
+                    "heldUntil",
+                    "points",
                     "rideUnlocked",
                     "settlement",
+                    "tasksComplete",
                     "telegram",
                     "turnstile",
                     "x"

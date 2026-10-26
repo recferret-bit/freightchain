@@ -159,3 +159,8 @@ Props are **not** pooled as wholes (sizes are continuous and baked into child sc
 Fixed-tick server replay · Trailer–scenery collisions · repair/refuel · traffic sound (horn/siren), vehicle–vehicle crashes, traffic on the shoulder / stalled vehicles · touch controls · server-side ride validation · the escrow program is not deployed yet (devnet next, not audited) · on-chain session keys ·
 the player can't turn into side roads (junctions are features of the one spine; a FORK is the one real choice of road, and both of its roads are the same road in (s, d)) · no turning traffic at junctions, no cross traffic at T-junctions / unsignalled crossroads (they have STOP signs) ·
 no props/furniture along side roads and the main road behind the depot · no floating origin: Float32 road vertices start to jitter past ~100 km.
+
+
+### Campaign tasks in Profile
+
+`site/lobby-campaign.js` renders the EN/RU campaign task panel; `campaign.js` validates X post identifiers and derives task state, and `campaign-copy.js` holds its Russian copy. The server owns progress, points, consent and the event attempt. External provider widgets provide ownership/challenge proofs only. `node frontend/client/tools/e2e-campaign.mjs` runs inert HTTP fixtures in real Chrome, blocks outbound provider traffic, and captures desktop/mobile screenshots. Real Telegram/X/Turnstile acceptance remains an owner check.

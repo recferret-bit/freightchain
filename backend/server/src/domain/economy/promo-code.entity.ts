@@ -1,3 +1,4 @@
+import { PRESEASON_PROMO_CODE } from '../settings/preseason-event.js';
 import { BadRequestError, ConflictError } from '../shared/errors.js';
 import { isPaidTierId } from '../rides/ride-tier.js';
 import { COSMETIC_SLOTS, isCosmeticSlot, isUnlockableCosmetic } from './cosmetics.js';
@@ -47,7 +48,7 @@ export class PromoCode {
     if (input.effect.kind === 'free_rides') throw new ConflictError('extra free-ride codes are retired; grant a 1h, 4h or 8h ride instead', 'promo_retired');
     if (input.effect.kind === 'ride' && input.perWallet !== 1) throw new BadRequestError('a ride code is redeemed once per wallet', 'bad_promo_code');
     const code = PromoCode.normalize(input.code);
-    if (code === CONVOY_PROMO_CODE) throw new BadRequestError('this code is reserved for Convoy activation', 'bad_promo_code');
+    if (code === CONVOY_PROMO_CODE || code === PRESEASON_PROMO_CODE) throw new BadRequestError('this code is reserved for system grants', 'bad_promo_code');
     if (!CODE_RE.test(code)) throw new BadRequestError('a promo code is 3–32 letters, digits, "-" or "_"', 'bad_promo_code');
     PromoCode.assertEffect(input.effect);
     if (!Number.isInteger(input.perWallet) || input.perWallet < 1) throw new BadRequestError('perWallet must be at least 1', 'bad_promo_code');

@@ -150,6 +150,8 @@ Defined in `server/src/domain/economy/cosmetics.ts` and `server/src/domain/honk/
   12. `buy_part(slot: [u8; 16], item: [u8; 16])`: Validates `(slot, item)` against the 45-part catalog (`NotForSale` `6005`), burns `65` or `260 TEN4` from the buyer's TEN4 ATA, initializes receipt PDA `[b"part", buyer, &slot, &item]` (`PartMint`) and classic SPL mint account `nft_mint` (`decimals = 0`, `freeze_authority = authority`), mints `1` token to the buyer's `nft_ata`, **freezes the buyer's `nft_ata` (`freeze_account`)**, and **revokes mint authority (`set_authority(MintTokens, None)`)** so the part is permanently soulbound and cannot be bought twice (`AlreadyBought` `6003`).
 
 ### 4.2 Airdrop Campaign Specification (`MASTER_PLAN.md` §7 & §12, Migration `20261107000000_airdrop`)
+
+**Local implementation:** Profile has an EN/RU campaign task panel. Channel/group ownership and X proofs are durable; the event attempt additionally requires authenticated group activity and explicit event consent. Task evidence carries forward; no task-to-economic-points weights are specified here, so the app reports `completedTasks` separately and does not allocate or mint TEN4. The future TGE distribution remains unchanged. Runtime configuration and local verification are in [`CAMPAIGN_LOCAL.md`](../testing/CAMPAIGN_LOCAL.md).
 - **Pool & Caps**:
   - Total Airdrop bucket: `HONK_AIRDROP = 8,000,000 TEN4` (`8%` of supply).
   - Season 1 allocation: **`2,000,000 TEN4`**, per-wallet cap **`HONK_AIRDROP_WALLET_CAP = 2,000 TEN4`**, Merkle claim window **`HONK_AIRDROP_WINDOW_DAYS = 90` days** after TGE (snapshot after Season 1 ends on `2027-02-28`, TGE no earlier than March 2027; unclaimed tokens burned via `burn_unclaimed`).

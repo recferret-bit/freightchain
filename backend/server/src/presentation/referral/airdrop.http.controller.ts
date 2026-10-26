@@ -1,6 +1,6 @@
 import { Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ClaimAirdropCommand, GetAirdropStatusQuery, VerifyTelegramCommand, VerifyXCommand } from '../../application/airdrop/airdrop.command.js';
+import { ClaimPreseasonAttemptCommand, ClaimAirdropCommand, GetAirdropStatusQuery, VerifyTelegramCommand, VerifyXCommand } from '../../application/airdrop/airdrop.command.js';
 import type { AirdropStatusDto } from '../../application/airdrop/airdrop.service.js';
 import { CurrentPlayer } from '../../infrastructure/http/decorators/current-player.js';
 import { ZodBody } from '../../infrastructure/http/decorators/zod.js';
@@ -8,7 +8,7 @@ import { ZodResponse } from '../../infrastructure/http/decorators/zod-response.j
 import { PlayerAuthGuard } from '../../infrastructure/http/guards/player-auth.guard.js';
 import { TermsGuard } from '../common/guards/terms.guard.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
-import { airdropStatusResponse, claimAirdropBodySchema, verifyTelegramBodySchema, verifyXBodySchema, type ClaimAirdropBody, type VerifyTelegramBody, type VerifyXBody } from './dto/airdrop.dto.js';
+import { claimAttemptBodySchema, type ClaimAttemptBody, airdropStatusResponse, claimAirdropBodySchema, verifyTelegramBodySchema, verifyXBodySchema, type ClaimAirdropBody, type VerifyTelegramBody, type VerifyXBody } from './dto/airdrop.dto.js';
 
 /** Pre-season airdrop. Provider facts and ownership checks live behind application ports. */
 @Controller('api/airdrop')
@@ -34,6 +34,13 @@ export class AirdropHttpController {
   @ZodResponse(airdropStatusResponse)
   verifyX(@CurrentPlayer() player: PlayerIdentity, @ZodBody(verifyXBodySchema) body: VerifyXBody): Promise<AirdropStatusDto> {
     return this.commandBus.execute<VerifyXCommand, AirdropStatusDto>(new VerifyXCommand(player.wallet, body.handle, body.postId, body.turnstileToken));
+  }
+
+  @Post('preseason/claim-attempt')
+  @HttpCode(200)
+  @ZodResponse(airdropStatusResponse)
+  claimAttempt(@CurrentPlayer() player: PlayerIdentity, @ZodBody(claimAttemptBodySchema) body: ClaimAttemptBody): Promise<AirdropStatusDto> {
+    return this.commandBus.execute<ClaimPreseasonAttemptCommand, AirdropStatusDto>(new ClaimPreseasonAttemptCommand(player.wallet, body.acceptedRules, body.turnstileToken));
   }
 
   @Post('claim')

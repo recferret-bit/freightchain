@@ -15,3 +15,7 @@ export class VerifyXCommand {
 export class ClaimAirdropCommand {
   constructor(public readonly wallet: string, public readonly turnstileToken?: string) {}
 }
+
+export class ClaimPreseasonAttemptCommand {
+  constructor(public readonly wallet: string, public readonly acceptedRules: boolean, public readonly turnstileToken?: string) {}
+}

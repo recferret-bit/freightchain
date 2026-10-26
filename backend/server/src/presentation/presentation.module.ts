@@ -30,6 +30,7 @@ import { PledgesHttpController } from './economy/pledges.http.controller.js';
 import { ReferralsHttpController } from './referrals/referrals.http.controller.js';
 import { ConvoyHttpController } from './referral/convoy.http.controller.js';
 import { PrivacyHttpController } from './referral/privacy.http.controller.js';
+import { TelegramWebhookHttpController } from './referral/telegram-webhook.http.controller.js';
 import { AirdropHttpController } from './referral/airdrop.http.controller.js';
 import { MeController } from './player/me.controller.js';
 import { HonkHttpController } from './honk/honk.http.controller.js';
@@ -41,6 +42,6 @@ import { EditorJobsHttpController } from './editor/editor-jobs.http.controller.j
 import { EditorMcpHttpController } from './editor/editor-mcp.http.controller.js';
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthHttpController, AuthHttpController, MeController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminModerationHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, AdminAppealsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, HonkHttpController, PrizeHttpController, EntitiesHttpController, EditorAuthHttpController, EditorEntitiesHttpController, EditorJobsHttpController, EditorMcpHttpController, ReferralsHttpController, ConvoyHttpController, PrivacyHttpController, AirdropHttpController],
+  controllers: [HealthHttpController, AuthHttpController, MeController, RidesHttpController, PublicRidesHttpController, EconomyHttpController, PoolsHttpController, TicketsHttpController, LobbyHttpController, StatsHttpController, ChainHttpController, ChainWebhookHttpController, AdminHttpController, AdminModerationHttpController, AdminPromosHttpController, AdminSettingsHttpController, AdminDirectoryHttpController, PromosHttpController, GarageHttpController, LiveHttpController, TelemetryHttpController, AdminPoolsHttpController, AdminAppealsHttpController, SolanaPayHttpController, ActionsHttpController, PledgesHttpController, SnsHttpController, HonkHttpController, PrizeHttpController, EntitiesHttpController, EditorAuthHttpController, EditorEntitiesHttpController, EditorJobsHttpController, EditorMcpHttpController, ReferralsHttpController, ConvoyHttpController, PrivacyHttpController, TelegramWebhookHttpController, AirdropHttpController],
 })
 export class PresentationModule {}

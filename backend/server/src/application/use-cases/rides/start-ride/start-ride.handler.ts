@@ -20,6 +20,7 @@ import { rideFailed, rideStarted } from '../../../services/analytics-events.js';
 import { emitAnalytics } from '../../../services/analytics-emit.js';
 import { isDemoWallet } from '../../../services/demo.js';
 import { RideLookupService } from '../../../services/ride-lookup.service.js';
+import { PRESEASON_PROMO_CODE } from '../../../../domain/settings/preseason-event.js';
 import { RankedEntryService } from '../../../services/ranked-entry.service.js';
 import { PoolScheduleService } from '../../../services/pool-schedule.service.js';
 import { MinigameSessionService } from '../../../services/minigame-session.service.js';
@@ -107,6 +108,7 @@ export class StartRideHandler implements ICommandHandler<StartRideCommand, RideD
           }
         }
       }
+      if (!ranked && ride.promoCode === PRESEASON_PROMO_CODE) throw new ConflictError('the event attempt must start ranked; use a training ride to practise', 'event_ranked_required');
       const stamp = ranked ? await this.rankedEntry.claim(player, ride, headers, now, tx) : null;   // 409 leaves the ride created, so the driver can start it unranked
       const wardrobe = toWardrobeDto(await this.cosmetics.listUnlocked(wallet, tx), await this.cosmetics.listEquipped(wallet, tx));
       if (this.minigames) await this.minigames.stamp(ride, mgMode, lang);   // null commit on training rides and when MINIGAMES is off; absent in tests that predate the port

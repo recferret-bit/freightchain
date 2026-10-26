@@ -26,3 +26,5 @@ The full Chrome runner includes `guest`, `weekly`, `referral`, `viewer`, `sim` c
 Local achievement cNFTs: `npm run test:nft:localnet` runs pinned Bubblegum/MPL-Core programs, the real mint adapter/worker and PostgreSQL; first use downloads public program bytes from devnet read-only. It is included in `test:ci:full`. See `docs/spec/web3_solana.md`.
 
 Pool v6 is local-only: explicit opens/last-start, independent series cadence, zero-sale activation and admin/expiry refunds. CLI defaults and fresh-program cutover are in `backend/programs/README.md`; do not upgrade live v3 accounts in place.
+
+Campaign tasks and event attempts: `docs/testing/CAMPAIGN_LOCAL.md` (Profile EN/RU panel, provider fixtures, owner-only configuration).

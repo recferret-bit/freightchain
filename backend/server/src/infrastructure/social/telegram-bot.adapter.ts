@@ -34,8 +34,11 @@ export async function telegramGetChatMember(token: string | null, chatId: string
 @Injectable()
 export class TelegramBotAdapter extends TelegramMembershipPort {
   constructor(private readonly env: EnvService, private readonly clock: ClockPort) { super(); }
-  getChatMember(input: { telegramUserId: string; chatId: string; proof?: TelegramLoginProof }): Promise<TelegramMember> {
-    const token = this.env.telegramBotToken, chat = this.env.telegramChannelId;
+  override get loginBot(): string | null { return this.env.telegramLoginBot ?? null; }
+  override get channel(): string | null { return this.env.telegramChannelId ?? null; }
+  override get group(): string | null { return this.env.telegramGroupId ?? null; }
+  getChatMember(input: { telegramUserId: string; chatId: string; target?: 'channel' | 'group'; proof?: TelegramLoginProof }): Promise<TelegramMember> {
+    const token = this.env.telegramBotToken, chat = input.target === 'group' ? this.env.telegramGroupId : this.env.telegramChannelId;
     if (!token || !chat) return Promise.reject(new ServiceUnavailableError('Telegram verification is not configured', 'telegram_unconfigured'));
     if (!telegramOwnership(token, input.telegramUserId, input.proof, this.clock.now())) return Promise.reject(new BadRequestError('Telegram login proof is invalid or expired', 'telegram_proof_invalid'));
     return telegramGetChatMember(token, chat, input.telegramUserId, fetch);

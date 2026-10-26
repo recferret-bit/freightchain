@@ -47,7 +47,7 @@ const guardName = (guard: unknown): string => {
 
 const authOf = (names: readonly string[], adminPublic: boolean, editorPublic: boolean): RouteAuth => {
   if (names.includes('McpJobGuard')) return 'mcp';
-  if (names.includes('WebhookSecretGuard')) return 'webhook';
+  if ((names.includes('WebhookSecretGuard') || names.includes('TelegramWebhookGuard'))) return 'webhook';
   if (names.includes('AdminGuard')) return adminPublic ? 'admin-public' : 'admin';
   if (names.includes('EditorGuard')) return editorPublic ? 'editor-public' : 'editor';
   if (names.includes('PlayerAuthGuard')) return 'player';

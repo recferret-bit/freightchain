@@ -5,10 +5,19 @@ import { emptyAirdrop, type AirdropRow } from '../../application/airdrop/airdrop
 /** Unit-test twin; runtime uses AirdropPrismaRepository and database-enforced social ownership. */
 @Injectable()
 export class MemoryAirdropRepository extends AirdropRepositoryPort {
-  clear(): void { this.rows.clear(); this.telegramOwner.clear(); this.xOwner.clear(); }
+  private reservedCents = 0;
+  clear(): void { this.reservedCents = 0; this.rows.clear(); this.telegramOwner.clear(); this.xOwner.clear(); }
   private readonly rows = new Map<string, AirdropRow>();
   private readonly telegramOwner = new Map<string, string>();
   private readonly xOwner = new Map<string, string>();
+
+  reserveXBudget(costCents: number, maxCents: number): Promise<boolean> {
+    if (this.reservedCents + costCents > maxCents) return Promise.resolve(false);
+    this.reservedCents += costCents;
+    return Promise.resolve(true);
+  }
+
+  findTelegramOwner(id: string): Promise<string | null> { return Promise.resolve(this.telegramOwner.get(id) ?? null); }
 
   get(wallet: string): Promise<AirdropRow | null> {
     const row = this.rows.get(wallet);
