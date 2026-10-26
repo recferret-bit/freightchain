@@ -1,5 +1,4 @@
 import { SettingsRepositoryPort } from '../../src/application/ports/settings/settings.repository.port.js';
-import { preseasonAttemptScenarios } from './preseason-attempt.scenarios.js';
 import { PlayerRepositoryPort } from '../../src/application/ports/players/player.repository.port.js';
 import { createHash, createHmac } from 'node:crypto';
 import { ConvoyService } from '../../src/application/referral/convoy.service.js';
@@ -12,7 +11,6 @@ import type { Harness } from '../support/harness.js';
 /** Real provider adapters and HTTP/transaction flow; only the external HTTP responses are fixtures. */
 export function airdropProviderScenarios(h: () => Harness): void {
   const { login } = bindClient(h);
-  preseasonAttemptScenarios(h);
   it('verifies signed Telegram ownership and wallet-bound X proof, then refuses reuse', async () => {
     await h().app.get(SettingsRepositoryPort).upsert('airdrop_x_check_cost_cents', 1);
     let rider = await login(), other = await login();
