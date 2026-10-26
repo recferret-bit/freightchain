@@ -45,6 +45,9 @@ export async function checkPhonePair({ desktop, base, api, provider, open, click
     check('desktop adopts the phone session and opens the lobby', await until(desktop, 'location.pathname === "/lobby.html"'));
     check('desktop session belongs to the phone wallet', await desktop.ev(`fetch(${JSON.stringify(`${api}/api/me`)}, {credentials:'include'}).then(r=>r.json()).then(r=>r.wallet)`) === address);
     check('consumed pairing code cannot be polled again', await desktop.ev(`fetch(${endpoint}, {credentials:'include'}).then(r=>r.status)`) === 404);
+    check('paired wallet still needs its own explicit consent', await until(desktop, '!!document.querySelector("#terms-dialog[open]")'));
+    await desktop.ev('document.querySelector("#terms-age").click(); document.querySelector("#terms-accept").click()');
+    check('paired wallet accepts deliberately in desktop browser', await until(desktop, '!document.querySelector("#terms-dialog")'));
     await phone.shot('phone-pair-confirmed');
     await desktop.shot('phone-pair-desktop-session');
     check('phone pairing has no script exceptions', !phone.filt().some(p => /TypeError|ReferenceError|SyntaxError/.test(p)));
