@@ -14,14 +14,33 @@ need() { local id; id="$(cid "$1")"; [ -n "$id" ] || { echo "no running '$1' con
 
 case "$CMD" in
   logs)
-    id="$(need "${SERVICE:-app}")"
-    args=(--tail "${LINES:-200}"); [ -n "${SINCE:-}" ] && args=(--since "$SINCE")
-    out="$(docker logs "${args[@]}" "$id" 2>&1)"
+    service="${SERVICE:-app}"
+    case "$service" in app|worker|editor-worker|mcp|postgres|redis) ;; *) echo 'unknown log service' >&2; exit 2 ;; esac
+    id="$(cid "$service")"
+    driver=""; [ -z "$id" ] || driver="$(docker inspect --format '{{.HostConfig.LogConfig.Type}}' "$id")"
+    if [ "$driver" = syslog ] || { [ -z "$id" ] && [ -f /etc/systemd/journald@freightchain.conf ]; }; then
+      args=(--namespace=freightchain --no-pager -o cat -t "fc-$service" -n "${LINES:-200}")
+      if [ -n "${SINCE:-}" ]; then
+        since="$SINCE"; [[ "$since" =~ ^[0-9]+[smhdw]$ ]] && since="-$since"
+        args+=(--since "$since" --no-tail)
+      fi
+      out="$(journalctl "${args[@]}")"
+    else
+      [ -n "$id" ] || { echo "no container or journal for $service" >&2; exit 1; }
+      args=(--tail "${LINES:-200}"); [ -n "${SINCE:-}" ] && args=(--since "$SINCE")
+      out="$(docker logs "${args[@]}" "$id" 2>&1)"
+    fi
     [ -n "${GREP:-}" ] && out="$(printf '%s\n' "$out" | grep -E -- "$GREP" || true)"
     [ "${ERRORS:-}" = "1" ] && out="$(printf '%s\n' "$out" | grep -E -i -- '"level":"(warn|error|fatal)"|\b(WARN|ERROR)\b' || true)"
     printf '%s\n' "$out"
     ;;
   nginx)
+    case "${WHICH:-access}" in access|error) ;; *) echo 'unknown nginx log' >&2; exit 2 ;; esac
+    if [ -f /etc/nginx/snippets/freightchain-logging.conf ]; then
+      out="$(journalctl --namespace=freightchain --no-pager -o cat -t "fc_nginx_${WHICH:-access}" -n "${LINES:-200}")"
+      [ -z "${GREP:-}" ] || out="$(printf '%s\n' "$out" | grep -E -- "$GREP" || true)"
+      printf '%s\n' "$out"; exit 0
+    fi
     f="/var/log/nginx/${WHICH:-access}.log"
     [ -r "$f" ] || { echo "$f not readable" >&2; exit 1; }
     if [ -n "${GREP:-}" ]; then grep -E -- "$GREP" "$f" | tail -n "${LINES:-200}" || true; else tail -n "${LINES:-200}" "$f"; fi

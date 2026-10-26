@@ -15,6 +15,7 @@ command -v certbot >/dev/null || fail "certbot is required (apt install certbot 
 mkdir -p "$DEPLOY_PATH/releases" "$DEPLOY_PATH/backups" "$DEPLOY_PATH/state"
 chmod 700 "$DEPLOY_PATH/backups" "$DEPLOY_PATH/state"
 say "folders ready under $DEPLOY_PATH"
+bash "$DEPLOY_PATH/state/logging.sh" install "DEPLOY_PATH=$DEPLOY_PATH"
 
 # The landing's hero loop (/media/hero-preview.mp4, ~2.2 MB, fetched lazily after `load`) and the game's sound effects (/audio/sfx/*.mp3, ~75 kB, fetched in the background): nginx caches them and answers Range requests itself, so the app is hit once per release.
 # The same snippet carries the two search redirects (marker fc-seo): ride.<apex>/ → the apex, <apex>/whitepaper.html → whitepaper.<apex>/, <apex>/pitchdeck.html → pitchdeck.<apex>/.
@@ -243,5 +244,6 @@ else
 fi
 systemctl is-active --quiet certbot.timer && say "automatic renewal: certbot.timer is active" || say "WARNING: certbot.timer is not active – renew manually (certbot renew)"
 nginx -t 2>/dev/null && say "nginx config OK"
+bash "$DEPLOY_PATH/state/logging.sh" nginx "DEPLOY_PATH=$DEPLOY_PATH"
 touch "$DEPLOY_PATH/state/setup-done"
 say "setup complete"

@@ -40,7 +40,7 @@ app_env | node "$DEPLOY_DIR/scripts/validate-env.mjs" || die "infra/deploy/.env 
 
 # ---- 3. the server
 info "checking ssh to ${DEPLOY_USER}@${DEPLOY_HOST}"; check_ssh
-SETUP_DONE=1; rsh "test -f '$DEPLOY_PATH/state/setup-done' && test -f /etc/nginx/sites-available/freightchain-storybook && test -f /etc/nginx/sites-available/freightchain-whitepaper && test -f /etc/nginx/sites-available/freightchain-pitchdeck && test -f /etc/nginx/sites-available/freightchain-admin && test -f /etc/nginx/snippets/freightchain-media.conf && grep -q freightchain-media /etc/nginx/sites-available/freightchain && grep -q fc-audio /etc/nginx/snippets/freightchain-media.conf && grep -q fc-seo /etc/nginx/snippets/freightchain-media.conf" 2>/dev/null || SETUP_DONE=0
+SETUP_DONE=1; rsh "test -f '$DEPLOY_PATH/state/setup-done' && test -S /run/systemd/journal.freightchain/dev-log && systemctl is-active --quiet freightchain-log-retention.timer && systemctl is-enabled --quiet freightchain-stack.service && test -f /etc/nginx/snippets/freightchain-logging.conf && test -f /etc/nginx/sites-available/freightchain-storybook && test -f /etc/nginx/sites-available/freightchain-whitepaper && test -f /etc/nginx/sites-available/freightchain-pitchdeck && test -f /etc/nginx/sites-available/freightchain-admin && test -f /etc/nginx/snippets/freightchain-media.conf && grep -q freightchain-media /etc/nginx/sites-available/freightchain && grep -q fc-audio /etc/nginx/snippets/freightchain-media.conf && grep -q fc-seo /etc/nginx/snippets/freightchain-media.conf" 2>/dev/null || SETUP_DONE=0
 CURRENT="$(rsh "cat '$DEPLOY_PATH/state/current' 2>/dev/null || true")"
 
 cat <<PLAN

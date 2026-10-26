@@ -1,0 +1,12 @@
+[Unit]
+Description=Restore only the Freight Chain stack after its log collector
+Requires=docker.service freightchain-log-collector.service
+After=docker.service freightchain-log-collector.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash __DEPLOY_PATH__/state/logging/start-stack.sh __DEPLOY_PATH__
+
+[Install]
+WantedBy=multi-user.target

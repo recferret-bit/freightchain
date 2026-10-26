@@ -1,0 +1,12 @@
+[Unit]
+Description=Freight Chain isolated log namespace
+Requires=systemd-journald@freightchain.service
+After=systemd-journald@freightchain.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/test -S /run/systemd/journal.freightchain/dev-log
+
+[Install]
+WantedBy=multi-user.target

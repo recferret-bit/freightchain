@@ -1,0 +1,9 @@
+[Unit]
+Description=Expire only Freight Chain journal logs
+Requires=freightchain-log-collector.service
+After=freightchain-log-collector.service
+
+[Service]
+Type=oneshot
+# Rotation also handles idle logs; vacuum never addresses the host's default journal.
+ExecStart=/usr/bin/journalctl --namespace=freightchain --rotate --vacuum-time=29days

@@ -32,6 +32,7 @@ wait_service() {
 
 [ -f "$STATE/setup-done" ] || { echo "run the first-time setup first: npm run deploy:setup" >&2; exit 1; }
 [ -f "$(compose_file "$RELEASE")" ] || { echo "release $RELEASE was not uploaded" >&2; exit 1; }
+bash "$ROOT/releases/$RELEASE/infra/deploy/scripts/remote/logging.sh" check
 PREVIOUS="$(cat "$STATE/current" 2>/dev/null || true)"
 say "release $RELEASE (currently serving: ${PREVIOUS:-nothing})"
 
@@ -61,7 +62,7 @@ cc "$RELEASE" stop editor-worker
 if [ -z "$MCP" ]; then cc "$RELEASE" stop mcp; fi
 if ! cc "$RELEASE" up -d --no-build app worker $MCP $EDITOR || ! wait_healthy || { [ -n "$MCP" ] && { ! wait_service "$RELEASE" mcp || ! wait_service "$RELEASE" editor-worker; }; }; then
   echo "release $RELEASE is NOT healthy – last logs:" >&2
-  cc "$RELEASE" logs --tail 40 app editor-worker >&2 || true
+  journalctl --namespace=freightchain --no-pager -o cat -n 80 >&2 || true
   if [ -n "$PREVIOUS" ] && [ -f "$(compose_file "$PREVIOUS")" ]; then
     echo "rolling back to $PREVIOUS" >&2
     cc "$RELEASE" stop editor-worker
@@ -74,7 +75,7 @@ if ! cc "$RELEASE" up -d --no-build app worker $MCP $EDITOR || ! wait_healthy ||
       echo "rolled back: $PREVIOUS is serving again (the database stays migrated – migrations are forward-only)" >&2
       rm -rf "$ROOT/releases/$RELEASE"; docker rmi "freightchain-server:$RELEASE" "freightchain-mcp:$RELEASE" >/dev/null 2>&1 || true   # a failed release must not take a slot
     else
-      echo "ROLLBACK FAILED too – check: docker compose logs" >&2
+      echo "ROLLBACK FAILED too – check: npm run ops -- logs" >&2
     fi
   else
     echo "first release failed: nothing to roll back to (the containers are left running for inspection)" >&2

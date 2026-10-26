@@ -16,7 +16,7 @@ const secret = () => randomBytes(32).toString('hex');
 // Keep Docker's local configuration, without inheriting application credentials or Compose interpolation values.
 const dockerEnv = Object.fromEntries(['PATH', 'HOME', 'DOCKER_CONFIG', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'TMPDIR'].filter(key => process.env[key]).map(key => [key, process.env[key]]));
 const fixture = {
-  RELEASE: 'local-readiness', POSTGRES_USER: 'freight', POSTGRES_PASSWORD: secret(), POSTGRES_DB: 'freightchain_production_smoke_test', REDIS_PASSWORD: secret(),
+  RELEASE: process.env.LOCAL_PRODUCTION_RELEASE || `local-readiness-${process.pid}`, POSTGRES_USER: 'freight', POSTGRES_PASSWORD: secret(), POSTGRES_DB: 'freightchain_production_smoke_test', REDIS_PASSWORD: secret(),
   IP_HASH_SECRET: secret(), JWT_SECRET: secret(), ADMIN_JWT_SECRET: secret(), EDITOR_JWT_SECRET: secret(), EDITOR_MCP_TOKEN: secret(),
   ADMIN_WALLETS: 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn', EDITOR_WALLETS: 'GseaEsNWMLScZ5RH8yQ4xmoCP97H86HjLSA9xkyFCqbn',
   ADMIN_ALERT_TELEGRAM_BOT_TOKEN: 'local-test-token-not-real', ADMIN_ALERT_TELEGRAM_CHAT_ID: 'local-test-chat-not-real',
@@ -85,8 +85,10 @@ try {
   const subnets = testSubnets(Object.keys(model.networks).length);
   for (const network of Object.values(model.networks)) network.ipam = { config: [{ subnet: subnets.shift() }] };
   // Preserve all service configuration, including strict flags, dependencies, healthchecks and Redis ACL.
-  // Only resource names, host exposure and outbound access differ from the release stack.
-  for (const service of Object.values(model.services)) { service.ports = []; service.restart = 'no'; }
+  // Local Docker Desktop has no host systemd; its disposable log transport is separate from the namespace acceptance.
+  check('production logs use the owned namespace with no Docker cache', Object.values(model.services).every(service => service.logging?.driver === 'syslog' && service.logging.options['cache-disabled'] === 'true' && service.logging.options['syslog-address'] === 'unixgram:///run/systemd/journal.freightchain/dev-log'));
+  for (const service of Object.values(model.services)) { service.ports = []; service.restart = 'no'; service.logging = { driver: 'json-file', options: { 'max-size': '50m', 'max-file': '5' } }; }
+  result.logTransport = 'disposable json-file; production namespace retention is tested separately';
   chain?.extend(model);
   writeFileSync(composeFile, JSON.stringify(model, null, 2), { mode: 0o600 });
   modelReady = true;

@@ -26,6 +26,7 @@ extras() {
 }
 switch_release() {
   local from="$1" to="$2" services
+  if cc "$to" config | grep -F "driver: syslog" >/dev/null; then bash "$STATE/logging.sh" check || return 1; fi
   if cc "$from" config --services | grep -qx editor-worker; then cc "$from" stop editor-worker || return 1; fi
   services="$(extras "$to")"
   if ! printf '%s\n' "$services" | grep -qw mcp && cc "$from" config --services | grep -qx mcp; then cc "$from" stop mcp || return 1; fi
@@ -52,7 +53,15 @@ case "$CMD" in
     ;;
   logs)
     [ -n "$CURRENT" ] || { echo "nothing deployed yet" >&2; exit 1; }
-    cc "$CURRENT" logs --tail "${LINES:-200}" ${FOLLOW:+-f} "${SERVICE:-app}"
+    service="${SERVICE:-app}"
+    case "$service" in app|worker|editor-worker|mcp|postgres|redis) ;; *) echo 'unknown log service' >&2; exit 2 ;; esac
+    if cc "$CURRENT" config | grep -F 'driver: syslog' >/dev/null; then
+      args=(--namespace=freightchain --no-pager -o cat -t "fc-$service" -n "${LINES:-200}")
+      [ -z "${FOLLOW:-}" ] || args+=(-f)
+      journalctl "${args[@]}"
+    else
+      cc "$CURRENT" logs --tail "${LINES:-200}" ${FOLLOW:+-f} "$service"
+    fi
     ;;
   backup)
     [ -n "$CURRENT" ] || { echo "nothing deployed yet" >&2; exit 1; }

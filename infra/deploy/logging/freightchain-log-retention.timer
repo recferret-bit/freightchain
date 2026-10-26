@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly Freight Chain log expiry
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+AccuracySec=1min
+Unit=freightchain-log-retention.service
+
+[Install]
+WantedBy=timers.target
