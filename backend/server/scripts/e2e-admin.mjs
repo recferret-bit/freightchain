@@ -11,6 +11,7 @@ import { execFileSync } from 'node:child_process';
 import nacl from 'tweetnacl'; import bs58 from 'bs58';
 import { launch, sleep } from '../../../frontend/client/tools/cdp.mjs';
 import { encodeTrafficProof } from '../../../frontend/client/shared/traffic-proof.js';
+import { SETTING_KNOBS } from '../../../frontend/client/site/admin-settings.js';
 const BASE = process.env.BASE || 'http://localhost:3111';
 const fails = []; const check = (n, ok, x = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x ? ' – ' + x : ''}`); if (!ok) fails.push(n); };
 const post = async (p, b, c) => { const r = await fetch(`${BASE}/api/${p}`, { method: 'POST', headers: { 'content-type': 'application/json', ...(c && { cookie: c }) }, body: JSON.stringify(b) }); return { r, j: await r.json().catch(() => ({})) }; };
@@ -199,7 +200,13 @@ if (holdable) {
 // ── SETTINGS: a knob (signed), one wallet's free rides (signed, +/-), a form mistake signs nothing
 const setsBefore = await A.ev('window.__signed');
 await A.ev('location.hash = "#settings"');
-check('settings: all twenty-seven knobs render (free rides, weekly granted tickets, referrals, AI editor)', await until(async () => (await A.ev('document.querySelectorAll("#set-table input").length')) === 27 && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_1h_enabled]")?.value')) === '1' && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_1h_days]")?.value')) === '7' && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_4h_enabled]")?.value')) === '0' && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_4h_days]")?.value')) === '7' && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_8h_enabled]")?.value')) === '0' && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_8h_days]")?.value')) === '7' && (await A.ev('document.querySelector("#set-table input[data-key=free_rides_daily_max]")?.value')) === '5'));
+check('settings: all declared knobs render with their defaults', await until(async () => (await A.ev('document.querySelectorAll("#set-table input").length')) === SETTING_KNOBS.length && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_1h_enabled]")?.value')) === '1' && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_1h_days]")?.value')) === '7' && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_4h_enabled]")?.value')) === '0' && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_4h_days]")?.value')) === '7' && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_8h_enabled]")?.value')) === '0' && (await A.ev('document.querySelector("#set-table input[data-key=weekly_ticket_8h_days]")?.value')) === '7' && (await A.ev('document.querySelector("#set-table input[data-key=free_rides_daily_max]")?.value')) === '5'));
+check('settings: persisted trust limits render with their actual bounds', await A.ev(`(() => {
+  const field = key => document.querySelector('#set-table input[data-key="' + key + '"]');
+  return field('trust_finish_points')?.value === '15' && field('trust_finish_points')?.max === '100'
+    && field('trust_finish_days_per_week')?.value === '2' && field('trust_finish_days_per_week')?.max === '7'
+    && field('trust_finish_cap')?.value === '100' && field('trust_social_cap')?.value === '30';
+})()`));
 check('settings: referral fields retain their per-key bounds', await A.ev(`(() => {
   const field = key => document.querySelector('#set-table input[data-key="' + key + '"]');
   return field('referral_max')?.value === '30' && field('referral_max')?.min === '1' && field('referral_max')?.max === '1000'
