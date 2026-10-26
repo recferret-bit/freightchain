@@ -15,18 +15,17 @@ The suite calls `backend/server/scripts/honk-program.mjs`. With `HONK_EMITTER_SE
 
 ## Part NFT
 
-The suite buys the part with program `buy_part` (classic SPL, frozen). It does not set `HONK_PROGRAM_ID`, so `POST /api/honk/visuals` is the ledger burn only and `chain` is null.
+The suite enables `HONK_PROGRAM_ID` and the browser wallet signs program `buy_part` (classic SPL, frozen). The API verifies the confirmed burn/mint before its ledger debit. The saved blue paint survives a garage reload and renders in the next running ride; the test checks the server loadout and actual cosmetics renderer and saves screenshots.
 
-When `HONK_PROGRAM_ID` is set, that request requires the buyer's confirmed `buy_part` signature before the ledger debit. The server does not sign or mint. It checks the transaction: confirmed, signed by the player, a burn of that part's catalog price, and a frozen supply-1 token minted to the player. The mint and signature are stored on `economy.HonkVisual` (`chainMint`, `chainSignature`). A bad signature does not debit. `GET /api/honk` returns `chain: { programId }` or `chain: null`. No RPC URL. Stream, time, and weather burns take an optional `signature` that is required only when the program id is set, and it must burn exactly 1, 10, or 25 TEN4. Production does not set the id. Do not say the NFT is live on devnet.
+When `HONK_PROGRAM_ID` is set, that request requires the buyer's confirmed `buy_part` signature before the ledger debit. The server does not sign or mint. It checks the transaction: confirmed, signed by the player, a burn of that part's catalog price, and a frozen supply-1 token minted to the player. The mint and signature are stored on `economy.HonkVisual` (`chainMint`, `chainSignature`). A bad signature does not debit. `GET /api/honk` returns `chain: { programId }` or `chain: null`. No RPC URL. The stream HONK takes a `signature` that is required when the program id is set and must burn exactly 1 TEN4. Retired time/weather endpoints remain refused without debit. Production does not set the id. Do not say the NFT is live on devnet.
 
 ## Session
 
 A paid ride that is actually running (not a free ride). The spectator is a different wallet.
 
-- `POST /api/watch/:id/honk` still burns 1 TEN4 on the ledger and posts the chat line `HONK`. The suite also calls program `burn` for 1 TEN4 from that spectator. The weather burns (25, then 25) are the same: ledger, then program `burn`.
-- `POST /api/watch/:id/honk/weather` body `{ weather: "snow" | "clear" }` burns 25 TEN4 (`HONK_WEATHER_BURN`). Kind `weather`. Ride event kind `honk`, effect `snow` or `clear`, lamports 0, text `Burned 25 TEN4`, slot key `fx` (the same 20s window as day, night, and obstacles). Not a donation. `LIVE_EFFECTS` does not gate it. The same refusals as the day/night burn: free ride, own ride, mute, not live, before any debit.
-- `snow` and `clear` are not donation effects. `POST /api/watch/:id/donations` must still reject them.
-- The driver's game applies it while driving: snow sets `weather.snow = 1` and ambient to at most −8 °C, remembering the route's ambient; clear restores that ambient and sets snow to 0. The clock lock stays. Spectators see the line. The driver's cab is what the suite asserts (`__game.weather`).
+- `POST /api/watch/:id/honk` checks the spectator's real signed burn of 1 TEN4, debits the ledger and posts the chat line `HONK`.
+- Retired weather/time effects return 404 without ledger or chain debit. Weather values also remain refused as donation effects.
+- The garage browser buys blue paint through its wallet, checks frozen NFT ownership, reloads the saved preview, then starts a new ride with the same rendered loadout.
 
 ## What the suite asserts
 
@@ -38,8 +37,8 @@ A paid ride that is actually running (not a free ride). The spectator is a diffe
 | ride pay | 1h all bands pays 100 from the emission vault; supply unchanged | — |
 | gold part | `buy_part` wheel / gold burns 260; supply 1, decimals 0, frozen, transfer fails | — |
 | In-session burn | spectator program `burn` of 1 | chat text `HONK`, pays `"1"` |
-| Weather | spectator program `burn` of 25, then 25 | event effect `snow`, then after the window `clear`; the driving cab's `weather.snow` follows |
-| Cab part | player program `buy_part` truck_color / blue burns 65; supply 1, decimals 0, frozen, transfer fails | ledger debit 65, response `chain` is null |
+| Retired weather | no token debit | 404 and no ledger debit; refused as donation effects |
+| Cab part | player program `buy_part` truck_color / blue burns 65; supply 1, decimals 0, frozen, transfer fails | confirmed signature/mint persisted, exact ledger debit 65, saved preview and next ride cockpit blue |
 
 ## Recovery coverage
 

@@ -309,6 +309,28 @@ async function session() {
     check('bought part', view.supply === 1n && view.decimals === 0 && ata.isFrozen && ata.amount === 1n && ata.owner === player.address, show({ ...view, frozen: ata.isFrozen, owner: ata.owner }));
     const refused = await frozenTransferRefused({ payer: player.kp, mint: saved.chainMint, owner: player.kp, dest: spectator.kp });
     check('bought transfer refused', refused === '', refused);
+    check('garage purchase was signed and sent by the browser wallet once', (await G.ev('JSON.stringify(window.__asked)')) === '["signAndSendTransaction"]');
+    const equipped = await get('garage', player.cookie);
+    check('signed-chain purchase equips the blue paint on the server', equipped.equipped?.truck_color === 'blue', show(equipped.equipped));
+    await G.send('Page.reload');
+    check('reloaded garage keeps the owned blue paint equipped', await until(() => G.ev('document.querySelector("[data-slot=truck_color] [data-item=blue]")?.classList.contains("saved")'), 20000));
+    check('reloaded preview renderer wears the saved chain purchase', await until(() => G.ev('(async()=>{const c=await import("/js/cosmetics.js");return c.loadout.truck_color==="blue" && !!document.querySelector("#garage-preview canvas");})()'), 15000));
+    await G.shot('chain-garage-reloaded');
+    driving = false; await D.close();
+    if ((await get(`rides/${rideId}`, player.cookie)).status === 'running') {
+      const ended = await post(`rides/${rideId}/end`, { outcome: 'failed', reason: 'garage loadout acceptance', s: 0, t: 0, hull: 1 }, player.cookie);
+      check('previous session ends before checking the next ride loadout', ended.r.ok, `${ended.r.status}`);
+    }
+    const next = await post('rides', { tier: 'free' }, player.cookie);
+    check('next ride is created for the purchased loadout', next.r.ok && next.j.status === 'created', `${next.r.status}`);
+    await G.send('Page.navigate', { url: `${BASE}/play.html?ride=${next.j.id}` });
+    check('next ride start menu is ready', await until(() => G.ev('!!window.__game && document.getElementById("go")?.getBoundingClientRect().width > 0'), 25000));
+    await G.ev('document.getElementById("go").click()');
+    check('next ride starts with the persisted blue paint', await until(async () => (await get(`rides/${next.j.id}`, player.cookie)).loadout?.truck_color === 'blue', 15000));
+    check('the driving cockpit renderer wears the signed-chain paint', await until(() => G.ev('(async()=>{const c=await import("/js/cosmetics.js");return __game.online.running && c.loadout.truck_color==="blue";})()'), 15000));
+    await G.shot('chain-paint-next-ride');
+    check('chain garage and next cab have no page errors', G.filt().length === 0, G.filt().join(' | '));
+
   } catch (e) {
     check('session', false, e?.stack || String(e));
   } finally {

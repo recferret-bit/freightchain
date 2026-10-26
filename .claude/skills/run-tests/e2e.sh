@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
 #   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|replay-controls|replay-tips|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor|honk-garage|whitepaper|landing|achievements|guest|weekly|referral|viewer|sim|controls ...]   (default: all thirty-one)
-# Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
+# Needs: compose PostgreSQL (npm run db:up), server/landing dependencies, Chrome; blinks also native Solana, solana-verify and the pinned pool artifact.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/backend/server"
@@ -121,11 +121,8 @@ for suite in "${SUITES[@]}"; do
       EXTRA_ENV="TRUST_PROXY=1 HB_TIMEOUT_MS=15000 CHALLENGE_INTERVAL_SECONDS=0 REDIS_URL=redis://:$RPW@127.0.0.1:$RPORT" start 300
       (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" CLI="$BUILD/cli/index.js" DATABASE_URL="$URL" REDIS_CONTAINER="$REDIS_CT" node scripts/e2e-stats.mjs) || fails=$((fails + 1))
       EXTRA_ENV=""; docker rm -f "$REDIS_CT" >/dev/null 2>&1 || true; trap cleanup EXIT ;;
-    blinks)  # Solana Actions through Dialect's own blink client (blinks-core): program mode with a selling 1h pool, so the buy button builds a real devnet transaction (needs the devnet RPC; nothing is sent)
-      BLINK_ENV="PAYMENT_MODE=program TICKET_PROGRAM_ID=9e7phdJzKMNJX8ZnqR8SdxNzafNJjYXeZNsjQze3BSvx WATCH_INTERVAL_MS=0 CRANK_INTERVAL_MS=0"
-      (cd "$SERVER" && env $BLINK_ENV DATABASE_URL="$URL" TREASURY_PUBKEY="$TREASURY" node "$BUILD/cli/index.js" pool:seed --id 1 --tier 1h --status active --min 2 >/dev/null 2>&1) || true   # already seeded by an earlier run of this suite: fine
-      FIXED_PORT="$(free_port)"; EXTRA_ENV="$BLINK_ENV APP_ORIGIN=http://localhost:$FIXED_PORT APP_DOMAIN=localhost:$FIXED_PORT" start 3   # the cards' icon + links are absolute on APP_ORIGIN
-      (cd "$SERVER" && BASE="http://localhost:$PORT" node scripts/e2e-blinks.mjs) || fails=$((fails + 1)); EXTRA_ENV=""; FIXED_PORT="" ;;
+    blinks)  # Real returned transaction: scratch validator/pool, browser signer and watcher credit.
+      (cd "$SERVER" && DATABASE_URL="$URL" SERVER_BUILD="$BUILD" CLIENT_DIR="$CLIENT_OUT" LANDING_DIR="$LANDING_OUT" node scripts/blinks-localnet.mjs) || fails=$((fails + 1)) ;;
     editor)  # the model editor (storybook viewer): the REAL entity MCP (mcp/src/http.js) + the server's scripted model (EDITOR_FAKE_LLM=1) – no AI key needed
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
       FIXED_PORT="$(free_port)"; MCP_PORT="$(free_port)"; MCP_TOKEN="e2e-mcp-$$-$(node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))')"
