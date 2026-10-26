@@ -1,4 +1,8 @@
-import { Controller, Get, HttpCode, Put, UseGuards } from '@nestjs/common';
+import { z } from 'zod';
+import { AcceptTermsCommand } from '../../application/use-cases/players/terms/accept-terms.command.js';
+import { GetTermsQuery } from '../../application/use-cases/players/terms/get-terms.query.js';
+import type { TermsStatusDto } from '../../domain/players/terms.js';
+import { Controller, Get, HttpCode, Post, Put, UseGuards } from '@nestjs/common';
 import { agreementsResponse } from '../common/response/wire.js';
 import { profileResponse } from '../common/response/economy.response.js';
 import { liveFeedResponse, replaysPageResponse } from '../common/response/live.response.js';
@@ -20,6 +24,9 @@ import type { ClientInfo } from '../../domain/auth/sign-in.js';
 import { agreementsBodySchema, liveQuerySchema, replaysQuerySchema, type AgreementsBody, type LiveQuery, type ReplaysQuery } from './dto/lobby.dto.js';
 import { GetReplaysQuery } from '../../application/use-cases/lobby/get-replays/get-replays.query.js';
 import type { PlayerIdentity } from '../../infrastructure/http/types/http-request.js';
+
+const termsBodySchema = z.object({ termsVersion: z.number().int().positive(), privacyVersion: z.number().int().positive(), age18: z.literal(true), accepted: z.literal(true) }).strict();
+const termsResponse = z.object({ required: z.boolean(), termsVersion: z.number(), privacyVersion: z.number(), acceptedTermsVersion: z.number().nullable(), acceptedPrivacyVersion: z.number().nullable() }).strict();
 
 @Controller('api')
 export class LobbyHttpController {
@@ -52,4 +59,16 @@ export class LobbyHttpController {
   agreements(@CurrentPlayer() player: PlayerIdentity, @ZodBody(agreementsBodySchema) body: AgreementsBody): Promise<AgreementsDto> {
     return this.commandBus.execute<AcceptAgreementsCommand, AgreementsDto>(new AcceptAgreementsCommand(player.wallet, body.age18, body.loss));
   }
+  @Get('profile/terms') @UseGuards(PlayerAuthGuard)
+  @ZodResponse(termsResponse)
+  terms(@CurrentPlayer() player: PlayerIdentity): Promise<TermsStatusDto> {
+    return this.queryBus.execute(new GetTermsQuery(player.wallet));
+  }
+
+  @Post('profile/terms') @HttpCode(200) @UseGuards(PlayerAuthGuard)
+  @ZodResponse(termsResponse)
+  acceptTerms(@CurrentPlayer() player: PlayerIdentity, @ZodBody(termsBodySchema) body: z.infer<typeof termsBodySchema>): Promise<TermsStatusDto> {
+    return this.commandBus.execute(new AcceptTermsCommand(player.wallet, body.termsVersion, body.privacyVersion));
+  }
+
 }

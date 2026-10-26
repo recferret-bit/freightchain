@@ -1,12 +1,12 @@
-import { ForbiddenError } from '../shared/errors.js';
+import { TermsRequiredError } from '../shared/errors.js';
 
 export const CURRENT_TERMS_VERSION = 1;
 export const CURRENT_PRIVACY_VERSION = 1;
 
-/** Missing or older than the current pair is 403. A player who has both current versions passes. */
+/** Missing or different from the current pair is 428. A player who has both current versions passes. */
 export function assertTermsCurrent(termsVersion: number | null | undefined, privacyVersion: number | null | undefined): void {
-  if (termsVersion == null || privacyVersion == null || termsVersion < CURRENT_TERMS_VERSION || privacyVersion < CURRENT_PRIVACY_VERSION) {
-    throw new ForbiddenError('the current terms and privacy notice have not been accepted', 'terms_acceptance_required');
+  if (termsVersion == null || privacyVersion == null || termsVersion !== CURRENT_TERMS_VERSION || privacyVersion !== CURRENT_PRIVACY_VERSION) {
+    throw new TermsRequiredError();
   }
 }
 
@@ -15,4 +15,17 @@ export function enforceRequestTerms(method: string | undefined, player: { termsV
   const verb = (method ?? 'GET').toUpperCase();
   if (verb === 'GET' || verb === 'HEAD' || verb === 'OPTIONS' || !player) return;
   assertTermsCurrent(player.termsVersion, player.privacyVersion);
+}
+
+export interface TermsStatusDto {
+  required: boolean;
+  termsVersion: number;
+  privacyVersion: number;
+  acceptedTermsVersion: number | null;
+  acceptedPrivacyVersion: number | null;
+}
+export function termsStatus(player: { termsVersion: number | null; privacyVersion: number | null }): TermsStatusDto {
+  return { required: player.termsVersion !== CURRENT_TERMS_VERSION || player.privacyVersion !== CURRENT_PRIVACY_VERSION,
+    termsVersion: CURRENT_TERMS_VERSION, privacyVersion: CURRENT_PRIVACY_VERSION,
+    acceptedTermsVersion: player.termsVersion || null, acceptedPrivacyVersion: player.privacyVersion || null };
 }

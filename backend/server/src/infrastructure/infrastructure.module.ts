@@ -1,3 +1,5 @@
+import { TermsAcceptanceRepositoryPort } from '../application/ports/players/terms-acceptance.repository.port.js';
+import { TermsAcceptancePrismaRepository } from './prisma/repositories/terms-acceptance.prisma.repository.js';
 import { SgtOwnershipPort, SgtRepositoryPort } from '../application/trust/sgt.port.js';
 import { SgtOwnershipAdapter } from './solana/sgt-ownership.adapter.js';
 import { SgtPrismaRepository } from './prisma/repositories/sgt.prisma.repository.js';
@@ -207,6 +209,7 @@ const ports: Provider[] = [
   { provide: NetworkEvidencePort, useClass: IpinfoEvidenceAdapter },
   { provide: FundingEvidencePort, useClass: HeliusFundingEvidenceAdapter },
   { provide: IpPrefixHasherPort, useClass: IpPrefixHasherAdapter },
+  { provide: TermsAcceptanceRepositoryPort, useClass: TermsAcceptancePrismaRepository },
   { provide: SignInRepositoryPort, useClass: SignInPrismaRepository },
   { provide: AdminActionRepositoryPort, useClass: AdminActionPrismaRepository },
   { provide: AlertOutboxRepositoryPort, useClass: AlertOutboxPrismaRepository },

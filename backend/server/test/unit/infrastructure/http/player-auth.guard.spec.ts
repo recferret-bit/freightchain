@@ -21,8 +21,8 @@ describe('PlayerAuthGuard', () => {
     expect(request.player).toEqual({ wallet: 'WALLET', termsVersion: null, privacyVersion: null });
   });
 
-  it('a write with no stored terms acceptance is 403', async () => {
-    await expect(guard.canActivate(contextWith('fc_session=good', 'POST').ctx)).rejects.toMatchObject({ errorCode: 'terms_acceptance_required', statusCode: 403 });
+  it('a write with no stored terms acceptance is 428', async () => {
+    await expect(guard.canActivate(contextWith('fc_session=good', 'POST').ctx)).rejects.toMatchObject({ errorCode: 'terms_required', statusCode: 428 });
   });
 
   it('no cookie: "not signed in"; a bad or expired one: "session expired"', async () => {
