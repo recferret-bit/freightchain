@@ -51,3 +51,23 @@ export async function stopOwnedChild(child, graceMs = 5000) {
     if (child.exitCode === null && child.signalCode === null) throw new Error(`owned child ${child.pid} did not exit`);
   }
 }
+
+/** A brief outage may recover; sustained unavailability rejects the run without changing any ride state. */
+export function healthWatchdog(probe, { intervalMs = 5000, maxUnavailableMs = 30_000, now = Date.now } = {}) {
+  let stopped = false, timer, downAt = null, reject;
+  const failure = new Promise((_, fail) => { reject = fail; });
+  const tick = async () => {
+    if (stopped) return;
+    let healthy = false;
+    try { healthy = await probe(); } catch { /* network refusal counts as unavailable */ }
+    if (stopped) return;
+    if (healthy) downAt = null;
+    else {
+      downAt ??= now();
+      if (now() - downAt >= maxUnavailableMs) { stopped = true; reject(new Error(`owned acceptance dependencies unavailable for ${maxUnavailableMs}ms`)); return; }
+    }
+    timer = setTimeout(tick, intervalMs);
+  };
+  void tick();
+  return { failure, stop: () => { stopped = true; clearTimeout(timer); } };
+}

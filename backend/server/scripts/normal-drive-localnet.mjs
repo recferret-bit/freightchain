@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createServer } from 'node:net';
 import { Connection, Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
-import { boundedFetch, sha256, snapshotSource, treeHashes, stopOwnedChild, sleep, withDeadline } from './normal-drive-support.mjs';
+import { boundedFetch, sha256, snapshotSource, treeHashes, stopOwnedChild, sleep, withDeadline, healthWatchdog } from './normal-drive-support.mjs';
 const sourceServer = fileURLToPath(new URL('..', import.meta.url)), root = resolve(sourceServer, '../..');
 let server = sourceServer;
 const scratch = mkdtempSync(join(tmpdir(), 'fc-normal-paid-')), db = `freightchain_normal_paid_${process.pid}`;
@@ -26,11 +26,17 @@ const start = (bin, args, extra, log) => {
   const child = spawn(bin, args, { cwd: server, env: { ...env, ...extra }, stdio: ['ignore', fd, fd] });
   closeSync(fd); children.push(child); child.on('error', error => { child.spawnError = error; }); return child;
 };
-let created = false, closing;
+let created = false, closing, watchdog;
 const cleanup = () => closing ??= (async () => {
+  watchdog?.stop();
   const errors = [];
   for (const child of [...children].reverse()) try { await stopOwnedChild(child); } catch (error) { errors.push(error); }
-  if (created) { try { sql(`DROP DATABASE IF EXISTS "${db}" WITH (FORCE)`); created = false; } catch (error) { errors.push(error); } }
+  // The database belongs exclusively to the disposable container; removing its volume also cleans a stopped PG.
+  if (created && postgres) {
+    try { if (run('docker', ['inspect', '--format', '{{.State.Running}}', postgres]).trim() === 'true') sql(`DROP DATABASE IF EXISTS "${db}" WITH (FORCE)`); }
+    catch (error) { console.warn(`owned database drop deferred to container removal: ${error.message}`); }
+    created = false;
+  }
   if (!postgres && existsSync(join(scratch, 'postgres.cid'))) postgres = readFileSync(join(scratch, 'postgres.cid'), 'utf8').trim();
   if (postgres) {
     try { writeFileSync(join(scratch, 'postgres.log'), run('docker', ['logs', postgres])); } catch {}
@@ -81,7 +87,8 @@ try {
   admin(['sponsor', '-k', key, '--pool', String(pool.poolId), '--lamports', '60000000']);
   await sealRoad({ conn, codec: new PoolProgramCodec(POOL_PROGRAM_IDL.address), admintool: admin, id: pool.poolId, keyfile: key });
   const postgresPort = await freePort();
-  postgres = run('docker', ['run', '--detach', '--cidfile', join(scratch, 'postgres.cid'), '--name', `fc-normal-pg-${process.pid}`, '--label', 'freightchain.test=normal-drive', '--publish', `127.0.0.1:${postgresPort}:5432`, '--env', 'POSTGRES_USER=freight', '--env', 'POSTGRES_PASSWORD=normal_paid_disposable', postgresImage]).trim();
+  postgres = run('docker', ['run', '--detach', '--restart', 'unless-stopped', '--cidfile', join(scratch, 'postgres.cid'), '--name', `fc-normal-pg-${process.pid}`, '--label', 'freightchain.test=normal-drive', '--publish', `127.0.0.1:${postgresPort}:5432`, '--env', 'POSTGRES_USER=freight', '--env', 'POSTGRES_PASSWORD=normal_paid_disposable', postgresImage]).trim();
+  start('docker', ['events', '--filter', `container=${postgres}`, '--format', '{{json .}}'], {}, 'postgres-events.jsonl');
   for (let i = 0; ; i++) { try { sql('SELECT 1'); break; } catch { if (i > 60) throw new Error('owned PostgreSQL did not become ready'); await sleep(500); } }
   sql(`CREATE DATABASE "${db}"`); created = true;
   const database = `postgresql://freight:normal_paid_disposable@127.0.0.1:${postgresPort}/${db}`;
@@ -98,7 +105,12 @@ try {
   if (cancelled) throw new Error('acceptance cancelled');
   const child = spawn('node', ['scripts/e2e-normal-drive.mjs'], { cwd: server, env: { ...env, ...proof }, stdio: 'inherit' }); children.push(child);
   const browserExit = new Promise((ok, fail) => { child.once('exit', ok); child.once('error', fail); });
-  const code = await withDeadline(() => browserExit, 110 * 60_000, 'paid browser acceptance');
+  watchdog = healthWatchdog(async () => {
+    const [apiHealth, rpcHealth] = await Promise.all([boundedFetch(`${base}/api/health/ready`, {}, 2000), boundedFetch(rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getHealth' }) }, 2000)]);
+    return apiHealth.ok && rpcHealth.ok && (await rpcHealth.json()).result === 'ok';
+  });
+  const code = await withDeadline(() => Promise.race([browserExit, watchdog.failure]), 110 * 60_000, 'paid browser acceptance');
+  watchdog.stop();
   if (code !== 0) throw new Error(`normal paid browser exited ${code}`);
   const records = JSON.parse(run('docker', ['exec', postgres, 'psql', '-U', 'freight', '-d', db, '-v', 'ON_ERROR_STOP=1', '-tAc', `SELECT coalesce(json_agg(m), '[]'::json) FROM (SELECT "rideId", released, "chainPending", "chainSentAt" FROM economy."HonkMint" WHERE wallet='${player.publicKey.toBase58()}') m`]).trim());
   if (records.length !== 1 || !records[0].released || records[0].chainPending || !records[0].chainSentAt) throw new Error('expected exactly one settled reward outbox record');

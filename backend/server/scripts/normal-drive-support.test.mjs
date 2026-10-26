@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { boundedFetch, snapshotSource, sha256, stopOwnedChild, withDeadline } from './normal-drive-support.mjs';
+import { boundedFetch, snapshotSource, sha256, stopOwnedChild, withDeadline, healthWatchdog } from './normal-drive-support.mjs';
 
 test('HTTP requests abort and deadlines reject instead of reporting success', async () => {
   const server = createServer(() => {});
@@ -44,4 +44,20 @@ test('owned cleanup escalates a stubborn child, is repeatable, and leaves unrela
     await stopOwnedChild(owned, 100); await stopOwnedChild(owned, 100);
     assert.equal(owned.signalCode, 'SIGKILL'); assert.equal(unrelated.exitCode, null); assert.equal(unrelated.signalCode, null);
   } finally { await stopOwnedChild(unrelated, 100); }
+});
+
+
+test('health watchdog tolerates a brief outage, resets after recovery and fails a sustained outage', async () => {
+  let ticks = 0;
+  const monitor = healthWatchdog(async () => { ticks++; if (ticks === 2) throw new Error('temporary network refusal'); return ticks === 3; }, { intervalMs: 1, maxUnavailableMs: 30, now: () => ticks * 10 });
+  try { await assert.rejects(monitor.failure, /unavailable for 30ms/); assert.equal(ticks, 7); }
+  finally { monitor.stop(); }
+});
+
+test('stopped watchdog ignores a late unavailable probe', async () => {
+  let reply, calls = 0;
+  const monitor = healthWatchdog(() => { calls++; return new Promise(resolve => { reply = resolve; }); }, { intervalMs: 1, maxUnavailableMs: 0 });
+  monitor.stop(); reply(false);
+  const result = await Promise.race([monitor.failure.then(() => 'failed', () => 'failed'), new Promise(resolve => setTimeout(() => resolve('stopped'), 20))]);
+  assert.equal(result, 'stopped'); assert.equal(calls, 1);
 });
