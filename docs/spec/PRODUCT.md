@@ -31,9 +31,9 @@ The Conflicts table is the list the owner still has to pick. A row that says Clo
 
 ### Sign-in, guest, SNS, phone
 
-**Shipped.** `POST /api/auth/nonce` and `POST /api/auth/verify` open `fc_session`. `POST /api/auth/guest` opens a throwaway wallet that may play EASY only (`409 guest_easy_only` for MEDIUM, HARD, a promo, or a paid tier). Progress does not merge into a later wallet. SNS: `GET /api/sns/resolve` and `GET /api/sns/reverse`. Phone session pairing is shipped: the desktop `POST /api/auth/pair` opens a code, the phone `POST /api/auth/pair/:id/claim` after it has signed in, and the desktop `GET /api/auth/pair/:id` adopts that session. The QR and the extension popup are still manual (`docs/testing/MANUAL_TESTS.md`). WalletConnect is not used.
+**Shipped.** `POST /api/auth/nonce` and `POST /api/auth/verify` open `fc_session`. `POST /api/auth/guest` opens a throwaway wallet that may play EASY only (`409 guest_easy_only` for MEDIUM, HARD, a promo, or a paid tier). Progress does not merge into a later wallet. SNS: `GET /api/sns/resolve` and `GET /api/sns/reverse`. Phone session pairing is shipped: the desktop `POST /api/auth/pair` opens a code, the phone `POST /api/auth/pair/:id/claim` after it has signed in, and the desktop `GET /api/auth/pair/:id` adopts that session. Two independent Chrome profiles verify the QR pairing UI and session adoption on single and split hosts; pairing does not invoke a local wallet connect/sign request. Physical camera scanning and the extension popup remain manual (`docs/testing/MANUAL_TESTS.md`). WalletConnect is not used.
 
-Guest, both SNS routes, and phone-pair have an HTTP scenario (`http-gaps-public.scenarios.ts`, `flow.scenarios.ts`). A real Chrome guest session is still open. See [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
+Guest, both SNS routes, and phone-pair have an HTTP scenario (`http-gaps-public.scenarios.ts`, `flow.scenarios.ts`). A shortened real Chrome guest session passes creation, completion and guest restrictions. See [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
 
 ### Free levels, tutorial, assist
 

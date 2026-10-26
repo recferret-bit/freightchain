@@ -19,7 +19,7 @@ export const FEATURES = [
     client: /^(?:frontend\/)?client\/(site\/(wallet|dev-wallet|wallet-picker|wallet-standard)\.js|js\/(hosts\.js|wallet\.js|wallet\/))/,
     routes: /^(POST \/api\/auth\/|GET \/api\/auth\/pair\/:id|GET \/api\/me$)/,
     words: /sign[- ]?in|session|nonce|cookie|SIWS/i,
-    e2e: ['e2e-wallet.mjs', 'e2e-browser.mjs', 'e2e-lobby.mjs', 'e2e-close.mjs', 'e2e-admin-privacy.mjs'],
+    e2e: ['e2e-wallet.mjs', 'e2e-phone-pair.mjs', 'e2e-browser.mjs', 'e2e-lobby.mjs', 'e2e-close.mjs', 'e2e-admin-privacy.mjs'],
     skills: ['run-tests'],
   },
   {

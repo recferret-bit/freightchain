@@ -2,7 +2,7 @@
 
 > **Source of truth:** [docs/spec](../spec/README.md). Wallet, phone and replay checks are specified in [e2e](../spec/e2e.md) and in [replays and streams §2.5](../spec/replays_streams.md) (M-RPL-01…06). This file keeps M-01…M-10.
 
-Flows this suite cannot drive without a real browser, a wallet extension, or a phone. Each row has a mock or a source check in `e2e/` where a local keypair can stand in. TODO: automate when the Puppeteer pass exists.
+Physical wallet and device checks remain manual. Real-Chrome automation now covers several browser portions below; fixture or local-keypair evidence does not establish external wallet-app behavior.
 
 ## M-01 Phantom or Solflare popup on CONNECT
 
@@ -17,16 +17,15 @@ Flows this suite cannot drive without a real browser, a wallet extension, or a p
 - Where: landing `?pair=` (32 hex). The page calls `POST /api/auth/pair/:code/claim`.
 - Steps: on a desktop, start the pair flow that shows the QR. Open that URL on a phone. Sign in on the phone.
 - Expected: the desktop message says the computer is signed in. The phone can be put down.
-- Mock: `B1-LAND-27` asserts the claim route is in `landing/src/main.js`.
-- TODO: two browsers, one of them a phone viewport, once Puppeteer is in the suite.
+- Automated: `e2e wallet wallet-split` uses independent Chrome profiles, a phone viewport and real challenge signatures to verify the actual API/database claim and desktop session adoption, foreign-poll refusal and single-use consumption. It renders the QR but opens its real public pairing URL directly.
+- Remaining: physical camera scanning and the wallet-app/browser handoff.
 
 ## M-03 Pitch deck fullscreen
 
 - Where: pitch deck `#fs`.
 - Steps: open the deck, click fullscreen, then leave it.
 - Expected: the browser fullscreen API runs. Esc returns to the window.
-- Mock: `B1-DECK-07` clicks `#fs` and only checks the hint. happy-dom has no real fullscreen.
-- TODO: Puppeteer `requestFullscreen` (headless may still refuse it; record that limit).
+- Automated: `e2e whitepaper` enters and exits real Chrome fullscreen with trusted keyboard gestures and checks deck navigation/buttons. Physical browser differences remain a pilot check.
 
 ## M-04 Device motion / tilt
 

@@ -11,6 +11,7 @@
 // Covers: no wallet, the user rejecting, a forged signature (the backend must refuse and set no session), a good sign-in → redirect to the lobby with the session, and the landing
 // recognising the session afterwards (wallet chip, OPEN THE LOBBY). Screenshots in the harness folder – LOOK at them.
 import { launch, sleep } from '../../client/tools/cdp.mjs';
+import { checkPhonePair } from './e2e-phone-pair.mjs';
 const BASE = process.env.BASE || 'http://localhost:3111';
 const API = process.env.API || BASE;   // split hosts: BASE=http://app.localhost API=http://api.app.localhost (needs COOKIE_DOMAIN + CORS_ORIGINS on the server, see below)
 const c = await launch({ port: Number(process.env.PORT) || 9358, shotsDir: 'fc-wallet', evalProblems: true, args: process.env.RESOLVE ? [`--host-resolver-rules=${process.env.RESOLVE}`] : [] });
@@ -179,6 +180,8 @@ const here = await ev('location.href'), origin = await ev('location.origin');
 check('phone, no wallet: Open in Phantom / Solflare / Backpack browse links', (await ev(`[...document.querySelectorAll('[data-fc-wallets] a')].map(a => a.href).join(' ')`)) === `https://phantom.com/ul/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://solflare.com/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://backpack.app/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)}`);
 await shot('phone-open-in-wallet');
 await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].find(b => b.textContent === 'CANCEL').click()`);
+
+await checkPhonePair({ desktop: c, base: BASE, api: API, provider, open, click, check });
 
 const problems = c.filt().filter(p => !/401|Failed to load resource|sessionStorage|User rejected/.test(p));
 check('no page errors', problems.length === 0, problems.join(' | ').slice(0, 200));

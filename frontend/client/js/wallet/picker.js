@@ -137,7 +137,8 @@ export function pickWallet(list, label, last = null, onPick = null, opts = null)
       if (settled) return;
       settled = true;
       stopMotion();
-      if (p) onPick?.(p);
+      // Pairing already adopted the session; it is not a local wallet to connect or sign with.
+      if (p && !p.phone) onPick?.(p);
       document.removeEventListener('keydown', onKey);
       const done = () => { root.remove(); resolve(p ?? null); };
       if (reduced()) { done(); return; }

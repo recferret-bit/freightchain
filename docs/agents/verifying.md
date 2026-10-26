@@ -94,3 +94,5 @@ The distribution phase can run separately: `node backend/server/scripts/honk-dis
 Sign-in privacy UI: `node frontend/client/tools/e2e-admin-privacy.mjs` runs real Chrome against inert local admin response fixtures, covering session/player subnet hashes and unavailable signals. HTTP and PostgreSQL suites verify the actual persistence and contracts; see `docs/testing/SIGNIN_PRIVACY.md`.
 
 The `referral` Chrome suite also verifies Profile's SGT trust control through a test-only loopback RPC (`e2e-sgt-server.mjs`, `SGT_FIXTURE_PORT`), the real Token-2022 adapter and PostgreSQL: no asset, provider outage and successful one-time award. This bootstrap refuses production and non-disposable databases; normal runtime never installs its fixtures. No real SGT or mainnet write is used.
+
+The `wallet` and `wallet-split` suites include `frontend/landing/tools/e2e-phone-pair.mjs`: separate desktop/phone browser profiles, real SIWS and API/PostgreSQL pairing, cookie privacy and replay/foreign-poll refusals. Physical QR scanning and wallet-app approval remain manual.
