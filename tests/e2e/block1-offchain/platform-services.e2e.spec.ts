@@ -534,6 +534,7 @@ test('PLT-T-01..14 platform services against PostgreSQL and Redis', { timeout: 3
       const prodLog = '/tmp/plt-api-prod.log';
       const prod = spawnNode('dist/main.js', {
         ...common, PORT: String(prodPort), NODE_ENV: 'production', APP_DOMAIN: `127.0.0.1:${prodPort}`, APP_ORIGIN: `http://127.0.0.1:${prodPort}`,
+        IP_HASH_SECRET: '1'.repeat(64),
         COOKIE_DOMAIN: 'plt.test', TRUST_PROXY: '0', TREASURY_PUBKEY: editors[0].wallet, EDITOR_FAKE_LLM: '0', EDITOR_DEFAULT_PROVIDER: '',
         REDIS_URL: 'redis://127.0.0.1:1', JWT_SECRET: common.JWT_SECRET,
         LIVE_FREE_DONATIONS: 'off', LIVE_EFFECTS: 'off', DEMO_WALLETS: '',

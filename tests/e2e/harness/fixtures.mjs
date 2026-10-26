@@ -48,7 +48,9 @@ export const LIVE = {
 };
 export const REPLAYS = { rows: [], next: null };
 export const BOARD = { rows: [], page: 1, pages: 1 };
-export const REFERRALS = { code: 'ABCD2345', used: 0, capacity: 6, available: 6, gift: 'convoy', invites: [], referredBy: null };
+export const REFERRALS = { code: 'ABCD2345', used: 0, pending: 0, capacity: 6, available: 6, max: 100, gift: 'convoy', invites: [], referredBy: null,
+  inbound: null, rewards: [], hidden: false, legacyQualified: 0, trustEligible: true,
+  rules: { pendingHours: 72, windowDays: 60, activityDays: 30, m1Weeks: 2, m2Weeks: 5, m1Amount: 100, m2Amount: 50, minTrust: 50, promoRanked: 0 } };
 export const PROFILE = {
   wallet: WALLET,
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -100,6 +102,7 @@ export function pageRoutes({ paid = false, admin = false, anon = false } = {}) {
     if (method === 'GET' && p === '/api/replays') return ok(REPLAYS);
     if (method === 'GET' && p === '/api/leaderboard') return ok(BOARD);
     if (method === 'GET' && p === '/api/referrals') return ok(REFERRALS);
+    if (method === 'GET' && p === '/api/referrals/leaderboard') return ok({ rows: [], me: { qualified: 0, active: 0, hidden: false } });
     if (method === 'POST' && p === '/api/referrals/gift') return ok({ ...REFERRALS, gift: body?.item || 'signal' });
     if (method === 'POST' && p === '/api/referrals/bind') return ok(REFERRALS);
     if (method === 'GET' && p === '/api/profile') return ok(PROFILE);

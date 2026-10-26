@@ -16,6 +16,7 @@ import { MemoryAirdropRepository } from '../dist/infrastructure/social/memory-ai
 import { MemoryConvoyRepository } from '../dist/infrastructure/social/memory-convoy.repository.js';
 import { Player } from '../dist/domain/players/player.entity.js';
 import { DAY_MS } from '../dist/domain/shared/time.js';
+import { resolveSettings } from '../dist/domain/settings/game-settings.js';
 
 const start = new Date(Date.UTC(2026, 9, 19));
 
@@ -48,7 +49,7 @@ export async function runGrantHold() {
   const campaign = new MemoryAirdropRepository();
   await campaign.claimTelegram('referee', 'convoy-tg');
   await campaign.claimX('referee', 'convoy-x');
-  await campaign.save({ ...(await campaign.get('referee')), rideOk: true, telegramMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+  await campaign.save({ ...(await campaign.get('referee')), rideOk: true, telegramMember: true, telegramGroupMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
   const ledger = new MemoryConvoyRepository();
   const convoy = new ConvoyService(ledger, players, new Tx(), clock, new Names(), promos, campaign);
   let seq = 0;
@@ -81,7 +82,9 @@ export async function runGrantHold() {
     lookup() { return Promise.resolve({ userId: '99', handle: 'ada', createdAt: new Date(start.getTime() - 90 * DAY_MS), followers: 10, followsOfficial: true }); }
     quote() { return Promise.resolve({ userId: '99', text: `@FreightChainSol ${code}` }); }
   }
-  const airdrop = new AirdropService(new MemoryAirdropRepository(), new Telegram(), new Accounts(), new Turnstile(), ada, new Tx(), clock);
+  // The fixture provider is inert, but still opts into the shipped reservation gate.
+  const settings = { current: async () => resolveSettings([{ key: 'airdrop_x_check_cost_cents', value: 1 }]) };
+  const airdrop = new AirdropService(new MemoryAirdropRepository(), new Telegram(), new Accounts(), new Turnstile(), ada, new Tx(), clock, settings);
   await airdrop.recordVerifiedRide('ada', 'free-2c');
   await airdrop.verifyTelegram('ada', '100');
   await airdrop.verifyX('ada', 'ada', '55');

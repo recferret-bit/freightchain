@@ -42,7 +42,7 @@ test('REF-T-01..22 and TEN-T-10..15 convoy clock jump and airdrop social bind re
   const hold = await runGrantHold();
   assert.equal(hold.m1OnEarn, false);
   assert.equal(hold.m1After48h, true);
-  assert.equal(hold.trustAfterSocial, 70);
+  assert.equal(hold.trustAfterSocial, 85); // Initial 60 + first Telegram 5 + first X 20.
   assert.equal(hold.claimBefore48h, false);
   assert.equal(hold.claimAfter48h, true);
 });
