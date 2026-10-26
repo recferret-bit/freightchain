@@ -9,6 +9,10 @@ function fixture(oldWorker: boolean, failure = '') {
   const root = mkdtempSync(join(tmpdir(), 'fc-editor-release-')), bin = join(root, 'bin'), log = join(root, 'calls');
   mkdirSync(bin); mkdirSync(join(root, 'state'));
   for (const tag of ['new', 'old']) { mkdirSync(join(root, 'releases', tag, 'deploy'), { recursive: true }); writeFileSync(join(root, 'releases', tag, 'deploy', 'docker-compose.prod.yml'), '# fixture'); }
+  const logging = join(root, 'releases', 'new', 'infra', 'deploy', 'scripts', 'remote');
+  mkdirSync(logging, { recursive: true });
+  // Namespace/systemd behavior has its own Ubuntu test; this fixture isolates release ordering.
+  writeFileSync(join(logging, 'logging.sh'), '#!/bin/sh\n[ "$1" = check ] && [ "$FC_MOCK_FAILURE" != logging ]\n');
   writeFileSync(join(root, 'state', 'setup-done'), '');
   writeFileSync(join(root, 'state', 'current'), 'old');
   writeFileSync(join(root, 'state', 'previous'), 'old');
@@ -35,6 +39,15 @@ if(a[0]==='compose') {
 }
 const appUp = (c: Call) => c.args.includes('up') && c.args.includes('app');
 describe('dedicated editor worker release lifecycle', () => {
+  it('refuses the release before building or swapping anything when logging is unavailable', () => {
+    const f = fixture(true, 'logging');
+    try {
+      expect(f.run().status).toBe(1);
+      expect(f.calls()).toEqual([]);
+      expect(readFileSync(join(f.root, 'state', 'current'), 'utf8').trim()).toBe('old');
+    } finally { f.close(); }
+  });
+
   it('a successful release starts the matching worker and gates success on its health', () => {
     const f = fixture(true);
     try {
