@@ -6299,6 +6299,9 @@
                     "freeRidesDailyMax": {
                       "type": "number"
                     },
+                    "referralActiveWindowDays": {
+                      "type": "number"
+                    },
                     "referralCountWeeklyGrant": {
                       "type": "number"
                     },
@@ -6332,6 +6335,36 @@
                     "referralMax": {
                       "type": "number"
                     },
+                    "referralMinTrustReferrer": {
+                      "type": "number"
+                    },
+                    "referralPendingBase": {
+                      "type": "number"
+                    },
+                    "referralPendingMax": {
+                      "type": "number"
+                    },
+                    "referralPendingPerActive": {
+                      "type": "number"
+                    },
+                    "referralPendingTtlHours": {
+                      "type": "number"
+                    },
+                    "referralQualifyWindowDays": {
+                      "type": "number"
+                    },
+                    "referralRefereePromoGlobalWeek": {
+                      "type": "number"
+                    },
+                    "referralRefereePromoPerReferrerDay": {
+                      "type": "number"
+                    },
+                    "referralRefereePromoPerReferrerWeek": {
+                      "type": "number"
+                    },
+                    "referralRefereePromoRanked": {
+                      "type": "number"
+                    },
                     "referralReferrerPartBps": {
                       "type": "number"
                     },
@@ -6339,6 +6372,30 @@
                       "type": "number"
                     },
                     "referralShiftsPerStep": {
+                      "type": "number"
+                    },
+                    "referralTen4M1Amount": {
+                      "type": "number"
+                    },
+                    "referralTen4M1Weeks": {
+                      "type": "number"
+                    },
+                    "referralTen4M2Amount": {
+                      "type": "number"
+                    },
+                    "referralTen4M2Weeks": {
+                      "type": "number"
+                    },
+                    "trustFinishCap": {
+                      "type": "number"
+                    },
+                    "trustFinishDaysPerWeek": {
+                      "type": "number"
+                    },
+                    "trustFinishPoints": {
+                      "type": "number"
+                    },
+                    "trustSocialCap": {
                       "type": "number"
                     },
                     "weeklyTicket1hDays": {
@@ -6368,6 +6425,7 @@
                     "editorMaxSteps",
                     "freeOnSignup",
                     "freeRidesDailyMax",
+                    "referralActiveWindowDays",
                     "referralCountWeeklyGrant",
                     "referralDonationCapLamports",
                     "referralDonationShareBps",
@@ -6379,9 +6437,27 @@
                     "referralInviteStep",
                     "referralInviteTtlDays",
                     "referralMax",
+                    "referralMinTrustReferrer",
+                    "referralPendingBase",
+                    "referralPendingMax",
+                    "referralPendingPerActive",
+                    "referralPendingTtlHours",
+                    "referralQualifyWindowDays",
+                    "referralRefereePromoGlobalWeek",
+                    "referralRefereePromoPerReferrerDay",
+                    "referralRefereePromoPerReferrerWeek",
+                    "referralRefereePromoRanked",
                     "referralReferrerPartBps",
                     "referralRideCapLamports",
                     "referralShiftsPerStep",
+                    "referralTen4M1Amount",
+                    "referralTen4M1Weeks",
+                    "referralTen4M2Amount",
+                    "referralTen4M2Weeks",
+                    "trustFinishCap",
+                    "trustFinishDaysPerWeek",
+                    "trustFinishPoints",
+                    "trustSocialCap",
                     "weeklyTicket1hDays",
                     "weeklyTicket1hEnabled",
                     "weeklyTicket4hDays",
@@ -6467,6 +6543,9 @@
                         "freeRidesDailyMax": {
                           "type": "number"
                         },
+                        "referralActiveWindowDays": {
+                          "type": "number"
+                        },
                         "referralCountWeeklyGrant": {
                           "type": "number"
                         },
@@ -6500,6 +6579,36 @@
                         "referralMax": {
                           "type": "number"
                         },
+                        "referralMinTrustReferrer": {
+                          "type": "number"
+                        },
+                        "referralPendingBase": {
+                          "type": "number"
+                        },
+                        "referralPendingMax": {
+                          "type": "number"
+                        },
+                        "referralPendingPerActive": {
+                          "type": "number"
+                        },
+                        "referralPendingTtlHours": {
+                          "type": "number"
+                        },
+                        "referralQualifyWindowDays": {
+                          "type": "number"
+                        },
+                        "referralRefereePromoGlobalWeek": {
+                          "type": "number"
+                        },
+                        "referralRefereePromoPerReferrerDay": {
+                          "type": "number"
+                        },
+                        "referralRefereePromoPerReferrerWeek": {
+                          "type": "number"
+                        },
+                        "referralRefereePromoRanked": {
+                          "type": "number"
+                        },
                         "referralReferrerPartBps": {
                           "type": "number"
                         },
@@ -6507,6 +6616,30 @@
                           "type": "number"
                         },
                         "referralShiftsPerStep": {
+                          "type": "number"
+                        },
+                        "referralTen4M1Amount": {
+                          "type": "number"
+                        },
+                        "referralTen4M1Weeks": {
+                          "type": "number"
+                        },
+                        "referralTen4M2Amount": {
+                          "type": "number"
+                        },
+                        "referralTen4M2Weeks": {
+                          "type": "number"
+                        },
+                        "trustFinishCap": {
+                          "type": "number"
+                        },
+                        "trustFinishDaysPerWeek": {
+                          "type": "number"
+                        },
+                        "trustFinishPoints": {
+                          "type": "number"
+                        },
+                        "trustSocialCap": {
                           "type": "number"
                         },
                         "weeklyTicket1hDays": {
@@ -6536,6 +6669,7 @@
                         "editorMaxSteps",
                         "freeOnSignup",
                         "freeRidesDailyMax",
+                        "referralActiveWindowDays",
                         "referralCountWeeklyGrant",
                         "referralDonationCapLamports",
                         "referralDonationShareBps",
@@ -6547,9 +6681,27 @@
                         "referralInviteStep",
                         "referralInviteTtlDays",
                         "referralMax",
+                        "referralMinTrustReferrer",
+                        "referralPendingBase",
+                        "referralPendingMax",
+                        "referralPendingPerActive",
+                        "referralPendingTtlHours",
+                        "referralQualifyWindowDays",
+                        "referralRefereePromoGlobalWeek",
+                        "referralRefereePromoPerReferrerDay",
+                        "referralRefereePromoPerReferrerWeek",
+                        "referralRefereePromoRanked",
                         "referralReferrerPartBps",
                         "referralRideCapLamports",
                         "referralShiftsPerStep",
+                        "referralTen4M1Amount",
+                        "referralTen4M1Weeks",
+                        "referralTen4M2Amount",
+                        "referralTen4M2Weeks",
+                        "trustFinishCap",
+                        "trustFinishDaysPerWeek",
+                        "trustFinishPoints",
+                        "trustSocialCap",
                         "weeklyTicket1hDays",
                         "weeklyTicket1hEnabled",
                         "weeklyTicket4hDays",
@@ -15972,6 +16124,38 @@
                         "m2": {
                           "type": "boolean"
                         },
+                        "policy": {
+                          "additionalProperties": true,
+                          "properties": {
+                            "m1Amount": {
+                              "type": "number"
+                            },
+                            "m1Weeks": {
+                              "type": "number"
+                            },
+                            "m2Amount": {
+                              "type": "number"
+                            },
+                            "m2Weeks": {
+                              "type": "number"
+                            },
+                            "minTrust": {
+                              "type": "number"
+                            },
+                            "promoRanked": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "m1Amount",
+                            "m1Weeks",
+                            "m2Amount",
+                            "m2Weeks",
+                            "minTrust",
+                            "promoRanked"
+                          ],
+                          "type": "object"
+                        },
                         "promo": {
                           "type": "string"
                         },
@@ -15993,6 +16177,7 @@
                         "expiresAt",
                         "m1",
                         "m2",
+                        "policy",
                         "promo",
                         "status",
                         "tasksComplete",
@@ -16020,6 +16205,38 @@
                           "m2": {
                             "type": "boolean"
                           },
+                          "policy": {
+                            "additionalProperties": true,
+                            "properties": {
+                              "m1Amount": {
+                                "type": "number"
+                              },
+                              "m1Weeks": {
+                                "type": "number"
+                              },
+                              "m2Amount": {
+                                "type": "number"
+                              },
+                              "m2Weeks": {
+                                "type": "number"
+                              },
+                              "minTrust": {
+                                "type": "number"
+                              },
+                              "promoRanked": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "m1Amount",
+                              "m1Weeks",
+                              "m2Amount",
+                              "m2Weeks",
+                              "minTrust",
+                              "promoRanked"
+                            ],
+                            "type": "object"
+                          },
                           "promo": {
                             "type": "string"
                           },
@@ -16041,6 +16258,7 @@
                           "expiresAt",
                           "m1",
                           "m2",
+                          "policy",
                           "promo",
                           "status",
                           "tasksComplete",
@@ -16122,6 +16340,62 @@
                       },
                       "type": "array"
                     },
+                    "rules": {
+                      "allOf": [
+                        {
+                          "additionalProperties": true,
+                          "properties": {
+                            "m1Amount": {
+                              "type": "number"
+                            },
+                            "m1Weeks": {
+                              "type": "number"
+                            },
+                            "m2Amount": {
+                              "type": "number"
+                            },
+                            "m2Weeks": {
+                              "type": "number"
+                            },
+                            "minTrust": {
+                              "type": "number"
+                            },
+                            "promoRanked": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "m1Amount",
+                            "m1Weeks",
+                            "m2Amount",
+                            "m2Weeks",
+                            "minTrust",
+                            "promoRanked"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "properties": {
+                            "activityDays": {
+                              "type": "number"
+                            },
+                            "pendingHours": {
+                              "type": "number"
+                            },
+                            "windowDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "activityDays",
+                            "pendingHours",
+                            "windowDays"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
                     "trustEligible": {
                       "type": "boolean"
                     },
@@ -16142,6 +16416,7 @@
                     "pending",
                     "referredBy",
                     "rewards",
+                    "rules",
                     "trustEligible",
                     "used"
                   ],
@@ -16217,6 +16492,38 @@
                         "m2": {
                           "type": "boolean"
                         },
+                        "policy": {
+                          "additionalProperties": true,
+                          "properties": {
+                            "m1Amount": {
+                              "type": "number"
+                            },
+                            "m1Weeks": {
+                              "type": "number"
+                            },
+                            "m2Amount": {
+                              "type": "number"
+                            },
+                            "m2Weeks": {
+                              "type": "number"
+                            },
+                            "minTrust": {
+                              "type": "number"
+                            },
+                            "promoRanked": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "m1Amount",
+                            "m1Weeks",
+                            "m2Amount",
+                            "m2Weeks",
+                            "minTrust",
+                            "promoRanked"
+                          ],
+                          "type": "object"
+                        },
                         "promo": {
                           "type": "string"
                         },
@@ -16238,6 +16545,7 @@
                         "expiresAt",
                         "m1",
                         "m2",
+                        "policy",
                         "promo",
                         "status",
                         "tasksComplete",
@@ -16265,6 +16573,38 @@
                           "m2": {
                             "type": "boolean"
                           },
+                          "policy": {
+                            "additionalProperties": true,
+                            "properties": {
+                              "m1Amount": {
+                                "type": "number"
+                              },
+                              "m1Weeks": {
+                                "type": "number"
+                              },
+                              "m2Amount": {
+                                "type": "number"
+                              },
+                              "m2Weeks": {
+                                "type": "number"
+                              },
+                              "minTrust": {
+                                "type": "number"
+                              },
+                              "promoRanked": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "m1Amount",
+                              "m1Weeks",
+                              "m2Amount",
+                              "m2Weeks",
+                              "minTrust",
+                              "promoRanked"
+                            ],
+                            "type": "object"
+                          },
                           "promo": {
                             "type": "string"
                           },
@@ -16286,6 +16626,7 @@
                           "expiresAt",
                           "m1",
                           "m2",
+                          "policy",
                           "promo",
                           "status",
                           "tasksComplete",
@@ -16367,6 +16708,62 @@
                       },
                       "type": "array"
                     },
+                    "rules": {
+                      "allOf": [
+                        {
+                          "additionalProperties": true,
+                          "properties": {
+                            "m1Amount": {
+                              "type": "number"
+                            },
+                            "m1Weeks": {
+                              "type": "number"
+                            },
+                            "m2Amount": {
+                              "type": "number"
+                            },
+                            "m2Weeks": {
+                              "type": "number"
+                            },
+                            "minTrust": {
+                              "type": "number"
+                            },
+                            "promoRanked": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "m1Amount",
+                            "m1Weeks",
+                            "m2Amount",
+                            "m2Weeks",
+                            "minTrust",
+                            "promoRanked"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "properties": {
+                            "activityDays": {
+                              "type": "number"
+                            },
+                            "pendingHours": {
+                              "type": "number"
+                            },
+                            "windowDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "activityDays",
+                            "pendingHours",
+                            "windowDays"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
                     "trustEligible": {
                       "type": "boolean"
                     },
@@ -16387,6 +16784,7 @@
                     "pending",
                     "referredBy",
                     "rewards",
+                    "rules",
                     "trustEligible",
                     "used"
                   ],
@@ -16545,6 +16943,38 @@
                         "m2": {
                           "type": "boolean"
                         },
+                        "policy": {
+                          "additionalProperties": true,
+                          "properties": {
+                            "m1Amount": {
+                              "type": "number"
+                            },
+                            "m1Weeks": {
+                              "type": "number"
+                            },
+                            "m2Amount": {
+                              "type": "number"
+                            },
+                            "m2Weeks": {
+                              "type": "number"
+                            },
+                            "minTrust": {
+                              "type": "number"
+                            },
+                            "promoRanked": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "m1Amount",
+                            "m1Weeks",
+                            "m2Amount",
+                            "m2Weeks",
+                            "minTrust",
+                            "promoRanked"
+                          ],
+                          "type": "object"
+                        },
                         "promo": {
                           "type": "string"
                         },
@@ -16566,6 +16996,7 @@
                         "expiresAt",
                         "m1",
                         "m2",
+                        "policy",
                         "promo",
                         "status",
                         "tasksComplete",
@@ -16593,6 +17024,38 @@
                           "m2": {
                             "type": "boolean"
                           },
+                          "policy": {
+                            "additionalProperties": true,
+                            "properties": {
+                              "m1Amount": {
+                                "type": "number"
+                              },
+                              "m1Weeks": {
+                                "type": "number"
+                              },
+                              "m2Amount": {
+                                "type": "number"
+                              },
+                              "m2Weeks": {
+                                "type": "number"
+                              },
+                              "minTrust": {
+                                "type": "number"
+                              },
+                              "promoRanked": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "m1Amount",
+                              "m1Weeks",
+                              "m2Amount",
+                              "m2Weeks",
+                              "minTrust",
+                              "promoRanked"
+                            ],
+                            "type": "object"
+                          },
                           "promo": {
                             "type": "string"
                           },
@@ -16614,6 +17077,7 @@
                           "expiresAt",
                           "m1",
                           "m2",
+                          "policy",
                           "promo",
                           "status",
                           "tasksComplete",
@@ -16695,6 +17159,62 @@
                       },
                       "type": "array"
                     },
+                    "rules": {
+                      "allOf": [
+                        {
+                          "additionalProperties": true,
+                          "properties": {
+                            "m1Amount": {
+                              "type": "number"
+                            },
+                            "m1Weeks": {
+                              "type": "number"
+                            },
+                            "m2Amount": {
+                              "type": "number"
+                            },
+                            "m2Weeks": {
+                              "type": "number"
+                            },
+                            "minTrust": {
+                              "type": "number"
+                            },
+                            "promoRanked": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "m1Amount",
+                            "m1Weeks",
+                            "m2Amount",
+                            "m2Weeks",
+                            "minTrust",
+                            "promoRanked"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "properties": {
+                            "activityDays": {
+                              "type": "number"
+                            },
+                            "pendingHours": {
+                              "type": "number"
+                            },
+                            "windowDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "activityDays",
+                            "pendingHours",
+                            "windowDays"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
                     "trustEligible": {
                       "type": "boolean"
                     },
@@ -16715,6 +17235,7 @@
                     "pending",
                     "referredBy",
                     "rewards",
+                    "rules",
                     "trustEligible",
                     "used"
                   ],

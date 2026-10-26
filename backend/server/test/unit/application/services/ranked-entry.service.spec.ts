@@ -1,3 +1,5 @@
+import { convoyContext } from '../../../support/convoy-context.js';
+import { convoyPolicy } from '../../../../src/application/referral/convoy-policy.js';
 import { RankedEntryService } from '../../../../src/application/services/ranked-entry.service.js';
 import { PrizeGeoPort } from '../../../../src/application/ports/prize/prize-geo.port.js';
 import { HeaderGeoAdapter } from '../../../../src/infrastructure/prize/header-geo.adapter.js';
@@ -21,6 +23,17 @@ describe('RankedEntryService', () => {
     const claim = async (ride: Ride, headers: Record<string, string> = CA) => entry.claim(await ctx.storedPlayer(ride.wallet), ride, headers, ctx.now());
     return { ctx, claim };
   };
+
+  it('gates Convoy promo ranking by saved activation policy', async () => {
+    const c = convoyContext(); await c.accept('w');
+    const ride = Ride.createPromo({ id: 'convoy-promo', wallet: 'w', tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, promoCode: 'SYSTEM-CONVOY-1H', now: c.now() });
+    const service = new RankedEntryService(c.rides, new HeaderGeoAdapter(), new Lists(), c.repo);
+    await expect(service.claim(await c.storedPlayer('w'), ride, CA, c.now())).rejects.toMatchObject({ errorCode: 'convoy_promo_unranked' });
+    await c.repo.insert({ referee: 'w', referrer: 'host', status: 'active', boundAt: c.now(), expiresAt: c.now(), activatedAt: c.now(), qualifyExpiresAt: c.now(), m1At: null, m2At: null, policy: { ...convoyPolicy(), promoRanked: 1 } });
+    expect(await service.claim(await c.storedPlayer('w'), ride, CA, c.now())).toEqual({ country: 'CA', region: null });
+    await c.settingsRepo.upsert('referral_referee_promo_ranked', 0);
+    expect(await service.claim(await c.storedPlayer('w'), ride, CA, c.now())).toEqual({ country: 'CA', region: null });
+  });
 
   it('stamps an allowed country for an 18+ wallet, and refuses age, unknown, sanctioned, UK/EU and a blocked US state', async () => {
     const { ctx, claim } = setup();

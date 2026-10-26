@@ -4,8 +4,8 @@ import { itemName } from './lobby-promo.js';
 import { GIFT_ITEMS, inviteLabel, shareUrl } from './referral.js';
 
 const when = at => at && Number.isFinite(+new Date(at)) ? new Date(at).toLocaleString() : '–';
-const progress = r => `${r.weeks} counted weeks · M1 ${r.m1 ? 'complete' : `${Math.min(r.weeks, 2)}/2`} · M2 ${r.m2 ? 'complete' : `${Math.min(r.weeks, 5)}/5`} · campaign tasks ${r.tasksComplete ? 'complete' : 'needed'}`;
-const promo = r => r.promo === 'granted' ? '1h promo granted — use it under Promo Codes.' : r.promo === 'cap_reached' ? 'Promo gift cap reached; your Convoy activation still counts.' : 'Finish verified MEDIUM or HARD training within 72 hours to activate.';
+const progress = r => `${r.weeks} counted weeks · M1 ${r.m1 ? 'complete' : `${Math.min(r.weeks, r.policy.m1Weeks)}/${r.policy.m1Weeks}`} · M2 ${r.m2 ? 'complete' : `${Math.min(r.weeks, r.policy.m2Weeks)}/${r.policy.m2Weeks}`} · campaign tasks ${r.tasksComplete ? 'complete' : 'needed'}`;
+const promo = r => r.promo === 'granted' ? '1h promo granted — use it under Promo Codes.' : r.promo === 'cap_reached' ? 'Promo gift cap reached; your Convoy activation still counts.' : 'Finish verified MEDIUM or HARD training before the deadline to activate.';
 
 /** Profile Convoy; all API-provided values become text nodes. */
 export function referralSection({ api, short, base, origin, alive = () => true }) {
@@ -22,9 +22,9 @@ export function referralSection({ api, short, base, origin, alive = () => true }
   };
   const invite = r => el('div', { class: 'card' },
     el('b', { title: r.wallet }, short(r.wallet)), ` · ${inviteLabel(r.status)}`,
-    el('p', {}, progress(r)), el('p', { class: 'dim' }, `Deadline ${when(r.expiresAt)}. ${promo(r)}`));
+    r.status === 'pending' ? el('p', { class: 'dim' }, 'Milestone rules are fixed when this invite activates.') : [el('p', {}, progress(r)), el('p', { class: 'dim' }, `Saved rewards: ${r.policy.m1Amount} / ${r.policy.m2Amount} TEN4 base · referrer trust ${r.policy.minTrust} · promo ${r.policy.promoRanked ? 'may rank if eligible' : 'unranked'}`)], el('p', { class: 'dim' }, `Deadline ${when(r.expiresAt)}. ${promo(r)}`));
   const paint = () => {
-    const r = row, url = shareUrl(base, origin, r.code);
+    const r = row, rules = r.rules, url = shareUrl(base, origin, r.code);
     const input = el('input', { id: 'ref-input', maxlength: 8, placeholder: 'INVITE CODE', 'aria-label': 'Convoy invite code', autocapitalize: 'characters', spellcheck: 'false' });
     box.replaceChildren(
       el('div', { class: 'ref-head' }, el('b', { class: 'ref-code', id: 'ref-code' }, r.code),
@@ -34,13 +34,13 @@ export function referralSection({ api, short, base, origin, alive = () => true }
         } }, 'COPY LINK')),
       el('p', { class: 'dim ref-url' }, url),
       el('p', { class: 'ref-meta' }, `${r.pending} / ${r.capacity} pending · ${r.available} open · ${r.used} qualified`),
-      el('p', { class: 'dim' }, 'Pending invites last 72 hours. Activation opens a 60-day window. Complete campaign tasks and verified ranked paid rides in 2 distinct ISO weeks for M1, then 5 for M2. Promo rides never count. Weekly tickets count only at trust 100 when enabled.'),
-      el('p', { class: r.trustEligible ? 'dim' : 'warn' }, r.trustEligible ? 'Your trust meets the referrer requirement.' : 'Your trust must reach 50 before milestone rewards can be earned.'),
-      el('p', { class: 'dim' }, 'M1: 100 TEN4 base · M2: 50 TEN4 base. Rewards have a 48-hour review hold and are reduced by emission eras and caps. There is no share of prizes or tips.'),
+      el('p', { class: 'dim' }, `New invites last ${rules.pendingHours} hours. New activations open a ${rules.windowDays}-day window. Complete campaign tasks and verified ranked paid rides in ${rules.m1Weeks} distinct ISO weeks for M1, then ${rules.m2Weeks} for M2. Promo rides never count. Weekly tickets count only at trust 100 when enabled.`),
+      el('p', { class: r.trustEligible ? 'dim' : 'warn' }, r.trustEligible ? 'Your trust meets the requirement for new Convoy rewards.' : `Rewards from new activations require referrer trust ${rules.minTrust}. Existing friends retain their saved requirement.`),
+      el('p', { class: 'dim' }, `New activations: M1 ${rules.m1Amount} TEN4 base · M2 ${rules.m2Amount} TEN4 base. Rewards have a 48-hour review hold and are reduced by emission eras and caps. There is no share of prizes or tips.`),
       r.referredBy ? el('p', {}, 'Invited by ', el('b', { title: r.referredBy }, short(r.referredBy)), r.inbound ? '' : ' · historical relationship; complete fresh MEDIUM/HARD training to activate Convoy.')
         : el('form', { class: 'promo-form', onsubmit: e => { e.preventDefault(); act(async () => { await api('referrals/bind', { code: input.value.trim().toUpperCase() }, { report: false }); say('Invite applied.', 'good'); }); } }, input, el('button', { id: 'ref-apply', type: 'submit', disabled: busy }, 'APPLY INVITE')),
       r.inbound ? el('div', { id: 'ref-progress' }, el('h2', { class: 'sub' }, 'YOUR CONVOY STEPS'), invite(r.inbound)) : '',
-      el('p', { class: 'dim' }, 'Your first activated friend unlocks this paint for your truck. Your friend may receive one unranked 1h promo, subject to caps.'),
+      el('p', { class: 'dim' }, 'Your first activated friend unlocks this paint for your truck. Your friend may receive one 1h promo, subject to caps and the saved ranking policy.'),
       el('div', { class: 'ref-gifts', role: 'group', 'aria-label': 'gift colour' }, ...GIFT_ITEMS.map(id => el('button', {
         type: 'button', class: r.gift === id ? 'on' : '', 'aria-pressed': String(r.gift === id), disabled: busy || r.gift === id,
         onclick: () => act(async () => { await api('referrals/gift', { item: id }, { report: false }); say(`${itemName(id)} selected.`, 'good'); }),

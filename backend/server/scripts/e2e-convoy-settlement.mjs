@@ -28,33 +28,33 @@ const players = new PlayerPrismaRepository(db), txs = new TransactionPrismaAdapt
 const real = () => new ReferralEmissionAdapter(env);
 const worker = (emission, prisma = db) => new ReleaseConvoyHandler(new ConvoyPrismaRepository(prisma), new PlayerPrismaRepository(prisma), new TransactionPrismaAdapter(prisma), emission, new HonkPrismaRepository(prisma), clock, entropy);
 const run = (emission, prisma) => worker(emission, prisma).execute(new ReleaseConvoyCommand());
-const seed = async () => {
+const seed = async (amount = 100) => {
   const friend = Keypair.generate().publicKey.toBase58(), id = `convoy:m1:${friend}`;
   await players.insertIfAbsent(Player.register(friend, clock.now(), 0, 0));
   await txs.run(async (tx) => {
     for (const w of [wallet, friend].sort()) assert.ok(await players.findByWalletForUpdate(w, tx));
-    await repo.insertLedger({ id, kind: 'm1', wallet, referrer: wallet, referee: friend, amount: 100, unit: 'ten4', at: new Date(Date.now() - 48 * 3600_000 - 1), dayKey: 'fixture', weekKey: 'fixture', chainState: 'held', releasedAt: null }, tx);
+    await repo.insertLedger({ id, kind: 'm1', wallet, referrer: wallet, referee: friend, amount, unit: 'ten4', at: new Date(Date.now() - 48 * 3600_000 - 1), dayKey: 'fixture', weekKey: 'fixture', chainState: 'held', releasedAt: null }, tx);
   });
   return id;
 };
 try {
   await players.insertIfAbsent(Player.register(wallet, clock.now(), 0, 0));
   // The local runner stops its API before this test, so only these explicit workers process fixture rewards.
-  const unpaid = await seed();
+  const unpaid = await seed(75);
   await run(new ReferralEmissionAdapter({ ...env, solanaRpc: 'http://127.0.0.1:9' }));
   assert.equal((await repo.findLedger(unpaid)).chainState, 'held');
   assert.equal(await honkBalance({ rpc: RPC, owner: recipient }), 0n);
   await db.convoyLedger.update({ where: { id: unpaid }, data: { chainRetryAt: new Date(0) } });
   assert.equal(await run(real(), other), 1);
-  assert.equal(await honk.balance(wallet), 100_000_000n);
-  assert.equal(await honkBalance({ rpc: RPC, owner: recipient }), 100_000_000n);
-  console.log('ok Convoy restart after pre-broadcast RPC failure');
+  assert.equal(await honk.balance(wallet), 75_000_000n);
+  assert.equal(await honkBalance({ rpc: RPC, owner: recipient }), 75_000_000n);
+  console.log('ok Convoy configured 75 TEN4 reward and restart after pre-broadcast RPC failure');
 
-  const lost = await seed();
+  const lost = await seed(125);
   await run({ enabled: () => true, settle: async (payment) => { await real().settle(payment); throw new Error('lost response after confirmed payment'); } });
   assert.equal((await repo.findLedger(lost)).chainState, 'held');
   assert.ok((await repo.findLedger(lost)).chainSignature);
-  assert.equal(await honk.balance(wallet), 100_000_000n);
+  assert.equal(await honk.balance(wallet), 75_000_000n);
   assert.equal(await honkBalance({ rpc: RPC, owner: recipient }), 200_000_000n);
   await db.convoyLedger.update({ where: { id: lost }, data: { chainRetryAt: new Date(0) } });
   const results = await Promise.all([run(real()), run(real(), other)]);

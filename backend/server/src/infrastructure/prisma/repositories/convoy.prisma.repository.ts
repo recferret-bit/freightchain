@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import type { ConvoyInvite, ConvoyLedger } from '@prisma/client';
+import { Prisma, type ConvoyInvite, type ConvoyLedger } from '@prisma/client';
 import { ConvoyRepositoryPort, type ConvoyRow, type ConvoyLedgerRow, type ConvoyRideRow, type HiddenRead, type ReferrerCounts } from '../../../application/referral/convoy.repository.port.js';
 import type { TransactionHandle } from '../../../application/ports/shared/transaction.port.js';
 import { clientFor } from '../prisma-client.js';
 import { PrismaService } from '../prisma.service.js';
 
-const invite = (row: ConvoyInvite): ConvoyRow => ({ ...row, status: row.status as ConvoyRow['status'] });
+const invite = (row: ConvoyInvite): ConvoyRow => ({ ...row, status: row.status as ConvoyRow['status'], policy: row.policy as ConvoyRow['policy'] });
 const ledger = (row: ConvoyLedger): ConvoyLedgerRow => ({ ...row, kind: row.kind as ConvoyLedgerRow['kind'], unit: row.unit as ConvoyLedgerRow['unit'], chainState: row.chainState as ConvoyLedgerRow['chainState'] });
 
 @Injectable()
@@ -29,11 +29,11 @@ export class ConvoyPrismaRepository extends ConvoyRepositoryPort {
   }
 
   async insert(row: ConvoyRow, tx?: TransactionHandle): Promise<boolean> {
-    return (await clientFor(this.prisma, tx).convoyInvite.createMany({ data: [row], skipDuplicates: true })).count === 1;
+    return (await clientFor(this.prisma, tx).convoyInvite.createMany({ data: [{ ...row, policy: row.policy ?? Prisma.DbNull }], skipDuplicates: true })).count === 1;
   }
 
   async save(row: ConvoyRow, tx?: TransactionHandle): Promise<void> {
-    await clientFor(this.prisma, tx).convoyInvite.update({ where: { referee: row.referee }, data: row });
+    await clientFor(this.prisma, tx).convoyInvite.update({ where: { referee: row.referee }, data: { ...row, policy: row.policy ?? Prisma.DbNull } });
   }
 
   async deleteReferee(referee: string, tx?: TransactionHandle): Promise<boolean> {

@@ -31,6 +31,12 @@ describe('game settings', () => {
     expect(resolveSettings([{ key: 'referral_max', value: 0 }]).referralMax).toBe(30);
   });
 
+  it('validates operational Convoy settings and leaves immutable chain caps out of editable keys', () => {
+    expect(resolveSettings([{ key: 'referral_pending_ttl_hours', value: 12 }, { key: 'referral_ten4_m1_amount', value: 75 }])).toMatchObject({ referralPendingTtlHours: 12, referralTen4M1Amount: 75 });
+    for (const [key, value] of [['referral_pending_ttl_hours', 0], ['referral_ten4_m1_amount', 1001], ['referral_min_trust_referrer', 49], ['referral_referee_promo_ranked', 2], ['referral_ten4_global_monthly', 50000]] as const) expect(() => assertSettingValue(key, value)).toThrow(BadRequestError);
+    expect(() => assertSettingValue('referral_referee_promo_global_week', 0)).not.toThrow();
+  });
+
   it('zero is allowed; anything else the domain refuses is bad_setting', () => {
     expect(() => assertSettingValue('free_on_signup', 0)).not.toThrow();
     expect(() => assertSettingValue('weekly_ticket_1h_days', 7)).not.toThrow();

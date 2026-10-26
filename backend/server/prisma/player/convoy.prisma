@@ -9,6 +9,8 @@ model ConvoyInvite {
   qualifyExpiresAt DateTime?
   m1At DateTime?
   m2At DateTime?
+  // Immutable activation promises; null preserves pre-settings defaults.
+  policy Json?
 
   @@index([referrer, status])
   @@index([status, expiresAt])
@@ -22,6 +24,7 @@ model ConvoyLedger {
   referrer String
   referee String
   amount Int
+  minTrust Int @default(50)
   unit String
   at DateTime
   dayKey String

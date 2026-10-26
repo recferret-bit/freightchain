@@ -84,6 +84,6 @@ export class ReleaseConvoyHandler implements ICommandHandler<ReleaseConvoyComman
       scores.set(wallet, player);
     }
     const a = scores.get(row.referrer)!, b = scores.get(row.referee)!;
-    return grantReleasable({ trustA: a.trustScore, trustB: b.trustScore, rejectedA: a.rejectedRides, rejectedB: b.rejectedRides, now: this.clock.now(), heldAt: row.at });
+    return a.trustScore >= (row.minTrust ?? 50) && grantReleasable({ trustA: a.trustScore, trustB: b.trustScore, rejectedA: a.rejectedRides, rejectedB: b.rejectedRides, now: this.clock.now(), heldAt: row.at });
   }
 }

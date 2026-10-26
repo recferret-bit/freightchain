@@ -18,8 +18,10 @@ export const telemetryAckResponse = obj({ enabled: bool, accepted: num, dropped:
 export const clientErrorAckResponse = obj({ enabled: bool, accepted: num });
 export const chainFeesResponse = obj({ priorityMicrolamports: num, computeUnits: num, estimatedFeeLamports: num, blockhashTtlSeconds: num });
 export const chainWebhookResponse = obj({ received: num, settled: num, pending: num });
-const convoyInvite = obj({ wallet: str, status: str, at: str, expiresAt: str, weeks: num, tasksComplete: bool, m1: bool, m2: bool, promo: str });
+const convoyPolicy = obj({ m1Amount: num, m1Weeks: num, m2Amount: num, m2Weeks: num, minTrust: num, promoRanked: num });
+const convoyInvite = obj({ policy: convoyPolicy, wallet: str, status: str, at: str, expiresAt: str, weeks: num, tasksComplete: bool, m1: bool, m2: bool, promo: str });
 export const referralViewResponse = obj({
+  rules: convoyPolicy.and(obj({ pendingHours: num, windowDays: num, activityDays: num })),
   code: str, capacity: num, used: num, pending: num, available: num, max: num, gift: str, referredBy: strOrNull, invites: z.array(convoyInvite), inbound: convoyInvite.nullable(), hidden: bool, legacyQualified: num, trustEligible: bool,
   rewards: z.array(obj({ kind: str, referee: str, amount: num, paidUnits: str, state: str, at: str, releaseAt: strOrNull, signature: strOrNull, reason: strOrNull })),
 });

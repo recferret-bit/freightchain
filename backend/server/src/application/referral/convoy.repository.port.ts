@@ -1,3 +1,4 @@
+import type { ConvoyPolicy } from './convoy-policy.js';
 import type { TransactionHandle } from '../ports/shared/transaction.port.js';
 import type { ConvoyStatus } from './convoy-rules.js';
 
@@ -11,6 +12,7 @@ export interface ConvoyRow {
   qualifyExpiresAt: Date | null;
   m1At: Date | null;
   m2At: Date | null;
+  policy?: ConvoyPolicy | null;
 }
 
 export interface ConvoyLedgerRow {
@@ -20,6 +22,7 @@ export interface ConvoyLedgerRow {
   referrer: string;
   referee: string;
   amount: number;
+  minTrust?: number;
   unit: 'ride' | 'ten4';
   at: Date;
   dayKey: string;

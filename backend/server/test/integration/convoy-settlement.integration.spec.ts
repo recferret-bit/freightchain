@@ -65,14 +65,15 @@ describe('Convoy settlement PostgreSQL concurrency and recovery', () => {
     expect(await new HonkPrismaRepository(other).balance('a')).toBe(0n);
   });
 
-  it('holds an earned milestone after referrer trust drops and reconciles it once trust recovers', async () => {
-    await db.player.update({ where: { wallet: 'a' }, data: { trustScore: 49 } });
+  it('holds an earned milestone at its saved trust requirement after referrer trust drops and reconciles it once trust recovers', async () => {
+    await db.convoyLedger.update({ where: { id: 'convoy:m1:b' }, data: { minTrust: 75 } });
+    await db.player.update({ where: { wallet: 'a' }, data: { trustScore: 74 } });
     const settle = vi.fn(async (): Promise<ReferralSettlement> => ({ kind: 'paid', amount: 123n }));
     const emission = { enabled: () => true, settle };
     expect(await worker(db, emission).execute(command)).toBe(0);
     expect(settle).not.toHaveBeenCalled();
     expect((await repo.findLedger('convoy:m1:b'))?.chainState).toBe('held');
-    await db.player.update({ where: { wallet: 'a' }, data: { trustScore: 50 } });
+    await db.player.update({ where: { wallet: 'a' }, data: { trustScore: 75 } });
     clock.advance(121);
     expect(await worker(db, emission).execute(command)).toBe(1);
     expect(await worker(db, emission).execute(command)).toBe(0);

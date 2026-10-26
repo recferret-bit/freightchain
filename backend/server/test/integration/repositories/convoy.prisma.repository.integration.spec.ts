@@ -23,13 +23,22 @@ describe('ConvoyPrismaRepository', () => {
     const other = await testPrisma();
     try {
       const restarted = new ConvoyPrismaRepository(other);
-      expect(await restarted.getByReferee('friend')).toEqual(row);
+      expect(await restarted.getByReferee('friend')).toEqual({ ...row, policy: null });
       expect(await restarted.readHidden('host')).toEqual({ columnPresent: true, hidden: true });
       expect(await restarted.ridesOf('friend')).toEqual([{ rideId: 'r1', wallet: 'friend', at: at(10), trip: 'free-2c', counted: true }]);
       expect(await restarted.releaseLedger('m1', at(30))).toBe(true);
       expect(await repo.releaseLedger('m1', at(40))).toBe(false);
       expect((await repo.ledger())[0]?.releasedAt).toEqual(at(30));
     } finally { await other.$disconnect(); }
+  });
+
+  it('persists activation promises independently of later settings', async () => {
+    const policy = { m1Amount: 75, m1Weeks: 3, m2Amount: 25, m2Weeks: 6, minTrust: 80, promoRanked: 1 };
+    await repo.insert({ ...row, status: 'active', activatedAt: at(1), policy });
+    await prisma.gameSetting.upsert({ where: { key: 'referral_ten4_m1_amount' }, create: { key: 'referral_ten4_m1_amount', value: 200 }, update: { value: 200 } });
+    const other = await testPrisma();
+    try { expect((await new ConvoyPrismaRepository(other).getByReferee('friend'))?.policy).toEqual(policy); }
+    finally { await other.$disconnect(); }
   });
 
   it('rolls back the invitation, evidence, privacy and credit together', async () => {
@@ -64,7 +73,7 @@ describe('ConvoyPrismaRepository', () => {
   it('keeps exact expiry boundaries and aggregates only active and qualified invitations', async () => {
     await repo.insert(row);
     expect(await repo.listPendingExpired(at(100))).toEqual([]);
-    expect(await repo.listPendingExpired(at(101))).toEqual([row]);
+    expect(await repo.listPendingExpired(at(101))).toEqual([{ ...row, policy: null }]);
     await repo.save({ ...row, status: 'active', activatedAt: at(1), qualifyExpiresAt: at(200) });
     expect(await repo.listActivePast(at(200))).toEqual([]);
     expect(await repo.listActivePast(at(201))).toHaveLength(1);

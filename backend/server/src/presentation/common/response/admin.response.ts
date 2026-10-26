@@ -40,6 +40,22 @@ export const adminSessionsResponse = obj({ rows: z.array(obj({ wallet: str, last
 export const gameSettingsResponse = obj({
   freeOnSignup: num, freeRidesDailyMax: num, weeklyTicket1hEnabled: num, weeklyTicket1hDays: num, weeklyTicket4hEnabled: num, weeklyTicket4hDays: num, weeklyTicket8hEnabled: num, weeklyTicket8hDays: num,
   editorJobsPerDay: num, editorMaxSteps: num, editorMaxOutputTokens: num, editorMaxInputKTokens: num, editorJobsParallel: num, referralMax: num, referralInviteStart: num, referralInviteStep: num, referralShiftsPerStep: num,
+  referralPendingTtlHours: num,
+  referralQualifyWindowDays: num,
+  referralPendingBase: num,
+  referralPendingPerActive: num,
+  referralPendingMax: num,
+  referralActiveWindowDays: num,
+  referralTen4M1Amount: num,
+  referralTen4M1Weeks: num,
+  referralTen4M2Amount: num,
+  referralTen4M2Weeks: num,
+  referralMinTrustReferrer: num,
+  referralRefereePromoPerReferrerDay: num,
+  referralRefereePromoPerReferrerWeek: num,
+  referralRefereePromoGlobalWeek: num,
+  referralRefereePromoRanked: num,
+  trustFinishPoints: num, trustFinishDaysPerWeek: num, trustFinishCap: num, trustSocialCap: num,
   referralInviteTtlDays: num, referralFreeRideWindowDays: num, referralFreeRidesReferrer: num, referralFreeRidesReferee: num, referralFreeRideWeeklyCap: num, referralReferrerPartBps: num, referralRideCapLamports: num, referralDonationShareBps: num, referralDonationCapLamports: num, referralCountWeeklyGrant: num,
 });
 export const settingUpdatedResponse = obj({ key: str, value: num, settings: gameSettingsResponse });

@@ -34,6 +34,11 @@ function sending() {
 }
 
 describe('ReferralEmissionAdapter', () => {
+  it('accepts configured integer milestone amounts but rejects zero, fractional or over-cap base amounts', async () => {
+    vi.spyOn(Connection.prototype, 'getAccountInfo').mockResolvedValue(receipt());
+    expect(await new ReferralEmissionAdapter(env).settle(payment({ baseAmount: 75_000_000n }))).toEqual({ kind: 'paid', amount: 50_000_000n });
+    for (const baseAmount of [0n, 1_000_001n, 1_001_000_000n]) await expect(new ReferralEmissionAdapter(env).settle(payment({ baseAmount }))).rejects.toThrow('invalid referral');
+  });
   afterEach(() => vi.restoreAllMocks());
   it('recovers an existing receipt without broadcasting and reports its actual clipped amount', async () => {
     vi.spyOn(Connection.prototype, 'getAccountInfo').mockResolvedValue(receipt());
