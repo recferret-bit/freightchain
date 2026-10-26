@@ -19,17 +19,22 @@ Fill in the remaining `[PLACEHOLDER: …]` values in `docs/legal/PRESEASON_RULES
 
 ### 1.2 External API Keys & Bot Credentials (Pre-season Server `.env`)
 Provision the following external credentials and add them to production `.env` (never commit real secrets to git):
-- [ ] **Telegram Bot (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_CHANNEL_ID`, `TELEGRAM_GROUP_ID`):**
+- [ ] **Telegram Bot (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_LOGIN_BOT`, `TELEGRAM_CHANNEL_ID`, `TELEGRAM_GROUP_ID`, `TELEGRAM_WEBHOOK_SECRET`):**
   1. Create a bot via `@BotFather` and run `/setdomain` to bind your production domain for the Telegram Login Widget.
   2. Add the bot as an **Administrator** (with read-members permission) to both the official Telegram channel and group chat.
-  3. Record the numeric chat IDs (`-100...`) for both the channel and the group.
-- [ ] **X Verification (`TWITTERAPI_IO_KEY`, `X_OFFICIAL_USER_ID`, `X_CAMPAIGN_POST_ID`):**
-  1. Register an account at `https://twitterapi.io` and fund ~$10–$20 of API credits.
-  2. Set `TWITTERAPI_IO_KEY` in `.env` and configure the official `@FreightChainSol` user ID and campaign post ID.
-- [ ] **IP Geolocation & VPN Detection (`IPINFO_TOKEN`):**
-  1. Create an account at `https://ipinfo.io` (Free or Basic tier with privacy/ASN detection if needed) and set `IPINFO_TOKEN`.
+  3. Record the numeric chat IDs (`-100...`) for both the channel and the group; set the public widget username in `TELEGRAM_LOGIN_BOT`.
+  4. Register the HTTPS `/api/airdrop/telegram/webhook` with the configured secret token and verify original group activity on the production origin. Local fixtures do not register it or send Telegram messages.
+- [ ] **X Verification (`TWITTERAPI_IO_KEY`):**
+  1. Register an account at `https://twitterapi.io`, confirm current pricing/quotas and fund the intended verification budget.
+  2. Set `TWITTERAPI_IO_KEY`; the current implementation verifies the follow of `@FreightChainSol` and the submitted public post containing the full personal wallet code. `X_OFFICIAL_USER_ID` and `X_CAMPAIGN_POST_ID` are not supported env keys.
+  3. Set a conservative positive `airdrop_x_check_cost_cents` through signed admin Settings after checking current provider charges for all requests per verification. It defaults to 0 (checks unavailable). `airdrop_x_budget_cents` caps durable reservations at 10000 cents; this is not a guarantee of actual provider billing.
+- [ ] **Turnstile (`TURNSTILE_SECRET_KEY`, `TURNSTILE_SITE_KEY`):** Configure the actual site/domain/action and verify widget success/refusal at the production origin.
+- [ ] **Optional network review evidence (`IPINFO_TOKEN`):** Use [IPinfo Core](https://ipinfo.io/developers/core-api), which supplies ASN and mobile/hosting/anonymous flags. Credentials alone do not send sign-in IPs; `trust_network_evidence_enabled` defaults to 0. Enable only after confirming plan quota and privacy setup. Mobile evidence is excluded; no detailed VPN/Tor classification or automatic penalty is inferred.
+- [ ] **Optional funding review evidence (`HELIUS_API_KEY`):** [Helius funded-by](https://www.helius.dev/docs/wallet-api/funded-by) needs paid access. `trust_funding_evidence_enabled` defaults to 0; admin player review makes bounded calls only after opt-in. Known exchange funding is excluded; 404/partial history is not suspicion. See [provider evidence handoff](../testing/TRUST_PROVIDER_EVIDENCE.md).
+- [ ] **Optional Seeker verification (`SGT_RPC_URL`):** Supply a separate read-only mainnet RPC and complete acceptance with a physical Seeker/current holder. Binary fixture tests do not prove actual device ownership.
 - [ ] **Secret Salt for IP Prefix Hashing (`IP_HASH_SECRET`):**
-  1. Generate a 32-byte random hex secret (`openssl rand -hex 32`) and set `IP_HASH_SECRET` in production `.env`.
+  1. Generate an independent 32-byte random hex secret (`openssl rand -hex 32`) and set `IP_HASH_SECRET`; production requires it, and new-env initialization generates it. Change an old `SIGNIN_RETENTION_DAYS=180` or 0 to 1–90 (default 90).
+  2. The privacy migration irreversibly removes old player sign-in raw IP/browser columns; backup copies require separate retention review. Request/access logs remain a distinct security surface permitted raw IP for 30 days; verify deployed log eviction separately. See [sign-in privacy handoff](../testing/SIGNIN_PRIVACY.md).
 - [ ] **Optional Discord OAuth (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`):**
   - Only needed if you enable the optional Discord airdrop task during Pre-season; otherwise leave disabled until Season 1.
 
@@ -54,7 +59,8 @@ Provision the following external credentials and add them to production `.env` (
   3. Put the public wallet address into `PRESEASON_RULES.md` §11, `PRESEASON_RULES_RU.md` §11, and the Event page banner.
 
 ### 2.2 Runtime Admin Settings Verification
-- [ ] Sign in to `admin.<domain>` and verify the active `player.GameSetting` rows match [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §10 (`event_mode_enabled = 1`, `paid_tickets_enabled = 0`, `referral_referee_promo_enabled = 0`, `referral_ten4_enabled = 0`, `event_seed_override` set).
+- [ ] Configure the supported signed admin event keys: `event_week_start_utc`, `event_last_start_utc`, `event_week_end_utc` as UTC epoch seconds (at least 75 minutes from last start to end); only then enable `event_mode_enabled`. Follow [the as-built campaign checklist](../testing/CAMPAIGN_LOCAL.md) and the event feature-disable decisions in [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §10.
+- [ ] Keep Convoy gifts/rewards and weekly alternatives disabled for the event as specified. `paid_tickets_enabled` is a program/operator control, not a `player.GameSetting`; `event_seed_override` is not implemented as an admin key. The event course uses its persisted reserved event seed. Do not claim these settings were changed by local test fixtures.
 
 ---
 
@@ -76,6 +82,8 @@ Provision the following external credentials and add them to production `.env` (
 ## Phase 4 — Before Season 1 Mainnet Launch (**Target: 11 January 2027**)
 
 > These items are **NOT** needed for the November Devnet Pre-season, but are required before turning on paid tickets (`paid_tickets_enabled = 1`), mainnet prize pools, and the TEN4 token in Season 1.
+
+Before any future economic points snapshot/allocation, agree the task weights. Current Pre-season progress reports 0–3 completed task categories and preserves evidence/points; it grants one event attempt, not TEN4. Future TGE distribution remains a separate milestone.
 
 ### 4.1 Legal Entity & Banking / Multisig (`MASTER_PLAN.md` §12 `G4a`)
 - [ ] **Register the Operator Legal Entity** (target: by **1 December 2026**; see [`research/operator_entity_options.md`](research/operator_entity_options.md) — e.g. Wyoming/Delaware LLC or BVI/Panama depending on counsel advice for a Serbian tax resident & RF citizen).
