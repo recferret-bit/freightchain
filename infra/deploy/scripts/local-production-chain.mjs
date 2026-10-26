@@ -2,13 +2,12 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomInt } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { createServer } from 'node:net';
+import { validatorPorts } from './local-validator-ports.mjs';
 import { readFileSync, writeFileSync, openSync } from 'node:fs';
 import { join } from 'node:path';
 const PROGRAM = '8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p';
 const PIN = 'c32477bcef6f31d489b6aefc08e50e23c481eceffd64ea2dc8ad4bbd11ae41f4';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const port = () => new Promise(resolve => { const server = createServer(); server.listen(0, '127.0.0.1', () => { const p = server.address().port; server.close(() => resolve(p)); }); });
 export async function prepareChain({ root, out, fixture, result }) {
   const require = createRequire(join(root, 'backend/server/package.json'));
   const { Keypair } = require('@solana/web3.js');
@@ -19,7 +18,7 @@ export async function prepareChain({ root, out, fixture, result }) {
   const keys = Object.fromEntries(['admin', 'player', 'fee', 'seed'].map(name => {
     const key = Keypair.generate(); writeFileSync(join(out, `${name}.json`), JSON.stringify([...key.secretKey]), { mode: 0o600 }); return [name, key.publicKey.toBase58()];
   }));
-  const rpcPort = await port(), gossipPort = await port(), faucetPort = await port(), dynamicPort = randomInt(21000, 39000);
+  const { rpcPort, gossipPort, faucetPort } = await validatorPorts(), dynamicPort = randomInt(21000, 39000);
   const rpc = `http://127.0.0.1:${rpcPort}`;
   const log = openSync(join(out, 'validator.log'), 'a', 0o600);
   const validator = spawn('solana-test-validator', ['--reset', '--quiet', '--ledger', join(out, 'ledger'), '--bind-address', '127.0.0.1', '--rpc-port', String(rpcPort), '--gossip-port', String(gossipPort), '--faucet-port', String(faucetPort), '--dynamic-port-range', `${dynamicPort}-${dynamicPort + 30}`, '--mint', keys.admin, '--upgradeable-program', PROGRAM, artifact, keys.admin], { stdio: ['ignore', log, log] });

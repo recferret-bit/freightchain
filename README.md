@@ -93,7 +93,7 @@ Built solo in two weeks during the Colosseum hackathon (entering in the final 6 
 4. **Live Streams, Replays & Receipts**: Watch active paid shifts ~25 seconds behind in **LIVE** or at `1× / 4× / 16×` in **REPLAYS** (road rebuilt from the ride seed, no WebSockets), chat on CB radio, tip via Solana Pay QR, or open shareable ride receipts (`/r/:id`).
 5. **Run On-Chain & Anti-Cheat Suites Locally**:
    - `npm run test:localnet` — runs `freightchain_pools` on a local validator (pool creation, ticket buys, refunds, Merkle payouts, lamport checks; [walkthrough](docs/tech/localnet-e2e/index.html)).
-   - `bash .claude/skills/honk-suite/run.sh` — runs the `TEN4` (`freightchain_honk`) token suite (checkpoint mint and durable retry, Convoy payment/cap recovery, LP swap, cab/stream burns, soulbound parts).
+   - `bash .claude/skills/honk-suite/run.sh` — runs the `TEN4` (`freightchain_honk`) token suite (checkpoint mint and durable retry, Convoy payment/cap recovery, LP swap, cab/stream burns, soulbound parts, Merkle distribution, vesting and allocation burns).
    - `bash .claude/skills/run-tests/e2e.sh traffic` — runs the 9-case headless Chrome anti-cheat matrix (honest runs vs. deleted cars, ignored damage, tampered frame proof).
 
 ---
@@ -306,7 +306,7 @@ Skills live in `.claude/skills/<name>/SKILL.md` (`game-audio` is also linked in 
 | `live-board-test` | Verify online presence, live road board, tab-close cleanup, and replay history | `bash .claude/skills/live-board-test/run.sh` |
 | `localnet-e2e` | Ticket buys, refunds, Merkle payouts, and autonomous pool cranking on a local Solana validator (100% instruction coverage gate) | `npm run test:localnet` |
 | `honk-localnet` | Local `TEN4` mint, swap, burn, soulbound part, and headless paid-ride session | `bash .claude/skills/honk-localnet/run.sh` |
-| `honk-suite` | Full local `TEN4` coin suite: Rust tests, catalog drift, headless session, and verified ride chain mint | `bash .claude/skills/honk-suite/run.sh` |
+| `honk-suite` | Full local `TEN4` coin suite: Rust tests, catalog drift, headless session, verified ride mint, distribution/vesting/burns | `bash .claude/skills/honk-suite/run.sh` |
 | `analytics-review` | Three-pass audit of PostHog events across landing, whitepaper, lobby, and game (`docs/insights/analytics/updates/<n>.html`) | `node .claude/skills/analytics-review/inventory.mjs` |
 | `whitepaper-update` | Three-pass check of whitepaper claims against code, prose tightening, and diagrams within gzip budget | `npm --prefix frontend/landing test` · `npm run landing:build` |
 | `update-wiki` | Rebuild `docs/wiki-catalog.js` after a documentation edit | `node docs/build-wiki.mjs` |

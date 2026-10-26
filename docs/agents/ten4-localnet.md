@@ -48,3 +48,9 @@ The full `honk-suite` also runs `backend/server/scripts/e2e-honk-recovery.mjs` a
 The weekly reward-exclusion case seeds one unspent grant so it also runs after Sunday's issuance cutoff. It tests consumption and zero TEN4, not calendar issuance. The browser start waits for the visible start button and confirms a running ride without page errors.
 
 The full verified local suite also runs `backend/server/scripts/e2e-convoy-settlement.mjs`: seeded Convoy milestones prove actual referral transfers, durable submission/receipt recovery, concurrent workers and terminal monthly wallet caps. The API stops before these fixtures so its scheduler cannot interfere.
+
+## Distribution and vesting acceptance
+
+`honk-suite` finishes with `backend/server/scripts/honk-distribution-localnet.mjs`. It uses the pinned current TEN4 executable on two independent scratch validators, fresh wallets and explicit local RPC URLs. The first initializes all six buckets and checks two wallet-signed Merkle claims, exact token movements, duplicate/proof/authority refusals, the lifetime wallet cap across campaigns, the real 90-day window, team cliff, fixed treasury recipient and early-burn guards.
+
+The second validator starts from explicitly historical genesis accounts: a 40-month `opened_at`, expired campaigns, and a coherent era-eight referral allocation (3,984,375 TEN4 transferred from the referral vault to a test wallet, leaving a 15,625 TEN4 tail). Every changed field is recorded. It checks expiry refusal, exact unclaimed burn, complete treasury/team vesting to their immutable recipients, exact referral-tail burn, duplicate refusals and total token conservation. No elapsed-month or historical-referral execution claim is made. This is contract acceptance; the application's campaign claim remains ledger settlement. No TGE, production key, remote program or public distribution is used.

@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PassThrough } from 'node:stream';
 import { request } from 'node:http';
+import { createServer } from 'node:net';
+import { validatorPorts } from './local-validator-ports.mjs';
 import { once } from 'node:events';
 import { createInterface } from 'node:readline';
 import { serve, attach } from './local-rpc-relay.mjs';
@@ -40,4 +42,14 @@ test('an interrupted upload cannot crash the relay', async () => {
     });
     assert.equal((await fetch(url, { method: 'POST', body: '{}' })).status, 503);
   } finally { relay.close(); }
+});
+
+test('scratch validator ports reserve a distinct RPC/websocket pair and release every socket', async () => {
+  const { rpcPort, faucetPort, gossipPort } = await validatorPorts();
+  const ports = [rpcPort, rpcPort + 1, faucetPort, gossipPort];
+  assert.equal(new Set(ports).size, 4);
+  const servers = ports.map(() => createServer());
+  try {
+    for (let i = 0; i < servers.length; i++) await new Promise((resolve, reject) => { servers[i].once('error', reject); servers[i].listen(ports[i], '127.0.0.1', resolve); });
+  } finally { await Promise.all(servers.map(server => new Promise(resolve => server.close(resolve)))); }
 });

@@ -21,3 +21,6 @@ echo "▸ catalog drift"
 
 echo "▸ validator, headless session, verified ride (paid mint; free and weekly grant mint nothing)"
 HONK_VERDICT=1 bash "$ROOT/.claude/skills/honk-localnet/run.sh"
+
+echo "▸ distribution, vesting and allocation burns (fresh + historical scratch validators)"
+(cd "$SERVER" && node scripts/honk-distribution-localnet.mjs) || fail "distribution acceptance"
