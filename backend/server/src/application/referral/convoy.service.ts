@@ -1,3 +1,5 @@
+import { resolveSettings, type GameSettings } from '../../domain/settings/game-settings.js';
+import { convoyPolicy } from './convoy-policy.js';
 import { CosmeticRepositoryPort } from '../ports/players/cosmetic.repository.port.js';
 import { ReferralRepositoryPort } from '../ports/referral/referral.repository.port.js';
 import { DEFAULT_GIFT, isGiftItem } from '../../domain/referral/referral-rules.js';
@@ -19,7 +21,7 @@ import { ClockPort } from '../ports/shared/clock.port.js';
 import { TransactionPort, type TransactionHandle } from '../ports/shared/transaction.port.js';
 import { ConvoyRepositoryPort, type ConvoyLedgerRow, type ConvoyRow } from './convoy.repository.port.js';
 import {
-  LEADERBOARD_LIMIT, M1_TEN4, M2_TEN4, REFERRER_RIDE_GIFT, countedRide, distinctWeeks, isMediumOrHardTrip, isoWeekKey, milestoneDecision, pendingCap, pendingExpired, pendingTtlMs, promoDecision, qualifyWindowMs,
+  LEADERBOARD_LIMIT, REFERRER_RIDE_GIFT, countedRide, distinctWeeks, isMediumOrHardTrip, isoWeekKey, milestoneDecision, pendingCap, pendingExpired, pendingTtlMs, promoDecision, qualifyWindowMs,
   type ConvoyStatus, type PromoSkip,
 } from './convoy-rules.js';
 
@@ -108,7 +110,7 @@ export class ConvoyService {
   ) {}
 
   async account(wallet: string): Promise<ConvoyAccountDto> {
-    const now = this.clock.now();
+    const now = this.clock.now(), settings = await this.current();
     const rows = (await this.repo.listByReferrer(wallet)).filter((row) => row.status !== 'pending' || !pendingExpired(row.expiresAt, now));
     const history = await this.legacy?.invitesOf(wallet) ?? [];
     for (const old of history) {
@@ -120,12 +122,13 @@ export class ConvoyService {
     const inbound = own?.status === 'pending' && pendingExpired(own.expiresAt, now) ? null : own;
     const project = async (row: ConvoyRow) => inviteDto(row, await this.repo.ridesOf(row.referee), tasksComplete(await this.campaign?.get(row.referee)), !!await this.repo.findLedger(`convoy:promo:${row.referee}`));
     const pending = rows.filter((row) => row.status === 'pending').length;
-    const capacity = pendingCap(await this.repo.recentActiveCount(wallet, new Date(now.getTime() - 30 * DAY_MS), now));
+    const capacity = pendingCap(await this.repo.recentActiveCount(wallet, new Date(now.getTime() - settings.referralActiveWindowDays * DAY_MS), now), settings.referralPendingBase, settings.referralPendingPerActive, settings.referralPendingMax);
     const rewards = (await Promise.all(rows.flatMap((row) => ['m1', 'm2'].map((kind) => this.repo.findLedger(`convoy:${kind}:${row.referee}`))))).filter((row): row is ConvoyLedgerRow => !!row && row.wallet === wallet);
-    return { capacity, used: rows.filter((row) => !!row.m1At).length, pending, available: Math.max(0, capacity - pending), max: 100,
+    return { capacity, used: rows.filter((row) => !!row.m1At).length, pending, available: Math.max(0, capacity - pending), max: settings.referralPendingMax,
+      rules: { ...convoyPolicy(settings), pendingHours: settings.referralPendingTtlHours, windowDays: settings.referralQualifyWindowDays, activityDays: settings.referralActiveWindowDays },
       referredBy: inbound?.referrer ?? (prior?.status === 'qualified' ? prior.referrer : null), inbound: inbound ? await project(inbound) : null,
       invites: await Promise.all(rows.map(project)), rewards: rewards.map(rewardDto), hidden: (await this.repo.readHidden(wallet)).hidden,
-      legacyQualified: history.filter((row) => row.badgeCounted).length, trustEligible: ((await this.players.findByWallet(wallet))?.trustScore ?? 0) >= 50 };
+      legacyQualified: history.filter((row) => row.badgeCounted).length, trustEligible: ((await this.players.findByWallet(wallet))?.trustScore ?? 0) >= settings.referralMinTrustReferrer };
   }
 
   async bind(referee: string, referrer: string): Promise<ConvoyBindDto> {
@@ -149,10 +152,11 @@ export class ConvoyService {
       const invites = await this.repo.listByReferrer(referrer, tx);
       let pending = invites.filter((row) => row.status === 'pending').length;
       for (const old of await this.legacy?.invitesOf(referrer, tx) ?? []) if (legacyPending(old, now) && !await this.repo.getByReferee(old.referee, tx)) pending++;
-      const maxPending = pendingCap(await this.activeFriends(referrer, now, tx));
+      const settings = await this.current(tx);
+      const maxPending = pendingCap(await this.activeFriends(referrer, now, tx, settings.referralActiveWindowDays), settings.referralPendingBase, settings.referralPendingPerActive, settings.referralPendingMax);
       if (pending >= maxPending && !legacyPending(historical, now)) throw new ConflictError('that wallet has no invites left', 'no_slots');
       const row: ConvoyRow = legacyPending(historical, now) ?? {
-        referee, referrer, status: 'pending', boundAt: now, expiresAt: new Date(now.getTime() + pendingTtlMs()),
+        referee, referrer, status: 'pending', boundAt: now, expiresAt: new Date(now.getTime() + pendingTtlMs(settings.referralPendingTtlHours)),
         activatedAt: null, qualifyExpiresAt: null, m1At: null, m2At: null,
       };
       if (!(await this.repo.insert(row, tx))) throw new ConflictError('this wallet already has a referrer', 'already_bound');
@@ -173,13 +177,14 @@ export class ConvoyService {
         if (!await this.repo.insert(preview, tx)) throw new ConflictError('referrer changed concurrently; retry progress', 'convoy_changed');
       }
       if (!verified) return this.dropIfPendingExpired(ride.wallet, now, tx);
-      const weeklyEnabled = (await this.settings?.current(tx))?.referralCountWeeklyGrant !== 0;
+      const settings = await this.current(tx);
+      const weeklyEnabled = settings.referralCountWeeklyGrant !== 0;
       const counted = countedRide(ride, players.get(ride.wallet)?.trustScore ?? 0, weeklyEnabled);
       await this.repo.recordRide({ rideId: ride.rideId, wallet: ride.wallet, at: ride.endedAt ?? now, trip: ride.trip, counted }, tx);
       const row = await this.repo.getByReferee(ride.wallet, tx);
       if (row?.referrer !== preview?.referrer) throw new ConflictError('referrer changed concurrently; retry progress', 'convoy_changed');
       if (!row) return { status: 'none', activated: false, expired: false, deletedPending: false, gift: idleGift(), milestones: { m1: false, m2: false } };
-      if (row.status === 'pending') return this.activateOrDrop(row, now, isMediumOrHardTrip(ride.trip), tx);
+      if (row.status === 'pending') return this.activateOrDrop(row, now, isMediumOrHardTrip(ride.trip), tx, settings);
       if (row.status === 'active' || row.status === 'qualified') return this.advance(row, now, tx);
       return { status: row.status, activated: false, expired: false, deletedPending: false, gift: idleGift(), milestones: { m1: false, m2: false } };
     });
@@ -249,7 +254,7 @@ export class ConvoyService {
     });
   }
 
-  private async activateOrDrop(row: ConvoyRow, now: Date, counted: boolean, tx: TransactionHandle): Promise<ConvoyProgressDto> {
+  private async activateOrDrop(row: ConvoyRow, now: Date, counted: boolean, tx: TransactionHandle, settings: GameSettings): Promise<ConvoyProgressDto> {
     if (pendingExpired(row.expiresAt, now)) {
       await this.repo.deleteReferee(row.referee, tx);
       return { status: 'none', activated: false, expired: false, deletedPending: true, gift: idleGift(), milestones: { m1: false, m2: false } };
@@ -257,7 +262,8 @@ export class ConvoyService {
     if (!counted) return { status: 'pending', activated: false, expired: false, deletedPending: false, gift: idleGift(), milestones: { m1: false, m2: false } };
     row.status = 'active';
     row.activatedAt = now;
-    row.qualifyExpiresAt = new Date(now.getTime() + qualifyWindowMs());
+    row.qualifyExpiresAt = new Date(now.getTime() + qualifyWindowMs(settings.referralQualifyWindowDays));
+    row.policy = convoyPolicy(settings);
     await this.repo.save(row, tx);
     const prior = (await this.repo.listByReferrer(row.referrer, tx)).some((item) => item.referee !== row.referee && item.activatedAt);
     const paintedHistorically = (await this.legacy?.invitesOf(row.referrer, tx) ?? []).some((item) => item.status === 'qualified');
@@ -268,7 +274,7 @@ export class ConvoyService {
       const worn = await this.cosmetics.listEquipped(row.referrer, tx);
       if (!worn.truck_color || worn.truck_color === defaultCosmetic('truck_color')) await this.cosmetics.equip(row.referrer, 'truck_color', item, tx);
     }
-    const gift = await this.grantPromo(row, now, tx);
+    const gift = await this.grantPromo(row, now, tx, settings);
     const milestones = await this.applyMilestones(row, now, tx);
     return { status: row.status, activated: true, expired: false, deletedPending: false, gift, milestones };
   }
@@ -282,19 +288,20 @@ export class ConvoyService {
     if (!row.activatedAt || !row.qualifyExpiresAt || (row.status !== 'active' && row.status !== 'qualified')) return { m1: false, m2: false };
     const refereeRides = await this.repo.ridesOf(row.referee, tx);
     const tasks = await this.campaign?.get(row.referee, tx);
-    const eligible = ((await this.players.findByWallet(row.referrer, tx))?.trustScore ?? 0) >= 50;
+    const policy = row.policy ?? convoyPolicy();
+    const eligible = ((await this.players.findByWallet(row.referrer, tx))?.trustScore ?? 0) >= policy.minTrust;
     const decision = milestoneDecision({
       m1At: row.m1At, m2At: row.m2At, qualifyExpiresAt: row.qualifyExpiresAt, now,
       refereeWeeks: distinctWeeks(refereeRides, row.activatedAt, row.qualifyExpiresAt),
-      tasksComplete: eligible && tasksComplete(tasks),
+      tasksComplete: eligible && tasksComplete(tasks), m1Weeks: policy.m1Weeks, m2Weeks: policy.m2Weeks,
     });
     if (decision.expire) {
       row.status = 'expired';
       await this.repo.save(row, tx);
       return { m1: false, m2: false };
     }
-    const m1 = decision.m1 && await this.ledger(row, 'm1', M1_TEN4, now, tx);
-    const m2 = decision.m2 && await this.ledger(row, 'm2', M2_TEN4, now, tx);
+    const m1 = decision.m1 && await this.ledger(row, 'm1', policy.m1Amount, now, tx);
+    const m2 = decision.m2 && await this.ledger(row, 'm2', policy.m2Amount, now, tx);
     if (m1 || m2 || (row.m1At && row.status !== 'qualified')) {
       if (row.m1At) row.status = 'qualified';
       await this.repo.save(row, tx);
@@ -304,7 +311,7 @@ export class ConvoyService {
 
   private async ledger(row: ConvoyRow, kind: 'm1' | 'm2', amount: number, now: Date, tx: TransactionHandle): Promise<boolean> {
     const id = `convoy:${kind}:${row.referee}`;
-    const inserted = await this.repo.insertLedger({ ...this.ledgerRow(id, kind, row.referrer, amount, 'ten4', row, now), releasedAt: null, chainState: 'held' }, tx);
+    const inserted = await this.repo.insertLedger({ ...this.ledgerRow(id, kind, row.referrer, amount, 'ten4', row, now), releasedAt: null, chainState: 'held', minTrust: (row.policy ?? convoyPolicy()).minTrust }, tx);
     if (!inserted) return false;
     // Qualification is earned now; a 48h payment hold cannot push it past the 60-day eligibility window.
     if (kind === 'm1') row.m1At = now;
@@ -313,7 +320,7 @@ export class ConvoyService {
     return true;
   }
 
-  private async grantPromo(row: ConvoyRow, now: Date, tx: TransactionHandle): Promise<ConvoyGiftDto> {
+  private async grantPromo(row: ConvoyRow, now: Date, tx: TransactionHandle, settings: GameSettings): Promise<ConvoyGiftDto> {
     await this.repo.lockPromoBudget(tx);
     const rows = await this.repo.ledger(tx);
     const day = utcDay(now);
@@ -324,7 +331,7 @@ export class ConvoyService {
       day: promo.filter((item) => item.referrer === row.referrer && item.dayKey === day).length,
       week: promo.filter((item) => item.referrer === row.referrer && item.weekKey === week).length,
       globalWeek: promo.filter((item) => item.weekKey === week).length,
-    });
+    }, { day: settings.referralRefereePromoPerReferrerDay, week: settings.referralRefereePromoPerReferrerWeek, globalWeek: settings.referralRefereePromoGlobalWeek });
     if (reason !== 'ok') return { granted: false, reason, referrerRideGift: 0 };
     const inserted = await this.repo.insertLedger(this.ledgerRow(`convoy:promo:${row.referee}`, 'promo_1h', row.referee, 1, 'ride', row, now), tx);
     if (!inserted) return { granted: false, reason: 'lifetime', referrerRideGift: 0 };
@@ -364,12 +371,15 @@ export class ConvoyService {
   private async bindView(row: ConvoyRow, idempotent: boolean, tx: TransactionHandle): Promise<ConvoyBindDto> {
     const invites = await this.repo.listByReferrer(row.referrer, tx);
     const pending = invites.filter((item) => item.status === 'pending').length;
-    return { referee: row.referee, referrer: row.referrer, status: row.status, expiresAt: row.expiresAt.toISOString(), pending, maxPending: pendingCap(await this.activeFriends(row.referrer, this.clock.now(), tx)), idempotent };
+    const settings = await this.current(tx);
+    return { referee: row.referee, referrer: row.referrer, status: row.status, expiresAt: row.expiresAt.toISOString(), pending, maxPending: pendingCap(await this.activeFriends(row.referrer, this.clock.now(), tx, settings.referralActiveWindowDays), settings.referralPendingBase, settings.referralPendingPerActive, settings.referralPendingMax), idempotent };
   }
 
-  private activeFriends(referrer: string, now: Date, tx: TransactionHandle): Promise<number> {
-    return this.repo.recentActiveCount(referrer, new Date(now.getTime() - 30 * DAY_MS), now, tx);
+  private activeFriends(referrer: string, now: Date, tx: TransactionHandle, days: number): Promise<number> {
+    return this.repo.recentActiveCount(referrer, new Date(now.getTime() - days * DAY_MS), now, tx);
   }
+
+  private current(tx?: TransactionHandle): Promise<GameSettings> { return this.settings?.current(tx) ?? Promise.resolve(resolveSettings([])); }
 
   private leaderRow(rank: number, wallet: string, qualified: number, active: number, hidden: boolean, sns: string | null): ConvoyLeaderRow {
     return { rank, wallet, displayName: sns ?? wallet, qualified, active, hidden };

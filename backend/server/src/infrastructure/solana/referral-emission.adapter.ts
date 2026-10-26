@@ -36,7 +36,7 @@ export class ReferralEmissionAdapter extends ReferralEmissionPort {
   enabled(): boolean { return this.key !== null && !!this.env.honkProgramId; }
 
   async settle(payment: ReferralPayment): Promise<ReferralSettlement> {
-    if (!this.enabled() || this.env.honkProgramId !== PROGRAM.toBase58() || !['50000000', '100000000'].includes(String(payment.baseAmount))) throw new Error('invalid referral emitter or milestone');
+    if (!this.enabled() || this.env.honkProgramId !== PROGRAM.toBase58() || (payment.baseAmount < 1_000_000n || payment.baseAmount > 1_000_000_000n || payment.baseAmount % 1_000_000n !== 0n)) throw new Error('invalid referral emitter or milestone');
     const key = this.key!, recipient = new PublicKey(payment.wallet);
     const reward = createHash('sha256').update(payment.rewardId).digest().subarray(0, 16);
     const [receipt] = PublicKey.findProgramAddressSync([Buffer.from('referral-mint'), reward], PROGRAM);

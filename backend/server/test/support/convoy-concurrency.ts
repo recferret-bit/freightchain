@@ -30,14 +30,15 @@ export function convoyConcurrencyScenarios(h: () => Harness): void {
     const db = h().app.get(PrismaService);
     const svc = h().app.get(ConvoyService);
     const now = h().clock.now();
-    await db.convoyLedger.createMany({ data: Array.from({ length: 499 }, (_, i) => ({ id: `seed-${i}`, kind: 'promo_1h', wallet: `seed-${i}`, referrer: 'seed-host', referee: `seed-${i}`, amount: 1, unit: 'ride', at: now, dayKey: utcDay(now), weekKey: isoWeekKey(now) })) });
+    await db.gameSetting.upsert({ where: { key: 'referral_referee_promo_global_week' }, create: { key: 'referral_referee_promo_global_week', value: 2 }, update: { value: 2 } });
+    await db.convoyLedger.createMany({ data: Array.from({ length: 1 }, (_, i) => ({ id: `seed-${i}`, kind: 'promo_1h', wallet: `seed-${i}`, referrer: 'seed-host', referee: `seed-${i}`, amount: 1, unit: 'ride', at: now, dayKey: utcDay(now), weekKey: isoWeekKey(now) })) });
     await svc.bind(a.address, hostA.address);
     await svc.bind(b.address, hostB.address);
     const fact = (wallet: string) => ({ rideId: `activation-${wallet}`, wallet, status: 'completed', verdict: 'verified', trip: 'free-2c' });
     const results = await Promise.all([svc.onVerifiedRide(fact(a.address)), svc.onVerifiedRide(fact(b.address))]);
     expect(results.map((r) => r.gift.reason).sort()).toEqual(['global', 'ok']);
     await Promise.all(Array.from({ length: 5 }, () => svc.onVerifiedRide(fact(a.address))));
-    expect(await db.convoyLedger.count({ where: { kind: 'promo_1h' } })).toBe(500);
+    expect(await db.convoyLedger.count({ where: { kind: 'promo_1h' } })).toBe(2);
     expect(await db.promoRideGrant.count({ where: { code: 'SYSTEM-CONVOY-1H' } })).toBe(1);
     expect(await db.convoyRide.count()).toBe(2);
   });

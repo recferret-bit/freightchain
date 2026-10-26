@@ -29,6 +29,7 @@ export function convoyCampaignScenarios(h: () => Harness): void {
     expect(order).toMatchObject({ tier: '1h', status: 'created' });
     const saved = await h().app.get(RideRepositoryPort).findById(order.id as string);
     expect(saved?.isPromo).toBe(true);
+    expect((await friend.agent.post(`/api/rides/${order.id}/start`).send({ ranked: true })).body.code).toBe('convoy_promo_unranked');
     await friend.agent.post(`/api/rides/${order.id}/start`).expect(200);
     await viewer.agent.post('/api/promo/redeem').send({ code: 'SYSTEM-CONVOY-1H' }).expect(409);
     expect((await host.agent.patch('/api/me/privacy').send({ convoyHidden: true }).expect(200)).body).toEqual({ convoyHidden: true, column: 'present' });

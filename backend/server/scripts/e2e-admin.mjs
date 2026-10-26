@@ -213,6 +213,12 @@ check('settings: referral fields retain their per-key bounds', await A.ev(`(() =
     && field('referral_referrer_part_bps')?.min === '5001' && field('referral_referrer_part_bps')?.max === '10000'
     && field('referral_donation_cap_lamports')?.max === '2000000000';
 })()`));
+check('settings: Convoy knobs show operational defaults and token/trust limits', await A.ev(`(() => {
+  const field = key => document.querySelector('#set-table input[data-key="' + key + '"]');
+  return field('referral_pending_ttl_hours')?.value === '72' && field('referral_pending_base')?.value === '5'
+    && field('referral_ten4_m1_amount')?.value === '100' && field('referral_ten4_m1_amount')?.max === '1000'
+    && field('referral_min_trust_referrer')?.min === '50' && field('referral_referee_promo_ranked')?.value === '0';
+})()`));
 await A.shot('settings-desktop');
 await A.ev('(() => { const i = document.querySelector("#set-table input[data-key=free_rides_daily_max]"); i.value = "7"; })()');
 await A.ev('document.querySelector("#set-table button[data-key=free_rides_daily_max]").click()');
@@ -230,6 +236,14 @@ await setField('fr-wallet', rider.address); await setField('fr-delta', '-3'); aw
 check('settings: -3 takes them back', await until(async () => (await get('me', rider.cookie)).j.freeRides === balance0));
 await A.ev(`location.hash = "#settings/${rider.address}"`);
 check('settings: #settings/<wallet> prefills the wallet', await until(async () => (await A.ev('document.getElementById("fr-wallet")?.value')) === rider.address));
+
+await A.ev('(() => { const i = document.querySelector("#set-table input[data-key=referral_ten4_m1_amount]"); i.value = "75"; document.querySelector("#set-table button[data-key=referral_ten4_m1_amount]").click(); })()');
+check('settings: signed Convoy reward edit persists', await until(async () => /referral_ten4_m1_amount is now 75/.test(await A.ev('document.getElementById("set-note")?.textContent || ""'))) && (await get('admin/settings', adminCookie)).j.referralTen4M1Amount === 75);
+const signedConvoy = await A.ev('window.__signed');
+await A.ev('(() => { const i = document.querySelector("#set-table input[data-key=referral_ten4_m1_amount]"); i.value = "1001"; document.querySelector("#set-table button[data-key=referral_ten4_m1_amount]").click(); })()');
+check('settings: out-of-range Convoy amount is refused before signing', await until(async () => /from 1 to 1000/.test(await A.ev('document.getElementById("set-note")?.textContent || ""'))) && await A.ev('window.__signed') === signedConvoy);
+await A.ev('document.querySelector("#set-table input[data-key=referral_ten4_m1_amount]").scrollIntoView()');
+await A.shot('settings-convoy');
 
 // ── DIRECTORY: players (list → one rider), pools, statistics, sessions – all read-only
 await A.ev('location.hash = "#players"');

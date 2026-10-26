@@ -23,13 +23,13 @@ const HOUR_MS = 3_600_000;
 export type ConvoyStatus = 'pending' | 'active' | 'qualified' | 'expired';
 export type PromoSkip = 'ok' | 'lifetime' | 'day' | 'week' | 'global';
 
-export const pendingTtlMs = (): number => CONVOY_PENDING_HOURS * HOUR_MS;
-export const qualifyWindowMs = (): number => CONVOY_WINDOW_DAYS * DAY_MS;
+export const pendingTtlMs = (hours = CONVOY_PENDING_HOURS): number => hours * HOUR_MS;
+export const qualifyWindowMs = (days = CONVOY_WINDOW_DAYS): number => days * DAY_MS;
 
 /** `A` is friends with a counted ride in the last 30 days. */
-export function pendingCap(activeOrQualified: number): number {
+export function pendingCap(activeOrQualified: number, base = CONVOY_PENDING_BASE, perActive = CONVOY_PENDING_PER_ACTIVE, max = CONVOY_PENDING_MAX): number {
   const a = Number.isFinite(activeOrQualified) ? Math.max(0, Math.floor(activeOrQualified)) : 0;
-  return Math.min(CONVOY_PENDING_MAX, CONVOY_PENDING_BASE + CONVOY_PENDING_PER_ACTIVE * a);
+  return Math.min(max, base + perActive * a);
 }
 
 /** MEDIUM or HARD training activates an invite; it never counts toward paid milestones. */
@@ -56,11 +56,11 @@ export function windowClosed(qualifyExpiresAt: Date, now: Date): boolean {
   return qualifyExpiresAt.getTime() < now.getTime();
 }
 
-export function promoDecision(c: { lifetime: boolean; day: number; week: number; globalWeek: number }): PromoSkip {
+export function promoDecision(c: { lifetime: boolean; day: number; week: number; globalWeek: number }, limits = { day: PROMO_PER_REFERRER_DAY, week: PROMO_PER_REFERRER_WEEK, globalWeek: PROMO_GLOBAL_WEEK }): PromoSkip {
   if (c.lifetime) return 'lifetime';
-  if (c.day >= PROMO_PER_REFERRER_DAY) return 'day';
-  if (c.week >= PROMO_PER_REFERRER_WEEK) return 'week';
-  if (c.globalWeek >= PROMO_GLOBAL_WEEK) return 'global';
+  if (c.day >= limits.day) return 'day';
+  if (c.week >= limits.week) return 'week';
+  if (c.globalWeek >= limits.globalWeek) return 'global';
   return 'ok';
 }
 
@@ -83,11 +83,13 @@ export function milestoneDecision(i: {
   now: Date;
   refereeWeeks: number;
   tasksComplete: boolean;
+  m1Weeks?: number;
+  m2Weeks?: number;
 }): { m1: boolean; m2: boolean; expire: boolean } {
   const open = !windowClosed(i.qualifyExpiresAt, i.now);
   if (!open && !i.m1At) return { m1: false, m2: false, expire: true };
-  const m1 = open && !i.m1At && i.tasksComplete && i.refereeWeeks >= M1_WEEKS;
+  const m1 = open && !i.m1At && i.tasksComplete && i.refereeWeeks >= (i.m1Weeks ?? M1_WEEKS);
   const m1Done = i.m1At !== null || m1;
-  const m2 = open && m1Done && i.tasksComplete && !i.m2At && i.refereeWeeks >= M2_WEEKS;
+  const m2 = open && m1Done && i.tasksComplete && !i.m2At && i.refereeWeeks >= (i.m2Weeks ?? M2_WEEKS);
   return { m1, m2, expire: false };
 }

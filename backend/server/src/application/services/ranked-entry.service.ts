@@ -1,6 +1,8 @@
 import { GameSettingsService } from './game-settings.service.js';
 import { PRESEASON_PROMO_CODE, eventWindow } from '../../domain/settings/preseason-event.js';
 import { resolveSettings } from '../../domain/settings/game-settings.js';
+import { CONVOY_PROMO_CODE } from '../../domain/economy/promo-code.entity.js';
+import { ConvoyRepositoryPort } from '../referral/convoy.repository.port.js';
 import { Injectable, Optional } from '@nestjs/common';
 import { PAID_RANKED_STARTS, PROMO_RANKED_STARTS, nominalShiftSeconds, prizeAccess, prizeWeek, rankedStartFits } from '../../domain/prize/prize-rules.js';
 import type { Player } from '../../domain/players/player.entity.js';
@@ -23,11 +25,13 @@ export class RankedEntryService {
     private readonly geo: GeoLocatorPort,
     private readonly lists: PrizeGeoPort,
     @Optional() private readonly settings?: GameSettingsService,
+    @Optional() private readonly convoy?: ConvoyRepositoryPort,
   ) {}
 
   async claim(player: Player, ride: Ride, headers: GeoHeaders, now: Date, tx?: TransactionHandle): Promise<GeoFix & { country: string }> {
     if (player.guest) throw new ConflictError('a guest session can only play the EASY run', 'guest_easy_only');
     if (ride.isFree && !ride.isPromo) throw new ConflictError('a training ride is not ranked', 'ranked_training');
+    if (ride.snapshot().promoCode === CONVOY_PROMO_CODE && (await this.convoy?.getByReferee(player.wallet, tx))?.policy?.promoRanked !== 1) throw new ConflictError('this Convoy promo was granted unranked', 'convoy_promo_unranked');
     const fix = this.geo.locate(headers);
     const access = prizeAccess({
       age18: player.age18At !== null,

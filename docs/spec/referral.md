@@ -157,7 +157,7 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
   - Maximum base reward per referred friend: **`100 + 50 = 150 TEN4`**.
 - **Referrer Eligibility, Halving, Caps & 48h Hold**:
   - **Referrer Trust Gate**: Referrer must have `TrustScore >= referral_min_trust_referrer` (**`50`**) at the time the milestone is evaluated.
-  - **Era Scaling (`referralQuoteUnits`)**: Base milestone units (`100e9` or `50e9`) are right-shifted by `max(era_ref, era_ride)` (`era >= 8 → 0`).
+  - **Era Scaling (`referralQuoteUnits`)**: Base milestone units (`100e6` or `50e6`) are right-shifted by `max(era_ref, era_ride)` (`era >= 8 → 0`).
   - **Cap Clipping (`clipReferralPayout`)**: Clipped against remaining `HONK_REFERRAL` (`4,000,000 TEN4`), the global monthly cap (`referral_ten4_soft_start_monthly = 30,000 TEN4/mo` for the first `referral_ten4_soft_start_months = 3` months after `tge_at`, then `referral_ten4_global_monthly = 60,000 TEN4/mo`), and the referrer's personal monthly cap (`referral_ten4_referrer_monthly = 1,000 TEN4/mo`). If a cap is reached, the reward is clipped/skipped with a UI status message — **no backlog queue**.
   - **48-Hour Review Hold & On-Chain Settlement**: Credited milestone rewards are held for **48 hours** before the worker submits `pay_referral(reward_id, base_amount, month_index)` to `programs/freightchain_honk` (which initializes `ReferralMint` PDA `[b"referral-mint", &reward_id]` to prevent double-payment). After Era 8, any unminted tail in `referral_vault` is burned via `burn_referral_tail`.
 
@@ -173,7 +173,11 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
   - **0%** of prize pools (`Pool v5` has no referral leg) and **0%** of spectator donations (`referral_donation_share_bps = 0`, Decision 50; the `also` transfer leg in donation orders is removed).
   - No separate streamer referral tier, and no TEN4 commission on a friend's ticket purchases.
 
-### 2.5 Target `GameSetting` Keys Summary (`MASTER_PLAN.md` §12)
+### 2.5 Operational `GameSetting` keys and immutable program limits (`MASTER_PLAN.md` §12)
+
+The lifecycle, capacity/activity, milestone amount/week, minimum referrer trust, promo-cap/ranking and weekly-grant keys below are signed/audited runtime `GameSetting` rows. Pending expiry is fixed when bound; qualification expiry is fixed when activated. Activation freezes M1/M2 amounts and week requirements, referrer trust minimum and promo ranking into `ConvoyInvite.policy`; changes affect later activations. Award rows retain their amount and minimum trust through retries and settlement. Migration `20261117000000_convoy_policy` preserves existing active/qualified promises using the literal prior defaults; balances and badge tiers stay unchanged. Capacity/activity and promo budgets remain live per transaction. Historical referral-only settings are labelled retired in the admin UI.
+
+The four monthly/soft-start rows are **program constants, not editable GameSettings**: the deployed ABI enforces 1,000 per wallet, 30,000 global for three 30-day program months then 60,000. Exposing an app-only knob could misrepresent or race those limits, so no ineffective controls are provided. Changing those caps requires a separately reviewed program/config change. The fixed 48h hold, 50-point payout safety floor and top-25 size remain constants. Editable minimum trust is 50–100. Milestone base amounts are whole TEN4 in 1–1,000; the adapter checks this before signing, while the program still applies era and cap clipping. Token units use six decimals.
 
 | Setting Key | Default | Meaning |
 |---|---|---|
@@ -187,10 +191,10 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
 | `referral_ten4_m1_weeks` | `2` | Distinct ISO weeks with `>= 1` counted ride required for M1 |
 | `referral_ten4_m2_amount` | `50` | Base TEN4 reward for Milestone M2 |
 | `referral_ten4_m2_weeks` | `5` | Distinct ISO weeks with `>= 1` counted ride required for M2 |
-| `referral_ten4_referrer_monthly` | `1000` | Monthly TEN4 cap per referrer wallet |
-| `referral_ten4_global_monthly` | `60000` | Steady-state global monthly TEN4 referral cap |
-| `referral_ten4_soft_start_monthly` | `30000` | Global monthly TEN4 referral cap during soft-start |
-| `referral_ten4_soft_start_months` | `3` | Duration (months from `tge_at`) of the `30,000 TEN4/mo` soft-start cap |
+| `referral_ten4_referrer_monthly` (program constant) | `1000` | Monthly TEN4 cap per referrer wallet |
+| `referral_ten4_global_monthly` (program constant) | `60000` | Steady-state global monthly TEN4 referral cap |
+| `referral_ten4_soft_start_monthly` (program constant) | `30000` | Global monthly TEN4 referral cap during soft-start |
+| `referral_ten4_soft_start_months` (program constant) | `3` | Duration (months from `tge_at`) of the `30,000 TEN4/mo` soft-start cap |
 | `referral_min_trust_referrer` | `50` | Minimum `TrustScore` required for a referrer to earn M1/M2 TEN4 |
 | `referral_referee_promo_per_referrer_day` | `3` | Max 1h promo ride gifts triggered by one referrer per UTC day |
 | `referral_referee_promo_per_referrer_week` | `10` | Max 1h promo ride gifts triggered by one referrer per ISO week |

@@ -17,6 +17,21 @@ export const SETTING_KEYS = [
   'referral_max', 'referral_invite_start', 'referral_invite_step', 'referral_shifts_per_step', 'referral_invite_ttl_days',
   'referral_free_ride_window_days', 'referral_free_rides_referrer', 'referral_free_rides_referee', 'referral_free_ride_weekly_cap',
   'referral_referrer_part_bps', 'referral_ride_cap_lamports', 'referral_donation_share_bps', 'referral_donation_cap_lamports',
+  'referral_pending_ttl_hours',
+  'referral_qualify_window_days',
+  'referral_pending_base',
+  'referral_pending_per_active',
+  'referral_pending_max',
+  'referral_active_window_days',
+  'referral_ten4_m1_amount',
+  'referral_ten4_m1_weeks',
+  'referral_ten4_m2_amount',
+  'referral_ten4_m2_weeks',
+  'referral_min_trust_referrer',
+  'referral_referee_promo_per_referrer_day',
+  'referral_referee_promo_per_referrer_week',
+  'referral_referee_promo_global_week',
+  'referral_referee_promo_ranked',
   'referral_count_weekly_grant',
   'trust_finish_points',
   'trust_finish_days_per_week',
@@ -58,6 +73,21 @@ export const SETTING_DEFAULTS: Record<SettingKey, number> = {
   referral_ride_cap_lamports: 1_000_000_000,
   referral_donation_share_bps: 0,
   referral_donation_cap_lamports: 500_000_000,
+  referral_pending_ttl_hours: 72,
+  referral_qualify_window_days: 60,
+  referral_pending_base: 5,
+  referral_pending_per_active: 2,
+  referral_pending_max: 100,
+  referral_active_window_days: 30,
+  referral_ten4_m1_amount: 100,
+  referral_ten4_m1_weeks: 2,
+  referral_ten4_m2_amount: 50,
+  referral_ten4_m2_weeks: 5,
+  referral_min_trust_referrer: 50,
+  referral_referee_promo_per_referrer_day: 3,
+  referral_referee_promo_per_referrer_week: 10,
+  referral_referee_promo_global_week: 500,
+  referral_referee_promo_ranked: 0,
   referral_count_weekly_grant: 1,
   trust_finish_points: 15,
   trust_finish_days_per_week: 2,
@@ -99,6 +129,21 @@ export const SETTING_BOUNDS: Record<SettingKey, { min: number; max: number }> = 
   referral_ride_cap_lamports: { min: 0, max: 2_000_000_000 },
   referral_donation_share_bps: { min: 0, max: 10_000 },
   referral_donation_cap_lamports: { min: 0, max: 2_000_000_000 },
+  referral_pending_ttl_hours: { min: 1, max: 2160 },
+  referral_qualify_window_days: { min: 1, max: 365 },
+  referral_pending_base: { min: 0, max: 1000 },
+  referral_pending_per_active: { min: 0, max: 100 },
+  referral_pending_max: { min: 1, max: 1000 },
+  referral_active_window_days: { min: 1, max: 365 },
+  referral_ten4_m1_amount: { min: 1, max: 1000 },
+  referral_ten4_m1_weeks: { min: 1, max: 52 },
+  referral_ten4_m2_amount: { min: 1, max: 1000 },
+  referral_ten4_m2_weeks: { min: 1, max: 52 },
+  referral_min_trust_referrer: { min: 50, max: 100 },
+  referral_referee_promo_per_referrer_day: { min: 0, max: 1000 },
+  referral_referee_promo_per_referrer_week: { min: 0, max: 10000 },
+  referral_referee_promo_global_week: { min: 0, max: 100000 },
+  referral_referee_promo_ranked: { min: 0, max: 1 },
   referral_count_weekly_grant: { min: 0, max: 1 },
   trust_finish_points: { min: 0, max: 100 },
   trust_finish_days_per_week: { min: 0, max: 7 },
@@ -147,6 +192,21 @@ export interface GameSettings {
   referralRideCapLamports: number;
   referralDonationShareBps: number;
   referralDonationCapLamports: number;
+  referralPendingTtlHours: number;
+  referralQualifyWindowDays: number;
+  referralPendingBase: number;
+  referralPendingPerActive: number;
+  referralPendingMax: number;
+  referralActiveWindowDays: number;
+  referralTen4M1Amount: number;
+  referralTen4M1Weeks: number;
+  referralTen4M2Amount: number;
+  referralTen4M2Weeks: number;
+  referralMinTrustReferrer: number;
+  referralRefereePromoPerReferrerDay: number;
+  referralRefereePromoPerReferrerWeek: number;
+  referralRefereePromoGlobalWeek: number;
+  referralRefereePromoRanked: number;
   referralCountWeeklyGrant: number;
   trustFinishPoints: number;
   trustFinishDaysPerWeek: number;
@@ -187,6 +247,21 @@ const CAMEL: Record<SettingKey, keyof GameSettings> = {
   referral_ride_cap_lamports: 'referralRideCapLamports',
   referral_donation_share_bps: 'referralDonationShareBps',
   referral_donation_cap_lamports: 'referralDonationCapLamports',
+  referral_pending_ttl_hours: 'referralPendingTtlHours',
+  referral_qualify_window_days: 'referralQualifyWindowDays',
+  referral_pending_base: 'referralPendingBase',
+  referral_pending_per_active: 'referralPendingPerActive',
+  referral_pending_max: 'referralPendingMax',
+  referral_active_window_days: 'referralActiveWindowDays',
+  referral_ten4_m1_amount: 'referralTen4M1Amount',
+  referral_ten4_m1_weeks: 'referralTen4M1Weeks',
+  referral_ten4_m2_amount: 'referralTen4M2Amount',
+  referral_ten4_m2_weeks: 'referralTen4M2Weeks',
+  referral_min_trust_referrer: 'referralMinTrustReferrer',
+  referral_referee_promo_per_referrer_day: 'referralRefereePromoPerReferrerDay',
+  referral_referee_promo_per_referrer_week: 'referralRefereePromoPerReferrerWeek',
+  referral_referee_promo_global_week: 'referralRefereePromoGlobalWeek',
+  referral_referee_promo_ranked: 'referralRefereePromoRanked',
   referral_count_weekly_grant: 'referralCountWeeklyGrant',
   trust_finish_points: 'trustFinishPoints',
   trust_finish_days_per_week: 'trustFinishDaysPerWeek',

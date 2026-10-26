@@ -1,3 +1,4 @@
+import { ConvoyService } from '../../src/application/referral/convoy.service.js';
 import { bindClient, newWallet, sign } from '../support/client.js';
 import type { Harness } from '../support/harness.js';
 import type { Rider } from '../support/client.js';
@@ -25,6 +26,26 @@ export function freeRideScenarios(h: () => Harness): void {
     const signature = await challenge(admin, '/api/admin/settings/challenge', { action: 'setting_update', key, value });
     return admin.agent.post('/api/admin/settings').set('x-fc-admin', '1').send({ key, value, signature });
   }
+
+  it('signed Convoy knobs affect new binds and activation while retaining saved policy and deadline', async () => {
+    const admin = await loginAdmin(FREE_RIDES_ADMIN), host = await login(), friend = await login();
+    for (const [key, value] of [['referral_pending_ttl_hours', 12], ['referral_ten4_m1_amount', 75], ['referral_referee_promo_ranked', 1]] as const) expect((await setSetting(admin, key, value)).status).toBe(200);
+    const code = (await host.agent.get('/api/referrals').expect(200)).body.code;
+    const bound = (await friend.agent.post('/api/referrals/bind').send({ code }).expect(200)).body;
+    const deadline = bound.inbound.expiresAt;
+    expect(deadline).toBe(new Date(h().clock.now().getTime() + 12 * 3600000).toISOString());
+    await setSetting(admin, 'referral_pending_ttl_hours', 1);
+    expect((await friend.agent.post('/api/referrals/bind').send({ code }).expect(200)).body.inbound.expiresAt).toBe(deadline);
+    await h().app.get(ConvoyService).onVerifiedRide({ wallet: friend.address, rideId: 'policy-activation', trip: 'free-2c', status: 'completed', verdict: 'verified' });
+    await setSetting(admin, 'referral_ten4_m1_amount', 200);
+    await setSetting(admin, 'referral_referee_promo_ranked', 0);
+    const current = (await friend.agent.get('/api/referrals').expect(200)).body;
+    expect(current.rules.m1Amount).toBe(200);
+    expect(current.inbound.policy).toMatchObject({ m1Amount: 75, promoRanked: 1 });
+    const order = (await friend.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;
+    expect((await friend.agent.post(`/api/rides/${order.id}/start`).set('cf-ipcountry', 'CA').send({ ranked: true }).expect(200)).body.ranked).toBe(true);
+    expect((await admin.agent.post('/api/admin/settings/challenge').set('x-fc-admin', '1').send({ action: 'setting_update', key: 'referral_ten4_m1_amount', value: 1001 })).status).toBe(400);
+  });
 
   it('a new wallet is 10/5 and the settings read back the code defaults', async () => {
     await anon().get('/api/admin/settings').expect(404);
