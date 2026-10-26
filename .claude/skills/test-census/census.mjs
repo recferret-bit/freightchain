@@ -1269,11 +1269,22 @@ function chromeSuiteSource() {
   const e2e = read('.claude/skills/run-tests/e2e.sh');
   const scripts = [...new Set([...e2e.matchAll(/node ((?:scripts|frontend\/landing\/tools)\/[\w.-]+\.mjs)/g)].map((m) => m[1]))];
   assert(scripts.length >= 20, `e2e.sh launched ${scripts.length} scripts`);
-  return scripts.map((rel) => {
+  const seen = new Set(), sources = [];
+  for (const rel of scripts) {
     const full = rel.startsWith('scripts/') ? `backend/server/${rel}` : rel;
+    if (seen.has(full)) continue;
+    seen.add(full);
     assert(existsSync(join(ROOT, full)), `e2e.sh names a missing script ${full}`);
-    return codeOf(read(full));
-  }).join('\n');
+    const source = codeOf(read(full));
+    sources.push(source);
+    // Local-validator bootstraps launch their Chrome child after the scratch chain/API are ready.
+    scripts.push(...spawnedNodeScripts(source));
+  }
+  return sources.join('\n');
+}
+
+function spawnedNodeScripts(source) {
+  return [...source.matchAll(/spawn\(\s*process\.execPath\s*,\s*\[\s*['"](scripts\/[\w.-]+\.mjs)['"]/g)].map(m => m[1]);
 }
 
 function htmlPageReport(suite) {
@@ -1502,6 +1513,7 @@ async function selfTest() {
   assert(gradeFeature({ ...base, unitFiles: 0, scenarioCases: 0, harness: [] }, false).grade === 'untested', 'untested');
   const routes = allRoutes(ROOT);
   assert(routes.length >= 60 && routes.every((r) => r.name), `routes ${routes.length}`);
+  assert(spawnedNodeScripts("spawn(process.execPath, ['scripts/e2e-blinks.mjs'], { cwd: server });").join() === 'scripts/e2e-blinks.mjs', 'validator wrapper retains its Chrome child in page coverage');
   const rep = reportOf(inv);
   const thinRoutes = rep.routes.filter((r) => (r.scenario || 0) < 2).map((r) => `${r.scenario || 0} ${r.key}`);
   assert(!thinRoutes.length, `routes with fewer than 2 scenario cases: ${thinRoutes.join(', ')}`);
