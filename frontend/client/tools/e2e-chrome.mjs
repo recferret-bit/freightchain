@@ -161,6 +161,8 @@ async function chainSection(){   // → false when the page reloaded under it (s
   await ev(`window.__pl.push({id:'p2',status:'active',sponsor:'B0b11111111111111111111111111111111111111111',lamportsPerKm:'1000000',targetKm:20,maxLamports:'20000000',createSignature:'6'.repeat(88)})`);
   await sleep(2200); const tst=await ev(`window.__toasts.find(t=>/locked/.test(t))||''`); console.log('pledge toast:',tst);
   if(!/B0b1…1111 locked 0\.001 SOL\/km for you on chain/.test(tst)) problems.push('chain strip: no toast for a new pledge: '+tst);
+  await ev('window.__pl=[]'); await sleep(2000);
+  if(!await ev('__game.cabChain.rows[2].hidden && !__game.cabChain.rows[2].textContent')) problems.push('chain strip: empty historical pledges must not advertise new locks');
   // the RPC down: the seal is still re-hashed, but says "server copy" (amber) – on the strip and on the panel row
   await ev(`window.__cc.stopCabChain(); Object.assign(__game.cabChain,{seal:null,sealv:null}); window.__rpcUp=false; window.__cc.startCabChain()`); await sleep(2000);
   const down=await ev(`document.getElementById('chain')?.innerText||''`); if(!/✓ server copy/.test(down)) problems.push('chain strip: RPC down not shown as "server copy": '+down);

@@ -112,7 +112,8 @@ function paint() {
   ].filter(Boolean).join(' · ');
   /* 3 · pledges */
   const active = chain.pledges.filter(x => x.status === 'active');
-  if (!active.length) pl.textContent = 'PLEDGES none yet – spectators can lock SOL per km for you';
+  pl.hidden = !active.length;
+  if (!active.length) { pl.textContent = ''; pl.title = ''; }
   else {
     const rate = active.reduce((a, x) => a + Number(x.lamportsPerKm), 0);
     pl.textContent = `PLEDGES ${active.length} · ${pledgeSol(rate)}/km · ≈ ${pledgeSol(pledgeEstimate(active, st.s))} so far if verified`;
