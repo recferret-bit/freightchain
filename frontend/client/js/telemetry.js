@@ -110,8 +110,8 @@ async function sha256(text) {
   return Array.from(digest, b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** Upload the queue in order; a failed upload (network, timeout, 5xx, 429, 401) stays queued and goes with the next batch. 200 and 409 (the ride no longer
-    takes batches) leave the queue. Any other 4xx means the server REFUSED the batch: the chain is broken for good, so recording stops there and the reason is
+/** Upload the queue in order; a failed upload (network, timeout, 5xx, 429, 401) stays queued and goes with the next batch. Only success acknowledges a batch.
+    Other 4xx (including 409 when the recording window closed) mean the server REFUSED the batch: recording stops there and the reason is
     kept in `refused` (the server logs it too: event 'batch-refused', findable by the ride id on the admin page). */
 function send() {
   if (rec.sending) return rec.sending;
@@ -121,7 +121,7 @@ function send() {
       let res;
       try { res = await fetch(`${API_BASE}/api/rides/${rec.rideId}/batches`, { method: 'POST', credentials: 'include', signal: AbortSignal.timeout(8000), headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }); }
       catch { break; }   // offline / timeout: try again with the next batch
-      if (res.ok || res.status === 409) { rec.queue.shift(); continue; }
+      if (res.ok) { rec.queue.shift(); continue; }
       if (res.status >= 500 || res.status === 429 || res.status === 401 || res.status === 408) break;
       const detail = await res.json().then(j => j.detail ?? j.title, () => '').catch(() => '');
       rec.refused = { seq: b.seq, status: res.status, detail: String(detail ?? '') };

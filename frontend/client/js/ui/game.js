@@ -51,6 +51,7 @@ export function resetRide(seed = online.ride?.seed) {   // seed: the server's fo
 
 online.extra = () => ({ route: env.theme.id, night: dn.night });   // what the server's public live feed shows next to the ride
 online.onRide = r => { if (r && 'honk' in r) { paintHonkInto('honk-line', 'honk-line-more', r.honk); syncHonk(); } };   // heartbeat / start: the server's honk field, never a client formula
+online.onEnded = r => endRide(r.status === 'completed', r.reason || 'The server ended this ride.', r.status === 'failed' ? 'failed' : 'shift');
 prompt.onShow = () => audio.play('warn'); prompt.onAnswer = () => audio.play('ui');   // a dispatch prompt (prompt.js) is heard as well as seen
 telemetry.trafficOf = () => trafficSnapshot();   // the cars around the truck, recorded beside each batch for spectators' replays
 telemetry.extra = () => [Math.round(dn.t * 100) / 100,

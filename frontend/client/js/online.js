@@ -12,7 +12,7 @@ import { noteMiniGames } from './minigames/runtime.js';
 /* Online mode – OPT-IN: only when the page was opened as play.html?ride=<id> (made by the lobby). Without it nothing here runs and the game
    behaves exactly like the offline prototype (headless test, e2e, viewer and the file:// build all rely on that).
    The server owns the ride: it hands out the seed + the shift length, times the ride from heartbeats and decides the result (server/src/rides). */
-export const online = { ride: null, error: '', status: null, code: null, started: false, running: false, done: false, closed: false, extra: () => ({}) };   // extra: set by ui/game.js → { route, night } for the lobby's live feed (kept out of here so this module needs no world/ imports). status/code ride along on a failed load so the page can classify it without the message.
+export const online = { ride: null, error: '', status: null, code: null, started: false, running: false, done: false, closed: false, serverEnded: null, extra: () => ({}) };   // extra: set by ui/game.js → { route, night } for the lobby's live feed (kept out of here so this module needs no world/ imports). status/code ride along on a failed load so the page can classify it without the message.
 
 const api = async (path, body) => {
   const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', signal: AbortSignal.timeout(8000), method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -59,17 +59,25 @@ export async function beginOnline(opts = {}) {
   catch (e) { online.started = false; if (e.status === 409 && e.code === RECHOSEN) { location.reload(); return new Promise(() => {}); } throw e; }   // re-chosen elsewhere: load it as it is now. Any other refusal can be retried.
   if (started.tutorial !== online.ride.tutorial || started.assist !== online.ride.assist) setGuide(started);   // (HARD's assist is refused by the server: false here too)
   online.running = true;
+  online.serverEnded = null;
   setLoadout(started.loadout);   // what the server stamped on the ride (what spectators and replays draw) – normally what the menu already wore
   startTelemetry(online.ride.id, started.trafficVersion ?? 0, started.sessionKey ?? null);   // inputs + 10 Hz samples. A session key (TELEMETRY_V21=shadow) also MACs each batch.
   resetPrompts();
   if ('honk' in started) online.ride.honk = started.honk;   // the cab line is the server's quote (ui/game.js) – not recomputed here
   online.onRide?.(started);
   timer = setInterval(() => api(`rides/${online.ride.id}/heartbeat`, progress()).then(r => {
+    if (online.done || online.serverEnded) return;
     showPrompt(r.challenge);   // the response may carry a challenge (prompt.js): the handler shows whatever the DTO names
     noteMiniGames(r.minigames, online.ride.id);
     if (online.ride && r && 'honk' in r) online.ride.honk = r.honk;
     online.onRide?.(r);
-  }, () => { /* a lost beat is the server's call (timeout) */ }), 10_000);
+  }, async e => {
+    if (e.status !== 409 || online.done || online.serverEnded) return;   // a lost connection alone cannot decide a ride's outcome
+    const r = await rideNow();
+    if (!r || !['completed', 'abandoned', 'failed'].includes(r.status) || online.done || online.serverEnded) return;
+    online.serverEnded = r; online.running = false; clearInterval(timer);
+    online.onEnded?.(r);   // stop the cockpit only after reading the authoritative terminal result
+  }), 10_000);
 }
 
 /* The game tab closes (or reloads, or navigates away) mid-ride: the ride can never resume – a running ride is not re-opened – so END it now, as if the
@@ -99,5 +107,6 @@ export async function endOnline(outcome, reason = '') {
   online.done = true; clearInterval(timer);
   const report = progress();   // taken now: the flush below is async
   await Promise.race([flushTelemetry().catch(() => {}), new Promise(ok => setTimeout(ok, FLUSH_WAIT_MS))]);   // bounded: a slow upload keeps retrying in the background (the server re-judges on arrival); a lost tail only costs coverage
+  if (online.serverEnded) return await rideNow() ?? online.serverEnded;   // the sweeper already ended it; do not POST another end
   try { return await api(`rides/${online.ride.id}/end`, { outcome, reason, ...report }); } catch (e) { return { status: 'unknown', reason: e.message }; }
 }

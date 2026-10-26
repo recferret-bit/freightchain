@@ -112,7 +112,7 @@ Convoy operational settings are now signed admin rows: pending TTL/capacity/acti
 
 ### Ride lifecycle
 
-**Shipped.** Order, start, heartbeat, batches, end. A ride silent for `HB_TIMEOUT_MS` (150 s) is ended by the sweeper. Closing the game tab beacons `/end`. Closing a site page sends `leave=1`. Finish is the distance line. `RIDE_MIN_SECONDS` is the nominal length (test 300, production 1800). Route and start hour are the server's. Trip ids are frozen once rides carry them.
+**Shipped.** Order, start, heartbeat, batches, end. A ride silent for `HB_TIMEOUT_MS` (150 s) is ended by the sweeper. After a refused heartbeat, the cockpit re-reads the ride and stops with its server result if it has ended; a transient connection failure alone does not end the ride. A recording-window `409` stops recording and preserves the refusal, rather than acknowledging unsaved batches. Closing the game tab beacons `/end`. Closing a site page sends `leave=1`. Finish is the distance line. `RIDE_MIN_SECONDS` is the nominal length (test 300, production 1800). Route and start hour are the server's. Trip ids are frozen once rides carry them.
 
 ### Verified play
 

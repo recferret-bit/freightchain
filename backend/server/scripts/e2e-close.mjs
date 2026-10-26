@@ -71,6 +71,17 @@ const navType = await B.ev(`performance.getEntriesByType('navigation')[0]?.type`
 check('Back: the page says the ride is abandoned and offers no START', back, (await B.ev(`(document.getElementById('panel')?.textContent || '').slice(0, 100)`)));
 check('Back: it really came from the back/forward cache, and pageshow reloaded it (navigation type "reload", not "back_forward")', navType === 'reload', navType);
 
+// Another session ends a running ride: the next refused heartbeat must stop this cockpit too.
+const remote = await ride(me);
+await B.send('Page.navigate', { url: `${GAME}/play.html?ride=${remote.id}` }); await boot();
+await B.ev(`document.getElementById('go').click()`);
+check('remote end: the browser started its ride', await until(async () => (await api(`rides/${remote.id}`, me.cookie)).status === 'running', 15_000));
+const remoteEnd = await post(`rides/${remote.id}/end`, { outcome: 'failed', s: 0, t: 0, reason: 'ended from another session' }, me.cookie);
+check('remote end: the server accepted the other session', remoteEnd.ok);
+check('remote end: the next heartbeat stops the cockpit and displays the server result', await until(() => B.ev(`__game.st.mode === 'done' && !document.getElementById('overlay')?.classList.contains('late') && /FAILED.*ended from another session/.test(document.getElementById('verdict')?.textContent || '')`), 20_000));
+check('remote end: recording stopped with the ride', await B.ev('!__game.telemetry.on && __game.online.done'));
+await B.shot('server-ended-ride'); await away();
+
 // ── a COMPLETE shift whose tab closes: COMPLETED, and the recording that made it up is VERIFIED ──
 const done = await ride(me);
 await B.send('Page.navigate', { url: `${GAME}/play.html?ride=${done.id}` }); await boot();
@@ -92,7 +103,7 @@ let end = null;
 check('complete shift: closing the tab COMPLETES it (the /end beacon – no END SHIFT pressed)', await until(async () => (end = await api(`rides/${done.id}`, me.cookie)).status === 'completed', 8000), end?.status);
 check('complete shift: its recording is judged VERIFIED (the tail that died with the tab only costs coverage)', end?.verdict?.status === 'verified', JSON.stringify(end?.verdict));
 
-const probs = B.filt().filter(p => !/401.*\/api\/me|road plan: server error 404|\/api\/watch\/[^ ]+\/road\?|status of 404/.test(p));
+const probs = B.filt().filter(p => !/401.*\/api\/me|road plan: server error 404|\/api\/watch\/[^ ]+\/road\?|status of 404|status of 409/.test(p));
 check('no page errors', probs.length === 0, probs.join(' | '));
 console.log(`screenshots: ${B.SHOTS}`);
 B.finish(fails.length ? 1 : 0, 300);
