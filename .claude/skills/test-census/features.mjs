@@ -288,7 +288,7 @@ export const FEATURES = [
     client: /^(?:frontend\/)?client\/js\/(sim\/(physics|battery|climate|damage|shake|audio|radio|engine|glass-damage|radio-composer)|state|config|util)\.js$/,
     routes: null,
     headless: /launch|stall|brake|clutch|battery|crank|alternator|cab light|engine|revs|heal|drain/i,
-    e2e: ['e2e-chrome.mjs', 'e2e-controls.mjs', 'e2e-browser.mjs'], skills: ['gameplay-balance'],
+    e2e: ['e2e-chrome.mjs', 'e2e-controls.mjs', 'e2e-normal-drive.mjs', 'e2e-browser.mjs'], skills: ['gameplay-balance'],
   },
   {
     id: 'road', title: 'Game: endless road, junctions, traffic',
