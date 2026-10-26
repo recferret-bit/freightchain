@@ -1,4 +1,5 @@
 // Disposable production-mode startup/recovery check. Never reads deploy/.env or calls release.sh.
+import { prepareChain } from './local-production-chain.mjs';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, writeFileSync } from 'node:fs';
@@ -23,7 +24,7 @@ const fixture = {
   SOLANA_RPC: 'http://127.0.0.1:9', SNS_RPC: 'http://127.0.0.1:9', SOL_USD: '118', WATCH_INTERVAL_MS: '0', CRANK_INTERVAL_MS: '0', PAYOUT_INTERVAL_MS: '0',
   POSTHOG_ENABLED: '0', POSTHOG_DISABLED: '1', VERDICT_ENFORCE: 'true',
 };
-let commandId = 0, modelReady = false, stopping = false;
+let commandId = 0, modelReady = false, stopping = false, chain;
 const checks = [];
 const result = { project, output: out, passed: false, checks, chain: 'disabled: startup check only', providers: 'no real credentials; external networking disabled' };
 const check = (message, ok) => { if (!ok) throw new Error(message); checks.push(message); console.log(`ok   ${message}`); };
@@ -75,6 +76,7 @@ async function healthy(names) {
 try {
   const endpoint = dockerEnv.DOCKER_HOST || docker(['context', 'inspect', '--format', '{{.Endpoints.docker.Host}}']).stdout.trim();
   check('Docker endpoint is local', /^(unix:|npipe:|tcp:\/\/(localhost|127\.0\.0\.1|\[::1\]):)/.test(endpoint));
+  if (process.argv.includes('--rpc')) chain = await prepareChain({ root, out, fixture, result });
   writeFileSync(envFile, Object.entries(fixture).map(([key, value]) => `${key}=${value}`).join('\n') + '\n', { mode: 0o600 });
   const rendered = docker(['compose', '--project-name', project, '--env-file', envFile, '-f', resolve(root, 'infra/deploy/docker-compose.prod.yml'), 'config', '--format', 'json']);
   const model = JSON.parse(rendered.stdout);
@@ -85,6 +87,7 @@ try {
   // Preserve all service configuration, including strict flags, dependencies, healthchecks and Redis ACL.
   // Only resource names, host exposure and outbound access differ from the release stack.
   for (const service of Object.values(model.services)) { service.ports = []; service.restart = 'no'; }
+  chain?.extend(model);
   writeFileSync(composeFile, JSON.stringify(model, null, 2), { mode: 0o600 });
   modelReady = true;
   check('all test networks are internal and no service publishes a port', Object.values(model.networks).every(network => network.internal) && Object.values(model.services).every(service => service.ports.length === 0));
@@ -100,6 +103,11 @@ try {
   await healthy(['postgres', 'redis']);
   compose(['run', '--rm', '--no-deps', 'app', './node_modules/.bin/prisma', 'migrate', 'deploy']);
   check('forward migrations apply to the disposable database', true);
+  if (chain) {
+    compose(['up', '-d', 'rpc', 'chain-probe']);
+    chain.connect(compose(['ps', '-q', 'rpc']).stdout.trim());
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
   compose(['up', '-d', ...services]);
   await healthy(services);
   probe('app', 3000, '/api/health/live', 200); probe('app', 3000, '/api/health/ready', 200); probe('mcp', 3100, '/health', 200);
@@ -124,14 +132,33 @@ try {
   probe('mcp', 3100, '/health', 200);
   check('Redis and MCP recover without recreating the API', true);
   compose(['stop', 'postgres']);
+  await new Promise(resolve => setTimeout(resolve, 5000));
   probe('app', 3000, '/api/health/ready', 503);
   check('API readiness refuses traffic during a real PostgreSQL outage', true);
   compose(['start', 'postgres']); await healthy(services);
   probe('app', 3000, '/api/health/ready', 200);
   check('API and workers recover after PostgreSQL restarts', true);
+  check('replay worker logs a retry and survives the database outage', compose(['logs', '--no-color', 'worker']).stdout.includes('replay-worker.retry'));
   compose(['restart', 'app', 'worker', 'editor-worker', 'mcp']); await healthy(services);
   probe('app', 3000, '/api/health/ready', 200); probe('mcp', 3100, '/health', 200);
   check('all application processes recover after a restart', true);
+  if (chain) {
+    runNode('app', "if(process.env.NODE_ENV!=='production'||process.env.PAYMENT_MODE!=='program'||process.env.VERDICT_ENFORCE!=='true'||process.env.TELEMETRY_V21!=='enforce')throw new Error('production chain enforcement disabled');");
+    result.chainPhases = [];
+    const phase = (name, ...args) => {
+      const output = compose(['exec', '-T', 'chain-probe', 'node', 'production-rpc.mjs', name, ...args], { timeout: 180000 });
+      result.chainPhases.push(JSON.parse(output.stdout.trim().split('\n').pop()));
+    };
+    phase('setup'); check('real current program pool is created, sealed and mirrored; SIWS and agreements enforced', true);
+    phase('send'); phase('credited', '1'); check('wallet-owned transaction is credited once by the production watcher', true);
+    phase('enforcement'); check('normal one-hour paid ride rejects missing proof and an instant finish', true);
+    phase('prepare'); compose(['stop', 'app']); phase('send'); compose(['start', 'app']); await healthy(services);
+    phase('credited', '2'); check('watcher recovers a real payment made while the API was stopped exactly once', true);
+    phase('prepare'); compose(['stop', 'rpc']); phase('rpc-down'); check('payment construction fails closed during RPC outage', true);
+    compose(['start', 'rpc']); chain.connect(compose(['ps', '-q', 'rpc']).stdout.trim()); await new Promise(resolve => setTimeout(resolve, 1000));
+    phase('refresh'); phase('send'); phase('credited', '3'); check('wallet payment and watcher recover after RPC outage', true);
+    phase('refund'); check('admin cancellation and wallet refund return exact lamports plus rent minus fee', true);
+  }
   result.passed = true;
 } catch (error) {
   result.error = error.message;
@@ -143,6 +170,7 @@ try {
     const cleanup = compose(['down', '--volumes', '--remove-orphans'], { allowFailure: true });
     if (cleanup.status !== 0) { result.cleanupFailed = true; process.exitCode = 1; console.error(`FAIL cleanup of ${project}; see ${out}`); }
   }
+  await chain?.stop();
   writeFileSync(join(out, 'result.json'), JSON.stringify(result, null, 2) + '\n', { mode: 0o600 });
   console.log(`evidence: ${out}`);
 }
