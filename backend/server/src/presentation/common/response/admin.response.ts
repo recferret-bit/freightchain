@@ -38,6 +38,7 @@ export const adminPoolResponse = obj({ pool: adminPoolRow.and(obj({ prizeBps: nu
 export const adminStatsResponse = obj({ now: num, global: statsResponse.and(obj({ drivers: num, updatedAt: num })).nullable(), daily: z.array(dailyStatsResponse), top: z.array(obj({ wallet: str, stats: statsResponse })) });
 export const adminSessionsResponse = obj({ rows: z.array(obj({ wallet: str, lastAt: num, signIns: num, ip: strOrNull, userAgent: strOrNull })), truncated: bool });
 export const gameSettingsResponse = obj({
+  eventModeEnabled: num, eventWeekStartUtc: num, eventLastStartUtc: num, eventWeekEndUtc: num, airdropXBudgetCents: num, airdropXCheckCostCents: num,
   freeOnSignup: num, freeRidesDailyMax: num, weeklyTicket1hEnabled: num, weeklyTicket1hDays: num, weeklyTicket4hEnabled: num, weeklyTicket4hDays: num, weeklyTicket8hEnabled: num, weeklyTicket8hDays: num,
   editorJobsPerDay: num, editorMaxSteps: num, editorMaxOutputTokens: num, editorMaxInputKTokens: num, editorJobsParallel: num, referralMax: num, referralInviteStart: num, referralInviteStep: num, referralShiftsPerStep: num,
   referralInviteTtlDays: num, referralFreeRideWindowDays: num, referralFreeRidesReferrer: num, referralFreeRidesReferee: num, referralFreeRideWeeklyCap: num, referralReferrerPartBps: num, referralRideCapLamports: num, referralDonationShareBps: num, referralDonationCapLamports: num, referralCountWeeklyGrant: num,

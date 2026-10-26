@@ -8,7 +8,7 @@ The reserved `SYSTEM-PRESEASON-2026-11` promo code identifies the event source. 
 
 ## Owner configuration
 
-All event dates and flags start disabled/zero. Through the signed admin settings API configure `event_week_start_utc`, `event_last_start_utc`, `event_week_end_utc` as integer UTC epoch seconds. Last start must be at least 75 minutes before end. Set `event_mode_enabled=1` only for the authorized event. The grant is consumed at ordering; cancellation/abandonment does not reissue it.
+The admin Settings tab exposes all six campaign controls, each with signed changes and its numeric bounds. All event dates and flags start disabled/zero. Through the signed admin settings API configure `event_week_start_utc`, `event_last_start_utc`, `event_week_end_utc` as integer UTC epoch seconds. Last start must be at least 75 minutes before end. Set `event_mode_enabled=1` only for the authorized event. The grant is consumed at ordering; cancellation/abandonment does not reissue it.
 
 Configure the Telegram bot/token, channel, group, public login bot name and webhook secret. Register its webhook and approved Login Widget domain. Configure X and Turnstile secret/site keys. Tests never register webhooks, send social posts or contact real providers.
 

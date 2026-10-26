@@ -6278,6 +6278,12 @@
                 "schema": {
                   "additionalProperties": true,
                   "properties": {
+                    "airdropXBudgetCents": {
+                      "type": "number"
+                    },
+                    "airdropXCheckCostCents": {
+                      "type": "number"
+                    },
                     "editorJobsParallel": {
                       "type": "number"
                     },
@@ -6291,6 +6297,18 @@
                       "type": "number"
                     },
                     "editorMaxSteps": {
+                      "type": "number"
+                    },
+                    "eventLastStartUtc": {
+                      "type": "number"
+                    },
+                    "eventModeEnabled": {
+                      "type": "number"
+                    },
+                    "eventWeekEndUtc": {
+                      "type": "number"
+                    },
+                    "eventWeekStartUtc": {
                       "type": "number"
                     },
                     "freeOnSignup": {
@@ -6361,11 +6379,17 @@
                     }
                   },
                   "required": [
+                    "airdropXBudgetCents",
+                    "airdropXCheckCostCents",
                     "editorJobsParallel",
                     "editorJobsPerDay",
                     "editorMaxInputKTokens",
                     "editorMaxOutputTokens",
                     "editorMaxSteps",
+                    "eventLastStartUtc",
+                    "eventModeEnabled",
+                    "eventWeekEndUtc",
+                    "eventWeekStartUtc",
                     "freeOnSignup",
                     "freeRidesDailyMax",
                     "referralCountWeeklyGrant",
@@ -6446,6 +6470,12 @@
                     "settings": {
                       "additionalProperties": true,
                       "properties": {
+                        "airdropXBudgetCents": {
+                          "type": "number"
+                        },
+                        "airdropXCheckCostCents": {
+                          "type": "number"
+                        },
                         "editorJobsParallel": {
                           "type": "number"
                         },
@@ -6459,6 +6489,18 @@
                           "type": "number"
                         },
                         "editorMaxSteps": {
+                          "type": "number"
+                        },
+                        "eventLastStartUtc": {
+                          "type": "number"
+                        },
+                        "eventModeEnabled": {
+                          "type": "number"
+                        },
+                        "eventWeekEndUtc": {
+                          "type": "number"
+                        },
+                        "eventWeekStartUtc": {
                           "type": "number"
                         },
                         "freeOnSignup": {
@@ -6529,11 +6571,17 @@
                         }
                       },
                       "required": [
+                        "airdropXBudgetCents",
+                        "airdropXCheckCostCents",
                         "editorJobsParallel",
                         "editorJobsPerDay",
                         "editorMaxInputKTokens",
                         "editorMaxOutputTokens",
                         "editorMaxSteps",
+                        "eventLastStartUtc",
+                        "eventModeEnabled",
+                        "eventWeekEndUtc",
+                        "eventWeekStartUtc",
                         "freeOnSignup",
                         "freeRidesDailyMax",
                         "referralCountWeeklyGrant",

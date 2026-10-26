@@ -4,6 +4,13 @@
 
 /* key, camelCase field on GET /api/admin/settings, label, hint, min, max. Free-ride knobs stay 0..100_000. Each knob has its own range. */
 export const SETTING_KNOBS = [
+  ['event_mode_enabled', 'eventModeEnabled', 'Campaign: event enabled', '0 off by default; 1 permits only the reserved campaign 1h attempt', 0, 1],
+  ['event_week_start_utc', 'eventWeekStartUtc', 'Campaign: first start (UTC seconds)', 'Unix epoch seconds; 0 leaves the event closed', 0, 2147483647],
+  ['event_last_start_utc', 'eventLastStartUtc', 'Campaign: last start (UTC seconds)', 'Unix epoch seconds; must leave at least 75 minutes before event end', 0, 2147483647],
+  ['event_week_end_utc', 'eventWeekEndUtc', 'Campaign: event end (UTC seconds)', 'Unix epoch seconds; configure all dates before enabling the event', 0, 2147483647],
+  ['airdrop_x_budget_cents', 'airdropXBudgetCents', 'Campaign: X reserved budget (cents)', 'Maximum estimated reservations: 10000 cents; failed checks remain charged', 0, 10000],
+  ['airdrop_x_check_cost_cents', 'airdropXCheckCostCents', 'Campaign: X cost bound (cents)', '0 disables checks; owner must set a conservative bound for all requests per check', 0, 10000],
+
   ['weekly_ticket_1h_enabled', 'weeklyTicket1hEnabled', '1h granted ticket', '0 off, 1 on. Default on. Not a purchase. Does not mint TEN4', 0, 1],
   ['weekly_ticket_1h_days', 'weeklyTicket1hDays', '1h grant interval (days)', 'how often one 1h ticket is granted. At least 1. Default 7', 1, 100_000],
   ['weekly_ticket_4h_enabled', 'weeklyTicket4hEnabled', '4h granted ticket', '0 off, 1 on. Default off', 0, 1],
