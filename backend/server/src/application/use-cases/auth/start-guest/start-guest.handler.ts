@@ -1,4 +1,5 @@
-import { Logger } from '@nestjs/common';
+import { TrustEvidenceService } from '../../../services/trust-evidence.service.js';
+import { Logger, Optional } from '@nestjs/common';
 import { IpPrefixHasherPort } from '../../../ports/auth/ip-prefix-hasher.port.js';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { SignInRepositoryPort } from '../../../ports/auth/sign-in.repository.port.js';
@@ -33,6 +34,7 @@ export class StartGuestHandler implements ICommandHandler<StartGuestCommand, Sig
     private readonly profile: MeProfileService,
     private readonly entropy: EntropyPort,
     private readonly ipHasher: IpPrefixHasherPort,
+    @Optional() private readonly evidence?: TrustEvidenceService,
   ) {}
 
   async execute(command: StartGuestCommand): Promise<SignInResultDto> {
@@ -42,7 +44,8 @@ export class StartGuestHandler implements ICommandHandler<StartGuestCommand, Sig
     const session = await this.tokens.sign(wallet);
     const player = await this.sessions.touch(wallet, now, { guest: true });
     this.logger.log({ event: 'guest', msg: `guest session ${wallet}`, wallet });
-    await this.signIns.insert({ wallet, at: now, ipHash: this.ipHasher.hash(command.client.ip) }).catch(() => {
+    const ipHash = this.ipHasher.hash(command.client.ip);
+    await this.signIns.insert({ wallet, at: now, ipHash, ...(this.evidence ? { network: await this.evidence.networkOf(ipHash, command.client.ip) } : {}) }).catch(() => {
       this.logger.warn(`guest ${wallet} not recorded`);
     });
     emitAnalytics(this.analytics, () => playerSignedIn({

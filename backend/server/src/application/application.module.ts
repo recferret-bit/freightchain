@@ -4,6 +4,7 @@ import { InfrastructureModule } from '../infrastructure/infrastructure.module.js
 import { AchievementService } from './services/achievement.service.js';
 import { PaymentSettlementService } from './services/payment-settlement.service.js';
 import { PlayerSessionService } from './services/player-session.service.js';
+import { TrustEvidenceService } from './services/trust-evidence.service.js';
 import { MeProfileService } from './services/me-profile.service.js';
 import { RideLookupService } from './services/ride-lookup.service.js';
 import { StatsService } from './services/stats.service.js';
@@ -169,7 +170,7 @@ import { GetPrizeBoardHandler } from './use-cases/prize/get-prize-board/get-priz
 
 const services: Provider[] = [
   EntityCatalogService, EntityWriteService,
-  AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
+  TrustEvidenceService, AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
   PoolTicketsService, PoolScheduleService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, ReplayAccessService, LiveDonationService, LiveChatService, ChatRetentionScheduler, PledgeService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService, RankedEntryService, WeeklyTicketService,
   ReferralService, ReferralPayoutService, AdminApprovalService, ConvoyService, ReleaseConvoyHandler, AirdropService, ReferralExpiryScheduler, MinigameRateService, MinigameSessionService,
 ];

@@ -1,3 +1,4 @@
+import { networkEvidenceResponse, fundingEvidenceResponse } from './trust-evidence.response.js';
 import { z } from 'zod';
 import { authChallengeResponse, bool, dailyStatsResponse, num, numOrNull, obj, prizePoolResponse, rideReplayResponse, statsResponse, str, strOrNull, verdictResponse } from './wire.js';
 import { poolStandingsResponse } from './economy.response.js';
@@ -16,7 +17,7 @@ export const adminRideDetailResponse = obj({
   batches: z.array(obj({ seq: num, t0: num, t1: num, samples: num, inputs: num, bytes: num, hashOk: bool, receivedAt: num })),
   payment: obj({ signature: str, lamports: num, at: num }).nullable(),
 });
-export const signInRowsResponse = list(obj({ wallet: str, at: num, ipHash: strOrNull }));
+export const signInRowsResponse = list(obj({ wallet: str, at: num, ipHash: strOrNull, network: networkEvidenceResponse.optional() }));
 export const adminActionsResponse = list(obj({ wallet: str, action: str, target: str, detail: z.record(str, z.unknown()), requestId: strOrNull, at: num }));
 export const adminLogsResponse = obj({ entries: z.array(obj({ time: str, level: str, context: str, msg: str }).passthrough()) });
 export const adminOverviewResponse = obj({
@@ -26,9 +27,10 @@ export const adminOverviewResponse = obj({
 });
 export const adminPlayersResponse = list(obj({ wallet: str, freeRides: num, freeRidesMax: num, createdAt: num, lastSignInAt: numOrNull, rides: num, tickets: num }));
 export const adminPlayerResponse = obj({
+  fundingEvidence: fundingEvidenceResponse.optional(),
   player: obj({ wallet: str, freeRides: num, freeRidesMax: num, freeDay: str, createdAt: num, tutorialPassedAt: numOrNull, age18At: numOrNull, lossAt: numOrNull }),
   stats: statsResponse.nullable(), tickets: z.array(obj({ poolId: num, balance: num, bought: num })), grants: z.array(obj({ poolId: num, delta: num, source: str, ref: strOrNull, at: num })),
-  payments: obj({ count: num, lamports: num }), signIns: z.array(obj({ wallet: str, at: num, ipHash: strOrNull })), rides: z.array(adminRideRow),
+  payments: obj({ count: num, lamports: num }), signIns: z.array(obj({ wallet: str, at: num, ipHash: strOrNull, network: networkEvidenceResponse.optional() })), rides: z.array(adminRideRow),
 });
 const adminPoolRow = obj({
   id: num, address: str, tier: str, label: str, status: str, priceLamports: num, minTickets: num, maxTickets: num, maxPerWallet: num, ticketsSold: num, buyers: num, vaultLamports: num, sponsored: num, roundId: numOrNull, rideSeed: num, prepDeadline: num, playDeadline: num, createdAt: num, syncedAt: numOrNull,
@@ -38,6 +40,7 @@ export const adminPoolResponse = obj({ pool: adminPoolRow.and(obj({ prizeBps: nu
 export const adminStatsResponse = obj({ now: num, global: statsResponse.and(obj({ drivers: num, updatedAt: num })).nullable(), daily: z.array(dailyStatsResponse), top: z.array(obj({ wallet: str, stats: statsResponse })) });
 export const adminSessionsResponse = obj({ rows: z.array(obj({ wallet: str, lastAt: num, signIns: num, ipHash: strOrNull })), truncated: bool });
 export const gameSettingsResponse = obj({
+  trustNetworkEvidenceEnabled: num, trustFundingEvidenceEnabled: num,
   eventModeEnabled: num, eventWeekStartUtc: num, eventLastStartUtc: num, eventWeekEndUtc: num, airdropXBudgetCents: num, airdropXCheckCostCents: num,
   freeOnSignup: num, freeRidesDailyMax: num, weeklyTicket1hEnabled: num, weeklyTicket1hDays: num, weeklyTicket4hEnabled: num, weeklyTicket4hDays: num, weeklyTicket8hEnabled: num, weeklyTicket8hDays: num,
   editorJobsPerDay: num, editorMaxSteps: num, editorMaxOutputTokens: num, editorMaxInputKTokens: num, editorJobsParallel: num, referralMax: num, referralInviteStart: num, referralInviteStep: num, referralShiftsPerStep: num,

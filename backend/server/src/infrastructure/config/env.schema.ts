@@ -28,6 +28,8 @@ export const envSchema = z
     RESPONSE_SCHEMA_CHECK: optional(z.enum(['off', 'warn', 'strict'])),
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     JWT_SECRET: optional(z.string().min(32, 'JWT_SECRET must be at least 32 characters')),
+    IPINFO_TOKEN: optional(z.string().min(1)),
+    HELIUS_API_KEY: optional(z.string().min(1)),
     IP_HASH_SECRET: optional(z.string().regex(/^[a-fA-F0-9]{64}$/, 'IP_HASH_SECRET must be 32 random bytes encoded as 64 hex characters')),
     SESSION_TTL_DAYS: z.coerce.number().int().positive().default(7),
     APP_DOMAIN: z.string().min(1).default('localhost:3000'),

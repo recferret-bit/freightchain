@@ -15,7 +15,7 @@
 export const FEATURES = [
   {
     id: 'auth', title: 'Sign-in + session',
-    server: /^(application\/use-cases\/auth\/|domain\/auth\/|infrastructure\/auth\/(jose\.token-signer|nacl\.signature-verifier|ip-prefix-hasher\.adapter)|infrastructure\/http\/(guards\/(player-auth|optional-session)|interceptors\/session-cookie)|infrastructure\/prisma\/repositories\/(challenge|sign-in)\.|application\/services\/player-session|domain\/players\/wallet-address)/,
+    server: /^(application\/use-cases\/auth\/|domain\/auth\/|domain\/trust\/|application\/services\/trust-evidence|infrastructure\/trust\/|infrastructure\/auth\/(jose\.token-signer|nacl\.signature-verifier|ip-prefix-hasher\.adapter)|infrastructure\/http\/(guards\/(player-auth|optional-session)|interceptors\/session-cookie)|infrastructure\/prisma\/repositories\/(challenge|sign-in)\.|application\/services\/player-session|domain\/players\/wallet-address)/,
     client: /^(?:frontend\/)?client\/(site\/(wallet|dev-wallet|wallet-picker|wallet-standard)\.js|js\/(hosts\.js|wallet\.js|wallet\/))/,
     routes: /^(POST \/api\/auth\/|GET \/api\/auth\/pair\/:id|GET \/api\/me$)/,
     words: /sign[- ]?in|session|nonce|cookie|SIWS/i,
@@ -163,7 +163,7 @@ export const FEATURES = [
   {
     id: 'admin', title: 'Admin page (sign-in, review queue, audit)',
     server: /^(application\/use-cases\/admin\/|domain\/admin\/|application\/services\/admin-|infrastructure\/alerts\/|infrastructure\/http\/(guards\/admin|interceptors\/admin-cookie)|infrastructure\/auth\/jose\.admin-token|infrastructure\/prisma\/repositories\/admin-)/,
-    client: /^(?:frontend\/)?client\/site\/admin(-[a-z]+)?\.js$/,
+    client: /^(?:frontend\/)?client\/site\/(admin(-[a-z]+)?|trust-evidence)\.js$/,
     routes: /^(GET|POST) \/api\/admin\//,
     words: /admin|override|audit/i,
     e2e: ['e2e-admin.mjs', 'e2e-promo.mjs', 'e2e-verified-play.mjs', 'e2e-verified-deep.mjs'], skills: ['run-tests'],

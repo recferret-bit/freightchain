@@ -1,3 +1,4 @@
+import { networkEvidenceText, fundingEvidenceText } from './trust-evidence.js';
 /* The admin page's directory tabs: PLAYERS (list + one rider in full), POOLS (the on-chain mirror, read-only), STATS (the running totals), SESSIONS (who signed in lately).
    Read-only; a change goes through the signed forms (SETTINGS for free rides, PROMO CODES). Server text goes in with textContent only – ctx.el never touches innerHTML. */
 
@@ -42,6 +43,9 @@ async function playerTab(ctx, w) {
       ['tutorial passed', p.tutorialPassedAt ? time(p.tutorialPassedAt) : 'never'],
       ['18+', p.age18At ? time(p.age18At) : 'never'], ['loss offer', p.lossAt ? time(p.lossAt) : 'never'],
       ['paid', `${d.payments.count} payment${d.payments.count === 1 ? '' : 's'} · ${sol(d.payments.lamports)}`])),
+    el('h2', {}, 'REVIEW EVIDENCE'),
+    el('p', { id: 'pl-funding-evidence', class: 'card' }, fundingEvidenceText(d.fundingEvidence)),
+    el('p', { class: 'dim' }, 'Provider facts for manual review only. Shared networks or funding do not prove common ownership; these checks do not change trust scores.'),
     el('h2', {}, 'STATISTICS'), d.stats ? card(el, statLines(el, d.stats)) : el('div', { class: 'card empty' }, 'No finished ride yet.'),
     el('h2', {}, 'TICKETS'),
     d.tickets.length ? table(el, 'pl-tickets', ['pool', 'unused', 'bought'], d.tickets.map(t => el('tr', {}, el('td', {}, link(el, `#pools/${t.poolId}`, `#${t.poolId}`)), el('td', {}, t.balance), el('td', {}, t.bought)))) : el('div', { class: 'card empty' }, 'No tickets.'),
@@ -49,7 +53,7 @@ async function playerTab(ctx, w) {
     el('h2', {}, `LATEST RIDES · ${d.rides.length}`),
     d.rides.length ? table(el, 'pl-rides', ['ride', 'tier', 'status', 'verdict', 'created'], d.rides.map(r => el('tr', {}, el('td', {}, link(el, `#ride/${r.id}`, r.id.slice(0, 8))), el('td', {}, r.tier), el('td', {}, `${r.status}${r.reason ? ` – ${r.reason}` : ''}`), el('td', {}, r.verdict ?? '–'), el('td', { title: time(r.createdAt) }, ago(r.createdAt))))) : el('div', { class: 'card empty' }, 'No rides.'),
     el('h2', {}, `LATEST SIGN-INS · ${d.signIns.length}`),
-    d.signIns.length ? table(el, 'pl-signins', ['when', 'subnet hash'], d.signIns.map(s => el('tr', {}, el('td', { title: time(s.at) }, ago(s.at)), el('td', { class: 'mono', title: s.ipHash ?? 'Network signal unavailable' }, s.ipHash ? s.ipHash.slice(0, 12) + '…' : 'unavailable')))) : el('div', { class: 'card empty' }, 'None on record (the log is pruned after SIGNIN_RETENTION_DAYS (at most 90 days)).'));
+    d.signIns.length ? table(el, 'pl-signins', ['when', 'subnet hash', 'network evidence'], d.signIns.map(s => el('tr', {}, el('td', { title: time(s.at) }, ago(s.at)), el('td', { class: 'mono', title: s.ipHash ?? 'Network signal unavailable' }, s.ipHash ? s.ipHash.slice(0, 12) + '…' : 'unavailable'), el('td', {}, networkEvidenceText(s.network))))) : el('div', { class: 'card empty' }, 'None on record (the log is pruned after SIGNIN_RETENTION_DAYS (at most 90 days)).'));
 }
 
 /* ───────── POOLS ───────── */

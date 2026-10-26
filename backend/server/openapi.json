@@ -1964,6 +1964,125 @@
                 "schema": {
                   "additionalProperties": true,
                   "properties": {
+                    "fundingEvidence": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "complete": {
+                          "type": "boolean"
+                        },
+                        "excluded": {
+                          "anyOf": [
+                            {
+                              "const": "exchange"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "funder": {
+                          "additionalProperties": true,
+                          "properties": {
+                            "amountRaw": {
+                              "type": "string"
+                            },
+                            "at": {
+                              "type": "number"
+                            },
+                            "signature": {
+                              "type": "string"
+                            },
+                            "slot": {
+                              "type": "number"
+                            },
+                            "type": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "wallet": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "amountRaw",
+                            "at",
+                            "signature",
+                            "slot",
+                            "type",
+                            "wallet"
+                          ],
+                          "type": [
+                            "object",
+                            "null"
+                          ]
+                        },
+                        "source": {
+                          "const": "helius-wallet-api"
+                        },
+                        "status": {
+                          "enum": [
+                            "disabled",
+                            "unconfigured",
+                            "unavailable",
+                            "invalid_input",
+                            "not_found",
+                            "observed",
+                            "incomplete"
+                          ],
+                          "type": "string"
+                        },
+                        "transfers": {
+                          "items": {
+                            "additionalProperties": true,
+                            "properties": {
+                              "amountRaw": {
+                                "type": "string"
+                              },
+                              "at": {
+                                "type": "number"
+                              },
+                              "counterparty": {
+                                "type": "string"
+                              },
+                              "direction": {
+                                "enum": [
+                                  "in",
+                                  "out"
+                                ],
+                                "type": "string"
+                              },
+                              "mint": {
+                                "type": "string"
+                              },
+                              "signature": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "amountRaw",
+                              "at",
+                              "counterparty",
+                              "direction",
+                              "mint",
+                              "signature"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "complete",
+                        "excluded",
+                        "funder",
+                        "source",
+                        "status",
+                        "transfers"
+                      ],
+                      "type": "object"
+                    },
                     "grants": {
                       "items": {
                         "additionalProperties": true,
@@ -2171,6 +2290,66 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "network": {
+                            "additionalProperties": true,
+                            "properties": {
+                              "anonymous": {
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "asn": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "excluded": {
+                                "anyOf": [
+                                  {
+                                    "const": "mobile"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "hosting": {
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "mobile": {
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "enum": [
+                                  "disabled",
+                                  "unconfigured",
+                                  "unavailable",
+                                  "invalid_input",
+                                  "not_found",
+                                  "observed",
+                                  "incomplete"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "anonymous",
+                              "asn",
+                              "excluded",
+                              "hosting",
+                              "mobile",
+                              "status"
+                            ],
+                            "type": "object"
                           },
                           "wallet": {
                             "type": "string"
@@ -6345,6 +6524,12 @@
                     "referralShiftsPerStep": {
                       "type": "number"
                     },
+                    "trustFundingEvidenceEnabled": {
+                      "type": "number"
+                    },
+                    "trustNetworkEvidenceEnabled": {
+                      "type": "number"
+                    },
                     "weeklyTicket1hDays": {
                       "type": "number"
                     },
@@ -6392,6 +6577,8 @@
                     "referralReferrerPartBps",
                     "referralRideCapLamports",
                     "referralShiftsPerStep",
+                    "trustFundingEvidenceEnabled",
+                    "trustNetworkEvidenceEnabled",
                     "weeklyTicket1hDays",
                     "weeklyTicket1hEnabled",
                     "weeklyTicket4hDays",
@@ -6537,6 +6724,12 @@
                         "referralShiftsPerStep": {
                           "type": "number"
                         },
+                        "trustFundingEvidenceEnabled": {
+                          "type": "number"
+                        },
+                        "trustNetworkEvidenceEnabled": {
+                          "type": "number"
+                        },
                         "weeklyTicket1hDays": {
                           "type": "number"
                         },
@@ -6584,6 +6777,8 @@
                         "referralReferrerPartBps",
                         "referralRideCapLamports",
                         "referralShiftsPerStep",
+                        "trustFundingEvidenceEnabled",
+                        "trustNetworkEvidenceEnabled",
                         "weeklyTicket1hDays",
                         "weeklyTicket1hEnabled",
                         "weeklyTicket4hDays",
@@ -6741,6 +6936,66 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "network": {
+                            "additionalProperties": true,
+                            "properties": {
+                              "anonymous": {
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "asn": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "excluded": {
+                                "anyOf": [
+                                  {
+                                    "const": "mobile"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "hosting": {
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "mobile": {
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "enum": [
+                                  "disabled",
+                                  "unconfigured",
+                                  "unavailable",
+                                  "invalid_input",
+                                  "not_found",
+                                  "observed",
+                                  "incomplete"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "anonymous",
+                              "asn",
+                              "excluded",
+                              "hosting",
+                              "mobile",
+                              "status"
+                            ],
+                            "type": "object"
                           },
                           "wallet": {
                             "type": "string"

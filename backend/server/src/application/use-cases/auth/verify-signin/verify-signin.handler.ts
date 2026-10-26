@@ -1,4 +1,5 @@
-import { Logger } from '@nestjs/common';
+import { TrustEvidenceService } from '../../../services/trust-evidence.service.js';
+import { Logger, Optional } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { AuthChallenge, extractNonce, parseSignInMessage } from '../../../../domain/auth/auth-challenge.entity.js';
 import { isLocalSignInDomain } from '../../../../domain/auth/sign-in-host.js';
@@ -35,6 +36,7 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
     private readonly analytics: AnalyticsPort,
     private readonly profile: MeProfileService,
     private readonly ipHasher: IpPrefixHasherPort,
+    @Optional() private readonly evidence?: TrustEvidenceService,
   ) {}
 
   async execute(command: VerifySignInCommand): Promise<SignInResultDto> {
@@ -117,7 +119,7 @@ export class VerifySignInHandler implements ICommandHandler<VerifySignInCommand,
 
     const ipHash = this.ipHasher.hash(command.client.ip);
     this.logger.log({ event: 'signin', msg: `signed in ${wallet}`, wallet });
-    await this.signIns.insert({ wallet, at: now, ipHash }).catch(() => {
+    await this.signIns.insert({ wallet, at: now, ipHash, ...(this.evidence ? { network: await this.evidence.networkOf(ipHash, command.client.ip) } : {}) }).catch(() => {
       this.logger.warn(`sign-in of ${wallet} not recorded`);
     });
 

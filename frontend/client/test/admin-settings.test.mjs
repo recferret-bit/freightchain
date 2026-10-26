@@ -4,6 +4,8 @@ import { SETTING_KNOBS } from '../site/admin-settings.js';
 
 /* key, camelCase field on GET /api/admin/settings, min, max. Existing free-ride knobs stay 0..100_000. */
 const RANGES = [
+  ['trust_network_evidence_enabled', 'trustNetworkEvidenceEnabled', 0, 1],
+  ['trust_funding_evidence_enabled', 'trustFundingEvidenceEnabled', 0, 1],
   ['event_mode_enabled', 'eventModeEnabled', 0, 1],
   ['event_week_start_utc', 'eventWeekStartUtc', 0, 2147483647],
   ['event_last_start_utc', 'eventLastStartUtc', 0, 2147483647],
