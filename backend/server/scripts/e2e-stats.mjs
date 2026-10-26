@@ -26,7 +26,12 @@ const cli = (...args) => spawnSync('node', [CLI, ...args], { encoding: 'utf8', e
 
 // a real Redis (with a password) sits behind the API when REDIS_CONTAINER is set (run-tests/e2e.sh stats): its keys are looked at with redis-cli inside the container
 const REDIS = process.env.REDIS_CONTAINER;
-const redisKeys = () => spawnSync('docker', ['exec', REDIS, 'sh', '-c', 'redis-cli --scan --pattern "fc:*"'], { encoding: 'utf8' }).stdout.split('\n').filter(Boolean).sort();
+const redisKeys = () => spawnSync('docker', ['exec', REDIS, 'sh', '-c', 'redis-cli --scan --pattern "fc:stats:*"'], { encoding: 'utf8' }).stdout.split('\n').filter(Boolean).sort();
+const redisGlobal = () => {
+  const r = spawnSync('docker', ['exec', REDIS, 'redis-cli', '--raw', 'GET', 'fc:stats:global'], { encoding: 'utf8' });
+  if (r.status !== 0) throw new Error('cannot inspect the fixture stats cache');
+  return r.stdout.trim() ? JSON.parse(r.stdout) : null;
+};
 
 // ── 0. a fresh database: zeros everywhere, the landing says so without overflowing ──
 const base = await stats();
@@ -144,8 +149,14 @@ if (REDIS) {
   await stats(); await career(me);
   check('redis: reads cache the game\'s totals and the rider\'s record', ['fc:stats:global', `fc:stats:player:${me.wallet}`].every(k => redisKeys().includes(k)), redisKeys().join(', '));
   const eve = await signIn(), eveRide = await startRide(eve);
-  await sleep(1200); await post(`rides/${eveRide}/end`, { outcome: 'failed', s: 5, t: 1, hull: 0 }, eve.cookie);
-  check('redis: a ride that ends drops the cached totals at once (the next read is fresh, never stale)', !redisKeys().includes('fc:stats:global') && (await stats()).rides === 5);
+  await sleep(1200);
+  const endEve = await post(`rides/${eveRide}/end`, { outcome: 'failed', s: 5, t: 1, hull: 0 }, eve.cookie);
+  check('redis: the next stats read after a committed ride end is fresh', endEve.ok && (await stats()).rides === 5);
+  // The open lobby polls /live every five seconds and can repopulate an invalidated key before redis-cli inspects it.
+  // Force that legitimate read here: a populated key must contain fresh data, not be mistaken for failed invalidation.
+  const liveAfterEnd = await B.ev('(async()=>{const {api}=await import("/site/wallet.js");return (await api("live")).totals;})()');
+  const recached = redisGlobal(), fresh = await stats();
+  check('redis: a browser live poll can repopulate fresh totals after invalidation', liveAfterEnd.rides === 5 && recached?.rides === 5 && fresh.rides === 5, JSON.stringify({ browser: liveAfterEnd.rides, cached: recached?.rides, nextRead: fresh.rides }));
   const frank = await signIn(), frankRide = await startRide(frank);
   spawnSync('docker', ['stop', REDIS]);
   const dead = await fetch(`${BASE}/api/stats`), deadBody = await dead.json().catch(() => ({}));

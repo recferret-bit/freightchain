@@ -293,3 +293,9 @@ Focused helper tests cover hung HTTP/deadline refusal, dirty-source snapshot ide
 The matrix now reflects the public Convoy cutover, campaign task/attempt UI, SGT, subnet privacy and default-off network/funding review adapters. Campaign acceptance is documented in [CAMPAIGN_LOCAL.md](CAMPAIGN_LOCAL.md); privacy in [SIGNIN_PRIVACY.md](SIGNIN_PRIVACY.md); bounded provider evidence in [TRUST_PROVIDER_EVIDENCE.md](TRUST_PROVIDER_EVIDENCE.md). Their local fixtures do not prove live Telegram/X/Turnstile, mainnet Seeker ownership or provider billing.
 
 Earlier dated entries are historical checkpoints. Their then-open UI/persistence claims are superseded by later evidence; they must not be read as current missing implementations. Conversely, the later scheduler failure invalidated the interrupted full-length ride. The replacement ride, current combined gate and pending follow-up integration require their own final evidence, which is not recorded as passed here.
+
+## 26 October — statistics cache acceptance correction
+
+The aggregate Chrome run failed an assertion that demanded `fc:stats:global` remain absent after ride completion. The lobby stays open and polls the live feed every five seconds, so a valid read can repopulate that key before inspection. The old assertion short-circuited without reading totals and did not establish stale data.
+
+The corrected `e2e stats` verifies the first stats response after a successful end, then deliberately polls the live API from Chrome and checks the raw Redis value and following API read. All three contain five rides; key presence is valid. Fresh Chrome acceptance from `ebe3faf9` passed, including real Redis failure fallback and statistics reconciliation (`/private/tmp/fc-stats-cache-chrome.log`). No server/cache behavior changed, and this sequential acceptance does not claim linearizable cache reads during an in-flight database read/write race.
