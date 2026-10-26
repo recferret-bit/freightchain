@@ -29,10 +29,15 @@ export const airdropStatusResponse = obj({
   campaign: z.literal('preseason'),
   code: str,
   rideUnlocked: bool,
-  telegram: obj({ bound: bool, member: bool }),
+  telegram: obj({ bound: bool, member: bool, groupMember: bool, active: bool, loginBot: strOrNull, channel: strOrNull, group: strOrNull }),
   x: obj({ bound: bool, ageOk: bool, followersOk: bool, follows: bool, quoteOk: bool }),
-  turnstile: obj({ required: bool, passed: bool }),
+  turnstile: obj({ required: bool, passed: bool, siteKey: strOrNull }),
+  points: z.number().int().nonnegative(), completedTasks: z.number().int().nonnegative(), tasksComplete: bool, heldUntil: strOrNull,
+  event: obj({ enabled: bool, startsAt: strOrNull, lastStartAt: strOrNull, rulesAccepted: bool, attemptGranted: bool }),
   claimed: bool,
   claimedAt: strOrNull,
   settlement: z.literal('ledger'),
 });
+
+export const claimAttemptBodySchema = z.object({ acceptedRules: z.literal(true), turnstileToken: token }).strict();
+export type ClaimAttemptBody = z.infer<typeof claimAttemptBodySchema>;

@@ -184,6 +184,8 @@ All parameters are controlled through the signed Admin Settings API (without har
 
 ## 11. Specification of issuing the single attempt and of the task campaign (C2, C3 — G2, G6)
 
+**As-built update (2026-10-26):** the local task panel, signed channel/group checks, authenticated group-activity webhook, X durable cache/budget reservation and single-attempt issuance are implemented. Actual routes retain `/api/airdrop/verify-telegram` and `/verify-x`; event claims use `/api/airdrop/preseason/claim-attempt`. Event identity is the reserved promo code `SYSTEM-PRESEASON-2026-11`, and progress/consent lives in `player.AirdropClaim`, rather than introducing a second participant ledger. Event knobs default off; timestamps are integer UTC epoch seconds and the last-start margin is 75 minutes. Points weights and real provider acceptance still need owner input; no future TEN4 is minted. See [`CAMPAIGN_LOCAL.md`](../testing/CAMPAIGN_LOCAL.md).
+
 ### 11.1 Mandatory steps of campaign `preseason-2026-11` (round 19)
 To receive the single 1h prize attempt, a participant MUST complete all 4 mandatory steps:
 1. **Age 18+ and agreement to the rules:** `PUT /api/profile/agreements` (`age18: true`, `termsVersion: '2026-10-17'`, `preseasonRulesAccepted: true`).

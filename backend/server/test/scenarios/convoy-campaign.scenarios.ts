@@ -47,7 +47,7 @@ export function convoyCampaignScenarios(h: () => Harness): void {
     await repo.claimTelegram(rider.address, 'telegram-test');
     await repo.claimX(rider.address, 'x-test');
     const row = (await repo.get(rider.address))!;
-    await repo.save({ ...row, telegramMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+    await repo.save({ ...row, telegramMember: true, telegramGroupMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
     expect((await rider.agent.get('/api/airdrop/status').expect(200)).body).toMatchObject({ rideUnlocked: true, telegram: { bound: true }, x: { bound: true }, claimed: false });
     expect((await rider.agent.post('/api/airdrop/claim').send({}).expect(200)).body.claimed).toBe(false);
     h().clock.advance(48 * 3600);
@@ -84,7 +84,7 @@ export function convoyCampaignScenarios(h: () => Harness): void {
     const campaign = h().app.get(AirdropRepositoryPort);
     await campaign.claimTelegram(friend.address, 'tg-convoy');
     await campaign.claimX(friend.address, 'x-convoy');
-    await campaign.save({ ...(await campaign.get(friend.address))!, rideOk: true, telegramMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+    await campaign.save({ ...(await campaign.get(friend.address))!, rideOk: true, telegramMember: true, telegramGroupMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
     await svc.onVerifiedRide(paid);
     expect((await repo.ledger()).filter((row) => row.unit === 'ten4')).toEqual([expect.objectContaining({ kind: 'm1', releasedAt: null, chainState: 'held' })]);
     const emission = h().app.get(ReferralEmissionPort);

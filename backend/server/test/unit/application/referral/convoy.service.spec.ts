@@ -127,7 +127,7 @@ describe('ConvoyService', () => {
     await h.svc.onVerifiedRide(paid());
     await h.svc.refreshMilestones('friend');
     expect((await h.repo.ledger()).filter(r => r.unit === 'ten4')).toHaveLength(0);
-    await h.campaign.save({ ...emptyAirdrop('friend'), rideOk: true, telegramUserId: 'tg', telegramMember: true, xUserId: 'x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+    await h.campaign.save({ ...emptyAirdrop('friend'), rideOk: true, telegramUserId: 'tg', telegramMember: true, telegramGroupMember: true, xUserId: 'x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
     await h.svc.refreshMilestones('friend');
     await h.svc.refreshMilestones('friend');
     expect((await h.repo.ledger()).filter(r => r.unit === 'ten4')).toEqual([expect.objectContaining({ kind: 'm1', at: h.clock.at, chainState: 'held' })]);
@@ -143,7 +143,7 @@ describe('ConvoyService', () => {
     h.players.add('host', 0, 49); h.players.add('friend');
     await h.svc.bind('friend', 'host');
     await h.svc.onVerifiedRide(fact('friend', 'free-2c'));
-    await h.campaign.save({ ...emptyAirdrop('friend'), rideOk: true, telegramUserId: 'tg', telegramMember: true, xUserId: 'x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+    await h.campaign.save({ ...emptyAirdrop('friend'), rideOk: true, telegramUserId: 'tg', telegramMember: true, telegramGroupMember: true, xUserId: 'x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
     await h.svc.onVerifiedRide({ ...fact('friend', '1h'), tier: '1h', ranked: true });
     h.clock.at = new Date(MONDAY.getTime() + 7 * DAY_MS);
     await h.svc.onVerifiedRide({ ...fact('friend', '1h'), tier: '1h', ranked: true });
@@ -288,7 +288,7 @@ describe('ConvoyService', () => {
     await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true });
     h.clock.at = new Date(MONDAY.getTime() + 7 * DAY_MS);
     expect((await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true })).milestones.m1).toBe(false);
-    await h.campaign.save({ ...emptyAirdrop('referee'), rideOk: true, telegramUserId: 'tg', telegramMember: true, xUserId: 'x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+    await h.campaign.save({ ...emptyAirdrop('referee'), rideOk: true, telegramUserId: 'tg', telegramMember: true, telegramGroupMember: true, xUserId: 'x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
     const held = await h.svc.onVerifiedRide({ ...fact('referee', '1h'), tier: '1h', ranked: true });
     expect(held.milestones.m1).toBe(true);
     h.clock.at = new Date(h.clock.at.getTime() + 48 * 3_600_000);

@@ -3,6 +3,12 @@ import { BadRequestError } from '../shared/errors.js';
 
 /** Owner-tweakable integers in `player.GameSetting`. A missing or out-of-range row falls back to the code default. */
 export const SETTING_KEYS = [
+  'event_mode_enabled',
+  'event_week_start_utc',
+  'event_last_start_utc',
+  'event_week_end_utc',
+  'airdrop_x_budget_cents',
+  'airdrop_x_check_cost_cents',
   'free_on_signup', 'free_rides_daily_max',
   'weekly_ticket_1h_enabled', 'weekly_ticket_1h_days',
   'weekly_ticket_4h_enabled', 'weekly_ticket_4h_days',
@@ -20,6 +26,12 @@ export const SETTING_KEYS = [
 export type SettingKey = (typeof SETTING_KEYS)[number];
 
 export const SETTING_DEFAULTS: Record<SettingKey, number> = {
+  event_mode_enabled: 0,
+  event_week_start_utc: 0,
+  event_last_start_utc: 0,
+  event_week_end_utc: 0,
+  airdrop_x_budget_cents: 10000,
+  airdrop_x_check_cost_cents: 0,
   free_on_signup: 10,
   free_rides_daily_max: 5,
   weekly_ticket_1h_enabled: 1, // 0 off, 1 on. Default grant is the 1h shift.
@@ -44,7 +56,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, number> = {
   referral_free_ride_weekly_cap: 10,
   referral_referrer_part_bps: 8000,
   referral_ride_cap_lamports: 1_000_000_000,
-  referral_donation_share_bps: 1000,
+  referral_donation_share_bps: 0,
   referral_donation_cap_lamports: 500_000_000,
   referral_count_weekly_grant: 1,
   trust_finish_points: 15,
@@ -55,6 +67,12 @@ export const SETTING_DEFAULTS: Record<SettingKey, number> = {
 
 /** Per key. `GameSetting.value` is a signed 32-bit int, so a lamport cap stops at 2e9. */
 export const SETTING_BOUNDS: Record<SettingKey, { min: number; max: number }> = {
+  event_mode_enabled: { min: 0, max: 1 },
+  event_week_start_utc: { min: 0, max: 2147483647 },
+  event_last_start_utc: { min: 0, max: 2147483647 },
+  event_week_end_utc: { min: 0, max: 2147483647 },
+  airdrop_x_budget_cents: { min: 0, max: 10000 },
+  airdrop_x_check_cost_cents: { min: 0, max: 10000 },
   free_on_signup: { min: 0, max: 100_000 },
   free_rides_daily_max: { min: 0, max: 100_000 },
   weekly_ticket_1h_enabled: { min: 0, max: 1 },
@@ -95,6 +113,12 @@ export const FREE_RIDES_HARD_MAX = 100_000;
 
 /** The resolved knobs the rest of the server reads. Camel case on the wire (`GET /api/admin/settings`). */
 export interface GameSettings {
+  eventModeEnabled: number;
+  eventWeekStartUtc: number;
+  eventLastStartUtc: number;
+  eventWeekEndUtc: number;
+  airdropXBudgetCents: number;
+  airdropXCheckCostCents: number;
   freeOnSignup: number;
   freeRidesDailyMax: number;
   /** 0 or 1. The 1h granted ticket. */
@@ -131,6 +155,12 @@ export interface GameSettings {
 }
 
 const CAMEL: Record<SettingKey, keyof GameSettings> = {
+  event_mode_enabled: 'eventModeEnabled',
+  event_week_start_utc: 'eventWeekStartUtc',
+  event_last_start_utc: 'eventLastStartUtc',
+  event_week_end_utc: 'eventWeekEndUtc',
+  airdrop_x_budget_cents: 'airdropXBudgetCents',
+  airdrop_x_check_cost_cents: 'airdropXCheckCostCents',
   free_on_signup: 'freeOnSignup',
   free_rides_daily_max: 'freeRidesDailyMax',
   weekly_ticket_1h_enabled: 'weeklyTicket1hEnabled',

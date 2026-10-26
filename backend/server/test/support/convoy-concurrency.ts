@@ -55,7 +55,7 @@ export function convoyConcurrencyScenarios(h: () => Harness): void {
     await h().app.get(AirdropService).recordVerifiedRide(friend.address, 'free-2c');
     await campaign.claimTelegram(friend.address, 'late-tg');
     await campaign.claimX(friend.address, 'late-x');
-    await campaign.save({ ...(await campaign.get(friend.address))!, telegramMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+    await campaign.save({ ...(await campaign.get(friend.address))!, telegramMember: true, telegramGroupMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
     await Promise.all([svc.refreshMilestones(friend.address), svc.refreshMilestones(friend.address), svc.onVerifiedRide({ ...fact, rideId: 'week-two' })]);
     const db = h().app.get(PrismaService);
     expect(await db.convoyLedger.count({ where: { kind: 'm1', referee: friend.address } })).toBe(1);
@@ -69,7 +69,7 @@ export function convoyConcurrencyScenarios(h: () => Harness): void {
     await repo.claimTelegram(rider.address, 'tg');
     await repo.claimX(rider.address, 'x');
     const row = (await repo.get(rider.address))!;
-    await repo.save({ ...row, telegramMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+    await repo.save({ ...row, telegramMember: true, telegramGroupMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
     const held = await Promise.all(Array.from({ length: 4 }, () => svc.claim(rider.address)));
     expect(held.every((r) => !r.claimed)).toBe(true);
     h().clock.advance(48 * 3600);

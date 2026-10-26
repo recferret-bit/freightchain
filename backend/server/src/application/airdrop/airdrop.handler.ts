@@ -1,7 +1,7 @@
 import { CommandHandler, QueryHandler, type ICommandHandler, type IQueryHandler } from '@nestjs/cqrs';
 import { ConvoyService } from '../referral/convoy.service.js';
 import { AirdropService, type AirdropStatusDto } from './airdrop.service.js';
-import { ClaimAirdropCommand, GetAirdropStatusQuery, VerifyTelegramCommand, VerifyXCommand } from './airdrop.command.js';
+import { ClaimPreseasonAttemptCommand, ClaimAirdropCommand, GetAirdropStatusQuery, VerifyTelegramCommand, VerifyXCommand } from './airdrop.command.js';
 
 @QueryHandler(GetAirdropStatusQuery)
 export class GetAirdropStatusHandler implements IQueryHandler<GetAirdropStatusQuery, AirdropStatusDto> {
@@ -36,5 +36,13 @@ export class ClaimAirdropHandler implements ICommandHandler<ClaimAirdropCommand,
   constructor(private readonly airdrop: AirdropService) {}
   execute({ wallet, turnstileToken }: ClaimAirdropCommand): Promise<AirdropStatusDto> {
     return this.airdrop.claim(wallet, turnstileToken);
+  }
+}
+
+@CommandHandler(ClaimPreseasonAttemptCommand)
+export class ClaimPreseasonAttemptHandler implements ICommandHandler<ClaimPreseasonAttemptCommand, AirdropStatusDto> {
+  constructor(private readonly airdrop: AirdropService) {}
+  execute({ wallet, acceptedRules, turnstileToken }: ClaimPreseasonAttemptCommand): Promise<AirdropStatusDto> {
+    return this.airdrop.claimAttempt(wallet, acceptedRules, turnstileToken);
   }
 }

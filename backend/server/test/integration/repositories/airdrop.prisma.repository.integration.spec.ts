@@ -16,12 +16,14 @@ describe('AirdropPrismaRepository', () => {
     await repo.save({ ...emptyAirdrop('ada'), rideOk: true });
     expect(await repo.claimTelegram('ada', 'tg')).toBe('ok');
     expect(await repo.claimX('ada', 'x')).toBe('ok');
-    const row = { ...(await repo.get('ada'))!, telegramMember: true, xHandle: 'ada_x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true, turnstileOk: true, heldAt: at(1), claimedAt: at(172801) };
+    const row = { ...(await repo.get('ada'))!, telegramMember: true, telegramGroupMember: true, telegramActiveAt: at(1), rulesAcceptedAt: at(2), attemptGrantedAt: at(2), xAttemptAt: at(3), xVerifiedAt: at(4), xPostId: '123', points: 12, xHandle: 'ada_x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true, turnstileOk: true, heldAt: at(1), claimedAt: at(172801) };
     await repo.save(row);
     const other = await testPrisma();
     try {
       const restarted = new AirdropPrismaRepository(other, clock);
       expect(await restarted.get('ada')).toEqual(row);
+      expect(await restarted.findTelegramOwner('tg')).toBe('ada');
+      expect(await restarted.findTelegramOwner('missing')).toBeNull();
       expect(await restarted.claimTelegram('bob', 'tg')).toBe('taken');
       expect(await restarted.claimX('bob', 'x')).toBe('taken');
       expect(await restarted.claimTelegram('ada', 'different')).toBe('changed');

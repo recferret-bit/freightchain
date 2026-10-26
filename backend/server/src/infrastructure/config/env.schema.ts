@@ -59,6 +59,10 @@ export const envSchema = z
     TWITTERAPI_IO_KEY: optional(z.string().min(1)),
     TELEGRAM_BOT_TOKEN: optional(z.string().min(1)),
     TELEGRAM_CHANNEL_ID: optional(z.string().regex(/^(@[A-Za-z0-9_]+|-?\d+)$/)),
+    TELEGRAM_GROUP_ID: optional(z.string().regex(/^(@[A-Za-z0-9_]+|-?\d+)$/)),
+    TELEGRAM_LOGIN_BOT: optional(z.string().regex(/^[A-Za-z0-9_]{5,32}$/)),
+    TELEGRAM_WEBHOOK_SECRET: optional(z.string().regex(/^[A-Za-z0-9_-]{32,256}$/)),
+    TURNSTILE_SITE_KEY: optional(z.string().min(1)),
     TURNSTILE_SECRET_KEY: optional(z.string().min(1)),
     SOL_USD: optional(z.coerce.number().min(0)), // 0 = not pinned (live price), as before
     DEMO_WALLETS: z.string().default(''),

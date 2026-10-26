@@ -41,8 +41,8 @@ export abstract class PromoRepositoryPort {
   abstract listRedemptions(filter: { code?: string; wallet?: string; limit: number }, tx?: TransactionHandle): Promise<PromoRedemptionRecord[]>;
   /** Writes the unspent ride that a redemption just granted. The (code, wallet, n) key matches the redemption. */
   abstract insertGrant(grant: PromoRideGrantRecord, tx: TransactionHandle): Promise<void>;
-  abstract hasUnspent(wallet: string, tier: PaidTierId, tx?: TransactionHandle): Promise<boolean>;
+  abstract hasUnspent(wallet: string, tier: PaidTierId, tx?: TransactionHandle, source?: 'ordinary' | 'event'): Promise<boolean>;
   /** Claims the oldest unspent grant of this tier. Returns its code, or null when none is waiting. */
-  abstract claimUnspent(wallet: string, tier: PaidTierId, rideId: string, tx: TransactionHandle): Promise<string | null>;
+  abstract claimUnspent(wallet: string, tier: PaidTierId, rideId: string, tx: TransactionHandle, source?: 'ordinary' | 'event'): Promise<string | null>;
   abstract listUnspent(wallet: string, tx?: TransactionHandle): Promise<PromoRideGrantRecord[]>;
 }

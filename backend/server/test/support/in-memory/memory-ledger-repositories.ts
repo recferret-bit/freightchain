@@ -1,3 +1,5 @@
+import { PRESEASON_PROMO_CODE } from '../../../src/domain/settings/preseason-event.js';
+import type { TransactionHandle } from '../../../src/application/ports/shared/transaction.port.js';
 import { Injectable } from '@nestjs/common';
 import { Pool } from '../../../src/domain/economy/pool.entity.js';
 import type { PayoutState, PoolHold, PoolProps } from '../../../src/domain/economy/pool.types.js';
@@ -187,12 +189,12 @@ export class MemoryPromoRepository extends PromoRepositoryPort {
     this.db.promoGrants.push({ ...grant });
   }
 
-  async hasUnspent(wallet: string, tier: PaidTierId): Promise<boolean> {
-    return this.db.promoGrants.some((g) => g.wallet === wallet && g.tier === tier && g.rideId === null);
+  async hasUnspent(wallet: string, tier: PaidTierId, _tx?: TransactionHandle, source?: 'ordinary' | 'event'): Promise<boolean> {
+    return this.db.promoGrants.some((g) => g.wallet === wallet && g.tier === tier && g.rideId === null && (!source || (source === 'event' ? g.code === PRESEASON_PROMO_CODE : g.code !== PRESEASON_PROMO_CODE)));
   }
 
-  async claimUnspent(wallet: string, tier: PaidTierId, rideId: string): Promise<string | null> {
-    const grant = this.db.promoGrants.filter((g) => g.wallet === wallet && g.tier === tier && g.rideId === null).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
+  async claimUnspent(wallet: string, tier: PaidTierId, rideId: string, _tx?: TransactionHandle, source?: 'ordinary' | 'event'): Promise<string | null> {
+    const grant = this.db.promoGrants.filter((g) => g.wallet === wallet && g.tier === tier && g.rideId === null && (!source || (source === 'event' ? g.code === PRESEASON_PROMO_CODE : g.code !== PRESEASON_PROMO_CODE))).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
     if (!grant) return null;
     grant.rideId = rideId;
     return grant.code;

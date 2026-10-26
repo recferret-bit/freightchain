@@ -1,5 +1,5 @@
 import type { ReferralRecord } from '../../domain/referral/referral-rules.js';
-import type { AirdropRow } from '../airdrop/airdrop-rules.js';
+import { campaignTasksComplete, type AirdropRow } from '../airdrop/airdrop-rules.js';
 import type { ConvoyLedgerRow, ConvoyRow, ConvoyRideRow } from './convoy.repository.port.js';
 import { distinctWeeks, pendingTtlMs } from './convoy-rules.js';
 
@@ -17,7 +17,7 @@ export interface ConvoyAccountDto {
   rewards: ConvoyRewardDto[]; hidden: boolean; legacyQualified: number; trustEligible: boolean;
 }
 export function tasksComplete(row: AirdropRow | null | undefined): boolean {
-  return !!(row?.rideOk && row.telegramUserId && row.telegramMember && row.xUserId && row.xAgeOk && row.xFollowersOk && row.xFollows && row.xQuoteOk);
+  return campaignTasksComplete(row ?? null);
 }
 export function inviteDto(row: ConvoyRow, rides: ConvoyRideRow[], tasks: boolean, promo: boolean): ConvoyInviteDto {
   return { wallet: row.referee, status: row.status, at: (row.activatedAt ?? row.boundAt).toISOString(),

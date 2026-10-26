@@ -20,6 +20,7 @@ export async function verifyTurnstile(secret: string | null, token: string, fetc
 @Injectable()
 export class TurnstileAdapter extends TurnstilePort {
   constructor(private readonly env: EnvService) { super(); }
+  override get siteKey(): string | null { return this.env.turnstileSiteKey ?? null; }
   override get required(): boolean { return !!(this.env.turnstileSecretKey || this.env.telegramBotToken || this.env.twitterApiIoKey); }
   verify(token: string): Promise<boolean> {
     return verifyTurnstile(this.env.turnstileSecretKey ?? null, token, fetch, new URL(this.env.appOrigin).hostname);

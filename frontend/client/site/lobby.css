@@ -341,3 +341,6 @@ th button.on{color:var(--amber)}
 #ticket-dialog.ok .s3{--dx:-2px;left:40px;top:4px;animation:tt-spark .85s ease-out .44s}
 @media (max-width:560px){#ticket-dialog .tt{grid-template-columns:1fr}#ticket-dialog .tt-stub{flex-direction:row;min-height:0;gap:12px;padding:12px 16px}#ticket-dialog .tt-stub::before{display:none}#ticket-dialog .tt-face,#ticket-dialog .tt-shift{margin-top:0}#ticket-dialog .tt-title{font-size:19px}#ticket-dialog .tt-copy{padding:14px 16px 16px}}
 @media (prefers-reduced-motion:reduce){#ticket-dialog .tt,#ticket-dialog .td-back,#ticket-dialog .tt-spark{animation:none!important}}
+
+.campaign-form{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.campaign-form input{flex:1 1 180px;min-width:0;max-width:100%;font:inherit;background:#0008;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:10px 12px}.campaign-form input:focus-visible{outline:2px solid var(--amber)}#campaign-box{overflow-wrap:anywhere}#campaign-box .opt{max-width:none;margin:16px 0}#campaign-box button{max-width:100%;white-space:normal}#campaign-msg:empty{display:none}
+.campaign-form button{flex:1 0 160px}

@@ -20,9 +20,10 @@ import { ReferralService } from './services/referral.service.js';
 import { ReleaseConvoyHandler } from './referral/release-convoy.handler.js';
 import { ConvoyService } from './referral/convoy.service.js';
 import { ReferralExpiryScheduler } from './referral/referral-expiry.scheduler.js';
+import { TelegramActivityHandler } from './airdrop/telegram-activity.handler.js';
 import { AirdropService } from './airdrop/airdrop.service.js';
 import { GetConvoyLeaderboardHandler, BindConvoyHandler, SetConvoyPrivacyHandler } from './referral/convoy.handler.js';
-import { GetAirdropStatusHandler, VerifyTelegramHandler, VerifyXHandler, ClaimAirdropHandler } from './airdrop/airdrop.handler.js';
+import { GetAirdropStatusHandler, VerifyTelegramHandler, VerifyXHandler, ClaimAirdropHandler, ClaimPreseasonAttemptHandler } from './airdrop/airdrop.handler.js';
 import { ReferralPayoutService } from './services/referral-payout.service.js';
 import { AdminApprovalService } from './services/admin-approval.service.js';
 import { AdminModerationHandler } from './use-cases/admin/moderate/admin-moderation.handler.js';
@@ -233,7 +234,7 @@ const handlers: Provider[] = [
   BurnHonkHandler, BurnHonkTimeHandler, BurnHonkWeatherHandler, MintHonkVisualHandler, GetHonkHandler, GetHonkCatalogHandler, ReleaseHonkHandler,
   GetReferralsHandler, BindReferralHandler, SetReferralGiftHandler,
   GetConvoyLeaderboardHandler, BindConvoyHandler, SetConvoyPrivacyHandler,
-  GetAirdropStatusHandler, VerifyTelegramHandler, VerifyXHandler, ClaimAirdropHandler,
+  TelegramActivityHandler, GetAirdropStatusHandler, VerifyTelegramHandler, VerifyXHandler, ClaimAirdropHandler, ClaimPreseasonAttemptHandler,
   GetPrizeBoardHandler,
 ];
 

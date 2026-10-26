@@ -1,3 +1,4 @@
+import { PRESEASON_PROMO_CODE } from '../../../domain/settings/preseason-event.js';
 import { Injectable } from '@nestjs/common';
 import type { PromoCode } from '../../../domain/economy/promo-code.entity.js';
 import { PromoRepositoryPort, type PromoRedemptionRecord, type PromoRideGrantRecord } from '../../../application/ports/economy/promo.repository.port.js';
@@ -63,17 +64,18 @@ export class PromoPrismaRepository extends PromoRepositoryPort {
     await clientFor(this.prisma, tx).promoRideGrant.create({ data: grant });
   }
 
-  async hasUnspent(wallet: string, tier: PaidTierId, tx?: TransactionHandle): Promise<boolean> {
-    const n = await clientFor(this.prisma, tx).promoRideGrant.count({ where: { wallet, tier, rideId: null } });
+  async hasUnspent(wallet: string, tier: PaidTierId, tx?: TransactionHandle, source?: 'ordinary' | 'event'): Promise<boolean> {
+    const n = await clientFor(this.prisma, tx).promoRideGrant.count({ where: { wallet, tier, rideId: null, ...(source ? { code: source === 'event' ? PRESEASON_PROMO_CODE : { not: PRESEASON_PROMO_CODE } } : {}) } });
     return n > 0;
   }
 
-  async claimUnspent(wallet: string, tier: PaidTierId, rideId: string, tx: TransactionHandle): Promise<string | null> {
+  async claimUnspent(wallet: string, tier: PaidTierId, rideId: string, tx: TransactionHandle, source?: 'ordinary' | 'event'): Promise<string | null> {
     const rows = await clientFor(this.prisma, tx).$queryRaw<{ code: string }[]>`
       UPDATE "economy"."PromoRideGrant" AS g SET "rideId" = ${rideId}
       WHERE g."rideId" IS NULL AND (g.code, g.wallet, g.n) = (
         SELECT code, wallet, n FROM "economy"."PromoRideGrant"
         WHERE wallet = ${wallet} AND tier = ${tier} AND "rideId" IS NULL
+          AND (${source ?? 'any'} = 'any' OR (${source ?? 'any'} = 'event' AND code = ${PRESEASON_PROMO_CODE}) OR (${source ?? 'any'} = 'ordinary' AND code <> ${PRESEASON_PROMO_CODE}))
         ORDER BY "createdAt" ASC LIMIT 1 FOR UPDATE)
       RETURNING g.code`;
     return rows[0]?.code ?? null;

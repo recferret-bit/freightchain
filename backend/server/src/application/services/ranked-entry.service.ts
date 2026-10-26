@@ -1,4 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { GameSettingsService } from './game-settings.service.js';
+import { PRESEASON_PROMO_CODE, eventWindow } from '../../domain/settings/preseason-event.js';
+import { resolveSettings } from '../../domain/settings/game-settings.js';
+import { Injectable, Optional } from '@nestjs/common';
 import { PAID_RANKED_STARTS, PROMO_RANKED_STARTS, nominalShiftSeconds, prizeAccess, prizeWeek, rankedStartFits } from '../../domain/prize/prize-rules.js';
 import type { Player } from '../../domain/players/player.entity.js';
 import type { Ride } from '../../domain/rides/ride.entity.js';
@@ -19,6 +22,7 @@ export class RankedEntryService {
     private readonly rides: RideRepositoryPort,
     private readonly geo: GeoLocatorPort,
     private readonly lists: PrizeGeoPort,
+    @Optional() private readonly settings?: GameSettingsService,
   ) {}
 
   async claim(player: Player, ride: Ride, headers: GeoHeaders, now: Date, tx?: TransactionHandle): Promise<GeoFix & { country: string }> {
@@ -37,6 +41,14 @@ export class RankedEntryService {
     }
     if (!rankedStartFits(now, nominalShiftSeconds(ride))) {
       throw new ConflictError('a ranked start must be able to finish by Sunday 12:00 UTC', 'ranked_window');
+    }
+    const settings = await this.settings?.current(tx) ?? resolveSettings([]);
+    if (settings.eventModeEnabled === 1 || ride.promoCode === PRESEASON_PROMO_CODE) {
+      const window = eventWindow(settings);
+      if (!window || now < window.start || now > window.lastStart) throw new ConflictError('the event start window is closed', 'event_closed');
+      if (ride.promoCode !== PRESEASON_PROMO_CODE || ride.tier !== '1h') throw new ConflictError('only the campaign attempt can enter this event', 'event_attempt_required');
+      const eventUsed = await this.rides.countRankedStarts(player.wallet, window.start, window.end, tx);
+      if (eventUsed.paid + eventUsed.promo > 0) throw new ConflictError('your event attempt has been used', 'event_attempt_used');
     }
     const week = prizeWeek(now);
     const used = await this.rides.countRankedStarts(player.wallet, week.start, week.end, tx);

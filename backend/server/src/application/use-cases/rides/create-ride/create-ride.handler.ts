@@ -1,3 +1,5 @@
+import { GameSettingsService } from '../../../services/game-settings.service.js';
+import { PRESEASON_PROMO_CODE, eventWindow } from '../../../../domain/settings/preseason-event.js';
 import { Optional } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { lamportsFor } from '../../../../domain/economy/prize-split.js';
@@ -82,6 +84,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     private readonly promos: PromoRepositoryPort,
     private readonly weekly: WeeklyTicketService,
     @Optional() private readonly finishRules?: FinishRulesPort,
+    @Optional() private readonly settings?: GameSettingsService,
   ) {}
 
   async execute({ wallet, tier, tutorial, assist, level: asked, geo }: CreateRideCommand): Promise<RideDto> {
@@ -92,10 +95,16 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     if (paid && asked !== null) throw new ConflictError('a level is for free rides only', 'level_free_only');
     const level = asked ?? DEFAULT_FREE_LEVEL;
     if (!paid) { assertAssistAllowed(level, assist); assertTutorialAllowed(level, tutorial); } // before the lock: a refused HARD helper leaves the ride in hand alone
+    const campaignSettings = await this.settings?.current();
+    const eventEnabled = campaignSettings?.eventModeEnabled === 1;
+    const window = campaignSettings ? eventWindow(campaignSettings) : null;
+    if (paid && eventEnabled && (!window || this.clock.now() < window.start || this.clock.now() > window.lastStart)) throw new ConflictError('the event start window is closed', 'event_closed');
+    const promoSource = eventEnabled ? 'event' : 'ordinary';
     const livePool = paid && (await this.poolTickets.tierHasPools(tier as PaidTierId));
-    const promoWaiting = paid && (await this.promos.hasUnspent(wallet, tier as PaidTierId));
+    const promoWaiting = paid && (await this.promos.hasUnspent(wallet, tier as PaidTierId, undefined, promoSource));
     const held = paid && !promoWaiting ? await this.rides.findOpenByWallet(wallet) : null;
     const holdingReady = held?.isInStatus(RideStatus.Created) && !held.isFree && held.tier === tier;
+    if (paid && eventEnabled && !promoWaiting && !(holdingReady && held?.promoCode === PRESEASON_PROMO_CODE)) throw new ConflictError('complete the campaign to receive the event attempt', 'event_attempt_required');
     const playerRow = await this.sessions.touch(wallet);
     if (playerRow.guest && (paid || level !== DEFAULT_FREE_LEVEL)) throw new ConflictError('a guest session can only play the EASY run', 'guest_easy_only');
     const grantPossible = paid && (await this.weekly.offer(playerRow, geo, this.clock.now())).some((t) => t.tier === tier);
@@ -107,13 +116,20 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
     const round = selling ? await this.rounds.ensureRound() : null; // the round a ticket ride ranks in when its pool has none yet (outside the lock: it may insert)
     // The price is fetched BEFORE the transaction (no row lock is held across an HTTP call) and only when a NEW order will be needed – re-asking for the
     // order or ride already in hand must not wait on the price feeds. Best effort: the locked transaction below re-decides and 503s if it then needs one.
-    const quote = paid && !selling && !grantPossible && (await this.needsNewOrder(wallet, tier)) ? await this.price.solUsd().catch(() => null) : null;
+    const quote = paid && !selling && !promoWaiting && !grantPossible && (await this.needsNewOrder(wallet, tier)) ? await this.price.solUsd().catch(() => null) : null;
     const facts = await withVersionRetry(() => this.transactions.run(async (tx) => {
       const now = this.clock.now();
       const player = await this.players.findByWalletForUpdate(wallet, tx);
       if (!player) throw new NotFoundError('player not found');
       let open = await this.rides.findOpenByWallet(wallet, tx);
-      let failed: RideProps | null = null;
+      let failed: RideProps | null = null, expiredEvent: RideProps | null = null;
+      if (open?.isInStatus(RideStatus.Created) && open.promoCode === PRESEASON_PROMO_CODE && (!window || now > window.lastStart)) {
+        open.closeExpiredEvent(now);
+        await this.rides.save(open, tx);
+        expiredEvent = open.snapshot();
+        await this.stats.recordRide(expiredEvent, tx);
+        open = null;
+      }
       if (open?.isStaleRunning(now, rules)) { // a tab that vanished mid-ride must not block the wallet forever
         open.failHeartbeatLost(now);
         await this.rides.save(open, tx);
@@ -130,13 +146,14 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
       }
       // A ride promo is claimed before a ticket or a payment. The grant is the ride; it is not a purchase.
       const promoId = this.entropy.uuid();
-      const promoCode = paid ? await this.promos.claimUnspent(wallet, tier as PaidTierId, promoId, tx) : null;
+      const promoCode = paid ? await this.promos.claimUnspent(wallet, tier as PaidTierId, promoId, tx, promoSource) : null;
+      if (paid && eventEnabled && !promoCode) throw new ConflictError('the event attempt has already been used', 'event_attempt_used');
       const grant = paid && !promoCode ? await this.weekly.offer(player, geo, now, tx) : [];
       const takingGrant = grant.some((t) => t.tier === tier);
       if (paid && !promoCode && !takingGrant && !isTierOnSale(tier) && !livePool) throw new ConflictError(`the ${tierShiftName(tier as PaidTierId)} shift is not on sale yet`, 'tier_not_on_sale');
       if (paid && !promoCode && !takingGrant) player.requirePaidPlay();
       const ticketed = !promoCode && !takingGrant && selling ? await this.ticketRide(wallet, tier as PaidTierId, round as Round, now, tx) : null;
-      let cancelled: RideProps | null = null;
+      let cancelled: RideProps | null = expiredEvent;
       let expired: RideProps | null = null;
       if (open?.isInStatus(RideStatus.Created)) {
         open.cancelReplaced(now);
@@ -151,7 +168,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
         expired = open.snapshot();
       }
       const ride = promoCode
-        ? this.promoRide(promoId, wallet, tier as PaidTierId, promoCode, now)
+        ? await this.promoRide(promoId, wallet, tier as PaidTierId, promoCode, now, tx)
         : takingGrant
           ? await this.grantedRide(wallet, tier as PaidTierId, now, tx, player, geo)
           : ticketed ?? (await this.newRide(wallet, tier, quote, now, { tutorial, assist, level }, tx));
@@ -159,7 +176,7 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
       if (this.finishRules && ride.tier === '1h' && ride.minSeconds >= 3600) await this.finishRules.stamp(ride.id, FINISH_RULES_VERSION, tx);
       return { dto: toRideDto(ride), now, ordered: ride.snapshot(), resumed: null, failed, expired, cancelled, freeRidesLeft: player.freeRides };
     }));
-    if (facts.failed) await this.stats.invalidate(wallet); // a stale ride this call ended joined the statistics
+    if (facts.failed || facts.cancelled) await this.stats.invalidate(wallet); // a stale ride this call ended joined the statistics
     this.emit(wallet, facts);
     return facts.dto;
   }
@@ -175,11 +192,12 @@ export class CreateRideHandler implements ICommandHandler<CreateRideCommand, Rid
   }
 
   /** A claimed ride promo: the catalog length, price 0, its own seed. Not the pool's road and not a daily seed. */
-  private promoRide(id: string, wallet: string, tier: PaidTierId, promoCode: string, now: Date): Ride {
-    const rules = this.rules.get();
-    const timeScale = isDemoWallet(rules, wallet) ? demoScaleOf(rules) : 1;
+  private async promoRide(id: string, wallet: string, tier: PaidTierId, promoCode: string, now: Date, tx: TransactionHandle): Promise<Ride> {
+    const rules = this.rules.get(), event = promoCode === PRESEASON_PROMO_CODE;
+    const timeScale = !event && isDemoWallet(rules, wallet) ? demoScaleOf(rules) : 1;
     const minSeconds = rideTier(tier, rules.freeRideSeconds).seconds / timeScale;
-    return Ride.createPromo({ id, wallet, tier, seed: this.entropy.seed31(), minSeconds, timeScale, promoCode, now });
+    const seed = event ? await this.dailySeeds.claim(tier, 'event:preseason-2026-11', this.entropy.seed31(), now, tx) : this.entropy.seed31();
+    return Ride.createPromo({ id, wallet, tier, seed, minSeconds, timeScale, promoCode, now });
   }
 
   /** Spends one ticket of the tier (the caller holds the player lock) and makes the ready ride in that ticket's pool, on the POOL's seed: every rider of a pool

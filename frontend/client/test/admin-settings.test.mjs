@@ -4,6 +4,13 @@ import { SETTING_KNOBS } from '../site/admin-settings.js';
 
 /* key, camelCase field on GET /api/admin/settings, min, max. Existing free-ride knobs stay 0..100_000. */
 const RANGES = [
+  ['event_mode_enabled', 'eventModeEnabled', 0, 1],
+  ['event_week_start_utc', 'eventWeekStartUtc', 0, 2147483647],
+  ['event_last_start_utc', 'eventLastStartUtc', 0, 2147483647],
+  ['event_week_end_utc', 'eventWeekEndUtc', 0, 2147483647],
+  ['airdrop_x_budget_cents', 'airdropXBudgetCents', 0, 10000],
+  ['airdrop_x_check_cost_cents', 'airdropXCheckCostCents', 0, 10000],
+
   ['weekly_ticket_1h_enabled', 'weeklyTicket1hEnabled', 0, 1],
   ['weekly_ticket_1h_days', 'weeklyTicket1hDays', 1, 100_000],
   ['weekly_ticket_4h_enabled', 'weeklyTicket4hEnabled', 0, 1],

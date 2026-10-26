@@ -1,3 +1,5 @@
+import { resolveSettings } from '../../../../src/domain/settings/game-settings.js';
+import type { GameSettingsService } from '../../../../src/application/services/game-settings.service.js';
 import { PlayerRepositoryPort } from '../../../../src/application/ports/players/player.repository.port.js';
 import { ClockPort } from '../../../../src/application/ports/shared/clock.port.js';
 import { TransactionPort, type TransactionHandle } from '../../../../src/application/ports/shared/transaction.port.js';
@@ -33,11 +35,12 @@ class FakePlayers extends PlayerRepositoryPort {
 }
 class FakeTelegram extends TelegramMembershipPort {
   status = 'member';
+  groupStatus: string | null = null;
   calls = 0;
-  getChatMember(input: { telegramUserId: string; chatId: string }): Promise<{ status: string }> {
+  getChatMember(input: { telegramUserId: string; chatId: string; target?: 'channel' | 'group' }): Promise<{ status: string }> {
     this.calls += 1;
     expect(input.chatId).toBe('@FreightChain');
-    return Promise.resolve({ status: this.status });
+    return Promise.resolve({ status: input.target === 'group' ? this.groupStatus ?? this.status : this.status });
   }
 }
 class FakeX extends XAccountPort {
@@ -65,7 +68,7 @@ function harness() {
   const turnstile = new FakeTurnstile();
   const repo = new MemoryAirdropRepository();
   const clock = new FakeClock(NOW);
-  const svc = new AirdropService(repo, telegram, x, turnstile, players, new FakeTx(), clock);
+  const svc = new AirdropService(repo, telegram, x, turnstile, players, new FakeTx(), clock, { current: async () => resolveSettings([{ key: 'airdrop_x_check_cost_cents', value: 1 }]) } as GameSettingsService);
   players.add('ada');
   players.add('bob');
   x.profile = { userId: '99', handle: 'ada', createdAt: new Date(NOW.getTime() - 90 * DAY_MS), followers: 10, followsOfficial: true };
@@ -119,7 +122,11 @@ describe('AirdropService', () => {
     h.telegram.status = 'kicked';
     await expect(h.svc.verifyTelegram('ada', '100')).rejects.toMatchObject({ errorCode: 'telegram_not_member' });
     h.telegram.status = 'member';
-    expect((await h.svc.verifyTelegram('ada', '100')).telegram).toEqual({ bound: true, member: true });
+    h.telegram.groupStatus = 'left';
+    await expect(h.svc.verifyTelegram('ada', '100')).rejects.toMatchObject({ errorCode: 'telegram_group_required' });
+    expect((await h.svc.status('ada')).telegram.bound).toBe(false);
+    h.telegram.groupStatus = 'member';
+    expect((await h.svc.verifyTelegram('ada', '100')).telegram).toMatchObject({ bound: true, member: true, groupMember: true });
     expect((await h.svc.verifyTelegram('ada', '100')).telegram.member).toBe(true);
     await expect(h.svc.verifyTelegram('bob', '100')).rejects.toMatchObject({ errorCode: 'social_account_already_bound' });
     await expect(h.svc.verifyTelegram('ada', '200')).rejects.toMatchObject({ errorCode: 'social_account_already_bound' });
@@ -134,25 +141,32 @@ describe('AirdropService', () => {
     h.x.profile = { ...h.x.profile!, createdAt: new Date(NOW.getTime() - 90 * DAY_MS + 1) };
     await expect(h.svc.verifyX('ada', '@ada', '55')).rejects.toMatchObject({ errorCode: 'x_account_too_new' });
     h.x.profile = { ...h.x.profile!, createdAt: new Date(NOW.getTime() - 90 * DAY_MS), followers: 9 };
+    h.clock.at = new Date(h.clock.at.getTime() + 600001);
     await expect(h.svc.verifyX('ada', 'ada', '55')).rejects.toMatchObject({ errorCode: 'x_too_few_followers' });
     h.x.profile = { ...h.x.profile!, followers: 10, followsOfficial: false };
+    h.clock.at = new Date(h.clock.at.getTime() + 600001);
     await expect(h.svc.verifyX('ada', 'ada', '55')).rejects.toMatchObject({ errorCode: 'x_not_following' });
     h.x.profile = { ...h.x.profile!, followsOfficial: true };
     h.x.text = 'no code';
     h.x.postUser = '99';
+    h.clock.at = new Date(h.clock.at.getTime() + 600001);
     await expect(h.svc.verifyX('ada', 'ada', '55')).rejects.toMatchObject({ errorCode: 'x_quote_missing' });
     h.x.text = `@FreightChainSol ${code}`;
     h.x.postUser = 'someone-else';
+    h.clock.at = new Date(h.clock.at.getTime() + 600001);
     await expect(h.svc.verifyX('ada', 'ada', '55')).rejects.toMatchObject({ errorCode: 'x_quote_missing' });
     h.x.postUser = '99';
+    h.clock.at = new Date(h.clock.at.getTime() + 600001);
     const verified = await h.svc.verifyX('ada', '@ada', '55');
     expect(h.x.lastHandle).toBe('ada');
     expect(verified.x).toEqual({ bound: true, ageOk: true, followersOk: true, follows: true, quoteOk: true });
     h.x.profile = { ...h.x.profile!, userId: '99' };
     const bobCode = (await h.svc.status('bob')).code;
     h.x.text = `@FreightChainSol ${bobCode}`;
+    h.clock.at = new Date(h.clock.at.getTime() + 600001);
     await expect(h.svc.verifyX('bob', 'ada', '56')).rejects.toMatchObject({ errorCode: 'social_account_already_bound' });
     h.x.profile = null;
+    h.clock.at = new Date(h.clock.at.getTime() + 600001);
     await expect(h.svc.verifyX('bob', 'missing', '57')).rejects.toMatchObject({ errorCode: 'x_account_not_found' });
   });
 

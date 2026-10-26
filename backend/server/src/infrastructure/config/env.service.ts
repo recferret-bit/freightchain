@@ -30,6 +30,10 @@ export class EnvService {
   get twitterApiIoKey(): string | undefined { return this.env.TWITTERAPI_IO_KEY; }
   get telegramBotToken(): string | undefined { return this.env.TELEGRAM_BOT_TOKEN; }
   get telegramChannelId(): string | undefined { return this.env.TELEGRAM_CHANNEL_ID; }
+  get telegramGroupId(): string | undefined { return this.env.TELEGRAM_GROUP_ID; }
+  get telegramLoginBot(): string | undefined { return this.env.TELEGRAM_LOGIN_BOT; }
+  get telegramWebhookSecret(): string | undefined { return this.env.TELEGRAM_WEBHOOK_SECRET; }
+  get turnstileSiteKey(): string | undefined { return this.env.TURNSTILE_SITE_KEY; }
   get turnstileSecretKey(): string | undefined { return this.env.TURNSTILE_SECRET_KEY; }
   /** Production REQUIRES JWT_SECRET (validated). Otherwise a RANDOM secret per boot – never a constant: a deploy that forgot NODE_ENV=production must not sign sessions with a publicly known key. */
   get hasStableJwtSecret(): boolean { return !!this.env.JWT_SECRET; }

@@ -110,3 +110,23 @@ describe('RankedEntryService', () => {
     await expect(prod.claim(late, { 'cf-ipcountry': 'IR' })).rejects.toMatchObject({ errorCode: 'ranked_ineligible' });
   });
 });
+
+it('only permits the reserved attempt inside the configured event window and refuses a second ranked start', async () => {
+  const { PRESEASON_PROMO_CODE } = await import('../../../../src/domain/settings/preseason-event.js');
+  const ctx = unitContext();
+  await ctx.accept('w');
+  const svc = new RankedEntryService(ctx.rides, new HeaderGeoAdapter(), new Lists(), ctx.settings);
+  const now = ctx.now().getTime() / 1000;
+  const ride = Ride.createPromo({ id: 'event', wallet: 'w', tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, promoCode: PRESEASON_PROMO_CODE, now: ctx.now() });
+  const claim = () => svc.claim(awaitPlayer, ride, CA, ctx.now());
+  const awaitPlayer = await ctx.storedPlayer('w');
+  await expect(claim()).rejects.toMatchObject({ errorCode: 'event_closed' });
+  for (const [key, value] of Object.entries({ event_mode_enabled: 1, event_week_start_utc: now, event_last_start_utc: now + 86400, event_week_end_utc: now + 100000 })) await ctx.settingsRepo.upsert(key, value);
+  expect(await claim()).toEqual({ country: 'CA', region: null });
+  const ordinary = Ride.createPromo({ id: 'ordinary', wallet: 'w', tier: '1h', seed: 1, minSeconds: 3600, timeScale: 1, promoCode: 'ORDINARY', now: ctx.now() });
+  await expect(svc.claim(awaitPlayer, ordinary, CA, ctx.now())).rejects.toMatchObject({ errorCode: 'event_attempt_required' });
+  await ctx.rides.insert(ride); ride.start(ctx.now(), null, 0, { country: 'CA', region: null }); await ctx.rides.save(ride);
+  await expect(claim()).rejects.toMatchObject({ errorCode: 'event_attempt_used' });
+  ctx.clock.advance(86401);
+  await expect(claim()).rejects.toMatchObject({ errorCode: 'event_closed' });
+});

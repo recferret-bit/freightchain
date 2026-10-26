@@ -196,6 +196,13 @@ model AirdropClaim {
   heldAt         DateTime?
   rideVerifiedAt DateTime?
   telegramAt     DateTime?
+  telegramGroupAt DateTime?
+  telegramActiveAt DateTime?
+  rulesAcceptedAt DateTime?
+  attemptGrantedAt DateTime?
+  xAttemptAt DateTime?
+  xVerifiedAt DateTime?
+  xPostId String?
   xAt            DateTime?
   turnstileAt    DateTime?
   claimedAt      DateTime?
@@ -204,5 +211,12 @@ model AirdropClaim {
   updatedAt      DateTime @default(now()) @updatedAt
 
   @@id([wallet, campaign])
+  @@schema("player")
+}
+
+/// Conservative integer-cent reservations, made before external X requests. Failed calls remain charged.
+model CampaignProviderBudget {
+  campaign String @id
+  reservedCents Int @default(0)
   @@schema("player")
 }

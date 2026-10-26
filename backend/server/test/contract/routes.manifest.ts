@@ -156,6 +156,8 @@ export const ROUTES: readonly RouteDescriptor[] = [
   { method: 'POST', path: '/api/pledges', auth: 'player' },
   { method: 'POST', path: '/api/pledges/:id/confirm', auth: 'player' },
   { method: 'POST', path: '/api/promo/redeem', auth: 'player' },
+  { method: 'POST', path: '/api/airdrop/preseason/claim-attempt', auth: 'player' },
+  { method: 'POST', path: '/api/airdrop/telegram/webhook', auth: 'webhook' },
   { method: 'POST', path: '/api/airdrop/claim', auth: 'player' },
   { method: 'POST', path: '/api/airdrop/verify-telegram', auth: 'player' },
   { method: 'POST', path: '/api/airdrop/verify-x', auth: 'player' },
