@@ -44,9 +44,9 @@ Related: [deploy + operate](program-deploy.md) · [escrow spec](../spec/pool.md)
   - A committed rank whose destination wallet is below the system rent-exempt minimum cannot receive lamports until topped up.
 
 ### 2.4 Small known gaps
-- **Pending local follow-up:** lobby "N pools on sale" currently counts all returned active pools, including closed sale windows. The fix must filter by the current sale phase and retain escrow totals independently; do not mark resolved until its tested commit is integrated.
+- **Resolved locally:** the lobby counts only currently selling pools as “on sale”; escrow totals independently include funds awaiting play, review or payout.
 - An unfinished ticket order has no manual `CANCEL` button (it expires after `ORDER_TTL_MINUTES = 60`).
-- **Pending local follow-up:** `profile.stats.paidRides` uses legacy payment totals and omits ticket-based starts. Its fix must count started non-free shifts (including promo/weekly, consistently with career classification); unused purchases remain `ticketsBought`.
+- **Resolved locally:** `profile.stats.paidRides` counts started non-free shifts, including ticket/promo/weekly starts, independently of legacy payments. Unused purchases remain `ticketsBought`. Unit, PostgreSQL and HTTP ticket regressions passed.
 - `pool:seed` cannot seed a `refunding` pool directly.
 - Achievement cNFTs ([`../spec/web3_solana.md`](../spec/web3_solana.md)): local real mint/recovery/transfer-refusal tests pass and all 44 assets validate offline. Thirteen metadata URIs still need publication; remote collection/tree, `ACHIEVEMENT_*` env and wallet/DAS receipt acceptance require the owner's authorized setup.
 

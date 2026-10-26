@@ -18,6 +18,8 @@ ADMIN_KP="$(mktemp -t fc-admin-XXXXXX).json"
 # directory, so the server's own tsc (no include list) never type-checks it.
 BUILD=".e2e-build-$$"; TSCONFIG=".e2e-tsconfig-$$.json"; LANDING_OUT="$(mktemp -d "${TMPDIR:-/tmp}/fc-landing-XXXXXX")"
 CLIENT_OUT="$(mktemp -d "${TMPDIR:-/tmp}/fc-client-XXXXXX")"
+SERVER_LOG_DIR="$(mktemp -d "${TMPDIR:-/tmp}/fc-e2e-server-logs-XXXXXX")"
+echo "server logs retained: $SERVER_LOG_DIR"
 cp -R "$ROOT/frontend/client/." "$CLIENT_OUT/"
 PID=""; EDITOR_WORKER_PID=""; MCP_PID=""; VAL_PID=""; VAL_DIR=""
 free_port() { node -e 'const s=require("net").createServer();s.listen(0,()=>{console.log(s.address().port);s.close()})'; }
@@ -31,7 +33,12 @@ reset_db() {
 }
 SUITE=""
 # E2E_LOG_DIR (set by `npm run test:census -- run e2e…`): the server's request lines per suite, so the census can tell which routes each suite hit
-keep_log() { if [ -n "${E2E_LOG_DIR:-}" ] && [ -n "$SUITE" ] && [ -f "/tmp/fc-e2e-$DB.log" ]; then grep -F '"event":"request"' "/tmp/fc-e2e-$DB.log" >> "$E2E_LOG_DIR/$SUITE.log" || true; fi; }
+keep_log() {
+  if [ -n "$SUITE" ] && [ -f "/tmp/fc-e2e-$DB.log" ]; then
+    cp "/tmp/fc-e2e-$DB.log" "$SERVER_LOG_DIR/$SUITE-$PORT.log"   # preserve crashes before the next suite overwrites the working log
+    if [ -n "${E2E_LOG_DIR:-}" ]; then grep -F '"event":"request"' "/tmp/fc-e2e-$DB.log" >> "$E2E_LOG_DIR/$SUITE.log" || true; fi
+  fi
+}
 stop() { if [ -n "$PID" ]; then kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; keep_log; fi; PID=""; }   # wait returns 143 for a killed server – not a failure
 stop_editor() {
   for child in "$EDITOR_WORKER_PID" "$MCP_PID"; do if [ -n "$child" ]; then kill "$child" 2>/dev/null || true; wait "$child" 2>/dev/null || true; fi; done

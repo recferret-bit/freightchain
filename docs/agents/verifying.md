@@ -103,6 +103,8 @@ The `wallet` and `wallet-split` suites include `frontend/landing/tools/e2e-phone
 
 ### Production log retention
 
+The Chrome suite runner prints a retained `fc-e2e-server-logs-*` directory and copies each server's complete log before starting the next suite. This includes unexpected process exits; the optional census request logs remain separate.
+
 `test:production:local` first builds `infra/deploy/logging/Dockerfile.test` and runs `node infra/deploy/scripts/log-retention.test.mjs`. It boots a privileged **disposable Ubuntu 24.04/systemd container**, with no network, host bind mounts or Docker socket. Its only volume holds its own namespace socket so a separate test container can exercise the actual Docker syslog driver. The test checks cache-disabled transport, read-only ops/deploy readers, nginx access/error isolation, invalid-config rollback, boot ordering, missing-collector/timer refusal, and actual expiry of imported 40-day journal entries while retaining recent entries and an unrelated namespace. Historical entries are explicit fixtures; no wall-clock-month claim is made. Only the test containers and socket volume are removed. The image build needs public Ubuntu package access on first use; missing systemd/privilege support fails the test.
 
 The six-service Docker Desktop rehearsal uses disposable `json-file` logging after asserting the production syslog configuration; actual namespace behavior belongs to the Ubuntu acceptance above. Its production flags, adapters and chain responses remain real. Neither test changes existing production logs or proves rollout to the real host.
