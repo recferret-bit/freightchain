@@ -54,7 +54,7 @@ export class GetProfileHandler implements IQueryHandler<GetProfileQuery, Profile
     const rules = this.rules.get();
     return {
       wallet, createdAt: player.createdAt.getTime(), freeRides: player.freeRides, freeRidesMax: player.freeRidesMax, nextFreeRideAt: nextFreeRideAt(player, now), demo: isDemoWallet(rules, wallet), demoScale: demoScaleOf(rules),
-      stats: { rides: stats.started, completed: stats.completed, metres: Math.round(stats.metres), bestMetres: Math.round(stats.best), paidRides: spent.count, spentLamports: spent.lamports + ordered.lamports, ticketsBought: ordered.tickets },
+      stats: { rides: stats.started, completed: stats.completed, metres: Math.round(stats.metres), bestMetres: Math.round(stats.best), paidRides: stats.paidStarted, spentLamports: spent.lamports + ordered.lamports, ticketsBought: ordered.tickets },
       career,
       recent: recent.map((r) => ({
         tier: r.tier, status: r.status, distance: Math.round(r.lastS), hull: r.hull === null ? null : Math.round(r.hull), route: r.route, timeScale: r.timeScale,

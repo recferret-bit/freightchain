@@ -99,18 +99,19 @@ export class RideQueryPrismaRepository extends RideQueryPort {
 
   /** Aggregate over the started rides, the completed rides themselves (few per wallet) for the per-ride achievement facts, TEN4 counts, and the convoy count. */
   async summary(wallet: string, opts: { skipRejected?: boolean } = {}): Promise<RideSummary> {
-    const [started, done, honkMints, honkFinishes, qualifiedReferrals] = await Promise.all([
+    const [started, done, honkMints, honkFinishes, qualifiedReferrals, paidStarted] = await Promise.all([
       this.prisma.ride.aggregate({ where: { wallet, startedAt: { not: null } }, _count: { _all: true }, _sum: { lastS: true } }),
       this.prisma.ride.findMany({ where: { wallet, status: 'completed' }, select: { tier: true, trip: true, assist: true, lastS: true, hull: true, route: true, nightSeconds: true, driveSeconds: true, verdict: { select: { status: true, reasons: true } } } }),
       this.prisma.honkMint.count({ where: { wallet, released: true, amount: { gt: 0 } } }),
       this.prisma.honkMint.count({ where: { wallet, released: true, amount: { gt: 0 }, band100: true } }),
       Promise.all([this.prisma.referral.findMany({ where: { referrer: wallet, badgeCounted: true }, select: { referee: true } }), this.prisma.convoyInvite.findMany({ where: { referrer: wallet, m1At: { not: null } }, select: { referee: true } })]).then((rows) => new Set(rows.flat().map((row) => row.referee)).size),
+      this.prisma.ride.count({ where: { wallet, startedAt: { not: null }, tier: { not: 'free' } } }),
     ]);
     // the badges' rides: a ride the verdict rejected (achievements.ts badgeRejected) earns no completion badge and its metres don't count – its START still
     // does (starting is not a judged fact). Verdicts are only ever on completed rides, so the rejected ones are a part of `done` and come off the metres.
     const metres = started._sum.lastS ?? 0, rejected = opts.skipRejected ? done.filter((r) => badgeRejected(r.verdict)) : [], fair = rejected.length ? done.filter((r) => !rejected.includes(r)) : done;
     return {
-      stats: { started: started._count._all, completed: done.length, metres, best: done.reduce((max, r) => Math.max(max, r.lastS), 0) },
+      stats: { started: started._count._all, paidStarted, completed: done.length, metres, best: done.reduce((max, r) => Math.max(max, r.lastS), 0) },
       facts: {
         started: started._count._all, paidShifts: fair.filter((r) => r.tier !== 'free').length, totalMetres: metres - rejected.reduce((sum, r) => sum + r.lastS, 0),
         nightShifts: fair.filter((r) => r.driveSeconds > 0 && r.nightSeconds >= NIGHT_SHARE * r.driveSeconds).length, // most of the shift in the dark: pressing N just before the end doesn't count

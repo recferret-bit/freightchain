@@ -71,6 +71,7 @@ export interface HistoryFilter {
 
 export interface RideStatsRow {
   started: number;
+  paidStarted: number;
   completed: number;
   metres: number;
   best: number;

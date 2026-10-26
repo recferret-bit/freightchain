@@ -293,7 +293,7 @@ export class MemoryRideQuery extends RideQueryPort {
     const metres = started.reduce((sum, r) => sum + r.lastS, 0), verdictOf = (id: string) => { const v = this.db.verdicts.get(id); return v ? { status: v.status, reasons: v.reasons } : null; };
     const rejected = opts.skipRejected ? done.filter((r) => badgeRejected(verdictOf(r.id))) : [], fair = done.filter((r) => !rejected.includes(r));   // a rejected ride earns no completion and its metres don't count (its start does)
     return {
-      stats: { started: started.length, completed: done.length, metres, best: done.reduce((m, r) => Math.max(m, r.lastS), 0) },
+      stats: { started: started.length, paidStarted: started.filter((r) => r.tier !== 'free').length, completed: done.length, metres, best: done.reduce((m, r) => Math.max(m, r.lastS), 0) },
       facts: {
         started: started.length, paidShifts: fair.filter((r) => r.tier !== 'free').length, totalMetres: metres - rejected.reduce((sum, r) => sum + r.lastS, 0),
         nightShifts: fair.filter((r) => r.driveSeconds > 0 && r.nightSeconds >= 0.5 * r.driveSeconds).length,

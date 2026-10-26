@@ -108,7 +108,9 @@ export function poolScenarios(h: () => Harness): void {
       expect(r).toMatchObject({ tier: '1h', status: 'created', poolId: 1, lamports: 0 });
       expect((await ride(w, '1h').expect(200)).body.id).toBe(r.id);
       expect((await w.agent.get('/api/me')).body.tickets[0].balance).toBe(0);
+      expect((await w.agent.get('/api/profile').expect(200)).body.stats.paidRides).toBe(0);
       await w.agent.post(`/api/rides/${r.id}/start`).expect(200);
+      expect((await w.agent.get('/api/profile').expect(200)).body.stats.paidRides).toBe(1);
       sec(2); await w.agent.post(`/api/rides/${r.id}/end`).send({ outcome: 'failed', s: 0, t: 1 }).expect(200);
       expect((await ride(w, '1h').expect(409)).body).toMatchObject({ code: 'no_tickets', detail: 'no 1h tickets left' });
     });

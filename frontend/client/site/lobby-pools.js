@@ -1,6 +1,6 @@
 import { el } from './dom.js';
 import { extLink, splitBarEl } from './ui.js';
-import { escrowExplainer, explorerUrl, explorerTx, shortAddr, sol, usd, pct, plural, day, left, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, canRide, hhmm, buyRoom, cardAction, GRANT_SOURCE, STATUS_CLS, phaseLine, payoutText, poolSchedule, scheduleText, span } from './pools.js';
+import { escrowExplainer, explorerUrl, explorerTx, shortAddr, sol, usd, pct, plural, day, left, statusChip, progressText, deadline, splitParts, rulesText, tierTickets, canRide, hhmm, buyRoom, cardAction, GRANT_SOURCE, STATUS_CLS, phaseLine, poolPhase, payoutText, poolSchedule, scheduleText, span } from './pools.js';
 
 /* The lobby's escrowed-pool views (DOM; the decisions are the pure functions of pools.js). Countdowns are `.pcd[data-at]` – lobby.js ticks them every second. */
 
@@ -93,7 +93,7 @@ export function escrowSummary(pool, now, ticketOnly = false) {
   return [
     el('div', { class: 'lbl' }, `PRIZE POOLS · IN ESCROW ON CHAIN`),
     el('div', { class: 'big' }, sol(esc)), el('div', { class: 'usd' }, pool.solUsd ? `${usd(esc, pool.solUsd)} at the current price` : ''),
-    el('div', { class: 'dim' }, `${plural(pools.length, 'pool')} on sale · ${plural(pools.reduce((a, p) => a + p.sold, 0), 'ticket')} committed · held by the program, not by us · `, extLink(escrowExplainer(), {}, 'how the escrow works →')),
+    el('div', { class: 'dim' }, `${plural(pools.filter(p => poolPhase(p, now) === 'selling').length, 'pool')} on sale · ${plural(pools.reduce((a, p) => a + p.sold, 0), 'ticket')} committed · held by the program, not by us · `, extLink(escrowExplainer(), {}, 'how the escrow works →')),
     ticketOnly && !pool.entries ? '' : el('div', { class: 'dim' }, `Weekly round (pay-per-ride tiers): ${sol(pool.split.grand)} grand prize accrued · ${plural(pool.entries, 'paid entry', 'paid entries')} · closes in `, el('b', { id: 'cd', class: 'cd' }, left(pool.round.endsAt - now))),
   ];
 }

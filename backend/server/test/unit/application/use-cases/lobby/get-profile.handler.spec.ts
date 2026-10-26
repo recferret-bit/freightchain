@@ -6,6 +6,13 @@ import { aPool } from '../../../../support/pools.js';
 import { FREE_LEVELS } from '../../../../../src/domain/rides/ride-trip.js';
 
 describe('GetProfileHandler', () => {
+  it('paid ride totals follow started shifts without a legacy payment record, not unused purchases', async () => {
+    const ctx = unitContext();
+    await ctx.paidRide('w'); await ctx.paidRide('w', false); await ctx.freeRide('w', true); await ctx.paidRide('other');
+    const p = await new GetProfileHandler(ctx.sessions, ctx.achievements, ctx.rideQuery, ctx.payments, ctx.rules, ctx.clock, ctx.poolTickets, ctx.tickets, ctx.orders, new RecordingAnalytics(), ctx.stats).execute(new GetProfileQuery('w'));
+    expect(p.stats).toMatchObject({ rides: 2, paidRides: 1, spentLamports: 0, ticketsBought: 0 });
+  });
+
   it('a fresh wallet: zero stats, 10 credits under a cap of 5, every achievement locked', async () => {
     const ctx = unitContext();
     const p = await new GetProfileHandler(ctx.sessions, ctx.achievements, ctx.rideQuery, ctx.payments, ctx.rules, ctx.clock, ctx.poolTickets, ctx.tickets, ctx.orders, new RecordingAnalytics(), ctx.stats).execute(new GetProfileQuery('w'));
