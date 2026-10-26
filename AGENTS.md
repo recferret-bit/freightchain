@@ -90,7 +90,7 @@ AGY: use Argon (Pro) for heavy reasoning and planning (via `/boost` or subagents
 - Full local gate: `npm run test:ci:full` includes both programs' Rust tests, `test:production:local` (isolated production-mode Docker startup/RPC/recovery), the local validator journeys and the Chrome suites.
 - Everything else (live server e2e, replays, lobby): `docs/agents/verifying.md`.
 - Local code e2e, no browser: `npm run test:e2e:block1` (chain off), `npm run test:e2e:block2` (disposable host validator; current pool build required), and `npm run test:e2e:block3` (anticheat vitest, no server). Plan: `docs/testing/E2E_PLAN.md`. This layer does not replace the Chrome suites. Bar and phases: `docs/testing/COVERAGE_CONTRACT.md`, `docs/testing/IMPLEMENTATION_PLAN.md`.
-- TEN4 on a local validator (mint, swap, burn, soulbound part, paid ride): `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token half). The full coin suite, including a verified ride, durable emission recovery and Convoy settlement: `bash .claude/skills/honk-suite/run.sh`.
+- TEN4 on a local validator (mint, swap, burn, soulbound part, paid ride): `bash .claude/skills/honk-localnet/run.sh` (`SCENARIO=chain` is the token half). The full coin suite, including a verified ride, durable emission recovery, Convoy settlement, distribution, vesting and allocation burns: `bash .claude/skills/honk-suite/run.sh`.
 
 
 Local achievement cNFTs: `npm run test:nft:localnet` runs pinned Bubblegum/MPL-Core programs, the real mint adapter/worker and PostgreSQL; first use downloads public program bytes from devnet read-only. It is included in `test:ci:full`. See `docs/spec/web3_solana.md`.
