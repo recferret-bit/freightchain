@@ -50,14 +50,15 @@ test('capacity is used / capacity, and available is its own number', () => {
   assert.equal(availableText({ available: 1.5 }), '–');
 });
 
-test('invite status is only pending, qualified or expired', () => {
+test('invite status includes pending, active, qualified and expired', () => {
   assert.equal(inviteLabel('pending'), 'pending');
+  assert.equal(inviteLabel('active'), 'active');
   assert.equal(inviteLabel('qualified'), 'qualified');
   assert.equal(inviteLabel('expired'), 'expired');
   assert.equal(inviteLabel('nope'), '–');
 });
 
-test('bind posts once per call, and clears the code on success or 409 only', async () => {
+test('bind posts once per call, and clears the code on success or terminal 400/409', async () => {
   const posts = [];
   const api = (path, body) => { posts.push([path, body]); return Promise.resolve({}); };
   const s = mem({ [REF_KEY]: 'abcd2345' });
@@ -69,6 +70,10 @@ test('bind posts once per call, and clears the code on success or 409 only', asy
   const conflict = () => Promise.reject(Object.assign(new Error('taken'), { status: 409 }));
   assert.equal(await bindStoredRef(conflict, stuck), 'conflict');
   assert.equal(stuck.get(REF_KEY), null);
+
+  const invalid = mem({ [REF_KEY]: 'IIIIIIII' });
+  assert.equal(await bindStoredRef(() => Promise.reject({ status: 400 }), invalid), 'conflict');
+  assert.equal(invalid.get(REF_KEY), null);
 
   const kept = mem({ [REF_KEY]: 'ABCD2345' });
   const down = () => Promise.reject(Object.assign(new Error('missing'), { status: 404 }));

@@ -6,9 +6,9 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
 
 ---
 
-## 1. Current Implementation on `main` (As-Built)
+## 1. Historical implementation (retained records and compatibility reference)
 
-**25 October readiness fixes:** the separate Convoy machine now uses PostgreSQL (`ConvoyInvite`, `ConvoyRide`, `ConvoyLedger`); campaign gates/holds/social ownership use `AirdropClaim`. They join the caller’s player-locked transaction. The shared promo budget is serialized across referrers, and activation grants one spendable 1h promo (no change to the retired free-ride counter). Privacy uses `Player.convoyHidden`. Social rechecks do not award trust again. Legacy referral behavior remains separate. Configured social providers are implemented and fixture-tested; live acceptance, full target UI and campaign chain reward settlement remain open. Newly earned Convoy milestones now settle through `pay_referral` after the hold; historical ledger rows are excluded from automatic settlement. Convoy now applies §2.3 paid/ranked/weekly-grant eligibility and campaign-task requirements, §2.4 rolling 30-day capacity, milestone/time tie-breaks and public privacy omission. Earlier training-based counted flags are invalidated by migration, with ledger history retained.
+**26 October Convoy cutover:** §2 now governs the public bind/view and stored-link flow. Legacy rows and balances are immutable history; new +2/+3 awards are retired. Historical paint unlocks are not re-awarded when a qualified relationship enters Convoy. Qualified historical ownership is retained and fresh MEDIUM/HARD training starts the new 60-day window, without backfill. A still-valid legacy pending owner is retained until `min(stored expiry, boundAt + 72h)`; expired pending/tombstone history may rebind. Existing activated Convoy expiry is final. Repeated activation cannot repeat the lifetime promo or milestone IDs. Badge progress is the distinct union of legacy `badgeCounted` friends and new M1 friends. New tips already pay 95% driver / 5% treasury / 0% referrer; historical orders retain their original amounts and recipients. No migration rewrites balances, unlocks, invites or payouts during this cutover. The profile renders activation, task/week progress, deadlines, promo cap outcomes, held/paid/capped/historical rewards and privacy. Earning requires referrer trust ≥50; chain settlement rechecks after the 48h hold. The section below documents the retired implementation solely to interpret historical data; it is not current runtime behavior.
 
 ### 1.1 Data Model & Storage (`server/prisma/player/player.prisma` & `cosmetics.ts`)
 - **`player.ReferralCode` (`@@map("referral_codes")`, `ReferralCodeRecord`)**:
@@ -114,9 +114,9 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
 
 ---
 
-## 2. Target Convoy Rework Specification (Decision 50 & `docs/plan/MASTER_PLAN.md` §6, §12)
+## 2. Current Convoy Specification (Decision 50 & `docs/plan/MASTER_PLAN.md` §6, §12)
 
-> **Status:** Target specification (`docs/spec/PRODUCT.md` Conflicts row 3, Decision 50, `MASTER_PLAN.md` §6 & §12, migrations `20261104000000_referral_rework` & `20261104100000_referral_reward`). Note that `tokenomics.ts` (`referralQuoteUnits`, `clipReferralPayout`) and `programs/freightchain_honk` (`pay_referral`, `burn_referral_tail`) are **already implemented on `main`**; the database/application rework below replaces the legacy free-ride/donation referral mechanics when Step 2 (`referral_plan.md`) lands.
+> **Status:** Implemented for new referral behavior. Historical data follows the transition above. Campaign integration and live-provider acceptance are tracked separately in PRODUCT and the soft-launch plan.
 
 ### 2.1 Target State Machine (`pending → active → qualified → expired`)
 1. **`pending` (72-Hour TTL — Deleted on Expiry)**:
@@ -200,7 +200,7 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
 
 ---
 
-## 3. Rules (`REF-M-*` & `REF-T-*`)
+## 3. Historical rule/test identifiers (`REF-M-*` & `REF-T-*`)
 
 | Rule ID | Rule | Enforced By | Test ID |
 |---|---|---|---|

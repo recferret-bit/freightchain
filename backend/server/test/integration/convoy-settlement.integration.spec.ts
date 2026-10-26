@@ -65,6 +65,21 @@ describe('Convoy settlement PostgreSQL concurrency and recovery', () => {
     expect(await new HonkPrismaRepository(other).balance('a')).toBe(0n);
   });
 
+  it('holds an earned milestone after referrer trust drops and reconciles it once trust recovers', async () => {
+    await db.player.update({ where: { wallet: 'a' }, data: { trustScore: 49 } });
+    const settle = vi.fn(async (): Promise<ReferralSettlement> => ({ kind: 'paid', amount: 123n }));
+    const emission = { enabled: () => true, settle };
+    expect(await worker(db, emission).execute(command)).toBe(0);
+    expect(settle).not.toHaveBeenCalled();
+    expect((await repo.findLedger('convoy:m1:b'))?.chainState).toBe('held');
+    await db.player.update({ where: { wallet: 'a' }, data: { trustScore: 50 } });
+    clock.advance(121);
+    expect(await worker(db, emission).execute(command)).toBe(1);
+    expect(await worker(db, emission).execute(command)).toBe(0);
+    expect(await new HonkPrismaRepository(db).balance('a')).toBe(123n);
+    expect(settle).toHaveBeenCalledOnce();
+  });
+
   it('due queries exclude legacy, capped, young and leased rows; trust failures do not starve later work', async () => {
     const row = (await repo.findLedger('convoy:m1:b'))!;
     for (const [id, over] of Object.entries({ legacy: { chainState: 'legacy' as const }, capped: { chainState: 'capped' as const }, young: { at: clock.now() }, leased: { chainRetryAt: new Date(clock.now().getTime() + 1) } })) await repo.insertLedger({ ...row, id, ...over });

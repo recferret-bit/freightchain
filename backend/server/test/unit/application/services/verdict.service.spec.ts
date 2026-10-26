@@ -1,12 +1,12 @@
 import { createRequire } from 'node:module';
 const { deflateRawSync, inflateRawSync } = createRequire(import.meta.url)('node:zlib') as typeof import('node:zlib');
 import { Ride } from '../../../../src/domain/rides/ride.entity.js';
-import { ReferralService } from '../../../../src/application/services/referral.service.js';
+import { ConvoyService } from '../../../../src/application/referral/convoy.service.js';
+import { convoyContext } from '../../../support/convoy-context.js';
 import { VerdictService } from '../../../../src/application/services/verdict.service.js';
 import { RideBatch } from '../../../../src/domain/telemetry/ride-batch.entity.js';
 import { VerdictStatus } from '../../../../src/domain/verdict/verdict.dto.js';
 import { hashBatch, recording } from '../../../support/recording.js';
-import { MemoryReferralRepository } from '../../../support/in-memory/memory-referral-repository.js';
 import { unitContext } from '../../../support/unit-context.js';
 import { TelemetryConfigPort } from '../../../../src/application/ports/telemetry/telemetry-config.port.js';
 
@@ -246,12 +246,12 @@ describe('VerdictService', () => {
     expect((await ctx.verdictRepo.findByRide(ride.id))?.status).toBe(VerdictStatus.Verified);
   });
 
-  it('a verified judgement qualifies the referrer after the verdict is saved, and a referral failure still saves the verdict', async () => {
-    const ctx = unitContext();
+  it('a verified judgement informs Convoy after the verdict is saved, and a referral failure still saves the verdict', async () => {
+    const ctx = convoyContext();
     const host = 'HostWa11et11111111111111111111111111111111';
     await ctx.player(host);
     await ctx.player('w');
-    const referral = new ReferralService(new MemoryReferralRepository(ctx.db), ctx.players, ctx.transactions, ctx.settings, ctx.cosmetics, ctx.rides, ctx.verdictRepo, ctx.clock, ctx.entropy);
+    const referral = ctx.referral;
     await referral.bind('w', (await referral.view(host)).code);
     const ride = await ctx.freeRide('w', true);
     for (const b of recording(ride.id, { seconds: 60, distance: 840 })) await ctx.batches.insert(RideBatch.accept(ride.id, b, hashBatch(b), ctx.now()));
@@ -259,15 +259,15 @@ describe('VerdictService', () => {
     ride.applyReport({ s: 840, t: 60, hull: 100, paused: false, night: false }, ctx.now(), { hbTimeoutMs: 150_000, hbMinIntervalMs: 1000 });
     ride.finish('shift', null, ctx.now());
     await ctx.rides.save(ride);
-    const wired = new VerdictService(ctx.rides, ctx.players, ctx.batches, ctx.verdictRepo, ctx.adminActions, ctx.transactions, ctx.clock, ctx.honkMint, { enabled: () => false, mint: async () => {} }, ctx.replayRepo, undefined, ctx.replayQueue, ctx.entropy, referral);
+    const wired = new VerdictService(ctx.rides, ctx.players, ctx.batches, ctx.verdictRepo, ctx.adminActions, ctx.transactions, ctx.clock, ctx.honkMint, { enabled: () => false, mint: async () => {} }, ctx.replayRepo, undefined, ctx.replayQueue, ctx.entropy, undefined, undefined, ctx.convoy);
     expect((await wired.judge(ride.id))?.status).toBe(VerdictStatus.Verified);
-    expect((await referral.view(host)).used).toBe(1);
+    expect((await referral.view(host)).pending).toBe(1);
     expect((await referral.view('w')).referredBy).toBe(host);
 
     const { ctx: bare, ride: other } = await ended(true);
     let blew = false;
-    const boom = { async onVerified() { blew = true; throw new Error('referral down'); } } as unknown as ReferralService;
-    const fragile = new VerdictService(bare.rides, bare.players, bare.batches, bare.verdictRepo, bare.adminActions, bare.transactions, bare.clock, bare.honkMint, { enabled: () => false, mint: async () => {} }, bare.replayRepo, undefined, bare.replayQueue, bare.entropy, boom);
+    const boom = { async onVerifiedRide() { blew = true; throw new Error('referral down'); } } as unknown as ConvoyService;
+    const fragile = new VerdictService(bare.rides, bare.players, bare.batches, bare.verdictRepo, bare.adminActions, bare.transactions, bare.clock, bare.honkMint, { enabled: () => false, mint: async () => {} }, bare.replayRepo, undefined, bare.replayQueue, bare.entropy, undefined, undefined, boom);
     expect((await fragile.judge(other.id))?.status).toBe(VerdictStatus.Verified);
     expect(blew).toBe(true);
     expect((await bare.verdictRepo.findByRide(other.id))?.status).toBe(VerdictStatus.Verified);

@@ -1,8 +1,4 @@
-// Referral qualify in headless Chrome. As-built (referral-rules.ts qualifyDecision): the free-ride gift is the
-// FIRST verified finish of free level 2 (MEDIUM, trip free-2c), not a paid ride. Defaults are
-// referral_free_rides_referrer = 2 and referral_free_rides_referee = 3. There is no referrerRideGift column.
-// The lobby does not render that balance (training is unlimited). It renders the invite as "qualified".
-//   FREE_RIDE_SECONDS=6 BASE=http://127.0.0.1:3103 CHROME_PORT=9233 DATABASE_URL=… node scripts/e2e-referral.mjs
+// Real browser MEDIUM activation and Convoy profile; seeded ledger states test rendering only.
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { PrismaClient } from '@prisma/client';
@@ -83,22 +79,56 @@ try {
   check('the server verdict is verified', judged?.status === 'verified', JSON.stringify(verdict));
   let row = null;
   const qualified = judged?.status === 'verified' ? await until(async () => {
-    row = await prisma.referral.findUnique({ where: { referee: invitee.wallet } });
-    return row?.qualifiedAt ? row : null;
+    row = await prisma.convoyInvite.findUnique({ where: { referee: invitee.wallet } });
+    return row?.activatedAt ? row : null;
   }, 20000) : null;
-  check('qualifiedAt is set on the invite', !!qualified?.qualifiedAt, JSON.stringify(row));
+  check('activatedAt is set on the invite', !!qualified?.activatedAt, JSON.stringify(row));
   const after = await call('GET', 'me', { cookie: referrer.cookie });
   const refereeMe = await call('GET', 'me', { cookie: invitee.cookie });
   const gift = (after.j.freeRides ?? 0) - (before.j.freeRides ?? 0);
-  check('referrer freeRides grew by 2 (referral_free_rides_referrer)', gift === 2, `${before.j.freeRides} → ${after.j.freeRides}`);
+  check('referrer free balance is unchanged', gift === 0, `${before.j.freeRides} → ${after.j.freeRides}`);
   const dbReferrer = await prisma.player.findUnique({ where: { wallet: referrer.wallet } });
   check('DB referrer freeRides matches /api/me', dbReferrer?.freeRides === after.j.freeRides, String(dbReferrer?.freeRides));
-  check('referee freeRides grew by 3 (referral_free_rides_referee)', (refereeMe.j.freeRides ?? 0) - (beforeReferee.j.freeRides ?? 0) === 3, `${beforeReferee.j.freeRides} → ${refereeMe.j.freeRides}`);
+  check('referee free balance is unchanged', (refereeMe.j.freeRides ?? 0) - (beforeReferee.j.freeRides ?? 0) === 0, `${beforeReferee.j.freeRides} → ${refereeMe.j.freeRides}`);
 
   await tab.send('Network.setCookie', { name, value: referrer.cookie.split('=')[1], url: BASE, httpOnly: true });
-  await tab.send('Page.navigate', { url: `${BASE}/lobby.html#profile` });
-  check('lobby invite row says qualified', await until(async () => /qualified/.test(await tab.ev('document.getElementById("ref-invites")?.textContent || ""')), 25000), await tab.ev('document.getElementById("ref-box")?.textContent || ""'));
-  const errors = pageErrors(tab);
+  await tab.send('Page.navigate', { url: `${BASE}/lobby.html?convoy=${Date.now()}#profile` });
+  check('lobby invite row says active', await until(async () => /active/.test(await tab.ev('document.getElementById("ref-invites")?.textContent || ""')), 25000), await tab.ev('document.getElementById("ref-box")?.textContent || ""'));
+  check('one usable promo grant exists', await prisma.promoRideGrant.count({ where: { wallet: invitee.wallet, code: 'SYSTEM-CONVOY-1H', rideId: null } }) === 1);
+  check('profile explains milestones and caps', await tab.ev('document.getElementById("ref-box").textContent.includes("48-hour") && document.getElementById("ref-invites").textContent.includes("M1")'));
+  await tab.ev('document.getElementById("ref-hidden").click()');
+  check('privacy toggle persists', await until(async () => (await call('GET', 'referrals', { cookie: referrer.cookie })).j.hidden === true));
+  check('hidden referrer omitted from public leaderboard', !(await call('GET', 'referrals/leaderboard', { cookie: invitee.cookie })).j.rows.some(r => r.wallet === referrer.wallet));
+  await tab.ev('document.getElementById("ref-box").scrollIntoView()');
+  await tab.shot('convoy-active-hidden');
+  // Rendering fixtures only: the earned/settled milestone lifecycle is covered by shared HTTP and PG tests.
+  const stamp = new Date();
+  await prisma.convoyLedger.createMany({ data: [
+    { id: `convoy:m1:${invitee.wallet}`, kind: 'm1', wallet: referrer.wallet, referrer: referrer.wallet, referee: invitee.wallet, amount: 100, unit: 'ten4', at: stamp, dayKey: 'fixture', weekKey: 'fixture', chainState: 'held' },
+    { id: `convoy:m2:${invitee.wallet}`, kind: 'm2', wallet: referrer.wallet, referrer: referrer.wallet, referee: invitee.wallet, amount: 50, unit: 'ten4', at: stamp, dayKey: 'fixture', weekKey: 'fixture', chainState: 'capped', capReason: 'monthly_cap' },
+  ] });
+  await tab.send('Page.navigate', { url: `${BASE}/lobby.html?convoy=held#profile` });
+  check('held and capped reward states render', await until(async () => await tab.ev('(() => { const t = document.getElementById("ref-rewards")?.textContent || ""; return t.includes("HELD") && t.includes("CAPPED") && t.includes("monthly_cap"); })()')));
+  await prisma.convoyLedger.update({ where: { id: `convoy:m1:${invitee.wallet}` }, data: { chainState: 'paid', paidUnits: 12500000n, chainSignature: 'fixture-confirmed-signature' } });
+  await tab.send('Page.navigate', { url: `${BASE}/lobby.html?convoy=paid#profile` });
+  check('actual paid amount and transaction render', await until(async () => await tab.ev('(() => { const t = document.getElementById("ref-rewards")?.textContent || ""; return t.includes("12.5 TEN4 paid") && t.includes("fixture-confirmed-signature"); })()')));
+  await tab.ev('document.getElementById("ref-rewards").scrollIntoView()');
+  await tab.shot('convoy-rewards');
+  await tab.send('Network.setCookie', { name, value: invitee.cookie.split('=')[1], url: BASE, httpOnly: true });
+  await tab.send('Page.navigate', { url: `${BASE}/lobby.html?convoy=${Date.now()}#profile` });
+  check('invitee sees its activation and promo', await until(async () => /1h promo granted/.test(await tab.ev('document.getElementById("ref-progress")?.textContent || ""'))));
+  await tab.ev('document.getElementById("ref-progress")?.scrollIntoView()');
+  await tab.shot('convoy-invitee');
+  const newcomer = await signIn();
+  await tab.send('Network.setCookie', { name, value: newcomer.cookie.split('=')[1], url: BASE, httpOnly: true });
+  await tab.send('Page.navigate', { url: `${BASE}/lobby.html?convoy=${Date.now()}#profile` });
+  check('unbound wallet sees manual invite form', await until(async () => await tab.ev('!!document.getElementById("ref-input")')));
+  await tab.ev('document.getElementById("ref-input").value = "ZZZZZZZZ"; document.getElementById("ref-apply").click()');
+  check('invalid invite is visible and does not bind', await until(async () => /unknown referral code/.test(await tab.ev('document.getElementById("ref-msg")?.textContent || ""'))));
+  await tab.ev(`document.getElementById("ref-input").value = ${JSON.stringify(code)}; document.getElementById("ref-apply").click()`);
+  check('manual valid invite shows pending steps', await until(async () => /pending/.test(await tab.ev('document.getElementById("ref-progress")?.textContent || ""'))));
+  await tab.shot('convoy-pending');
+  const errors = pageErrors(tab).filter(e => !(/409 \(Conflict\)/.test(e) && /\/api\/referrals\/bind$/.test(e)));
   const roadRequests = await tab.ev(`performance.getEntriesByType('resource').filter(r => /\\/api\\/watch\\/[^/]+\\/road(?:\\?|$)/.test(r.name)).length`);
   check('a driver never requests the spectator road endpoint', roadRequests === 0, String(roadRequests));
   check('no page or console errors', errors.length === 0, errors.join(' | '));

@@ -18,8 +18,10 @@ export const telemetryAckResponse = obj({ enabled: bool, accepted: num, dropped:
 export const clientErrorAckResponse = obj({ enabled: bool, accepted: num });
 export const chainFeesResponse = obj({ priorityMicrolamports: num, computeUnits: num, estimatedFeeLamports: num, blockhashTtlSeconds: num });
 export const chainWebhookResponse = obj({ received: num, settled: num, pending: num });
+const convoyInvite = obj({ wallet: str, status: str, at: str, expiresAt: str, weeks: num, tasksComplete: bool, m1: bool, m2: bool, promo: str });
 export const referralViewResponse = obj({
-  code: str, capacity: num, used: num, pending: num, available: num, max: num, gift: str, referredBy: strOrNull, invites: z.array(obj({ wallet: str, status: str, at: str })),
+  code: str, capacity: num, used: num, pending: num, available: num, max: num, gift: str, referredBy: strOrNull, invites: z.array(convoyInvite), inbound: convoyInvite.nullable(), hidden: bool, legacyQualified: num, trustEligible: bool,
+  rewards: z.array(obj({ kind: str, referee: str, amount: num, paidUnits: str, state: str, at: str, releaseAt: strOrNull, signature: strOrNull, reason: strOrNull })),
 });
 export const honkAccountResponse = obj({
   balance: str, minted: str, burned: str, visuals: z.array(obj({ id: str, slot: str, item: str, name: str })), chain: obj({ programId: str }).nullable(),

@@ -28,8 +28,8 @@ class FakeTx extends TransactionPort {
 class FakePlayers extends PlayerRepositoryPort {
   readonly locked: string[] = [];
   private readonly rows = new Map<string, Player>();
-  add(wallet: string, freeRides = 0): void {
-    this.rows.set(wallet, Player.restore({ wallet, version: 1, freeRides, freeDay: '2026-10-19', freeRidesMax: 1, createdAt: new Date(0), tutorialPassedAt: null, age18At: null, lossAt: null }));
+  add(wallet: string, freeRides = 0, trustScore = 50): void {
+    this.rows.set(wallet, Player.restore({ wallet, version: 1, freeRides, freeDay: '2026-10-19', freeRidesMax: 1, createdAt: new Date(0), trustScore, tutorialPassedAt: null, age18At: null, lossAt: null }));
   }
   free(wallet: string): number { return this.rows.get(wallet)?.freeRides ?? -1; }
   findByWallet(wallet: string): Promise<Player | null> { return Promise.resolve(this.rows.get(wallet) ?? null); }
@@ -81,7 +81,7 @@ describe('convoy rules', () => {
     expect(pendingCap(100)).toBe(100);
   });
 
-  it('keeps the live medium gift at +2/+3 (this machine does not replace it)', () => {
+  it('retains historical +2/+3 arithmetic solely for old record interpretation', () => {
     const decision = qualifyDecision({
       status: 'pending', now: MONDAY, expiresAt: new Date(MONDAY.getTime() + DAY_MS), boundAt: MONDAY, alreadyFreeGranted: false, alreadyBadge: false,
       paid: false, level: 2, assist: false, windowDays: 7, weeklyGranted: 0, weeklyCap: 10, freeReferrer: 2, freeReferee: 3,
@@ -136,6 +136,28 @@ describe('ConvoyService', () => {
     await h.svc.refreshMilestones('friend');
     expect((await h.repo.getByReferee('friend'))?.status).toBe('qualified');
     await h.svc.refreshMilestones('no-invite');
+  });
+
+  it('earns only at referrer trust 50 and preserves an earned hold when trust later drops', async () => {
+    const h = harness();
+    h.players.add('host', 0, 49); h.players.add('friend');
+    await h.svc.bind('friend', 'host');
+    await h.svc.onVerifiedRide(fact('friend', 'free-2c'));
+    await h.campaign.save({ ...emptyAirdrop('friend'), rideOk: true, telegramUserId: 'tg', telegramMember: true, xUserId: 'x', xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
+    await h.svc.onVerifiedRide({ ...fact('friend', '1h'), tier: '1h', ranked: true });
+    h.clock.at = new Date(MONDAY.getTime() + 7 * DAY_MS);
+    await h.svc.onVerifiedRide({ ...fact('friend', '1h'), tier: '1h', ranked: true });
+    expect(await h.repo.findLedger('convoy:m1:friend')).toBeNull();
+    h.players.add('host', 0, 50);
+    await h.svc.refreshMilestones('friend');
+    const earned = await h.repo.findLedger('convoy:m1:friend');
+    expect(earned?.chainState).toBe('held');
+    h.players.add('host', 0, 0);
+    await h.svc.refreshMilestones('friend');
+    expect(await h.repo.findLedger('convoy:m1:friend')).toEqual(earned);
+    const before = await h.repo.getByReferee('friend');
+    expect((await h.svc.bind('friend', 'host')).idempotent).toBe(true);
+    expect(await h.repo.getByReferee('friend')).toEqual(before);
   });
 
   it('training never earns milestone weeks and recent counted activity expires from pending capacity', async () => {
@@ -357,7 +379,7 @@ describe('ConvoyService', () => {
     expect(await ties.svc.setPrivacy('bee', true)).toEqual({ convoyHidden: true, column: 'present' });
     const ranked = await ties.svc.leaderboard('bee');
     expect(ranked.rows.map((row) => row.displayName)).toEqual(['aye', 'cee']);
-    expect(ranked.me).toMatchObject({ wallet: 'bee', displayName: 'bee.sol', hidden: true, rank: 2 });
+    expect(ranked.me).toMatchObject({ wallet: 'bee', displayName: 'bee.sol', hidden: true, rank: 0 });
     const missing = harness();
     missing.players.add('bee');
     await missing.repo.insert({ referee: 'q', referrer: 'bee', status: 'qualified', boundAt: MONDAY, expiresAt: MONDAY, activatedAt: MONDAY, qualifyExpiresAt: MONDAY, m1At: MONDAY, m2At: null });

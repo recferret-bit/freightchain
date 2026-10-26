@@ -23,7 +23,7 @@ This file is the map and the hard rules only. The detail lives in **`docs/agents
 | admin page, observing production | `docs/agents/admin-ops.md` |
 | 3D model editor: entity storage + revisions, the bundle API, editor sign-in, signed publish | `docs/spec/platform_services.md` |
 | free levels, tutorial + assist, free rides, trips | `docs/spec/rides.md` |
-| referrals: invites, free-ride gifts, donation share (v5 drops on-chain pot leg) | `docs/spec/referral.md` |
+| Convoy: invites, capped promo gift, TEN4 milestones, privacy and historical referrals | `docs/spec/referral.md` |
 | garage, promo codes | `docs/spec/ten4.md`, `docs/spec/promocodes.md` |
 | money, escrowed pools, the program toolchain | `docs/spec/pool.md` |
 | achievement tiers, the soulbound badge cNFTs, mint job + art | `docs/spec/web3_solana.md` |

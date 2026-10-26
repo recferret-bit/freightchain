@@ -92,10 +92,10 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'honk-haul', family: 'honk', tier: 1, name: 'First Mint', desc: 'A verified paid ride mints TEN4.', icon: '📣', measure: (f) => f.honkMints, target: 1 },
   { id: 'honk-haul-2', family: 'honk', tier: 2, name: 'Checkpoint Hauler', desc: 'Five verified paid rides mint the finish band.', icon: '📣', measure: (f) => f.honkFinishes, target: 5 },
   { id: 'honk-haul-3', family: 'honk', tier: 3, name: 'Long Haul Mint', desc: 'Twenty-five verified paid rides mint the finish band.', icon: '📣', measure: (f) => f.honkFinishes, target: 25 },
-  { id: 'convoy', family: 'convoy', tier: 1, name: 'Convoy', desc: 'A friend finishes a verified paid shift, or the HARD free run with assist off.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 1 },
-  { id: 'convoy-2', family: 'convoy', tier: 2, name: 'Road Crew', desc: 'Five friends finish a verified ride that counts.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 5 },
-  { id: 'convoy-3', family: 'convoy', tier: 3, name: 'Fleet', desc: 'Twenty friends finish a verified ride that counts.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 20 },
-  { id: 'convoy-4', family: 'convoy', tier: 4, name: 'Haulmaster', desc: 'A hundred friends finish a verified ride that counts.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 100 },
+  { id: 'convoy', family: 'convoy', tier: 1, name: 'Convoy', desc: 'A friend completes Convoy milestone M1. Historical qualifying friends remain counted.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 1 },
+  { id: 'convoy-2', family: 'convoy', tier: 2, name: 'Road Crew', desc: 'Five friends complete Convoy milestone M1.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 5 },
+  { id: 'convoy-3', family: 'convoy', tier: 3, name: 'Fleet', desc: 'Twenty friends complete Convoy milestone M1.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 20 },
+  { id: 'convoy-4', family: 'convoy', tier: 4, name: 'Haulmaster', desc: 'A hundred friends complete Convoy milestone M1.', icon: '⧉', measure: (f) => f.qualifiedReferrals, target: 100 },
 
   // awarded at round / pool close – settlement is not built for badges yet; never minted, never counted
   { id: 'top-20', family: 'podium', tier: 1, name: 'Top 20', desc: 'Be in the top 20 when the weekly round closes.', icon: '★', measure: null, target: 1 },

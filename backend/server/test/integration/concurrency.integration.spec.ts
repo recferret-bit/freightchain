@@ -26,7 +26,7 @@ import { ReceiveChainWebhookCommand, type ChainWebhookResultDto } from '../../sr
 import { SyncPledgesCommand } from '../../src/application/use-cases/pledges/sync-pledges/sync-pledges.command.js';
 import { PledgeRepositoryPort } from '../../src/application/ports/economy/pledge.repository.port.js';
 import { RULES_VERSION } from '../../src/domain/verdict/verdict-rules.js';
-import { ReferralService } from '../../src/application/services/referral.service.js';
+import { ConvoyService } from '../../src/application/referral/convoy.service.js';
 import { EFFECTS } from '../../src/domain/live/live-rules.js';
 import { randomUUID } from 'node:crypto';
 
@@ -737,38 +737,33 @@ describe('concurrency (PostgreSQL)', () => {
     expect(await harness.app.get(CommandBus).execute(new ReconcileStatsCommand(null, false))).toMatchObject({ drifted: [], global: null });
   });
 
-  it('two wallets binding the last invite: one pending row, the other no_slots', async () => {
-    const host = await login(), a = await login(), b = await login();
+  it('concurrent public binds keep five pending slots and duplicate MEDIUM completion creates one promo without free balance gifts', async () => {
+    const host = await login(), friends = await Promise.all(Array.from({ length: 7 }, () => login()));
     const code = (await host.agent.get('/api/referrals').expect(200)).body.code as string;
-    await prisma.gameSetting.upsert({ where: { key: 'referral_max' }, create: { key: 'referral_max', value: 1 }, update: { value: 1 } });
-    await prisma.gameSetting.upsert({ where: { key: 'referral_invite_start' }, create: { key: 'referral_invite_start', value: 1 }, update: { value: 1 } });
-    const results = await Promise.all([a, b].map((w) => w.agent.post('/api/referrals/bind').send({ code })));
-    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
-    expect(results.find((r) => r.status === 409)?.body.code).toBe('no_slots');
-    expect(await prisma.referral.count({ where: { referrer: host.address, status: 'pending' } })).toBe(1);
+    const results = await Promise.all(friends.map((w) => w.agent.post('/api/referrals/bind').send({ code })));
+    expect(results.filter((r) => r.status === 200)).toHaveLength(5);
+    expect(results.filter((r) => r.body.code === 'no_slots')).toHaveLength(2);
+    const row = await prisma.convoyInvite.findFirstOrThrow({ where: { referrer: host.address } });
+    const svc = harness.app.get(ConvoyService);
+    const fact = { wallet: row.referee, rideId: randomUUID(), trip: 'free-2c', status: 'completed', verdict: 'verified' };
+    await Promise.all([svc.onVerifiedRide(fact), svc.onVerifiedRide(fact)]);
+    expect(await prisma.convoyLedger.count({ where: { referee: row.referee, kind: 'promo_1h' } })).toBe(1);
+    expect(await prisma.referral.count({ where: { referrer: host.address } })).toBe(0);
+    expect(await freeRides(host)).toBe(10);
+    expect((await prisma.player.findUniqueOrThrow({ where: { wallet: row.referee } })).freeRides).toBe(10);
   });
 
-  it('two MEDIUM finishes under a weekly cap of one grant the referrer once', async () => {
-    const host = await login(), a = await login(), b = await login();
-    const code = (await host.agent.get('/api/referrals').expect(200)).body.code as string;
-    await prisma.gameSetting.upsert({ where: { key: 'referral_free_ride_weekly_cap' }, create: { key: 'referral_free_ride_weekly_cap', value: 1 }, update: { value: 1 } });
-    await a.agent.post('/api/referrals/bind').send({ code }).expect(200);
-    await b.agent.post('/api/referrals/bind').send({ code }).expect(200);
-    const now = new Date();
-    const rideFor = async (wallet: string) => {
-      const id = randomUUID();
-      await prisma.ride.create({ data: { id, wallet, tier: 'free', trip: 'free-2c', seed: 1, minSeconds: 10, completeDist: 1, status: 'completed', createdAt: now, startedAt: now, endedAt: now, assist: false } });
-      await prisma.rideVerdict.create({ data: { rideId: id, status: 'verified', reasons: [], scores: {}, rulesVersion: 1, judgedAt: now } });
-      return id;
-    };
-    const [left, right] = await Promise.all([rideFor(a.address), rideFor(b.address)]);
-    const svc = harness.app.get(ReferralService);
-    await Promise.all([svc.onVerified(left), svc.onVerified(right)]);
-    expect(await prisma.referral.count({ where: { referrer: host.address, status: 'qualified' } })).toBe(2);
-    expect(await prisma.referral.count({ where: { referrer: host.address, freeGranted: true } })).toBe(1);
-    expect(await freeRides(host)).toBe(12);
-    const friends = [await freeRides(a), await freeRides(b)].sort((x, y) => x - y);
-    expect(friends).toEqual([10, 13]); // one friend takes the only grant; the other stays at the signup grant
+  it('expired pending cleanup persists when the replacement host is full and racing rebinds choose one owner', async () => {
+    const old = await login(), next = await login(), alternative = await login(), friend = await login();
+    const svc = harness.app.get(ConvoyService);
+    await svc.bind(friend.address, old.address);
+    harness.clock.advance(72 * 3600 + 1);
+    for (let i = 0; i < 5; i++) await svc.bind((await login()).address, next.address);
+    await expect(svc.bind(friend.address, next.address)).rejects.toMatchObject({ errorCode: 'no_slots' });
+    expect(await prisma.convoyInvite.findUnique({ where: { referee: friend.address } })).toBeNull();
+    const results = await Promise.allSettled([svc.bind(friend.address, old.address), svc.bind(friend.address, alternative.address)]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(await prisma.convoyInvite.count({ where: { referee: friend.address } })).toBe(1);
   });
 
   it('two spectators reserving the last donation share: one share, the cap holds', async () => {
@@ -780,7 +775,7 @@ describe('concurrency (PostgreSQL)', () => {
       const driver = await login();
       const code = (await referrer.agent.get('/api/referrals').expect(200)).body.code as string;
       await driver.agent.post('/api/referrals/bind').send({ code }).expect(200);
-      await prisma.referral.update({ where: { referee: driver.address }, data: { status: 'qualified', qualifiedAt: new Date() } });
+      await prisma.referral.create({ data: { referee: driver.address, referrer: referrer.address, status: 'qualified', boundAt: new Date(), expiresAt: new Date(), qualifiedAt: new Date() } });
       const share = Math.floor((EFFECTS.tip.lamports * 1000) / 10_000);
       await prisma.gameSetting.upsert({ where: { key: 'referral_donation_cap_lamports' }, create: { key: 'referral_donation_cap_lamports', value: share }, update: { value: share } });
       const ride = (await driver.agent.post('/api/rides').send({ tier: '1h' }).expect(200)).body;

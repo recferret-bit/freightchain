@@ -1,137 +1,80 @@
-import { ReferralService } from '../../../../src/application/services/referral.service.js';
-import { BadRequestError, ConflictError } from '../../../../src/domain/shared/errors.js';
-import { Ride } from '../../../../src/domain/rides/ride.entity.js';
-import { RideStatus } from '../../../../src/domain/rides/ride-status.js';
-import type { FreeLevel } from '../../../../src/domain/rides/ride-trip.js';
-import { RideVerdict } from '../../../../src/domain/verdict/ride-verdict.entity.js';
-import { VerdictStatus } from '../../../../src/domain/verdict/verdict.dto.js';
-import { MemoryReferralRepository } from '../../../support/in-memory/memory-referral-repository.js';
-import { unitContext, type UnitContext } from '../../../support/unit-context.js';
+import { convoyContext } from '../../../support/convoy-context.js';
 
-const HOST = 'HostWa11et11111111111111111111111111111111';
-const FRIEND = 'FriendWa11et111111111111111111111111111111';
+const fact = (wallet: string, trip = 'free-2c', rideId = 'ride') => ({ wallet, trip, rideId, status: 'completed', verdict: 'verified' });
 
-const service = (ctx: UnitContext) => new ReferralService(
-  new MemoryReferralRepository(ctx.db), ctx.players, ctx.transactions, ctx.settings, ctx.cosmetics, ctx.rides, ctx.verdictRepo, ctx.clock, ctx.entropy,
-);
-
-async function verifiedFree(ctx: UnitContext, wallet: string, level: FreeLevel, assist = false): Promise<string> {
-  const ride = Ride.createFree({ id: ctx.entropy.uuid(), wallet, seed: 1, minSeconds: 10, now: ctx.now(), level, assist: false });
-  await ctx.rides.insert(Ride.restore({
-    ...ride.snapshot(), status: RideStatus.Completed, startedAt: ctx.now(), endedAt: ctx.now(), lastS: ride.snapshot().completeDist,
-    ...(assist ? { assist: true } : {}),
-  }));
-  await ctx.verdictRepo.save(RideVerdict.restore({ rideId: ride.id, status: VerdictStatus.Verified, reasons: [], scores: {} as never, rulesVersion: 1, judgedAt: ctx.now(), version: 1 }));
-  return ride.id;
-}
-
-describe('ReferralService', () => {
-  it('mints a code on first view and binds a friend who has not started a ride', async () => {
-    const ctx = unitContext(), svc = service(ctx);
-    await ctx.player(HOST); await ctx.player(FRIEND);
-    const view = await svc.view(HOST);
-    expect(view).toMatchObject({ capacity: 3, used: 0, pending: 0, available: 3, max: 30, gift: 'convoy', referredBy: null, invites: [] });
+describe('ReferralService Convoy transition', () => {
+  it('mints codes, normalizes binds, refuses invalid/self/competing invites and limits pending slots', async () => {
+    const c = convoyContext(), s = c.referral;
+    await c.player('host');
+    const view = await s.view('host');
+    expect(view).toMatchObject({ capacity: 5, available: 5, max: 100, gift: 'convoy', rewards: [], inbound: null });
     expect(view.code).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);
-    await svc.bind(FRIEND, ` ${view.code.toLowerCase()} `);
-    expect(await svc.view(FRIEND)).toMatchObject({ referredBy: HOST });
-    expect((await svc.view(HOST)).invites).toHaveLength(1);
-    await svc.bind(FRIEND, view.code); // the same code again
-    expect((await svc.view(HOST)).pending).toBe(1);
+    await expect(s.bind('host', view.code)).rejects.toMatchObject({ errorCode: 'own_code' });
+    for (let i = 0; i < 6; i++) await c.player(`friend${i}`);
+    await expect(s.bind('friend0', 'IIIIIIII')).rejects.toMatchObject({ errorCode: 'bad_code' });
+    await expect(s.bind('friend0', 'ZZZZZZZZ')).rejects.toMatchObject({ errorCode: 'unknown_code' });
+    for (let i = 0; i < 5; i++) await s.bind(`friend${i}`, ` ${view.code.toLowerCase()} `);
+    await s.bind('friend0', view.code);
+    await expect(s.bind('friend5', view.code)).rejects.toMatchObject({ errorCode: 'no_slots' });
+    expect((await s.view('host')).pending).toBe(5);
   });
 
-  it('refuses own code, an unknown code, a bad code, a second referrer, a started ride, and a full book', async () => {
-    const ctx = unitContext(), svc = service(ctx);
-    await ctx.player(HOST);
-    const { code } = await svc.view(HOST);
-    await expect(svc.bind(HOST, code)).rejects.toMatchObject({ errorCode: 'own_code' });
-    await ctx.player(FRIEND);
-    await expect(svc.bind(FRIEND, 'ZZZZZZZZ')).rejects.toBeInstanceOf(ConflictError);
-    await expect(svc.bind(FRIEND, 'IIIIIIII')).rejects.toBeInstanceOf(BadRequestError);
-    await ctx.freeRide(FRIEND, true);
-    await expect(svc.bind(FRIEND, code)).rejects.toMatchObject({ errorCode: 'ride_started' });
-    const open = ['A', 'B', 'C', 'D'].map((n) => `OpenWa11et${n}11111111111111111111111111111`);
-    for (const w of open) await ctx.player(w);
-    for (const w of open.slice(0, 3)) await svc.bind(w, code);
-    await expect(svc.bind(open[3]!, code)).rejects.toMatchObject({ errorCode: 'no_slots' });
+  it('EASY cannot activate; MEDIUM grants one usable promo, paints the host, and never increments free balances', async () => {
+    const c = convoyContext(), s = c.referral;
+    await c.player('host'); await c.player('friend');
+    await s.gift('host', 'signal');
+    await expect(s.gift('host', 'red')).rejects.toMatchObject({ errorCode: 'bad_gift' });
+    await s.bind('friend', (await s.view('host')).code);
+    await c.convoy.onVerifiedRide(fact('friend', 'free-1c', 'easy'));
+    expect((await s.view('friend')).inbound?.status).toBe('pending');
+    await c.convoy.onVerifiedRide(fact('friend'));
+    await c.convoy.onVerifiedRide(fact('friend'));
+    await s.bind('friend', (await s.view('host')).code);
+    expect((await s.view('friend')).inbound).toMatchObject({ status: 'active', promo: 'granted', weeks: 0 });
+    expect((await c.repo.ledger()).filter((r) => r.kind === 'promo_1h')).toHaveLength(1);
+    expect((await c.storedPlayer('host')).freeRides).toBe(10);
+    expect((await c.storedPlayer('friend')).freeRides).toBe(10);
+    expect(await c.cosmetics.listEquipped('host')).toMatchObject({ truck_color: 'signal' });
+    expect((await s.view('host')).available).toBe(5);
   });
 
-  it('an expired invite is a tombstone, and a MEDIUM finish inside the window pays both sides once and paints the gift', async () => {
-    const ctx = unitContext(), svc = service(ctx);
-    await ctx.player(HOST); await ctx.player(FRIEND);
-    const { code } = await svc.view(HOST);
-    await svc.gift(HOST, 'signal');
-    expect((await svc.view(HOST)).gift).toBe('signal');
-    await expect(svc.gift(HOST, 'red')).rejects.toMatchObject({ errorCode: 'bad_gift' });
-    await svc.bind(FRIEND, code);
-    ctx.clock.advance(15 * 86_400);
-    await svc.onVerified(await verifiedFree(ctx, FRIEND, 2));
-    expect(await svc.donationReferrer(FRIEND, 'spectator')).toBeNull();
-    await expect(svc.bind(FRIEND, code)).rejects.toMatchObject({ errorCode: 'expired' });
-    expect((await ctx.storedPlayer(HOST)).freeRides).toBe(10);
-
-    const late = 'LateWa11et1111111111111111111111111111111';
-    await ctx.player(late);
-    await svc.bind(late, code);
-    ctx.clock.advance(8 * 86_400);
-    await svc.onVerified(await verifiedFree(ctx, late, 2));
-    expect((await ctx.storedPlayer(HOST)).freeRides).toBe(10); // past the 7-day window: qualified, no free rides
-    expect(await svc.donationReferrer(late, 'spectator')).toBe(HOST);
-
-    const pal = 'PalWa11et11111111111111111111111111111111';
-    await ctx.player(pal);
-    await svc.bind(pal, code);
-    await svc.onVerified(await verifiedFree(ctx, pal, 2));
-    expect((await ctx.storedPlayer(HOST)).freeRides).toBe(12);
-    expect((await ctx.storedPlayer(pal)).freeRides).toBe(13);
-    expect(await ctx.cosmetics.listEquipped(HOST)).toMatchObject({ truck_color: 'signal' });
-    await svc.onVerified(await verifiedFree(ctx, pal, 2));
-    expect((await ctx.storedPlayer(HOST)).freeRides).toBe(12); // one grant
+  it('72-hour pending expiration frees slots and allows a new referrer, including existing drivers', async () => {
+    const c = convoyContext(), s = c.referral;
+    for (const w of ['host', 'other', 'friend']) await c.player(w);
+    await c.freeRide('friend', true);
+    await s.bind('friend', (await s.view('host')).code);
+    c.clock.advance(72 * 3600);
+    expect((await s.view('friend')).referredBy).toBe('host');
+    c.clock.advance(0.001);
+    expect((await s.view('friend')).referredBy).toBeNull();
+    await s.bind('friend', (await s.view('other')).code);
+    expect((await s.view('friend')).referredBy).toBe('other');
   });
 
-  it('an invite is still pending at the exact expiry instant and is a tombstone one millisecond later', async () => {
-    const ctx = unitContext(), svc = service(ctx);
-    const edge = 'EdgeWa11et111111111111111111111111111111';
-    await ctx.player(HOST); await ctx.player(edge);
-    const { code } = await svc.view(HOST);
-    await svc.bind(edge, code);
-    ctx.clock.advance(14 * 86_400);
-    expect((await svc.view(HOST)).pending).toBe(1);
-    expect((await svc.view(edge)).referredBy).toBe(HOST);
-    ctx.clock.advance(0.001);
-    expect((await svc.view(HOST)).pending).toBe(0);
-    expect((await svc.view(edge)).referredBy).toBeNull();
-    await expect(svc.bind(edge, code)).rejects.toMatchObject({ errorCode: 'expired' });
+  it('shows a valid historical pending invite and keeps its original 72h deadline on bind', async () => {
+    const c = convoyContext(), s = c.referral;
+    for (const w of ['host', 'friend']) await c.player(w);
+    const old = { referee: 'friend', referrer: 'host', status: 'pending' as const, boundAt: c.now(), expiresAt: new Date(c.now().getTime() + 14 * 86400000), qualifiedAt: null, rideId: null, freeGranted: false, badgeCounted: false };
+    await c.legacy.insertReferral(old);
+    c.clock.advance(3600);
+    expect((await s.view('friend')).inbound?.status).toBe('pending');
+    expect((await s.view('host')).pending).toBe(1);
+    await s.bind('friend', (await s.view('host')).code);
+    expect((await c.repo.getByReferee('friend'))?.expiresAt).toEqual(new Date(old.boundAt.getTime() + 72 * 3600000));
+    expect(await c.legacy.referralOf('friend')).toEqual(old);
   });
 
-  it('the first bind after the TTL is expired, for the same code and for a different one, and the slot is back', async () => {
-    const ctx = unitContext(), svc = service(ctx);
-    const edge = 'EdgeWa11et111111111111111111111111111111';
-    const pal = 'Pal2Wa11et1111111111111111111111111111111';
-    const other = 'OtherWa11et11111111111111111111111111111';
-    await ctx.player(HOST); await ctx.player(edge); await ctx.player(pal); await ctx.player(other);
-    const { code } = await svc.view(HOST);
-    const otherCode = (await svc.view(other)).code;
-    await svc.bind(edge, code);
-    await svc.bind(pal, code);
-    ctx.clock.advance(14 * 86_400 + 0.001);
-    await expect(svc.bind(edge, code)).rejects.toMatchObject({ errorCode: 'expired' });
-    await expect(svc.bind(pal, otherCode)).rejects.toMatchObject({ errorCode: 'expired' });
-    expect((await svc.view(HOST)).pending).toBe(0);
-    expect((await svc.view(edge)).referredBy).toBeNull();
-    expect((await svc.view(pal)).referredBy).toBeNull();
-  });
-
-  it('a later paid finish counts the convoy badge once; HARD with assist on does not', async () => {
-    const ctx = unitContext(), svc = service(ctx);
-    await ctx.player(HOST); await ctx.player(FRIEND);
-    const { code } = await svc.view(HOST);
-    await svc.bind(FRIEND, code);
-    await svc.onVerified(await verifiedFree(ctx, FRIEND, 3, true));
-    expect((await ctx.rideQuery.summary(HOST)).facts.qualifiedReferrals).toBe(0);
-    const { poolRide } = await import('../../../support/pool-rides.js');
-    await svc.onVerified(await poolRide(ctx, FRIEND, 5_000));
-    expect((await ctx.rideQuery.summary(HOST)).facts.qualifiedReferrals).toBe(1);
-    expect(await svc.donationReferrer(FRIEND, HOST)).toBeNull(); // the spectator is the referrer
-    expect(svc.shareOf(10_000_000, 1000, 0, 500_000_000, false)).toBe(1_000_000);
+  it('preserves qualified legacy ownership, records and balances; fresh training starts Convoy without backfill', async () => {
+    const c = convoyContext(), s = c.referral;
+    for (const w of ['host', 'other', 'friend']) await c.player(w);
+    const old = { referee: 'friend', referrer: 'host', status: 'qualified' as const, boundAt: new Date(0), expiresAt: new Date(1), qualifiedAt: new Date(1), rideId: 'historical', freeGranted: true, badgeCounted: true };
+    await c.legacy.insertReferral(old);
+    await expect(s.bind('friend', (await s.view('other')).code)).rejects.toMatchObject({ errorCode: 'already_bound' });
+    expect((await s.view('host')).legacyQualified).toBe(1);
+    expect(await c.repo.getByReferee('friend')).toBeNull();
+    await c.convoy.onVerifiedRide(fact('friend'));
+    expect((await s.view('friend')).inbound?.status).toBe('active');
+    expect(await c.legacy.referralOf('friend')).toEqual(old);
+    expect((await c.storedPlayer('friend')).freeRides).toBe(10);
   });
 });

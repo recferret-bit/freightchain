@@ -15954,6 +15954,56 @@
                     "gift": {
                       "type": "string"
                     },
+                    "hidden": {
+                      "type": "boolean"
+                    },
+                    "inbound": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "at": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        },
+                        "m1": {
+                          "type": "boolean"
+                        },
+                        "m2": {
+                          "type": "boolean"
+                        },
+                        "promo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "tasksComplete": {
+                          "type": "boolean"
+                        },
+                        "wallet": {
+                          "type": "string"
+                        },
+                        "weeks": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "at",
+                        "expiresAt",
+                        "m1",
+                        "m2",
+                        "promo",
+                        "status",
+                        "tasksComplete",
+                        "wallet",
+                        "weeks"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
                     "invites": {
                       "items": {
                         "additionalProperties": true,
@@ -15961,21 +16011,48 @@
                           "at": {
                             "type": "string"
                           },
+                          "expiresAt": {
+                            "type": "string"
+                          },
+                          "m1": {
+                            "type": "boolean"
+                          },
+                          "m2": {
+                            "type": "boolean"
+                          },
+                          "promo": {
+                            "type": "string"
+                          },
                           "status": {
                             "type": "string"
                           },
+                          "tasksComplete": {
+                            "type": "boolean"
+                          },
                           "wallet": {
                             "type": "string"
+                          },
+                          "weeks": {
+                            "type": "number"
                           }
                         },
                         "required": [
                           "at",
+                          "expiresAt",
+                          "m1",
+                          "m2",
+                          "promo",
                           "status",
-                          "wallet"
+                          "tasksComplete",
+                          "wallet",
+                          "weeks"
                         ],
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "legacyQualified": {
+                      "type": "number"
                     },
                     "max": {
                       "type": "number"
@@ -15989,6 +16066,65 @@
                         "null"
                       ]
                     },
+                    "rewards": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "amount": {
+                            "type": "number"
+                          },
+                          "at": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "paidUnits": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "referee": {
+                            "type": "string"
+                          },
+                          "releaseAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "signature": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "state": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "amount",
+                          "at",
+                          "kind",
+                          "paidUnits",
+                          "reason",
+                          "referee",
+                          "releaseAt",
+                          "signature",
+                          "state"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "trustEligible": {
+                      "type": "boolean"
+                    },
                     "used": {
                       "type": "number"
                     }
@@ -15998,10 +16134,15 @@
                     "capacity",
                     "code",
                     "gift",
+                    "hidden",
+                    "inbound",
                     "invites",
+                    "legacyQualified",
                     "max",
                     "pending",
                     "referredBy",
+                    "rewards",
+                    "trustEligible",
                     "used"
                   ],
                   "type": "object"
@@ -16058,6 +16199,56 @@
                     "gift": {
                       "type": "string"
                     },
+                    "hidden": {
+                      "type": "boolean"
+                    },
+                    "inbound": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "at": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        },
+                        "m1": {
+                          "type": "boolean"
+                        },
+                        "m2": {
+                          "type": "boolean"
+                        },
+                        "promo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "tasksComplete": {
+                          "type": "boolean"
+                        },
+                        "wallet": {
+                          "type": "string"
+                        },
+                        "weeks": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "at",
+                        "expiresAt",
+                        "m1",
+                        "m2",
+                        "promo",
+                        "status",
+                        "tasksComplete",
+                        "wallet",
+                        "weeks"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
                     "invites": {
                       "items": {
                         "additionalProperties": true,
@@ -16065,21 +16256,48 @@
                           "at": {
                             "type": "string"
                           },
+                          "expiresAt": {
+                            "type": "string"
+                          },
+                          "m1": {
+                            "type": "boolean"
+                          },
+                          "m2": {
+                            "type": "boolean"
+                          },
+                          "promo": {
+                            "type": "string"
+                          },
                           "status": {
                             "type": "string"
                           },
+                          "tasksComplete": {
+                            "type": "boolean"
+                          },
                           "wallet": {
                             "type": "string"
+                          },
+                          "weeks": {
+                            "type": "number"
                           }
                         },
                         "required": [
                           "at",
+                          "expiresAt",
+                          "m1",
+                          "m2",
+                          "promo",
                           "status",
-                          "wallet"
+                          "tasksComplete",
+                          "wallet",
+                          "weeks"
                         ],
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "legacyQualified": {
+                      "type": "number"
                     },
                     "max": {
                       "type": "number"
@@ -16093,6 +16311,65 @@
                         "null"
                       ]
                     },
+                    "rewards": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "amount": {
+                            "type": "number"
+                          },
+                          "at": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "paidUnits": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "referee": {
+                            "type": "string"
+                          },
+                          "releaseAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "signature": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "state": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "amount",
+                          "at",
+                          "kind",
+                          "paidUnits",
+                          "reason",
+                          "referee",
+                          "releaseAt",
+                          "signature",
+                          "state"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "trustEligible": {
+                      "type": "boolean"
+                    },
                     "used": {
                       "type": "number"
                     }
@@ -16102,10 +16379,15 @@
                     "capacity",
                     "code",
                     "gift",
+                    "hidden",
+                    "inbound",
                     "invites",
+                    "legacyQualified",
                     "max",
                     "pending",
                     "referredBy",
+                    "rewards",
+                    "trustEligible",
                     "used"
                   ],
                   "type": "object"
@@ -16245,6 +16527,56 @@
                     "gift": {
                       "type": "string"
                     },
+                    "hidden": {
+                      "type": "boolean"
+                    },
+                    "inbound": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "at": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        },
+                        "m1": {
+                          "type": "boolean"
+                        },
+                        "m2": {
+                          "type": "boolean"
+                        },
+                        "promo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "tasksComplete": {
+                          "type": "boolean"
+                        },
+                        "wallet": {
+                          "type": "string"
+                        },
+                        "weeks": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "at",
+                        "expiresAt",
+                        "m1",
+                        "m2",
+                        "promo",
+                        "status",
+                        "tasksComplete",
+                        "wallet",
+                        "weeks"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
                     "invites": {
                       "items": {
                         "additionalProperties": true,
@@ -16252,21 +16584,48 @@
                           "at": {
                             "type": "string"
                           },
+                          "expiresAt": {
+                            "type": "string"
+                          },
+                          "m1": {
+                            "type": "boolean"
+                          },
+                          "m2": {
+                            "type": "boolean"
+                          },
+                          "promo": {
+                            "type": "string"
+                          },
                           "status": {
                             "type": "string"
                           },
+                          "tasksComplete": {
+                            "type": "boolean"
+                          },
                           "wallet": {
                             "type": "string"
+                          },
+                          "weeks": {
+                            "type": "number"
                           }
                         },
                         "required": [
                           "at",
+                          "expiresAt",
+                          "m1",
+                          "m2",
+                          "promo",
                           "status",
-                          "wallet"
+                          "tasksComplete",
+                          "wallet",
+                          "weeks"
                         ],
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "legacyQualified": {
+                      "type": "number"
                     },
                     "max": {
                       "type": "number"
@@ -16280,6 +16639,65 @@
                         "null"
                       ]
                     },
+                    "rewards": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "amount": {
+                            "type": "number"
+                          },
+                          "at": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "paidUnits": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "referee": {
+                            "type": "string"
+                          },
+                          "releaseAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "signature": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "state": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "amount",
+                          "at",
+                          "kind",
+                          "paidUnits",
+                          "reason",
+                          "referee",
+                          "releaseAt",
+                          "signature",
+                          "state"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "trustEligible": {
+                      "type": "boolean"
+                    },
                     "used": {
                       "type": "number"
                     }
@@ -16289,10 +16707,15 @@
                     "capacity",
                     "code",
                     "gift",
+                    "hidden",
+                    "inbound",
                     "invites",
+                    "legacyQualified",
                     "max",
                     "pending",
                     "referredBy",
+                    "rewards",
+                    "trustEligible",
                     "used"
                   ],
                   "type": "object"

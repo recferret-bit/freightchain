@@ -40,6 +40,13 @@ describe('RideQueryPrismaRepository (PostgreSQL)', () => {
   const top = async (board: 'round' | 'all' | 'free', roundId: number | null, limit: number, verified: boolean, trip: string | null) =>
     (await query.leaderboard(board, roundId, verified, trip, null, 'distance', 0, limit, 100)).rows;
 
+  it('counts each Convoy M1 or historical badge friend once, without rewriting history', async () => {
+    await prisma.referral.create({ data: { referee: 'bob', referrer: 'alice', status: 'qualified', boundAt: at(0), expiresAt: at(10), badgeCounted: true, freeGranted: true } });
+    for (const referee of ['bob', 'carol']) await prisma.convoyInvite.create({ data: { referee, referrer: 'alice', status: 'qualified', boundAt: at(0), expiresAt: at(10), activatedAt: at(1), qualifyExpiresAt: at(100), m1At: at(5) } });
+    expect((await query.summary('alice')).facts.qualifiedReferrals).toBe(2);
+    expect((await prisma.referral.findUniqueOrThrow({ where: { referee: 'bob' } })).freeGranted).toBe(true);
+  });
+
   it('live: running rides with a heartbeat since the cut-off, newest start first; free rides excluded', async () => {
     await ride('alice', { paid: true, seconds: 10, metres: 50, outcome: 'running', start: 0 });
     await ride('bob', { paid: true, seconds: 10, metres: 70, outcome: 'running', start: 5 });

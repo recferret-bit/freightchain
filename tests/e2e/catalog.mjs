@@ -107,7 +107,7 @@ export const CHECKS = [
   c('B1-REF-01', 1, 'referral', 'Second wallet binds the first Convoy code', 'mock', `${page}/api/referral.test.mjs`, 'server/test/scenarios/referrals.scenarios.ts'),
   c('B1-REF-02', 1, 'referral', 'Gift convoy', 'automated', `${page}/api/referral.test.mjs`, 'server/test/scenarios/referrals.scenarios.ts'),
   c('B1-REF-03', 1, 'referral', 'Gift signal', 'automated', `${page}/api/referral.test.mjs`, 'client/test/referral.test.mjs'),
-  c('B1-REF-04', 1, 'referral', 'Verified MEDIUM ride grants the referrer free rides', 'automated', `${page}/api/referral.test.mjs`, 'server/test/unit/application/services/referral.service.spec.ts', 'HTTP replay of a verified MEDIUM finish'),
+  c('B1-REF-04', 1, 'referral', 'Verified MEDIUM ride activates Convoy and grants one referee promo', 'automated', `${page}/api/referral.test.mjs`, 'server/test/unit/application/services/referral.service.spec.ts', 'HTTP replay of a verified MEDIUM finish'),
 
   c('B1-BOARD-01', 1, 'lobby', 'GET /api/prize/board?tier=1h is the weekly skill board', 'automated', `${page}/free/merged.test.mjs`, 'server/src/presentation/prize/prize.http.controller.ts'),
   c('B1-HONK-01', 1, 'lobby', 'Token symbol is TEN4; route stays /api/honk', 'automated', `${page}/free/merged.test.mjs`, 'server/src/domain/honk/tokenomics.ts'),

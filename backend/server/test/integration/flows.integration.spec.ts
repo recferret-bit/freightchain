@@ -154,14 +154,14 @@ describe('HTTP (PostgreSQL) · row deltas', () => {
     expect(missing.status).toBe(404);
   });
 
-  it('binding a referral inserts one Referral; an unknown code inserts none', async () => {
+  it('binding a referral inserts one ConvoyInvite; an unknown code inserts none', async () => {
     const host = await login();
     const friend = await login();
     const code = (await host.agent.get('/api/referrals').expect(200)).body.code as string;
-    const bound = await expectDbDelta(prisma(), { Referral: 1 }, () => friend.agent.post('/api/referrals/bind').send({ code }));
+    const bound = await expectDbDelta(prisma(), { ConvoyInvite: 1, Referral: 0 }, () => friend.agent.post('/api/referrals/bind').send({ code }));
     expect(bound.status).toBe(200);
     const stranger = await login();
-    const refused = await expectDbDelta(prisma(), { Referral: 0 }, () => stranger.agent.post('/api/referrals/bind').send({ code: 'ZZZZZZZZ' }));
+    const refused = await expectDbDelta(prisma(), { ConvoyInvite: 0, Referral: 0 }, () => stranger.agent.post('/api/referrals/bind').send({ code: 'ZZZZZZZZ' }));
     expect(refused.status).toBe(409);
   });
 
