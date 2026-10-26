@@ -12,6 +12,7 @@ import { boundedFetch, withDeadline } from './normal-drive-support.mjs';
 import { normalFreeCourse, assertNormalFreeCourse } from './normal-drive-course.mjs';
 import { installKeyboardDriver } from './keyboard-driver.mjs';
 import { laneMergeUnsafe } from './lane-merge-safety.mjs';
+import { createStuckWatchdog, describeStuck } from './normal-drive-stuck.mjs';
 
 const honkBalance = args => withDeadline(() => readHonk(args), 15_000, 'token balance');
 const emissionBalance = args => withDeadline(() => readEmission(args), 15_000, 'emission balance');
@@ -82,12 +83,19 @@ try {
   await tab.ev(`(${installKeyboardDriver.toString()})(${laneMergeUnsafe.toString()})`);
   stopPrompts = answerPrompts(tab);
   const finishBy = Date.now() + (paid ? 100 : Math.max(45, Math.ceil(course.minSeconds * 3 / 60))) * 60_000;   // wall minutes; the browser clock ran ~0.6x wall on a Metal headless Chrome, so a 1800 s HARD shift needs more than 45 wall minutes
+  const stuckWatchdog = createStuckWatchdog({ seconds: +process.env.NORMAL_DRIVE_STUCK_SECONDS || 60 });   // game seconds below ~1 m/s: a standoff fails in minutes, not at the wall deadline
   for (;;) {
     await sleep(5000);
     const state = await tab.ev('({s:__game.st.s,t:__game.st.t,hull:__game.st.hull,v:__game.st.v,mode:__game.st.mode,d:__game.st.d,gear:__game.st.gear,driver:__keyboardDriver})');
     console.log(JSON.stringify(state));
     if (state.driver.error) throw new Error(state.driver.error);
     if (state.mode !== 'drive') break;
+    const stuck = stuckWatchdog.observe(state);
+    if (stuck) {
+      const detail = await tab.ev('(() => { const g = __game, s = g.st; return JSON.stringify({ truck: { s: s.s, t: s.t, v: s.v, d: s.d, psi: s.psi, gear: s.gear, rpm: s.rpm, hull: s.hull, engineOn: s.engineOn, park: s.park, clutch: s.clutch, off: s.off }, input: { ...g.input }, pike: { ...g.pike }, driver: __keyboardDriver, cars: g.traffic.filter(c => Math.abs(c.s - s.s) < 60).map(c => ({ id: c.id, dir: c.dir, ds: +(c.s - s.s).toFixed(1), lat: +c.lat.toFixed(1), v: +c.v.toFixed(1), vDes: +c.vDes.toFixed(1), state: c.state, brake: c.brake, wait: c.wait, over: c.over })) }); })()');
+      console.log(`STUCK ${stuck}`); console.log(JSON.stringify(describeStuck({ ...JSON.parse(detail).truck, ...JSON.parse(detail) })));
+      throw new Error(`normal ride stuck: ${stuck}`);
+    }
     if (Date.now() > finishBy) throw new Error('normal ride timed out');
   }
   await tab.ev('__stopKeyboardDriver()');

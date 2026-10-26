@@ -1,7 +1,7 @@
 // Serialized into the browser by the acceptance harness. Observe the game; operate its input handlers only.
-export async function installKeyboardDriver(laneMergeUnsafe) {
+export async function installKeyboardDriver(laneMergeUnsafe, deps = {}) {   // deps.PikeApp: the headless reproduction already holds the module
   const g = window.__game, held = new Set();
-  const { PikeApp } = await import('./js/phone/apps/pike.js');
+  const PikeApp = deps.PikeApp ?? (await import('./js/phone/apps/pike.js')).PikeApp;
   const pikeApp = new PikeApp(), original = JSON.stringify(g.CFG);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const state = window.__keyboardDriver = { changes: 0, tolls: 0, stopped: false };
@@ -14,7 +14,7 @@ export async function installKeyboardDriver(laneMergeUnsafe) {
   const tap = code => { key(code, true); key(code, false); };
   // Closing speed and time gap in the TARGET lane over the lateral move; brake or hold instead of merging.
   const mergeUnsafe = lat => laneMergeUnsafe(g.traffic, { s: g.st.s, v: g.st.v, d: g.st.d }, lat, { moveSeconds: Math.max(2, Math.abs(lat - g.st.d) / 1.5) });
-  let shiftTo = null, releaseAt = 0, lastT = -1, started = false, target = 2.4, chooseAt = 0;
+  let shiftTo = null, releaseAt = 0, lastT = -1, started = false, target = 2.4, chooseAt = 0, stillT = 0, featherUntil = 0, prevT = 0;
   const timer = setInterval(() => {
     const s = g.st, T = g.CFG.TRUCK;
     if (s.mode !== 'drive') { for (const code of held) key(code, false); return; }
@@ -80,16 +80,27 @@ export async function installKeyboardDriver(laneMergeUnsafe) {
     else if (s.rpm < 1150 && gear > 1 && s.clutch < .1) gear--;
     if (shiftTo === null && s.shiftT === 0 && gear !== s.gear) shiftTo = gear;
     if (want > 2 && s.v > .1 && s.rpm < 1050 && s.gear === 1 && s.t > releaseAt + 2) releaseAt = s.t + .3;
+    // A damaged hull cuts the pull (0.4 + 0.6 hull): in 1st at the clutch-slip revs it can no longer beat the rolling resistance from a standstill.
+    // Feather the clutch like a person: hold the pedal near half so the revs stay up and the engine pulls through the slip. Only after 3 s of standing
+    // or crawling with a clear road ahead (stillT stays 0 whenever the truck moves or wants to wait), so a healthy launch never changes.
+    stillT = want > 2 && s.v < 1 && s.gear <= 2 ? stillT + (s.t - prevT) : 0;
+    if (stillT > 3 && s.t > featherUntil + 6) featherUntil = s.t + 8;
+    if (s.v > 3.5 || want <= 2) featherUntil = 0;
+    prevT = s.t;
     if (shiftTo !== null) {
       key('ShiftLeft', true);
       if (s.clutch > .8 && s.shiftT === 0) { tap(`Digit${shiftTo}`); shiftTo = null; releaseAt = s.t + .45; }
-    } else key('ShiftLeft', s.t < releaseAt || (want < .3 && s.v < 1));
+    } else if (s.t < featherUntil) key('ShiftLeft', s.clutch < .45);
+    else key('ShiftLeft', s.t < releaseAt || (want < .3 && s.v < 1));
     key('KeyW', s.v < want - .1); key('KeyS', s.v > want + 1);
     const gain = T.STEER_GAIN + (T.STEER_GAIN_LOW - T.STEER_GAIN) * clamp(1 - s.v / T.STEER_LOW_V, 0, 1);
-    const aim = clamp((target - s.d) / Math.max(8, s.v * 2.5), -.35, .35);
+    // Lead compensation: the truck's heading answers the wheel late, so aim from where the lateral position will be in ~1.6 s. Without it a lane change
+    // at 20 m/s overshot the outer lane by ~2 m into the roadside props (the hull loss of the failed HARD run).
+    const ahead = s.d + s.psi * Math.max(s.v, 1) * 1.6, aim = clamp((target - ahead) / Math.max(8, s.v * 2.5), -.35, .35);
     const desired = clamp((future + (aim - s.psi) / Math.max(2, s.v * 1.3)) / gain, -1, 1);
     const error = desired - (s.ste + (s.steer - s.ste) * .7);
-    key('KeyD', error > .04); key('KeyA', error < -.04);
+    const dead = Math.max(.012, .04 * Math.min(1, 10 / Math.max(s.v, 1)));   // the key deadband is a heading error of dead·gain/(1/v-ish): at 22 m/s .04 left a ~0.013 rad drift that walked the truck 2 m out of its lane
+    key('KeyD', error > dead); key('KeyA', error < -dead);
     state.want = want; state.target = target;
   }, 30);
   window.__stopKeyboardDriver = () => { clearInterval(timer); for (const code of held) key(code, false); state.stopped = true; };
