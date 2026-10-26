@@ -176,7 +176,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(ChallengeRepositoryPort).useValue(new MemoryChallengeRepository(memory))
       .overrideProvider(RideRepositoryPort).useValue(new MemoryRideRepository(memory))
       .overrideProvider(DailySeedRepositoryPort).useValue(new MemoryDailySeedRepository(memory))
-      .overrideProvider(RideQueryPort).useValue(new MemoryRideQuery(memory))
+      .overrideProvider(RideQueryPort).useValue(new MemoryRideQuery(memory, convoy))
       .overrideProvider(RoundRepositoryPort).useValue(new MemoryRoundRepository(memory))
       .overrideProvider(PaymentRepositoryPort).useValue(new MemoryPaymentRepository(memory))
       .overrideProvider(AchievementRepositoryPort).useValue(new MemoryAchievementRepository(memory))

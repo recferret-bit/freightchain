@@ -9,7 +9,7 @@
 
 - Entity editor security: `docs/spec/platform_services.md`; production rate limits require Redis and a restricted MCP counter user; PostgreSQL owns the shared AI job queue; generation runs only in the dedicated process (`npm run editor:worker`).
 
-- Referrals: `docs/spec/referral.md` (invites, free-ride gifts, and spectator-tip sharing; Pool v5 removes the on-chain 5% pool leg).
+- Referrals: `docs/spec/referral.md` (Convoy invites, capped promo gifts, TEN4 milestones, privacy and retained historical rewards).
 
 ## Workflow
 

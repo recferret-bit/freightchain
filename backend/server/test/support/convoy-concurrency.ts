@@ -45,6 +45,7 @@ export function convoyConcurrencyScenarios(h: () => Harness): void {
   it('late social progress and duplicate ride callbacks create only one milestone under both player locks', async () => {
     const host = await login(), friend = await login();
     const svc = h().app.get(ConvoyService), campaign = h().app.get(AirdropRepositoryPort);
+    await h().app.get(PrismaService).player.update({ where: { wallet: host.address }, data: { trustScore: 50 } });
     await svc.bind(friend.address, host.address);
     const fact = { wallet: friend.address, status: 'completed', verdict: 'verified', tier: '1h', ranked: true, trip: '1h' };
     await svc.onVerifiedRide({ ...fact, rideId: 'activation', trip: 'free-2c', tier: 'free', ranked: false });

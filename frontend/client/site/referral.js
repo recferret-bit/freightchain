@@ -51,10 +51,10 @@ export function availableText(r) {
 }
 
 export function inviteLabel(status) {
-  return status === 'pending' || status === 'qualified' || status === 'expired' ? status : '–';
+  return status === 'pending' || status === 'active' || status === 'qualified' || status === 'expired' ? status : '–';
 }
 
-/** Clear the stored code on success and on 409 (already bound, expired, or their own code). Any other failure stays, so the next signed-in load can try once more. */
+/** Clear the stored code on success and on 400/409 (already bound, expired, or their own code). Any other failure stays, so the next signed-in load can try once more. */
 export async function bindStoredRef(api, storage) {
   const code = refCode(storage.get(REF_KEY));
   if (!code) {
@@ -66,7 +66,7 @@ export async function bindStoredRef(api, storage) {
     storage.remove(REF_KEY);
     return 'bound';
   } catch (e) {
-    if (e?.status === 409) { storage.remove(REF_KEY); return 'conflict'; }
+    if (e?.status === 409 || e?.status === 400) { storage.remove(REF_KEY); return 'conflict'; }
     return 'keep';
   }
 }

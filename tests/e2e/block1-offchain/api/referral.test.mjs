@@ -32,7 +32,7 @@ apiTest(test, 'B1-REF-03 choosing the signal gift posts the item', async () => {
   assert.equal(r.json.gift, 'signal');
 });
 
-apiTest(test, 'B1-REF-04 a verified MEDIUM ride grants the referrer two free rides and the referee three', async () => {
+apiTest(test, 'B1-REF-04 a verified MEDIUM ride activates Convoy and grants one promo without free balance gifts', async () => {
   const host = session();
   await signInPlayer(host);
   const code = (await host.call('/api/referrals')).json.code;
@@ -48,6 +48,8 @@ apiTest(test, 'B1-REF-04 a verified MEDIUM ride grants the referrer two free rid
   assert.equal(driven.end.json.status, 'completed');
   assert.equal(driven.end.json.level, 2);
   assert.equal(driven.end.json.verdict?.status, 'verified', JSON.stringify(driven.end.json.verdict?.reasons ?? driven.end.json.verdict));
-  assert.equal((await host.call('/api/me')).json.freeRides, before + 2);
-  assert.equal((await pal.call('/api/me')).json.freeRides, palBefore + 3);
+  assert.equal((await host.call('/api/me')).json.freeRides, before);
+  assert.equal((await pal.call('/api/me')).json.freeRides, palBefore);
+  assert.equal((await pal.call('/api/referrals')).json.inbound.status, 'active');
+  assert.equal((await pal.call('/api/referrals')).json.inbound.promo, 'granted');
 }, { timeout: 420_000 });

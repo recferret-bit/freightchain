@@ -1,13 +1,10 @@
 import { BindReferralCommand, GetReferralsQuery, SetReferralGiftCommand } from '../../../../../src/application/use-cases/referrals/referrals.command.js';
 import { BindReferralHandler, GetReferralsHandler, SetReferralGiftHandler } from '../../../../../src/application/use-cases/referrals/referrals.handler.js';
-import { ReferralService } from '../../../../../src/application/services/referral.service.js';
-import { MemoryReferralRepository } from '../../../../support/in-memory/memory-referral-repository.js';
-import { unitContext } from '../../../../support/unit-context.js';
+import { convoyContext } from '../../../../support/convoy-context.js';
 
 describe('referral handlers', () => {
   it('view, gift and bind go through ReferralService and answer with the view', async () => {
-    const ctx = unitContext();
-    const svc = new ReferralService(new MemoryReferralRepository(ctx.db), ctx.players, ctx.transactions, ctx.settings, ctx.cosmetics, ctx.rides, ctx.verdictRepo, ctx.clock, ctx.entropy);
+    const ctx = convoyContext(), svc = ctx.referral;
     const view = new GetReferralsHandler(svc), gift = new SetReferralGiftHandler(svc), bind = new BindReferralHandler(svc);
     await ctx.player('host'); await ctx.player('friend');
     const first = await view.execute(new GetReferralsQuery('host'));

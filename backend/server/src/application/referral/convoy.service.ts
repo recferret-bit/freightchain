@@ -1,3 +1,8 @@
+import { CosmeticRepositoryPort } from '../ports/players/cosmetic.repository.port.js';
+import { ReferralRepositoryPort } from '../ports/referral/referral.repository.port.js';
+import { DEFAULT_GIFT, isGiftItem } from '../../domain/referral/referral-rules.js';
+import { defaultCosmetic } from '../../domain/economy/cosmetics.js';
+import { inviteDto, rewardDto, tasksComplete, legacyPending, type ConvoyAccountDto } from './convoy-account.js';
 import { Injectable, Optional } from '@nestjs/common';
 import type { Player } from '../../domain/players/player.entity.js';
 import { RideStatus } from '../../domain/rides/ride-status.js';
@@ -84,7 +89,7 @@ export interface ConvoyPrivacyDto {
 const idleGift = (): ConvoyGiftDto => ({ granted: false, reason: 'not_activation', referrerRideGift: REFERRER_RIDE_GIFT });
 
 /**
- * Target convoy machine. It does not write the legacy referral row and does not grant the live +2/+3 free rides.
+ * Current Convoy machine. Legacy records remain immutable; new rewards never change free-ride balances.
  * Milestones create held rewards; the settlement worker credits only confirmed chain receipts.
  */
 @Injectable()
@@ -98,23 +103,55 @@ export class ConvoyService {
     private readonly promos: PromoRepositoryPort,
     @Optional() private readonly campaign?: AirdropRepositoryPort,
     @Optional() private readonly settings?: GameSettingsService,
+    @Optional() private readonly legacy?: ReferralRepositoryPort,
+    @Optional() private readonly cosmetics?: CosmeticRepositoryPort,
   ) {}
+
+  async account(wallet: string): Promise<ConvoyAccountDto> {
+    const now = this.clock.now();
+    const rows = (await this.repo.listByReferrer(wallet)).filter((row) => row.status !== 'pending' || !pendingExpired(row.expiresAt, now));
+    const history = await this.legacy?.invitesOf(wallet) ?? [];
+    for (const old of history) {
+      const pending = legacyPending(old, now);
+      if (pending && !await this.repo.getByReferee(old.referee)) rows.push(pending);
+    }
+    const prior = await this.legacy?.referralOf(wallet);
+    const own = await this.repo.getByReferee(wallet) ?? legacyPending(prior, now);
+    const inbound = own?.status === 'pending' && pendingExpired(own.expiresAt, now) ? null : own;
+    const project = async (row: ConvoyRow) => inviteDto(row, await this.repo.ridesOf(row.referee), tasksComplete(await this.campaign?.get(row.referee)), !!await this.repo.findLedger(`convoy:promo:${row.referee}`));
+    const pending = rows.filter((row) => row.status === 'pending').length;
+    const capacity = pendingCap(await this.repo.recentActiveCount(wallet, new Date(now.getTime() - 30 * DAY_MS), now));
+    const rewards = (await Promise.all(rows.flatMap((row) => ['m1', 'm2'].map((kind) => this.repo.findLedger(`convoy:${kind}:${row.referee}`))))).filter((row): row is ConvoyLedgerRow => !!row && row.wallet === wallet);
+    return { capacity, used: rows.filter((row) => !!row.m1At).length, pending, available: Math.max(0, capacity - pending), max: 100,
+      referredBy: inbound?.referrer ?? (prior?.status === 'qualified' ? prior.referrer : null), inbound: inbound ? await project(inbound) : null,
+      invites: await Promise.all(rows.map(project)), rewards: rewards.map(rewardDto), hidden: (await this.repo.readHidden(wallet)).hidden,
+      legacyQualified: history.filter((row) => row.badgeCounted).length, trustEligible: ((await this.players.findByWallet(wallet))?.trustScore ?? 0) >= 50 };
+  }
 
   async bind(referee: string, referrer: string): Promise<ConvoyBindDto> {
     if (referee === referrer) throw new ConflictError('that is your own code', 'own_code');
+    // Expiry must survive a subsequent capacity/ownership refusal.
+    const prior = await this.repo.getByReferee(referee);
+    await this.tx.run(async (tx) => {
+      await this.lock([referee, referrer, ...(prior ? [prior.referrer] : [])], tx);
+      await this.dropExpiredPending(referee, referrer, this.clock.now(), tx);
+    });
     return this.tx.run(async (tx) => {
       await this.lock([referee, referrer], tx);
       const now = this.clock.now();
       await this.dropExpiredPending(referee, referrer, now, tx);
       const existing = await this.repo.getByReferee(referee, tx);
-      if (existing?.status === 'pending' && existing.referrer === referrer) return this.bindView(existing, true, tx);
+      if (existing && existing.status !== 'expired' && existing.referrer === referrer) return this.bindView(existing, true, tx);
       if (existing?.status === 'pending' || existing?.status === 'active' || existing?.status === 'qualified') throw new ConflictError('this wallet already has a referrer', 'already_bound');
       if (existing?.status === 'expired') throw new ConflictError('that invite expired', 'expired');
+      const historical = await this.legacy?.referralOf(referee, tx);
+      if (historical && historical.referrer !== referrer && (historical.status === 'qualified' || (historical.status === 'pending' && now.getTime() <= Math.min(historical.expiresAt.getTime(), historical.boundAt.getTime() + pendingTtlMs())))) throw new ConflictError('this wallet already has a referrer', 'already_bound');
       const invites = await this.repo.listByReferrer(referrer, tx);
-      const pending = invites.filter((row) => row.status === 'pending').length;
+      let pending = invites.filter((row) => row.status === 'pending').length;
+      for (const old of await this.legacy?.invitesOf(referrer, tx) ?? []) if (legacyPending(old, now) && !await this.repo.getByReferee(old.referee, tx)) pending++;
       const maxPending = pendingCap(await this.activeFriends(referrer, now, tx));
-      if (pending >= maxPending) throw new ConflictError('that wallet has no invites left', 'no_slots');
-      const row: ConvoyRow = {
+      if (pending >= maxPending && !legacyPending(historical, now)) throw new ConflictError('that wallet has no invites left', 'no_slots');
+      const row: ConvoyRow = legacyPending(historical, now) ?? {
         referee, referrer, status: 'pending', boundAt: now, expiresAt: new Date(now.getTime() + pendingTtlMs()),
         activatedAt: null, qualifyExpiresAt: null, m1At: null, m2At: null,
       };
@@ -127,8 +164,14 @@ export class ConvoyService {
     const verified = ride.status === RideStatus.Completed && ride.verdict === VerdictStatus.Verified;
     return this.tx.run(async (tx) => {
       const now = this.clock.now();
-      const preview = await this.repo.getByReferee(ride.wallet, tx);
-      const players = await this.lock(preview ? [ride.wallet, preview.referrer] : [ride.wallet], tx);
+      let preview = await this.repo.getByReferee(ride.wallet, tx);
+      const historical = !preview ? await this.legacy?.referralOf(ride.wallet, tx) : null;
+      const owner = preview?.referrer ?? historical?.referrer;
+      const players = await this.lock(owner ? [ride.wallet, owner] : [ride.wallet], tx);
+      if (!preview && verified && isMediumOrHardTrip(ride.trip) && historical && (historical.status === 'qualified' || (historical.status === 'pending' && now.getTime() <= Math.min(historical.expiresAt.getTime(), historical.boundAt.getTime() + pendingTtlMs())))) {
+        preview = { referee: ride.wallet, referrer: historical.referrer, status: 'pending', boundAt: now, expiresAt: new Date(now.getTime() + pendingTtlMs()), activatedAt: null, qualifyExpiresAt: null, m1At: null, m2At: null };
+        if (!await this.repo.insert(preview, tx)) throw new ConflictError('referrer changed concurrently; retry progress', 'convoy_changed');
+      }
       if (!verified) return this.dropIfPendingExpired(ride.wallet, now, tx);
       const weeklyEnabled = (await this.settings?.current(tx))?.referralCountWeeklyGrant !== 0;
       const counted = countedRide(ride, players.get(ride.wallet)?.trustScore ?? 0, weeklyEnabled);
@@ -194,7 +237,7 @@ export class ConvoyService {
       rows.push(this.leaderRow(i + 1, row.referrer, row.qualified, row.active, false, sns.get(row.referrer) ?? null));
     }
     const self = mine >= 0 ? ranked[mine] : undefined;
-    const me = this.leaderRow(mine >= 0 ? mine + 1 : 0, viewer, self?.qualified ?? 0, self?.active ?? 0, await hiddenOf(viewer), sns.get(viewer) ?? null);
+    const me = this.leaderRow(visible.findIndex((row) => row.referrer === viewer) + 1, viewer, self?.qualified ?? 0, self?.active ?? 0, await hiddenOf(viewer), sns.get(viewer) ?? null);
     return { privacyColumn, rows, me };
   }
 
@@ -216,6 +259,15 @@ export class ConvoyService {
     row.activatedAt = now;
     row.qualifyExpiresAt = new Date(now.getTime() + qualifyWindowMs());
     await this.repo.save(row, tx);
+    const prior = (await this.repo.listByReferrer(row.referrer, tx)).some((item) => item.referee !== row.referee && item.activatedAt);
+    const paintedHistorically = (await this.legacy?.invitesOf(row.referrer, tx) ?? []).some((item) => item.status === 'qualified');
+    if (!prior && !paintedHistorically && this.cosmetics) {
+      const code = await this.legacy?.codeByWallet(row.referrer, tx);
+      const item = code && isGiftItem(code.gift) ? code.gift : DEFAULT_GIFT;
+      if (!await this.cosmetics.has(row.referrer, 'truck_color', item, tx)) await this.cosmetics.unlock({ wallet: row.referrer, slot: 'truck_color', item, code: 'referral', at: now }, tx);
+      const worn = await this.cosmetics.listEquipped(row.referrer, tx);
+      if (!worn.truck_color || worn.truck_color === defaultCosmetic('truck_color')) await this.cosmetics.equip(row.referrer, 'truck_color', item, tx);
+    }
     const gift = await this.grantPromo(row, now, tx);
     const milestones = await this.applyMilestones(row, now, tx);
     return { status: row.status, activated: true, expired: false, deletedPending: false, gift, milestones };
@@ -230,11 +282,11 @@ export class ConvoyService {
     if (!row.activatedAt || !row.qualifyExpiresAt || (row.status !== 'active' && row.status !== 'qualified')) return { m1: false, m2: false };
     const refereeRides = await this.repo.ridesOf(row.referee, tx);
     const tasks = await this.campaign?.get(row.referee, tx);
-    const tasksComplete = !!(tasks?.rideOk && tasks.telegramUserId && tasks.telegramMember && tasks.xUserId && tasks.xAgeOk && tasks.xFollowersOk && tasks.xFollows && tasks.xQuoteOk);
+    const eligible = ((await this.players.findByWallet(row.referrer, tx))?.trustScore ?? 0) >= 50;
     const decision = milestoneDecision({
       m1At: row.m1At, m2At: row.m2At, qualifyExpiresAt: row.qualifyExpiresAt, now,
       refereeWeeks: distinctWeeks(refereeRides, row.activatedAt, row.qualifyExpiresAt),
-      tasksComplete,
+      tasksComplete: eligible && tasksComplete(tasks),
     });
     if (decision.expire) {
       row.status = 'expired';

@@ -26,7 +26,7 @@ export class ReferralsHttpController {
     return this.queryBus.execute<GetReferralsQuery, ReferralView>(new GetReferralsQuery(player.wallet));
   }
 
-  /** 200 the view (the same code again is a no-op) · 400 a bad code · 409 own code, already bound, expired, no slots, a ride already started, unknown code. */
+  /** 200 the view (the same code again is a no-op) · 400 a bad code · 409 own code, already bound, expired, no slots, unknown code. */
   @Post('bind') @HttpCode(200)
   @ZodResponse(referralViewResponse)
   bind(@CurrentPlayer() player: PlayerIdentity, @ZodBody(bindReferralBodySchema) body: BindReferralBody): Promise<ReferralView> {

@@ -1,3 +1,4 @@
+import type { ConvoyRepositoryPort } from '../../../src/application/referral/convoy.repository.port.js';
 import { inflateRawSync } from 'node:zlib';
 import { Injectable } from '@nestjs/common';
 import { eventTimesUs, intervalsFromTimesUs } from '../../../src/domain/anticheat/inp-intervals.js';
@@ -223,7 +224,7 @@ function inRange(at: Date | null, from: Date, to: Date): boolean {
 
 @Injectable()
 export class MemoryRideQuery extends RideQueryPort {
-  constructor(private readonly db: MemoryDb) { super(); }
+  constructor(private readonly db: MemoryDb, private readonly convoy?: ConvoyRepositoryPort) { super(); }
 
   private of(wallet: string) { return [...this.db.rides.values()].filter((r) => r.props.wallet === wallet); }
 
@@ -303,7 +304,7 @@ export class MemoryRideQuery extends RideQueryPort {
         freeFinishes: freeFinishCounts(fair),
         honkMints: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.released && m.amount > 0n).length,
         honkFinishes: [...this.db.honkMints.values()].filter((m) => m.wallet === wallet && m.released && m.amount > 0n && m.band100).length,
-        qualifiedReferrals: [...this.db.referrals.values()].filter((r) => r.referrer === wallet && r.badgeCounted).length,
+        qualifiedReferrals: new Set([...this.db.referrals.values()].filter((r) => r.referrer === wallet && r.badgeCounted).map((r) => r.referee).concat((await this.convoy?.listByReferrer(wallet) ?? []).filter((r) => r.m1At).map((r) => r.referee))).size,
       },
     };
   }

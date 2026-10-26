@@ -2,7 +2,7 @@ import { levelOfTrip } from '../../domain/rides/ride-trip.js';
 import { DAY_MS } from '../../domain/shared/time.js';
 import { weekBounds } from '../../domain/economy/week.js';
 
-/** Convoy sits beside the live free-ride gift. These are the target caps, not the legacy +2/+3 grant. */
+/** Convoy activation and milestone defaults. Legacy +2/+3 grants are retired. */
 export const CONVOY_PENDING_HOURS = 72;
 export const CONVOY_WINDOW_DAYS = 60;
 export const CONVOY_PENDING_BASE = 5;

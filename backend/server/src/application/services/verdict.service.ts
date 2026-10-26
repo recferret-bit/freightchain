@@ -24,7 +24,6 @@ import { RideReplayRepositoryPort } from '../ports/verdict/ride-replay.repositor
 import { RideVerdictRepositoryPort } from '../ports/verdict/ride-verdict.repository.port.js';
 import { HonkMintService } from './honk-mint.service.js';
 import { HonkEmissionPort } from '../ports/honk/honk-emission.port.js';
-import { ReferralService } from './referral.service.js';
 import { AirdropService } from '../airdrop/airdrop.service.js';
 import { ConvoyService } from '../referral/convoy.service.js';
 import { TelemetryConfigPort } from '../ports/telemetry/telemetry-config.port.js';
@@ -87,7 +86,7 @@ export class VerdictService {
     @Optional() private readonly rideEvents?: RideEventRepositoryPort,
     @Optional() private readonly replayQueue?: ReplayQueuePort,
     @Optional() private readonly entropy?: EntropyPort,
-    @Optional() private readonly referral?: ReferralService,
+    @Optional() private readonly retiredReferral?: never,
     @Optional() private readonly rideResults?: RideResultRepositoryPort,
     @Optional() private readonly convoy?: ConvoyService,
     @Optional() private readonly airdrop?: AirdropService,
@@ -375,9 +374,6 @@ export class VerdictService {
   /** After the verdict transaction commits. A referral failure is logged and retried on the next judge: qualifying locks the referrer, which cannot share the rider's lock. */
   private async afterVerified(rideId: string, status: string | null | undefined): Promise<void> {
     if (status !== VerdictStatus.Verified) return;
-    if (this.referral) {
-      await this.referral.onVerified(rideId).catch((error: unknown) => this.logger.warn(`referral qualify deferred: ${error instanceof Error ? error.message : String(error)}`));
-    }
     if (!this.convoy && !this.airdrop) return;
     const ride = await this.rides.findById(rideId);
     if (!ride) return;
