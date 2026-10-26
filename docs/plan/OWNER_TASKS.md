@@ -1,7 +1,9 @@
 # Owner Tasks: External Accounts, Configurations, Secrets & Manual Actions
 
 > **Purpose:** This is your single consolidated checklist of everything that **requires external accounts, third-party API keys, DNS/Cloudflare setup, wallets, legal/entity registration, or manual decisions/actions from you (the owner)**.
-> All internal product rules, math formulas, RU/EN legal templates ([`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md), [`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md), [`../legal/OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md), [`../legal/TERMS.md`](../legal/TERMS.md), [`../legal/PRIVACY.md`](../legal/PRIVACY.md)), and engineering/operational runbooks ([`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) Part II) have been completed and reviewed in the repo.
+> Legal templates and engineering runbooks exist in the repo; this is not a claim that every implementation, formula or acceptance gate is complete. Current engineering status is tracked in [devnet soft launch](DEVNET_SOFT_LAUNCH.md), [local readiness](../testing/LOCAL_READINESS.md) and [Plan 2](spec-compliance/STATUS.md).
+
+The final merged local gate and full-duration paid ride remain engineering acceptance work. They do not require the owner to run the local suite. After those pass, the owner boundary is external accounts/configuration, publication, physical wallet/device interactions and an explicit deployment request. The separately scheduled $500 event also needs its dedicated fixed-table standings/review/payout acceptance; future TGE weights/allocation/claim UI are not supplied merely by adding credentials.
 
 ---
 
@@ -18,12 +20,13 @@ Fill in the remaining `[PLACEHOLDER: …]` values in `docs/legal/PRESEASON_RULES
 - [ ] **Hosting Provider Name:** Fill in `[PLACEHOLDER: hosting provider]` in `PRESEASON_RULES.md` Part B / `PRESEASON_RULES_RU.md` Part B (e.g. Hetzner / DigitalOcean / AWS).
 
 ### 1.2 External API Keys & Bot Credentials (Pre-season Server `.env`)
-Provision the following external credentials and add them to production `.env` (never commit real secrets to git):
+Check existing key presence first; configure only supported credentials for the intended feature before an authorized deployment (never commit real secrets to git). Local checks have not modified the real production env:
 - [ ] **Telegram Bot (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_LOGIN_BOT`, `TELEGRAM_CHANNEL_ID`, `TELEGRAM_GROUP_ID`, `TELEGRAM_WEBHOOK_SECRET`):**
   1. Create a bot via `@BotFather` and run `/setdomain` to bind your production domain for the Telegram Login Widget.
   2. Add the bot as an **Administrator** (with read-members permission) to both the official Telegram channel and group chat.
   3. Record the numeric chat IDs (`-100...`) for both the channel and the group; set the public widget username in `TELEGRAM_LOGIN_BOT`.
   4. Register the HTTPS `/api/airdrop/telegram/webhook` with the configured secret token and verify original group activity on the production origin. Local fixtures do not register it or send Telegram messages.
+- [ ] **Admin alerts (`ADMIN_ALERT_TELEGRAM_BOT_TOKEN`, `ADMIN_ALERT_TELEGRAM_CHAT_ID`):** Configure the operator destination separately from campaign membership credentials and verify actual delivery after an authorized deployment. Local outage fixtures do not send alerts.
 - [ ] **X Verification (`TWITTERAPI_IO_KEY`):**
   1. Register an account at `https://twitterapi.io`, confirm current pricing/quotas and fund the intended verification budget.
   2. Set `TWITTERAPI_IO_KEY`; the current implementation verifies the follow of `@FreightChainSol` and the submitted public post containing the full personal wallet code. `X_OFFICIAL_USER_ID` and `X_CAMPAIGN_POST_ID` are not supported env keys.
@@ -35,8 +38,7 @@ Provision the following external credentials and add them to production `.env` (
 - [ ] **Secret Salt for IP Prefix Hashing (`IP_HASH_SECRET`):**
   1. Generate an independent 32-byte random hex secret (`openssl rand -hex 32`) and set `IP_HASH_SECRET`; production requires it, and new-env initialization generates it. Change an old `SIGNIN_RETENTION_DAYS=180` or 0 to 1–90 (default 90).
   2. The privacy migration irreversibly removes old player sign-in raw IP/browser columns; backup copies require separate retention review. Request/access logs remain a distinct security surface permitted raw IP for 30 days; verify deployed log eviction separately. See [sign-in privacy handoff](../testing/SIGNIN_PRIVACY.md).
-- [ ] **Optional Discord OAuth (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`):**
-  - Only needed if you enable the optional Discord airdrop task during Pre-season; otherwise leave disabled until Season 1.
+- [ ] **Optional Discord (future integration):** Keep disabled. The current app has no supported Discord OAuth task or `DISCORD_*` env wiring; this needs implementation and acceptance if later approved, not just credentials.
 
 ### 1.3 Cloudflare & Infrastructure Setup (`MASTER_PLAN.md` §12 `G1`, `G12`)
 - [ ] **Put Domain Behind Cloudflare Proxy (Orange Cloud):**
@@ -47,6 +49,9 @@ Provision the following external credentials and add them to production `.env` (
 - [ ] **Uptime Alert & Daily Off-Server DB Backup:**
   1. Point an external uptime check (Cloudflare / UptimeRobot / BetterStack) at `https://api.<domain>/api/health` with Telegram alerts to your phone.
   2. Configure the daily `pg_dump` cron to push encrypted backups to an off-server bucket (Cloudflare R2 / Backblaze B2 / AWS S3).
+
+- [ ] **Devnet assets and device acceptance:** Authorize publication of the 13 remaining achievement metadata URIs, configure the intended devnet collection/tree/mint key and verify wallet receipts/DAS. Test the actual browser wallet popup and physical phone camera/wallet-app pairing; a physical Seeker/current holder is needed only for the optional SGT claim.
+- [ ] **Live services and recovery:** Verify intended SNS/RPC, AI-provider and opt-in analytics delivery with the owner's accounts. Apply the prepared log-retention configuration, verify backup/restore and retention on the actual host, and retain evidence separately from Docker fixtures.
 
 ---
 
@@ -67,7 +72,7 @@ Provision the following external credentials and add them to production `.env` (
 ## Phase 3 — Pre-season Review & Payout (**15–17 November 2026**)
 
 - [ ] **Chainalysis API Key (`CHAINALYSIS_API_KEY`):**
-  - Generate a free API key at `https://www.chainalysis.com/free-cryptocurrency-sanctions-screening-tools/` to screen the Top-20 winner wallets before payout.
+  - Arrange the screening account/tool for the Top-20 winner review. `CHAINALYSIS_API_KEY` is a planned integration label, not a supported server env key; local tests do not establish live screening.
 - [ ] **Manual Top-20 Review (Sun 15 Nov 12:00 UTC – Mon 16 Nov 12:00 UTC):**
   - Follow [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §14 (check 10 Hz verdicts, watch Top-10 replays, check IP-prefix/funding clusters, re-verify TG & X tasks, publish provisional standings).
 - [ ] **Handle Appeals (Mon 16 Nov 12:00 UTC – Tue 17 Nov 12:00 UTC):**
