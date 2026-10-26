@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
-#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|replay-controls|replay-tips|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor|honk-garage|whitepaper|landing|achievements|guest|weekly|referral|viewer|sim ...]   (default: all thirty)
+#   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|replay-controls|replay-tips|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor|honk-garage|whitepaper|landing|achievements|guest|weekly|referral|viewer|sim|controls ...]   (default: all thirty-one)
 # Needs: the compose PostgreSQL (npm run db:up), server/ and landing/ dependencies installed, Chrome.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/backend/server"
-SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay replay-controls replay-tips flags wallet wallet-split board close close-split verified verified-deep road stats blinks traffic editor honk-garage whitepaper landing achievements guest weekly referral viewer sim)
+SUITES=("$@"); [ ${#SUITES[@]} -gt 0 ] || SUITES=(browser lobby admin promo watch replay replay-controls replay-tips flags wallet wallet-split board close close-split verified verified-deep road stats blinks traffic editor honk-garage whitepaper landing achievements guest weekly referral viewer sim controls)
 DB="freightchain_e2e_$$"
 PG_CONTAINER="${E2E_POSTGRES_CONTAINER:-freightchain-postgres}"
 PG_PORT="${E2E_POSTGRES_PORT:-15433}"
@@ -146,8 +146,9 @@ for suite in "${SUITES[@]}"; do
     weekly) SERVER_ENTRY="scripts/e2e-weekly-server.mjs $BUILD" EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" node scripts/e2e-weekly-ticket.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     referral) EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP CHALLENGE_INTERVAL_SECONDS=0" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" node scripts/e2e-referral.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     viewer) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-viewer.mjs "http://localhost:$PORT/viewer.html") || fails=$((fails + 1)) ;;
+    controls) start 3; (cd "$ROOT/frontend/client" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node tools/e2e-controls.mjs) || fails=$((fails + 1)) ;;
     sim) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-chrome.mjs "http://localhost:$PORT/play.html?sim=1") || fails=$((fails + 1)) ;;
-    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | replay-controls | replay-tips | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor | honk-garage | whitepaper | landing | achievements | guest | weekly | referral | viewer | sim)"; fails=$((fails + 1)) ;;
+    *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | replay-controls | replay-tips | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor | honk-garage | whitepaper | landing | achievements | guest | weekly | referral | viewer | sim | controls)"; fails=$((fails + 1)) ;;
   esac
   stop
 done

@@ -52,7 +52,7 @@ and `server/scripts/e2e-blinks.mjs` (`blinks`: the Solana Actions through Dialec
 then stops the server and drops the database – also on failure.
 
 ```sh
-bash .claude/skills/run-tests/e2e.sh            # all twenty-eight, including guest, weekly grant, referral qualification, viewer and sim controls
+bash .claude/skills/run-tests/e2e.sh            # all thirty-one, including guest, weekly grant, referral, viewer, sim visuals, normal-physics controls and replay controls/tips
 bash .claude/skills/run-tests/e2e.sh guest weekly referral viewer  # these four against a private server build and throwaway database
 bash .claude/skills/run-tests/e2e.sh editor     # the model editor on storybook: the REAL entity MCP + the server's scripted model (EDITOR_FAKE_LLM=1) – sign-in, hand edit, history, signed publish, a chat job, the spec gate
 bash .claude/skills/run-tests/e2e.sh browser    # one of: browser | lobby | admin | promo | watch | replay | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor

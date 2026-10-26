@@ -91,6 +91,8 @@ Root checks passed (460 server files / 2,656 tests), PostgreSQL passed (60 files
 
 The merged local gate reached the production smoke after passing fast checks, all three code E2E blocks and Rust, but Docker timed out fetching its Dockerfile frontend twice. A separate public frontend pull subsequently succeeded. This infrastructure failure does not establish a current container/chain/Chrome acceptance pass (`/private/tmp/fc-final-local-gate.log`, `/private/tmp/fc-final-local-tail.log`).
 
+The new `controls` Chrome suite passed all 21 assertions both standalone and through the standard isolated runner. It uses keyboard events with unchanged vehicle/clock/finish settings and never writes speed, position, temperature or hull. The truck finishes the check with 100% hull; its screenshot was inspected. Client lint/unit/bundle/headless and census self-test also pass. Logs: `/private/tmp/fc-normal-controls.log`, `/private/tmp/fc-controls-runner.log`, `/private/tmp/fc-controls-client.log`, `/private/tmp/fc-controls-census.log`. The default runner now has 31 suites. This short controls check does not establish a full-length verified online ride.
+
 ## Feature acceptance matrix
 
 **Partial** means existing tests exercise part of the feature but the complete acceptance row is open. **Incomplete** means a required implementation is missing. **Untested** means the required runtime evidence is absent. **Pending** means this baseline has not finished. None of those labels is a complete feature pass.
@@ -108,8 +110,8 @@ Commands below are reproducible entrypoints; their presence is not a claim that 
 | EN/RU | `e2e-i18n-legal.mjs`, block 1 | Partial: verify all required screens, not just dictionary presence |
 | EASY/MEDIUM/HARD finish | Client headless checks; `e2e browser`; server free-level scenarios | Partial: normal-duration level checks and assisted/unassisted outcomes need explicit evidence |
 | Tutorial and assist | Client headless checks; server guide/free-level scenarios | Partial: browser controls and forbidden HARD/paid combinations need explicit evidence |
-| Engine, gearbox, clutch and brakes | `e2e sim`, client unit/headless | Partial: corrected Chrome startup/first-gear forward/reverse assertions passed. Complete braking/gearbox matrix remains open |
-| Battery, climate, wipers, lights and cockpit controls | Same standalone Chrome harness and client headless | Partial: screenshot inspection does not prove each control; add missing outcome assertions |
+| Engine, gearbox, clutch and brakes | `e2e controls sim`, client unit/headless | Normal-physics keyboard checks passed: cold ignition, clutch-free shift refusal, first/second gear, forward/reverse, service/parking brake, engine off. Full-speed seven-gear/long-drive acceptance remains separate |
+| Battery, climate, wipers, lights and cockpit controls | `e2e controls`, standalone visual harness and client headless | Normal-physics keyboard checks passed: headlight battery drain, alternator recharge, cab power refusal/on, heater/cooler switches and compressor effect, three wiper modes, washer consumption/release, phone open/close. Full-duration climate/resource exhaustion remains separate |
 | Routes, forks, traffic, holes and collisions | Client parity/headless; `e2e road traffic` | Partial: required-proof road and all nine traffic scenarios passed; standalone route/control assertions and visual matrix remain open |
 | Ride order/start/end and distance finish | `e2e browser close close-split`; server lifecycle scenarios | Partial: shortened Chrome completion, server-owned distance and close-beacon completion verified; full-length program-mode journey remains open |
 | Disconnect, heartbeat and stale sweeper | `e2e close close-split board`; server lifecycle scenarios | Partial: Chrome proves abandoned/complete states, back-cache reload and stale sweep on one/split hosts; inspect all terminal-path statistics separately |
