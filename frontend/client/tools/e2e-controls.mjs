@@ -1,8 +1,9 @@
-// Normal vehicle settings and real keyboard events. State is observed, never patched to force an outcome.
+// Normal driving controls observe state only; a separate bounded phone section labels its location/renderer fixtures.
+import { phoneControls } from './phone-controls.mjs';
 import { launch, sleep, withEntities } from './cdp.mjs';
 
 const base = process.env.BASE || 'http://localhost:18765';
-const tab = await launch({ port: +(process.env.CHROME_PORT || 19385), shotsDir: 'fc-controls-shots', evalProblems: true });
+const tab = await launch({ port: +(process.env.CHROME_PORT || 19385), shotsDir: 'fc-controls-shots', evalProblems: true, args: [...(process.platform === 'darwin' ? ['--use-angle=metal'] : []), '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
 const checks = [];
 const check = (name, ok) => { checks.push({ name, ok: !!ok }); console.log(`${ok ? 'ok' : 'FAIL'} ${name}`); };
 const ev = source => tab.ev(source);
@@ -10,7 +11,7 @@ const key = (code, down = true) => tab.send('Input.dispatchKeyEvent', { type: do
 const tap = async code => { await key(code); await key(code, false); };
 const until = async (source, label, timeout = 30_000) => {
   const end = Date.now() + timeout;
-  while (!await ev(source)) { if (Date.now() > end) throw new Error(`${label}: ${await ev('JSON.stringify({mode:__game?.st.mode,s:__game?.st.s,v:__game?.st.v,gear:__game?.st.gear,rpm:__game?.st.rpm,clutch:__game?.st.clutch})')}`); await sleep(100); }
+  while (!await ev(source)) { if (Date.now() > end) throw new Error(`${label}: ${await ev('JSON.stringify({mode:__game?.st.mode,t:__game?.st.t,s:__game?.st.s,v:__game?.st.v,gear:__game?.st.gear,rpm:__game?.st.rpm,clutch:__game?.st.clutch})')}`); await sleep(100); }
 };
 const shift = async gear => {
   await key('ShiftLeft'); await until('__game.st.clutch >= .8 && __game.st.shiftT === 0', 'clutch disengaged');
@@ -27,7 +28,8 @@ const stop = async () => {
 try {
   await tab.send('Page.navigate', { url: await withEntities(`${base}/play.html?sim=1`) });
   await until('!!window.__game', 'game boot');
-  await ev('__game.devRun(); __game.startRide()');
+  // The existing HARD trip spans both tolls used by the later location fixtures.
+  await ev('__game.devRun("free-3c"); __game.startRide()');
   await until('__game.st.mode === "drive"', 'offline driving mode');
   const original = await ev('JSON.stringify(__game.CFG)');
   check('normal settings, engine off, neutral and parking brake on', await ev('__game.CFG.TRUCK.MASS === 2.5 && !__game.st.engineOn && __game.st.gear === 0 && __game.st.park && !__game.guide.assist'));
@@ -74,7 +76,10 @@ try {
   await tap('KeyO'); check('key off stops the engine', await ev('!__game.st.engineOn && !__game.st.keyOn'));
   check('no physics, clock or finish configuration was modified', await ev('JSON.stringify(__game.CFG)') === original);
   await tab.shot('controls-normal-physics');
+  const normalState = await ev('({s:__game.st.s,t:__game.st.t,hull:__game.st.hull})');
+  await phoneControls({ tab, check, tap, until });
+  check('phone fixtures preserve physics, clock and finish configuration', await ev('JSON.stringify(__game.CFG)') === original);
   check('no browser exceptions', tab.filt().length === 0);
-  console.log(JSON.stringify({ checks, state: await ev('({s:__game.st.s,t:__game.st.t,hull:__game.st.hull})'), problems: tab.filt() }));
+  console.log(JSON.stringify({ checks, normalState, problems: tab.filt() }));
   if (checks.some(c => !c.ok)) process.exitCode = 1;
 } finally { tab.close(); }

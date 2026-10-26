@@ -8,7 +8,7 @@
 
 The playable minigames are in this checkout, ported from branch `phone-minigames`. `MINIGAMES` is `off` | `shadow` | `enforce` and defaults to `off`. `MG_SECRET` is required only when the mode is not `off`, and is at least 32 bytes. `MG_SALT_VERSION` defaults to `mg:v1`. With the default, a ride stamps a null commit and no event is issued.
 
-GULP (a gas-bay stop) and PIKE (a toll arm) are local cab-phone tasks in that same tree. Their four digits are generated on the client and shown in Messages. They are not server minigames and they do not score a ride.
+GULP (a gas-bay stop) and PIKE (a toll arm) are local cab-phone tasks in that same tree. Their four digits are generated on the client and shown in Messages. They are not server minigames and they do not score a ride. The `controls` Chrome suite enters wrong and correct codes through the real phone UI at explicit stationary GULP/toll fixtures, including successive tolls. Its separate `phone-sms` fixture verifies picture rendering, shuffled keypad/keyboard editing and the submitted answer callback; it does not claim a server-issued challenge or verified online completion.
 
 ### 1.2 What is issued
 

@@ -87,7 +87,7 @@ AGY: use Argon (Pro) for heavy reasoning and planning (via `/boost` or subagents
 ## Verify
 
 - Client (`frontend/client/`): `npm run check` (lint + bundle + headless test); refactor gate `npm run trace:save` / `trace:diff`; real Chrome `node tools/e2e-chrome.mjs` (`PORT=` if busy) – look at the screenshots.
-- Root: `npm run check` (client + landing + server unit + media) AND `npm run server:integration` for server changes; 31 real-Chrome suites: `bash .claude/skills/run-tests/e2e.sh` (includes guest, weekly grant, referral, viewer, sim visuals, normal-physics keyboard controls, replay controls/chat and signed local-chain replay tips).
+- Root: `npm run check` (client + landing + server unit + media) AND `npm run server:integration` for server changes; 31 real-Chrome suites: `bash .claude/skills/run-tests/e2e.sh` (includes guest, weekly grant, referral, viewer, sim visuals, normal-physics keyboard controls plus bounded phone UI fixtures, replay controls/chat and signed local-chain replay tips).
 - Full local gate: `npm run test:ci:full` includes both programs' Rust tests, `test:production:local` (isolated production-mode Docker startup/RPC/recovery), the local validator journeys and the Chrome suites.
 - Everything else (live server e2e, replays, lobby): `docs/agents/verifying.md`.
 - Local code e2e, no browser: `npm run test:e2e:block1` (chain off), `npm run test:e2e:block2` (disposable host validator; current pool build required), and `npm run test:e2e:block3` (anticheat vitest, no server). Plan: `docs/testing/E2E_PLAN.md`. This layer does not replace the Chrome suites. Bar and phases: `docs/testing/COVERAGE_CONTRACT.md`, `docs/testing/IMPLEMENTATION_PLAN.md`.
