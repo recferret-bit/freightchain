@@ -29,7 +29,8 @@ COPY backend/server/src/infrastructure/config/env.schema.ts ./backend/server/src
 COPY infra/deploy/docker-compose.prod.yml infra/deploy/Dockerfile ./infra/deploy/
 COPY .dockerignore ./
 COPY backend/programs/idl/freightchain_pools.json ./backend/programs/idl/
-COPY docs/legal/ ./docs/legal/                 # landing src/legal.js inlines the rules with ?raw
+# landing src/legal.js inlines the rules with ?raw
+COPY docs/legal/ ./docs/legal/
 WORKDIR /app/frontend/landing
 COPY frontend/landing/package.json frontend/landing/package-lock.json ./
 RUN npm ci
