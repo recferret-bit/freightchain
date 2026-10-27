@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { ACHIEVEMENTS } from '../../../backend/server/dist/domain/achievements/achievements.js';
 import { BASE, SOLANA, apiTest, chainTest, keypair, session, sign, signInPlayer } from '../harness/api.mjs';
 import { REPO } from '../harness/dom.mjs';
+import { acceptLocalTestTerms } from '../../../backend/server/scripts/local-test-terms.mjs';
 
 apiTest(test, '[SOL-T-01] SIWS nonce is domain-bound and a tampered or foreign signature is 401', async () => {
   const keys = keypair();
@@ -42,11 +43,17 @@ apiTest(test, '[SOL-T-03] a guest session can order EASY and is refused MEDIUM, 
   assert.equal(opened.status, 200, JSON.stringify(opened.json));
   const easy = await guest.call('/api/rides', { body: { tier: 'free', level: 1 } });
   assert.equal(easy.status, 200, JSON.stringify(easy.json));
-  for (const body of [{ tier: 'free', level: 2 }, { tier: 'free', level: 3 }, { tier: '1h' }]) {
+  for (const body of [{ tier: 'free', level: 2 }, { tier: 'free', level: 3 }]) {
     const r = await guest.call('/api/rides', { body });
     assert.equal(r.status, 409, JSON.stringify(body));
     assert.equal(r.json.code, 'guest_easy_only');
   }
+  // A paid start needs current explicit consent first (428); once accepted, the guest is still refused.
+  assert.equal((await guest.call('/api/rides', { body: { tier: '1h' } })).status, 428);
+  await acceptLocalTestTerms(guest.base, guest.cookie());
+  const paid = await guest.call('/api/rides', { body: { tier: '1h' } });
+  assert.equal(paid.status, 409, JSON.stringify(paid.json));
+  assert.equal(paid.json.code, 'guest_easy_only');
   const promo = await guest.call('/api/promo/redeem', { body: { code: 'GUEST' } });
   assert.equal(promo.status, 409);
   assert.equal(promo.json.code, 'guest_easy_only');
