@@ -59,7 +59,7 @@ function client(base) {
     try { json = text ? JSON.parse(text) : null; } catch { json = { raw: text }; }
     return { status: r.status, json, headers: r.headers, text };
   }
-  return { call, cookie: () => cookie };
+  return { call, cookie: () => cookie, base };
 }
 
 async function waitHealth(base, log, pid) {
