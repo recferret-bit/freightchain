@@ -3,7 +3,8 @@
 **/dist
 .git
 .claude
-docs
+docs/*
+!docs/legal
 social
 tests
 backend/programs/target
