@@ -385,7 +385,7 @@ try {
   await untilChain(Number((await poolAcc(A)).playDeadline.getTime() / 1000), 'pool A play deadline');
   const ADM = { kp: admin, wallet: addr('admin') };
   const { j: an } = await api('auth/nonce', { body: { wallet: ADM.wallet } });
-  ADM.cookie = (await fetch(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet: ADM.wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(an.message), admin.secretKey)) }) })).headers.get('set-cookie').split(';')[0];
+  ADM.cookie = await acceptLocalTestTerms(BASE, (await fetch(`${BASE}/api/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet: ADM.wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(an.message), admin.secretKey)) }) })).headers.get('set-cookie').split(';')[0]);
   check('payouts are refused to a player (403)', (await api(`pools/${A}/payout`, { cookie: P1.cookie })).status === 403);
   // v4 (H5-B): the ranking is first COMMITTED as a winners root (public until its lock ends – here at once: no review window, floors 0), then each rank
   // is paid with its Merkle proof (anyone may send it), then the pool closes. No attestation stands in front of a prize any more.
