@@ -144,6 +144,16 @@ async function chromeDrive({ port, shotsDir, mode }) {
   const hold = 'st.park=false;st.keyOn=true;st.engineOn=true;st.gear=7;st.clutch=0;st.gas=1;st.brake=0;st.temp=85;g.input.gas=1;g.input.brake=0;';
   await tab.ev(driveHook(20, mode === 'human' ? hold : ''));
   const press = async (code, key, hold) => { await tab.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key }); await sleep(hold); await tab.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key }); };
+  // The bot is a TRUE metronome: both edges carry an explicit CDP timestamp on a fixed 600 ms grid (hold 300 ms), so event.timeStamp – what the telemetry records –
+  // does not pick up CDP round-trip / machine-load jitter. With sleep()-timed edges the hold and gap jittered by tens of ms under a loaded gate and the
+  // statistical timing flags (CV < 8 %, top-3 gaps > 60 %) intermittently did not fire.
+  const botTick = 0.6, botT0 = Date.now() / 1000;
+  const botPress = async k => {
+    const down = botT0 + k * botTick, wait = (down - Date.now() / 1000) * 1000;
+    if (wait > 0) await sleep(wait);
+    await tab.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'KeyW', key: 'w', timestamp: down });
+    await tab.send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'KeyW', key: 'w', timestamp: down + botTick / 2 });
+  };
   const KEYS = [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd'], ['KeyW', 'w'], ['ArrowUp', 'ArrowUp']];
   const answered = [];
   const stop = mode === 'human' ? answerPrompts(tab, { log: p => answered.push(p.id) }) : () => {};
@@ -154,7 +164,7 @@ async function chromeDrive({ port, shotsDir, mode }) {
     promptsSeen = await tab.ev('window.__game.prompt ? window.__game.prompt.seen.size : 0');
     const [code, key] = KEYS[i % KEYS.length];
     if (mode === 'human') { await press(code, key, 60 + Math.random() * 340); await sleep(80 + Math.random() * 420); }
-    else { await press('KeyW', 'w', 300); await sleep(300); }   // the bot: the same hold, the same gap, every time
+    else await botPress(i);   // the bot: the same hold, the same gap, every time
   }
   stop();
   const complete = await tab.ev('__game.st.complete');
