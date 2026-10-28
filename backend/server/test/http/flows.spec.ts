@@ -2,6 +2,7 @@ import { termsScenarios } from '../scenarios/terms.scenarios.js';
 import { sgtScenarios } from '../scenarios/sgt.scenarios.js';
 
 import { trustEvidenceScenarios, TRUST_EVIDENCE_ENV } from '../scenarios/trust-evidence.scenarios.js';
+import { EVENT_ENV, eventSettlementScenarios } from '../scenarios/event-settlement.scenarios.js';
 import { preseasonAttemptScenarios } from '../scenarios/preseason-attempt.scenarios.js';
 import { convoyCampaignScenarios } from '../scenarios/convoy-campaign.scenarios.js';
 import { TRAFFIC_PROOF_ENV, trafficProofScenarios } from '../scenarios/traffic-proof.scenarios.js';
@@ -77,6 +78,7 @@ for (const [name, env, scenarios] of [
   ['SGT authenticated mainnet trust', { SGT_RPC_URL: 'https://sgt.test' }, sgtScenarios],
   ['durable Convoy and campaign', {}, convoyCampaignScenarios],
   ['Pre-season attempt and Telegram activity', {}, preseasonAttemptScenarios],
+  ['Pre-season $500 event: review, lock, manual payout record', EVENT_ENV, eventSettlementScenarios],
   ['trust evidence providers', TRUST_EVIDENCE_ENV, trustEvidenceScenarios],
   ['phone minigames: phone-sms on a 1h ride', MINIGAMES_ENV, minigameScenarios],
   ['http gaps: admin directory and signed changes', ADMIN_ENV, adminGapScenarios],

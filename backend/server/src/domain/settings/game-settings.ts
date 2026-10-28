@@ -8,6 +8,8 @@ export const SETTING_KEYS = [
   'event_week_start_utc',
   'event_last_start_utc',
   'event_week_end_utc',
+  'event_review_end_utc',
+  'event_appeals_end_utc',
   'airdrop_x_budget_cents',
   'airdrop_x_check_cost_cents',
   'free_on_signup', 'free_rides_daily_max',
@@ -47,6 +49,8 @@ export const SETTING_DEFAULTS: Record<SettingKey, number> = {
   event_week_start_utc: 0,
   event_last_start_utc: 0,
   event_week_end_utc: 0,
+  event_review_end_utc: 0,
+  event_appeals_end_utc: 0,
   airdrop_x_budget_cents: 10000,
   airdrop_x_check_cost_cents: 0,
   free_on_signup: 10,
@@ -104,6 +108,8 @@ export const SETTING_BOUNDS: Record<SettingKey, { min: number; max: number }> = 
   event_week_start_utc: { min: 0, max: 2147483647 },
   event_last_start_utc: { min: 0, max: 2147483647 },
   event_week_end_utc: { min: 0, max: 2147483647 },
+  event_review_end_utc: { min: 0, max: 2147483647 },
+  event_appeals_end_utc: { min: 0, max: 2147483647 },
   airdrop_x_budget_cents: { min: 0, max: 10000 },
   airdrop_x_check_cost_cents: { min: 0, max: 10000 },
   free_on_signup: { min: 0, max: 100_000 },
@@ -167,6 +173,8 @@ export interface GameSettings {
   eventWeekStartUtc: number;
   eventLastStartUtc: number;
   eventWeekEndUtc: number;
+  eventReviewEndUtc: number;
+  eventAppealsEndUtc: number;
   airdropXBudgetCents: number;
   airdropXCheckCostCents: number;
   freeOnSignup: number;
@@ -225,6 +233,8 @@ const CAMEL: Record<SettingKey, keyof GameSettings> = {
   event_week_start_utc: 'eventWeekStartUtc',
   event_last_start_utc: 'eventLastStartUtc',
   event_week_end_utc: 'eventWeekEndUtc',
+  event_review_end_utc: 'eventReviewEndUtc',
+  event_appeals_end_utc: 'eventAppealsEndUtc',
   airdrop_x_budget_cents: 'airdropXBudgetCents',
   airdrop_x_check_cost_cents: 'airdropXCheckCostCents',
   free_on_signup: 'freeOnSignup',

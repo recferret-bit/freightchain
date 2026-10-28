@@ -15,7 +15,15 @@ export interface RouteDescriptor {
 export const routeKey = (route: Pick<RouteDescriptor, 'method' | 'path'>): string => `${route.method} ${route.path}`;
 
 export const ROUTES: readonly RouteDescriptor[] = [
+  { method: 'GET', path: '/api/admin/event', auth: 'admin' },
+  { method: 'GET', path: '/api/event/board', auth: 'none' },
   { method: 'GET', path: '/api/profile/terms', auth: 'player' },
+  { method: 'POST', path: '/api/admin/event/challenge', auth: 'admin' },
+  { method: 'POST', path: '/api/admin/event/lock', auth: 'admin' },
+  { method: 'POST', path: '/api/admin/event/payouts', auth: 'admin' },
+  { method: 'POST', path: '/api/admin/event/prize-table', auth: 'admin' },
+  { method: 'POST', path: '/api/admin/event/review', auth: 'admin' },
+  { method: 'POST', path: '/api/admin/event/sanctions', auth: 'admin' },
   { method: 'POST', path: '/api/profile/terms', auth: 'player' },
   { method: 'GET', path: '/api/me/trust/sgt', auth: 'player' },
   { method: 'POST', path: '/api/me/trust/sgt', auth: 'player' },

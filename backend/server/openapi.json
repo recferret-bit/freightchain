@@ -1621,6 +1621,892 @@
         ]
       }
     },
+    "/api/admin/event": {
+      "get": {
+        "operationId": "AdminEventHttpController.event",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "appealsEnd": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "candidates": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "amountCents": {
+                            "type": "number"
+                          },
+                          "attempts": {
+                            "type": "number"
+                          },
+                          "bps": {
+                            "type": "number"
+                          },
+                          "country": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "disqualified": {
+                            "type": "boolean"
+                          },
+                          "endedAt": {
+                            "type": "number"
+                          },
+                          "geoAccess": {
+                            "enum": [
+                              "eligible",
+                              "play_only_no_prizes",
+                              "no_prizes"
+                            ],
+                            "type": "string"
+                          },
+                          "ipOverlaps": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "ipPrefixHmac": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "place": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "prizeEligible": {
+                            "type": "boolean"
+                          },
+                          "prizeEligibleOverride": {
+                            "anyOf": [
+                              {
+                                "const": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "rank": {
+                            "type": "number"
+                          },
+                          "region": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rideId": {
+                            "type": "string"
+                          },
+                          "sanctionsCheckedAt": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "sanctionsClean": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "sanctionsFresh": {
+                            "type": "boolean"
+                          },
+                          "trustBlocked": {
+                            "type": "boolean"
+                          },
+                          "trustScore": {
+                            "type": "number"
+                          },
+                          "wallet": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "amountCents",
+                          "attempts",
+                          "bps",
+                          "country",
+                          "disqualified",
+                          "endedAt",
+                          "geoAccess",
+                          "ipOverlaps",
+                          "ipPrefixHmac",
+                          "note",
+                          "place",
+                          "prizeEligible",
+                          "prizeEligibleOverride",
+                          "rank",
+                          "region",
+                          "rideId",
+                          "sanctionsCheckedAt",
+                          "sanctionsClean",
+                          "sanctionsFresh",
+                          "trustBlocked",
+                          "trustScore",
+                          "wallet"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "eventId": {
+                      "type": "string"
+                    },
+                    "locked": {
+                      "type": "boolean"
+                    },
+                    "lockedAt": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "now": {
+                      "type": "number"
+                    },
+                    "organizerCents": {
+                      "type": "number"
+                    },
+                    "paidCents": {
+                      "type": "number"
+                    },
+                    "phase": {
+                      "enum": [
+                        "pending",
+                        "preliminary",
+                        "final"
+                      ],
+                      "type": "string"
+                    },
+                    "prizeTableCents": {
+                      "items": {
+                        "type": "number"
+                      },
+                      "type": "array"
+                    },
+                    "reviewEnd": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "tableIsDefault": {
+                      "type": "boolean"
+                    },
+                    "winners": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "amountCents": {
+                            "type": "number"
+                          },
+                          "bps": {
+                            "type": "number"
+                          },
+                          "paidAt": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "place": {
+                            "type": "number"
+                          },
+                          "rideId": {
+                            "type": "string"
+                          },
+                          "txSignature": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "wallet": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "amountCents",
+                          "bps",
+                          "paidAt",
+                          "place",
+                          "rideId",
+                          "txSignature",
+                          "wallet"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "appealsEnd",
+                    "candidates",
+                    "eventId",
+                    "locked",
+                    "lockedAt",
+                    "now",
+                    "organizerCents",
+                    "paidCents",
+                    "phase",
+                    "prizeTableCents",
+                    "reviewEnd",
+                    "tableIsDefault",
+                    "winners"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminEventHttpController"
+        ]
+      }
+    },
+    "/api/admin/event/challenge": {
+      "post": {
+        "operationId": "AdminEventHttpController.challenge",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "event_review"
+                      },
+                      "disqualified": {
+                        "type": "boolean"
+                      },
+                      "note": {
+                        "maxLength": 300,
+                        "minLength": 1,
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "prizeEligible": {
+                        "anyOf": [
+                          {
+                            "const": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "wallet": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "action",
+                      "disqualified",
+                      "note",
+                      "prizeEligible",
+                      "wallet"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "event_sanctions"
+                      },
+                      "wallet": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "action",
+                      "wallet"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "event_prize_table"
+                      },
+                      "cents": {
+                        "items": {
+                          "maximum": 100000000,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "action",
+                      "cents"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "event_lock"
+                      }
+                    },
+                    "required": [
+                      "action"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "event_payout"
+                      },
+                      "txSignature": {
+                        "pattern": "^[1-9A-HJ-NP-Za-km-z]{87,88}$",
+                        "type": "string"
+                      },
+                      "wallet": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "action",
+                      "txSignature",
+                      "wallet"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "address": {
+                      "type": "string"
+                    },
+                    "chainId": {
+                      "type": "string"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "expirationTime": {
+                      "type": "string"
+                    },
+                    "issuedAt": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "nonce": {
+                      "type": "string"
+                    },
+                    "statement": {
+                      "type": "string"
+                    },
+                    "uri": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminEventHttpController"
+        ]
+      }
+    },
+    "/api/admin/event/lock": {
+      "post": {
+        "operationId": "AdminEventHttpController.lock",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "signature": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "signature"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "eventId": {
+                      "type": "string"
+                    },
+                    "lockedAt": {
+                      "type": "number"
+                    },
+                    "organizerCents": {
+                      "type": "number"
+                    },
+                    "paidCents": {
+                      "type": "number"
+                    },
+                    "winners": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "eventId",
+                    "lockedAt",
+                    "organizerCents",
+                    "paidCents",
+                    "winners"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminEventHttpController"
+        ]
+      }
+    },
+    "/api/admin/event/payouts": {
+      "post": {
+        "operationId": "AdminEventHttpController.payout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "signature": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "txSignature": {
+                    "pattern": "^[1-9A-HJ-NP-Za-km-z]{87,88}$",
+                    "type": "string"
+                  },
+                  "wallet": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "signature",
+                  "txSignature",
+                  "wallet"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "amountCents": {
+                      "type": "number"
+                    },
+                    "place": {
+                      "type": "number"
+                    },
+                    "solscanUrl": {
+                      "type": "string"
+                    },
+                    "txSignature": {
+                      "type": "string"
+                    },
+                    "wallet": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amountCents",
+                    "place",
+                    "solscanUrl",
+                    "txSignature",
+                    "wallet"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminEventHttpController"
+        ]
+      }
+    },
+    "/api/admin/event/prize-table": {
+      "post": {
+        "operationId": "AdminEventHttpController.prizeTable",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "cents": {
+                    "items": {
+                      "maximum": 100000000,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "maxLength": 20,
+                    "minLength": 1,
+                    "type": "array"
+                  },
+                  "signature": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cents",
+                  "signature"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "prizeTableCents": {
+                      "items": {
+                        "type": "number"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "prizeTableCents"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminEventHttpController"
+        ]
+      }
+    },
+    "/api/admin/event/review": {
+      "post": {
+        "operationId": "AdminEventHttpController.review",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "disqualified": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "maxLength": 300,
+                    "minLength": 1,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "prizeEligible": {
+                    "anyOf": [
+                      {
+                        "const": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "signature": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "wallet": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "disqualified",
+                  "note",
+                  "prizeEligible",
+                  "signature",
+                  "wallet"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "disqualified": {
+                      "type": "boolean"
+                    },
+                    "note": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "prizeEligibleOverride": {
+                      "anyOf": [
+                        {
+                          "const": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "sanctionsCheckedAt": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "sanctionsClean": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "sanctionsRef": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "number"
+                    },
+                    "updatedBy": {
+                      "type": "string"
+                    },
+                    "wallet": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "disqualified",
+                    "note",
+                    "prizeEligibleOverride",
+                    "sanctionsCheckedAt",
+                    "sanctionsClean",
+                    "sanctionsRef",
+                    "updatedAt",
+                    "updatedBy",
+                    "wallet"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminEventHttpController"
+        ]
+      }
+    },
+    "/api/admin/event/sanctions": {
+      "post": {
+        "operationId": "AdminEventHttpController.sanctions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "signature": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "wallet": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "signature",
+                  "wallet"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "disqualified": {
+                      "type": "boolean"
+                    },
+                    "note": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "prizeEligibleOverride": {
+                      "anyOf": [
+                        {
+                          "const": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "sanctionsCheckedAt": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "sanctionsClean": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "sanctionsRef": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "number"
+                    },
+                    "updatedBy": {
+                      "type": "string"
+                    },
+                    "wallet": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "disqualified",
+                    "note",
+                    "prizeEligibleOverride",
+                    "sanctionsCheckedAt",
+                    "sanctionsClean",
+                    "sanctionsRef",
+                    "updatedAt",
+                    "updatedBy",
+                    "wallet"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "AdminEventHttpController"
+        ]
+      }
+    },
     "/api/admin/logs": {
       "get": {
         "operationId": "AdminHttpController.logs",
@@ -6464,10 +7350,16 @@
                     "editorMaxSteps": {
                       "type": "number"
                     },
+                    "eventAppealsEndUtc": {
+                      "type": "number"
+                    },
                     "eventLastStartUtc": {
                       "type": "number"
                     },
                     "eventModeEnabled": {
+                      "type": "number"
+                    },
+                    "eventReviewEndUtc": {
                       "type": "number"
                     },
                     "eventWeekEndUtc": {
@@ -6614,8 +7506,10 @@
                     "editorMaxInputKTokens",
                     "editorMaxOutputTokens",
                     "editorMaxSteps",
+                    "eventAppealsEndUtc",
                     "eventLastStartUtc",
                     "eventModeEnabled",
+                    "eventReviewEndUtc",
                     "eventWeekEndUtc",
                     "eventWeekStartUtc",
                     "freeOnSignup",
@@ -6740,10 +7634,16 @@
                         "editorMaxSteps": {
                           "type": "number"
                         },
+                        "eventAppealsEndUtc": {
+                          "type": "number"
+                        },
                         "eventLastStartUtc": {
                           "type": "number"
                         },
                         "eventModeEnabled": {
+                          "type": "number"
+                        },
+                        "eventReviewEndUtc": {
                           "type": "number"
                         },
                         "eventWeekEndUtc": {
@@ -6890,8 +7790,10 @@
                         "editorMaxInputKTokens",
                         "editorMaxOutputTokens",
                         "editorMaxSteps",
+                        "eventAppealsEndUtc",
                         "eventLastStartUtc",
                         "eventModeEnabled",
+                        "eventReviewEndUtc",
                         "eventWeekEndUtc",
                         "eventWeekStartUtc",
                         "freeOnSignup",
@@ -11718,6 +12620,111 @@
         },
         "tags": [
           "EntitiesHttpController"
+        ]
+      }
+    },
+    "/api/event/board": {
+      "get": {
+        "operationId": "EventHttpController.board",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "appealsEnd": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "eventId": {
+                      "type": "string"
+                    },
+                    "phase": {
+                      "enum": [
+                        "pending",
+                        "preliminary",
+                        "final"
+                      ],
+                      "type": "string"
+                    },
+                    "reviewEnd": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "rows": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "amountCents": {
+                            "type": "number"
+                          },
+                          "bps": {
+                            "type": "number"
+                          },
+                          "place": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "prizeEligible": {
+                            "type": "boolean"
+                          },
+                          "rank": {
+                            "type": "number"
+                          },
+                          "solscanUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "txSignature": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "wallet": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "amountCents",
+                          "bps",
+                          "place",
+                          "prizeEligible",
+                          "rank",
+                          "solscanUrl",
+                          "txSignature",
+                          "wallet"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "appealsEnd",
+                    "eventId",
+                    "phase",
+                    "reviewEnd",
+                    "rows"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "JSON"
+          }
+        },
+        "tags": [
+          "EventHttpController"
         ]
       }
     },

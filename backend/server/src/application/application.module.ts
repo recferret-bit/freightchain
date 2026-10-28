@@ -15,6 +15,14 @@ import { RoundService } from './services/round.service.js';
 import { VerdictService } from './services/verdict.service.js';
 import { HonkMintService } from './services/honk-mint.service.js';
 import { RankedEntryService } from './services/ranked-entry.service.js';
+import { EventSettlementService } from './services/event-settlement.service.js';
+import { GetAdminEventHandler } from './use-cases/event/get-admin-event/get-admin-event.handler.js';
+import { GetEventBoardHandler } from './use-cases/event/get-event-board/get-event-board.handler.js';
+import { ReviewEventWalletHandler } from './use-cases/event/review-event-wallet/review-event-wallet.handler.js';
+import { CheckEventSanctionsHandler } from './use-cases/event/check-event-sanctions/check-event-sanctions.handler.js';
+import { SetEventPrizeTableHandler } from './use-cases/event/set-event-prize-table/set-event-prize-table.handler.js';
+import { LockEventListHandler } from './use-cases/event/lock-event-list/lock-event-list.handler.js';
+import { RecordEventPayoutHandler } from './use-cases/event/record-event-payout/record-event-payout.handler.js';
 import { WeeklyTicketService } from './services/weekly-ticket.service.js';
 import { PoolAttentionService } from './services/pool-attention.service.js';
 import { AttestationService } from './services/attestation.service.js';
@@ -174,7 +182,7 @@ import { GetPrizeBoardHandler } from './use-cases/prize/get-prize-board/get-priz
 const services: Provider[] = [
   EntityCatalogService, EntityWriteService,
   TrustEvidenceService, AchievementService, PaymentSettlementService, PlayerSessionService, GameSettingsService, RideLookupService, RoundService, VerdictService, AdminProofService,
-  PoolTicketsService, PoolScheduleService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, ReplayAccessService, LiveDonationService, LiveChatService, ChatRetentionScheduler, PledgeService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService, RankedEntryService, WeeklyTicketService,
+  PoolTicketsService, PoolScheduleService, PromoCreationService, TicketSettlementService, PoolRegistryService, FinalityService, LiveAccessService, ReplayAccessService, LiveDonationService, LiveChatService, ChatRetentionScheduler, PledgeService, StatsService, MeProfileService, PoolAttentionService, AttestationService, HonkMintService, RankedEntryService, WeeklyTicketService, EventSettlementService,
   ReferralService, ReferralPayoutService, AdminApprovalService, ConvoyService, ReleaseConvoyHandler, AirdropService, ReferralExpiryScheduler, MinigameRateService, MinigameSessionService,
 ];
 
@@ -241,6 +249,7 @@ const handlers: Provider[] = [
   GetConvoyLeaderboardHandler, BindConvoyHandler, SetConvoyPrivacyHandler,
   TelegramActivityHandler, GetAirdropStatusHandler, VerifyTelegramHandler, VerifyXHandler, ClaimAirdropHandler, ClaimPreseasonAttemptHandler,
   GetPrizeBoardHandler,
+  GetAdminEventHandler, GetEventBoardHandler, ReviewEventWalletHandler, CheckEventSanctionsHandler, SetEventPrizeTableHandler, LockEventListHandler, RecordEventPayoutHandler,
 ];
 
 @Module({

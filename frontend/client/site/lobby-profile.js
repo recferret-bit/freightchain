@@ -6,6 +6,7 @@ import { agreementsCard } from './lobby-agreements.js';
 import { redemptionList } from './lobby-promo.js';
 import { trustSection } from './lobby-trust.js';
 import { campaignSection } from './lobby-campaign.js';
+import { eventBoardSection } from './lobby-event.js';
 import { referralSection } from './lobby-referral.js';
 import { $, el } from './dom.js';
 import { SITE_BASE } from '../js/hosts.js';
@@ -80,6 +81,7 @@ export function createProfileTab({ S, view, getSeq, bumpMeGen, paintHeader, refr
       el('section', { class: 'prof-sec ch' }, ...promoSection()),
       el('section', { class: 'prof-sec ch' }, ...trustSection({ api, alive: () => my === getSeq() })),
       el('section', { class: 'prof-sec ch' }, ...campaignSection({ api, alive: () => my === getSeq() })),
+      el('section', { class: 'prof-sec ch' }, ...eventBoardSection({ api, alive: () => my === getSeq() })),
       el('section', { class: 'prof-sec ch' }, ...referralSection({ api, short, base: SITE_BASE, origin: location.origin, alive: () => my === getSeq() })),
       el('section', { class: 'prof-sec ch' },
         el('h2', {}, 'RECENT RIDES'),

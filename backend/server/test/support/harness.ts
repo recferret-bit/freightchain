@@ -95,6 +95,8 @@ import { RideMuteRepositoryPort } from '../../src/application/ports/live/ride-mu
 import { RideEventRepositoryPort } from '../../src/application/ports/live/ride-event.repository.port.js';
 import { WeeklyTicketRepositoryPort } from '../../src/application/ports/prize/weekly-ticket.repository.port.js';
 import { MemoryWeeklyTicketRepository } from './in-memory/memory-weekly-ticket.js';
+import { EventSettlementRepositoryPort } from '../../src/application/ports/prize/event-settlement.repository.port.js';
+import { MemoryEventSettlementRepository } from './in-memory/memory-event-settlement.js';
 import { HonkReleaseScheduler } from '../../src/infrastructure/scheduling/honk-release.scheduler.js';
 import { ConvoyRepositoryPort } from '../../src/application/referral/convoy.repository.port.js';
 import { AirdropRepositoryPort } from '../../src/application/airdrop/airdrop.repository.port.js';
@@ -196,6 +198,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(CosmeticRepositoryPort).useValue(new MemoryCosmeticRepository(memory))
       .overrideProvider(HonkRepositoryPort).useValue(new MemoryHonkRepository(memory))
       .overrideProvider(WeeklyTicketRepositoryPort).useValue(new MemoryWeeklyTicketRepository(memory))
+      .overrideProvider(EventSettlementRepositoryPort).useValue(new MemoryEventSettlementRepository(memory))
       .overrideProvider(TicketOrderRepositoryPort).useValue(new MemoryTicketOrderRepository(memory))
       .overrideProvider(RideBatchRepositoryPort).useValue(new MemoryRideBatchRepository(memory))
       .overrideProvider(RideVerdictRepositoryPort).useValue(new MemoryRideVerdictRepository(memory))

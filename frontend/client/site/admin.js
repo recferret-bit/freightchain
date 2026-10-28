@@ -6,15 +6,16 @@ import { promosTab } from './admin-promos.js';
 import { settingsTab } from './admin-settings.js';
 import { playersTab, poolsTab, statsTab, sessionsTab } from './admin-directory.js';
 import { payoutsTab } from './admin-pools.js';
+import { eventTab } from './admin-event.js';
 import { devWanted, installDevWallet, isLocal, DEV_ADMIN_WALLET } from './dev-wallet.js';
 if (devWanted()) installDevWallet();   // localhost only: a dev wallet chosen earlier in this tab stays in place after a reload
 
-/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · REPLAYS · PLAYERS · POOLS · PAYOUTS · STATS · SESSIONS · PROMO CODES · SETTINGS · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
+/* The admin page: OVERVIEW · REVIEW QUEUE · RIDES · REPLAYS · PLAYERS · POOLS · PAYOUTS · EVENT TOP-20 · STATS · SESSIONS · PROMO CODES · SETTINGS · SIGN-INS · LOGS · AUDIT (+ #ride/<id>). Vanilla DOM, no framework.
    Only wallets in the server's ADMIN_WALLETS get answers – to everyone else /api/admin/* is a 404 and this page says so.
    Everything from the server goes in with textContent (wallets, reasons, log lines are other people's data) – never innerHTML. */
 const $ = id => document.getElementById(id);
 const view = $('view');
-const TABS = ['overview', 'queue', 'rides', 'replays', 'players', 'pools', 'payouts', 'stats', 'sessions', 'promos', 'settings', 'signins', 'logs', 'audit'];
+const TABS = ['overview', 'queue', 'rides', 'replays', 'players', 'pools', 'payouts', 'event', 'stats', 'sessions', 'promos', 'settings', 'signins', 'logs', 'audit'];
 
 /* ───────── helpers ───────── */
 function el(tag, attrs = {}, ...kids) {
@@ -70,7 +71,7 @@ async function go({ dedupe = false } = {}) {
   // the tabs paint through `gv`: a load that a newer go() superseded (another tab clicked meanwhile) must not draw over it
   const gv = { replaceChildren: (...kids) => { if (current()) view.replaceChildren(...kids); }, dataset: view.dataset };
   const ctx = { api, el, view: gv, signAt, time, ago, wallet, go };
-  try { await ({ overview: () => overview(gv), queue: () => queue(gv), rides: () => rides(gv), replays: () => replays(gv), promos: () => promosTab(ctx), settings: () => settingsTab(ctx, arg), players: () => playersTab(ctx, arg), pools: () => poolsTab(ctx, arg), payouts: () => payoutsTab(ctx), stats: () => statsTab(ctx), sessions: () => sessionsTab(ctx), signins: () => signins(gv), logs: () => logs(gv), audit: () => audit(gv), ride: () => ride(arg, gv) })[tab](); if (current()) view.dataset.tab = arg ? '' : tab; } catch (e) { if (current()) fail(e); } finally { clearTimeout(wait); if (current()) loading = null; }
+  try { await ({ overview: () => overview(gv), queue: () => queue(gv), rides: () => rides(gv), replays: () => replays(gv), promos: () => promosTab(ctx), settings: () => settingsTab(ctx, arg), players: () => playersTab(ctx, arg), pools: () => poolsTab(ctx, arg), payouts: () => payoutsTab(ctx), event: () => eventTab(ctx), stats: () => statsTab(ctx), sessions: () => sessionsTab(ctx), signins: () => signins(gv), logs: () => logs(gv), audit: () => audit(gv), ride: () => ride(arg, gv) })[tab](); if (current()) view.dataset.tab = arg ? '' : tab; } catch (e) { if (current()) fail(e); } finally { clearTimeout(wait); if (current()) loading = null; }
 }
 addEventListener('hashchange', () => go());
 $('refresh').onclick = () => go({ dedupe: true });
@@ -270,7 +271,7 @@ async function audit(view) {
     rows.length ? el('div', { class: 'card', style: 'padding:6px 8px;overflow-x:auto' }, el('table', { class: 'dense' },
       el('thead', {}, el('tr', {}, ...['when', 'admin', 'action', 'target', 'detail', 'request'].map(h => el('th', {}, h)))),
       el('tbody', {}, rows.map(a => el('tr', {}, el('td', { title: time(a.at) }, ago(a.at)), el('td', {}, wallet(a.wallet)), el('td', {}, a.action),
-        el('td', {}, a.action.startsWith('verdict.') ? el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8)) : a.action.startsWith('promo.') ? el('a', { href: '#promos', class: 'mono' }, a.target) : a.action.startsWith('setting.') ? el('a', { href: '#settings', class: 'mono' }, a.target) : a.action.startsWith('free_rides.') ? el('a', { href: `#settings/${a.target}`, title: a.target }, wallet(a.target)) : a.action.startsWith('pool.') ? el('a', { href: '#payouts', class: 'mono' }, `pool ${a.target}`) : wallet(a.target)), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
+        el('td', {}, a.action.startsWith('verdict.') ? el('a', { href: `#ride/${a.target}`, class: 'mono' }, a.target.slice(0, 8)) : a.action.startsWith('promo.') ? el('a', { href: '#promos', class: 'mono' }, a.target) : a.action.startsWith('setting.') ? el('a', { href: '#settings', class: 'mono' }, a.target) : a.action.startsWith('free_rides.') ? el('a', { href: `#settings/${a.target}`, title: a.target }, wallet(a.target)) : a.action.startsWith('pool.') ? el('a', { href: '#payouts', class: 'mono' }, `pool ${a.target}`) : a.action.startsWith('event.') ? el('a', { href: '#event', title: a.target }, a.target.length > 12 ? wallet(a.target) : a.target) : wallet(a.target)), el('td', { class: 'dim' }, JSON.stringify(a.detail)), el('td', { class: 'mono dim' }, a.requestId ?? '–'))))))
       : el('div', { class: 'card empty' }, 'No admin actions yet.'));
 }
 
