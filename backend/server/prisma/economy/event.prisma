@@ -1,0 +1,47 @@
+/// Pre-season $500 event settlement (docs/plan/DEVNET_PRESEASON.md §12-§15). The event id is a code constant (domain/prize/event-settlement.ts), the rows carry it so a December round can reuse the tables.
+
+/// One row per event: the prize table (US cents, places 1..n; null = the code default) and the lock of the final list. Once `lockedAt` is set nothing here or in EventReview changes.
+model EventConfig {
+  eventId         String    @id
+  prizeTableCents Int[]
+  lockedAt        DateTime?
+  lockedBy        String?
+  updatedAt       DateTime
+
+  @@schema("economy")
+}
+
+/// The administrator's review flags of one wallet (checklist §14). Evidence is never deleted; a later check overwrites the latest result.
+model EventReview {
+  eventId               String
+  wallet                String
+  disqualified          Boolean   @default(false)
+  /// null = decided by geo; false = an admin removed the prize. true is never stored: geo cannot be overridden upward.
+  prizeEligibleOverride Boolean?
+  note                  String?
+  sanctionsCheckedAt    DateTime?
+  sanctionsClean        Boolean?
+  sanctionsRef          String?
+  updatedBy             String
+  updatedAt             DateTime
+
+  @@id([eventId, wallet])
+  @@schema("economy")
+}
+
+/// The frozen final list, written once when the admin locks it (one row per PAID place). `txSignature` is the manual USDC transfer, recorded once.
+model EventWinner {
+  eventId     String
+  wallet      String
+  place       Int
+  amountCents Int
+  bps         Int
+  rideId      String
+  lockedAt    DateTime
+  txSignature String?   @unique
+  paidAt      DateTime?
+  recordedBy  String?
+
+  @@id([eventId, wallet])
+  @@schema("economy")
+}

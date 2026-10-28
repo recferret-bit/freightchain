@@ -62,6 +62,11 @@ export type AdminIntent =
   | { action: 'setting_update'; key: SettingKey | string; value: number }
   | { action: 'pool_hold'; poolId: number; hold: boolean; note: string | null }
   | { action: 'appeal_resolve'; appealId: string; decision: 'upheld' | 'denied'; note: string | null }
+  | { action: 'event_review'; wallet: string; disqualified: boolean; prizeEligible: false | null; note: string | null }
+  | { action: 'event_sanctions'; wallet: string }
+  | { action: 'event_prize_table'; cents: number[] }
+  | { action: 'event_lock'; eventId: string }
+  | { action: 'event_payout'; wallet: string; txSignature: string }
   | { action: 'entity_publish'; entityId: string; revisionId: string; seq: number };
 
 /** EVERY field of a new promo code as one JSON line, keys in a fixed order, dates as ISO strings – the signature binds the whole code, not a summary of it. */
@@ -79,6 +84,11 @@ export function intentLines(intent: AdminIntent): string[] {
     case 'promo_disable': return [`Action: DISABLE promo code ${PromoCode.normalize(intent.code)}`];
     case 'free_rides_adjust': return [`Action: ADJUST free rides by ${intent.delta}`, `Player: ${intent.wallet}`];
     case 'setting_update': return [`Action: SET setting ${intent.key}`, `Value: ${intent.value}`];
+    case 'event_review': return [`Action: EVENT REVIEW of ${intent.wallet}`, `Disqualified: ${intent.disqualified ? 'YES – removed from the board and the prize list' : 'no'}`, `Prize: ${intent.prizeEligible === false ? 'REMOVED by hand' : 'by geo'}`, `Note: ${intent.note === null ? '(none)' : JSON.stringify(intent.note)}`];
+    case 'event_sanctions': return [`Action: EVENT sanctions screening of ${intent.wallet}`];
+    case 'event_prize_table': return ['Action: SET the event prize table (US cents, place 1 first)', `Table: ${intent.cents.join(',')}`];
+    case 'event_lock': return [`Action: LOCK the final prize list of event ${intent.eventId} – flags and the table freeze, payouts may be recorded`];
+    case 'event_payout': return [`Action: RECORD the USDC payout of ${intent.wallet}`, `Transaction: ${intent.txSignature}`];
     case 'entity_publish': return [`Action: PUBLISH 3D model ${intent.entityId} – every player draws it from now on`, `Revision: #${intent.seq} (${intent.revisionId})`];
     case 'pool_hold': return [`Action: ${intent.hold ? 'HOLD the payout of' : 'RELEASE the payout hold of'} pool ${intent.poolId}`, `Note: ${intent.note === null ? '(none)' : JSON.stringify(intent.note)}`];
     case 'appeal_resolve': return [`Action: ${intent.decision === 'upheld' ? 'UPHOLD' : 'DENY'} appeal ${intent.appealId}`, `Note: ${intent.note === null ? '(none)' : JSON.stringify(intent.note)}`];

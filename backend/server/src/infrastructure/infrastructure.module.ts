@@ -31,6 +31,10 @@ import { FinishRulesPort } from '../application/rides/finish-rules.port.js';
 import { PrismaRideResultRepository } from './stats/prisma-ride-result.repository.js';
 import { PrismaFinishRulesRepository } from './stats/prisma-finish-rules.repository.js';
 import { RideRepositoryPort } from '../application/ports/rides/ride.repository.port.js';
+import { EventSettlementRepositoryPort } from '../application/ports/prize/event-settlement.repository.port.js';
+import { EventSettlementPrismaRepository } from './prisma/repositories/event-settlement.prisma.repository.js';
+import { SanctionsCheckPort } from '../application/ports/prize/sanctions-check.port.js';
+import { LocalSanctionsCheckAdapter } from './prize/local-sanctions-check.adapter.js';
 import { WeeklyTicketRepositoryPort } from '../application/ports/prize/weekly-ticket.repository.port.js';
 import { WeeklyTicketPrismaRepository } from './prisma/repositories/weekly-ticket.prisma.repository.js';
 import { GeoLocatorPort } from '../application/ports/prize/geo-locator.port.js';
@@ -277,6 +281,8 @@ const ports: Provider[] = [
   { provide: RateLimitStorage, inject: [EnvService, ClockPort], useFactory: (env: EnvService, clock: ClockPort): RedisThrottlerStorage | null => (env.redisUrl ? RedisThrottlerStorage.connect(env.redisUrl, clock) : null) },
   { provide: NameServicePort, useClass: SnsNameServiceAdapter },
   { provide: WeeklyTicketRepositoryPort, useClass: WeeklyTicketPrismaRepository },
+  { provide: EventSettlementRepositoryPort, useClass: EventSettlementPrismaRepository },
+  { provide: SanctionsCheckPort, useClass: LocalSanctionsCheckAdapter },
   { provide: GeoLocatorPort, useClass: HeaderGeoAdapter },
   { provide: PrizeGeoPort, useClass: EnvPrizeGeoAdapter },
 ];

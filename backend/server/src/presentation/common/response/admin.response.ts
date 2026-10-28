@@ -41,7 +41,7 @@ export const adminStatsResponse = obj({ now: num, global: statsResponse.and(obj(
 export const adminSessionsResponse = obj({ rows: z.array(obj({ wallet: str, lastAt: num, signIns: num, ipHash: strOrNull })), truncated: bool });
 export const gameSettingsResponse = obj({
   trustNetworkEvidenceEnabled: num, trustFundingEvidenceEnabled: num,
-  eventModeEnabled: num, eventWeekStartUtc: num, eventLastStartUtc: num, eventWeekEndUtc: num, airdropXBudgetCents: num, airdropXCheckCostCents: num,
+  eventModeEnabled: num, eventWeekStartUtc: num, eventLastStartUtc: num, eventWeekEndUtc: num, eventReviewEndUtc: num, eventAppealsEndUtc: num, airdropXBudgetCents: num, airdropXCheckCostCents: num,
   freeOnSignup: num, freeRidesDailyMax: num, weeklyTicket1hEnabled: num, weeklyTicket1hDays: num, weeklyTicket4hEnabled: num, weeklyTicket4hDays: num, weeklyTicket8hEnabled: num, weeklyTicket8hDays: num,
   editorJobsPerDay: num, editorMaxSteps: num, editorMaxOutputTokens: num, editorMaxInputKTokens: num, editorJobsParallel: num, referralMax: num, referralInviteStart: num, referralInviteStep: num, referralShiftsPerStep: num,
   referralPendingTtlHours: num,

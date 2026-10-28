@@ -86,6 +86,10 @@ export class MemoryDb {
   honkBurns = new Map<string, HonkBurnRow>();
   honkVisuals = new Map<string, HonkVisualRow>();
   honkEmission = 0n;
+  /** economy.EventReview (`${eventId}|${wallet}`), EventConfig (eventId) and EventWinner (`${eventId}|${wallet}`) */
+  eventReviews = new Map<string, import('../../../src/application/ports/prize/event-settlement.repository.port.js').EventReviewRecord>();
+  eventConfigs = new Map<string, import('../../../src/application/ports/prize/event-settlement.repository.port.js').EventStateRecord>();
+  eventWinners = new Map<string, import('../../../src/application/ports/prize/event-settlement.repository.port.js').EventWinnerRecord & { eventId: string }>();
   private seq = 0;
   private roundSeq = 0;
 
@@ -113,5 +117,6 @@ export class MemoryDb {
     this.honkMints.clear(); this.honkAccounts.clear(); this.honkBurns.clear(); this.honkVisuals.clear(); this.honkEmission = 0n;
     this.entities.clear(); this.entityRevisions = []; this.editorJobPrompts.clear(); this.editorJobs.clear(); this.editorJobEvents.clear(); this.editorMcpCalls.clear();
     this.referralCodes.clear(); this.referrals.clear();
+    this.eventReviews.clear(); this.eventConfigs.clear(); this.eventWinners.clear();
   }
 }

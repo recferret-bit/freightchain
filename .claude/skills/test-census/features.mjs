@@ -244,10 +244,10 @@ export const FEATURES = [
   },
   {
     id: 'prize', title: 'Prize geo, ranked entry, weekly grant',
-    server: /^(application\/(services\/(ranked-entry|weekly-ticket)|use-cases\/prize\/)|domain\/prize\/|infrastructure\/prize\/)/,
-    client: null,
-    routes: /^GET \/api\/prize\/board$/,
-    words: /ranked entry|prize week|weekly ticket|CF-IPCountry/i,
+    server: /^(application\/(services\/(ranked-entry|weekly-ticket|event-settlement)|use-cases\/(prize|event)\/)|domain\/prize\/|infrastructure\/prize\/|infrastructure\/prisma\/repositories\/event-settlement)/,
+    client: /^(?:frontend\/)?client\/site\/lobby-event\.js$/,
+    routes: /^GET \/api\/(prize|event)\/board$/,
+    words: /ranked entry|prize week|weekly ticket|CF-IPCountry|event settlement|event top-20/i,
     e2e: ['e2e-weekly-ticket.mjs', 'e2e-weekly-server.mjs'], skills: [],
   },
   {

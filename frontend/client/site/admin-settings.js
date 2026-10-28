@@ -10,6 +10,8 @@ export const SETTING_KNOBS = [
   ['event_week_start_utc', 'eventWeekStartUtc', 'Campaign: first start (UTC seconds)', 'Unix epoch seconds; 0 leaves the event closed', 0, 2147483647],
   ['event_last_start_utc', 'eventLastStartUtc', 'Campaign: last start (UTC seconds)', 'Unix epoch seconds; must leave at least 75 minutes before event end', 0, 2147483647],
   ['event_week_end_utc', 'eventWeekEndUtc', 'Campaign: event end (UTC seconds)', 'Unix epoch seconds; configure all dates before enabling the event', 0, 2147483647],
+  ['event_review_end_utc', 'eventReviewEndUtc', 'Event: preliminary top-20 published (UTC seconds)', 'Unix epoch seconds; the public table stays hidden until then (must be after event end)', 0, 2147483647],
+  ['event_appeals_end_utc', 'eventAppealsEndUtc', 'Event: appeals close, final list may be locked (UTC seconds)', 'Unix epoch seconds; after review end; the final list and payout records need it', 0, 2147483647],
   ['airdrop_x_budget_cents', 'airdropXBudgetCents', 'Campaign: X reserved budget (cents)', 'Maximum estimated reservations: 10000 cents; failed checks remain charged', 0, 10000],
   ['airdrop_x_check_cost_cents', 'airdropXCheckCostCents', 'Campaign: X cost bound (cents)', '0 disables checks; owner must set a conservative bound for all requests per check', 0, 10000],
 

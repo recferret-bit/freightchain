@@ -23,7 +23,11 @@ Task evidence carries into Season 1. The plan does not specify weights convertin
 - Shared HTTP scenarios cover authenticated webhook refusal, insufficient activity, missing consent, event ride creation, shared event seed and mandatory ranked start.
 - `node frontend/client/tools/e2e-campaign.mjs` drives real Chrome against local inert HTTP fixtures, blocks external provider requests, checks invalid input, provider failure/retry, Telegram callback payload, consent, issued state, EN/RU and mobile width. It writes `fc-campaign-shots` below the OS temporary directory. Browser fixtures validate the UI; shared HTTP/PostgreSQL tests validate actual backend/provider adapters.
 
-Real provider credentials and production-origin widget/webhook operation require owner acceptance. The event's wider top-20 adjudication, payout and future points snapshot remain governed by the launch plan; this task does not deploy or authorize them.
+Real provider credentials and production-origin widget/webhook operation require owner acceptance. The future points snapshot remains governed by the launch plan; this task does not deploy or authorize it.
+
+## $500 event settlement (local)
+
+Configure, through the signed settings API, `event_week_start_utc`, `event_week_end_utc`, `event_review_end_utc` (after week end) and `event_appeals_end_utc` (after review end); otherwise the public table stays empty and the lock is refused. The admin `EVENT TOP-20` tab lists the top 35 candidates (country, Trust, ride, subnet-HMAC overlaps, sanctions state) and signs the review flags, the mocked sanctions check, the prize table, the lock (only from the appeals end, once) and each manual USDC `txSignature` (`POST /api/admin/event/payouts`; clean sanctions check under 24 h, Trust >= 50, unique per winner and signature). The local sanctions adapter is a deterministic fake (addresses ending `SNCT` are "listed"); it is not a screening. `GET /api/event/board` and the Profile table (`site/lobby-event.js`, EN/RU) show the preliminary table after the review end and the final list after the lock. Evidence: `test/unit/domain/prize/event-settlement.spec.ts`, the handler/service/controller unit specs, `test/integration/repositories/event-settlement.prisma.repository.integration.spec.ts` (including the payout races), and the shared HTTP scenario `test/scenarios/event-settlement.scenarios.ts` (in-memory and PostgreSQL). Not covered: a real-Chrome run of the new tab/table, live Chainalysis, an appeal intake.
 
 ## Evidence — 2026-10-26
 

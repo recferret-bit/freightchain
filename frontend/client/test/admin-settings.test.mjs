@@ -10,6 +10,8 @@ const RANGES = [
   ['event_week_start_utc', 'eventWeekStartUtc', 0, 2147483647],
   ['event_last_start_utc', 'eventLastStartUtc', 0, 2147483647],
   ['event_week_end_utc', 'eventWeekEndUtc', 0, 2147483647],
+  ['event_review_end_utc', 'eventReviewEndUtc', 0, 2147483647],
+  ['event_appeals_end_utc', 'eventAppealsEndUtc', 0, 2147483647],
   ['airdrop_x_budget_cents', 'airdropXBudgetCents', 0, 10000],
   ['airdrop_x_check_cost_cents', 'airdropXCheckCostCents', 0, 10000],
 

@@ -72,13 +72,13 @@ Check existing key presence first; configure only supported credentials for the 
 ## Phase 3 — Pre-season Review & Payout (**15–17 November 2026**)
 
 - [ ] **Chainalysis API Key (`CHAINALYSIS_API_KEY`):**
-  - Arrange the screening account/tool for the Top-20 winner review. `CHAINALYSIS_API_KEY` is a planned integration label, not a supported server env key; local tests do not establish live screening.
+  - Arrange the screening account/tool for the Top-20 winner review. `CHAINALYSIS_API_KEY` is a planned integration label, not a supported server env key. The local build screens through a deterministic fake behind `SanctionsCheckPort`; a live adapter is not built, so until it is, run the Chainalysis/OFAC check yourself and the tab's check only records the fake result.
 - [ ] **Manual Top-20 Review (Sun 15 Nov 12:00 UTC – Mon 16 Nov 12:00 UTC):**
-  - Follow [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §14 (check 10 Hz verdicts, watch Top-10 replays, check IP-prefix/funding clusters, re-verify TG & X tasks, publish provisional standings).
+  - Follow [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §14 in the admin `EVENT TOP-20` tab (candidates top 35 with geo/Trust/subnet overlaps; signed disqualify / remove-prize flags; check 10 Hz verdicts and replays, funding clusters, TG & X tasks by hand). The public preliminary table appears by itself at `event_review_end_utc`.
 - [ ] **Handle Appeals (Mon 16 Nov 12:00 UTC – Tue 17 Nov 12:00 UTC):**
   - Review any player appeals submitted within the 24h window.
 - [ ] **Execute Mainnet `$500 USDC` Payouts & Publish Report (Tue 17 Nov 2026):**
-  - Follow [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §15 (send `$100 / $70 / $50 / 2×$30 / 5×$20 / 10×$12 USDC`, record tx signatures, and post the Public Payout Report on the site, Telegram, and X).
+  - Follow [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §15: lock the final list in the tab (allowed from `event_appeals_end_utc`), send the USDC amounts it shows by hand from the event wallet (ties split, unpaid places stay with you), paste each transaction signature into the tab (the server sends nothing; a clean sanctions check under 24 h old and Trust >= 50 are required per winner), then post the Public Payout Report on Telegram and X (the site table links each transaction).
 - [ ] **Serbian Tax Check (Optional / Recommended for Organizer):**
   - Confirm with a local Serbian accountant (`knjigovođa`) the personal tax treatment of the `$500` promotional expense and future company distributions ([`research/operator_entity_options.md`](research/operator_entity_options.md) §7.5).
 
