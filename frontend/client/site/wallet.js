@@ -9,6 +9,7 @@ import { wallets, walletLabel } from '../js/wallet/standard.js';
 
 export { b58, getSignInMethod };
 
+const reviewTerms = (...args) => import('./terms.js').then(m => m.reviewTerms(...args));
 const REJECT = /reject|cancel|closed/i;
 
 /* `opts` is the third argument: never serialized. The method is POST when there is a body, unless opts.method says otherwise (the profile boxes are PUT).
@@ -20,7 +21,9 @@ export async function api(path, body, opts) {
   try {
     const r = await fetch(`${API_BASE}/api/${path}`, { credentials: 'include', cache: 'no-store', method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined });   // no-store: a buy credits tickets, and a cached GET /api/me would paint the old count
     const j = await r.json().catch(() => ({}));
+    if (r.status === 428 && j.code === 'terms_required' && path !== 'profile/terms') await reviewTerms(api).catch(() => false);   // review only; the interrupted call still fails with its own 428 and is never retried
     if (!r.ok) throw Object.assign(new Error(j.detail || j.title || `server error ${r.status}`), { status: r.status, code: j.code ?? null });   // RFC 9457 problem+json: { title, detail, code, … }
+    if (path === 'me' && j.wallet && !j.guest) void reviewTerms(api);
     return j;
   } catch (e) {
     if (report) track('api_request_failed', { route: routeOf(path), http_status: typeof e.status === 'number' ? e.status : null, code: typeof e.code === 'string' ? e.code : null, surface: surface() });

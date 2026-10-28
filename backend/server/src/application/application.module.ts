@@ -1,3 +1,5 @@
+import { AcceptTermsHandler } from './use-cases/players/terms/accept-terms.handler.js';
+import { GetTermsHandler } from './use-cases/players/terms/get-terms.handler.js';
 import { GetSgtHandler, VerifySgtHandler } from './trust/sgt.handler.js';
 import { Module, type Provider } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
@@ -221,7 +223,7 @@ const handlers: Provider[] = [
   GetLivenessHandler, GetReadinessHandler,
   GrantDailyFreeRidesHandler,
   RecordTelemetryHandler, ReportClientErrorHandler,
-  ListPoolsHandler, GetCurrentPoolHandler, GetPrizePoolHandler, GetPoolStandingsHandler, GetPoolResultsHandler, HoldPoolPayoutHandler, ListPoolPayoutsHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler, AcceptAgreementsHandler, GetGarageHandler, SaveGarageHandler,
+  ListPoolsHandler, GetCurrentPoolHandler, GetPrizePoolHandler, GetPoolStandingsHandler, GetPoolResultsHandler, HoldPoolPayoutHandler, ListPoolPayoutsHandler, RedeemPromoHandler, GetMyPromosHandler, GetWardrobeHandler, EquipCosmeticHandler, AcceptAgreementsHandler, AcceptTermsHandler, GetTermsHandler, GetGarageHandler, SaveGarageHandler,
   CreateAdminPromoHandler, DisableAdminPromoHandler, ListPromoRedemptionsHandler,
   CreatePromoHandler, ListPromosHandler, DisablePromoHandler, GrantTicketsHandler, RegisterPoolHandler,
   CreateTicketOrderHandler, GetTicketOrderHandler, GetPendingTicketOrderHandler,

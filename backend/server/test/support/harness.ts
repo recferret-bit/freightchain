@@ -1,3 +1,5 @@
+import { TermsAcceptanceRepositoryPort } from '../../src/application/ports/players/terms-acceptance.repository.port.js';
+import { MemoryTermsAcceptanceRepository } from './in-memory/memory-terms.js';
 import { SgtRepositoryPort } from '../../src/application/trust/sgt.port.js';
 import { MemorySgtRepository } from './in-memory/memory-sgt.js';
 import { Test } from '@nestjs/testing';
@@ -198,6 +200,7 @@ export async function createHarness(persistence: Persistence, env: Record<string
       .overrideProvider(RideBatchRepositoryPort).useValue(new MemoryRideBatchRepository(memory))
       .overrideProvider(RideVerdictRepositoryPort).useValue(new MemoryRideVerdictRepository(memory))
       .overrideProvider(RideReplayRepositoryPort).useValue(new MemoryRideReplayRepository(memory))
+      .overrideProvider(TermsAcceptanceRepositoryPort).useValue(new MemoryTermsAcceptanceRepository(memory))
       .overrideProvider(SignInRepositoryPort).useValue(new MemorySignInRepository(memory))
       .overrideProvider(AdminActionRepositoryPort).useValue(new MemoryAdminActionRepository(memory))
       .overrideProvider(AdminQueryPort).useValue(new MemoryAdminQuery(memory))

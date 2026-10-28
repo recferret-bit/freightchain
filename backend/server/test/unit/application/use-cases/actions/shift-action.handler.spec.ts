@@ -18,7 +18,7 @@ const ACCOUNT = '4GzacGtTe67wnkpJBs7pngcRfsFckbHvzmAUNL6Jchmz';
 const rules = (over: { paymentMode?: 'program' | 'transfer'; programId?: string } = {}): RulesConfigPort => ({ get: () => ({ paymentMode: 'transfer', programId: '', appOrigin: 'https://freightchain.fun', ...over }) }) as RulesConfigPort;
 const clock = { now: () => NOW } as ClockPort;
 const pools = (rows: ReturnType<typeof aPool>[]): PoolRepositoryPort => ({ listLive: async () => rows }) as unknown as PoolRepositoryPort;
-const players = (allowed: boolean | null): PlayerRepositoryPort => ({ findByWallet: async () => (allowed === null ? null : { paidPlayAllowed: allowed }) }) as unknown as PlayerRepositoryPort;
+const players = (allowed: boolean | null, stale = false): PlayerRepositoryPort => ({ findByWallet: async () => (allowed === null ? null : { paidPlayAllowed: allowed, termsVersion: stale ? 0 : 1, privacyVersion: 1 }) }) as unknown as PlayerRepositoryPort;
 
 describe('shift actions', () => {
   it('transfer mode, and a program with nothing selling, offer no buy button', async () => {
@@ -35,12 +35,13 @@ describe('shift actions', () => {
     const selling = aPool({ id: 7, tier: '1h' }, NOW);
     const commands = { execute: vi.fn(async () => ({ id: 'order-1' })) };
     const queries = { execute: vi.fn(async () => ({ transaction: 'AAAA' })) };
-    const handler = (rows = [selling], mode: 'program' | 'transfer' = 'program', allowed: boolean | null = true) => new PrepareShiftActionHandler(
-      rules({ paymentMode: mode, programId: mode === 'program' ? 'Prog' : '' }), pools(rows), clock, players(allowed), commands as unknown as CommandBus, queries as unknown as QueryBus,
+    const handler = (rows = [selling], mode: 'program' | 'transfer' = 'program', allowed: boolean | null = true, stale = false) => new PrepareShiftActionHandler(
+      rules({ paymentMode: mode, programId: mode === 'program' ? 'Prog' : '' }), pools(rows), clock, players(allowed, stale), commands as unknown as CommandBus, queries as unknown as QueryBus,
     );
     await expect(handler([selling], 'transfer').execute(new PrepareShiftActionCommand(ACCOUNT, '1h'))).rejects.toBeInstanceOf(ServiceUnavailableError);
     await expect(handler([]).execute(new PrepareShiftActionCommand(ACCOUNT, '1h'))).rejects.toMatchObject({ errorCode: 'not_sellable' });
     await expect(handler([selling], 'program', null).execute(new PrepareShiftActionCommand(ACCOUNT, '1h'))).rejects.toMatchObject({ errorCode: 'agreements_required' });
+    await expect(handler([selling], 'program', true, true).execute(new PrepareShiftActionCommand(ACCOUNT, '1h'))).rejects.toMatchObject({ statusCode: 428, errorCode: 'terms_required' });
     expect(commands.execute).not.toHaveBeenCalled();
     const tx = await handler().execute(new PrepareShiftActionCommand(ACCOUNT, '1h'));
     expect(tx).toEqual(buyTx('https://freightchain.fun', '1h', 7, 'AAAA'));

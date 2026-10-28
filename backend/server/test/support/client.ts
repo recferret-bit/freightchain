@@ -29,10 +29,15 @@ export function bindClient(h: () => Harness) {
    * A signed-in rider (full Sign-In-With-Solana through the real endpoints).
    * The product default is both boxes OFF. This fixture turns them ON unless `{ offer: false }`, so paid-flow tests stay about payments.
    */
-  async function login(w: Wallet = newWallet(), opts: { offer?: boolean } = {}): Promise<Rider> {
+  async function login(w: Wallet = newWallet(), opts: { offer?: boolean; terms?: boolean } = {}): Promise<Rider> {
     const agent = request.agent(server());
     const { body } = await agent.post('/api/auth/nonce').send({ wallet: w.address }).expect(200);
     await agent.post('/api/auth/verify').send({ wallet: w.address, signature: sign(w.kp, body.message) }).expect(200);
+    if (opts.terms !== false) {
+      const { body: current } = await agent.get('/api/profile/terms').expect(200);
+      await agent.post('/api/profile/terms').send({ termsVersion: current.termsVersion, privacyVersion: current.privacyVersion, age18: true, accepted: true }).expect(200);
+    }
+    if (opts.offer === false && opts.terms !== false) await agent.put('/api/profile/agreements').send({ age18: false, loss: false }).expect(200);
     if (opts.offer !== false) await agent.put('/api/profile/agreements').send({ age18: true, loss: true }).expect(200);
     return { agent, ...w };
   }

@@ -10,6 +10,7 @@ import { PRESEASON_PROMO_CODE } from '../../../../src/domain/settings/preseason-
 it('issues one event attempt only after enabled dates, consent, completed tasks and authenticated group activity', async () => {
   const ctx = unitContext(), repo = new MemoryAirdropRepository();
   await ctx.accept('ada');
+  const player = await ctx.storedPlayer('ada'); player.acceptTerms(1, 1, ctx.now()); await ctx.players.save(player);
   const svc = new AirdropService(repo, {} as TelegramMembershipPort, {} as XAccountPort, { required: false } as TurnstilePort, ctx.players, ctx.transactions, ctx.clock, ctx.settings, ctx.promos);
   await repo.claimTelegram('ada', '42');
   await repo.save({ ...emptyAirdrop('ada'), telegramUserId: '42', rideOk: true, telegramMember: true, telegramGroupMember: true, xAgeOk: true, xFollowersOk: true, xFollows: true, xQuoteOk: true });
@@ -34,6 +35,7 @@ it('issues one event attempt only after enabled dates, consent, completed tasks 
 it('fails closed on unspecified X cost, retains failed-call reservations, and enforces the durable cooldown', async () => {
   const ctx = unitContext(), repo = new MemoryAirdropRepository(), lookup = vi.fn(async () => { throw new Error('fixture provider unavailable'); });
   await ctx.accept('ada');
+  const player = await ctx.storedPlayer('ada'); player.acceptTerms(1, 1, ctx.now()); await ctx.players.save(player);
   const svc = new AirdropService(repo, {} as TelegramMembershipPort, { lookup } as unknown as XAccountPort, { required: false } as TurnstilePort, ctx.players, ctx.transactions, ctx.clock, ctx.settings, ctx.promos);
   await svc.recordVerifiedRide('ada', 'free-2c');
   await expect(svc.verifyX('ada', 'ada', '1')).rejects.toMatchObject({ errorCode: 'x_budget_unconfigured' });

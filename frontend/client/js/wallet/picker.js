@@ -2,6 +2,7 @@
    None on a phone → open this page in Phantom, Solflare, or Backpack. None on a desktop → install those three, plus a QR that signs THIS browser in from the phone.
    An in-page overlay, not a browser dialog: a top-layer dialog swallows the click and the wallet draws nothing.
    Styles live on the overlay: the pages do not share a stylesheet. Text via textContent, icons only data: URIs. */
+import { SITE_BASE } from '../hosts.js';
 import { isMobileDevice } from '../mobile.js';
 
 /** docs.phantom.com/phantom-deeplinks/other-methods/browse (phantom.com host), docs.solflare.com/…/deeplinks/other-methods/browse – both parts URL-encoded. */
@@ -169,6 +170,9 @@ export function pickWallet(list, label, last = null, onPick = null, opts = null)
       const phone = press(h('button', { ...BTN, justifyContent: 'center' }, 'Sign in with your phone'), () => runPhone(panel, finish, opts.api)); phone.type = 'button';
       body.push(phone);
     }
+    const legal = h('p', { pointerEvents: 'auto', fontSize: '12px' });
+    for (const path of ['terms', 'privacy', 'rules']) { const a = h('a', { color: '#d8b6ff' }, path.toUpperCase()); a.href = `${SITE_BASE}/${path}/`; a.target = '_blank'; a.rel = 'noopener'; legal.append(a, ' · '); }
+    body.push(legal);
     const close = press(h('button', { ...BTN, justifyContent: 'center', background: 'transparent', marginTop: '10px' }, 'CANCEL'), () => finish(null)); close.type = 'button';
     const sheet = h('div', { position: 'relative', zIndex: '1', pointerEvents: 'none' }); sheet.dataset.fcSheet = ''; sheet.append(...body, close); panel.append(sheet);
     root.style.opacity = '0';

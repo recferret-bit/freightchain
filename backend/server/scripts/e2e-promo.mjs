@@ -59,7 +59,7 @@ const T = Math.random().toString(36).slice(2, 6).toUpperCase();   // codes are p
 const C = n => `${T}-${n}`;
 
 if (process.env.SEED === '1') {   // the live 1h pool the TICKETS code puts tickets into (dev-only seeds through the admin CLI; "already exists" is fine)
-  try { execFileSync('node', ['dist/cli/index.js', 'pool:seed', '--id', '1', '--tier', '1h', '--status', 'active', '--min', '2'], { cwd: new URL('..', import.meta.url).pathname, stdio: 'pipe' }); } catch { /* exists */ }
+  try { execFileSync('node', [process.env.CLI ?? 'dist/cli/index.js', 'pool:seed', '--id', '1', '--tier', '1h', '--status', 'active', '--min', '2'], { cwd: new URL('..', import.meta.url).pathname, stdio: 'pipe' }); } catch (e) { if (!/already exists/i.test(String(e.stderr ?? e.message))) console.warn(`pool:seed failed: ${String(e.stderr ?? e.message).slice(0, 400)}`); }
 }
 
 const adminKp = nacl.sign.keyPair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(process.env.ADMIN_KEYPAIR, 'utf8'))));
@@ -177,6 +177,7 @@ await until(async () => await L.ev(`!![...document.querySelectorAll('[data-fc-wa
 await L.ev(`[...document.querySelectorAll('[data-fc-wallets] button')].find(b => (b.textContent || '').startsWith('Phantom')).click()`);
 check('landing → lobby: after the wallet signs, the PROFILE opens with the code typed in – and not redeemed yet', await until(async () => (await L.ev('location.pathname')) === '/lobby.html' && (await L.ev('document.getElementById("promo-code")?.value || ""')).toLowerCase() === C('TICKETS').toLowerCase(), 20000) && (await get('promo/mine', await signInCookie(L))).j.redemptions?.length === 0);
 async function signInCookie(h) { const c = (await h.send('Network.getCookies', { urls: [BASE] })).cookies.find(k => k.name === 'fc_session'); return c ? `fc_session=${c.value}` : ''; }
+await acceptLocalTestTerms(BASE, await signInCookie(L)); // the phantom-signed landing wallet is a fresh test wallet; consent is its own suite
 await L.ev('document.getElementById("promo-go").click()');
 check('lobby (arrived from the landing): REDEEM works – the ticket code', await until(async () => /\+2 tickets/.test(await txt(L, '#promo-msg'))), await txt(L, '#promo-msg'));
 await L.shot('promo-lobby-from-landing');

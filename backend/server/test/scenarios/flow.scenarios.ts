@@ -23,7 +23,7 @@ export function flowScenarios(h: () => Harness): void {
       first.setTrustScore(49);
       await players.save(first);
       const before = (await players.findByWallet(w.address))!.snapshot();
-      for (let i = 0; i < 5; i++) { sec(61); await login(w, { offer: false }); }
+      for (let i = 0; i < 5; i++) { sec(61); await login(w, { offer: false, terms: false }); }
       expect((await players.findByWallet(w.address))!.snapshot()).toEqual(before);
     });
     it('signs in, sets an httpOnly cookie, and starts with 10 free rides', async () => {

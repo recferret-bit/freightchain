@@ -1,3 +1,4 @@
+import { acceptLocalTestTerms } from './local-test-terms.mjs';
 // Guest EASY in real headless Chrome, plus the refusals CreateRideHandler actually throws.
 // As-built (not the issue's names): a guest cookie is fc_session with Player.guest, the finished row is status
 // 'completed' (there is no 'finished'), a paid tier is 409 guest_easy_only, a level on a paid tier is 409
@@ -55,6 +56,7 @@ try {
   }, 25000) : null;
   check('DB status is completed (as-built; not finished) and the player is a guest', row?.status === 'completed' && row?.player?.guest === true, JSON.stringify({ status: row?.status, guest: row?.player?.guest }));
   const cookie = session ? `fc_session=${session.value}` : '';
+  await acceptLocalTestTerms(BASE, cookie); // consent precedes the guest-tier refusals; the refusal codes are what this suite checks
   const paid = await post('rides', { tier: '1h' }, cookie);
   check('guest paid tier is 409 guest_easy_only (not guest_free_only)', paid.status === 409 && paid.j.code === 'guest_easy_only', `${paid.status} ${paid.j.code}`);
   const level = await post('rides', { tier: '1h', level: 1 }, cookie);

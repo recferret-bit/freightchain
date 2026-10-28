@@ -1,3 +1,4 @@
+import { SITE_BASE } from '../js/hosts.js';
 import { store } from '../js/util.js';
 import { campaignText } from './campaign-copy.js';
 import { el } from './dom.js';
@@ -83,6 +84,7 @@ export function campaignSection({ api, alive = () => true }) {
         el('p', {}, `${t('One ranked 1h event attempt. Starts:')} ${row.event.startsAt ?? t('not scheduled')}; ${t('last start:')} ${row.event.lastStartAt ?? t('not scheduled')}.`),
         el('p', { class: 'dim' }, t("One person, one attempt. The attempt is consumed when you order its ride. Only verified, eligible rides may qualify; there is no guaranteed prize. Free training remains available.")),
         el('label', { class: 'opt' }, accept, t(" I am 18 or older and accept these event rules.")),
+        external(`${SITE_BASE}/rules/?lang=${language}`, language === 'ru' ? 'Правила / конфиденциальность' : 'Rules / privacy notice'),
         el('button', { type: 'button', id: 'campaign-attempt', disabled: busy || row.event.attemptGranted || !row.tasksComplete || !row.telegram.active, onclick: () => {
           if (!rulesAccepted) { say(t("Accept the event rules first."), true); return; }
           submit('airdrop/preseason/claim-attempt', { acceptedRules: true });

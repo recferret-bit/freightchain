@@ -59,6 +59,7 @@ export class MemoryDb {
   verdicts = new Map<string, RideVerdictProps>();
   replays = new Map<string, RideReplayProps>();
   signIns: SignInRecord[] = [];
+  termsAcceptances: import('../../../src/application/ports/players/terms-acceptance.repository.port.js').TermsAcceptanceRecord[] = [];
   adminActions: AdminActionRecord[] = [];
   proposals: AdminProposalRecord[] = [];
   /** live feed, in id order */
@@ -101,6 +102,7 @@ export class MemoryDb {
   editorMcpCalls = new Map<string, import('../../../src/domain/editor/editor-job.js').EditorMcpCallRecord[]>();
 
   reset(): void {
+    this.termsAcceptances = [];
     this.players.clear(); this.challenges.clear(); this.rides.clear(); this.appeals = []; this.batches.clear(); this.verdicts.clear(); this.replays.clear();
     this.rounds = []; this.payments = []; this.unlocks = []; this.mints = []; this.signIns = []; this.adminActions = []; this.proposals = [];
     this.seq = 0; this.roundSeq = 0;

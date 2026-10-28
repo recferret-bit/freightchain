@@ -1,3 +1,4 @@
+import { TermsRequiredError } from '../../../../src/domain/shared/errors.js';
 import { readFileSync } from 'node:fs';
 import { ExecutionContext } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
@@ -124,13 +125,13 @@ describe('wave 5 humanness, trust, and terms', () => {
     expect(grantReleasable({ ...both, now: ready })).toBe(true);
     expect(grantReleasable({ ...both, now: ready, trustB: 49 })).toBe(false);
     expect(grantReleasable({ ...both, now: ready, rejectedA: 1 })).toBe(false);
-    expect(() => assertTermsCurrent(null, 1)).toThrow(ForbiddenError);
-    expect(() => assertTermsCurrent(0, 1)).toThrow(expect.objectContaining({ errorCode: 'terms_acceptance_required' }));
+    expect(() => assertTermsCurrent(null, 1)).toThrow(TermsRequiredError);
+    expect(() => assertTermsCurrent(0, 1)).toThrow(expect.objectContaining({ errorCode: 'terms_required' }));
     expect(() => assertTermsCurrent(1, 1)).not.toThrow();
     const guard = new TermsGuard();
     const ctx = (player: object | undefined): ExecutionContext => ({ switchToHttp: () => ({ getRequest: () => ({ method: 'POST', player }) }) }) as ExecutionContext;
-    expect(() => guard.canActivate(ctx({ wallet: 'w', termsVersion: null, privacyVersion: null }))).toThrow(expect.objectContaining({ errorCode: 'terms_acceptance_required' }));
-    expect(() => guard.canActivate(ctx({ wallet: 'w' }))).toThrow(expect.objectContaining({ errorCode: 'terms_acceptance_required' }));
+    expect(() => guard.canActivate(ctx({ wallet: 'w', termsVersion: null, privacyVersion: null }))).toThrow(expect.objectContaining({ errorCode: 'terms_required' }));
+    expect(() => guard.canActivate(ctx({ wallet: 'w' }))).toThrow(expect.objectContaining({ errorCode: 'terms_required' }));
     expect(guard.canActivate(ctx({ wallet: 'w', termsVersion: 1, privacyVersion: 1 }))).toBe(true);
   });
 });

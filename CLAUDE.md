@@ -9,6 +9,7 @@
 
 - Entity editor security: `docs/spec/platform_services.md`; production rate limits require Redis and a restricted MCP counter user; PostgreSQL owns the shared AI job queue; generation runs only in the dedicated process (`npm run editor:worker`).
 
+- Consent and legal pages: `docs/agents/landing.md` → Versioned legal review, `docs/spec/PRODUCT.md`. Review on sign-in/428, never auto-retry a payment, legal text verbatim; Chrome check is the `lobby` suite's `e2e-i18n-legal.mjs`.
 - Referrals: `docs/spec/referral.md` (Convoy invites, capped promo gifts, TEN4 milestones, privacy and retained historical rewards).
 
 ## Workflow

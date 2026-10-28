@@ -2,7 +2,7 @@
 # Real-Chrome end-to-end runs against a freshly built server on a THROWAWAY database (dropped at the end, also on failure).
 #   bash .claude/skills/run-tests/e2e.sh [browser|lobby|admin|promo|watch|replay|replay-controls|replay-tips|flags|wallet|wallet-split|board|close|close-split|verified|verified-deep|road|stats|blinks|traffic|editor|honk-garage|whitepaper|landing|achievements|guest|weekly|referral|viewer|sim|controls ...]   (default: all thirty-one)
 # Needs: compose PostgreSQL (npm run db:up), server/landing dependencies, Chrome; blinks also native Solana, solana-verify and the pinned pool artifact.
-# Opt-in normal-drive is a full MEDIUM course; it is outside the default 31-suite list.
+# Opt-in normal-drive selects a full EASY/MEDIUM/HARD course (default MEDIUM); it is outside the default 31-suite list.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SERVER="$ROOT/backend/server"
@@ -74,13 +74,13 @@ for suite in "${SUITES[@]}"; do
   echo "▸ e2e $suite"; SUITE="$suite"
   case "$suite" in
     browser) start 20; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" FREE_RIDE_SECONDS=20 node scripts/e2e-browser.mjs) || fails=$((fails + 1)) ;;
-    lobby)   start 3;  (cd "$SERVER" && BASE="http://localhost:$PORT" SEED=1 DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" node scripts/e2e-lobby.mjs) || fails=$((fails + 1)) ;;   # SEED=1: the dev pool seeds it expects (throwaway database)
+    lobby)   start 3;  (cd "$SERVER" && BASE="http://localhost:$PORT" SEED=1 DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" node scripts/e2e-lobby.mjs && BASE="http://localhost:$PORT" DATABASE_URL="$URL" CHROME_PORT="$(free_port)" node scripts/e2e-i18n-legal.mjs) || fails=$((fails + 1)) ;;   # SEED=1: the dev pool seeds it expects (throwaway database)
     admin)
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
       EXTRA_ENV="EDITOR_WALLETS=$wallet TRAFFIC_PROOF_REQUIRED=true" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" CHROME_PORT="$(free_port)" SEED=1 DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" node scripts/e2e-admin.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;   # the admin wallet is an editor too (the owner's setup)
     promo)   # the whole promo loop: admin page (signs) → lobby + landing players → admin sees the uses; expiry, start, used up, disabled, abuse. Own limit: a hundred players behind one IP
       wallet="$(cd "$SERVER" && node -e 'const n=require("tweetnacl"),b=require("bs58").default??require("bs58"),k=n.sign.keyPair();require("fs").writeFileSync(process.argv[1],JSON.stringify([...k.secretKey]));console.log(b.encode(k.publicKey))' "$ADMIN_KP")"
-      EXTRA_ENV="THROTTLE_PROMO_LIMIT=100000" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" SEED=1 DATABASE_URL="$URL" CHROME_PORT="$(free_port)" node scripts/e2e-promo.mjs) || fails=$((fails + 1)) ;;
+      EXTRA_ENV="THROTTLE_PROMO_LIMIT=100000" start 3 "$wallet"; (cd "$SERVER" && BASE="http://localhost:$PORT" ADMIN_KEYPAIR="$ADMIN_KP" SEED=1 DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" CHROME_PORT="$(free_port)" node scripts/e2e-promo.mjs) || fails=$((fails + 1)) ;;
     watch)   start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-watch.mjs) || fails=$((fails + 1)) ;;
     replay)  start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node scripts/e2e-replay.mjs) || fails=$((fails + 1)) ;;
     replay-controls) EXTRA_ENV="LIVE_CHAT=all LIVE_DONATIONS=on LIVE_FREE_DONATIONS=off LIVE_EFFECTS=off" start 300; (cd "$SERVER" && BASE="http://localhost:$PORT" DATABASE_URL="$URL" CHROME_PORT="$(free_port)" node scripts/e2e-replay-controls.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
@@ -151,7 +151,7 @@ for suite in "${SUITES[@]}"; do
     weekly) SERVER_ENTRY="scripts/e2e-weekly-server.mjs $BUILD" EXTRA_ENV="PRIZE_DEV_DEFAULT_COUNTRY=KP" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" CLI="$BUILD/cli/index.js" node scripts/e2e-weekly-ticket.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     referral) SGT_FIXTURE_PORT="$(free_port)"; SERVER_ENTRY="scripts/e2e-sgt-server.mjs $BUILD" EXTRA_ENV="SGT_FIXTURE_PORT=$SGT_FIXTURE_PORT PRIZE_DEV_DEFAULT_COUNTRY=KP CHALLENGE_INTERVAL_SECONDS=0" start 6; (cd "$SERVER" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" DATABASE_URL="$URL" SGT_FIXTURE_PORT="$SGT_FIXTURE_PORT" node scripts/e2e-referral.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     viewer) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-viewer.mjs "http://localhost:$PORT/viewer.html") || fails=$((fails + 1)) ;;
-    normal-drive) (cd "$SERVER" && node --test scripts/normal-drive-support.test.mjs); EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=true VERDICT_ENFORCE=true" start 180; (cd "$SERVER" && BASE="http://localhost:$PORT" NORMAL_PAID_KEY= CHROME_PORT="$(free_port)" node scripts/e2e-normal-drive.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
+    normal-drive) (cd "$SERVER" && node --test scripts/normal-drive-support.test.mjs scripts/normal-drive-course.test.mjs scripts/lane-merge-safety.test.mjs scripts/normal-drive-stuck.test.mjs scripts/keyboard-driver.test.mjs); EXTRA_ENV="TRAFFIC_PROOF_REQUIRED=true VERDICT_ENFORCE=true" start 180; (cd "$SERVER" && BASE="http://localhost:$PORT" NORMAL_PAID_KEY= CHROME_PORT="$(free_port)" node scripts/e2e-normal-drive.mjs) || fails=$((fails + 1)); EXTRA_ENV="" ;;
     controls) start 3; (cd "$ROOT/frontend/client" && BASE="http://localhost:$PORT" CHROME_PORT="$(free_port)" node tools/e2e-controls.mjs) || fails=$((fails + 1)) ;;
     sim) start 3; (cd "$ROOT/frontend/client" && PORT="$(free_port)" node tools/e2e-chrome.mjs "http://localhost:$PORT/play.html?sim=1") || fails=$((fails + 1)) ;;
     *) echo "unknown suite $suite (browser | lobby | admin | promo | watch | replay | replay-controls | replay-tips | flags | wallet | wallet-split | board | close | close-split | verified | verified-deep | road | stats | blinks | traffic | editor | honk-garage | whitepaper | landing | achievements | guest | weekly | referral | viewer | sim | controls | normal-drive)"; fails=$((fails + 1)) ;;

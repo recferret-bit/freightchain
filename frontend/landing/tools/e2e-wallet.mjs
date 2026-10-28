@@ -79,6 +79,12 @@ const calls = () => ev(`sessionStorage.getItem('fakecalls') ?? '[]'`);
 const until = async (expr, ms = 8000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(expr)) return true; await sleep(150); } return false; };
 const session = async () => (await send('Network.getAllCookies')).cookies.find(k => k.name === 'fc_session');
 const click = () => ev(`document.getElementById('connect').click()`);
+const acceptTerms = async ({ already = false } = {}) => {
+  if (already) { await sleep(2500); check('an already accepted wallet is not asked again', !(await ev('!!document.querySelector("#terms-dialog")'))); return; }   // same fake wallet as step 4: its consent is stored server-side
+  check('fresh wallet is asked for explicit terms acceptance', await until('!!document.querySelector("#terms-dialog[open]")', 12000));
+  await ev('document.querySelector("#terms-age").click(); document.querySelector("#terms-accept").click()');
+  check('deliberate age confirmation saves acceptance', await until('!document.querySelector("#terms-dialog")'));
+};
 /** CONNECT always opens the list, including when one wallet is installed. The row's text starts with the wallet name. */
 const pick = async label => {
   const expr = `[...document.querySelectorAll('[data-fc-wallets] button')].find(b => (b.textContent || '').startsWith(${JSON.stringify(label)}))`;
@@ -89,7 +95,7 @@ const pick = async label => {
 // 1 · no wallet extension: the dialog offers the extensions; closing it leaves a clear message, nothing breaks, no session
 await send('Network.clearBrowserCookies'); await open('none');
 await click(); await until(`document.querySelector('[data-fc-wallets]')`);
-check('no wallet: the dialog links the Phantom, Solflare and Backpack downloads', (await ev(`[...document.querySelectorAll('[data-fc-wallets] a')].map(a => a.href).join(' ')`)) === 'https://phantom.com/download https://solflare.com/download https://backpack.app/download');
+check('no wallet: the dialog links the Phantom, Solflare and Backpack downloads', (await ev(`[...document.querySelectorAll('[data-fc-wallets] a')].filter(a => !/\\/terms\\/|\\/privacy\\/|\\/rules\\//.test(a.href)).map(a => a.href).join(' ')`)) === 'https://phantom.com/download https://solflare.com/download https://backpack.app/download');
 await shot('no-wallet-dialog');
 await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].find(b => b.textContent === 'CANCEL').click()`); await until(`document.getElementById('msg').classList.contains('bad')`);
 check('no wallet installed: clear message, button usable again', /No Solana wallet/.test(await ev(`document.getElementById('msg').textContent`)) && (await ev(`!document.getElementById('connect').disabled`)));
@@ -110,6 +116,7 @@ check('…no session cookie, and /api/me says 401', !(await session()) && (await
 await open('ok'); const addr = await ev(`window.__addr()`); const short = `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 await shot('landing-before'); await click(); await pick('Phantom');
 check('redirected to the lobby after the sign-in', await until(`location.pathname === '/lobby.html'`, 12000), await ev('location.href'));
+await acceptTerms();
 const ck = await session();
 check('session cookie: httpOnly, SameSite=Lax, path /', !!ck && ck.httpOnly && ck.sameSite === 'Lax' && ck.path === '/', ck ? `domain ${ck.domain}` : 'missing');
 if (API !== BASE) check('split hosts: the cookie is scoped to the apex so landing, lobby, game and API all send it', ck?.domain === `.${new URL(BASE).hostname}`, ck?.domain);
@@ -124,7 +131,7 @@ await send('Page.navigate', { url: BASE + '/' }); await sleep(1800); await until
 check('landing shows the wallet chip', (await ev(`document.getElementById('chip-wallet').textContent`)) === short);
 check('CTA becomes OPEN THE LOBBY, top button LOBBY', /OPEN THE LOBBY/.test(await ev(`document.getElementById('connect').textContent`)) && (await ev(`document.getElementById('play-top').textContent`)) === 'LOBBY');
 check('play-free is hidden when signed in (only one OPEN THE LOBBY button in hero)', await ev(`document.getElementById('play-free').hidden`));
-check('rides chip shows training and paid tickets (no duplicate "Signed in as" line)', /^training · \d+ paid rides?$/.test(await ev(`document.getElementById('chip-rides').hidden ? '' : document.getElementById('chip-rides').textContent`)) && !(await ev(`document.getElementById('msg').textContent`)).includes(short));
+check('rides chip shows training and paid tickets (no duplicate "Signed in as" line)', /^training(?: · weekly [^·]+)? · \d+ paid rides?$/.test(await ev(`document.getElementById('chip-rides').hidden ? '' : document.getElementById('chip-rides').textContent`)) && !(await ev(`document.getElementById('msg').textContent`)).includes(short));
 await shot('landing-signed-in');
 await ev(`document.getElementById('connect').click()`);
 check('OPEN THE LOBBY goes to the lobby, still signed in', (await until(`location.pathname === '/lobby.html'`)) && (await ev(`fetch(${JSON.stringify(API + '/api/me')}, { credentials: 'include' }).then(r => r.status)`)) === 200);
@@ -146,6 +153,7 @@ await ev(`document.getElementById('invite-code').value = ' bluepaint '; document
 check('invite (signed out): the code is kept and the CONNECT button takes focus', /BLUEPAINT saved/.test(await ev(`document.getElementById('invite-msg').textContent`)) && (await ev(`document.activeElement?.id`)) === 'connect');
 await click(); await pick('Phantom');
 check('invite: after the sign-in the lobby opens on the PROMO tab with the code typed in – and the URL is clean', await until(`location.pathname === '/lobby.html' && (location.hash === '#promo' || location.hash === '#profile') && location.search === '' && document.getElementById('promo-code')?.value === 'bluepaint'`, 12000), await ev('location.href'));
+await acceptTerms({ already: true });
 await shot('lobby-invite');
 const mine = await ev(`fetch(${JSON.stringify(API + '/api/promo/mine')}, { credentials: 'include' }).then(r => r.json())`);
 check('…and nothing was redeemed by the link itself', Array.isArray(mine.redemptions) && mine.redemptions.length === 0, JSON.stringify(mine));
@@ -157,6 +165,7 @@ check('invite (signed in): straight to the lobby PROMO tab with the code', await
 await send('Network.clearBrowserCookies'); await open('std');
 const stdAddr = await ev('window.__addr()'); await click(); await pick('Phantom');
 check('Wallet Standard sign-in (solana:signIn) → the lobby', await until(`location.pathname === '/lobby.html'`, 12000), await ev('location.href'));
+await acceptTerms();
 check('…one prompt: signIn only (no connect, no signMessage)', (await calls()) === '["Phantom:signIn"]', await calls());
 check('…/api/me is that wallet', (await ev(`fetch(${JSON.stringify(API + '/api/me')}, { credentials: 'include' }).then(r => r.json())`)).wallet === stdAddr);
 
@@ -167,6 +176,7 @@ check('two wallets: the picker lists both', (await ev(`[...document.querySelecto
 await shot('wallet-picker');
 await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].find(b => b.textContent.startsWith('Second')).click()`);
 check('…the picked wallet signs in', (await until(`location.pathname === '/lobby.html'`, 12000)) && (await ev(`fetch(${JSON.stringify(API + '/api/me')}, { credentials: 'include' }).then(r => r.json())`)).wallet === second);
+await acceptTerms();
 
 // 10 · a rejected one-click sign-in stops there – no connect + signMessage second prompt
 await send('Network.clearBrowserCookies'); await open('stdreject'); await click(); await pick('Phantom'); await until(`document.getElementById('msg').classList.contains('bad')`);
@@ -177,7 +187,7 @@ check('…and no session cookie', !(await session()));
 await send('Network.clearBrowserCookies'); await open('none', '/?mobile=1');
 await click(); await until(`document.querySelector('[data-fc-wallets]')`);
 const here = await ev('location.href'), origin = await ev('location.origin');
-check('phone, no wallet: Open in Phantom / Solflare / Backpack browse links', (await ev(`[...document.querySelectorAll('[data-fc-wallets] a')].map(a => a.href).join(' ')`)) === `https://phantom.com/ul/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://solflare.com/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://backpack.app/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)}`);
+check('phone, no wallet: Open in Phantom / Solflare / Backpack browse links', (await ev(`[...document.querySelectorAll('[data-fc-wallets] a')].filter(a => !/\\/terms\\/|\\/privacy\\/|\\/rules\\//.test(a.href)).map(a => a.href).join(' ')`)) === `https://phantom.com/ul/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://solflare.com/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)} https://backpack.app/ul/v1/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(origin)}`);
 await shot('phone-open-in-wallet');
 await ev(`[...document.querySelectorAll('[data-fc-wallets] button')].find(b => b.textContent === 'CANCEL').click()`);
 

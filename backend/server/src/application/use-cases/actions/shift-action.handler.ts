@@ -5,6 +5,7 @@ import { ConflictError, ServiceUnavailableError } from '../../../domain/shared/e
 import type { TicketOrderDto } from '../../../domain/economy/ticket-order.dto.js';
 import { RulesConfigPort } from '../../ports/config/rules-config.port.js';
 import { PoolRepositoryPort } from '../../ports/economy/pool.repository.port.js';
+import { assertTermsCurrent } from '../../../domain/players/terms.js';
 import { PlayerRepositoryPort } from '../../ports/players/player.repository.port.js';
 import { ClockPort } from '../../ports/shared/clock.port.js';
 import { CreateTicketOrderCommand } from '../tickets/create-ticket-order/create-ticket-order.command.js';
@@ -40,6 +41,8 @@ export class PrepareShiftActionHandler implements ICommandHandler<PrepareShiftAc
     if (!offer) throw new ConflictError('this pool is not selling tickets right now', 'not_sellable');
     // CreateTicketOrder touches the wallet first and would mint a player (and the signup grant) for a key that never signed in.
     const player = await this.players.findByWallet(account);
+    // A blink has no session, so the guard's current-version check (428) is repeated here.
+    if (player) assertTermsCurrent(player.termsVersion, player.privacyVersion);
     if (!player?.paidPlayAllowed) throw new ConflictError('accept the 18+ and loss offer on your profile before a paid shift', 'agreements_required');
     const order = await this.commands.execute<CreateTicketOrderCommand, TicketOrderDto>(new CreateTicketOrderCommand(account, offer.poolId, 1));
     const payment = await this.queries.execute<GetTicketPaymentQuery, TicketPaymentDto>(new GetTicketPaymentQuery(account, order.id));

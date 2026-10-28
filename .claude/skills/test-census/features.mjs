@@ -252,10 +252,10 @@ export const FEATURES = [
   },
   {
     id: 'agreements', title: '18+ and loss agreements',
-    server: /^application\/use-cases\/players\/accept-agreements\//,
-    client: /^(?:frontend\/)?client\/site\/lobby-agreements\.js$/,
-    routes: /^PUT \/api\/profile\/agreements$/,
-    words: /agreement|age18/i,
+    server: /^application\/use-cases\/players\/(accept-agreements|terms)\//,
+    client: /^(?:frontend\/)?(client\/site\/(lobby-agreements|terms)\.js|landing\/src\/legal\.js)$/,
+    routes: /^(PUT \/api\/profile\/agreements|(GET|POST) \/api\/profile\/terms)$/,
+    words: /agreement|age18|explicit consent|terms_required/i,
     e2e: [], skills: [],
   },
   {

@@ -24,10 +24,16 @@ const call = async (method, path, body, cookie, headers = {}) => {
   const r = await fetch(`${BASE}/api/${path}`, { method, headers: { 'content-type': 'application/json', ...headers, ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined });
   return { status: r.status, cookie: r.headers.get('set-cookie')?.split(';')[0] ?? cookie, json: await r.json().catch(() => ({})) };
 };
+// A fresh server's first Redis rate-limit call can exceed its 300 ms command timeout; auth fails closed (429) until the next probe.
+const warm = async (method, path, body, cookie) => {
+  let r;
+  for (let i = 0; i < 8; i++) { r = await call(method, path, body, cookie); if (r.status !== 429) break; await new Promise((ok) => setTimeout(ok, 1000)); }
+  return r;
+};
 const signIn = async () => {
   const kp = nacl.sign.keyPair(), wallet = bs58.encode(kp.publicKey);
-  const nonce = await call('POST', 'auth/nonce', { wallet });
-  const ver = await call('POST', 'auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(nonce.json.message), kp.secretKey)) });
+  const nonce = await warm('POST', 'auth/nonce', { wallet });
+  const ver = await warm('POST', 'auth/verify', { wallet, signature: bs58.encode(nacl.sign.detached(new TextEncoder().encode(nonce.json.message), kp.secretKey)) });
   return { wallet, cookie: await acceptLocalTestTerms(BASE, ver.cookie) };
 };
 
