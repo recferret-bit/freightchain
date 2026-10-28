@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analytics review · pass 2 of 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../../tech/verified-play/style.css">
+<link rel="stylesheet" href="../analytics.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">Freight Chain · analytics review</span>
+  <h1>Pass 2 of 3</h1>
+  <p class="lede">File 14 · 28 Oct 2026. Wiring. No edits in pass 1, so there is nothing to re-check against the allowlist.</p>
+  <p class="soft"><a href="../index.html">Product analytics</a> · <a href="13.html">Previous report</a></p>
+</header>
+
+<section>
+  <h2>What changed</h2>
+  <p>Nothing. Allowlist, <code>track()</code> literals, funnels and eyebrows still agree (inventory drift: none).</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Surface</th><th>Found</th><th>Edited</th></tr></thead>
+      <tbody><tr><td>Landing</td><td>No change since the last review.</td><td>No change.</td></tr><tr><td>Whitepaper</td><td>No change since the last review.</td><td>No change.</td></tr><tr><td>Lobby</td><td>New read-only Pre-season event table on Profile (<code>lobby-event.js</code>). It has no button or link a player acts on, so no event.</td><td>No change.</td></tr><tr><td>Gameplay</td><td>No change.</td><td>No change.</td></tr><tr><td>Admin</td><td>New EVENT TOP-20 tab. The admin page is out of this review.</td><td>No change.</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Events</h2><p><b>Added.</b> None. <b>Removed.</b> None. <b>Explainer.</b> Not edited.</p></section>
+
+<section>
+  <h2>Checks</h2><ul><li>Inventory exit 0, drift: none.</li></ul></section>
+
+<section>
+  <div class="callout">
+    <b>Production dashboards were not opened, edited, or sent a batch.</b>
+    <span><code>posthog-test</code> and <code>posthog-prod</code> were not run. No PostHog API call in this review. <code>$create_alias</code> was not touched.</span>
+  </div>
+</section>
+
+<section>
+  <h2>Still silent on purpose</h2>
+  <p>Offline <code>play.html</code>, <code>play.html?offline=1</code>, <code>viewer.html</code>, and <code>blink.html</code> send nothing. Verdicts, escrow ticket buys and refunds, and live chat, donations, and effects. The admin page. <code>promo_created</code> and <code>promo_disabled</code> stay server events. Tutorial SKIP and END TUTORIAL. A whitepaper contents link, the LANDING button, and the footer home link. The pitch deck's header ticker and the turn-sideways skip. Badge hover, leaderboard controls, and replay filters.</p>
+</section>
+</div>
+</body>
+</html>

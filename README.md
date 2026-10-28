@@ -15,15 +15,15 @@ Free training is unlimited with no wallet required (`play.html` starts the real 
 
 <!-- traction:start -->
 
-Public numbers for a reviewer, read 2026-10-26 17:07 UTC. PostHog and the public stats endpoint were each read more than once. A count the second read did not support is not in a headline.
+Public numbers for a reviewer, read 2026-10-28 17:10 UTC. PostHog and the public stats endpoint were each read more than once. A count the second read did not support is not in a headline.
 
 <table><tr>
 <td align="center" width="50%"><h2>35</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
 <td align="center" width="50%"><h2>27.9 km</h2><b>driven</b><br>4 drivers · 5 crashes</td>
 </tr>
 <tr>
-<td align="center" width="20%"><h2>302</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-26 UTC</td>
-<td align="center" width="20%"><h2>27</h2><b>whitepaper readers</b><br>PostHog · same window</td>
+<td align="center" width="20%"><h2>313</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-10-28 UTC</td>
+<td align="center" width="20%"><h2>28</h2><b>whitepaper readers</b><br>PostHog · same window</td>
 <td align="center" width="20%"><h2>88</h2><b>wallet sign-ins</b><br>real wallets · demo excluded</td>
 <td align="center" width="20%"><h2>6</h2><b>real shifts started</b><br>29 demo starts</td>
 <td align="center" width="20%"><h2>6</h2><b>shifts finished</b><br>6 demo · 0 real</td>
@@ -59,7 +59,7 @@ Waiting: FC · Promo from an invite view; FC · Promo from a submitted code.
 | Window | Landing people | Real finishes | Demo finishes | Real sign-ins |
 | --- | ---: | ---: | ---: | ---: |
 | 8–12 Oct 2026 (judge board) | 106 | 0 | 6 | 54 |
-| 8 Oct 2026 through 2026-10-26 UTC | 302 | 0 | 6 | 88 |
+| 8 Oct 2026 through 2026-10-28 UTC | 313 | 0 | 6 | 88 |
 
 Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/insights/traction/latest.json`.
 
