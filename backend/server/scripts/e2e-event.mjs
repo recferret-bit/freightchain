@@ -46,6 +46,19 @@ const viewer = await signIn(viewerKp), adminPlayer = await signIn(adminKp);
 const now = Math.floor(Date.now() / 1000);
 const set = async o => { for (const [key, value] of Object.entries(o)) await prisma.gameSetting.upsert({ where: { key }, create: { key, value }, update: { value } }); };
 const CODE = 'SYSTEM-PRESEASON-2026-11';
+// e2e.sh runs every suite against ONE database: leave it as found (event_* settings would otherwise gate the next suites' ranked starts, and the seeded verdicts carry empty scores that `verdict:rejudge --status all` of the verified suites cannot read)
+const eventSettingsBefore = await prisma.gameSetting.findMany({ where: { key: { startsWith: 'event_' } } });
+const cleanup = async () => {
+  const wallets = field.map(f => f.wallet).filter(w => w !== viewer.address);
+  await prisma.ride.deleteMany({ where: { promoCode: CODE } });
+  await prisma.signIn.deleteMany({ where: { wallet: { in: wallets } } });
+  await prisma.eventWinner.deleteMany({}); await prisma.eventReview.deleteMany({}); await prisma.eventConfig.deleteMany({});
+  await prisma.gameSetting.deleteMany({ where: { key: { startsWith: 'event_' } } });
+  if (eventSettingsBefore.length) await prisma.gameSetting.createMany({ data: eventSettingsBefore });
+  await prisma.player.deleteMany({ where: { wallet: { in: wallets } } });
+};
+const bail = async error => { console.log('FAIL event suite crashed –', error?.stack || error); await cleanup().catch(() => {}); process.exit(1); };
+process.on('uncaughtException', bail); process.on('unhandledRejection', bail);
 const field = [];
 const add = (wallet, bps, country, tag) => field.push({ wallet, bps, country, tag });
 add(fakeAddr('RUSS'), 9900, 'RU', 'ru'); add(fakeAddr('BELA'), 9850, 'BY', 'by');
@@ -191,6 +204,7 @@ check('phone 390 px (final): no sideways page scroll', p.overflow <= 0, `overflo
 p = await profile('ru', 390, 844, true, 'profile-final-phone-ru');
 check('phone 390 px (final, RU): no sideways page scroll', p.overflow <= 0, `overflow ${p.overflow}`);
 
+await cleanup();
 await prisma.$disconnect();
 if (fails.length) { console.log(`\n${fails.length} failed: ${fails.join('; ')}`); process.exit(1); }
 console.log('\nevent surfaces ok; screenshots in', process.env.SHOTS || '$TMPDIR/fc-event-shots');
