@@ -123,9 +123,20 @@ async function spectate({ port, ride, shot }) {
 /* ───────────── D: the audit tool ───────────── */
 const audit = (...a) => { const r = spawnSync(process.execPath, ['scripts/ride-audit.mjs', ...a], { encoding: 'utf8', env: process.env }); return { code: r.status, out: (r.stdout ?? '') + (r.stderr ?? '') }; };
 
+// The scripted honest driver dodges by rule, not by sight: on some random seeds a truck still meets it head-on. That ride is a failed shift and says nothing about the road check, so take a new seed (a new ride), up to three times, and print each loss.
+async function driveHonest() {
+  let last;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    last = await drive({ port: PORT, mode: 'honest' });
+    if (!/FAILED.*collision/i.test(String(last.text))) return last;
+    console.log(`honest driver lost attempt ${attempt} to traffic (${last.text}); trying a new ride`);
+  }
+  return last;
+}
+
 /* ───────────── run ───────────── */
 console.log(`the server's road e2e against ${BASE}`);
-const [honest, cheat] = await Promise.all([drive({ port: PORT, mode: 'honest' }), drive({ port: PORT + 1, mode: 'cheat' })]);
+const [honest, cheat] = await Promise.all([driveHonest(), drive({ port: PORT + 1, mode: 'cheat' })]);
 
 check('both new rides require hashed frame-level traffic proof', honest.end.trafficVersion === 1 && cheat.end.trafficVersion === 1, `${honest.end.trafficVersion} / ${cheat.end.trafficVersion}`);
 check('A honest: the public road route is 404 while the ride is running, and the local roll matches the generator', honest.roadStatus === 404 && honest.mismatches === 0, `road ${honest.roadStatus}, ${honest.mismatches} mismatches`);
