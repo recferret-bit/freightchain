@@ -9,7 +9,7 @@
 
 **27 October:** counts unchanged (50/53). Integrated local gate evidence is in [LOCAL_READINESS](../../testing/LOCAL_READINESS.md); it is split across runs and excludes the 1h paid ride.
 
-The 24 October [local readiness audit](../../testing/LOCAL_READINESS.md) reopened six implementation tasks. The 26 October Convoy follow-up closes SPC-08.1..3 with PostgreSQL, local-chain and Chrome evidence. **50/53 tasks are marked done; SPC-05.5, SPC-08.4 and SPC-08.5 remain in progress.** Final merged acceptance and the full-duration paid-ride proof remain pending. Scheduler/database-outage and host-log-retention follow-ups have separate branch evidence pending integration. Other checked entries retain their earlier task status; they are not certification that every feature passed the current runtime gate.
+The 24 October [local readiness audit](../../testing/LOCAL_READINESS.md) reopened six implementation tasks. The 26 October Convoy follow-up closes SPC-08.1..3 with PostgreSQL, local-chain and Chrome evidence. **51/53 tasks are marked done; SPC-08.4 and SPC-08.5 remain in progress (live providers, physical Seeker and trust-policy decisions are owner-gated).** Final merged acceptance and the full-duration paid-ride proof remain pending. Scheduler/database-outage and host-log-retention follow-ups have separate branch evidence pending integration. Other checked entries retain their earlier task status; they are not certification that every feature passed the current runtime gate.
 
 | Epic | Domain | Spec Docs | Total Tasks | Todo | In Progress | Done | Blocked |
 |---|---|---|---|---|---|---|---|
@@ -17,11 +17,11 @@ The 24 October [local readiness audit](../../testing/LOCAL_READINESS.md) reopene
 | [`SPC-02`](./issues/SPC-02-admin-and-privileged-security.md) | Admin & Privileged Security (`F01..F18`) | `admin_security.md` | 9 | 0 | 0 | 9 | 0 |
 | [`SPC-03`](./issues/SPC-03-rides-dynamic-finish-and-ride-result.md) | Rides, Dynamic 65 km/h Finish & `stats.RideResult` | `rides.md` | 6 | 0 | 0 | 6 | 0 |
 | [`SPC-04`](./issues/SPC-04-replays-streams-donations-and-i18n.md) | Replays, Tip-Only Donations, Controls `C1..C36`, Chat & EN/RU i18n | `replays_streams.md`, `legal.md` | 9 | 0 | 0 | 9 | 0 |
-| [`SPC-05`](./issues/SPC-05-pool-schedule-appeals-and-program-v6.md) | Pool Schedule, `last_start_at`, Appeals & Program v6 | `pool.md` | 6 | 0 | 1 | 5 | 0 |
+| [`SPC-05`](./issues/SPC-05-pool-schedule-appeals-and-program-v6.md) | Pool Schedule, `last_start_at`, Appeals & Program v6 | `pool.md` | 6 | 0 | 0 | 6 | 0 |
 | [`SPC-06`](./issues/SPC-06-anticheat-v2-and-30hz-resim.md) | Anti-Cheat v2.1, 30 Hz Server Re-Sim & Humanness `F1..F10` | `anticheat.md` | 6 | 0 | 0 | 6 | 0 |
 | [`SPC-07`](./issues/SPC-07-minigames-framework-and-catalog.md) | Phone `phone-sms` (ported, default off) | `minigames.md` | 5 | 0 | 0 | 5 | 0 |
 | [`SPC-08`](./issues/SPC-08-referral-convoy-ten4-airdrop-and-trust.md) | Referral Convoy, TEN4 Airdrop, `TrustScore` & `TermsGuard` | `referral.md`, `ten4.md`, `promocodes.md`, `web3_solana.md`, `platform_services.md` | 6 | 0 | 2 | 4 | 0 |
-| **Total** | | | **53** | **0** | **3** | **50** | **0** |
+| **Total** | | | **53** | **0** | **2** | **51** | **0** |
 
 ---
 
@@ -85,7 +85,7 @@ The 24 October [local readiness audit](../../testing/LOCAL_READINESS.md) reopene
 | `SPC-05.2` | Enforce `409 pool_last_start_passed` on ride start & `409 pool_schedule_mismatch` on DB vs on-chain PDA timestamp drift | `POOL-M-05`, `POOL-M-06`, `POOL-M-11` | `E2E-08.5` | `SPC-05.1` | `[x] Done` |
 | `SPC-05.3` | Add non-refundable ticket burn rule after `last_start_at` + lobby purchase warning modal & mandatory confirmation checkbox | `POOL-M-07` | `E2E-08.5` | `SPC-05.2` | `[x] Done` |
 | `SPC-05.4` | Implement pool validation & appeals workflow (`POST /api/rides/:id/appeal`, admin review queue, block `commit_winners_root` until `validation_until` & 0 open appeals) | `POOL-M-08`, `POOL-M-09` | `E2E-08.5` | `SPC-05.1` | `[x] Done` |
-| `SPC-05.5` | Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`) | `POOL-M-10`, `POOL-M-13, 14` | `E2E-08.5` | `SPC-05.1` | `[~] In Progress` |
+| `SPC-05.5` | Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`) | `POOL-M-10`, `POOL-M-13, 14` | `E2E-08.5` | `SPC-05.1` | `[x] Done` — merged-`main` gate 28 Oct (`222d5c2d`): 204 Rust tests, pinned-validator `test:localnet`, IDL drift and server checks passed; see LOCAL_READINESS. No deployment. |
 | `SPC-05.6` | Resolve `set_pool_rules` governance conflict (`POOL-M-12`/`B8` Admin HTTP vs `ADM-M-07`/Decision 60 Squads multisig-only) | `POOL-M-12` vs `ADM-M-07` | `E2E-08.5`, `E2E-09.1` | Decision 70 | `[x] Done` — Decision 70 (24.10.2026): no admin HTTP route. `pool-admin.mjs set-pool-rules` sends it. On mainnet, Squads. |
 
 ### Epic SPC-06 — Anti-Cheat v2.1, 30 Hz Server Re-Sim & Humanness `F1..F10` ([`issues/SPC-06-anticheat-v2-and-30hz-resim.md`](./issues/SPC-06-anticheat-v2-and-30hz-resim.md))
