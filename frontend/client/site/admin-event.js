@@ -46,13 +46,13 @@ export async function eventTab(ctx) {
     const review = (b, dq, prize) => { const n = note.value.trim() || null; return act(b, `review ${c.wallet.slice(0, 4)}…`, 'review', { action: 'event_review', wallet: c.wallet, disqualified: dq, prizeEligible: prize, note: n }, { wallet: c.wallet, disqualified: dq, prizeEligible: prize, note: n })(); };
     const sanctionsBtn = el('button', { type: 'button', 'data-act': 'sanctions' }, 'CHECK SANCTIONS');
     sanctionsBtn.onclick = act(sanctionsBtn, `sanctions check of ${c.wallet.slice(0, 4)}…`, 'sanctions', { action: 'event_sanctions', wallet: c.wallet }, { wallet: c.wallet });
-    const sanc = c.sanctionsClean === null ? 'not checked' : `${c.sanctionsClean ? 'clean' : 'NOT CLEAN'} · ${time(c.sanctionsCheckedAt)}${c.sanctionsFresh ? ' · fresh' : ' · stale'}`;
+    const sanc = c.sanctionsClean === null ? 'not checked' : `${c.sanctionsClean ? 'clean' : 'NOT CLEAN'} · ${time(c.sanctionsCheckedAt)}${c.sanctionsClean ? (c.sanctionsFresh ? ' · fresh' : ' · stale') : ''}`;
     return el('tr', { class: c.disqualified ? 'dq' : '', 'data-wallet': c.wallet },
-      el('td', {}, c.disqualified ? '–' : c.rank), el('td', {}, c.place ?? '–'), el('td', {}, el('a', { href: `#players/${c.wallet}`, class: 'mono', title: c.wallet }, wallet(c.wallet))),
+      el('td', {}, c.disqualified ? '–' : c.rank), el('td', {}, c.place ?? '–'), el('td', {}, el('a', { href: `#players/${c.wallet}`, class: 'mono', title: c.wallet, style: 'white-space:nowrap' }, wallet(c.wallet))),
       el('td', {}, `${(c.bps / 100).toFixed(2)}%`), el('td', {}, c.amountCents ? usd(c.amountCents) : '–'),
       el('td', {}, `${c.country ?? '?'}${c.region ? `-${c.region}` : ''} · ${GEO[c.geoAccess]}${c.prizeEligibleOverride === false ? ' · prize removed' : ''}`),
       el('td', { class: c.trustBlocked ? 'bad' : '' }, `${c.trustScore}${c.trustBlocked ? ' (blocks payout)' : ''}`),
-      el('td', {}, el('a', { href: `#ride/${c.rideId}`, class: 'mono' }, c.rideId.slice(0, 8)), c.attempts > 1 ? ` · ${c.attempts} attempts!` : ''),
+      el('td', {}, el('a', { href: `#ride/${c.rideId}`, class: 'mono', style: 'white-space:nowrap' }, c.rideId.slice(0, 8)), c.attempts > 1 ? ` · ${c.attempts} attempts!` : ''),
       el('td', { class: 'mono dim' }, c.ipPrefixHmac.join(' ') || '–', c.ipOverlaps.length ? el('div', { class: 'warn' }, `shares a subnet with ${c.ipOverlaps.map(wallet).join(', ')}`) : ''),
       el('td', {}, sanc, el('br'), sanctionsBtn),
       el('td', {}, note, el('br'),

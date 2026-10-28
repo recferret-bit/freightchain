@@ -18,7 +18,7 @@ export function eventBoardSection({ api, alive = () => true }) {
       el('table', { class: 'dense', id: 'event-board-table' },
         el('thead', {}, el('tr', {}, ...['#', t('event.wallet'), t('event.clean'), t('event.prize'), ''].map(h => el('th', {}, h)))),
         el('tbody', {}, d.rows.map(r => el('tr', { class: r.prizeEligible ? '' : 'dim' },
-          el('td', {}, r.rank), el('td', { class: 'mono' }, r.wallet), el('td', {}, `${(r.bps / 100).toFixed(2)}%`),
+          el('td', {}, d.phase === 'final' ? r.place ?? r.rank : r.rank), el('td', { class: 'mono', style: 'white-space:nowrap' }, r.wallet), el('td', {}, `${(r.bps / 100).toFixed(2)}%`),
           el('td', {}, r.prizeEligible ? usd(r.amountCents) : t('event.outside')),
           el('td', {}, r.solscanUrl ? el('a', { href: r.solscanUrl, target: '_blank', rel: 'noopener noreferrer' }, t('event.tx')) : ''))))));
   };
