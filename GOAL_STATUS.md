@@ -35,7 +35,7 @@ If 51/53 is the real endpoint, say so and I rewrite the goal as "specs 51/53, la
 
 ## Weakened or not covered
 
-- Merged-main gate (`5a3cd6cf`): all layers passed except the Chrome `verified` suite's "metronome timing" check, which passed on an immediate rerun (intermittent, cause unknown). Not a clean uninterrupted gate. New event admin tab / Profile table not exercised in Chrome.
+- Final gate on `172b2129`: all layers pass, but across several attempts (three separate defects fixed, see LOCAL_READINESS), not one single `test:ci:full`. Last Chrome run: all 31 suites, exit 0. Two Chrome-launch failures (`board`, `localnet`) never reproduced. New event tab/table now covered by the `admin` suite.
 - `sim` suite skips its audio check when the headless audio clock is frozen.
 - `verified-deep` ignores incidental scripted traffic contact. The `road` check's honest driver retries on a new seed when traffic ends its shift.
 - Not done: 1h paid ride, HARD normal drive, the 13 metadata publications, real-device checks, review of the consent modal screenshots.
