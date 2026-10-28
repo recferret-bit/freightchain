@@ -166,7 +166,7 @@ export const FEATURES = [
     client: /^(?:frontend\/)?client\/site\/(admin(-[a-z]+)?|trust-evidence)\.js$/,
     routes: /^(GET|POST) \/api\/admin\//,
     words: /admin|override|audit/i,
-    e2e: ['e2e-admin.mjs', 'e2e-promo.mjs', 'e2e-verified-play.mjs', 'e2e-verified-deep.mjs'], skills: ['run-tests'],
+    e2e: ['e2e-admin.mjs', 'e2e-event.mjs', 'e2e-promo.mjs', 'e2e-verified-play.mjs', 'e2e-verified-deep.mjs'], skills: ['run-tests'],
   },
   {
     id: 'analytics', title: 'Product analytics relay',
