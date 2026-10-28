@@ -33,8 +33,9 @@ export async function launch({ port, shotsDir, args = [], evalProblems = false, 
   while (Date.now() < readyBy) {
     if (launchError || chrome.exitCode !== null || chrome.signalCode !== null) break;
     try {
-      tabs = await (await fetch(`http://127.0.0.1:${port}/json`, { signal: AbortSignal.timeout(1000) })).json();
-      if (tabs.some(t => t.type === 'page')) break;
+      const list = await (await fetch(`http://127.0.0.1:${port}/json`, { signal: AbortSignal.timeout(1000) })).json();
+      tabs = Array.isArray(list) ? list : undefined; // something else on this port answers with an object
+      if (tabs?.some(t => t.type === 'page')) break;
     } catch { /* not up yet */ }
     await sleep(200);
   }

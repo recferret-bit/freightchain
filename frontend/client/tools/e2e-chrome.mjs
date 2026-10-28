@@ -29,7 +29,10 @@ if(await ev('typeof window.__game')==='object'){
     const got=await ev('Object.keys(__game.audio.bufs).length'); console.log('sfx samples decoded:',got,'/',n);
     if(got!==n) problems.push('sfx: '+got+' of '+n+' samples decoded');
     const cc=await ev(`fetch('audio/sfx/'+${JSON.stringify(Object.values(man)[0].file)}).then(r=>r.headers.get('content-type')+' '+r.headers.get('cache-control'))`); console.log('sfx headers:',cc);
-    if(!await ev(`__game.audio.play('switch')`)) problems.push('sfx: play(switch) did not play'); }
+    // The 40 ms retrigger guard reads ctx.currentTime; headless Chrome with no audio output device leaves that clock frozen, so a second play() never passes. Say so instead of failing on the machine's hardware.
+    const c0=await ev('__game.audio.ctx.currentTime'); await sleep(400); const c1=await ev('__game.audio.ctx.currentTime');
+    if(c1<=c0) console.log('sfx: audio clock frozen (no output device) – play(switch) check skipped');
+    else if(!await ev(`__game.audio.play('switch')`)) problems.push('sfx: play(switch) did not play'); }
   const beforeLaunch=await ev('__game.st.s');
   await key('ShiftLeft'); await sleep(300); await key('KeyE'); await key('KeyW'); await sleep(300); await key('ShiftLeft','up'); await sleep(4000);
   console.log('moving:',await ev('JSON.stringify({v:+__game.st.v.toFixed(1),gear:__game.st.gear,d:+__game.st.d.toFixed(1),s:Math.round(__game.st.s)})')); await shot('03-driving');

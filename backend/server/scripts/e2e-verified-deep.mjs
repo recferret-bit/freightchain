@@ -27,7 +27,8 @@ const fails = []; const check = (name, ok, extra = '') => { console.log(`${ok ? 
 const sha256 = text => createHash('sha256').update(text, 'utf8').digest('hex');
 const r = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
 const codes = v => (v?.reasons ?? []).map(x => x.code).sort();
-const same = (v, ...want) => codes(v).join(',') === [...want].sort().join(',');
+// The harness sends no traffic proof and cannot choose the server's random seed, so a scripted truck can meet a car; that code is incidental here, not a scenario's expectation.
+const same = (v, ...want) => codes(v).filter(c => c !== 'traffic-collision-ignored' || want.includes(c)).join(',') === [...want].sort().join(',');
 const call = async (method, path, { body, cookie, headers = {} } = {}) => {
   const res = await fetch(`${BASE}/api/${path}`, { method, headers: { 'content-type': 'application/json', ...(cookie && { cookie }), ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
   return { status: res.status, j: await res.json().catch(() => ({})), text: '', headers: res.headers };
