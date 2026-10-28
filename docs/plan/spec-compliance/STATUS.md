@@ -7,6 +7,8 @@
 
 ## Summary Progress
 
+**27 October:** counts unchanged (50/53). Integrated local gate evidence is in [LOCAL_READINESS](../../testing/LOCAL_READINESS.md); it is split across runs and excludes the 1h paid ride.
+
 The 24 October [local readiness audit](../../testing/LOCAL_READINESS.md) reopened six implementation tasks. The 26 October Convoy follow-up closes SPC-08.1..3 with PostgreSQL, local-chain and Chrome evidence. **50/53 tasks are marked done; SPC-05.5, SPC-08.4 and SPC-08.5 remain in progress.** Final merged acceptance and the full-duration paid-ride proof remain pending. Scheduler/database-outage and host-log-retention follow-ups have separate branch evidence pending integration. Other checked entries retain their earlier task status; they are not certification that every feature passed the current runtime gate.
 
 | Epic | Domain | Spec Docs | Total Tasks | Todo | In Progress | Done | Blocked |
