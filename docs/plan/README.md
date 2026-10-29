@@ -7,6 +7,9 @@ Docs only. Authoritative product specifications and test plans live in [`docs/sp
 | File | Former working name(s) | Purpose |
 |---|---|---|
 | [`DEVNET_SOFT_LAUNCH.md`](DEVNET_SOFT_LAUNCH.md) | — | **Technical soft launch:** short readiness summary and ordered checklist for integrated devnet contracts, TEN4, NFTs, replays and ride validation |
+| [`SECURITY_MG2_ORCHESTRATOR.md`](SECURITY_MG2_ORCHESTRATOR.md) | — | **Start here for SEC + MG2:** single orchestration plan for both plans below — 9 waves (W0–W8), ≤ 4 lanes, file ownership, migration pre-steps, chain slot, owner gates O1–O7, status board, worker prompt |
+| [`SECURITY_AUDIT_2026-10-28_FIX_PLAN.md`](SECURITY_AUDIT_2026-10-28_FIX_PLAN.md) | — | **Security fix plan:** SolSwarm audit of 28 Oct (29 clusters → SEC-01..19), priority order, owner decisions, analysis + DoR + DoD per item, Solana count |
+| [`MINIGAMES_V2_PLAN.md`](MINIGAMES_V2_PLAN.md) | — | **Minigames v2 plan:** mandatory tasks with timers, real fuel and server-issued GULP gas task as the paid-ride anti-bot gate (MG2-00..12, DoR/DoD, decisions D1–D8) |
 | [`OWNER_TASKS.md`](OWNER_TASKS.md) | `OWNER_TASKS.md` | **Start here:** Checklist of external accounts, API keys, DNS/Cloudflare, wallets & legal actions required from the owner by phase |
 | [`EXECUTION_ORCHESTRATOR.md`](EXECUTION_ORCHESTRATOR.md) | — | **Parallel Execution Orchestrator (Up to 4 Agents):** Single entry point (`work on docs/plan/EXECUTION_ORCHESTRATOR.md`) scheduling all 117 tasks from Plan 1 & Plan 2 across 6 Waves × 4 parallel conflict-free Agent Lanes (`Lane 1..4`) with DB/port isolation and barrier gates |
 | [`E2E_HEADLESS_PLAN.md`](E2E_HEADLESS_PLAN.md) | — | **Plan 1 — Full Set of E2E Headless Tests:** Multi-tier headless E2E development plan (Track A As-Built + Track B Target Spec `*-T-*` / `AC-*`), with status board [`e2e-headless/STATUS.md`](e2e-headless/STATUS.md) and 9 domain issue files (`E2E-01`..`E2E-09`) with explicit DoR/DoD |
