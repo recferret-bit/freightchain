@@ -265,7 +265,7 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 1. Wallet A reads `GET /api/referrals` and receives a code. The default gift is convoy.
 2. Wallet B posts `/api/referrals/bind`. `referredBy` is A's wallet.
 3. Either wallet posts `/api/referrals/gift` with `convoy` or `signal`.
-4. A verified MEDIUM finish grants the referrer +2 free rides and the referee +3 (`B1-REF-04`). Pool v5 has no on-chain referral leg.
+4. A verified MEDIUM finish grants the referrer +2 free rides and the referee +3 (`B1-REF-04`). Pool v5 has no on-chain referral leg. Historical check: Convoy replaced these free-ride gifts (neither player gets a free-balance gift now; see PRODUCT.md Referrals).
 
 ### Paid season week (block 2)
 

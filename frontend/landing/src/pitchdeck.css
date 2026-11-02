@@ -76,7 +76,7 @@ h1 em{font-style:normal;color:var(--accent)}
 .badge.live .dot{width:13px;height:13px;border-radius:50%;background:currentColor;flex:none}   /* a real dot: the ● glyph sat low */
 #s-insight .v-main{width:960px;height:540px;top:170px;right:-60px}
 #s-insight .badge{right:-36px;top:130px}
-.ladder{list-style:none;margin:44px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.ladder{list-style:none;margin:44px 0 0;padding:0;display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .ladder li b{display:block;font:400 46px/1 var(--head);color:var(--muted)}
 .ladder li span{font:500 16px var(--body);letter-spacing:1px;white-space:nowrap}
 .ladder li.on{border:2px solid var(--good);color:var(--ink)}

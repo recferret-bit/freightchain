@@ -134,7 +134,7 @@ export const SCENES = {
       c.save(); c.translate(52, 88); if (!v.watch) c.scale(sc, sc); box(-36, -10, 72, 20, 10, grad(-36, 36)); text('BUY TICKET', 0, 3.5, 8.5, BG, 'center', true); c.restore();
       c.save(); c.translate(117, 88); if (v.watch) c.scale(sc, sc); box(-23, -10, 46, 20, 10, v.watch && pr > 0 ? '#9945ff33' : null, PU); text('WATCH', 0, 3.5, 8.5, LI, 'center'); c.restore();
       finger(p, v.at, v.from, v.watch ? 117 : 52, 88);
-      alpha(toast, () => { box(20, 44 - toast * 3, 116, 22, 5, '#0b0a09ee', GR); text(v.watch ? '▶ live ride opened' : '✓ ticket · 1 h', 78, 58.5 - toast * 3, 8.5, GR, 'center'); });
+      alpha(toast, () => { box(20, 44 - toast * 3, 116, 22, 5, '#0b0a09ee', GR); text(v.watch ? '▶ replay opened' : '✓ ticket · 1 h', 78, 58.5 - toast * 3, 8.5, GR, 'center'); });
       box(158, 20, 75, 75, 6, BG, '#9d957f55');
       qr.forEach((on, i) => { if (on) box(164 + (i % 9) * 7, 26 + ((i / 9) | 0) * 7, 6, 6, 0, on === 2 ? CR : GR); });
       const q = seg(p, v.scan, v.scan + 0.14);

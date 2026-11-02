@@ -17,13 +17,12 @@ Session: `6e3b1646-e8bb-460e-8cde-2979cbb262b2`
 |---|---|---|
 | SPC-08.4 Pre-Season TEN4 Airdrop engine | local EN/RU tasks and single event attempt done | live Telegram/X (twitterapi.io)/Turnstile accounts, event configuration |
 | SPC-08.5 Anti-Sybil TrustScore | local trust logic done | a physical Seeker, your decision on automatic trust policy |
-| $500 event settlement | built on branch `event-settlement` (`2fbf5a09`), per DEVNET_PRESEASON D5: fixed top-20 table, signed review, mocked sanctions, manual USDC payout record; `check` + `server:integration` pass; **not merged**, no Chrome run, no full gate | your merge decision |
+| $500 event settlement | merged into `main` (`5a3cd6cf`, then the Chrome event step `7a7049db`), per DEVNET_PRESEASON D5: fixed top-20 table, signed review, mocked sanctions, manual USDC payout record (the app sends no USDC); gate evidence in `docs/testing/LOCAL_READINESS.md` | your confirmation of the D5 table |
 
 ## What I need from you
 
 ### A. $500 event
-1. Confirm the documented D5 fixed top-20 table (not the 50/30/20 I proposed earlier), or say to change `event_prize_table_cents`.
-2. Say "merge" and I merge `event-settlement` into `main`, then run the full gate once.
+1. The event settlement is already on `main`. Confirm the documented D5 fixed top-20 table (not the 50/30/20 I proposed earlier), or say to change `event_prize_table_cents`.
 
 ### B. SPC-08.4 / SPC-08.5
 - Live Telegram, X (twitterapi.io) and Turnstile credentials in the env, and permission to run against them.

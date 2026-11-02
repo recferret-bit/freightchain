@@ -54,7 +54,7 @@ Guest, both SNS routes, and phone-pair have an HTTP scenario (`http-gaps-public.
 
 A live 1h grant is issued only inside the ranked week (Monday 00:00 UTC through Sunday 12:00 UTC) to a non-guest who is 18+ and in an allowed country. A missing, `XX`, or `T1` country is `409 ranked_ineligible` unless `NODE_ENV` is `development` or `test`, where `PRIZE_DEV_DEFAULT_COUNTRY` (default `US`) fills it in. A real country code is never replaced. The server unit and integration suites set that default to `KP` so a missing header stays ineligible. It expires at the next interval or Sunday 12:00 UTC, whichever is earlier. An unspent 1h ride promo is claimed first: that POST creates a promo ride and leaves the grant unspent. With no promo, the first `POST /api/rides { tier: '1h' }` creates an unranked ride and spends the grant. A second `POST` while that ride is still `created` returns the same ride. `409 weekly_ticket_spent` is the lost-claim race, not the ordinary second order. After the grant ride has ended, another 1h with no pool and no promo is `409 tier_not_on_sale`. The grant does not mint TEN4. It can be watched. It consumes one of the five paid ranked slots only when `POST /api/rides/:id/start` sends `{ ranked: true }`.
 
-`GET /api/prize/board` ranks ended rides that started ranked. The USDC contest in `docs/spec/pool.md` (Appendix C) is a draft. No USDC is sent. Spectator road effects are refused on ranked rides. Both profile stamps (`age18` and the loss acknowledgement) are required before a bought paid ride or a blink shift buy (`409 agreements_required`). A promo and a weekly grant skip that check.
+`GET /api/prize/board` ranks ended rides that started ranked. The $500 organizer prize in `docs/spec/pool.md` (Appendix C) is a draft with manual payout by the organizer; the app sends no USDC. Spectator road effects are refused on ranked rides. Both profile stamps (`age18` and the loss acknowledgement) are required before a bought paid ride or a blink shift buy (`409 agreements_required`). A promo and a weekly grant skip that check.
 
 ### Paid rides, tickets, Solana Pay, blinks
 
@@ -68,13 +68,13 @@ A live 1h grant is issued only inside the ranked week (Monday 00:00 UTC through 
 
 ### Escrow program
 
-**Local v6, devnet v3.** [`docs/spec/pool.md`](pool.md). A pool exposes `opensAt`, `salesCloseAt`, `lastStartAt` (the explicit v6 chain value; historical fixtures derive play close minus 75 minutes, or play close for a shorter window), `playCloseAt`, and `validationUntil` on `GET /api/pools/current` and `GET /api/pools/:id`. A buy or a start after `lastStartAt` is `409 pool_last_start_passed`, and an unused ticket burns. The lobby purchase requires `burnWarningAccepted: true`. `POST /api/rides/:id/appeal` is open until `validationUntil`. Paying winners waits for that instant, no running rides, and zero open appeals. `set_pool_rules` stays the admin CLI. The local v6 Pool appends `opens_at` / `last_start_at`; Series appends `period_secs` / `start_buffer_secs`. The mirror uses these exact times. New pools are Active with `min_tickets = 0`; `fail_pool` always refuses. The cold admin can cancel an Active pool before any prize is paid; 14-day unpaid expiry remains permissionless. Config finish floor defaults to and is capped at 7200 seconds. The crank skips cadence gaps and stops sealing after last start. These changed account layouts require a fresh-program cutover; no existing deployment was changed. Default split for a new v5 pool is 85% / 5% / 10% (`8500/500/1000`). `max_player_share_bps` default 4740, program ceiling 4999. `paid_tickets_enabled` can be off. No on-chain referral leg. `seal_road`, winners root, per-ride attestations, sponsor refunds, and legacy pledge recovery are in the built program. New `create_pledge` calls always fail (valid requests return `PledgesDisabled`); the ABI and historical account/event decoding remain intact. Existing `settle_pledge` / `refund_pledge` still work. The cab shows existing active pledges, but hides its empty pledge row and does not advertise new locks. `PLEDGES_ENABLED` defaults to `0`. Pledge create and confirm then return `403 pledges_disabled`. The HTTP harness sets it to `1`. With pledges on, `POST /api/pledges/:id/confirm` for a wallet that is not the sponsor returns the same `404` `not_found` as a missing pledge. The crank and the payout key are the server's only two keys. The cold admin can veto a root. Admin, moderator, and editor are three allowlists. A privileged route without its session is refused. An admin session lasts at most 60 minutes. `ADMIN_APPROVAL_MODE` defaults to `single`. Money stays in the program.
+**Local v6, devnet v3.** [`docs/spec/pool.md`](pool.md). A pool exposes `opensAt`, `salesCloseAt`, `lastStartAt` (the explicit v6 chain value; historical fixtures derive play close minus 75 minutes, or play close for a shorter window), `playCloseAt`, and `validationUntil` on `GET /api/pools/current` and `GET /api/pools/:id`. A buy or a start after `lastStartAt` is `409 pool_last_start_passed`, and an unused ticket burns. The lobby purchase requires `burnWarningAccepted: true`. `POST /api/rides/:id/appeal` is open until `validationUntil`. Paying winners waits for that instant, no running rides, and zero open appeals. `set_pool_rules` stays the admin CLI. The local v6 Pool appends `opens_at` / `last_start_at`; Series appends `period_secs` / `start_buffer_secs`. The mirror uses these exact times. New pools are Active with `min_tickets = 0`; `fail_pool` always refuses. The cold admin can cancel an Active pool before any prize is paid; 14-day unpaid expiry remains permissionless. Config finish floor defaults to and is capped at 7200 seconds. The crank skips cadence gaps and stops sealing after last start. These changed account layouts require a fresh-program cutover; no existing deployment was changed. Default split for a new v6 pool (and v5) is 85% / 5% / 10% (`8500/500/1000`). `max_player_share_bps` default 4740, program ceiling 4999. `paid_tickets_enabled` can be off. No on-chain referral leg. `seal_road`, winners root, per-ride attestations, sponsor refunds, and legacy pledge recovery are in the built program. New `create_pledge` calls always fail (valid requests return `PledgesDisabled`); the ABI and historical account/event decoding remain intact. Existing `settle_pledge` / `refund_pledge` still work. The cab shows existing active pledges, but hides its empty pledge row and does not advertise new locks. `PLEDGES_ENABLED` defaults to `0`. Pledge create and confirm then return `403 pledges_disabled`. The HTTP harness sets it to `1`. With pledges on, `POST /api/pledges/:id/confirm` for a wallet that is not the sponsor returns the same `404` `not_found` as a missing pledge. The crank and the payout key are the server's only two keys. The cold admin can veto a root. Admin, moderator, and editor are three allowlists. A privileged route without its session is refused. An admin session lasts at most 60 minutes. `ADMIN_APPROVAL_MODE` defaults to `single`. Money stays in the program.
 
 ### TEN4
 
 **Ledger shipped. Program local.** [`docs/spec/ten4.md`](ten4.md), [`docs/agents/ten4-localnet.md`](../agents/ten4-localnet.md).
 
-Ticker TEN4. Routes, tables, the crate, and `HONK_PROGRAM_ID` stay HONK. HONK is the chat verb. Supply 100,000,000. SOL still prices the ticket. TEN4 is reserved when a paid ride's verdict is verified. Until TGE the balance is PostgreSQL and the UI says points. New rides are `free` or `1h`. Era-1 finishes that already exist: 1h 100, 4h 500, 8h 1,200. An 8h mint waits 48 hours. The chat HONK still burns 1. Day/night and snow or clear do not: those two routes throw before the debit (`TEN4 time changes were removed`, `TEN4 weather changes were removed`). Cab parts 65 / 260. The local program is not deployed. There is no AMM on devnet.
+Ticker TEN4. Routes, tables, the crate, and `HONK_PROGRAM_ID` stay HONK. HONK is the chat verb. Supply 100,000,000. SOL still prices the ticket. TEN4 is reserved when a paid ride's verdict is verified. Until TGE the balance is PostgreSQL and the UI says points. New rides are `free` or `1h`. Era-1 finish amounts in `domain/honk/tokenomics.ts`: 1h 100, 4h 500, 8h 1,200; only 1h can be started now, so 4h and 8h apply to historical rows. An 8h mint waits 48 hours. The chat HONK still burns 1. Day/night and snow or clear do not: those two routes throw before the debit (`TEN4 time changes were removed`, `TEN4 weather changes were removed`). Cab parts 65 / 260. The local program is not deployed. There is no AMM on devnet.
 
 `GET /api/honk` can return `chain: null` when `HONK_PROGRAM_ID` is unset. That is the block-1 configuration, not a broken route.
 
@@ -82,7 +82,7 @@ Ticker TEN4. Routes, tables, the crate, and `HONK_PROGRAM_ID` stay HONK. HONK is
 
 **Shipped.** [`docs/spec/ten4.md`](ten4.md), [`docs/spec/promocodes.md`](promocodes.md). Nine slots, 48 non-default parts: 45 TEN4 parts and three referral gift paints. Apply is `POST /api/garage/loadout`, all or nothing.
 
-A promo code is one ride shift (1h, 4h, or 8h, once per wallet, no TEN4) or pool tickets. `kind: 'free_rides'` is retired. `kind: 'cosmetic'` is `409 visuals_are_honk`. Old cosmetic unlocks still equip. Admin create and disable are wallet-signed and audited.
+A promo code is one 1h ride shift (once per wallet, no TEN4; a legacy 4h or 8h promo cannot be started, `400 tier_retired`) or pool tickets. `kind: 'free_rides'` is retired. `kind: 'cosmetic'` is `409 visuals_are_honk`. Old cosmetic unlocks still equip. Admin create and disable are wallet-signed and audited.
 
 ### Referrals
 
@@ -110,7 +110,7 @@ Convoy operational settings are now signed admin rows: pending TTL/capacity/acti
 
 ### Achievements
 
-**Shipped, mint off unless the three env keys and the URI map are set.** 44 badges plus legacy `top-20` (never earned, never minted). Ids are frozen. Unlocks are append-only. The cNFT mint is a separate outbox, its own key, after a delay, and it skips a rejected ride and a guest wallet. A weekly grant counts as a paid shift and does not count as a TEN4 mint. All 44 earnable badges have validated 1024px PNGs and metadata templates. The offline release check compares the catalogue with published URIs; 31 are published and 13 remain to upload. The uploader preserves existing leaf and collection URIs and refuses mixed-network maps. This asset check does not prove a validator mint or availability of remote metadata.
+**Shipped, mint off unless the three env keys and the URI map are set.** 44 badges plus legacy `top-20` (never earned, never minted). Ids are frozen. Unlocks are append-only. The cNFT mint is a separate outbox, its own key, after a delay, and it skips a rejected ride and a guest wallet. A weekly grant counts as a paid shift and does not count as a TEN4 mint. All 44 earnable badges have validated 1024px PNGs and metadata templates. The offline release check compares the catalogue with published URIs. The uploader preserves existing leaf and collection URIs and refuses mixed-network maps. This asset check does not prove a validator mint or availability of remote metadata.
 
 ### Ride lifecycle
 
@@ -146,8 +146,35 @@ Every JSON route has a `@ZodResponse` schema of the body the client receives. `R
 
 - Lobby: new ride, live, replays, leaderboard, achievements, profile, garage, referral block, promo redeem, age agreement, receipt.
 - Landing: Vite page, play control is bare `play.html`, pool and live boards, wallet connect, pitch-deck band, whitepaper link.
-- Whitepaper and pitch deck are their own hosts. The deck's phone motion prompt tilts spawned SOL. Driving the game is desktop-only. Spectating works on a phone.
-- `paintHero` throws if `split` or `totals` is missing. That is a known bug, not the intended empty state.
+- Whitepaper (`whitepaper.<apex>`) and pitch deck (`pitchdeck.<apex>`) are their own hosts built from `frontend/landing/` (the apex `/whitepaper.html` and `/pitchdeck.html` redirect there). The deck's phone motion prompt tilts spawned SOL. Driving the game is desktop-only. Spectating works on a phone.
+- `paintHero` (`landing/src/boards.js`) treats a null or empty pool as the unpaid fallback; it still reads `live.totals`, so a live payload without `totals` throws.
+- Public figures on these surfaces: see the table below.
+
+### Public claims (what landing, whitepaper and pitch deck may state)
+
+Anything not in this table needs a code source before a public surface states it. Say "local" or "target" where the status column says so; devnet runs pools v3, not v6. Dates marked owner-set are plans, not code.
+
+| Claim | Value | Status | Code source |
+|---|---|---|---|
+| Ride types you can start | free (EASY / MEDIUM / HARD) and 1h; 4h and 8h are retired | shipped | `RIDE_TIER_IDS` and `tier_retired` in `domain/rides/ride-tier.ts`, `ride-rules.ts` |
+| 1h face price | $5, paid in SOL at the quoted rate; not on sale until a live pool exists | shipped (price), pool needs devnet | `PAID` in `ride-tier.ts` (`onSale: false`) |
+| Free level lengths | EASY 3 min, MEDIUM 5 min, HARD 30 min nominal | shipped | `frontend/client/js/trips.js` (`free-1c`, `free-2c`, `free-3c`) |
+| 1h distance | 65 km/h basis, clamped 48 to 65 km; ride ends at the line; speed governor 28 m/s | shipped | `shared/finish-for.js`, `finishFor` |
+| Ranked week, slots | Monday 00:00 to Sunday 12:00 UTC; 5 paid ranked starts per user per week | shipped | `PAID_RANKED_STARTS` in `domain/prize/prize-rules.ts` |
+| Prize split of a pool | 85% prizes / 5% rollover / 10% fee (`8500/500/1000`); no on-chain referral leg | local (v6), v5 spec, not devnet | `docs/spec/pool.md`, `backend/programs/freightchain_pools` |
+| Pool schedule (CLI default) | 118 h sale, 2 h finish, 36 h review, 7-day period, 75 min last-start buffer | local | `pool-admin.mjs`, `docs/spec/pool.md` |
+| Pool floor | no minimum-ticket gate; paid tickets are final once bought | local (v6) | `docs/spec/pool.md`, escrow-open-items |
+| $500 organizer prize | draft rules; manual payout by the organizer, the app sends no USDC | draft | `docs/spec/pool.md` Appendix C |
+| TEN4 supply | 100,000,000 fixed, 6 decimals; ticker TEN4 (HONK is the verb only) | local program, ledger points until TGE | `domain/honk/tokenomics.ts` |
+| TEN4 allocation | 55M rides, 15M liquidity, 10M treasury (36-month vest), 8M airdrop, 8M team (12-month cliff + 24 linear), 4M Convoy | local | `tokenomics.ts` |
+| TEN4 finish reward | 1h 100 TEN4 in era 1, paid 15 / 25 / 60% at 20 / 50 / 100% of the line; only verified paid rides mint | shipped (ledger) | `FINISH`, `BANDS` in `tokenomics.ts` |
+| TEN4 caps and eras | first era 27.5M, halving; era-1 daily cap 75,000 global (halves) and 2,000 per wallet | shipped (ledger) | `HONK_ERA_SIZE`, `HONK_DAILY_GLOBAL_ERA1`, `HONK_DAILY_WALLET` |
+| Replay tip split | 95% driver / 5% treasury / 0% referrer; tips never change a result | shipped | `docs/spec/replays_streams.md` |
+| Achievements | 44 badges (frozen ids) plus legacy `top-20`; mint off until configured | shipped / partial | `domain/achievements/achievements.ts`, `LOCAL_READINESS.md` |
+| Verification | server rebuilds the road, 10 Hz replay, hash-chained batches; production is shadow mode (`VERDICT_ENFORCE=false`) | shipped | `docs/spec/anticheat.md` |
+| Pre-season event | $500 organizer prize, top-20 table, manual payout (the app sends no USDC), one ranked 1h attempt per wallet; window is the signed `event_*` settings | local, owner-set dates | `domain/prize/event-settlement.ts` |
+| TGE and Season 1 dates | Season 1 from 11 Jan 2027 (final 22 to 28 Feb), TGE no earlier than March 2027 | owner plan, not code | `docs/plan/DEVNET_PRESEASON.md` D3, `docs/spec/ten4.md` |
+| Not claimable | live watch of a running ride, spectator effects, HONK time/weather, pledges, minigames on by default, an AMM on devnet, 30 Hz live judging | not shipped | Conflicts table above |
 
 ### Admin
 
@@ -187,9 +214,9 @@ These are real and easy to miss. They are not separate games.
 
 Target & as-built area files in `docs/spec/`:
 - [`rides.md`](rides.md): rides, road generation algorithm (`@freightchain/shared` ⇄ `server/src/domain/road`), dynamic finish, `RideResult` scoring.
-- [`anticheat.md`](anticheat.md): telemetry v2.1, 30 Hz re-sim, world integrity, humanness, and anti-sybil layers.
+- [`anticheat.md`](anticheat.md): telemetry v2.1, world integrity, humanness, and anti-sybil layers; its 30 Hz re-sim is a target (the live judge is 10 Hz, decision 69).
 - [`minigames.md`](minigames.md): phone-sms rules from the `phone-minigames` branch. Appendix A is a retired catalog.
-- [`pool.md`](pool.md): weekly pool lifecycle, v5/v6 escrow, and the prize board (`prize-rules.ts`).
+- [`pool.md`](pool.md): weekly pool lifecycle, v6 (local) and v3 (devnet) escrow, and the prize board (`prize-rules.ts`).
 - [`referral.md`](referral.md): referral program (as-built on `main` + target Convoy rework).
 - [`promocodes.md`](promocodes.md): promo codes (`ride` and `tickets`, retired `free_rides` and `cosmetic`) and wardrobe.
 - [`ten4.md`](ten4.md): TEN4 tokenomics, checkpoints, halving eras, burns, 9-slot Cab Garage, and `freightchain_honk`.
@@ -199,7 +226,7 @@ Target & as-built area files in `docs/spec/`:
 
 The happy-dom catalog (`docs/testing/E2E_PLAN.md`, 159 checks) walks pages with fetch mocked and calls a real API only when `E2E_BASE` is set. It does not replace the Chrome column in the coverage contract.
 
-The local cNFT acceptance command (`npm run test:nft:localnet`) verifies real mint/worker persistence, valid ownership proof, a specific frozen-collection transfer refusal, successful unfrozen control transfer, delay, rejected-completion exclusion, receipt recovery and idempotency. Devnet smoke tests fail if DAS is unavailable or the transfer fails for an unrelated reason. This does not publish the 13 pending badge URIs.
+The local cNFT acceptance command (`npm run test:nft:localnet`) verifies real mint/worker persistence, valid ownership proof, a specific frozen-collection transfer refusal, successful unfrozen control transfer, delay, rejected-completion exclusion, receipt recovery and idempotency. Devnet smoke tests fail if DAS is unavailable or the transfer fails for an unrelated reason. This does not publish badge URIs.
 
 Transfer-mode development pools use their stored schedule without querying a pool program. For program pools, schedule verification fails with service unavailable on an RPC outage; it does not label the mirror as drifted using legacy derived timestamps. Real schedule differences still produce `pool_schedule_mismatch` and an admin alert.
 

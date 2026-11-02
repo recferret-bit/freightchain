@@ -89,7 +89,7 @@ export function initShakes(sel) {
   }, 200);
 }
 
-/* the soulbound-NFT card: a carousel of the 34 badges – the middle one big, its neighbours small and dim; every 2.6 s the row slides one place left and the caption follows;
+/* the soulbound-NFT card: a carousel of the 44 badges – the middle one big, its neighbours small and dim; every 2.6 s the row slides one place left and the caption follows;
    as the new badge reaches the middle two purple rings ripple out of it and it pops. Five slots (o = −2…2): the one that slid out on the left jumps to the far right, unseen. */
 export function initCarousel() {
   const ach = deck.querySelector('.ach'); if (!ach) return;
@@ -202,7 +202,7 @@ export function initScenes() {
   });
 }
 
-/* slide 4's FREE / 1 H / 4 H / 8 H are buttons: a click hangs the secret tier under THAT tier on a chain link, its text scrambling before it settles on ???;
+/* slide 4's tier buttons (FREE, paid 1 H, then the locked tiers): a click hangs the secret tier under THAT tier on a chain link, its text scrambling before it settles on ???;
    another click on the tier plays that backwards (the text scrambles out, the tile swings back up); a click on a secret tile scrambles it again */
 const SCRAMBLE = '#%&@$?<>/\\█▓▒░';
 function scramble(el, final, ms, out = false) {   // in: letters lock in left to right; out: they come loose right to left (the text is put back once it is gone)

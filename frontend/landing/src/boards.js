@@ -59,14 +59,15 @@ export function paintHero(S, now, reduced) {
     $('lb-pools-st').textContent = hasEsc ? 'ACCRUING' : 'SOON'; $('lb-pools-st').className = hasEsc ? 'rolling' : 'bid';
   }
   if (l) {
-    count($('hero-live'), l.rides.length, v => String(Math.round(v)), reduced);
+    const driving = l.online?.driving ?? l.rides.length;   // /api/live returns no running rides (rides: []): the count is online.driving
+    count($('hero-live'), driving, v => String(Math.round(v)), reduced);
     count($('hero-km'), l.totals.metres, v => km(v), reduced);
     $('hero-shifts').textContent = plural(l.totals.rides, 'ride');
     $('hero-time').textContent = driven(l.totals.seconds);
-    $('chip-live').textContent = `${l.online ? `${l.online.total} ONLINE · ` : ''}${l.rides.length} ON THE ROAD`;
-    $('soc-live').textContent = l.rides.length;
+    $('chip-live').textContent = `${l.online ? `${l.online.total} ONLINE · ` : ''}${driving} ON THE ROAD`;
+    $('soc-live').textContent = driving;
     $('lb-drivers').textContent = plural(l.totals.drivers, 'driver');
-    $('lb-live').textContent = `${l.rides.length} on the road now`;
+    $('lb-live').textContent = `${driving} driving now`;
     $('sheet-km').textContent = km(l.totals.metres);
   }
 }
@@ -107,7 +108,7 @@ export function paintTiers(t) {
   const rows = t.tiers.map(x => el('tr', {}, el('td', {}, TIER_LONG[x.id] ?? x.id), el('td', {}, hours(x.seconds)), el('td', {}, paidWith(x)), el('td', {}, price(x))));
   $('tiers').replaceChildren(el('thead', {}, el('tr', {}, ...['SHIFT', 'LENGTH', 'PAID WITH', 'IN SOL'].map(h => el('th', {}, h)))), el('tbody', {}, rows));
   const pooled = t.tiers.some(x => x.pool), legacy = !program && t.tiers.some(x => x.usd && !x.pool && x.onSale !== false);
-  const soonNames = t.tiers.flatMap(x => x.onSale === false && !x.pool && x.usd ? [x.id === '1h' ? '1 hour' : x.id === '4h' ? '4 hour' : '8 hour'] : []);
+  const soonNames = t.tiers.flatMap(x => x.onSale === false && !x.pool && x.usd ? ['1 hour'] : []);
   const soonText = !soonNames.length ? '' : `The ${soonNames.length === 1 ? soonNames[0] : `${soonNames.slice(0, -1).join(', ')} and ${soonNames.at(-1)}`} shift${soonNames.length === 1 ? ' is' : 's are'} planned and not on sale yet.`;
   $('price').textContent = [pooled && 'Pool tickets: the price is part of the pool’s rules, fixed when it was created.', legacy && (t.solUsd ? `Pay-per-ride: SOL ≈ $${t.solUsd}, the quote is locked for 10 minutes when you order.` : 'Pay-per-ride: SOL price unavailable right now.'), soonText, 'Devnet SOL only.'].filter(Boolean).join(' ');
 }
@@ -168,12 +169,14 @@ export function paintBoards(S, now, watchUrl) {
 /** Builds the ticker items + DOM nodes for #ticker. */
 export function buildTickerNodes(S, watchUrl) {
   const l = S.live, p = S.pool, items = [];
-  if (l) for (const r of l.rides.filter(r => r.tier !== 'free').slice(0, 4)) items.push([`● LIVE · ${short(r.wallet)} on ${r.route ? ROUTE[r.route] ?? r.route : 'the road'} · ${km(r.distance)} km · ▶ watch`, watchUrl(r.id)]);
-  if (l) for (const r of l.recent.slice(0, 8)) items.push([`${short(r.wallet)} ${r.status === 'completed' ? 'finished' : r.status === 'failed' ? 'wrecked' : 'abandoned'} a ${TIER_LONG[r.tier]?.toLowerCase() ?? r.tier} shift${r.route ? ` on ${ROUTE[r.route] ?? r.route}` : ''} · ${km(r.distance)} km · ▶ replay`, watchUrl(r.id)]);
+  if (l) for (const r of l.recent.slice(0, 8)) {   // only a finished paid ride has a replay (a training ride is 404 replay_not_available)
+    const paid = r.tier !== 'free', text = `${short(r.wallet)} ${r.status === 'completed' ? 'finished' : r.status === 'failed' ? 'wrecked' : 'abandoned'} a ${TIER_LONG[r.tier]?.toLowerCase() ?? r.tier} shift${r.route ? ` on ${ROUTE[r.route] ?? r.route}` : ''} · ${km(r.distance)} km`;
+    items.push(paid ? [`${text} · ▶ replay`, watchUrl(r.id)] : text);
+  }
   if (p?.pools?.length) items.push(`${sol(p.pools.reduce((a, x) => a + x.vaultLamports, 0))} SOL in escrow across ${plural(p.pools.length, 'prize pool')} · ${plural(p.pools.reduce((a, x) => a + x.toGo, 0), 'more rider')} to go live`);
   else if (p) items.push('Free rides & practice mode active · devnet prize pool opening soon');
   if (l) {
-    items.push(`${plural(l.rides.length, 'truck')} on the road right now`, `${km(l.totals.metres)} km driven by ${plural(l.totals.drivers, 'driver')} all time`);
+    items.push(`${plural(l.online?.driving ?? l.rides.length, 'truck')} on the road right now`, `${km(l.totals.metres)} km driven by ${plural(l.totals.drivers, 'driver')} all time`);
     if (l.upcoming.length) items.push(`${plural(l.upcoming.length, 'paid shift')} waiting to start`);
   }
   if (!items.length) items.push('Dispatch is quiet. Connect a wallet, take a free ride, be the first line on this ticker.');

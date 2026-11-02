@@ -95,12 +95,15 @@ test('host wiring: hosts.js knows the whitepaper + pitchdeck prefixes and export
 
 test('numbers: tiers, governor and completion distance equal the server rules', () => {
   const tiers = src('backend/server/src/domain/rides/ride-tier.ts');
-  for (const [id, usd] of [['1h', 5], ['4h', 15], ['8h', 50]]) { assert.match(tiers, new RegExp(`id: '${id}'[^}]*usd: ${usd}\\b`)); assert.match(text, new RegExp(`\\$${usd}\\b`)); }
-  assert.match(tiers, /id: '1h'[^}]*minTickets: 20\b/); assert.match(tiers, /id: '4h'[^}]*minTickets: null/);
+  assert.match(tiers, /id: '1h'[^}]*usd: 5\b/); assert.match(text, /\$5\b/);   // the only tier a new ride may use; 4h/8h rows stay in the table for history
+  assert.match(text, /tier_retired/); assert.doesNotMatch(text, /\$15 4 h|\$50 8 h|4 H\s+4 hours/);
+  assert.match(tiers, /id: '1h'[^}]*minTickets: 20\b/);
   assert.match(text, /OPERATOR-FUNDED POOLS & EXTRA ATTEMPTS/); assert.match(text, /\$26/); assert.match(text, /\$13\.50/);
-  const landing = readFileSync(join(root, 'index.html'), 'utf8'); assert.match(landing, /id="why-20"/); assert.match(landing, /20 tickets of \$5/); assert.match(landing, /\$26/);
+  const landing = readFileSync(join(root, 'index.html'), 'utf8'); assert.match(landing, /id="why-20"/); assert.match(landing, /\$26/);
   const rules = src('backend/server/src/domain/rides/ride-rules.ts'); assert.match(rules, /MAX_SPEED = 28/); assert.match(rules, /COMPLETE_DIST_K = 0\.5/);
-  assert.match(text, /28 m\/s/); assert.match(text, /100\.8 km\/h/); assert.match(text, /50\.4 km/, '½ × 28 m/s × 3600 s');
+  assert.match(text, /28 m\/s/); assert.match(text, /100\.8 km\/h/);
+  const fin = src('frontend/client/shared/finish-for.js'); assert.match(fin, /V_BASE = 65 \/ 3\.6/); assert.match(fin, /FINISH_MIN_M = 48_000/); assert.match(fin, /FINISH_MAX_M = 65_000/); assert.match(text, /48–65 km/); assert.match(text, /65 km\/h basis/);
+  assert.match(rules, /T_CAP_SECONDS = 5400/); assert.match(text, /5400 s fails/);
   // the free run: FREE_RIDE_SECONDS (180 = EASY's length) × the level's multiple – EASY 1 · MEDIUM 5 · HARD 10, i.e. 3 · 15 · 30 minutes (server/src/domain/rides/ride-trip.ts FREE_LEVELS – not quoted here: the landing image does not copy it), ending by itself at the line
   assert.match(src('backend/server/src/infrastructure/config/env.schema.ts'), /FREE_RIDE_SECONDS: z\.coerce\.number\(\)\.positive\(\)\.default\(180\)/); assert.match(text, /FREE\s+3–30 minutes/);
   assert.match(src('frontend/client/js/trips.js'), /free: \{[^}]*finish: true/); assert.match(text, /ends by itself at the line/);
@@ -155,12 +158,12 @@ test('numbers: the server\'s road – verdict-rules.ts, and the game\'s own cons
 
 test('numbers: live-stream prices and limits equal live-rules.ts', () => {
   const l = src('backend/server/src/domain/live/live-rules.ts');
-  for (const [id, sol, label] of [['tip', 0.01, 'Tip'], ['night', 0.02, 'Night'], ['day', 0.02, 'Day'], ['potholes', 0.02, 'Potholes'], ['trench', 0.03, 'Trench'], ['sinkhole', 0.05, 'Sinkhole']]) {
+  for (const [id, sol, label] of [['tip', 0.01, 'Tip']]) {   // road effects are refused (donation_effect), so only the tip is priced here
     assert.match(l, new RegExp(`${id}: \\{ lamports: ${sol} \\* LAMPORTS_PER_SOL`), id);
     assert.match(text, new RegExp(`${label}\\s+${sol.toFixed(2)} SOL`), `${label} ${sol}`);
   }
   assert.match(l, /MESSAGE_MAX_LENGTH = 140/); assert.match(text, /140 characters/); assert.match(l, /NOTE_MAX_LENGTH = 80/); assert.match(text, /80 characters/);
-  assert.match(l, /EFFECT_WINDOW_MS = 20_000/); assert.match(text, /per ride per 20 s/); assert.match(l, /LINE_WINDOW_MS = 3_000/); assert.match(text, /per 3 s/);
+  assert.match(l, /LINE_WINDOW_MS = 3_000/); assert.match(text, /per 3 s/);
 });
 
 test('the minted badges match the catalogue; convoy stays off this page until its cards exist', () => {
@@ -194,5 +197,5 @@ test('numbers: the production live flags and the program facts the page states',
   assert.match(text, /30 instructions, 28 events, 51 error codes/);
   const tiers = src('backend/server/src/domain/rides/ride-tier.ts');
   assert.match(tiers, /id: '1h'[^}]*schedule: \{ saleHours: 24, playHours: 3, reviewHours: 48 \}/, 'the page says a new pool every 24 h, 3 h to finish, 48 h review');
-  assert.match(text, /A new 1-hour pool every 24 hours/); assert.match(text, /48 hours\. The winners list is public/);
+  assert.match(text, /a new 1-hour pool every 24 hours/); assert.match(text, /48 hours\. The winners list is public/);
 });
