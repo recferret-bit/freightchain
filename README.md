@@ -15,15 +15,15 @@ Free training is unlimited with no wallet required (`play.html` starts the real 
 
 <!-- traction:start -->
 
-Public numbers for a reviewer, read 2026-11-04 08:34 UTC. PostHog and the public stats endpoint were each read more than once. A count the second read did not support is not in a headline.
+Public numbers for a reviewer, read 2026-11-06 18:41 UTC. PostHog and the public stats endpoint were each read more than once. A count the second read did not support is not in a headline.
 
 <table><tr>
-<td align="center" width="50%"><h2>—</h2><b>shifts started</b><br>public stats unread</td>
-<td align="center" width="50%"><h2>—</h2><b>driven</b><br></td>
+<td align="center" width="50%"><h2>35</h2><b>shifts started</b><br>6 finished · <a href="https://freightchain.fun/api/stats">api/stats</a></td>
+<td align="center" width="50%"><h2>27.9 km</h2><b>driven</b><br>4 drivers · 5 crashes</td>
 </tr>
 <tr>
-<td align="center" width="20%"><h2>342</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-11-04 UTC</td>
-<td align="center" width="20%"><h2>29</h2><b>whitepaper readers</b><br>PostHog · same window</td>
+<td align="center" width="20%"><h2>366</h2><b>landing people</b><br>PostHog · 8 Oct 2026 through 2026-11-06 UTC</td>
+<td align="center" width="20%"><h2>32</h2><b>whitepaper readers</b><br>PostHog · same window</td>
 <td align="center" width="20%"><h2>88</h2><b>wallet sign-ins</b><br>real wallets · demo excluded</td>
 <td align="center" width="20%"><h2>6</h2><b>real shifts started</b><br>29 demo starts</td>
 <td align="center" width="20%"><h2>6</h2><b>shifts finished</b><br>6 demo · 0 real</td>
@@ -35,7 +35,19 @@ The second row is PostHog Cloud EU, project 297915. Probe events (`surface=prod-
 
 These are [`https://freightchain.fun/api/stats`](https://freightchain.fun/api/stats), read twice. Free and paid are the split of shifts started. The site and this table use this response, not a PostHog chart.
 
-The public stats endpoint did not return two matching reads.
+PostHog counts those 6 finished shifts as 6 demo-wallet finishes and 0 others. A demo wallet runs the paid clock at 1/60.
+
+| | |
+| --- | ---: |
+| Shifts started | 35 |
+| Free | 32 |
+| Paid | 3 |
+| Finished | 6 |
+| Driven | 27.9 km |
+| Time | 1 h 9 min |
+| Crashes | 5 |
+| Drivers | 4 |
+| Stream donations | 0 |
 
 ### Analytics
 
@@ -46,7 +58,7 @@ Audit: 0 fixes waiting, 39 insights match the spec, 8 left off the judge board.
 | Window | Landing people | Real finishes | Demo finishes | Real sign-ins |
 | --- | ---: | ---: | ---: | ---: |
 | 8–12 Oct 2026 (judge board) | 106 | 0 | 6 | 54 |
-| 8 Oct 2026 through 2026-11-04 UTC | 342 | 0 | 6 | 88 |
+| 8 Oct 2026 through 2026-11-06 UTC | 366 | 0 | 6 | 88 |
 
 Refresh with `node .claude/skills/daily-tracktion-update/update.mjs`. The raw read is `docs/insights/traction/latest.json`.
 
