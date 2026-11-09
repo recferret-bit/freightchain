@@ -429,22 +429,22 @@ Chain-independent controls (nav anchors, FAQ, deck keys, whitepaper contents) ar
 | `B2-ADMIN-03` | server/scripts/pool-admin.mjs | tests/e2e/block2-chain/admin/pools.test.mjs | automated |
 | `B2-ADMIN-04` | server/scripts/pool-admin.mjs | tests/e2e/block2-chain/admin/pools.test.mjs | automated |
 | `B2-API-01` | — | tests/e2e/block2-chain/api/chain.test.mjs | automated |
-| `B2-API-02` | .claude/skills/honk-localnet/run.sh | tests/e2e/block2-chain/api/chain.test.mjs | automated |
+| `B2-API-02` |.claude/skills/honk-localnet/run.sh | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-API-03` | server/test/scenarios/chain.scenarios.ts | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-API-04` | server/test/scenarios/pools.scenarios.ts | tests/e2e/block2-chain/api/chain.test.mjs | automated |
-| `B2-API-05` | .claude/skills/localnet-e2e/run.sh | tests/e2e/block2-chain/api/chain.test.mjs | automated |
+| `B2-API-05` |.claude/skills/localnet-e2e/run.sh | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-API-06` | server/scripts/e2e-localnet-payout.mjs | tests/e2e/block2-chain/api/chain.test.mjs | automated |
-| `B2-API-07` | .claude/skills/honk-suite/run.sh | tests/e2e/block2-chain/api/chain.test.mjs | automated |
+| `B2-API-07` |.claude/skills/honk-suite/run.sh | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-POOL-01` | programs/idl/freightchain_pools.json | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-POOL-02` | — | tests/e2e/block2-chain/api/chain.test.mjs | automated |
 | `B2-HONK-01` | docs/spec/ten4.md | tests/e2e/block2-chain/honk/ledger.test.mjs | automated |
-| `B2-HONK-02` | .claude/skills/honk-suite/run.sh | tests/e2e/block2-chain/honk/ledger.test.mjs | automated |
+| `B2-HONK-02` |.claude/skills/honk-suite/run.sh | tests/e2e/block2-chain/honk/ledger.test.mjs | automated |
 
 ## (d) Gaps in the existing tests
 
 - HTTP referral scenarios stop at bind and gift. They do not assert the free-ride grant after a verified MEDIUM ride. The unit spec does.
 - Promo create and redeem are on main (`docs/spec/promocodes.md`).
-- `docs/agents/verifying.md` records that `e2e-tickets-stub` RETRY CONFIRM and the stub's missing `/reconcile` route fail on main (2026-10-13).
+- `docs/agents/verifying.md` records that `e2e-tickets-stub` RETRY CONFIRM and the stub's missing `/reconcile` route fail on main.
 - `set_pool_rules` has no admin HTTP route. Operators use the CLI.
 - The existing compose file has no Solana service. Localnet uses a host `solana-test-validator`. This suite does the same and does not pull a validator image.
 - Chrome scripts (`server/scripts/e2e-*.mjs`, `client/tools/e2e-chrome.mjs`, `landing/tools/e2e-wallet.mjs`) are the browser pass. This suite does not call them.

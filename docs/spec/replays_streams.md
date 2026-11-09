@@ -1,7 +1,7 @@
 # Replays and streams — spec and test plan
 
-> Source of truth for replays, "streams" (watching a replay with chat and donations), donations, chat, and the lobby (REPLAYS / LIVE). Decisions: 18, 33, 34, 45–58 (all ✅ 17.10.2026), 9 (backend), the owner's decision of 17.10.2026 "replays of non-training rides only". Code checked after the merge of PR #3 (`origin/main` `e8f338ad`). The ticker is TEN4; HONK in the text below is the chat verb and the old route names. Decisions are unchanged.
-> The term **"stream"** = watching a **replay** of an already finished ride, with chat and donations to the driver. There is no live broadcast of the current ride (decision 18). A donation is not made during the current ride: a donation only while watching a replay, the money goes straight to the driver's wallet, and the driver sees it after the ride (decision 45, ✅ 17.10.2026).
+> Source of truth for replays, "streams" (watching a replay with chat and donations), donations, chat, and the lobby (REPLAYS / LIVE). Decisions: 18, 33, 34, 45–58 (all ✅ ), 9 (backend), the owner's decision of "replays of non-training rides only". Code checked after the merge of PR #3 (`origin/main` `e8f338ad`). The ticker is TEN4; HONK in the text below is the chat verb and the old route names. Decisions are unchanged.
+> The term **"stream"** = watching a **replay** of an already finished ride, with chat and donations to the driver. There is no live broadcast of the current ride (decision 18). A donation is not made during the current ride: a donation only while watching a replay, the money goes straight to the driver's wallet, and the driver sees it after the ride (decision 45, ✅ ).
 
 ## Part 1. Spec (how it must work)
 
@@ -26,30 +26,30 @@
 
 ### 1.1a Operational implementation details on `main` (presence, closing a tab, `watch.js` samples, workers, and E2E)
 - **Site presence and viewers (`client/site/presence.js`, `GET /api/live`)**:
-  - The landing and the lobby poll `/api/live?visitor=<id>&page=landing|lobby`, and on leaving the page (`pagehide`) `leaveOnClose()` sends a beacon with `&leave=1`, so the presence and viewer counters are released at once, without waiting for the TTL to expire.
+ - The landing and the lobby poll `/api/live?visitor=<id>&page=landing|lobby`, and on leaving the page (`pagehide`) `leaveOnClose()` sends a beacon with `&leave=1`, so the presence and viewer counters are released at once, without waiting for the TTL to expire.
 - **Closing the game tab and sweeping stuck rides (`online.js`, `StaleRideScheduler`)**:
-  - On closing the game tab (`pagehide`) `client/js/online.js` sends `navigator.sendBeacon('/api/rides/:id/end', ...)` (parsed by `beaconBodyMiddleware` on the server), and on return from bfcache (`pageshow` with `e.persisted`) reloads the page, so as not to continue an already finished ride.
-  - If the tab vanished without a beacon and stays silent longer than `HB_TIMEOUT_MS = 150 000 ms` (150 s), the background `StaleRideScheduler` (`SweepStaleRidesCommand`) moves the ride from `running` to `failed` (`heartbeat lost`, analytics `ended_by = 'stale_sweep'`) and calls `StatsService.recordRideEnded`. A ride never stays hanging in `running`.
+ - On closing the game tab (`pagehide`) `client/js/online.js` sends `navigator.sendBeacon('/api/rides/:id/end'...)` (parsed by `beaconBodyMiddleware` on the server), and on return from bfcache (`pageshow` with `e.persisted`) reloads the page, so as not to continue an already finished ride.
+ - If the tab vanished without a beacon and stays silent longer than `HB_TIMEOUT_MS = 150 000 ms` (150 s), the background `StaleRideScheduler` (`SweepStaleRidesCommand`) moves the ride from `running` to `failed` (`heartbeat lost`, analytics `ended_by = 'stale_sweep'`) and calls `StatsService.recordRideEnded`. A ride never stays hanging in `running`.
 - **Replay sample format and 2 Hz traffic in `client/js/watch.js` (`client/js/replay-end.js`)**:
-  - Columns `0..11` of a 10 Hz sample: `[t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch]`.
-  - Columns `12..15`:
-    - `12`: the in-game hour of the day (`clock`, `0..24`);
-    - `13`: a bit mask of cabin states (`FLAGS`: the heater `heater = 32`, cooling `cooling = 2048`, phone open `phone = 4096`);
-    - `14`: `SAMPLE_INPUT_COL` (`client/js/input-bits.js`, bits of held keys + `MOUSE = 1 << 25`, phone buttons `map = 1 << 26`, `cold = 1 << 27`, `share = 1 << 28`);
-    - `15`: `SAMPLE_FORK_COL` (the chosen fork branch, passed to `roads.setBranch`).
-  - Traffic for the replay display (`trafficSnapshot()` in `client/js/sim/traffic.js`): sampled at **2 Hz** for the `<= 16` nearest vehicles within `400 m` of the truck.
-  - Replay length (`replayEnd()` in `client/js/watch.js`, the end-of-replay dialog in `client/js/replay-end.js`): the finish-crossing point `+ 3 s` (or the end of the recording).
-  - Cabin cosmetics in the replay: `ride.loadout` is applied through `setLoadout()` when `watch.js` loads.
+ - Columns `0..11` of a 10 Hz sample: `[t, s, d, psi, v, rpm, gear, hull, gas, brake, steer, clutch]`.
+ - Columns `12..15`:
+ - `12`: the in-game hour of the day (`clock`, `0..24`);
+ - `13`: a bit mask of cabin states (`FLAGS`: the heater `heater = 32`, cooling `cooling = 2048`, phone open `phone = 4096`);
+ - `14`: `SAMPLE_INPUT_COL` (`client/js/input-bits.js`, bits of held keys + `MOUSE = 1 << 25`, phone buttons `map = 1 << 26`, `cold = 1 << 27`, `share = 1 << 28`);
+ - `15`: `SAMPLE_FORK_COL` (the chosen fork branch, passed to `roads.setBranch`).
+ - Traffic for the replay display (`trafficSnapshot()` in `client/js/sim/traffic.js`): sampled at **2 Hz** for the `<= 16` nearest vehicles within `400 m` of the truck.
+ - Replay length (`replayEnd()` in `client/js/watch.js`, the end-of-replay dialog in `client/js/replay-end.js`): the finish-crossing point `+ 3 s` (or the end of the recording).
+ - Cabin cosmetics in the replay: `ride.loadout` is applied through `setLoadout()` when `watch.js` loads.
 - **Effect-window lock and E2E scripts**:
-  - A sliding 20-second interval between effects on one ride is serialized by a transactional `pg_advisory_xact_lock` on `rideId`.
-  - Check scripts and skills: `node server/scripts/sim-rides.mjs`, `node server/scripts/e2e-live-board.mjs` (skill `live-board-test`), `node server/scripts/e2e-close.mjs`, `node server/scripts/e2e-watch.mjs`, `node server/scripts/e2e-replay.mjs`, `node server/scripts/e2e-live-flags.mjs` (skill `replay-test`).
+ - A sliding 20-second interval between effects on one ride is serialized by a transactional `pg_advisory_xact_lock` on `rideId`.
+ - Check scripts and skills: `node server/scripts/sim-rides.mjs`, `node server/scripts/e2e-live-board.mjs` (skill `live-board-test`), `node server/scripts/e2e-close.mjs`, `node server/scripts/e2e-watch.mjs`, `node server/scripts/e2e-replay.mjs`, `node server/scripts/e2e-live-flags.mjs` (skill `replay-test`).
 
 ### 1.2 What can be watched
 - **RPL-M-01** MUST: the public may watch **only a replay of a finished non-training ride**. "Finished" = status `completed`, `abandoned`, or `failed`, a final verdict exists and it is not `rejected` (decision 55). A ride in `review` opens after a manual decision.
 - **RPL-M-02** MUST NOT (decision 56): **training** rides do not appear in replays at all. That is `tier = free` (levels `free-1c` / `free-2c` / `free-3c`, the frozen `free-3b`, and the old `free-*`), the guest offline `free-g`, a `POST /api/auth/guest` session, and any ride with `tutorial` or `assist`. For them:
-  - `GET /api/replays` does not return them in EVERYONE or in MINE;
-  - `GET /api/watch/:id`, `GET /api/watch/:id/road`, `/r/:id`, and blink → `404` (backend decision 9);
-  - the recording is kept only for the verdict and for admin (`GET /api/admin/replays`).
+ - `GET /api/replays` does not return them in EVERYONE or in MINE;
+ - `GET /api/watch/:id`, `GET /api/watch/:id/road`, `/r/:id`, and blink → `404` (backend decision 9);
+ - the recording is kept only for the verdict and for admin (`GET /api/admin/replays`).
 - **RPL-M-03** MUST NOT: the **current** ride is visible to nobody except its client. `GET /api/watch/:id` for `running` → `404` to everyone, including other players and the unauthenticated. `GET /api/watch/:id/road` for `running` → `404`. The driver gets the road plan through their own ride route (decision 18).
 - **RPL-M-04** MUST: the replay and the road plan of a **pool** ride are public only after `payout_at` (the end of the pool review, decision 34). Before that, to others → `404`.
 - **RPL-M-05** MUST (decision 57): the driver sees **their own** replay right after the verdict, including a pool one (only with the ride owner's authorization). RPL-M-04 applies to everyone else.
@@ -72,10 +72,10 @@
 | a pool ride in MINE before `payout_at` | `Public after the review · <date>` | `Becomes public after the review · <date>` |
 
 - **RPL-M-10a** MUST (decision 58): the lobby and the replay panel run in **EN and RU from the devnet launch**:
-  - the language follows `navigator.language` (`ru*` → RU, otherwise EN), an EN/RU switch in the lobby header and on the panel, the choice is stored (`freightchain.lang`) and `?lang=ru|en` is supported;
-  - every UI string of the lobby, the replay panel, and the result windows comes from `en` / `ru` dictionaries with the same set of keys;
-  - server texts (`ProblemDetails.detail`) shown to the player go through an error code and the client dictionary;
-  - dates are in the player's locale.
+ - the language follows `navigator.language` (`ru*` → RU, otherwise EN), an EN/RU switch in the lobby header and on the panel, the choice is stored (`freightchain.lang`) and `?lang=ru|en` is supported;
+ - every UI string of the lobby, the replay panel, and the result windows comes from `en` / `ru` dictionaries with the same set of keys;
+ - server texts (`ProblemDetails.detail`) shown to the player go through an error code and the client dictionary;
+ - dates are in the player's locale.
 
 - **RPL-M-11** MUST: the **LIVE** tab does not let anyone watch current rides: remove `▶ WATCH`, `▶ WATCH A RANDOM ONE`, and the text "WATCH replays a ride about 25 s behind…". Only the counter "N on the road" / the Russian for "N on the road" remains, with no cards, progress, or links (decision 46). A replay shows an honest "watching now" counter (RPL-M-32).
 - **RPL-M-12** MUST: the REPLAYS tab shows only what RPL-M-01…06 allow. The EVERYONE/MINE and ALL/COMPLETED/ABANDONED/FAILED filters and `LOAD MORE` remain.
@@ -131,11 +131,11 @@ Inventory from the code (`client/js/ui/watch-panel.js`, `client/js/watch.js`, `c
 - **RPL-M-17** MUST NOT: a donation, a tip, HONK, a reaction, or a message never changes the ride, its verdict, `RideResult`, the ranking, or the prize (decision 33, TERMS 14.1/14.5). Effects `night/day/potholes/trench/sinkhole`, `effects/:eventId/applied`, the `inbox` for effects, and HONK time/weather are removed (`anticheat_test_plan` (superseded, merged into docs/spec) §20.1).
 - **RPL-M-18** MUST: the driver sees received donations **after the ride**: a "Donations received" list in the lobby (profile) and a notification. A new route `GET /api/me/donations` (decision 45) — viewer, amount, note, ride, signature. Plus `PlayerStats.donations` / `donationLamports`. The money is also visible in the wallet balance. On their own replay page the driver can mute a viewer (`mute`).
 - **RPL-M-19** MUST: payment is an order (`donation-orders`) → an unsigned transfer (memo `fc-donation:<id>`, reference) → the wallet signs and sends → `confirm` (or `reconcile` for the phone):
-  - one transfer pays one order, reusing the same signature → `409 signature_reused`, a repeat `confirm` of the same order with the same signature → the same result (idempotent);
-  - a transfer to the wrong recipient, for the wrong amount, with no memo, or with someone else's reference → `400 bad_donation_payment`;
-  - a transaction with an error (`meta.err`) → `400`, the order stays `pending`;
-  - not yet confirmed → `{status:'pending'}`;
-  - an expired blockhash, the transfer did not arrive → the order stays `pending`, after **15 min** — `expired` (decision 52; there is no order expiry now).
+ - one transfer pays one order, reusing the same signature → `409 signature_reused`, a repeat `confirm` of the same order with the same signature → the same result (idempotent);
+ - a transfer to the wrong recipient, for the wrong amount, with no memo, or with someone else's reference → `400 bad_donation_payment`;
+ - a transaction with an error (`meta.err`) → `400`, the order stays `pending`;
+ - not yet confirmed → `{status:'pending'}`;
+ - an expired blockhash, the transfer did not arrive → the order stays `pending`, after **15 min** — `expired` (decision 52; there is no order expiry now).
 - **RPL-M-20** MUST (decision 52): tips are the fixed options **0.01 / 0.05 / 0.1 SOL** (now only `tip` 0.01, `live-rules.ts`). Bounds as parameters: minimum **0.001 SOL** (below — `400 donation_too_small`), maximum **1 SOL** per donation (above — `400 donation_too_large`).
 - **RPL-M-21** MUST: rate limits: chat — 1 line / 3 s per wallet per ride (`LINE_WINDOW_MS`, `429 live_rate_limited` with `Retry-After`). Donations: no more often than 1 order / 3 s per wallet and no more than **3** unclosed orders per wallet (`429`; decision 52).
 - **RPL-M-22** MUST: the payment mode is set by a flag. On the devnet launch, replay donations and chat are **enabled for the test** ([`OPEN.md`](OPEN.md) round 22 item 3), payment is devnet SOL (`LIVE_FREE_DONATIONS=off`) or mock. The mode is visible on the button ("devnet SOL" / "mock SOL – nothing is charged").
@@ -146,10 +146,10 @@ Inventory from the code (`client/js/ui/watch-panel.js`, `client/js/watch.js`, `c
 - **RPL-M-25** MUST: the text is cleaned (`cleanText`: control and bidi characters → a space, spaces collapse), length ≤ 140 after cleaning, empty → `400`. A donation note is ≤ 80. The client renders it only as text and does not interpret HTML (XSS).
 - **RPL-M-26** MUST: order is by event `id` (monotonic). The client does not duplicate a line it has already shown itself (`addOwn` + the next poll).
 - **RPL-M-27** MUST: moderation:
-  - the driver mutes a viewer on their own ride (`POST /api/rides/:id/mutes`): that viewer's lines disappear from every feed, and they can no longer write (`403 muted`);
-  - the admin hides a message and blocks the wallet from chat globally (`POST /api/admin/chat/:eventId/hide`, `chat_banned` on the player → `403 chat_banned`);
-  - links in chat are forbidden (`400 chat_link_forbidden`), except the explorer link of a paid donation, which the server sets;
-  - the EN/RU forbidden-word list is a parameter, a match → `400 chat_word_forbidden` (decision 53).
+ - the driver mutes a viewer on their own ride (`POST /api/rides/:id/mutes`): that viewer's lines disappear from every feed, and they can no longer write (`403 muted`);
+ - the admin hides a message and blocks the wallet from chat globally (`POST /api/admin/chat/:eventId/hide`, `chat_banned` on the player → `403 chat_banned`);
+ - links in chat are forbidden (`400 chat_link_forbidden`), except the explorer link of a paid donation, which the server sets;
+ - the EN/RU forbidden-word list is a parameter, a match → `400 chat_word_forbidden` (decision 53).
 - **RPL-M-28** MUST: chat messages are deleted after **90 days** (TERMS 16.4, PRIVACY). A scheduler is required that deletes `live.RideEvent` kind=`message` (there is none now). Records of paid donations are kept as payment records.
 - **RPL-M-29** MUST (decision 54): a replay message is tied to a moment of the replay (`replayT`, a second of the ride) and is shown when that moment plays. The client sends the current replay second on submit, and the message is also visible in the shared feed.
 
@@ -274,25 +274,25 @@ Environment: **E1M** (§2.4), a server with `SOLANA_RPC=http://mock-rpc:8899`, `
 ### 2.4 Mock blockchain (design)
 No browser, in Docker, following the PR #5 approach (code + compose, the wallet is a tweetnacl key).
 1. **The `mock-rpc` service** in `docker-compose.e2e.yml`, profile `mockchain`: `node:22-alpine`, `e2e/mockchain/rpc.mjs`, port `127.0.0.1:18899`. It answers the JSON-RPC the server uses (`server/src/infrastructure/solana/solana-chain.adapter.ts`):
-   - `getLatestBlockhash` — a deterministic blockhash `bs58(sha256(seed ‖ slot))`, `lastValidBlockHeight = slot + 150`;
-   - `getParsedTransaction` — a system transfer (jsonParsed), a memo, `accountKeys` with a reference, `meta.err`, `meta.fee = 5000`;
-   - `getSignaturesForAddress` — by reference and by wallet, newest first;
-   - `sendTransaction` (base64) — parses the message, checks the ed25519 signature and the blockhash, moves lamports in the ledger, `slot++`;
-   - `getSignatureStatuses`, `getBalance`, `getAccountInfo` (minimally), `requestAirdrop` (starting balances), `getHealth`.
+ - `getLatestBlockhash` — a deterministic blockhash `bs58(sha256(seed ‖ slot))`, `lastValidBlockHeight = slot + 150`;
+ - `getParsedTransaction` — a system transfer (jsonParsed), a memo, `accountKeys` with a reference, `meta.err`, `meta.fee = 5000`;
+ - `getSignaturesForAddress` — by reference and by wallet, newest first;
+ - `sendTransaction` (base64) — parses the message, checks the ed25519 signature and the blockhash, moves lamports in the ledger, `slot++`;
+ - `getSignatureStatuses`, `getBalance`, `getAccountInfo` (minimally), `requestAirdrop` (starting balances), `getHealth`.
 2. **Signatures are deterministic.** Ed25519 is deterministic in the key and the message, and the keys and the blockhash are fixed, so the signature is the same on every run. Golden files contain the signatures.
 3. **Control (test only):**
-   - `POST /__mock/reset`;
-   - `POST /__mock/fund {wallet, lamports}`;
-   - `POST /__mock/mode {next: 'confirm' | 'pending:N' | 'fail' | 'drop' | 'expire'}`;
-   - `POST /__mock/inject {payer, to, lamports, memo, reference}` — incorrect transfers;
-   - `GET /__mock/ledger` — balances and the list of transactions.
-   
-   The control port is not published outside the compose network.
+ - `POST /__mock/reset`;
+ - `POST /__mock/fund {wallet, lamports}`;
+ - `POST /__mock/mode {next: 'confirm' | 'pending:N' | 'fail' | 'drop' | 'expire'}`;
+ - `POST /__mock/inject {payer, to, lamports, memo, reference}` — incorrect transfers;
+ - `GET /__mock/ledger` — balances and the list of transactions.
+
+ The control port is not published outside the compose network.
 4. **The wallet in tests** `e2e/harness/wallet.mjs`: a `Keypair` from a fixed seed (`tweetnacl`, `bs58` — already in `e2e/package.json`; add `@solana/web3.js` to parse a transaction). It does:
-   - sign-in: nonce + verify, as in `B1-LAND-11`;
-   - `signTransaction(base64)` — signs the order message;
-   - `signAndSend` — the signature + `sendTransaction` to the mock;
-   - a standard wallet for happy-dom `window.phantom` — like `FAKE` in `server/scripts/e2e-tickets-stub.mjs`, except it signs for real.
+ - sign-in: nonce + verify, as in `B1-LAND-11`;
+ - `signTransaction(base64)` — signs the order message;
+ - `signAndSend` — the signature + `sendTransaction` to the mock;
+ - a standard wallet for happy-dom `window.phantom` — like `FAKE` in `server/scripts/e2e-tickets-stub.mjs`, except it signs for real.
 5. **The server** — the real `SolanaChainAdapter` with `SOLANA_RPC=http://mock-rpc:8899`, `SOLANA_RPC_FALLBACKS=''`, with no code changes. This also checks parsing of the RPC responses. The S level keeps `FakeChain` (`server/test/support/fake-chain.ts`).
 6. **What the mock does not check** (→ M and E2): real Phantom/Solflare, QR Solana Pay on a phone, the devnet explorer, real fees and delays.
 
@@ -308,17 +308,17 @@ No browser, in Docker, following the PR #5 approach (code + compose, the wallet 
 
 ### 2.6 Mapping to PR #5 and the backend scenarios
 - **Block 1 (PR #5):** `B1-LOBBY-03` (LIVE) and `B1-LOBBY-04/09` (REPLAYS, MINE) **change** to fit RPL-T-20/21. `B1-LOBBY-21` (the watch and share buttons on the receipt) — check that `watch` does not lead to the current ride. `B1-LAND-26` (loading live and replays on the landing) — `dash-live.js` with no links to current rides. New files:
-  - `e2e/block1-offchain/watch/player.test.mjs` (RPL-T-30…60);
-  - `e2e/block1-offchain/watch/visibility.test.mjs` (RPL-T-01…25);
-  - `e2e/block1-offchain/lobby/training-label.test.mjs`;
-  - `e2e/block1-offchain/streams/*.test.mjs` (RPL-T-70…98, profile `mockchain`).
+ - `e2e/block1-offchain/watch/player.test.mjs` (RPL-T-30…60);
+ - `e2e/block1-offchain/watch/visibility.test.mjs` (RPL-T-01…25);
+ - `e2e/block1-offchain/lobby/training-label.test.mjs`;
+ - `e2e/block1-offchain/streams/*.test.mjs` (RPL-T-70…98, profile `mockchain`).
 - **Block 2:** `e2e/block2-chain/streams/donation.test.mjs` (RPL-T-99).
 - **Server scenarios:** `server/test/scenarios/live.scenarios.ts` (rebuild for the replay), `pledges.scenarios.ts`, `promos-abuse`; routes 106–117, 120, 130, 144–145 from the [`backend_contract.md`](backend_contract.md) registry get matrix B cases (someone else → `404`, decision 9).
 - **Existing Chrome scripts** (not called by the happy-dom blocks and not deleted): `server/scripts/e2e-watch.mjs`, `e2e-replay.mjs`, `e2e-live-board.mjs`, `e2e-live-flags.mjs`, `client/tools/e2e-viewer.mjs`, skills `.claude/skills/replay-test`, `live-board-test`. They pin the built live view ([`PRODUCT.md`](PRODUCT.md)). Decision 68 cancelled E2E-M-06. Under RPL-M-03/11 they change only together with the code, when the owner separately accepts dropping live watch.
 - **npm scripts (plan):**
-  - root: `test:e2e:replays` = `bash e2e/scripts/run.sh replays`; `test:e2e:streams` = `bash e2e/scripts/run.sh streams` (brings up `--profile mockchain`);
-  - `e2e/package.json`: `test:replays`, `test:streams`, `mockchain` (`node mockchain/rpc.mjs`);
-  - server: `test -- live` / `test -- watch` (a vitest filter), `test:integration -- donation`.
+ - root: `test:e2e:replays` = `bash e2e/scripts/run.sh replays`; `test:e2e:streams` = `bash e2e/scripts/run.sh streams` (brings up `--profile mockchain`);
+ - `e2e/package.json`: `test:replays`, `test:streams`, `mockchain` (`node mockchain/rpc.mjs`);
+ - server: `test -- live` / `test -- watch` (a vitest filter), `test:integration -- donation`.
 
 ## Part 3. Traceability
 | Rule | Tests | Gap |
@@ -359,7 +359,7 @@ No browser, in Docker, following the PR #5 approach (code + compose, the wallet 
 | RPL-M-33 | T-56 | — |
 | RPL-M-34 | T-53, T-102 | — |
 
-Total: 35 rules, all MUST / MUST NOT (decisions 45–58 accepted 17.10.2026). Planned ids: RPL-T-01…29, 30…60, 70…102 and 6 manual M-RPL-01…06. An id is not a written test. Some of these rules diverge from the built product ([`PRODUCT.md`](PRODUCT.md), conflicts). The executable bar is [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
+Total: 35 rules, all MUST / MUST NOT (decisions 45–58 accepted ). Planned ids: RPL-T-01…29, 30…60, 70…102 and 6 manual M-RPL-01…06. An id is not a written test. Some of these rules diverge from the built product ([`PRODUCT.md`](PRODUCT.md), conflicts). The executable bar is [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
 
 Replay polling validates the response before replacing its loaded snapshot. A malformed successful response or aborted JSON body keeps the existing recording available; a later valid response clears the transient error. Real-Chrome replay acceptance includes failed-refresh recovery.
 

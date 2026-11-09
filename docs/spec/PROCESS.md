@@ -1,6 +1,6 @@
 # Specs-based development
 
-Decisions 67 and 68 (2026-10-18). This file is how a change is allowed to happen. The Russian area files under `docs/spec/` keep the owner's target rules (decisions 1–66). They are not a description of the running game.
+Decisions 67 and 68. This file is how a change is allowed to happen. The Russian area files under `docs/spec/` keep the owner's target rules (decisions 1–66). They are not a description of the running game.
 
 ## Two layers
 

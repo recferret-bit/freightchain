@@ -1,8 +1,8 @@
 # FreightChain — specification (source of truth)
 
-Created 17.10.2026 by the owner's decision: "redo it all so that there is both a test plan and a spec of how it must work, so that this is the source of truth". Plan only: the repository code was not changed, git was not touched, tests were not run. The code was checked against this repository after the merge of PR #3 into `origin/main` (`e8f338ad`; PR #5 `cursor/local-e2e-suite-b044`). The decision log 1–66 below was not changed. Identifiers stay in English. Legal texts stay in the language of each file.
+Created by the owner's decision: "redo it all so that there is both a test plan and a spec of how it must work, so that this is the source of truth". Plan only: the repository code was not changed, git was not touched, tests were not run. The code was checked against this repository after the merge of PR #3 into `origin/main` (`e8f338ad`; PR #5 `cursor/local-e2e-suite-b044`). The decision log 1–66 below was not changed. Identifiers stay in English. Legal texts stay in the language of each file.
 
-**2026-10-18, decisions 67 and 68.** How the process works: [`PROCESS.md`](PROCESS.md). What the code does now: [`PRODUCT.md`](PRODUCT.md). The test bar (real headless Chrome, positive and negative, the backend, a local validator): [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md). The step-by-step plan: [`../testing/IMPLEMENTATION_PLAN.md`](../testing/IMPLEMENTATION_PLAN.md). A MUST rule that is not in the code is a target, not current behavior. The identifiers `RID-T-*` / `RPL-T-*` / `API-T-*` and the neighboring ones are a catalog of tests that still have to be written. "No test — 0" means "every MUST has a planned id", not "the test is written and green".
+**, decisions 67 and 68.** How the process works: [`PROCESS.md`](PROCESS.md). What the code does now: [`PRODUCT.md`](PRODUCT.md). The test bar (real headless Chrome, positive and negative, the backend, a local validator): [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md). The step-by-step plan: [`../testing/IMPLEMENTATION_PLAN.md`](../testing/IMPLEMENTATION_PLAN.md). A MUST rule that is not in the code is a target, not current behavior. The identifiers `RID-T-*` / `RPL-T-*` / `API-T-*` and the neighboring ones are a catalog of tests that still have to be written. "No test — 0" means "every MUST has a planned id", not "the test is written and green".
 
 ## Precedence rule
 0. **Decisions 67 and 68 outrank E2E-M-01 and E2E-M-06.** Tests today lock [`PRODUCT.md`](PRODUCT.md). A target from decisions 1–66 changes the code only in a separate change that updates `PRODUCT.md` and the tests in the same commit. Details — [`PROCESS.md`](PROCESS.md).
@@ -10,10 +10,10 @@ Created 17.10.2026 by the owner's decision: "redo it all so that there is both a
 2. Inside `docs/spec/`, a MUST rule in the "Spec" outranks an appendix. Appendices are the text of the old plans carried over unchanged: history and the details of the algorithms.
 3. The owner's decisions (the log below; full texts — [`DECISIONS.md`](DECISIONS.md)) outrank the spec. If they diverge, the spec must be corrected.
 4. Old files are consolidated into `docs/spec/…`:
-   - `anticheat_test_plan.md` (merged into `docs/spec/`), `backend_test_plan.md` (merged into `docs/spec/`), `OPEN_QUESTIONS.md` (merged into [`OPEN.md`](OPEN.md)) — in full;
-   - [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) — only §3 (pools and ranking), §5 (tickets and rides) and §14 (open questions → [`OPEN.md`](OPEN.md)), the rest stays in force.
-   
-   New edits are made only in `docs/spec/`.
+ - `anticheat_test_plan.md` (merged into `docs/spec/`), `backend_test_plan.md` (merged into `docs/spec/`), `OPEN_QUESTIONS.md` (merged into [`OPEN.md`](OPEN.md)) — in full;
+ - [`MASTER_PLAN.md`](../plan/MASTER_PLAN.md) — only §3 (pools and ranking), §5 (tickets and rides) and §14 (open questions → [`OPEN.md`](OPEN.md)), the rest stays in force.
+
+ New edits are made only in `docs/spec/`.
 
 ## Contents
 | File | Area | Prefixes |
@@ -34,15 +34,15 @@ Created 17.10.2026 by the owner's decision: "redo it all so that there is both a
 | [`PROCESS.md`](PROCESS.md) | how to change the product from the specification (decision 67) | — |
 | [`PRODUCT.md`](PRODUCT.md) | what is already built, and where decisions 1–66 diverge from the code | — |
 | [`legal.md`](legal.md) | touchpoints with TERMS / PRIVACY / PRESEASON_RULES | `LEG-M-*`, `LEG-T-*` |
-| [`DECISIONS.md`](DECISIONS.md) | full texts of decisions 1–68 and of backend 1–10 (1–44 and B1–B10 carried over unchanged; 45–66 accepted 17.10.2026; 67–68 — 18.10.2026) | — |
+| [`DECISIONS.md`](DECISIONS.md) | full texts of decisions 1–68 and of backend 1–10 (1–44 and B1–B10 carried over unchanged; 45–66 accepted; 67–68 — ) | — |
 | [`OPEN.md`](OPEN.md) | all open questions (carried over from the old files) | — |
 
 Area-file format: **Part 1 "Spec"** (a short snapshot of the code, then the target: MUST / MUST NOT rules). A rule that is not in [`PRODUCT.md`](PRODUCT.md) as shipped is a target, not current behavior. **Part 2** and the traceability line count planned ids. "No test — 0" in the old files means "the rule has an id", not "a test is written". Executable tests — [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
 
-**Traceability, total (18.10.2026, with full coverage of every business unit in `docs/spec/`):** 211 rules (`149` base + `RID-M-21` + `61` in `referral.md`, `promocodes.md`, `ten4.md`, `web3_solana.md`, `platform_services.md`), each has a planned test id (`RID-T-*`, `REF-T-*`, `PRM-T-*`, `TEN-T-*`, `SOL-T-*`, `PLT-T-*`, `RPL-T-*`, `ADM-T-*`, `API-T-*`, `POOL-T-*`, `ACH-T-*`, `MGM-T-*`, `LEG-T-*`, `E2E-T-*`) + 8 manual (`M-RPL-01…06`, `M-ADM-01/02`). "Rules with no id — 0" does not mean the tests are written or were run. The executable bar — [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
+**Traceability, total (with full coverage of every business unit in `docs/spec/`):** 211 rules (`149` base + `RID-M-21` + `61` in `referral.md`, `promocodes.md`, `ten4.md`, `web3_solana.md`, `platform_services.md`), each has a planned test id (`RID-T-*`, `REF-T-*`, `PRM-T-*`, `TEN-T-*`, `SOL-T-*`, `PLT-T-*`, `RPL-T-*`, `ADM-T-*`, `API-T-*`, `POOL-T-*`, `ACH-T-*`, `MGM-T-*`, `LEG-T-*`, `E2E-T-*`) + 8 manual (`M-RPL-01…06`, `M-ADM-01/02`). "Rules with no id — 0" does not mean the tests are written or were run. The executable bar — [`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md).
 
 ## Owner decision log
-Statuses: ✅ accepted · ✏️ accepted with a change · ⛔ replaced · ⏳ pending a decision. Decisions 1–66 — 17.10.2026. Decisions 67–68 — 18.10.2026.
+Statuses: ✅ accepted · ✏️ accepted with a change · ⛔ replaced · ⏳ pending a decision. Decisions 1–66 —. Decisions 67–68 —.
 | № | Point | Status | Where |
 |---|---|---|---|
 | 1 | Block 3 in PR #5, main only (HARD = `free-3b` 15 min) | ✏️ | anticheat |
@@ -99,7 +99,7 @@ Statuses: ✅ accepted · ✏️ accepted with a change · ⛔ replaced · ⏳ p
 | — | Only replays of non-training rides can be watched, training is marked in the lobby; check every player button; a mock blockchain for donations and chat; the specification as the source of truth | ✅ | replays_streams, README |
 | B1 | Schemas in zod, OpenAPI from them | ✅ | API-M-01 |
 | B2 | A response-schema violation: strict in test, warn in prod | ✅ | API-M-02 |
-| B3 | `.strict()` for admin/editor/money | ✅ | API-M-03 |
+| B3 | `.strict` for admin/editor/money | ✅ | API-M-03 |
 | B4 | Gate threshold | ✅ | API-M-04 |
 | B5 | schemathesis at night, fast-check immediately | ✅ | API-M-10 |
 | B6 | Where tests live; implementation — a new PR after the PR #3 merge | ✅ | API-M-11 |
@@ -107,30 +107,30 @@ Statuses: ✅ accepted · ✏️ accepted with a change · ⛔ replaced · ⏳ p
 | B8 | Admin HTTP for `set_pool_rules` | ✅ | API-M-09, POOL-M-12 |
 | B9 | Someone else's resource — `404` everywhere | ✅ | API-M-07 |
 | B10 | No separate line-coverage threshold | ✅ | API-M-11 |
-| 45 | A donation only on a replay, directly to the driver; the driver sees it after the ride | ✅ 17.10.2026 | RPL-M-14/15/18 |
-| 46 | LIVE — only the "N on the road" counter; "watching now" on the replay | ✅ 17.10.2026 | RPL-M-11, RPL-M-32 |
-| 47 | All new player elements; the first batch — steps, events, `&t=`, 0.5×/2× | ✅ 17.10.2026 | RPL-M-13, C3–C19, C36 |
-| 48 | Input highlight and `SAMPLE_INPUT_COL` — admin only | ✅ 17.10.2026 | RPL-M-07 |
-| 49 | HONK in chat — cosmetic; delete HONK time/weather | ✅ 17.10.2026 | RPL-M-34, RPL-M-17 |
-| 50 | The referrer's share of donations = 0, the `also` branch is removed | ✅ 17.10.2026 | RPL-M-16, LEG-M-02 |
-| 51 | Pledges are off at the devnet launch; later — a separate decision | ✅ 17.10.2026 | RPL-M-33 |
-| 52 | Tips 0.01/0.05/0.1; min 0.001, max 1 SOL; an order expires in 15 min; ≤ 3 unclosed | ✅ 17.10.2026 | RPL-M-19/20/21 |
-| 53 | Chat filter: no links, an EN/RU word list, an admin hides and bans | ✅ 17.10.2026 | RPL-M-27 |
-| 54 | Chat is bound to `replayT` | ✅ 17.10.2026 | RPL-M-29 |
-| 55 | Finished = completed/abandoned/failed, the verdict is not `rejected` | ✅ 17.10.2026 | RPL-M-01 |
-| 56 | Training = free (all levels) + offline guest + tutorial/assist | ✅ 17.10.2026 | RPL-M-02, RID-M-02 |
-| 57 | The driver sees their own pool replay until `payout_at` | ✅ 17.10.2026 | RPL-M-05 |
-| 58 | Lobby texts in EN and RU from day one | ✅ 17.10.2026 | RPL-M-10/10a, LEG-M-11 |
-| 59 | Roles admin / moderator / editor by least privilege | ✅ 17.10.2026 | admin_security |
-| 60 | Money and the chain: devnet — 1 signature + a notice; paid pools / mainnet — a second admin; `set_config`/`set_pool_rules` — Squads | ✅ 17.10.2026 | admin_security |
-| 61 | A global default-deny guard by prefix + a meta-test | ✅ 17.10.2026 | admin_security |
-| 62 | Strict mode at any `NODE_ENV` except development/test; dev flags and `DEMO_WALLETS` fail startup; own JWT secrets | ✅ 17.10.2026 | admin_security |
-| 63 | Admin session ≤ 60 min, `jti`, revocation on logout | ✅ 17.10.2026 | admin_security |
-| 64 | Audit is append-only at the DB level, "before/after", reads of personal data; notices to Telegram (env, an outbox when unavailable) | ✅ 17.10.2026 | admin_security |
-| 65 | Admin sign-in limits; `auth/nonce` does not reveal admins | ✅ 17.10.2026 | admin_security |
-| 66 | `ADMIN_IP_ALLOWLIST` for mainnet | ✅ 17.10.2026 | admin_security |
-| 67 | Development from the specification: as-built in `PRODUCT.md`, the target separately, a test is not deleted because a target is not done yet | ✅ 18.10.2026 | PROCESS.md |
-| 68 | Coverage: headless Chrome + HTTP positive/negative + Postgres + LiteSVM and a local validator. happy-dom does not replace Chrome. E2E-M-01 and E2E-M-06 do not apply | ✅ 18.10.2026 | COVERAGE_CONTRACT.md |
+| 45 | A donation only on a replay, directly to the driver; the driver sees it after the ride | ✅ | RPL-M-14/15/18 |
+| 46 | LIVE — only the "N on the road" counter; "watching now" on the replay | ✅ | RPL-M-11, RPL-M-32 |
+| 47 | All new player elements; the first batch — steps, events, `&t=`, 0.5×/2× | ✅ | RPL-M-13, C3–C19, C36 |
+| 48 | Input highlight and `SAMPLE_INPUT_COL` — admin only | ✅ | RPL-M-07 |
+| 49 | HONK in chat — cosmetic; delete HONK time/weather | ✅ | RPL-M-34, RPL-M-17 |
+| 50 | The referrer's share of donations = 0, the `also` branch is removed | ✅ | RPL-M-16, LEG-M-02 |
+| 51 | Pledges are off at the devnet launch; later — a separate decision | ✅ | RPL-M-33 |
+| 52 | Tips 0.01/0.05/0.1; min 0.001, max 1 SOL; an order expires in 15 min; ≤ 3 unclosed | ✅ | RPL-M-19/20/21 |
+| 53 | Chat filter: no links, an EN/RU word list, an admin hides and bans | ✅ | RPL-M-27 |
+| 54 | Chat is bound to `replayT` | ✅ | RPL-M-29 |
+| 55 | Finished = completed/abandoned/failed, the verdict is not `rejected` | ✅ | RPL-M-01 |
+| 56 | Training = free (all levels) + offline guest + tutorial/assist | ✅ | RPL-M-02, RID-M-02 |
+| 57 | The driver sees their own pool replay until `payout_at` | ✅ | RPL-M-05 |
+| 58 | Lobby texts in EN and RU from day one | ✅ | RPL-M-10/10a, LEG-M-11 |
+| 59 | Roles admin / moderator / editor by least privilege | ✅ | admin_security |
+| 60 | Money and the chain: devnet — 1 signature + a notice; paid pools / mainnet — a second admin; `set_config`/`set_pool_rules` — Squads | ✅ | admin_security |
+| 61 | A global default-deny guard by prefix + a meta-test | ✅ | admin_security |
+| 62 | Strict mode at any `NODE_ENV` except development/test; dev flags and `DEMO_WALLETS` fail startup; own JWT secrets | ✅ | admin_security |
+| 63 | Admin session ≤ 60 min, `jti`, revocation on logout | ✅ | admin_security |
+| 64 | Audit is append-only at the DB level, "before/after", reads of personal data; notices to Telegram (env, an outbox when unavailable) | ✅ | admin_security |
+| 65 | Admin sign-in limits; `auth/nonce` does not reveal admins | ✅ | admin_security |
+| 66 | `ADMIN_IP_ALLOWLIST` for mainnet | ✅ | admin_security |
+| 67 | Development from the specification: as-built in `PRODUCT.md`, the target separately, a test is not deleted because a target is not done yet | ✅ | PROCESS.md |
+| 68 | Coverage: headless Chrome + HTTP positive/negative + Postgres + LiteSVM and a local validator. happy-dom does not replace Chrome. E2E-M-01 and E2E-M-06 do not apply | ✅ | COVERAGE_CONTRACT.md |
 
 ## Glossary
 - **1h** — an hour-long ride, the only one for ranking and for a pool.

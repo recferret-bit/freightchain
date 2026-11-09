@@ -1,4 +1,4 @@
-# Readiness status — 26 October 2026, after the parallel restart
+# Readiness status —, after the parallel restart
 
 Continues [READINESS_HANDOFF_2026-10-26.md](READINESS_HANDOFF_2026-10-26.md). **Not ready to declare complete.** Nothing pushed, merged into `main` or deployed.
 
@@ -36,5 +36,5 @@ Known gaps: no browser check asserts a payment is never auto-retried after accep
 ## Housekeeping
 
 - Preserve all worktrees; Lane B's scratch worktree `…/scratchpad/base` is removable by the owner.
-- Untouched: user validator PID 28050 / :8899 / `tests/e2e/.ledger`, `tests/e2e/.keys/`. Verification PostgreSQL container `fc-integ-verify-pg` already removed.
+- Untouched: user validator PID 28050 /:8899 / `tests/e2e/.ledger`, `tests/e2e/.keys/`. Verification PostgreSQL container `fc-integ-verify-pg` already removed.
 - Owner-only items unchanged: legal text/identity, provider accounts, 13 metadata publications, physical device checks, explicit deploy request; $500 event settlement still open.

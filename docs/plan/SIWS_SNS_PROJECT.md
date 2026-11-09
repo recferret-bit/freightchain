@@ -2,13 +2,13 @@
 
 ## Architecture
 - **Clean Architecture Boundaries (`server/`)**:
-  - `domain`: Pure business entities and domain rules (`domain/auth`, `domain/sns`). Zero external frameworks or web3 dependencies. Pure TypeScript and `bs58`.
-  - `application`: CQRS use cases, command/query handlers, and application ports (`NameServicePort`, `AuthChallengeRepositoryPort`, `SignatureVerifierPort`).
-  - `infrastructure`: Adapters and external integrations (`SnsNameServiceAdapter` via `@solana/web3.js`, `NaclSignatureVerifier`, `PrismaAuthChallengeRepository`, `RedisCacheAdapter` / `MemoryCacheAdapter`, `EnvService`).
-  - `presentation`: HTTP controllers with `@ZodBody`, `@ZodQuery`, `@ZodParams`, returning typed DTOs and dispatching through NestJS CQRS bus.
+ - `domain`: Pure business entities and domain rules (`domain/auth`, `domain/sns`). Zero external frameworks or web3 dependencies. Pure TypeScript and `bs58`.
+ - `application`: CQRS use cases, command/query handlers, and application ports (`NameServicePort`, `AuthChallengeRepositoryPort`, `SignatureVerifierPort`).
+ - `infrastructure`: Adapters and external integrations (`SnsNameServiceAdapter` via `@solana/web3.js`, `NaclSignatureVerifier`, `PrismaAuthChallengeRepository`, `RedisCacheAdapter` / `MemoryCacheAdapter`, `EnvService`).
+ - `presentation`: HTTP controllers with `@ZodBody`, `@ZodQuery`, `@ZodParams`, returning typed DTOs and dispatching through NestJS CQRS bus.
 - **Client Architecture (`client/`)**:
-  - Vanilla ES modules loaded directly in browser. Zero heavy build tools, zero external dependencies beyond three.js.
-  - Modular services: `client/site/wallet.js` for wallet connection & SIWS, `client/site/sns.js` for cached driver display resolution and formatting with fallback to `shortAddr`.
+ - Vanilla ES modules loaded directly in browser. Zero heavy build tools, zero external dependencies beyond three.js.
+ - Modular services: `client/site/wallet.js` for wallet connection & SIWS, `client/site/sns.js` for cached driver display resolution and formatting with fallback to `shortAddr`.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
@@ -26,7 +26,7 @@
 | 11 | Multi-Tier SNS Caching | Cache resolved SNS records via `CachePort` (24h positive TTL, 30m negative TTL) and batch requests | M2 | ORIGINAL_REQUEST §R2 |
 | 12 | SNS HTTP Endpoints | Provide `GET /api/sns/reverse?wallet=` and `GET /api/sns/resolve?domain=` with typed Zod query validation | M2 | ORIGINAL_REQUEST §R2 |
 | 13 | Backend DTO Enrichment | Enrich `LeaderboardRowDto`, `ProfileDto`, `MeDto`, and `PublicRideDto` with `sns` for zero-waterfall initial render | M2 | Survey consensus |
-| 14 | Native 1-Click Client Sign-In | Support `solana:signIn` (Wallet Standard) and Phantom `signIn()` 1-click modal in `client/site/wallet.js` | M3 | ORIGINAL_REQUEST §R1 |
+| 14 | Native 1-Click Client Sign-In | Support `solana:signIn()` (Wallet Standard) and Phantom `signIn()` 1-click modal in `client/site/wallet.js` | M3 | ORIGINAL_REQUEST §R1 |
 | 15 | Automatic Legacy Fallback | Fall back to `connect()` + `signMessage()` when `signIn` is unavailable or rejected | M3 | ORIGINAL_REQUEST §R1 |
 | 16 | Dev Wallet SIWS Mock | Extend `client/site/dev-wallet.js` with mock `signIn` support for local testing | M3 | Survey consensus |
 | 17 | Driver Name UI Integration | Integrate `formatDriver(wallet, sns)` into leaderboard, profile, receipts, header, and watch panels | M3 | ORIGINAL_REQUEST §R2 |
@@ -45,51 +45,51 @@
 
 ### M1: Auth Contracts
 - **`POST /api/auth/nonce`**:
-  - Request: `{ wallet?: string }` (optional wallet for 1-click SIWS).
-  - Response:
-    ```typescript
-    {
-      domain: string;
-      statement: string;
-      uri: string;
-      version: string;
-      chainId: string;
-      nonce: string;
-      issuedAt: string;
-      expirationTime: string;
-      address?: string;
-      message: string;
-    }
-    ```
+ - Request: `{ wallet?: string }` (optional wallet for 1-click SIWS).
+ - Response:
+ ```typescript
+ {
+ domain: string;
+ statement: string;
+ uri: string;
+ version: string;
+ chainId: string;
+ nonce: string;
+ issuedAt: string;
+ expirationTime: string;
+ address?: string;
+ message: string;
+ }
+ ```
 - **`POST /api/auth/verify`**:
-  - Request:
-    ```typescript
-    {
-      wallet: string;
-      signature: string;
-      message?: string;
-      nonce?: string;
-    }
-    ```
-  - Response: `{ success: true, wallet: string, session: string }` + `Set-Cookie: fc_session=...`.
+ - Request:
+ ```typescript
+ {
+ wallet: string;
+ signature: string;
+ message?: string;
+ nonce?: string;
+ }
+ ```
+ - Response: `{ success: true, wallet: string, session: string }` + `Set-Cookie: fc_session=...`.
 
 ### M2: SNS Contracts
 - **`GET /api/sns/reverse?wallet=<pubkey>`**:
-  - Response: `{ wallet: string, domain: string | null }`
+ - Response: `{ wallet: string, domain: string | null }`
 - **`GET /api/sns/resolve?domain=<name.sol>`**:
-  - Response: `{ domain: string, wallet: string | null }`
+ - Response: `{ domain: string, wallet: string | null }`
 - **Enriched DTOs**:
-  - `LeaderboardRowDto`: `{ wallet: string, score: number, ..., sns?: string | null }`
-  - `ProfileDto`: `{ wallet: string, ..., sns?: string | null }`
-  - `PublicRideDto`: `{ id: string, wallet: string, ..., sns?: string | null }`
+ - `LeaderboardRowDto`: `{ wallet: string, score: number..., sns?: string | null }`
+ - `ProfileDto`: `{ wallet: string..., sns?: string | null }`
+ - `PublicRideDto`: `{ id: string, wallet: string..., sns?: string | null }`
 
 ### M3: Client Contracts
 - **`signInOrFallback(provider)`**:
-  - Attempts `provider.signIn(signInInput)`.
-  - On missing method or rejection, executes `provider.connect()` followed by `provider.signMessage()`.
-  - Returns verified session.
+ - Attempts `provider.signIn(signInInput)`.
+ - On missing method or rejection, executes `provider.connect()` followed by `provider.signMessage()`.
+ - Returns verified session.
 - **`formatDriver(wallet, sns)`**:
-  - Returns `sns` if present (e.g. `"driver.sol"`), else `shortAddr(wallet)`.
+ - Returns `sns` if present (e.g. `"driver.sol"`), else `shortAddr(wallet)`.
 
 ## Code Layout
 - `server/src/domain/auth/`: Domain entities and rules for authentication challenges and SIWS message serialization.

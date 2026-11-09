@@ -1,8 +1,8 @@
 # Test coverage by feature
 
-Generated 2026-10-09 23:44 UTC by `npm run test:census -- features --write` (skill `test-census`). Do not edit by hand: the map is `.claude/skills/test-census/features.mjs`.
+Generated 23:44 UTC by `npm run test:census -- features --write` (skill `test-census`). Do not edit by hand: the map is `.claude/skills/test-census/features.mjs`.
 
-Static: imports, requested routes, `check()` messages · browser runs: `admin` 2026-10-09, `board` 2026-10-09, `browser` 2026-10-09, `close-split` 2026-10-09, `close` 2026-10-09, `flags` 2026-10-09, `lobby` 2026-10-09, `promo` 2026-10-09, `replay` 2026-10-09, `verified` 2026-10-09, `wallet-split` 2026-10-09, `wallet` 2026-10-09, `watch` 2026-10-09 · lines: server unit + HTTP + PostgreSQL, the headless playthrough, client / landing / media node:test at 2026-10-09 12:57 UTC.
+Static: imports, requested routes, `check()` messages · browser runs: `admin`, `board`, `browser`, `close-split`, `close`, `flags`, `lobby`, `promo`, `replay`, `verified`, `wallet-split`, `wallet`, `watch` · lines: server unit + HTTP + PostgreSQL, the headless playthrough, client / landing / media node:test at 12:57 UTC.
 
 ## Features
 
@@ -40,7 +40,7 @@ when browser runs are recorded and one of its harnesses is an `e2e.sh` suite, ev
 | Whitepaper | **fair** | 2/2 | 21 | — | — | — | — | — | — | 100 % · 99 % (1/2 files loaded) | no end-to-end harness |
 | Promo clips + sound | **thin** | 2/19 | 25 | — | — | — | — | /gameplay-video, /game-audio | — | 93.4 % · 90.8 % (15/19 files loaded) | 17 of 19 files have no test of their own |
 
-Columns: *files with own test* = source files (logic only: no ports, DTOs, commands / queries, modules) that a test imports as its subject. *Scenario cases* = HTTP scenario / HTTP spec cases that request one of its routes, setup calls included, so sign-in and ride creation are reached by almost every case. *Race tests* = concurrency cases on PostgreSQL. *Sim checks* = headless playthrough `check()` calls. *Routes in recorded e2e.sh runs* = routes the server logged while the recorded `run-tests/e2e.sh` suites ran (— when no harness of the feature runs there; health probes are not logged, so they are left out).
+Columns: *files with own test* = source files (logic only: no ports, DTOs, commands / queries, modules) that a test imports as its subject. *Scenario cases* = HTTP scenario / HTTP spec cases that request one of its routes, setup calls included, so sign-in and ride creation are reached by almost every case. *Race tests* = concurrency cases on PostgreSQL. *Sim check()s* = headless playthrough `check()` calls. *Routes in recorded e2e.sh runs* = routes the server logged while the recorded `run-tests/e2e.sh` suites ran (— when no harness of the feature runs there; health probes are not logged, so they are left out).
 
 ## User flows
 
@@ -249,7 +249,7 @@ Columns: *files with own test* = source files (logic only: no ports, DTOs, comma
 ## Routes
 
 | Route | Feature | Handler spec cases | Controller spec | Scenario cases | Browser runs | Named by | Handler lines · branches |
-| --- | --- | ---: | :---: | ---: | --- | --- | ---: |
+| --- | --- | ---: |:---: | ---: | --- | --- | ---: |
 | `GET /api/admin/promos` | promo | 2 | yes | 8 | admin, promo | — | 100 % · 75 % |
 | `GET /api/admin/promos/redemptions` | promo | 2 | yes | 4 | admin, promo | — | 100 % · 75 % |
 | `POST /api/admin/promos/challenge` | promo | 2 | yes | 10 | admin, promo | — | 100 % · 75 % |

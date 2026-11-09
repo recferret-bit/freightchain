@@ -1,6 +1,6 @@
 # FreightChain — consolidated plan (review)
 
-Version 17.10.2026, round 19 (Pre-season on devnet, Season 1 moved to 11.01.2027, Pool v5 implemented in code). This is a summary of the owner's decisions. Details are in the files `docs/plan/*` and `docs/legal/*` (see `docs/plan/README.md`).
+Round 19 (a devnet beta, then a public Season 1, Pool v5 implemented in code). No launch dates. This is a summary of the owner's decisions. Details are in the files `docs/plan/*` and `docs/legal/*` (see `docs/plan/README.md`).
 
 **Contents:** 0 Status · 1 Timeline · 2 Tokenomics · 3 Pools and prizes · 4 Seasons · 5 Tickets and rides · 6 Referral program (Convoy) · 7 Airdrop · 8 Anti-sybil and trust · 9 KYC and taxes · 10 Privacy, data, legal texts · 11 Infrastructure · 12 Code change plan · 13 Documents in the repository · 14 Open questions · 15 Audit log
 
@@ -19,21 +19,17 @@ Version 17.10.2026, round 19 (Pre-season on devnet, Season 1 moved to 11.01.2027
 
 ## 1. Timeline
 
-| Date | Event |
+No calendar. The order is polish and test, then a soft launch (beta), then public.
+
+| Stage | Event |
 |---|---|
 | ✅ done | Merge of PR #3 into `main` (steps 1 and 4; the remaining Season 1 steps — per [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §7 and §12 below) |
-| on the owner's command (recommended after Pre-season, see §12 G17) | Devnet cleanup and deploy of pool v5 with a new program id (the v5 code is already in the repo; not required for Pre-season) |
-| Mon 02.11.2026 | **Pre-season (devnet):** registration, mandatory campaign steps (a test ride + Telegram + X: a follow and a post with the code) |
-| Mon 09.11 – Sun 15.11 12:00 | Pre-season: prize week, one 1h board, 1 qualifying attempt, fund $500 |
-| until Mon 16.11 12:00 / until Tue 17.11 12:00 | Pre-season: review / appeals |
-| from Tue 17.11 | Pre-season: USDC payouts on mainnet in person from the owner-organizer, from the event wallet (manual review of the top 20 with no documents, Chainalysis sanctions, a 72 h hold; no tax forms) |
-| by 01.12 / by 20.12.2026 | Choice and registration of the operator legal entity (required for Season 1: paid tickets, TGE, full Terms) |
-| Mon 11.01.2027 00:00 UTC | **Mainnet and the Season 1 start** (7 weeks; was 02.11.2026) |
-| 22.02 – Sun 28.02.2027 12:00 | Week 7: regular boards + the final |
-| from Tue 02.03.2027 | Payouts for week 7 and the final |
-| 01.03 – 14.03.2027 | Break (2 weeks, decided) |
-| Mon 15.03.2027 | Season 2 (8 weeks by default) |
-| after 28.02.2027 and the snapshot (not before March 2027) | TEN4 TGE and the airdrop claim (merkle, a 90-day window) |
+| on the owner's command (after the beta is the recommended point, see §12 G17) | Devnet cleanup and deploy of pool v5 with a new program id (the v5 code is already in the repo; not required for the beta) |
+| Now — polish and test | Cab, wallets, boards, replays, anti-cheat, and the local chain. No public prize. |
+| Next — soft launch (beta) | Devnet pre-season: registration, campaign steps (a test ride + Telegram + X), one 1h board, one qualifying attempt, fund $500, top 20. The owner sets the `event_*` epoch seconds when the beta is dated. They stay `0` until then. Then review, a 24 h appeal window, and USDC payouts on mainnet from the event wallet (manual review of the top 20, Chainalysis sanctions, a 72 h hold; no tax forms). |
+| Before public | Choice and registration of the operator legal entity (required before paid tickets, TGE, and full Terms). |
+| Then — public | Mainnet and Season 1 (`weeks = 7`, final week 7: regular boards + the final). No start date. Payouts follow that week. A 2-week break, then Season 2 (8 weeks by default). |
+| After the public season | TEN4 TGE and the airdrop claim (merkle, a 90-day window). No date. The snapshot is after Season 1 ends. |
 
 ## 2. TEN4 v2 tokenomics
 
@@ -78,8 +74,8 @@ Specification: [`../spec/ten4.md`](../spec/ten4.md) · public page: [`../tech/te
 
 Specification: [`../spec/pool.md`](../spec/pool.md) · Pre-season plan: [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md).
 
-- **Pre-season (devnet):** registration from 02.11.2026, the week of 09–15.11, payouts from 17.11; the season is `weeks = 1` with no final (or `event_*` keys); fund $500, top 20 (100 / 70 / 50 / 2×30 / 5×20 / 10×12), ties are split equally. The plan and the runbook are [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md).
-- Season 1 (mainnet): start **11.01.2027**, `weeks = 7`, `finalWeek = 7` (22–28.02.2027), payouts from 02.03, `breakUntil = 2027-03-15` (break 01–14.03 — decided); Season 2 — 15.03.2027 (decided).
+- **Beta (devnet pre-season):** `weeks = 1` with no final (or the `event_*` keys, which stay `0` until the owner dates the beta); fund $500, top 20 (100 / 70 / 50 / 2×30 / 5×20 / 10×12), ties are split equally. The plan and the runbook are [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md).
+- Season 1 (mainnet, public): `weeks = 7`, `finalWeek = 7`, then a 2-week break, then Season 2. No start date.
 - Week: Mon 00:00 – Sun 12:00 UTC (the target schedule is Tue–Sun — see [`../spec/pool.md`](../spec/pool.md) `POOL-M-01`); review until Mon 12:00, appeals until Tue 12:00, then payouts.
 - Admin: CRUD of the `prize.Season` entity + `prize.SeasonRulesVersion` (a log and a signature); `SeasonService` replaces `SEASON_EPOCH = '2026-10-12'`; a ranked start outside a season → 409.
 - Money parameters (B, caps, shares) are stored in Season.
@@ -116,7 +112,7 @@ Specification: [`../spec/referral.md`](../spec/referral.md) §2.
 
 Specification: [`../spec/ten4.md`](../spec/ten4.md) §4.2 · Pre-season tasks: [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §11.
 
-- Season 1: 2M of 8M, a cap of 2,000 TEN4 per wallet, a claim at TGE (merkle, receipt `[b"airdrop", campaign, wallet]`, `burn_unclaimed` after 90 days). The snapshot is after the end of Season 1 (28.02.2027); TGE is not before March 2027.
+- Season 1: 2M of 8M, a cap of 2,000 TEN4 per wallet, a claim at TGE (merkle, receipt `[b"airdrop", campaign, wallet]`, `burn_unclaimed` after 90 days). The snapshot is after Season 1 ends. TGE has no date.
 - **The set of mandatory steps is defined per campaign** (`requiredTasks`). Pre-season (round 19): a test ride + Telegram (channel and chat) + X (a follow of @FreightChainSol + a participation post with a personal code) are mandatory; Discord is optional; Pre-season points count toward Season 1 (a question for the owner — confirm). Convoy milestones M1/M2 require the current campaign's mandatory set.
 - Tasks: a mandatory test ride (MEDIUM/HARD), X (a follow; likes and reposts are not checked), Telegram, Discord.
 - X via **twitterapi.io**, with no OAuth: binding by a quote post with a personal code; budget `airdrop_twitterapi_budget_usd = 100` per campaign; if an X task fails it is "pending", and the snapshot is postponed.
@@ -150,7 +146,7 @@ Research and calculations: [`research/tax_thresholds.md`](research/tax_threshold
 |---|---|
 | W-9 / W-8BEN on the first payout, in one flow with Didit | `tax_form_required_on_first_payout = 1` |
 | Annual accounting by calendar year, including TEN4 at FMV | `tax_year_basis = calendar`, `tax_include_ten4_fmv = 1` |
-| 1099-MISC from $2,000 (2026) | `tax_1099_threshold_usd = 2000` |
+| 1099-MISC from $2,000, then indexed | `tax_1099_threshold_usd = 2000` |
 | Amount — gross | `tax_amount_basis = gross` |
 | Nonresident withholding is off until a consultation | `nra_withholding_enabled = 0` |
 | KYC and payouts | `payout_kyc_free_any = 1`, `payout_kyc_paid_season_cents = 5000`, `payout_hold_hours = 72`, `payout_sanctions_check = 1` |
@@ -207,7 +203,7 @@ Specification: [`../spec/admin_security.md`](../spec/admin_security.md), [`../sp
 | 6 | Tests — the local and browser circuit ([`../testing/COVERAGE_CONTRACT.md`](../testing/COVERAGE_CONTRACT.md), [`../testing/IMPLEMENTATION_PLAN.md`](../testing/IMPLEMENTATION_PLAN.md)) |
 | 7 | ✅ PR #3 is merged into `main` |
 
-**Planned DB migrations (Season 1 / rework):** `20261104000000_referral_rework`, `20261104100000_referral_reward`, `20261104200000_seasons`, `20261105000000_prize_sponsor`, `20261105100000_ticket_orders`, `20261105200000_trust`, `20261105300000_tax`, `20261105400000_privacy` (+ `player.TermsAcceptance`), `20261107000000_airdrop`.
+**Planned DB migrations (Season 1 / rework):** `referral_rework`, `referral_reward`, `seasons`, `prize_sponsor`, `ticket_orders`, `trust`, `tax`, `privacy` (+ `player.TermsAcceptance`), `airdrop`.
 
 **Summary of the new `player.GameSetting` keys (details in §§5–11 and [`../tech/configuration.md`](../tech/configuration.md)):**
 
@@ -221,24 +217,24 @@ Specification: [`../spec/admin_security.md`](../spec/admin_security.md), [`../sp
 
 ### Launch gap summary (G1–G21)
 
-#### P0 — Pre-season launch blockers (registration 02.11, prize week 09–15.11.2026)
+#### P0 — Beta blockers (registration, then the prize week; dates unset)
 
 | # | Where | Status / What is needed | Who |
 |---|---|---|---|
 | **G1** | Infra: `deploy/nginx/`, `server/src/main.ts` | **Enable the Cloudflare proxy (orange cloud)**, `set_real_ip_from` for the Cloudflare ranges only, `real_ip_header CF-Connecting-IP`, and pass `X-FC-Country: $http_cf_ipcountry` (otherwise the client can forge `X-FC-Country`) | Code + Owner (DNS, [`OWNER_TASKS.md`](OWNER_TASKS.md) §1.2) |
 | **G2–G3, G6–G11, G13–G14, G16** | Event mode, RU/EN rules, Telegram+X, the top-20 runbook, an RU/EN glossary, geo status, 18+/Terms, USDC payouts, the devnet faucet | ✅ **Specified** in [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) Part II (§10–16), [`../legal/PRESEASON_RULES.md`](../legal/PRESEASON_RULES.md), [`../legal/PRESEASON_RULES_RU.md`](../legal/PRESEASON_RULES_RU.md). Code implementation — tasks C2–C8 in [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §7; external keys — [`OWNER_TASKS.md`](OWNER_TASKS.md) §1–3 | Code (C2–C8) + Owner |
-| **G4 / G4a** | Organizer and legal entity | ✅ The owner runs Pre-season as a natural-person organizer (accepted risk, [`research/operator_entity_options.md`](research/operator_entity_options.md) §6–7). For Season 1: choose the legal entity by **01.12.2026**, register it by **20.12.2026** | Owner ([`OWNER_TASKS.md`](OWNER_TASKS.md) §4.1) |
+| **G4 / G4a** | Organizer and legal entity | ✅ The owner runs the beta as a natural-person organizer (accepted risk, [`research/operator_entity_options.md`](research/operator_entity_options.md) §6–7). Before public: choose and register the legal entity, before paid tickets, mainnet pools, and TEN4 | Owner ([`OWNER_TASKS.md`](OWNER_TASKS.md) §4.1) |
 | **G5** | Legal review | ⏸ Deferred by the owner until Season 1 (accepted risk). The list of questions for the lawyer and the tax adviser is in [`../spec/OPEN.md`](../spec/OPEN.md) §2 | Owner → lawyer by S1 |
-| **G12** | Devnet RPC and the event wallet | A dedicated Helius devnet RPC (by 02.11) and a separate event wallet on Solana mainnet with `$500 USDC + ~0.15 SOL` (by 09.11) | Owner ([`OWNER_TASKS.md`](OWNER_TASKS.md) §1.3, §2.1) |
+| **G12** | Devnet RPC and the event wallet | A dedicated Helius devnet RPC before registration opens, and a separate event wallet on Solana mainnet with `$500 USDC + ~0.15 SOL` before the prize week | Owner ([`OWNER_TASKS.md`](OWNER_TASKS.md) §1.3, §2.1) |
 
-#### P1 / P2 — Tasks for Season 1 (mainnet 11.01.2027) and documentation alignment
+#### P1 / P2 — Tasks for public Season 1 (mainnet) and documentation alignment
 
 | # | Where | Status / What is needed |
 |---|---|---|
 | **G15** | Team tokenomics in the DB | ✅ The `freightchain_honk` contract is ready (`team_enabled = true`, 24 months); when the mainnet indexer is connected, add the `team` bucket to `tokenomics.ts` |
 | **G17** | Deploy of `freightchain_pools` v5 to devnet | ✅ The v5 code and 163 tests are ready in the repo; the devnet deploy with a new program id is on the owner's command ([`../tech/program-deploy.md`](../tech/program-deploy.md)) |
 | **G18** | Week schedule (Tue–Sun vs Mon–Sun) | In [`../spec/pool.md`](../spec/pool.md) `POOL-M-01` the target format is Tue evening → Sun evening + 1.5 days of review; before Season 1, sync the pool parameters and the text of [`../legal/OFFICIAL_RULES.md`](../legal/OFFICIAL_RULES.md) |
-| **G19–G20** | The 44 vs 34 cNFT badge count, and the dates in the pitch deck | Before Season 1, sync the number of SVG badges in `landing/src/pitchdeck/data.js` (`ACH`) and on the landing |
+| **G19–G20** | The 44 vs 34 cNFT badge count | Before public, sync the number of SVG badges in `landing/src/pitchdeck/data.js` (`ACH`) and on the landing. The public plan chart has no dates. |
 | **G21** | Secret validation when flags are on | In `env.schema.ts`, require the secrets (`TURNSTILE_SECRET_KEY`, `TELEGRAM_BOT_TOKEN`, `TWITTERAPI_KEY`, `CHAINALYSIS_API_KEY`) when the corresponding flag is on |
 
 ## 13. Documents in the repository
@@ -256,14 +252,14 @@ Specification: [`../spec/admin_security.md`](../spec/admin_security.md), [`../sp
 ## 14. Open questions and the owner's tasks
 
 - **A single registry of open questions (lawyer, taxes, calibration after launch):** [`docs/spec/OPEN.md`](../spec/OPEN.md) (replaces the former duplicate list in this section and the deleted `OPEN_QUESTIONS.md`).
-- **A single checklist of the owner's external tasks by deadline:** [`docs/plan/OWNER_TASKS.md`](OWNER_TASKS.md).
+- **A single checklist of the owner's external tasks by stage:** [`docs/plan/OWNER_TASKS.md`](OWNER_TASKS.md).
 
 ## 15. Audit log of the plans (rounds 12–19)
 
 - **Round 12:** in the `freightchain_honk` tokenomics, a 100M supply and the team bucket are fixed (a 12-month cliff + 24 months linear, `claim_team`); `PRIVACY.md` records that there are no third-party streaming integrations; Season 1's final week = week 7; Solana Pay was chosen instead of a cash desk.
 - **Round 13:** a draft of [`docs/legal/TERMS.md`](../legal/TERMS.md) was added and checked against `PRIVACY.md` (geo, socials, anti-cheat, a 90-day chat, no browser fingerprint) and against the pool and referral rules.
-- **Round 14:** Pre-season on devnet was adopted ([`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) D1–D12); the Season 1 mainnet start was moved to **11.01–28.02.2027** (payouts from 02.03, a break until 14.03, Season 2 from 15.03.2027); TGE is not before March 2027.
+- **Round 14:** Pre-season on devnet was adopted ([`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) D1–D12). Season 1 is seven weeks on mainnet after the beta, then a 2-week break, then Season 2. TGE has no date. The calendar that used to sit on this row was withdrawn.
 - **Rounds 15–16:** ties on all boards and in the final are split equally, with no tie-break by wallet address; when the place-sum is equal at the final-selection boundary, everyone gets through (`settleSeasonFinal` for `N` finalists).
-- **Round 17:** the owner runs Pre-season as a natural-person organizer (a tax resident of Serbia, see [`research/operator_entity_options.md`](research/operator_entity_options.md) §6–7) and pays the prizes in person from a dedicated event wallet; US tax forms are not collected in Pre-season; a Chainalysis sanctions check is mandatory; the legal entity for Season 1 is chosen by 01.12.2026.
+- **Round 17:** the owner runs the beta as a natural-person organizer (a tax resident of Serbia, see [`research/operator_entity_options.md`](research/operator_entity_options.md) §6–7) and pays the prizes in person from a dedicated event wallet; US tax forms are not collected in the beta; a Chainalysis sanctions check is mandatory; the legal entity is chosen before public.
 - **Rounds 18–19:** the Pre-season prize qualifying attempt is issued only for the campaign's mandatory task set (a MEDIUM/HARD test ride + the Telegram channel and chat + an X follow and a post with the code); there is no legal entity, no lawyer, and no Didit before Pre-season (a risk the owner accepted); the top-20 review is strict anti-sybil plus a manual review against the runbook in [`DEVNET_PRESEASON.md`](DEVNET_PRESEASON.md) §14.
 

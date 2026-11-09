@@ -63,7 +63,7 @@ An id is not a written test until it runs on the phone-minigames tree. The execu
 
 > Not the game. The phone build does not implement parking pockets, noisy PNGs, a +45 s skip, or the 15-id list below. Part 1 wins. This appendix stays so the old decisions can be read. Do not schedule a task from it.
 
-> Moved unchanged from `anticheat_test_plan.md §13` (17.10.2026).
+> Moved unchanged from `anticheat_test_plan.md §13`.
 
 ### 13. Minigame captchas (1h rides only)
 
@@ -116,7 +116,7 @@ Why these: they are **everyday** (they fit the long-haul fantasy), they **read i
 6. **Integrity:** the answer is signed with the session key (§14.3), the nonce has not been used, the event exists, the window is open, the answer is not before the reveal (`mg-answer-before-reveal` → reject).
 
 #### 13.6 API, data model, limits
-- **Issuing: on the stream.** The existing heartbeat response (`challenge`) is extended with the field `minigames: MiniGameDto[]` (events that are "armed" or visible). The heartbeat goes out once every 10 s, so stations are revealed with 60–90 s to spare. For `phone-sms` a delay of 0–10 s does not matter: it fires at a stop, and the timer is counted from the moment it is shown.
+- **Issuing: on the stream.** The existing heartbeat response (`challenge`) is extended with the field `minigames: MiniGameDto` (events that are "armed" or visible). The heartbeat goes out once every 10 s, so stations are revealed with 60–90 s to spare. For `phone-sms` a delay of 0–10 s does not matter: it fires at a stop, and the timer is counted from the moment it is shown.
 - **The answer: a separate endpoint**, for the sake of server timing. `POST /api/rides/:id/minigames/:eventId/answer` with the body `{nonce, answer, shownAtStep, firstTouchStep, submitStep, clientMs, mac}`. Responses: `200 {correct, penaltyS, attemptsLeft}`, `409 mg_already_answered`, `410 mg_expired`, `404 mg_unknown`, `400 mg_bad_mac`, `429` on the limit. The full trace (the `mg` stream) goes in the nearest batch under the MAC; the endpoint receives only the outcome.
 - **Model (Prisma):** `RideMiniGame { id, rideId, ordinal, kind, slotS, triggerJson, layoutJson, answerHash, nonce, issuedAt, revealedAt, shownAtStep, answeredAt, attempts, correct, penaltyS, status: armed|revealed|answered|missed|expired|invalid, features Json, reasons Json, rulesVersion }`. On `Ride`: `mgCommit`, `mgSaltRevealedAt` (the salt itself does not need to be stored: it is derived from `MG_SECRET`). Retention is `TELEMETRY_RETENTION_DAYS` (90 days); for the top-20 and for disputes, until payout plus the appeal period (§9.9).
 - **Limits and replay protection:** 1 final answer per event, up to 3 input attempts in the window, ≤ 10 requests a minute per ride, ≤ 4 events per ride (as `CHALLENGE_PER_SHIFT_MAX`). The nonce is single-use and bound to `rideId`; a repeat → `409` and `flag mg-nonce-replay`; a foreign nonce → `400` and `reject mg-nonce-foreign`. Idempotency on `(eventId, attempt)`.
@@ -133,21 +133,21 @@ Why these: they are **everyday** (they fit the long-haul fantasy), they **read i
 - The goal is not "impossible". It is: (1) **raise the cost** (a vision pipeline is required, and each player has their own layout); (2) **produce a signal** (an agent bot has delays of 2–6 s per step with little variation, straight or "teleporting" traces, no micro-movements and no overshoot, no Fitts's law — §16); (3) **a manual check of the top-20**, watching the minigame traces (§16.6).
 - Minigames never reject on their own, except for integrity violations (the nonce, the MAC, an answer before the reveal, driving through the barrier) and the "physically impossible" (§16.4).
 
-#### 13.9 Extended catalog (candidates, 17.10.2026)
+#### 13.9 Extended catalog (candidates, )
 There are 11 candidates; the base is the 6 from §13.2. After the merges the unique ids are **15**:
 - `radio-exit` is merged with `dispatch-radio`: it is the same radio, now with a road variant "exit and lane".
 - `waybill` is merged with `cargo-seal`: it is the same seal check, now with a variant "find it on the 3D model of the trailer at the scales".
 - Three further candidates are **built into** existing games, but stay separate ids:
-  - `fuel-rugpull` is the payment step inside `fuel-station`;
-  - `gas-priority` is the payment step inside `toll-gate`;
-  - `seed-words` is the phone unlock screen before `phone-sms` and the other crypto games.
+ - `fuel-rugpull` is the payment step inside `fuel-station`;
+ - `gas-priority` is the payment step inside `toll-gate`;
+ - `seed-words` is the phone unlock screen before `phone-sms` and the other crypto games.
 - Each game goes through its own owner review. The status of every new one is **⏳ pending owner review**. Decisions 19–32 are accepted, so everything below is subject to them:
-  - 1h only (19);
-  - 2–4 events per ride (20), so the extended catalog is a **pool** from which `mgSalt` picks 2–4 games, not "all of them in one ride";
-  - the phone only while stopped (22);
-  - penalties (23): wrong +20 s, skip +45 s, the ride does not fail, ≥ 2 skips → flag;
-  - values as an image (24);
-  - ~~only `phone-sms` in the first wave (30)~~ — decision 30 is replaced by decision 11: the full scope; the phases in the table of §13.9.12 mean **ordering**: "devnet launch" (the first launch) or "later". Seasons are not planned yet (owner decision of 17.10).
+ - 1h only (19);
+ - 2–4 events per ride (20), so the extended catalog is a **pool** from which `mgSalt` picks 2–4 games, not "all of them in one ride";
+ - the phone only while stopped (22);
+ - penalties (23): wrong +20 s, skip +45 s, the ride does not fail, ≥ 2 skips → flag;
+ - values as an image (24);
+ - ~~only `phone-sms` in the first wave (30)~~ — decision 30 is replaced by decision 11: the full scope; the phases in the table of §13.9.12 mean **ordering**: "devnet launch" (the first launch) or "later". Seasons are not planned yet (owner decision of 17.10).
 
 Shared notation:
 - **Resistance** against three classes of bot (§17.1): **S** — a script with fixed actions, **O** — a rules-based OCR bot, **L** — a multimodal LLM agent. Scale: low / medium / high.
@@ -359,7 +359,7 @@ Every phone game and every crypto game, except `gas-priority`, is only while sto
 ---
 
 ## Appendix B. Bots for minigames (former §17.1)
-> Moved unchanged from `anticheat_test_plan.md §17.1` (superseded, merged into docs/spec) (17.10.2026); heading levels shifted by one. Part 1 of this file is normative; if they diverge, the spec wins.
+> Moved unchanged from `anticheat_test_plan.md §17.1` (superseded, merged into docs/spec); heading levels shifted by one. Part 1 of this file is normative; if they diverge, the spec wins.
 
 #### 17.1 Bots for minigames
 | ID | Bot | How it is built | Expected (enforce) |

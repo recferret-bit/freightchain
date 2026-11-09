@@ -1,4 +1,4 @@
-# Goal status (28 October 2026)
+# Goal status
 
 Goal: `/goal finish specs and tests, check its last status. skip 1h ride.`
 Session: `6e3b1646-e8bb-460e-8cde-2979cbb262b2`
@@ -6,8 +6,8 @@ Session: `6e3b1646-e8bb-460e-8cde-2979cbb262b2`
 ## Done
 
 - **Tests:** one uninterrupted `npm run test:ci:full` on `main` at `613e3639` finished with 0 failures. The 1h paid ride was skipped.
-  - Layers: check, server integration, block1/2/3, security, Rust programs, production-local, localnet journeys, NFT localnet, all 31 Chrome suites.
-  - Recorded in `docs/testing/LOCAL_READINESS.md`, commit `63f112e8`.
+ - Layers: check, server integration, block1/2/3, security, Rust programs, production-local, localnet journeys, NFT localnet, all 31 Chrome suites.
+ - Recorded in `docs/testing/LOCAL_READINESS.md`, commit `63f112e8`.
 - **Specs:** 51 of 53 tasks done in `docs/plan/spec-compliance/STATUS.md`. SPC-05.5 was closed in this work.
 - Nothing is pushed. Nothing is deployed.
 

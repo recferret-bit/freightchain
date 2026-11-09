@@ -1,28 +1,28 @@
 # Anti-cheat — spec and test plan
 
-> The live judge is the 10 Hz `ReplayEngine` (decision 69, 24.10.2026). `stepAt30Hz` is not that judge. Telemetry v2.1, world integrity, mechanical input, verdicts. Decisions 1–16, 18, 24–27, 31, 33, 35, 69. The full text of the plan (the former §1–12, §14–18 of `anticheat_test_plan.md` (superseded, merged into docs/spec)) is Appendix A, unchanged. Minigames — [`minigames.md`](minigames.md), rides and the ranking — [`rides.md`](rides.md), the pool — [`pool.md`](pool.md).
+> The live judge is the 10 Hz `ReplayEngine` (decision 69, ). `stepAt30Hz` is not that judge. Telemetry v2.1, world integrity, mechanical input, verdicts. Decisions 1–16, 18, 24–27, 31, 33, 35, 69. The full text of the plan (the former §1–12, §14–18 of `anticheat_test_plan.md` (superseded, merged into docs/spec)) is Appendix A, unchanged. Minigames — [`minigames.md`](minigames.md), rides and the ranking — [`rides.md`](rides.md), the pool — [`pool.md`](pool.md).
 
 ## Part 1. Spec
 ### 1.1 In the code now (`origin/main`)
 - The v1 pipeline (Appendix A §1):
-  - a heartbeat (`applyReport`, `ride.entity.ts`);
-  - telemetry batches at 10 Hz with SHA-256 **and no key**;
-  - `verdict-rules.ts` (`RULES_VERSION = 7`);
-  - `world-checks.ts:73` `checkWorld`, `world-facts.ts:67`, `batch-summary.ts:70`;
-  - `replay-engine.ts` — a check of the client's samples, not full physics.
+ - a heartbeat (`applyReport`, `ride.entity.ts`);
+ - telemetry batches at 10 Hz with SHA-256 **and no key**;
+ - `verdict-rules.ts` (`RULES_VERSION = 7`);
+ - `world-checks.ts:73` `checkWorld`, `world-facts.ts:67`, `batch-summary.ts:70`;
+ - `replay-engine.ts` — a check of the client's samples, not full physics.
 - There is already a check for "the client removed the holes; on the server they are there": `obstacle-ignored` → `REJECTED` (`e2e-road-check.mjs` B, line 113).
 - A red light is not checked by the rules (#32). Slow-mo is not limited for free (#11).
 - Shadow batch MAC, default off (`TELEMETRY_V21=off|shadow`). `shadow` adds `{sessionKey, keyId: "v2", protocol: 2}` on `POST /start` only, plus `trafficSaltCommit` and `holeSaltCommit` (sha256 of HMAC(sessionKey, `fc-salt:traffic|hole` + ride id)). The salts are not on GET. The 10 Hz road is still `roadPlanFor(seed, trip)`. A batch may carry `protocol: 2`, `mac`, and base64 `streams` (deflate-raw). The MAC is HMAC-SHA256 over `fc-batch:v2\n` + rideId + seq + previous mac + the v1 canonical JSON, and it is checked before inflate. `protocol`, `mac`, and `streams` are not inside that JSON. A missing or wrong MAC is `400 batch-mac-missing` or `400 batch-mac-invalid`. A stream that does not inflate is `400 batch-streams-invalid`. Over 64 KB compressed or 256 KB uncompressed is `400 batch-streams-oversize`. A v1 batch is still accepted. The 10 Hz verdict does not read `streams`. `RULES_VERSION` stays 7. `stepAt30Hz` (`dt = 1/30`) is deterministic and is not called by the replay.
 - Heartbeats count `pauseCount` and `pauseSeconds`. With `TELEMETRY_V21=shadow`, more than 3 pauses flags `pause-limit`, more than 5 minutes flags `pause-time`, and a game/wall ratio below 0.9 after 60 s outside pauses flags `time-dilation`. All three are flags. None of them reject the ride.
 
 ### 1.2 Rules
-- **ACH-M-01** MUST: the source of truth is the server. The live outcome is the 10 Hz `ReplayEngine` on the recorded samples, two physics substeps per sample (decision 69, 24.10.2026). `stepAt30Hz` is not called by that replay. Decision 12's 30 Hz re-sim from raw input is not the live pipeline. Tolerances remain for v1 poses (decision 5).
+- **ACH-M-01** MUST: the source of truth is the server. The live outcome is the 10 Hz `ReplayEngine` on the recorded samples, two physics substeps per sample (decision 69, ). `stepAt30Hz` is not called by that replay. Decision 12's 30 Hz re-sim from raw input is not the live pipeline. Tolerances remain for v1 poses (decision 5).
 - **ACH-M-02** MUST: telemetry protocol v2.1:
-  - a `sessionKey` per ride and an HMAC of every batch;
-  - streams `inp` / `clk` / `chk` (with `worldDigest32`) / `mg` / `env`;
-  - a batch = 60 steps / 2 s, deflate, ≈ 0.5 MB/h.
-  
-  A batch without a valid MAC → `batch-mac-invalid` (reject). A v1 client on a v2.1 ride → `409 client_outdated`.
+ - a `sessionKey` per ride and an HMAC of every batch;
+ - streams `inp` / `clk` / `chk` (with `worldDigest32`) / `mg` / `env`;
+ - a batch = 60 steps / 2 s, deflate, ≈ 0.5 MB/h.
+
+ A batch without a valid MAC → `batch-mac-invalid` (reject). A v1 client on a v2.1 ride → `409 client_outdated`.
 - **ACH-M-03** MUST: world integrity. A divergence between the client's world and the server's → `world-digest-mismatch`. Driving through a server obstacle with no damage → `world-collision-ignored` / `obstacle-ignored` (reject). Also `noclip-path`, `lateral-teleport`, `toll-barrier-breach`.
 - **ACH-M-04** MUST: time. Game time / wall ≥ 0.9 outside a pause. Pauses ≤ N per ride and ≤ M seconds in total (decision 6). A violation → `time-dilation`. Speeding up → a budget rejection or `speed-hack`.
 - **ACH-M-05** MUST: leaving the road for longer than `OFFROAD_FAIL_SECONDS` (20 s) is a failure (decision 7).
@@ -79,14 +79,14 @@ Total: 16 MUST, the planned ids ACH-T-01…04 plus the ids from the appendix (AC
 ---
 
 ## Appendix A. The anti-cheat plan (the former header, §1–7, §9–11, §14–16, §17 (the introduction, 17.2–17.4), §18)
-> Moved unchanged from `anticheat_test_plan.md` (superseded, merged into docs/spec) (17.10.2026); heading levels are shifted by one. Part 1 of this file is normative; if they disagree, the spec wins.
+> Moved unchanged from `anticheat_test_plan.md` (superseded, merged into docs/spec); heading levels are shifted by one. Part 1 of this file is normative; if they disagree, the spec wins.
 
 ## Block 3: anti-cheat and driver bots — test plan
 
-Status: **plan** (decisions 1–10 were accepted by the owner on 17.10.2026 with changes; see §8). Plan only: no implementation, no tests, no git.
+Status: **plan** (decisions 1–10 were accepted by the owner on with changes; see §8). Plan only: no implementation, no tests, no git.
 **The plan's base on 17.10 is `origin/main` @ `3ab33d8`.** PR #3 has since been merged (`4e53f247`). HARD is now `free-3c` (30 min), `free-3b` is frozen, the ticker is TEN4. The marks "later (PR #3)" in the text below are a snapshot from before the merge; this code is already on main. Decisions 1–66 are unchanged.
 For reference: PR #3 `cursor/ten4-tokenomics-6271` @ `794fed8` (merged), PR #5 `cursor/local-e2e-suite-b044`.
-**Code check (17.10.2026, §13–19):** read-only checkout of this repository, local `main` @ `75ed4a06`. Every file that §13–19 cite is byte-for-byte identical to `origin/main` @ `3ab33d8` (the diff between them is only in `client/shared/entity/plan.js`). The code now has `RULES_VERSION = 7` (`server/src/domain/verdict/verdict-rules.ts:9`), `trafficVersion` 0/1 (v1 is set by `start-ride`), `CHALLENGE_KINDS = []` (`server/src/domain/rides/ride-challenge.ts:17`), a heartbeat every 10 s (`client/js/online.js`).
+**Code check (§13–19):** read-only checkout of this repository, local `main` @ `75ed4a06`. Every file that §13–19 cite is byte-for-byte identical to `origin/main` @ `3ab33d8` (the diff between them is only in `client/shared/entity/plan.js`). The code now has `RULES_VERSION = 7` (`server/src/domain/verdict/verdict-rules.ts:9`), `trafficVersion` 0/1 (v1 is set by `start-ride`), `CHALLENGE_KINDS = ` (`server/src/domain/rides/ride-challenge.ts:17`), a heartbeat every 10 s (`client/js/online.js`).
 
 Contents: §1–7 — the current system, the tests, and the bot block (v1); §8 — decisions 1–10; **§9 — Anti-cheat hardening v2**; §10 — bot tests for input timing; §11 — the answer about 8h; §12 — decisions 11–18 (**the owner's answers of 17.10**: 13, 15, and 16 accepted; 11, 12, 14, 17, and 18 changed); **§13 — minigame captchas (1h only)**; **§14 — telemetry protocol v2.1**; **§15 — the server check and world integrity**; **§16 — mechanical-input detection**; **§17 — bot tests for minigames and integrity**; **§18 — the estimate: Pre-season (shadow) and Season 1**; **§19 — decisions 19–32**.
 
@@ -143,22 +143,22 @@ Contents: §1–7 — the current system, the tests, and the bot block (v1); §8
 
 #### 1.8 A summary of the exact thresholds, budgets, and CLI of rules v4 / v5 / v7 (from `verified-play`)
 - **Rules v7 (`trafficProof`, `client/shared/traffic-proof.js` ⇄ `server/src/domain/verdict/traffic-proof.ts`)**:
-  - A frame is a `Float64Array` (12 LE numbers): `[dt, signalClock, s, d, psi, trailerYaw, v, signedVelocity, hull, reverse, branch, postHull]`, `dt <= 50 ms`.
-  - A batch is cut every **2 game seconds** or **500 frames**; a `trafficProof` ceiling of **64 KB**, a batch ceiling of **98 304 B** (HTTP body limit **100 KB**), a byte stream of `<= 65 536 B / s wall`, a batch count of `<= wall / 0.2 + 10`.
-  - Rejection codes: `traffic-proof-missing`, `traffic-proof-invalid`, `traffic-collision-ignored`, `traffic-damage-ignored`, `traffic-proof-mismatch`.
-  - Chrome E2E (`bash .claude/skills/run-tests/e2e.sh traffic` / `node server/scripts/e2e-traffic-proof.mjs`, filter `TRAFFIC_CASES=<name>`, on macOS it launches Chrome with Metal): 9 scenarios (`honest`, `honest-finish`, `honest-slow`, `honest-collision`, `no-cars`, `no-cars-no-columns`, `ignore-damage`, `strip-proof`, `malformed-proof`).
+ - A frame is a `Float64Array` (12 LE numbers): `[dt, signalClock, s, d, psi, trailerYaw, v, signedVelocity, hull, reverse, branch, postHull]`, `dt <= 50 ms`.
+ - A batch is cut every **2 game seconds** or **500 frames**; a `trafficProof` ceiling of **64 KB**, a batch ceiling of **98 304 B** (HTTP body limit **100 KB**), a byte stream of `<= 65 536 B / s wall`, a batch count of `<= wall / 0.2 + 10`.
+ - Rejection codes: `traffic-proof-missing`, `traffic-proof-invalid`, `traffic-collision-ignored`, `traffic-damage-ignored`, `traffic-proof-mismatch`.
+ - Chrome E2E (`bash .claude/skills/run-tests/e2e.sh traffic` / `node server/scripts/e2e-traffic-proof.mjs`, filter `TRAFFIC_CASES=<name>`, on macOS it launches Chrome with Metal): 9 scenarios (`honest`, `honest-finish`, `honest-slow`, `honest-collision`, `no-cars`, `no-cars-no-columns`, `ignore-damage`, `strip-proof`, `malformed-proof`).
 - **Rules v5 (`sample-safety.ts`) and v4 (`recording-checks.ts`, `verdict-rules.ts`)**:
-  - Coarse bounds on sample position (`sample-safety.ts` on `POST /api/rides/:id/telemetry`): distance from the start `|s| <= 1000 + 56 * game_s` (m), the step between samples `|Δs| <= 1000 + 56 * dt` (m), distance covered in one batch `<= 10 km`, otherwise `400 bad_batch` or `bad-sample`; two empty batches in a row are rejected. `recordingAllowance` budgets (v4): `game seconds <= wall * 1.05 + 30`, `seq <= wall / 5 + 10`, `totalBytes <= wall * 4 KB + 256 KB`.
-  - Motion and progress bounds: total distance `<= 28 * 1.05 * wall + 50 m`, a step `|Δs| <= 28 * 1.1 * dt + 10 m`, a gap `sample-gap > 1 s`, a speed-integral disagreement `speed-mismatch > 50 m + 1%`, duplicate times `dupT`, a coarse browser timer `timerStepMs`, the phone prefix `PHONE_PREFIX = 'phone:'` (it does not count as control input).
-  - The server leaf of a batch's Merkle tree (`RideBatch.serverHash` in `telemetry-merkle.ts`): the prefix `0x02` (RFC 6962).
+ - Coarse bounds on sample position (`sample-safety.ts` on `POST /api/rides/:id/telemetry`): distance from the start `|s| <= 1000 + 56 * game_s` (m), the step between samples `|Δs| <= 1000 + 56 * dt` (m), distance covered in one batch `<= 10 km`, otherwise `400 bad_batch` or `bad-sample`; two empty batches in a row are rejected. `recordingAllowance` budgets (v4): `game seconds <= wall * 1.05 + 30`, `seq <= wall / 5 + 10`, `totalBytes <= wall * 4 KB + 256 KB`.
+ - Motion and progress bounds: total distance `<= 28 * 1.05 * wall + 50 m`, a step `|Δs| <= 28 * 1.1 * dt + 10 m`, a gap `sample-gap > 1 s`, a speed-integral disagreement `speed-mismatch > 50 m + 1%`, duplicate times `dupT`, a coarse browser timer `timerStepMs`, the phone prefix `PHONE_PREFIX = 'phone:'` (it does not count as control input).
+ - The server leaf of a batch's Merkle tree (`RideBatch.serverHash` in `telemetry-merkle.ts`): the prefix `0x02` (RFC 6962).
 - **World checks (`world-checks.ts`, `road-damage.mjs`)**:
-  - Holes: `>= 2` missed holes with no damage → `obstacle-ignored` (reject), `1` → `obstacle-no-impact` (flag), `>= 2` unmeasured → `obstacle-unmeasured` (flag).
-  - The shoulder and forks: driving off the road for `> 27 s` (`OFFROAD_FAIL_SECONDS * 1.25 + 2`) → `offroad-ignored` (reject); the fork apron `RoadLayout.forkApron` gives a corridor of `15 m` over `205 m`.
-  - Acceleration without gas: `accel-without-gas` (reject on a gain of `>= 2 m/s` or `>= 5` steps). A manual audit of road damage: `node server/scripts/road-damage.mjs`.
+ - Holes: `>= 2` missed holes with no damage → `obstacle-ignored` (reject), `1` → `obstacle-no-impact` (flag), `>= 2` unmeasured → `obstacle-unmeasured` (flag).
+ - The shoulder and forks: driving off the road for `> 27 s` (`OFFROAD_FAIL_SECONDS * 1.25 + 2`) → `offroad-ignored` (reject); the fork apron `RoadLayout.forkApron` gives a corridor of `15 m` over `205 m`.
+ - Acceleration without gas: `accel-without-gas` (reject on a gain of `>= 2 m/s` or `>= 5` steps). A manual audit of road damage: `node server/scripts/road-damage.mjs`.
 - **The resimulation queue, retention, and the CLI**:
-  - The worker and a manual run of the 10 Hz `ReplayEngine`: `npm run replay:worker`, `npm run replay:verify -- --ride <id>`.
-  - Rejudging rides and pool marks: `npm run verdict:rejudge`, `npm run pool:attention -- --pool <id>` (`pool-duplicate-recording`: a match of `|Δd| <= 0.1 m` on `>= 90%` of points stepped at `25 m` over a distance of `>= 1 km`).
-  - Retention periods (`retention:sweep`): `TELEMETRY_RETENTION_DAYS = 90` days for telemetry batches, `SIGNIN_RETENTION_DAYS = 180` days for sign-in logs.
+ - The worker and a manual run of the 10 Hz `ReplayEngine`: `npm run replay:worker`, `npm run replay:verify -- --ride <id>`.
+ - Rejudging rides and pool marks: `npm run verdict:rejudge`, `npm run pool:attention -- --pool <id>` (`pool-duplicate-recording`: a match of `|Δd| <= 0.1 m` on `>= 90%` of points stepped at `25 m` over a distance of `>= 1 km`).
+ - Retention periods (`retention:sweep`): `TELEMETRY_RETENTION_DAYS = 90` days for telemetry batches, `SIGNIN_RETENTION_DAYS = 180` days for sign-in logs.
 
 ---
 
@@ -188,10 +188,10 @@ Contents: §1–7 — the current system, the tests, and the bot block (v1); §8
 ### 3. The driver bot
 
 #### 3.1 Architecture (`e2e/block3-anticheat/bot/`)
-Two engines, one interface `drive({seed, trip, route, durationS, variant, seedNoise}) → {batches[], heartbeats[], endReport, truth}`:
+Two engines, one interface `drive({seed, trip, route, durationS, variant, seedNoise}) → {batches, heartbeats, endReport, truth}`:
 
 1. **`engine: game`** (the primary one): the real client in Node, built as in `level-check/check.mjs` (esbuild of `client/js/main.js`, stub three, a fake DOM, deterministic `Math.random` and `performance.now`). The bot presses keys through `keydown/keyup` events, which is exactly what a human does. Telemetry, hashes, and the proof are written by **the game's own `telemetry.js`**, and the bot only intercepts `fetch` and decides when to send. That checks the real client, with no copy of its format.
-2. **`engine: kernel`** (fast, and for attacks): a minimal driver on top of `client/shared/*` + `TrafficSimulator`, as in `traffic-proof.scenarios.ts`. The recording is assembled by hand. It is needed for precise attacks (substituting one frame, shifting d, and so on) and for `in-process`.
+2. **`engine: kernel`** (fast, and for attacks): a minimal driver on top of `client/shared/*` + `TrafficSimulator`, as in `traffic-proof.scenarios.ts`. The recording is assembled by hand. It is needed for precise attacks (substituting one frame, shifting d, and so ) and for `in-process`.
 
 Driver logic reuses `makeDriver`/`wheelFor` from `level-check` (move it into `e2e/block3-anticheat/bot/driver.mjs` and import it from the skill, so it is not duplicated): hold the lane, the gap to the car ahead, stop on red, wait for a gap at an exit, choose the road at a fork (`takeOther`), react to a hole sign.
 
@@ -219,7 +219,7 @@ Length: `--duration 900` (15 min, the default, `free-3b` on main), `1800` (30 mi
 
 | ID | Check | Criterion |
 |---|---|---|
-| AC-P1 | 15 min of `honest-clean` on `free-3b`, 6 seeds | `completed`, `verified`, `reasons=[]`, `RideReplay.status=verified`, `rulesVersion ≥ 7` |
+| AC-P1 | 15 min of `honest-clean` on `free-3b`, 6 seeds | `completed`, `verified`, `reasons=`, `RideReplay.status=verified`, `rulesVersion ≥ 7` |
 | AC-P2 | `simulatedDistance` against `recordedDistance` | the difference ≤ `tolerance.distanceShare` (I propose 1% + 30 m, like `AGREE_*`) |
 | AC-P3 | `simulatedHull` against `recordedHull`, `trafficContacts` against the bot's `truth` | hull ± 1%, contacts match by car id |
 | AC-P4 | **later (PR #3)** ranked: `cleanMetres` against the bot's `truth.firstMistakeS` | ± `tolerance.cleanMetres` (I propose 30 m = `AGREE_METRES`); `cleanBps` on the board = the formula |
@@ -338,7 +338,7 @@ These ids are the block 3 `[CHEAT-#NN]` titles, not the rows in §5, and they do
 ---
 
 ### 6. The main gaps (do not fix them in this block; only lock them in with `known-gap` tests)
-1. **A bot gets through.** The server checks poses, not hands. A human-like bot on the real client, or a synthetic on the shared kernel, receives `verified` (#39–41). Challenges are off (`CHALLENGE_KINDS = []`); the timing checks only flag. The README admits it: "a bot using the real game can still pass".
+1. **A bot gets through.** The server checks poses, not hands. A human-like bot on the real client, or a synthetic on the shared kernel, receives `verified` (#39–41). Challenges are off (`CHALLENGE_KINDS = `); the timing checks only flag. The README admits it: "a bot using the real game can still pass".
 2. **There is no lateral kinematics and no braking check** (#4, 5, 7): d, psi, and deceleration are not checked against the steering, the grip, and `TRUCK_BRAKE`. A lane jump made to dodge a car is not caught.
 3. **"Cruise" and modified power below 1.8×** get through (#2, 3). The Chrome test `honest` itself locks `v=22`, `d`, `psi=0` and expects `verified`, so that behavior is pinned as "honest".
 4. **Hole damage can be cut down to 25%** (#30).
@@ -356,21 +356,21 @@ These ids are the block 3 `[CHEAT-#NN]` titles, not the rows in §5, and they do
 I propose **block 3 in PR #5**, but as separate commits (or a separate PR off main after PR #3 is merged; see decision 1):
 ```
 e2e/block3-anticheat/
-  bot/driver.mjs          # makeDriver/wheelFor (move it out of level-check; the skill imports from here)
-  bot/engine-game.mjs     # the client bundle in Node, a fetch intercept, deterministic clocks
-  bot/engine-kernel.mjs   # a synthetic on client/shared + TrafficSimulator
-  bot/variants.mjs        # honest-clean, mistake@N, human-noise, metronome
-  bot/cheats.mjs          # the 45 catalog modifiers, by id
-  positive.test.mjs       # AC-P1..P12 (docker, real pace)
-  cheats.test.mjs         # the catalog against docker
-  perf.test.mjs           # AC-P8/P9
-  tolerance.json
-  catalog.mjs             # the §5 table → a check that every id has a test and an expected code
+ bot/driver.mjs # makeDriver/wheelFor (move it out of level-check; the skill imports from here)
+ bot/engine-game.mjs # the client bundle in Node, a fetch intercept, deterministic clocks
+ bot/engine-kernel.mjs # a synthetic on client/shared + TrafficSimulator
+ bot/variants.mjs # honest-clean, mistake@N, human-noise, metronome
+ bot/cheats.mjs # the 45 catalog modifiers, by id
+ positive.test.mjs # AC-P1..P12 (docker, real pace)
+ cheats.test.mjs # the catalog against docker
+ perf.test.mjs # AC-P8/P9
+ tolerance.json
+ catalog.mjs # the §5 table → a check that every id has a test and an expected code
 server/test/anticheat/
-  long-ride.spec.ts       # in-process, fake clocks: P1–P7, P11, P12
-  cheats.spec.ts          # the catalog in-process (fast)
+ long-ride.spec.ts # in-process, fake clocks: P1–P7, P11, P12
+ cheats.spec.ts # the catalog in-process (fast)
 server/test/fixtures/anticheat/
-  free-3b-<seed>-honest.json.gz, …-mistake.json.gz, free-3c-…, 1h-demo-…   # golden recordings
+ free-3b-<seed>-honest.json.gz, …-mistake.json.gz, free-3c-…, 1h-demo-… # golden recordings
 ```
 
 #### 7.2 npm scripts
@@ -387,9 +387,9 @@ server/test/fixtures/anticheat/
 #### 7.4 Tolerances (`tolerance.json`)
 ```json
 { "distanceMetres": 30, "distanceShare": 0.01, "hullPct": 1.0, "cleanMetres": 30,
-  "perf15min": { "cpuMs": 3000, "rssMb": 300, "endP95Ms": 5000 },
-  "concurrency": { "bots": 16, "batchesP95Ms": 200 },
-  "falsePositiveMax": 0.0 }
+ "perf15min": { "cpuMs": 3000, "rssMb": 300, "endP95Ms": 5000 },
+ "concurrency": { "bots": 16, "batchesP95Ms": 200 },
+ "falsePositiveMax": 0.0 }
 ```
 The values are a starting point: after the first nightly run, fit them to the measurement and lock them in.
 
@@ -405,10 +405,10 @@ The values are a starting point: after the first nightly run, fit them to the me
 Goal: the server **itself resimulates the ride from the raw input and the seed** on the shared kernel, and itself decides whether a human is at the wheel or a bot. The client's poses remain a hint for display and for finding where they diverge; the server stops judging by them.
 
 #### 9.1 What is on main, and what is missing
-- Raw events are already recorded: `recordInput(code, down, e.timeStamp)` → `[ms from the start by wall, code, down]` at a precision of 0.1 ms (`client/js/telemetry.js`, `ui/input.js`). Input is keyboard only (`KeyW/ArrowUp` and so on) and the dashboard buttons `btn:*`; mobile is blocked; there is no gamepad and there are no analog axes.
+- Raw events are already recorded: `recordInput(code, down, e.timeStamp)` → `[ms from the start by wall, code, down]` at a precision of 0.1 ms (`client/js/telemetry.js`, `ui/input.js`). Input is keyboard only (`KeyW/ArrowUp` and so ) and the dashboard buttons `btn:*`; mobile is blocked; there is no gamepad and there are no analog axes.
 - Two things are missing:
-  1. **Binding an event to a simulation step.** An event is recorded by wall time, while the game reads `input` once per frame with a variable `dt` (rAF, `dt ≤ 0.05`, `main.js`).
-  2. **A truck model in the shared kernel.** Lateral dynamics, steering, the gearbox, damage from holes and props, climate (engine temperature affects power), and the battery live in `client/js/sim/{physics,damage,climate,battery}.js`, not in `client/shared`. On the server there is only a longitudinal estimate (`stepTruckPhysics`).
+ 1. **Binding an event to a simulation step.** An event is recorded by wall time, while the game reads `input` once per frame with a variable `dt` (rAF, `dt ≤ 0.05`, `main.js`).
+ 2. **A truck model in the shared kernel.** Lateral dynamics, steering, the gearbox, damage from holes and props, climate (engine temperature affects power), and the battery live in `client/js/sim/{physics,damage,climate,battery}.js`, not in `client/shared`. On the server there is only a longitudinal estimate (`stepTruckPhysics`).
 
 #### 9.2 Protocol v2 (`trafficVersion = 2`, `RULES_VERSION = 8`)
 > **Revised on 17.10 → the full normative specification is in §14 (protocol v2.1).** A fixed simulation step of **30 Hz** (decision 12; `1h = 108 000` steps, with a fallback of `20 Hz`), binary streams `inp` / `clk` / `chk` / `mg` / `env` compressed with `deflate-raw` (≈ `0.5 MB/h` instead of `~32 MB/h` in v1), a session key `sessionKey` and an `HMAC-SHA256` of every batch (`batch-mac-invalid`), clock synchronization, and dropping the mandatory 10 Hz `samples` and `trafficProof` (the server itself builds the poses for `/api/watch`, decision 18).
@@ -419,11 +419,11 @@ Goal: the server **itself resimulates the ride from the raw input and the seed**
 - The server: `seed` → the road, the holes, the traffic → `TruckSim` (new, shared) → steps driven by the input events. The server takes every fact it judges from **its own** resimulation: s, speed, hull, contacts, leaving the road, the finish, `completeDist`. The client's `s`/`hull` in the heartbeat and in `/end` become a hint (for the live feed). The finish (`completed`) is decided by the resimulation.
 - **The 30 Hz step (decision 12):** dt = 33.3 ms fits the client's current limit (`dt ≤ 0.05` in `main.js`; v1 proof frames are ≤ 50 ms), but collisions must be computed **swept** (as `TrafficSimulator` already does), not as points: in one step at the governor the truck travels ≈ 0.93 m. A hole or a barrier thinner than that is not let through. Substeps exist only inside the kernel and are deterministic (for example, 2 substeps for the trailer tires). The cost on the server: at an estimate of 1–3 µs for a truck step and 20–60 µs for traffic → **≈ 0.6–1.9 ms of CPU per game second**, so 1h ≈ **2–7 s of CPU** per core (with overhead, up to ~10 s), that is ×400–1500 faster than real time. At 20 Hz ≈ 1.5–5 s. Measure it in F0. If 30 Hz worsens handling in `level-check`, the fallback is 20 Hz (the same protocol, a different `stepHz` in the ride header), not a return to 60.
 - **Determinism requirements:**
-  1. All game physics lives in `client/shared`: the truck (steering, longitudinal, the gearbox, the clutch, the parking brake, ignition), damage (holes, cars, props), climate and the battery (if they affect power), wind. Render cosmetics (`Math.random` for the "gnats", debris) stay outside the kernel.
-  2. There is no `Math.random` in the kernel, only a PRNG from the seed (`client/shared/prng.js`).
-  3. **Its own deterministic math:** implement `sin/cos/exp/pow/atan2/tanh` in the kernel (an fdlibm port, or polynomials). V8 (Chrome, Node) agrees, but SpiderMonkey and JavaScriptCore can differ by 1 ulp, and over 8 hours that diverges. float64 only, no Float32, a fixed order of operations, and cars visited in a deterministic order.
-  4. State is serializable: JSON keeps float64 exactly. `TrafficSimulation` and `TruckSim` need `snapshot()`/`restore()`.
-  5. **Parity:** golden traces (a seed + events) → a hash of the state every second, bitwise identical in Node, Chrome, Firefox, and Safari. In CI, Node and Chrome (headless); Firefox and WebKit at night (Playwright later, as decided).
+ 1. All game physics lives in `client/shared`: the truck (steering, longitudinal, the gearbox, the clutch, the parking brake, ignition), damage (holes, cars, props), climate and the battery (if they affect power), wind. Render cosmetics (`Math.random` for the "gnats", debris) stay outside the kernel.
+ 2. There is no `Math.random` in the kernel, only a PRNG from the seed (`client/shared/prng.js`).
+ 3. **Its own deterministic math:** implement `sin/cos/exp/pow/atan2/tanh` in the kernel (an fdlibm port, or polynomials). V8 (Chrome, Node) agrees, but SpiderMonkey and JavaScriptCore can differ by 1 ulp, and over 8 hours that diverges. float64 only, no Float32, a fixed order of operations, and cars visited in a deterministic order.
+ 4. State is serializable: JSON keeps float64 exactly. `TrafficSimulation` and `TruckSim` need `snapshot()`/`restore()`.
+ 5. **Parity:** golden traces (a seed + events) → a hash of the state every second, bitwise identical in Node, Chrome, Firefox, and Safari. In CI, Node and Chrome (headless); Firefox and WebKit at night (Playwright later, as decided).
 - **If bitwise does not work out** (the fallback, decision 12): compare with a tolerance, and with no "pulling" toward the client's poses. A divergence past the threshold → `resim-divergence` (flag), rather than accepting the client's pose.
 - **Slow-mo (#11):** for paid rides, game/wall by the step clock is ≥ 0.9 outside a pause; pauses are ≤ N per ride and ≤ M seconds in total. A violation → `time-dilation` (a reject on a sustained deviation, a flag on a short one).
 - **Input agreement:** the client's checkpoints against the resimulation (`resim-mismatch` on a divergence → reject; that means modified physics), and events against the gas bit (this already exists).
@@ -431,7 +431,7 @@ Goal: the server **itself resimulates the ride from the raw input and the seed**
 #### 9.4 The humanness score (human-likelihood score)
 > **Expanded on 17.10 → the full normative specification is in §16 (features `F1–F10`, a two-stage model, verdict levels `verified / review / rejected`, shadow → enforce, and the tools for a manual review of the top-20).**
 
-#### 9.5 Server challenges (`CHALLENGE_KINDS` is currently `[]`)
+#### 9.5 Server challenges (`CHALLENGE_KINDS` is currently ``)
 > **Decision 14 (17.10):** for 1h, the road challenges (`surprise-hazard`, `lane-closure`, `signal-retime`) are **not built** as a separate class — 15 minigames in [`minigames.md`](minigames.md) replace them (the road `fork-instruction` was moved into the `dispatch-radio` minigame, variant `exit`; `crosswind-gust` stays part of the wind physics in the kernel, for feature `F3`). Protection from TAS (#41) and from peeking (#48) comes from the personal `trafficSalt` (§9.6) and from commit–reveal of the minigame schedule (`mgSalt`, [`minigames.md`](minigames.md) Appendix A §13.4).
 
 #### 9.6 A late seed, and different traffic per player
@@ -540,15 +540,15 @@ Lengths: 15 min (`free-3b`) in CI, in-process; 30 min and a 1h demo at night (fa
 ### 11. Speeding up time — only as a technique for the 1h tests (decision 17, 17.10)
 - **4h and 8h are removed for now** (decision 17); 1h and the free rides remain. The product question of "speeding up an 8h for the player" no longer exists. A real player's ride always runs at real pace.
 - **The tests are what we speed up:**
-  - an in-process resimulation at a fixed step (30 Hz, decision 12) does not depend on the wall clock: the bot generates 1h of game time (108 000 steps) in seconds of CPU, and the server clock (`ClockPort`) is fake (`sec(n)` in the harness);
-  - in docker, 1h is legally shortened through `DEMO_WALLETS` + `DEMO_SCALE` (`minSeconds = tier.seconds / DEMO_SCALE`); for example `DEMO_SCALE=4` → 15 min of wall for a CI smoke, and `DEMO_SCALE=1` is a full hour at night.
+ - an in-process resimulation at a fixed step (30 Hz, decision 12) does not depend on the wall clock: the bot generates 1h of game time (108 000 steps) in seconds of CPU, and the server clock (`ClockPort`) is fake (`sec(n)` in the harness);
+ - in docker, 1h is legally shortened through `DEMO_WALLETS` + `DEMO_SCALE` (`minSeconds = tier.seconds / DEMO_SCALE`); for example `DEMO_SCALE=4` → 15 min of wall for a CI smoke, and `DEMO_SCALE=1` is a full hour at night.
 - **The server check is already faster than real time:** the estimate in §9.3 is 1h ≈ 2–7 s of CPU at 30 Hz. v2.1 (≈ 0.5 MB/h, §14.6) and incremental resimulation per batch (§9.7) spread the load across the whole ride.
 - If 4h or 8h come back, the question of speeding them up for the player is opened again by a separate decision.
 
 ### 14. Telemetry protocol v2.1 (an improvement on §9.2)
 
 #### 14.1 What exists now (v1, from the code)
-- A batch (`client/js/telemetry.js` `cut()`): `{seq, prevHash, t0, t1, samples, inputs, trafficProof?}` → a canonical `JSON.stringify` → `sha256(text)` (WebCrypto; with no secure context, `null` → `unhashed-<seq>`). `traffic` sits beside it and is not hashed. The cut cycle is 2 s of game under v1, 500 frames at most; sending is strictly in order, and on a 4xx recording stops (`rec.refused`); after `/end` there are retries for another 55 s (`GRACE_MS`) against a server window of 60 s.
+- A batch (`client/js/telemetry.js` `cut()`): `{seq, prevHash, t0, t1, samples, inputs, trafficProof?}` → a canonical `JSON.stringify` → `sha256(text)` (WebCrypto; with no secure context, `null` → `unhashed-<seq>`). `traffic` sits beside it and is not hashed. The cut() cycle is 2 s of game under v1, 500 frames at most; sending is strictly in order, and on a 4xx recording stops (`rec.refused`); after `/end` there are retries for another 55 s (`GRACE_MS`) against a server window of 60 s.
 - Input: `[ms from wall0 at a precision of 0.1 ms, code ≤ 32 characters, down]`; the time is taken from `e.timeStamp`. There is no simulation step. The mouse is recorded only as `btn:*`, at the moment of `pointerdown`.
 - The server: `UploadBatchHandler`, the limits in `telemetry-rules.ts` (`BATCH_MAX_BYTES = 98_304`, `BATCH_MAX_INPUTS = 2000`, `GAME_TIME_FACTOR = 1.05` + 30 s, `RECORDING_BYTES_PER_SECOND = 4096`, and under v1 `65_536` — `ride.entity.ts:206`).
 - **The main weakness:** SHA-256 with no key. Anyone can recompute it, so the chain proves order and integrity but not origin. A batch made outside the session (an offline generator, someone else's ride) is indistinguishable.
@@ -744,9 +744,9 @@ Run: in-process (`server/test/anticheat/*.spec.ts`, fake clocks) on engine kerne
 > - dropping 4h/8h (decision 17) saves ≈ 1–2 days (the 8h measurements and perf);
 > - 30 Hz (decision 12) barely changes the volume, but it lowers the risk on server CPU.
 >
-> For reference: until the devnet launch (09–15.11) there are ≈ 16 working days. **Seasons are not planned for now** (the owner's decision of 17.10): everything that is not part of the devnet launch is "later", with no dates. The risk is recorded and is not disputed. If by the devnet launch v2 is not ready to enforce, the current v1 is what will judge (it is on main), and v2 is switched on when it is ready (`INPUT_REPLAY_REQUIRED`, §9.8).
+> For reference: the devnet beta has no date. **Seasons are not planned for now** (the owner's decision of 17.10): everything that is not part of the beta is "later", with no dates. The risk is recorded and is not disputed. If the beta opens before v2 can enforce, the current v1 is what will judge (it is on main), and v2 is switched on when it is ready (`INPUT_REPLAY_REQUIRED`, §9.8).
 
-Today is 17.10. Until the devnet launch is ≈ 3 weeks (registration on 02.11, the week of 09–15.11). After that it is "later"; seasons are not planned for now.
+The beta has no date. After it, the rest is later; seasons are not planned for now.
 
 #### 18.1 The first queue (the devnet launch; by decision 11, the start of the full scope)
 | Step | Contents | Estimate |
@@ -775,7 +775,7 @@ Today is 17.10. Until the devnet launch is ≈ 3 weeks (registration on 02.11, t
 
 > **The extended catalog of §13.9:** if all 11 candidates are approved — **+33–46 person-days** beyond this table (together with the crypto UI kit, 2–3). Decision 32(b) is replaced by decision 11, so this is not a cut but an **order**: the first wave is `sign-or-reject` + `address-check` + `buy-shitcoin` + the kit, ≈ +9–12. The total if everything is approved: **103–151 person-days**.
 
-- The overlap with §9.12 (F0/F2, the protocol; F5, the humanness score; F6, the tests) is ≈ 10–14 days, so **v2 plus this layer together are ≈ 70–105 person-days** (the first queue's minimum of 11–14 + §9.12's 39–55 + §18.2's 33–46 − the overlap of 10–14). **For one developer, this is unrealistic by 11.01** (≈ 12 weeks ≈ 55–60 working days, and less still once the other tasks are subtracted). A second developer is needed, or a cut (decision 32): for example, `weigh-station` and `cargo-seal` later, and ML stage 2 later.
+- The overlap with §9.12 (F0/F2, the protocol; F5, the humanness score; F6, the tests) is ≈ 10–14 days, so **v2 plus this layer together are ≈ 70–105 person-days** (the first queue's minimum of 11–14 + §9.12's 39–55 + §18.2's 33–46 − the overlap of 10–14). **For one developer, this does not fit before a public Season 1** (≈ 12 weeks ≈ 55–60 working days, and less still once the other tasks are subtracted). A second developer is needed, or a cut (decision 32): for example, `weigh-station` and `cargo-seal` later, and ML stage 2 later.
 
 ---
 
@@ -783,32 +783,32 @@ Today is 17.10. Until the devnet launch is ≈ 3 weeks (registration on 02.11, t
 
 > Status in the code ([`PRODUCT.md`](PRODUCT.md)): on `main`, the check "one person, many wallets" is not enabled as an automatic blocker; the layers below set the target layered defense against sybil farms going after pool prizes, free attempts, referrals, and the TEN4 airdrop ([`../plan/MASTER_PLAN.md`](../plan/MASTER_PLAN.md) §8, §10, §12).
 
-The 25 October login fix removes sign-in trust points and the accompanying player save; repeated authentication cannot raise trust or overwrite a concurrent score change. The local point table now awards +15 per distinct verified completion day, at most two days per ISO week, with persisted historical days preventing rejudge farming. First Telegram/X bindings grant +5/+20 within a shared 30-point social cap. Confirmed paid program-ticket acquisition raises trust to 100 once per unique chain event. The four numeric finish/social caps are signed admin settings. Player and guest sign-in subnet HMACs and 90-day retention are implemented; no raw IP/browser is stored in player.SignIn. Existing pool shared-network flags remain review signals, with no new penalty. Optional ASN classification and funding evidence now have disabled-by-default provider adapters for admin review; mobile/exchange exclusions and unknown/incomplete states are explicit. Automated cluster penalties and second-signal policy remain targets. SGT ownership has the authenticated mainnet verification path described below; optional Discord verification remains separate.
+The login fix removes sign-in trust points and the accompanying player save; repeated authentication cannot raise trust or overwrite a concurrent score change. The local point table now awards +15 per distinct verified completion day, at most two days per ISO week, with persisted historical days preventing rejudge farming. First Telegram/X bindings grant +5/+20 within a shared 30-point social cap. Confirmed paid program-ticket acquisition raises trust to 100 once per unique chain event. The four numeric finish/social caps are signed admin settings. Player and guest sign-in subnet HMACs and 90-day retention are implemented; no raw IP/browser is stored in player.SignIn. Existing pool shared-network flags remain review signals, with no new penalty. Optional ASN classification and funding evidence now have disabled-by-default provider adapters for admin review; mobile/exchange exclusions and unknown/incomplete states are explicit. Automated cluster penalties and second-signal policy remain targets. SGT ownership has the authenticated mainnet verification path described below; optional Discord verification remains separate.
 
 ### D.1 The layered model (8 layers)
 1. **Network signals (`player.SignIn.ipHash`, the ASN — with no `User-Agent` and no browser fingerprint)**:
-   - An IP hash of `HMAC-SHA256(IP_HASH_SECRET, a /24 prefix for IPv4 or /48 for IPv6)`, kept for `90 days` (`antisybil_ip_retention_days = 90`; `SIGNIN_RETENTION_DAYS = 90` per [`../legal/PRIVACY.md`](../legal/PRIVACY.md)); `player.SignIn` holds no raw IP and no `User-Agent`, and **a browser fingerprint is rejected** ([`legal.md`](legal.md) `LEG-M-05`).
-   - An IP-cluster check through `ipinfo Core`: mobile ASNs are excluded (`antisybil_ip_exclude_mobile_asn = 1`), and the penalty of `-50` (`trust_ip_cluster_penalty = 50`) is applied **only when a second signal is present** (`antisybil_ip_penalty_requires_second_signal = 1`).
-2. **The `TrustScore` system (`MASTER_PLAN.md` §8, migration `20261105200000_trust`)**:
-   - **By play**: `+15` points for a day with a verified finish (`trust_finish_points = 15`), at most `2` days in a week (`trust_finish_days_per_week = 2`), with a cap of `100` (`trust_finish_cap = 100`, `trust_threshold = 100`).
-   - **Fast paths (`trust_fast_paths = 'paid,sgt'`)**: buying a paid ticket, or holding a Solana Seeker Genesis Token (SGT), immediately gives `+100` (`World ID` is Season 2; `Human Passport` is not used).
-   - **Social networks (`trust_social_cap = 30`)**: X `+20`, Discord `+15`, Telegram `+5` (no more than `30` in total).
-   - **Access thresholds**: the Convoy referrer needs `trust >= 50` (`referral_min_trust_referrer = 50`); an airdrop participant needs `trust >= 50` (`airdrop_min_trust = 50`); a ride on a friend's free weekly ticket counts toward the Convoy M1/M2 milestones when `the friend's trust >= 100` (`referral_count_weekly_grant = 1`). What the player sees is a checklist (`trust_display_mode = 'checklist'`).
+ - An IP hash of `HMAC-SHA256(IP_HASH_SECRET, a /24 prefix for IPv4 or /48 for IPv6)`, kept for `90 days` (`antisybil_ip_retention_days = 90`; `SIGNIN_RETENTION_DAYS = 90` per [`../legal/PRIVACY.md`](../legal/PRIVACY.md)); `player.SignIn` holds no raw IP and no `User-Agent`, and **a browser fingerprint is rejected** ([`legal.md`](legal.md) `LEG-M-05`).
+ - An IP-cluster check through `ipinfo Core`: mobile ASNs are excluded (`antisybil_ip_exclude_mobile_asn = 1`), and the penalty of `-50` (`trust_ip_cluster_penalty = 50`) is applied **only when a second signal is present** (`antisybil_ip_penalty_requires_second_signal = 1`).
+2. **The `TrustScore` system (`MASTER_PLAN.md` §8, migration `trust`)**:
+ - **By play**: `+15` points for a day with a verified finish (`trust_finish_points = 15`), at most `2` days in a week (`trust_finish_days_per_week = 2`), with a cap of `100` (`trust_finish_cap = 100`, `trust_threshold = 100`).
+ - **Fast paths (`trust_fast_paths = 'paid,sgt'`)**: buying a paid ticket, or holding a Solana Seeker Genesis Token (SGT), immediately gives `+100` (`World ID` is Season 2; `Human Passport` is not used).
+ - **Social networks (`trust_social_cap = 30`)**: X `+20`, Discord `+15`, Telegram `+5` (no more than `30` in total).
+ - **Access thresholds**: the Convoy referrer needs `trust >= 50` (`referral_min_trust_referrer = 50`); an airdrop participant needs `trust >= 50` (`airdrop_min_trust = 50`); a ride on a friend's free weekly ticket counts toward the Convoy M1/M2 milestones when `the friend's trust >= 100` (`referral_count_weekly_grant = 1`). What the player sees is a checklist (`trust_display_mode = 'checklist'`).
 3. **Economic and temporal gates (Anti-Farm Gates)**:
-   - Training (`tier = free`) gives no TEN4, no tickets, and no prizes (`RID-M-02`).
-   - Prize payouts and referral rewards are held (`payout_hold_hours = 72`; the hold on referral TEN4 is `48 h`), so that a farm's results can be cancelled (`veto_winners_root` / `withheld`) before the funds are withdrawn.
-   - KYC through `Didit`: when playing on a free ticket, for any cash prize (`payout_kyc_free_any = 1`); when playing on a bought ticket, from `$50` per season (`payout_kyc_paid_season_cents = 5000`); mandatory sanctions screening by `Chainalysis` (`payout_sanctions_check = 1`, fail-closed).
+ - Training (`tier = free`) gives no TEN4, no tickets, and no prizes (`RID-M-02`).
+ - Prize payouts and referral rewards are held (`payout_hold_hours = 72`; the hold on referral TEN4 is `48 h`), so that a farm's results can be cancelled (`veto_winners_root` / `withheld`) before the funds are withdrawn.
+ - KYC through `Didit`: when playing on a free ticket, for any cash prize (`payout_kyc_free_any = 1`); when playing on a bought ticket, from `$50` per season (`payout_kyc_paid_season_cents = 5000`); mandatory sanctions screening by `Chainalysis` (`payout_sanctions_check = 1`, fail-closed).
 4. **The on-chain funding graph (`Helius funded-by` + clustering)**:
-   - A check for a shared sponsor wallet (`funded-by` through the Helius Developer API; a `404` response carries no penalty, and our own check of the transfer graph is used instead), for fan-out distribution of SOL (`fan-out`), and for payouts merging (`fan-in`) onto one withdrawal address.
+ - A check for a shared sponsor wallet (`funded-by` through the Helius Developer API; a `404` response carries no penalty, and our own check of the transfer graph is used instead), for fan-out distribution of SOL (`fan-out`), and for payouts merging (`fan-in`) onto one withdrawal address.
 5. **A behavioral fingerprint of the driving and of the minigames (feature `F9` in §16.2)**:
-   - The ride's vector of biometric features (the distribution of steering holds, F1; reaction time, F2; cursor kinematics in the minigames, F6; key dynamics, F7) → `HDBSCAN` clustering and `MinHash` of n-grams of the intervals between different wallets (for the pool's top-20 and for airdrop candidates, decision 16; `antisybil_telemetry_shadow = 1` for the 2 weeks of the launch).
+ - The ride's vector of biometric features (the distribution of steering holds, F1; reaction time, F2; cursor kinematics in the minigames, F6; key dynamics, F7) → `HDBSCAN` clustering and `MinHash` of n-grams of the intervals between different wallets (for the pool's top-20 and for airdrop candidates, decision 16; `antisybil_telemetry_shadow = 1` for the 2 weeks of the launch).
 6. **Rate limits in the referral program (Convoy Caps)**:
-   - On `main`: `inviteCapacity` (it starts at `3`, with a step of `+3` for every `5` verified paid shifts, up to `30`), an invite TTL of `14` days, and a weekly gift limit of `10`.
-   - The target Convoy model (`MASTER_PLAN.md` §6): slots of `min(100, 5 + 2·A)`, a `pending` TTL of `72 h`, a qualification window of `60 days`, a limit on a friend's promo rides of `3/day`, `10/week` per referrer and `500/week` globally, a personal cap of `1,000 TEN4/month` and a global cap of `60,000 TEN4/month` (`30,000/month` for the first 3 months after `tge_at`) (`referral.md`).
+ - On `main`: `inviteCapacity` (it starts at `3`, with a step of `+3` for every `5` verified paid shifts, up to `30`), an invite TTL of `14` days, and a weekly gift limit of `10`.
+ - The target Convoy model (`MASTER_PLAN.md` §6): slots of `min(100, 5 + 2·A)`, a `pending` TTL of `72 h`, a qualification window of `60 days`, a limit on a friend's promo rides of `3/day`, `10/week` per referrer and `500/week` globally, a personal cap of `1,000 TEN4/month` and a global cap of `60,000 TEN4/month` (`30,000/month` for the first 3 months after `tge_at`) (`referral.md`).
 7. **One qualifying ticket / a cap on the share of free tickets**:
-   - In the board's ranking, only the best verified attempt from one wallet is counted (`one best ride per wallet`), and the prize share of free tickets is capped at `free_prize_board_cap_bps = 3000` (30%).
+ - In the board's ranking, only the best verified attempt from one wallet is counted (`one best ride per wallet`), and the prize share of free tickets is capped at `free_prize_board_cap_bps = 3000` (30%).
 8. **A mandatory manual review of the top-20 before payout (§16.6)**:
-   - Before the results are locked in and paid out, every wallet in the top-20 is checked in the admin UI against the `F9` graph, the stimulus timelines, the minigame traces, the IP clusters, and the `funded-by` graph; if a sybil link is found, the linked accounts are disqualified (`rejected`).
+ - Before the results are locked in and paid out, every wallet in the top-20 is checked in the admin UI against the `F9` graph, the stimulus timelines, the minigame traces, the IP clusters, and the `funded-by` graph; if a sybil link is found, the linked accounts are disqualified (`rejected`).
 
 ### Appendix D implementation follow-up: SGT
 

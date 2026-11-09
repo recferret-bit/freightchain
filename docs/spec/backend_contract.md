@@ -1,6 +1,6 @@
 # Backend contract — spec and test plan
 
-> Every HTTP route: request and response schema, access, a positive and a negative. Backend decisions 1–10 (accepted 17.10.2026). The full plan is Appendix A (the former `backend_test_plan.md` (superseded, merged into docs/spec), text unchanged): an inventory of 151 routes, a coverage map, the approach, and a catalog of negatives.
+> Every HTTP route: request and response schema, access, a positive and a negative. Backend decisions 1–10 (accepted ). The full plan is Appendix A (the former `backend_test_plan.md` (superseded, merged into docs/spec), text unchanged): an inventory of 151 routes, a coverage map, the approach, and a catalog of negatives.
 
 ## Part 1. Spec
 ### 1.1 Currently in the code (`origin/main`)
@@ -12,7 +12,7 @@
 ### 1.2 Rules
 - **API-M-01** MUST: schemas — in zod, next to the DTO. `openapi.json` — a derived artifact (decision 1).
 - **API-M-02** MUST: every route has `@ZodResponse`. A response-schema violation: test/dev → 500 and the test fails; production → warn (`RESPONSE_SCHEMA_CHECK=off|warn|strict`, decision 2).
-- **API-M-03** MUST (detail for admin/editor — [`admin_security.md`](admin_security.md) ADM-M-09; on `origin/main` `.strict()` is nowhere, finding F06): extra input fields — `.strict()` (400) for admin, editor, and money routes (`tickets`, `rides`, `promo`, `referrals`, `pledges`, `donations`, `chain/*`). For `telemetry` and `client-error` — drop them silently (decision 3).
+- **API-M-03** MUST (detail for admin/editor — [`admin_security.md`](admin_security.md) ADM-M-09; on `origin/main` `.strict` is nowhere, finding F06): extra input fields — `.strict` (400) for admin, editor, and money routes (`tickets`, `rides`, `promo`, `referrals`, `pledges`, `donations`, `chain/*`). For `telemetry` and `client-error` — drop them silently (decision 3).
 - **API-M-04** MUST: the gate — ≥ 1 positive and ≥ 2 negatives per route (at least one business negative). For money routes and admin — ≥ 4 negatives and ≥ 1 race or repeat test. For the first 2 weeks the gate only reports (decision 4). For admin/editor routes the gate is closed by the [`admin_security.md`](admin_security.md) 2.1 matrix (`npm run test:admin-security`, `test:admin-security:integration`).
 - **API-M-05** MUST: the registry `test/contract/routes.manifest.ts` matches the real routes (`DiscoveryService`). The access class matches the guards (Appendix A §4.2).
 - **API-M-06** MUST: an error response — `ProblemDetails` with `code ∈ errorCodes` of the route, and no 5xx on invalid input.
@@ -23,12 +23,12 @@
 - **API-M-11** MUST: tests live in `server/test/contract` and `server/test/scenarios`; docker-smoke and block 2 — in `e2e/` of PR #5 (decision 6). There is no separate line-coverage threshold beyond `test:census` (decision 10).
 - **API-M-12** MUST: side effects are checked with `expectDbDelta`; ledger invariants — after every scenario (Appendix A §4.6).
 - **API-M-13** MUST: new routes from the specifications enter the registry on the first commit (privileged ones also enter the [`admin_security.md`](admin_security.md) 1.2 registry, with the ADM-T-01…12, ADM-M-21 matrix):
-  - `GET /api/me/donations` (RPL-M-18);
-  - `GET /api/pools/:id/results` (RID-M-19);
-  - `POST /api/admin/chat/:eventId/hide` (RPL-M-27);
-  - admin `set_pool_rules` (POOL-M-12).
-  
-  Routes being removed (`effects/:eventId/applied`, `watch/:id/honk/time`, `/honk/weather`) are removed from the registry; the `404` test stays. Pledge routes stay in the registry, but on a devnet launch they respond `403 pledges_disabled` (RPL-M-33, decision 51).
+ - `GET /api/me/donations` (RPL-M-18);
+ - `GET /api/pools/:id/results` (RID-M-19);
+ - `POST /api/admin/chat/:eventId/hide` (RPL-M-27);
+ - admin `set_pool_rules` (POOL-M-12).
+
+ Routes being removed (`effects/:eventId/applied`, `watch/:id/honk/time`, `/honk/weather`) are removed from the registry; the `404` test stays. Pledge routes stay in the registry, but on a devnet launch they respond `403 pledges_disabled` (RPL-M-33, decision 51).
 
 ## Part 2. Test plan
 Tests follow Appendix A: §4.3 (a contract check of the existing tests), §4.4 (matrix A — generated negatives for access, CSRF/CORS, the body, params/query), §4.5 and §5 (business negatives), §4.7 (fuzz/property). Summary ids:
@@ -54,12 +54,12 @@ API-M-01…13 → planned ids API-T-01…13. 13 MUST. An id is not a written tes
 ---
 
 ## Appendix A. Backend test plan (former backend_test_plan.md, §0–6)
-> Moved unchanged from `backend_test_plan.md` (superseded, merged into docs/spec) (17.10.2026); heading levels shifted by one. Part 1 of this file is normative; on a conflict the spec wins.
+> Moved unchanged from `backend_test_plan.md` (superseded, merged into docs/spec); heading levels shifted by one. Part 1 of this file is normative; on a conflict the spec wins.
 
 ## FreightChain backend test plan: every route, response validation, positive and negative
 
-Date: 17.10.2026. Analysis by reading the code only: tests were not run, and nothing was pushed to git.
-Branches on 17.10.2026: `origin/main` (`3ab33d8`), PR #3 `cursor/ten4-tokenomics-6271` (`794fed8`). **PR #3 is merged into main** (`4e53f247`, current main `e8f338ad`). The lines below about "not merged" and "not in the PR #3 branch" are a pre-merge snapshot; the routes `auth/pair`, `referrals`, `auth/guest`, and `prize/board` are all on main now.
+Date:. Analysis by reading the code only: tests were not run, and nothing was pushed to git.
+Branches on: `origin/main` (`3ab33d8`), PR #3 `cursor/ten4-tokenomics-6271` (`794fed8`). **PR #3 is merged into main** (`4e53f247`, current main `e8f338ad`). The lines below about "not merged" and "not in the PR #3 branch" are a pre-merge snapshot; the routes `auth/pair`, `referrals`, `auth/guest`, and `prize/board` are all on main now.
 
 ### 0. In short
 
@@ -115,7 +115,7 @@ Limit buckets: `default` (per wallet or IP), `auth` + `auth-rps`, `promo`, `enti
 
 #### 1.4 Schemas
 - **Input is fully checked:** 116 of 149 routes have zod schemas on the body, query, or params. The other 33 take no input: GETs with no parameters and 4 POSTs (`logout` ×3, `auth/pair`). Schemas sit next to the controllers (`presentation/*/dto/*.dto.ts`).
-- Extra input fields are **dropped silently**: `.strict()` is set only on `garage.loadout`.
+- Extra input fields are **dropped silently**: `.strict` is set only on `garage.loadout`.
 - **Output is not checked at all:** responses are described by TS interfaces (`Promise<XxxDto>`, ≈ 87 `*Dto` interfaces in `domain/`). Nothing checks them at runtime, and there is no OpenAPI. [`docs/tech/backend-architecture.md`](../tech/backend-architecture.md) states outright that "OpenAPI/Yaak generators… deliberately not adopted".
 - Every Nest class requires a unit spec (`test/architecture/test-pyramid.spec.ts`): all 31 controllers have `*.http.controller.spec.ts`.
 
@@ -126,155 +126,155 @@ Limit buckets: `default` (per wallet or IP), `auth` + `auth-rps`, `promo`, `enti
 
 | # | Method | Path | Access | Input (zod) | Response (TS type) | Note |
 |---|---|---|---|---|---|---|
-| 1 | GET | `/actions.json` | public · CORS-public | — | `ActionsJson` |  |
-| 2 | GET | `/api/actions/hello` | public · CORS-public | — | `ActionCard` |  |
-| 3 | POST | `/api/actions/hello` | public · CORS-public | Body:actionAccountBody | `ActionPost` |  |
-| 4 | GET | `/api/actions/shift` | public · CORS-public | — | `ActionCard` |  |
-| 5 | GET | `/api/actions/shift/:tier` | public · CORS-public | Params:actionTierParams | `ActionCard` |  |
-| 6 | POST | `/api/actions/shift` | public · CORS-public | Query:actionTierQuery, Body:actionAccountBody | `ActionTx` |  |
-| 7 | POST | `/api/actions/shift/:tier` | public · CORS-public | Params:actionTierParams, Body:actionAccountBody | `ActionTx` |  |
-| 8 | POST | `/api/actions/go/:to` | public · CORS-public | Params:actionSiteParams, Body:actionAccountBody | `ActionLink` |  |
-| 9 | GET | `/api/actions/ride/:id` | public · CORS-public | Params:rideIdParams | `ActionCard` |  |
-| 10 | POST | `/api/actions/ride/:id` | public · CORS-public | Params:rideIdParams, Body:actionAccountBody | `ActionLink` |  |
-| 11 | POST | `/api/actions/ride/:id/watch` | public · CORS-public | Params:rideIdParams, Body:actionAccountBody | `ActionLink` |  |
-| 12 | GET | `/api/admin/queue/count` | admin (fc_admin) | — | `(inline)` |  |
-| 13 | GET | `/api/admin/players` | admin (fc_admin) | Query:playersQuery | `AdminListDto<AdminPlayerRowDto>` |  |
-| 14 | GET | `/api/admin/players/:wallet` | admin (fc_admin) | Params:walletParams | `AdminPlayerDetailDto` |  |
-| 15 | GET | `/api/admin/pools` | admin (fc_admin) | Query:poolsQuery | `AdminListDto<AdminPoolRowDto>` |  |
-| 16 | GET | `/api/admin/pools/:id` | admin (fc_admin) | Params:poolIdParams | `AdminPoolDetailDto` |  |
-| 17 | GET | `/api/admin/stats` | admin (fc_admin) | Query:adminStatsQuery | `AdminStatsDto` |  |
-| 18 | GET | `/api/admin/sessions` | admin (fc_admin) | Query:sessionsQuery | `AdminSessionsDto` |  |
-| 19 | GET | `/api/admin/pool-payouts` | admin (fc_admin) | — | `PoolPayoutsDto` |  |
-| 20 | POST | `/api/admin/pools/:id/hold/challenge` | admin (fc_admin) + X-FC-Admin | Params:poolHoldParams, Body:poolHoldChallengeBody | `ChallengeDto` |  |
-| 21 | POST | `/api/admin/pools/:id/hold` | admin (fc_admin) + X-FC-Admin | Params:poolHoldParams, Body:poolHoldBody | `PoolHoldDto` |  |
-| 22 | GET | `/api/admin/promos` | admin (fc_admin) | Query:promosQuery | `PromoListDto` |  |
-| 23 | GET | `/api/admin/promos/redemptions` | admin (fc_admin) | Query:promoRedemptionsQuery | `PromoRedemptionListDto` |  |
-| 24 | POST | `/api/admin/promos/challenge` | admin (fc_admin) + X-FC-Admin | Body:promoChallengeBody | `ChallengeDto` |  |
-| 25 | POST | `/api/admin/promos` | admin (fc_admin) + X-FC-Admin | Body:createPromoBody | `PromoDto` |  |
-| 26 | POST | `/api/admin/promos/:code/disable` | admin (fc_admin) + X-FC-Admin | Params:promoCodeParams, Body:disablePromoBody | `PromoDto` |  |
-| 27 | GET | `/api/admin/settings` | admin (fc_admin) | — | `GameSettingsDto` |  |
-| 28 | POST | `/api/admin/settings/challenge` | admin (fc_admin) + X-FC-Admin | Body:settingChallengeBody | `ChallengeDto` |  |
-| 29 | POST | `/api/admin/settings` | admin (fc_admin) + X-FC-Admin | Body:updateSettingBody | `SettingUpdatedDto` |  |
-| 30 | POST | `/api/admin/players/free-rides/challenge` | admin (fc_admin) + X-FC-Admin | Body:freeRidesChallengeBody | `ChallengeDto` |  |
-| 31 | POST | `/api/admin/players/free-rides` | admin (fc_admin) + X-FC-Admin | Body:adjustFreeRidesBody | `FreeRidesAdjustedDto` |  |
-| 32 | POST | `/api/admin/auth/nonce` | admin-host, public sign-in (X-FC-Admin) | Body:challengeBody | `ChallengeDto` |  |
-| 33 | POST | `/api/admin/auth/verify` | admin-host, public sign-in (X-FC-Admin) | Body:verifyBody | `AdminSignInResultDto` |  |
-| 34 | POST | `/api/admin/auth/logout` | admin-host, public sign-in (X-FC-Admin) | — | `LogoutResultDto` |  |
-| 35 | GET | `/api/admin/overview` | admin (fc_admin) | — | `AdminOverviewDto` |  |
-| 36 | GET | `/api/admin/rides` | admin (fc_admin) | Query:adminRidesQuery | `AdminListDto<AdminRideRowDto>` |  |
-| 37 | GET | `/api/admin/replays` | admin (fc_admin) | Query:adminReplaysQuery | `AdminReplaysDto` |  |
-| 38 | GET | `/api/admin/rides/:id` | admin (fc_admin) | Params:rideIdParams | `AdminRideDetailDto` |  |
-| 39 | POST | `/api/admin/rides/:id/challenge` | admin (fc_admin) + X-FC-Admin | Params:rideIdParams, Body:actionChallengeBody | `ChallengeDto` |  |
-| 40 | POST | `/api/admin/rides/:id/verdict` | admin (fc_admin) + X-FC-Admin | Params:rideIdParams, Body:overrideBody | `VerdictDto` |  |
-| 41 | POST | `/api/admin/rides/:id/rejudge` | admin (fc_admin) + X-FC-Admin | Params:rideIdParams, Body:rejudgeBody | `VerdictDto` |  |
-| 42 | GET | `/api/admin/signins` | admin (fc_admin) | Query:signInsQuery | `AdminListDto<SignInRowDto>` |  |
-| 43 | GET | `/api/admin/actions` | admin (fc_admin) | Query:actionsQuery | `AdminListDto<AdminActionDto>` |  |
-| 44 | GET | `/api/admin/logs` | admin (fc_admin) | Query:logsQuery | `AdminLogsDto` |  |
-| 45 | POST | `/api/auth/nonce` | public | Body:requestChallengeBody | `ChallengeDto` |  |
+| 1 | GET | `/actions.json` | public · CORS-public | — | `ActionsJson` | |
+| 2 | GET | `/api/actions/hello` | public · CORS-public | — | `ActionCard` | |
+| 3 | POST | `/api/actions/hello` | public · CORS-public | Body:actionAccountBody | `ActionPost` | |
+| 4 | GET | `/api/actions/shift` | public · CORS-public | — | `ActionCard` | |
+| 5 | GET | `/api/actions/shift/:tier` | public · CORS-public | Params:actionTierParams | `ActionCard` | |
+| 6 | POST | `/api/actions/shift` | public · CORS-public | Query:actionTierQuery, Body:actionAccountBody | `ActionTx` | |
+| 7 | POST | `/api/actions/shift/:tier` | public · CORS-public | Params:actionTierParams, Body:actionAccountBody | `ActionTx` | |
+| 8 | POST | `/api/actions/go/:to` | public · CORS-public | Params:actionSiteParams, Body:actionAccountBody | `ActionLink` | |
+| 9 | GET | `/api/actions/ride/:id` | public · CORS-public | Params:rideIdParams | `ActionCard` | |
+| 10 | POST | `/api/actions/ride/:id` | public · CORS-public | Params:rideIdParams, Body:actionAccountBody | `ActionLink` | |
+| 11 | POST | `/api/actions/ride/:id/watch` | public · CORS-public | Params:rideIdParams, Body:actionAccountBody | `ActionLink` | |
+| 12 | GET | `/api/admin/queue/count` | admin (fc_admin) | — | `(inline)` | |
+| 13 | GET | `/api/admin/players` | admin (fc_admin) | Query:playersQuery | `AdminListDto<AdminPlayerRowDto>` | |
+| 14 | GET | `/api/admin/players/:wallet` | admin (fc_admin) | Params:walletParams | `AdminPlayerDetailDto` | |
+| 15 | GET | `/api/admin/pools` | admin (fc_admin) | Query:poolsQuery | `AdminListDto<AdminPoolRowDto>` | |
+| 16 | GET | `/api/admin/pools/:id` | admin (fc_admin) | Params:poolIdParams | `AdminPoolDetailDto` | |
+| 17 | GET | `/api/admin/stats` | admin (fc_admin) | Query:adminStatsQuery | `AdminStatsDto` | |
+| 18 | GET | `/api/admin/sessions` | admin (fc_admin) | Query:sessionsQuery | `AdminSessionsDto` | |
+| 19 | GET | `/api/admin/pool-payouts` | admin (fc_admin) | — | `PoolPayoutsDto` | |
+| 20 | POST | `/api/admin/pools/:id/hold/challenge` | admin (fc_admin) + X-FC-Admin | Params:poolHoldParams, Body:poolHoldChallengeBody | `ChallengeDto` | |
+| 21 | POST | `/api/admin/pools/:id/hold` | admin (fc_admin) + X-FC-Admin | Params:poolHoldParams, Body:poolHoldBody | `PoolHoldDto` | |
+| 22 | GET | `/api/admin/promos` | admin (fc_admin) | Query:promosQuery | `PromoListDto` | |
+| 23 | GET | `/api/admin/promos/redemptions` | admin (fc_admin) | Query:promoRedemptionsQuery | `PromoRedemptionListDto` | |
+| 24 | POST | `/api/admin/promos/challenge` | admin (fc_admin) + X-FC-Admin | Body:promoChallengeBody | `ChallengeDto` | |
+| 25 | POST | `/api/admin/promos` | admin (fc_admin) + X-FC-Admin | Body:createPromoBody | `PromoDto` | |
+| 26 | POST | `/api/admin/promos/:code/disable` | admin (fc_admin) + X-FC-Admin | Params:promoCodeParams, Body:disablePromoBody | `PromoDto` | |
+| 27 | GET | `/api/admin/settings` | admin (fc_admin) | — | `GameSettingsDto` | |
+| 28 | POST | `/api/admin/settings/challenge` | admin (fc_admin) + X-FC-Admin | Body:settingChallengeBody | `ChallengeDto` | |
+| 29 | POST | `/api/admin/settings` | admin (fc_admin) + X-FC-Admin | Body:updateSettingBody | `SettingUpdatedDto` | |
+| 30 | POST | `/api/admin/players/free-rides/challenge` | admin (fc_admin) + X-FC-Admin | Body:freeRidesChallengeBody | `ChallengeDto` | |
+| 31 | POST | `/api/admin/players/free-rides` | admin (fc_admin) + X-FC-Admin | Body:adjustFreeRidesBody | `FreeRidesAdjustedDto` | |
+| 32 | POST | `/api/admin/auth/nonce` | admin-host, public sign-in (X-FC-Admin) | Body:challengeBody | `ChallengeDto` | |
+| 33 | POST | `/api/admin/auth/verify` | admin-host, public sign-in (X-FC-Admin) | Body:verifyBody | `AdminSignInResultDto` | |
+| 34 | POST | `/api/admin/auth/logout` | admin-host, public sign-in (X-FC-Admin) | — | `LogoutResultDto` | |
+| 35 | GET | `/api/admin/overview` | admin (fc_admin) | — | `AdminOverviewDto` | |
+| 36 | GET | `/api/admin/rides` | admin (fc_admin) | Query:adminRidesQuery | `AdminListDto<AdminRideRowDto>` | |
+| 37 | GET | `/api/admin/replays` | admin (fc_admin) | Query:adminReplaysQuery | `AdminReplaysDto` | |
+| 38 | GET | `/api/admin/rides/:id` | admin (fc_admin) | Params:rideIdParams | `AdminRideDetailDto` | |
+| 39 | POST | `/api/admin/rides/:id/challenge` | admin (fc_admin) + X-FC-Admin | Params:rideIdParams, Body:actionChallengeBody | `ChallengeDto` | |
+| 40 | POST | `/api/admin/rides/:id/verdict` | admin (fc_admin) + X-FC-Admin | Params:rideIdParams, Body:overrideBody | `VerdictDto` | |
+| 41 | POST | `/api/admin/rides/:id/rejudge` | admin (fc_admin) + X-FC-Admin | Params:rideIdParams, Body:rejudgeBody | `VerdictDto` | |
+| 42 | GET | `/api/admin/signins` | admin (fc_admin) | Query:signInsQuery | `AdminListDto<SignInRowDto>` | |
+| 43 | GET | `/api/admin/actions` | admin (fc_admin) | Query:actionsQuery | `AdminListDto<AdminActionDto>` | |
+| 44 | GET | `/api/admin/logs` | admin (fc_admin) | Query:logsQuery | `AdminLogsDto` | |
+| 45 | POST | `/api/auth/nonce` | public | Body:requestChallengeBody | `ChallengeDto` | |
 | 46 | POST | `/api/auth/pair` | public | — | `OpenPhonePairDto` | on main (kept in the PR #3 merge) |
 | 47 | GET | `/api/auth/pair/:id` | public | Params:pairParams | `PollPhonePairDto` | on main (kept in the PR #3 merge) |
 | 48 | POST | `/api/auth/pair/:id/claim` | wallet (fc_session) | Params:pairParams | `(inline)` | on main (kept in the PR #3 merge) |
-| 49 | POST | `/api/auth/verify` | public | Body:verifyBody | `SignInResultDto` |  |
-| 50 | POST | `/api/auth/logout` | public | — | `LogoutResultDto` |  |
+| 49 | POST | `/api/auth/verify` | public | Body:verifyBody | `SignInResultDto` | |
+| 50 | POST | `/api/auth/logout` | public | — | `LogoutResultDto` | |
 | 51 | GET | `/api/me` | wallet (fc_session) | — | `MeDto` | PR3: + geo |
-| 52 | POST | `/api/chain/webhook` | webhook secret · CORS-public | Body:chainWebhookBody | `ChainWebhookResultDto` |  |
-| 53 | GET | `/api/chain/fees` | public | Query:chainFeesQuery | `ChainFeesDto` |  |
-| 54 | GET | `/api/tiers` | public | — | `TiersDto` |  |
-| 55 | GET | `/api/pool` | public | — | `PoolDto` |  |
-| 56 | GET | `/api/leaderboard` | guest/session (opt.) | Query:leaderboardQuery | `LeaderboardDto` |  |
-| 57 | GET | `/api/garage` | wallet (fc_session) | — | `GarageDto` |  |
-| 58 | POST | `/api/garage/loadout` | wallet (fc_session) | Body:saveGarageBody | `GarageDto` |  |
-| 59 | POST | `/api/pledges` | wallet (fc_session) | Body:createPledgeBody | `CreatedPledgeDto` |  |
-| 60 | GET | `/api/rides/:id/pledges` | public | Params:pledgeRideIdParams | `PledgeDto[]` |  |
-| 61 | POST | `/api/pledges/:id/confirm` | wallet (fc_session) | Params:pledgeIdParams, Body:confirmPledgeBody | `PledgeDto` |  |
-| 62 | GET | `/api/pledges/:id` | public | Params:pledgeIdParams | `PledgeDto` |  |
-| 63 | GET | `/api/pools` | public | — | `PoolListDto` |  |
-| 64 | GET | `/api/pools/:id` | public | Params:poolIdParams | `PrizePoolDetailDto` |  |
-| 65 | GET | `/api/pools/:id/standings` | public | Params:poolIdParams | `PoolStandingsDto` |  |
-| 66 | POST | `/api/promo/redeem` | wallet (fc_session) | Body:redeemPromoBody | `PromoRedeemedDto` |  |
-| 67 | GET | `/api/pools/:id/refund` | wallet (fc_session) | Params:poolIdParams | `RefundTransactionDto` |  |
-| 68 | GET | `/api/pools/:id/payout` | wallet (fc_session) | Params:poolIdParams | `PayoutTransactionsDto` |  |
-| 69 | POST | `/api/chain/settle` | wallet (fc_session) | Body:confirmTicketOrderBody | `SettledSignatureDto` |  |
-| 70 | GET | `/api/promo/mine` | wallet (fc_session) | — | `MyPromosDto` |  |
-| 71 | GET | `/api/wardrobe` | wallet (fc_session) | — | `WardrobeDto` |  |
-| 72 | POST | `/api/wardrobe/equip` | wallet (fc_session) | Body:equipCosmeticBody | `WardrobeDto` |  |
-| 73 | POST | `/api/tickets` | wallet (fc_session) | Body:createTicketOrderBody | `TicketOrderDto` |  |
-| 74 | GET | `/api/tickets/pending` | wallet (fc_session) | — | `PendingTicketOrderDto` |  |
-| 75 | GET | `/api/tickets/orders/:id` | wallet (fc_session) | Params:orderIdParams | `TicketOrderDto` |  |
-| 76 | GET | `/api/tickets/orders/:id/payment` | wallet (fc_session) | Params:orderIdParams | `TicketPaymentDto` |  |
-| 77 | POST | `/api/tickets/orders/:id/confirm` | wallet (fc_session) | Params:orderIdParams, Body:confirmTicketOrderBody | `ConfirmTicketOrderResultDto` |  |
-| 78 | POST | `/api/tickets/orders/:id/reconcile` | wallet (fc_session) | Params:orderIdParams | `ReconcileTicketOrderResultDto` |  |
-| 79 | POST | `/api/editor/auth/nonce` | editor-host+IP, public sign-in (X-FC-Editor) | Body:requestChallengeBody | `ChallengeDto` |  |
-| 80 | POST | `/api/editor/auth/verify` | editor-host+IP, public sign-in (X-FC-Editor) | Body:verifyBody | `EditorSignInResultDto` |  |
-| 81 | POST | `/api/editor/auth/logout` | editor-host+IP, public sign-in (X-FC-Editor) | — | `LogoutResultDto` |  |
-| 82 | GET | `/api/editor/me` | editor (fc_editor) | — | `EditorMeDto` |  |
-| 83 | GET | `/api/editor/entities` | editor (fc_editor) | — | `EntityRowDto[]` |  |
-| 84 | GET | `/api/editor/entities/:id` | editor (fc_editor) | Params:entityIdParams | `EntityHeadDto` |  |
-| 85 | GET | `/api/editor/entities/:id/revisions` | editor (fc_editor) | Params:entityIdParams | `RevisionDto[]` |  |
-| 86 | GET | `/api/editor/revisions/:revId` | editor (fc_editor) | Params:revisionIdParams | `RevisionDto` |  |
-| 87 | POST | `/api/editor/entities/:id/drafts` | editor (fc_editor) + X-FC-Editor | Params:entityIdParams, Body:draftBody | `RevisionDto` |  |
-| 88 | POST | `/api/editor/entities/:id/restore` | editor (fc_editor) + X-FC-Editor | Params:entityIdParams, Body:restoreBody | `RevisionDto` |  |
-| 89 | POST | `/api/editor/entities/:id/publish/challenge` | editor (fc_editor) + X-FC-Editor | Params:entityIdParams, Body:publishChallengeBody | `ChallengeDto` |  |
-| 90 | POST | `/api/editor/entities/:id/publish` | editor (fc_editor) + X-FC-Editor | Params:entityIdParams, Body:publishBody | `PublishedDto` |  |
+| 52 | POST | `/api/chain/webhook` | webhook secret · CORS-public | Body:chainWebhookBody | `ChainWebhookResultDto` | |
+| 53 | GET | `/api/chain/fees` | public | Query:chainFeesQuery | `ChainFeesDto` | |
+| 54 | GET | `/api/tiers` | public | — | `TiersDto` | |
+| 55 | GET | `/api/pool` | public | — | `PoolDto` | |
+| 56 | GET | `/api/leaderboard` | guest/session (opt.) | Query:leaderboardQuery | `LeaderboardDto` | |
+| 57 | GET | `/api/garage` | wallet (fc_session) | — | `GarageDto` | |
+| 58 | POST | `/api/garage/loadout` | wallet (fc_session) | Body:saveGarageBody | `GarageDto` | |
+| 59 | POST | `/api/pledges` | wallet (fc_session) | Body:createPledgeBody | `CreatedPledgeDto` | |
+| 60 | GET | `/api/rides/:id/pledges` | public | Params:pledgeRideIdParams | `PledgeDto` | |
+| 61 | POST | `/api/pledges/:id/confirm` | wallet (fc_session) | Params:pledgeIdParams, Body:confirmPledgeBody | `PledgeDto` | |
+| 62 | GET | `/api/pledges/:id` | public | Params:pledgeIdParams | `PledgeDto` | |
+| 63 | GET | `/api/pools` | public | — | `PoolListDto` | |
+| 64 | GET | `/api/pools/:id` | public | Params:poolIdParams | `PrizePoolDetailDto` | |
+| 65 | GET | `/api/pools/:id/standings` | public | Params:poolIdParams | `PoolStandingsDto` | |
+| 66 | POST | `/api/promo/redeem` | wallet (fc_session) | Body:redeemPromoBody | `PromoRedeemedDto` | |
+| 67 | GET | `/api/pools/:id/refund` | wallet (fc_session) | Params:poolIdParams | `RefundTransactionDto` | |
+| 68 | GET | `/api/pools/:id/payout` | wallet (fc_session) | Params:poolIdParams | `PayoutTransactionsDto` | |
+| 69 | POST | `/api/chain/settle` | wallet (fc_session) | Body:confirmTicketOrderBody | `SettledSignatureDto` | |
+| 70 | GET | `/api/promo/mine` | wallet (fc_session) | — | `MyPromosDto` | |
+| 71 | GET | `/api/wardrobe` | wallet (fc_session) | — | `WardrobeDto` | |
+| 72 | POST | `/api/wardrobe/equip` | wallet (fc_session) | Body:equipCosmeticBody | `WardrobeDto` | |
+| 73 | POST | `/api/tickets` | wallet (fc_session) | Body:createTicketOrderBody | `TicketOrderDto` | |
+| 74 | GET | `/api/tickets/pending` | wallet (fc_session) | — | `PendingTicketOrderDto` | |
+| 75 | GET | `/api/tickets/orders/:id` | wallet (fc_session) | Params:orderIdParams | `TicketOrderDto` | |
+| 76 | GET | `/api/tickets/orders/:id/payment` | wallet (fc_session) | Params:orderIdParams | `TicketPaymentDto` | |
+| 77 | POST | `/api/tickets/orders/:id/confirm` | wallet (fc_session) | Params:orderIdParams, Body:confirmTicketOrderBody | `ConfirmTicketOrderResultDto` | |
+| 78 | POST | `/api/tickets/orders/:id/reconcile` | wallet (fc_session) | Params:orderIdParams | `ReconcileTicketOrderResultDto` | |
+| 79 | POST | `/api/editor/auth/nonce` | editor-host+IP, public sign-in (X-FC-Editor) | Body:requestChallengeBody | `ChallengeDto` | |
+| 80 | POST | `/api/editor/auth/verify` | editor-host+IP, public sign-in (X-FC-Editor) | Body:verifyBody | `EditorSignInResultDto` | |
+| 81 | POST | `/api/editor/auth/logout` | editor-host+IP, public sign-in (X-FC-Editor) | — | `LogoutResultDto` | |
+| 82 | GET | `/api/editor/me` | editor (fc_editor) | — | `EditorMeDto` | |
+| 83 | GET | `/api/editor/entities` | editor (fc_editor) | — | `EntityRowDto` | |
+| 84 | GET | `/api/editor/entities/:id` | editor (fc_editor) | Params:entityIdParams | `EntityHeadDto` | |
+| 85 | GET | `/api/editor/entities/:id/revisions` | editor (fc_editor) | Params:entityIdParams | `RevisionDto` | |
+| 86 | GET | `/api/editor/revisions/:revId` | editor (fc_editor) | Params:revisionIdParams | `RevisionDto` | |
+| 87 | POST | `/api/editor/entities/:id/drafts` | editor (fc_editor) + X-FC-Editor | Params:entityIdParams, Body:draftBody | `RevisionDto` | |
+| 88 | POST | `/api/editor/entities/:id/restore` | editor (fc_editor) + X-FC-Editor | Params:entityIdParams, Body:restoreBody | `RevisionDto` | |
+| 89 | POST | `/api/editor/entities/:id/publish/challenge` | editor (fc_editor) + X-FC-Editor | Params:entityIdParams, Body:publishChallengeBody | `ChallengeDto` | |
+| 90 | POST | `/api/editor/entities/:id/publish` | editor (fc_editor) + X-FC-Editor | Params:entityIdParams, Body:publishBody | `PublishedDto` | |
 | 91 | POST | `/api/editor/jobs` | editor (fc_editor) + X-FC-Editor | Body:createJobBody | `JobCreatedDto` | 202 |
-| 92 | GET | `/api/editor/jobs` | editor (fc_editor) | Query:jobsQuery | `EditorJobDto[]` |  |
-| 93 | GET | `/api/editor/jobs/:id` | editor (fc_editor) | Params:jobIdParams | `EditorJobDto` |  |
-| 94 | GET | `/api/editor/jobs/:id/events` | editor (fc_editor) | Params:jobIdParams, Query:jobEventsQuery | `JobEventsDto` |  |
-| 95 | POST | `/api/editor/jobs/:id/cancel` | editor (fc_editor) + X-FC-Editor | Params:jobIdParams | `LogoutResultDto` |  |
-| 96 | GET | `/api/editor/mcp/entities` | MCP job (x-fc-job), no XFF | — | `EntityRowDto[]` |  |
-| 97 | GET | `/api/editor/mcp/entities/:id` | MCP job (x-fc-job), no XFF | Params:entityIdParams | `EntityHeadDto` |  |
-| 98 | GET | `/api/editor/mcp/configs` | MCP job (x-fc-job), no XFF | — | `McpConfigsDto` |  |
-| 99 | POST | `/api/editor/mcp/entities/:id/drafts` | MCP job (x-fc-job), no XFF | Params:entityIdParams, Body:mcpDraftBody | `RevisionDto` |  |
-| 100 | GET | `/api/entities/bundle` | public | — | `EntityBundleDto` |  |
-| 101 | GET | `/api/health/live` | public | — | `LivenessDto` |  |
-| 102 | GET | `/api/health/ready` | public | — | `ReadinessDto` |  |
-| 103 | GET | `/api/honk` | wallet (fc_session) | — | `HonkAccountDto` |  |
-| 104 | GET | `/api/honk/catalog` | public | — | `HonkCatalogEntry[]` |  |
-| 105 | POST | `/api/honk/visuals` | wallet (fc_session) | Body:honkVisualBody | `HonkVisualResult` |  |
-| 106 | POST | `/api/watch/:id/honk` | wallet (fc_session) | Params:rideIdParams, Body:honkBurnBody | `HonkBurnResult` |  |
-| 107 | POST | `/api/watch/:id/honk/time` | wallet (fc_session) | Params:rideIdParams, Body:honkTimeBody | `HonkTimeBurnResult` |  |
-| 108 | POST | `/api/watch/:id/honk/weather` | wallet (fc_session) | Params:rideIdParams, Body:honkWeatherBody | `HonkWeatherBurnResult` |  |
-| 109 | GET | `/api/watch/:id` | public | Params:rideIdParams, Query:watchQuery | `WatchDto` |  |
-| 110 | GET | `/api/watch/:id/road` | public | Params:rideIdParams, Query:roadPlanQuery | `RoadPlanDto` |  |
-| 111 | POST | `/api/watch/:id/messages` | wallet (fc_session) | Params:rideIdParams, Body:messageBody | `RideEventDto` |  |
-| 112 | POST | `/api/watch/:id/donations` | wallet (fc_session) | Params:rideIdParams, Body:donationBody | `RideEventDto` |  |
-| 113 | POST | `/api/watch/:id/donation-orders` | wallet (fc_session) | Params:rideIdParams, Body:donationBody | `DonationOrderDto` |  |
-| 114 | POST | `/api/watch/:id/donation-orders/:orderId/confirm` | wallet (fc_session) | Params:orderParams, Body:confirmDonationBody | `ConfirmDonationResultDto` |  |
-| 115 | POST | `/api/watch/:id/donation-orders/:orderId/reconcile` | wallet (fc_session) | Params:orderParams | `ReconcileDonationResultDto` |  |
-| 116 | GET | `/api/rides/:id/inbox` | wallet (fc_session) | Params:rideIdParams, Query:inboxQuery | `InboxDto` |  |
-| 117 | POST | `/api/rides/:id/mutes` | wallet (fc_session) | Params:rideIdParams, Body:muteBody | `MuteDto` |  |
-| 118 | POST | `/api/rides/:id/effects/:eventId/applied` | wallet (fc_session) | Params:effectParams, Body:appliedBody | `RideEventDto` |  |
-| 119 | GET | `/api/live` | guest/session (opt.) | Query:liveQuery | `LiveFeedDto` |  |
-| 120 | GET | `/api/replays` | public | Query:replaysQuery | `ReplaysDto` |  |
-| 121 | GET | `/api/profile` | wallet (fc_session) | — | `ProfileDto` |  |
-| 122 | PUT | `/api/profile/agreements` | wallet (fc_session) | Body:agreementsBody | `AgreementsDto` |  |
+| 92 | GET | `/api/editor/jobs` | editor (fc_editor) | Query:jobsQuery | `EditorJobDto` | |
+| 93 | GET | `/api/editor/jobs/:id` | editor (fc_editor) | Params:jobIdParams | `EditorJobDto` | |
+| 94 | GET | `/api/editor/jobs/:id/events` | editor (fc_editor) | Params:jobIdParams, Query:jobEventsQuery | `JobEventsDto` | |
+| 95 | POST | `/api/editor/jobs/:id/cancel` | editor (fc_editor) + X-FC-Editor | Params:jobIdParams | `LogoutResultDto` | |
+| 96 | GET | `/api/editor/mcp/entities` | MCP job (x-fc-job), no XFF | — | `EntityRowDto` | |
+| 97 | GET | `/api/editor/mcp/entities/:id` | MCP job (x-fc-job), no XFF | Params:entityIdParams | `EntityHeadDto` | |
+| 98 | GET | `/api/editor/mcp/configs` | MCP job (x-fc-job), no XFF | — | `McpConfigsDto` | |
+| 99 | POST | `/api/editor/mcp/entities/:id/drafts` | MCP job (x-fc-job), no XFF | Params:entityIdParams, Body:mcpDraftBody | `RevisionDto` | |
+| 100 | GET | `/api/entities/bundle` | public | — | `EntityBundleDto` | |
+| 101 | GET | `/api/health/live` | public | — | `LivenessDto` | |
+| 102 | GET | `/api/health/ready` | public | — | `ReadinessDto` | |
+| 103 | GET | `/api/honk` | wallet (fc_session) | — | `HonkAccountDto` | |
+| 104 | GET | `/api/honk/catalog` | public | — | `HonkCatalogEntry` | |
+| 105 | POST | `/api/honk/visuals` | wallet (fc_session) | Body:honkVisualBody | `HonkVisualResult` | |
+| 106 | POST | `/api/watch/:id/honk` | wallet (fc_session) | Params:rideIdParams, Body:honkBurnBody | `HonkBurnResult` | |
+| 107 | POST | `/api/watch/:id/honk/time` | wallet (fc_session) | Params:rideIdParams, Body:honkTimeBody | `HonkTimeBurnResult` | |
+| 108 | POST | `/api/watch/:id/honk/weather` | wallet (fc_session) | Params:rideIdParams, Body:honkWeatherBody | `HonkWeatherBurnResult` | |
+| 109 | GET | `/api/watch/:id` | public | Params:rideIdParams, Query:watchQuery | `WatchDto` | |
+| 110 | GET | `/api/watch/:id/road` | public | Params:rideIdParams, Query:roadPlanQuery | `RoadPlanDto` | |
+| 111 | POST | `/api/watch/:id/messages` | wallet (fc_session) | Params:rideIdParams, Body:messageBody | `RideEventDto` | |
+| 112 | POST | `/api/watch/:id/donations` | wallet (fc_session) | Params:rideIdParams, Body:donationBody | `RideEventDto` | |
+| 113 | POST | `/api/watch/:id/donation-orders` | wallet (fc_session) | Params:rideIdParams, Body:donationBody | `DonationOrderDto` | |
+| 114 | POST | `/api/watch/:id/donation-orders/:orderId/confirm` | wallet (fc_session) | Params:orderParams, Body:confirmDonationBody | `ConfirmDonationResultDto` | |
+| 115 | POST | `/api/watch/:id/donation-orders/:orderId/reconcile` | wallet (fc_session) | Params:orderParams | `ReconcileDonationResultDto` | |
+| 116 | GET | `/api/rides/:id/inbox` | wallet (fc_session) | Params:rideIdParams, Query:inboxQuery | `InboxDto` | |
+| 117 | POST | `/api/rides/:id/mutes` | wallet (fc_session) | Params:rideIdParams, Body:muteBody | `MuteDto` | |
+| 118 | POST | `/api/rides/:id/effects/:eventId/applied` | wallet (fc_session) | Params:effectParams, Body:appliedBody | `RideEventDto` | |
+| 119 | GET | `/api/live` | guest/session (opt.) | Query:liveQuery | `LiveFeedDto` | |
+| 120 | GET | `/api/replays` | public | Query:replaysQuery | `ReplaysDto` | |
+| 121 | GET | `/api/profile` | wallet (fc_session) | — | `ProfileDto` | |
+| 122 | PUT | `/api/profile/agreements` | wallet (fc_session) | Body:agreementsBody | `AgreementsDto` | |
 | 123 | GET | `/api/referrals` | wallet (fc_session) | — | `ReferralView` | on main (kept in the PR #3 merge) |
 | 124 | POST | `/api/referrals/bind` | wallet (fc_session) | Body:bindReferralBody | `ReferralView` | on main (kept in the PR #3 merge) |
 | 125 | POST | `/api/referrals/gift` | wallet (fc_session) | Body:giftReferralBody | `ReferralView` | on main (kept in the PR #3 merge) |
-| 126 | GET | `/api/rides/:id/public` | public | Params:rideIdParams | `PublicRideDto` |  |
+| 126 | GET | `/api/rides/:id/public` | public | Params:rideIdParams | `PublicRideDto` | |
 | 127 | POST | `/api/rides` | wallet (fc_session) | Body:createRideBody | `RideDto` | PR3: + geo headers |
-| 128 | GET | `/api/rides/pending` | wallet (fc_session) | — | `PendingRideDto` |  |
-| 129 | GET | `/api/rides/:id` | wallet (fc_session) | Params:rideIdParams | `RideDto` |  |
-| 130 | GET | `/api/rides/:id/replays` | wallet (fc_session) | Params:rideIdParams | `RideReplaysDto` |  |
-| 131 | GET | `/api/rides/:id/payment` | wallet (fc_session) | Params:rideIdParams | `PaymentInstructionsDto` |  |
-| 132 | POST | `/api/rides/:id/confirm` | wallet (fc_session) | Params:rideIdParams, Body:confirmPaymentBody | `ConfirmPaymentResultDto` |  |
-| 133 | POST | `/api/rides/:id/reconcile` | wallet (fc_session) | Params:rideIdParams | `ReconcilePaymentResultDto` |  |
+| 128 | GET | `/api/rides/pending` | wallet (fc_session) | — | `PendingRideDto` | |
+| 129 | GET | `/api/rides/:id` | wallet (fc_session) | Params:rideIdParams | `RideDto` | |
+| 130 | GET | `/api/rides/:id/replays` | wallet (fc_session) | Params:rideIdParams | `RideReplaysDto` | |
+| 131 | GET | `/api/rides/:id/payment` | wallet (fc_session) | Params:rideIdParams | `PaymentInstructionsDto` | |
+| 132 | POST | `/api/rides/:id/confirm` | wallet (fc_session) | Params:rideIdParams, Body:confirmPaymentBody | `ConfirmPaymentResultDto` | |
+| 133 | POST | `/api/rides/:id/reconcile` | wallet (fc_session) | Params:rideIdParams | `ReconcilePaymentResultDto` | |
 | 134 | POST | `/api/rides/:id/start` | wallet (fc_session) | Params:rideIdParams, Body:startRideBody | `RideDto` | PR3: + `ranked`, geo, 409 ranked_* |
-| 135 | POST | `/api/rides/:id/heartbeat` | wallet (fc_session) | Params:rideIdParams, Body:heartbeatBody | `RideDto` |  |
-| 136 | POST | `/api/rides/:id/batches` | wallet (fc_session) | Params:rideIdParams, Body:batchBody | `BatchReceiptDto` |  |
-| 137 | POST | `/api/rides/:id/end` | wallet (fc_session) | Params:rideIdParams, Body:endRideBody | `RideDto` |  |
-| 138 | GET | `/api/sns/reverse` | public | Query:snsReverseQuery | `SnsReverseDto` |  |
-| 139 | GET | `/api/sns/resolve` | public | Query:snsResolveQuery | `SnsResolutionDto` |  |
-| 140 | GET | `/api/solana-pay/rides/:id` | public · CORS-public | Params:solanaPayIdParams | `SolanaPayLinkDto` |  |
-| 141 | POST | `/api/solana-pay/rides/:id` | public · CORS-public | Params:solanaPayIdParams, Body:solanaPayAccount | `SolanaPayTransactionDto` |  |
-| 142 | GET | `/api/solana-pay/orders/:id` | public · CORS-public | Params:solanaPayIdParams | `SolanaPayLinkDto` |  |
-| 143 | POST | `/api/solana-pay/orders/:id` | public · CORS-public | Params:solanaPayIdParams, Body:solanaPayAccount | `SolanaPayTransactionDto` |  |
-| 144 | GET | `/api/solana-pay/donations/:id` | public · CORS-public | Params:solanaPayIdParams | `SolanaPayLinkDto` |  |
-| 145 | POST | `/api/solana-pay/donations/:id` | public · CORS-public | Params:solanaPayIdParams, Body:solanaPayAccount | `SolanaPayTransactionDto` |  |
-| 146 | GET | `/api/stats` | public | — | `GlobalStatsDto` |  |
-| 147 | GET | `/api/stats/daily` | public | — | `DailyStatsDto[]` |  |
-| 148 | POST | `/api/telemetry` | guest/session (opt.) | Body:telemetryBody | `TelemetryAckDto` |  |
-| 149 | POST | `/api/client-error` | guest/session (opt.) | Body:clientErrorBody | `ClientErrorAckDto` |  |
+| 135 | POST | `/api/rides/:id/heartbeat` | wallet (fc_session) | Params:rideIdParams, Body:heartbeatBody | `RideDto` | |
+| 136 | POST | `/api/rides/:id/batches` | wallet (fc_session) | Params:rideIdParams, Body:batchBody | `BatchReceiptDto` | |
+| 137 | POST | `/api/rides/:id/end` | wallet (fc_session) | Params:rideIdParams, Body:endRideBody | `RideDto` | |
+| 138 | GET | `/api/sns/reverse` | public | Query:snsReverseQuery | `SnsReverseDto` | |
+| 139 | GET | `/api/sns/resolve` | public | Query:snsResolveQuery | `SnsResolutionDto` | |
+| 140 | GET | `/api/solana-pay/rides/:id` | public · CORS-public | Params:solanaPayIdParams | `SolanaPayLinkDto` | |
+| 141 | POST | `/api/solana-pay/rides/:id` | public · CORS-public | Params:solanaPayIdParams, Body:solanaPayAccount | `SolanaPayTransactionDto` | |
+| 142 | GET | `/api/solana-pay/orders/:id` | public · CORS-public | Params:solanaPayIdParams | `SolanaPayLinkDto` | |
+| 143 | POST | `/api/solana-pay/orders/:id` | public · CORS-public | Params:solanaPayIdParams, Body:solanaPayAccount | `SolanaPayTransactionDto` | |
+| 144 | GET | `/api/solana-pay/donations/:id` | public · CORS-public | Params:solanaPayIdParams | `SolanaPayLinkDto` | |
+| 145 | POST | `/api/solana-pay/donations/:id` | public · CORS-public | Params:solanaPayIdParams, Body:solanaPayAccount | `SolanaPayTransactionDto` | |
+| 146 | GET | `/api/stats` | public | — | `GlobalStatsDto` | |
+| 147 | GET | `/api/stats/daily` | public | — | `DailyStatsDto` | |
+| 148 | POST | `/api/telemetry` | guest/session (opt.) | Body:telemetryBody | `TelemetryAckDto` | |
+| 149 | POST | `/api/client-error` | guest/session (opt.) | Body:clientErrorBody | `ClientErrorAckDto` | |
 | 150 | POST | `/api/auth/guest` | public | — | `SignInResultDto` | on main (arrived with PR #3) |
 | 151 | GET | `/api/prize/board` | public | Query:prizeBoardQuery | `PrizeBoardDto` | on main (arrived with PR #3) |
 ### 3. Coverage map
@@ -438,11 +438,11 @@ Sources: `scenario` — `server/test/scenarios/*` (run through `test/http/flows.
 
 1. **Responses are not checked against a schema on any route.** Scenarios check individual fields (`toMatchObject`). They will not notice a new or extra field, a leak (for example an IP in sign-ins, or someone else's wallet), or a type change (`balance` as a string rather than a number).
 2. **No HTTP test calls 16 routes**, and half of them are about money or the chain:
-   - HONK/TEN4 burns: `POST /api/watch/:id/honk`, `/honk/time`, `/honk/weather`;
-   - Solana Pay for orders and donations: `GET|POST /api/solana-pay/orders/:id`, `GET|POST /api/solana-pay/donations/:id` (only `rides` are checked);
-   - `POST /api/tickets/orders/:id/reconcile` (PR #5 already noted that the stub does not have it) and `POST /api/watch/:id/donation-orders/:orderId/reconcile`;
-   - `GET /api/rides/:id/public` (the receipt), `GET /api/honk/catalog`, `GET /api/sns/reverse`, `GET /api/sns/resolve`, `GET /api/editor/mcp/entities/:id`;
-   - `POST /api/auth/guest` and `GET /api/prize/board` are still unit specs only in `server/test`. This PR calls them from `e2e/block1-offchain/free/merged.test.mjs` when `E2E_BASE` is up.
+ - HONK/TEN4 burns: `POST /api/watch/:id/honk`, `/honk/time`, `/honk/weather`;
+ - Solana Pay for orders and donations: `GET|POST /api/solana-pay/orders/:id`, `GET|POST /api/solana-pay/donations/:id` (only `rides` are checked);
+ - `POST /api/tickets/orders/:id/reconcile` (PR #5 already noted that the stub does not have it) and `POST /api/watch/:id/donation-orders/:orderId/reconcile`;
+ - `GET /api/rides/:id/public` (the receipt), `GET /api/honk/catalog`, `GET /api/sns/reverse`, `GET /api/sns/resolve`, `GET /api/editor/mcp/entities/:id`;
+ - `POST /api/auth/guest` and `GET /api/prize/board` are still unit specs only in `server/test`. This PR calls them from `e2e/block1-offchain/free/merged.test.mjs` when `E2E_BASE` is up.
 3. **The ranked / guest / weekly rules** in `server/test` are still mostly unit tests: `409 ranked_window`, `ranked_paid_cap`, `ranked_promo_cap`, `ranked_training`, `ranked_ineligible`, and geo via `CF-IPCountry`. `guest_easy_only` and granting the weekly 1h are checked by e2e when `E2E_BASE` is set. `weekly_ticket_spent` is recorded in the handler source: an open grant is returned by a repeat `POST /api/rides`, rather than debited a second time.
 4. **25 routes have no checked 2xx**, only refusals: `POST /api/editor/jobs` (only 403/503), `GET /api/admin/pools/:id`, `GET /api/pools/:id/payout`, `GET /api/editor/revisions/:revId`, the blinks `shift/:tier`, `go/:to`, `ride/:id`, and the routes from item 2.
 5. **61 routes have no negative at all, and 101 have fewer than two.** Left with no negatives are, for example, `POST /api/chain/settle`, `POST /api/tickets/orders/:id/confirm`, `GET /api/tickets/orders/:id/payment`, `POST /api/watch/:id/donation-orders`, `POST /api/admin/pools/:id/hold/challenge`, `POST /api/admin/rides/:id/challenge`, `POST /api/editor/entities/:id/restore`, `POST /api/telemetry`, `GET /api/pools`, `GET /api/pool`.
@@ -461,13 +461,13 @@ Sources: `scenario` — `server/test/scenarios/*` (run through `test/http/flows.
 - **Generate** OpenAPI from these same schemas (`@asteasolutions/zod-to-openapi`, compatible with zod 3.25) and the route registry, rather than writing it by hand. The file `openapi.json` is built as a CI artifact. It is needed for schemathesis and as documentation. This does not contradict the decision "do not pull in generators": the source of truth stays in zod next to the controller.
 
 #### 4.2 Route registry and coverage gate
-- `test/contract/routes.manifest.ts`: for every route `{ method, path, access, requestSchemas, responseSchema, errorCodes, block: 1|2, flags[], positive: [caseId…], negative: [caseId…] }`.
+- `test/contract/routes.manifest.ts`: for every route `{ method, path, access, requestSchemas, responseSchema, errorCodes, block: 1|2, flags, positive: [caseId…], negative: [caseId…] }`.
 - `test/architecture/route-manifest.spec.ts` starts the app and builds the **real** route list through `DiscoveryService`/`MetadataScanner` (method, path, guards, `@AdminPublic/@EditorPublic/@CrossOriginPublic`, zod pipes). The test fails if:
-  - there is a route with no entry in the spec (or the reverse);
-  - the route has no `@ZodResponse`;
-  - the access class in the spec does not match the guards (this catches a forgotten `@UseGuards`);
-  - a route has fewer than **1 positive and 2 negative** cases (for the threshold see decision 4);
-  - a case id is not found in the tests. Cases are tagged in the `it('[RIDES-START-N03] …')` name, or with the helper `covers('POST /api/rides/:id/start', 'N03')`.
+ - there is a route with no entry in the spec (or the reverse);
+ - the route has no `@ZodResponse`;
+ - the access class in the spec does not match the guards (this catches a forgotten `@UseGuards`);
+ - a route has fewer than **1 positive and 2 negative** cases (for the threshold see decision 4);
+ - a case id is not found in the tests. Cases are tagged in the `it('[RIDES-START-N03] …')` name, or with the helper `covers('POST /api/rides/:id/start', 'N03')`.
 - A counter of actual calls: a wrapper over supertest writes `METHOD route status` to `coverage/routes.jsonl`. The report is built by `test:census` (extend `.claude/skills/test-census`), with no new utility.
 
 #### 4.3 Contract check of every existing test "for free"
@@ -510,7 +510,7 @@ Repeats and idempotency, races, time windows, flags, geo and 18+, limits, someon
 |---|---|---|
 | A. Access | no session, the wrong role, an expired session, a wallet removed from the allowlist, the wrong host or IP, no CSRF header | every `PlayerAuthGuard` → 401; admin/editor/mcp → 404; without `X-FC-Admin` → 403 |
 | B. Ownership | someone else's ride, order, donation, or pledge; a driver's ride for a spectator | `GET /api/rides/:id` for someone else → 403/404; `pledges/:id/confirm` → 403; `tickets/orders/:id` → 403 |
-| C. Input validation | schema, types, bounds, enum, extra fields, size, encoding | 400 `validation_error` with `errors[].path`; 413; 415 |
+| C. Input validation | schema, types, bounds, enum, extra fields, size, encoding | 400 `validation_error` with `errors.path`; 413; 415 |
 | D. State / FSM | an action in the wrong status | `start` on an unpaid ride → 409; `end` twice; `confirm` on a closed order → 409 `order_closed`; `ride_rechosen`; `pool_closed`, `rides_closed`, `road_not_sealed` |
 | E. Idempotency and repeat | repeating the same signature, batch, promo code, or admin signature | `signature_reused`; a repeated batch `seq` is a no-op 200; an admin signature for a different action → 401; the nonce is single-use |
 | F. Races | N parallel requests | double redeem, double confirm, webhook versus poll, hold versus claim, the last invite slot, double start (already present; extend it to `auth/guest`, `prize/board`, and the PR #3 ranked start) |

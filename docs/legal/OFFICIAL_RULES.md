@@ -3,12 +3,12 @@
 > **DRAFT TEMPLATE — NOT LEGAL ADVICE. Must be reviewed and adapted by a qualified contest/gaming lawyer before Season 1 publication.**
 > Repo path: `docs/legal/OFFICIAL_RULES.md` (published at `[PLACEHOLDER: https://freightchain.fun/rules]`).
 > Supersedes the legacy fee-split contest rules draft for Season 1+. Governs weekly Prize Weeks (Weeks 1–6) and the Season 1 Final (Week 7) under the **unified operator + sponsor pool model** (`docs/plan/MASTER_PLAN.md` §3, §10, §13, §14).
-> Replace every `[PLACEHOLDER: …]` and resolve remaining `[LAWYER: …]` annotations before Season 1 launch (`11.01.2027`).
+> Replace every `[PLACEHOLDER: …]` and resolve remaining `[LAWYER: …]` annotations before Season 1 publication.
 
 ---
 
 **Rules Version:** `S1-1.0`
-**Effective Date:** `[PLACEHOLDER: January 11, 2027]`
+**Effective Date:** `[PLACEHOLDER: effective date]`
 **Sponsor / Operator:** `[PLACEHOLDER: Company legal name]`, `[PLACEHOLDER: entity type and jurisdiction]`, `[PLACEHOLDER: registered address]` ("**Sponsor**", "**Operator**", "**FreightChain**", "**we**", "**us**").
 
 **NO PURCHASE OR PAYMENT OF ANY KIND IS NECESSARY TO ENTER OR WIN. A PURCHASE WILL NOT INCREASE YOUR CHANCES OF WINNING UNDER THE FREE ENTRY ROUTE DESCRIBED IN SECTION 5, SUBJECT TO THE FREE-TICKET PRIZE CAP IN SECTION 8.5. VOID WHERE PROHIBITED BY LAW.**
@@ -25,9 +25,9 @@
 
 ## 2. Contest Schedule — Season 1
 
-2.1. **Season 1 Duration.** Season 1 runs for **seven (7) consecutive weeks** starting Monday, **11 January 2027 at 00:00 UTC** and ending Monday, **1 March 2027 at 12:00 UTC** (followed by a 2-week off-season break):
+2.1. **Season 1 Duration.** Season 1 runs for **seven (7) consecutive weeks** once public opens (followed by a 2-week off-season break). No start date is set.
 - **Regular Prize Weeks (Weeks 1–6):** Six (6) weekly contests from Monday `00:00 UTC` to Sunday `12:00 UTC`.
-- **Season 1 Final (Week 7):** One (1) championship week from Monday `22 February 2027 00:00 UTC` to Sunday `28 February 2027 12:00 UTC`.
+- **Season 1 Final (Week 7):** One (1) championship week on the same weekly clock, Monday `00:00 UTC` to Sunday `12:00 UTC`.
 
 2.2. **Weekly Cycle (UTC).** Every Prize Week follows the same schedule:
 - **Board Open:** Monday `00:00 UTC`.
@@ -89,8 +89,8 @@
 6.1. **Pool Formula.** Each Prize Week's total pool (`W_total`) is funded by the Operator and announced Sponsors, plus any rollover from the prior week (`Rollover_in`), according to the published formula:
 - **Fixed External Funding (`F`):** `F = B + S`, where `B` is the Operator Base Pool (`BASE_STEPS_CENTS`: starts at **$300** and steps through **$300 / $750 / $1,500 / $3,000** after four consecutive weeks in which ticket revenue exceeds `4× B`, without resetting between seasons) and `S` is the announced External Sponsor contribution (`S ≥ $0`).
 - **Prior-Week Activity Bonus (`P`):** Calculated strictly from the **previous** week's completed ticket revenue (`R_prev`), never from the current week's purchases:
-  `P = min(0.40 × R_prev, $2,500, 0.90 × F)`
-  Because `P ≤ 0.90 × F`, the activity bonus never exceeds **47.37%** (`0.90 / 1.90`) of the new weekly pool (`F + P`), ensuring that **more than 52.6% of every new weekly pool comes from fixed Operator and Sponsor funding (`F`)**.
+ `P = min(0.40 × R_prev, $2,500, 0.90 × F)`
+ Because `P ≤ 0.90 × F`, the activity bonus never exceeds **47.37%** (`0.90 / 1.90`) of the new weekly pool (`F + P`), ensuring that **more than 52.6% of every new weekly pool comes from fixed Operator and Sponsor funding (`F`)**.
 - **Total Weekly Pool (`W_total`):** `W_total = F + P + Rollover_in`.
 
 6.2. **Weekly Allocation Split (`85 / 5 / 10`).** Every regular Prize Week's `W_total` is allocated as follows:
@@ -134,7 +134,7 @@
 | 6th–10th | 3.0% each | 3.750% each |
 | **Total Top-10** | **80.0%** | **100.000%** |
 
-  When more than 100 unique wallets score on a board (`participants > 100`), paid places extend to the **top 10%** (`ceil(participants / 10)` places) from the same 80% place pool on linear declining weights.
+ When more than 100 unique wallets score on a board (`participants > 100`), paid places extend to the **top 10%** (`ceil(participants / 10)` places) from the same 80% place pool on linear declining weights.
 - **20% → Finisher Pool** (`B_finishers = 0.20 × B_tier`): Divided **equally** among all verified clean finishers (`cleanBps = 10000`, including top-10 finishers), with each finisher share **capped at the 10th-place prize amount**. Any unused Finisher Pool or cap excess rolls over under Section 8.6.
 
 8.3. **Disqualifications & Upward Shift.** If a finisher in the paid places is disqualified during the review/appeal window, eligible verified finishers below move up prior to settlement. A winner who has not completed KYC remains on the leaderboard (`payout: false`) and their unpaid cents roll over under Section 8.6.
@@ -160,15 +160,15 @@
 
 9.3. **Dynamic `N`-Finalist Prize Distribution (Closing G21 / 2d).** Every qualified finalist who **completes** a verified championship ride in Week 7 wins a share of their Final board pool. Let `M` be the number of qualified finalists who complete a verified ride in the Final (`1 ≤ M ≤ N`):
 - **Base Weights for Places 1 to 8 (`W_1 … W_8`):**
-  - Place 1: `30`
-  - Place 2: `20`
-  - Place 3: `14`
-  - Place 4: `10`
-  - Place 5: `8`
-  - Place 6: `7`
-  - Place 7: `6`
-  - Place 8: `5`
-  *(Sum for `M = 8` is `100`%.)*
+ - Place 1: `30`
+ - Place 2: `20`
+ - Place 3: `14`
+ - Place 4: `10`
+ - Place 5: `8`
+ - Place 6: `7`
+ - Place 7: `6`
+ - Place 8: `5`
+ *(Sum for `M = 8` is `100`%.)*
 - **Case A — Exactly 8 Finishers (`M = 8`):** Places 1–8 receive `30%, 20%, 14%, 10%, 8%, 7%, 6%, 5%` of the Final pool (with equal tie-splitting under Section 7.3).
 - **Case B — More than 8 Finishers due to 8th-Place Qualification Ties (`M > 8`):** Places `9 … M` each receive a base weight of `W_j = 5` (equal to 8th place), and **all weights `W_1 … W_M` are normalized proportionally** so that `Share_i = W_i / (100 + 5 × (M - 8)) × Pool_Final`. Every completing finalist is guaranteed at least `5 / (100 + 5 × (M - 8))` of `Pool_Final`.
 - **Case C — Fewer than 8 Finishers (`1 ≤ M < 8`):** Places `1 … M` receive their stated percentages (`W_1 … W_M`), and the unclaimed weights for places `M + 1 … 8` roll over to Week 1 of Season 2 (subject to the `25% F` cap, not redistributed to inflate 1st place). If `M = 0`, `100%` rolls over to Season 2.

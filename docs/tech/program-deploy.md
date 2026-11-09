@@ -17,16 +17,16 @@ The full list (not done, open questions, todo): [`escrow-open-items.md`](escrow-
 
 ## v2 (the pool day: daily series, payout key, review window) – a fresh program id
 
-v2 grew `Config` (+ `payout_authority`) and `Pool` (+ `payout_at`) and added the `Series` account, so v1 accounts no longer decode: deploy v2 under a **new program id** (every devnet v1 pool is terminal – nothing to migrate) rather than upgrading `9e7phd…` in place. It needs two more keys: the **payout key** (`deploy/secrets/devnet/payout.json`, the server's `PAYOUT_SECRET` – it may only pay prizes and close pools after their review window) and the crank key you already have (it now also opens each day's pool and pays that pool's rents, ~0.003 SOL a day; the vault minimum comes back at close). Done for `8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p`: v1's key moved to `program-id-v1.json`, the new one is `program-id.json` (+ `payout.json`), and steps 2–3 are committed (lib.rs / Anchor.toml set by hand – no keypair copy into `target/`; `anchor build` then warns about its own random keypair, which nothing uses). Steps 4–6 ran on Oct 11 (`bash $D deploy`: deployed = pinned, Config.authority = admin), so did 8a and a TEST 8b (`--sale-hours 1 --play-hours 0 --review-hours 1 --min 2`); for the real day rerun 8b without `--start`. Then `devnet.sh env` (it writes `PAYOUT_SECRET` too), and step 8 becomes:
+v2 grew `Config` (+ `payout_authority`) and `Pool` (+ `payout_at`) and added the `Series` account, so v1 accounts no longer decode: deploy v2 under a **new program id** (every devnet v1 pool is terminal – nothing to migrate) rather than upgrading `9e7phd…` in place. It needs two more keys: the **payout key** (`deploy/secrets/devnet/payout.json`, the server's `PAYOUT_SECRET` – it may only pay prizes and close pools after their review window) and the crank key you already have (it now also opens each day's pool and pays that pool's rents, ~0.003 SOL a day; the vault minimum comes back at close). Done for `8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p`: v1's key moved to `program-id-v1.json`, the new one is `program-id.json` (+ `payout.json`), and steps 2–3 are committed (lib.rs / Anchor.toml set by hand – no keypair copy into `target/`; `anchor build` then warns about its own random keypair, which nothing uses). Steps 4–6 ran on (`bash $D deploy`: deployed = pinned, Config.authority = admin), so did 8a and a TEST 8b (`--sale-hours 1 --play-hours 0 --review-hours 1 --min 2`); for the real day rerun 8b without `--start`. Then `devnet.sh env` (it writes `PAYOUT_SECRET` too), and step 8 becomes:
 
 ```sh
 # 8a. name the payout key (the server signs prizes with it; it can do nothing else)
 solana-keygen new --no-bip39-passphrase -o $K/payout.json && bash $D admin set-payout-authority -k $PWD/$K/admin.json --payout "$(solana-keygen pubkey $K/payout.json)"
 # 8b. the 1 h series: one pool a day, 24 h on sale (new rides start only then), 3 h for the shifts on the road to finish, 48 h review (defaults from ride-tier.ts); price in lamports, first slot e.g. next 00:00 UTC
 bash $D admin set-series -k $PWD/$K/admin.json --tier 1h --price 2000000 --per-wallet 3 --start <unix of the first slot> \
-  --fee-treasury "$(solana-keygen pubkey $K/fee.json)" --seed-treasury "$(solana-keygen pubkey $K/seed.json)"
+ --fee-treasury "$(solana-keygen pubkey $K/fee.json)" --seed-treasury "$(solana-keygen pubkey $K/seed.json)"
 # 8c. the server: PAYOUT_SECRET (the payout.json array) + CRANK_SECRET in server/.env.devnet; the crank opens the pool on its slot, the payout job pays
-#     after the review window (`node dist/cli/index.js pool:crank` / `pool:payout` run one pass by hand)
+# after the review window (`node dist/cli/index.js pool:crank` / `pool:payout` run one pass by hand)
 ```
 
 A short test day: `set-series --sale-hours 1 --play-hours 0 --review-hours 1 --min 2` (the program refuses a sale window under an hour). `create-pool` still exists for a one-off pool and takes `--payout <unix|+secs>` (default = `--play`).
@@ -40,18 +40,18 @@ peak (the buffer's rent comes back after the deploy; the program-data extension,
 Attestation's rent (≈ 0.0017 SOL per attested driver). Order (v2 tooling = a checkout from before v3, e.g. `git worktree add --detach <dir> fa99e22a~1`,
 its `server/` built with `npx tsc -p tsconfig.build.json`):
 
-**Done on Oct 12**: series off; v2 pools 23–25 failed / cancelled and closed, pool 0 (2 tickets, no verified winner) closed by the admin, its two Ticket rents closed back to the buyers and each buyer repaid 0.002 SOL from the seed treasury; `extend` +90 600 bytes; upgrade tx `2qJNYBef…VpDH`; on-chain hash = pin `47a630e8…`; payout key topped up to 0.35 SOL. The series is switched back on right after the production server release with the v3 code.
+**Done on **: series off; v2 pools 23–25 failed / cancelled and closed, pool 0 (2 tickets, no verified winner) closed by the admin, its two Ticket rents closed back to the buyers and each buyer repaid 0.002 SOL from the seed treasury; `extend` +90 600 bytes; upgrade tx `2qJNYBef…VpDH`; on-chain hash = pin `47a630e8…`; payout key topped up to 0.35 SOL. The series is switched back on right after the production server release with the v3 code.
 
 ```sh
 # 0. pinned v3 build in this checkout (UPDATE_PIN=1 npm run program:verify was committed with the change); the deploy wallet funded
 # 1. stop new v2 pools: switch the 1h series off (v2 tooling, admin key)
 node <v2>/server/scripts/pool-admin.mjs set-series --url $RPC -k $K/admin.json --tier 1h … --enabled false
 # 2. settle every v2 pool that is not Settled / Cancelled: open with 0 sold → cancel-pool (admin) or fail-pool (after its sale) → close-pool;
-#    an active one past payout_at → pay its winners or close-pool (admin: the prize share goes to the seed treasury) → close-ticket per buyer
+# an active one past payout_at → pay its winners or close-pool (admin: the prize share goes to the seed treasury) → close-ticket per buyer
 # 3. the upgrade itself: extend the program data, then deploy the pinned .so over the program id (public RPC: QuickNode refuses the upload batches)
 solana program extend 8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p <bytes> --url https://api.devnet.solana.com --keypair $K/deploy.json
 solana program deploy $SO --program-id 8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p --upgrade-authority $K/deploy.json --keypair $K/deploy.json --url https://api.devnet.solana.com
-PROGRAM_ID=8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p RPC_URL=$RPC bash .claude/skills/program-check/check.sh onchain   # deployed = pin
+PROGRAM_ID=8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p RPC_URL=$RPC bash .claude/skills/program-check/check.sh onchain # deployed = pin
 # 4. the series back on (v3 tooling), then the server release with the v3 code; the crank opens the next pool with a program-made seed commitment
 bash $D admin set-series -k $PWD/$K/admin.json --tier 1h … --enabled true
 ```
@@ -65,7 +65,7 @@ v4 server must be released there before the series goes back on (that is a deplo
 
 ```sh
 # 0. pinned v4 build in this checkout (UPDATE_PIN=1 npm run program:verify with the change); the deploy wallet funded; read-only checks first:
-bash $D admin show                                           # every pool terminal except the open one; no open Pledge (getProgramAccounts) – v3 pledges cannot settle on v4
+bash $D admin show # every pool terminal except the open one; no open Pledge (getProgramAccounts) – v3 pledges cannot settle on v4
 # 1. stop new v3 pools: the series off (admin key), then the open pool: cancel-pool → refund (nothing sold) → close-pool; close_ticket any Settled pool's tickets
 bash $D admin set-series -k $PWD/$K/admin.json --tier 1h … --enabled false
 # 2. the upgrade: extend the program data by the size difference, deploy the pinned .so (public RPC), check the hash
@@ -102,12 +102,12 @@ npm run program:build && npm run program:idl && (cd server && node scripts/vendo
 UPDATE_PIN=1 npm run program:verify
 (cd programs && FC_FIXTURES_OUT=$PWD/../../server/test/fixtures/chain cargo test --test export_fixtures)
 npm run check && npm run server:integration && npm run test:localnet
-git add -A programs server/test/fixtures/chain server/src && git commit -m "Program: devnet program id"   # id, IDL, fixture, verifiable-build.hash
+git add -A programs server/test/fixtures/chain server/src && git commit -m "Program: devnet program id" # id, IDL, fixture, verifiable-build.hash
 # 4. guard: the file about to be deployed IS the pinned build, then deploy it (the deploy wallet pays ~3 SOL rent and is the upgrade authority)
 SO=programs/target/deploy/freightchain_pools.so
 [ "$(solana-verify get-executable-hash $SO)" = "$(cut -c1-64 programs/verifiable-build.hash)" ] && echo "pinned build ✓ – deploy it" || echo "STOP: not the pinned build"
 solana program deploy --url "$(grep -E '^SOLANA_RPC=' server/.env.devnet | cut -d= -f2-)" \
-  --keypair $K/deploy.json --upgrade-authority $K/deploy.json --program-id $K/program-id.json $SO
+ --keypair $K/deploy.json --upgrade-authority $K/deploy.json --program-id $K/program-id.json $SO
 # 5. initialize: the deploy wallet (upgrade authority) signs, names the admin key, platform cut 0 – then read Config.authority back
 bash $D admin initialize -k $PWD/$K/deploy.json --admin "$(solana-keygen pubkey $K/admin.json)" --platform-treasury "$(solana-keygen pubkey $K/plat.json)" --platform-fee-bps 0
 bash $D admin show
@@ -116,21 +116,21 @@ PROGRAM_ID=$(solana-keygen pubkey $K/program-id.json) RPC_URL="$(grep -E '^SOLAN
 # 7. the program id into the profile, then the server on this machine (http://localhost:3000) – it registers pools from chain by itself
 TICKET_PROGRAM_ID=$(solana-keygen pubkey $K/program-id.json) RPC='…' WS='…' bash $D env && bash $D server
 # 8. pools (admin key). The 1 hour pool omits --min and gets 20 (ride-tier.ts): below 20 it refunds.
-#    This line is a short test pool, so it passes --min 2. One meant to miss its goal can use the same small minimum.
+# This line is a short test pool, so it passes --min 2. One meant to miss its goal can use the same small minimum.
 bash $D admin create-pool -k $PWD/$K/admin.json --tier 1h --price 2000000 --min 2 --per-wallet 3 --prep +3600 --play +7200 \
-  --fee-treasury "$(solana-keygen pubkey $K/fee.json)" --seed-treasury "$(solana-keygen pubkey $K/seed.json)"
+ --fee-treasury "$(solana-keygen pubkey $K/fee.json)" --seed-treasury "$(solana-keygen pubkey $K/seed.json)"
 # 9. the whole money scenario against devnet (its own server on a throwaway DB, players funded by `funder` and swept back)
 bash $D rehearse
 ```
 
 - **The admin key in Phantom**: import `deploy/secrets/devnet/admin.json` (Phantom → Add account → Import private key; the file's JSON array is the key) – then
-  you sign in to the lobby / admin page as the admin (`TREASURY_PUBKEY`) and can sign payouts there. Without UI buttons: `bash $D payout <poolId>` (plan) and `--yes`.
+ you sign in to the lobby / admin page as the admin (`TREASURY_PUBKEY`) and can sign payouts there. Without UI buttons: `bash $D payout <poolId>` (plan) and `--yes`.
 - **Callbacks**: the lobby's fast path (`/confirm`), the watcher (polls every `WATCH_INTERVAL_MS`, websocket with `SOLANA_WS`) and the QuickNode
-  Stream → `POST /api/chain/webhook` with header `x-webhook-secret: <WEBHOOK_SECRET from .env.devnet>` (dataset *Logs*, filtered on the program id; a tunnel –
-  cloudflared / ngrok – to reach localhost). To test one path alone: `bash $D admin buy -k <wallet.json> --pool N` (no order – only the watcher / webhook can
-  credit it), or restart with `WATCH_INTERVAL_MS=0` to leave it to the webhook.
+ Stream → `POST /api/chain/webhook` with header `x-webhook-secret: <WEBHOOK_SECRET from .env.devnet>` (dataset *Logs*, filtered on the program id; a tunnel –
+ cloudflared / ngrok – to reach localhost). To test one path alone: `bash $D admin buy -k <wallet.json> --pool N` (no order – only the watcher / webhook can
+ credit it), or restart with `WATCH_INTERVAL_MS=0` to leave it to the webhook.
 - **Optional, public "verified" badge** (writes a PDA, signed by the upgrade authority; repo must be public):
-  `solana-verify -u <devnet rpc> verify-from-repo --program-id <id> --mount-path programs --library-name freightchain_pools --commit-hash <sha> -k deploy/secrets/devnet/deploy.json <https repo url>`, then `solana-verify -u <devnet rpc> remote submit-job --program-id <id> --uploader <deploy wallet pubkey>`.
+ `solana-verify -u <devnet rpc> verify-from-repo --program-id <id> --mount-path programs --library-name freightchain_pools --commit-hash <sha> -k deploy/secrets/devnet/deploy.json <https repo url>`, then `solana-verify -u <devnet rpc> remote submit-job --program-id <id> --uploader <deploy wallet pubkey>`.
 
 ## Production (only after the Colosseum results and the devnet exit list – `escrow-open-items.md` Phase 3)
 

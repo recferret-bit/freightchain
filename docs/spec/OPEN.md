@@ -18,12 +18,12 @@
 | **8** | Calibration of telemetry and anti-sybil thresholds after 2 weeks in shadow mode | ⏳ Team after launch | [`anticheat.md`](anticheat.md) |
 | **9** | The money mode for unplayed tickets in the Season 1 paid pool (revenue `R` under Solana Pay vs the pool bank under on-chain `buy_ticket`) | ⏳ Before paid pools open (`POOL-M-11`) | [`pool.md`](pool.md), [`legal.md`](legal.md) `LEG-M-08` |
 | **10** | Squads multisig addresses of the treasury and the team (`team_recipient`) before `initialize` on mainnet | ⏳ Owner before mainnet | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §4.1 |
-| **P1** | The Pre-season organizer is the owner as a natural person (decided); the choice of a legal entity for Season 1 — by **01.12.2026**, registration — by 20.12.2026 | ⏳ Owner | [`operator_entity_options.md`](../plan/research/operator_entity_options.md), [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §4.1 |
+| **P1** | The beta organizer is the owner as a natural person (decided); choose and register a legal entity before public (paid tickets, mainnet pools, and TEN4) | ⏳ Owner | [`operator_entity_options.md`](../plan/research/operator_entity_options.md), [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §4.1 |
 | **P2 / P9** | A lawyer consultation on the Pre-season (the CIS and Serbia: mandatory social tasks as consideration, taxes, and a natural person's liability) | ⏸ Deferred by the owner until Season 1 (accepted risk) | Section 2 below, [`operator_entity_options.md`](../plan/research/operator_entity_options.md) §6–7 |
-| **P3** | The Pre-season event wallet on Solana mainnet ($500 USDC + ~0.15 SOL, the address published in the rules) | ⏳ Owner by 09.11.2026 | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §2.1 |
-| **P5** | Appointing moderators and an anti-spam bot in the RU Telegram channel and chat, substituting `[PLACEHOLDER]` into the rules | ⏳ Owner by 02.11.2026 | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §1.1 |
+| **P3** | The beta event wallet on Solana mainnet ($500 USDC + ~0.15 SOL, the address published in the rules) | ⏳ Owner before the prize week | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §2.1 |
+| **P5** | Appointing moderators and an anti-spam bot in the RU Telegram channel and chat, substituting `[PLACEHOLDER]` into the rules | ⏳ Owner before a beta opens | [`OWNER_TASKS.md`](../plan/OWNER_TASKS.md) §1.1 |
 
-> Closed Pre-season questions (**P4** — step points into the S1 airdrop; **P6** — RU+EN only, a second devnet event is optional after 24.11; **P7** — the top 20 is checked by anti-sybil + manually + Chainalysis, without Didit; **P8** — a MEDIUM/HARD test + Telegram + X with a code are mandatory) are recorded in [`DEVNET_PRESEASON.md`](../plan/DEVNET_PRESEASON.md) §9.
+> Closed pre-season questions (**P4** — step points into the Season 1 airdrop; **P6** — RU+EN only, a second devnet event is optional after the beta; **P7** — the top 20 is checked by anti-sybil + manually + Chainalysis, without Didit; **P8** — a MEDIUM/HARD test + Telegram + X with a code are mandatory) are recorded in [`DEVNET_PRESEASON.md`](../plan/DEVNET_PRESEASON.md) §9.
 
 ## 2. Questions for the lawyer and the tax adviser by Season 1
 

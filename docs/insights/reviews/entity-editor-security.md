@@ -1,7 +1,7 @@
 # Entity editor: three-pass application and security review
 
 Reviewed branch: `entity-editor`, starting at `e5e89d7d67d4fc1958ad7716eeb98422e7a6e932`.
-Review date: 2026-10-15. Changes are local; no production deployment or live model-provider call was performed.
+Review date:. Changes are local; no production deployment or live model-provider call was performed.
 
 ## Scope and passes
 
@@ -96,7 +96,7 @@ The first review reduced the server's production audit from 21 affected packages
 
 Jayson 5 removes its `uuid` and `stream-json` dependencies. Its breaking change concerns delimiter-based TCP/TLS framing, which this application's Solana transport does not use. Solana imports Jayson's browser HTTP client; compatibility tests exercise the actual Web3/Jayson and Metaplex stacks with only the HTTP boundary replaced: unique request IDs, concurrent calls, batches, transaction-submission encoding, errors, malformed responses, account reads and blockhash reads. Its Node >=20 requirement is met by the production Node 24 images.
 
-**Current production server audit: zero advisories of every severity** (`npm --prefix server audit --omit=dev --json`, 2026-10-15). This is the npm production dependency audit, not a claim about development tooling, container OS packages or future advisories. MCP and landing reported zero in the initial review. Retain the override until Solana adopts the compatible upgrade upstream; rerun these transport tests when changing it.
+**Current production server audit: zero advisories of every severity** (`npm --prefix server audit --omit=dev --json`, ). This is the npm production dependency audit, not a claim about development tooling, container OS packages or future advisories. MCP and landing reported zero in the initial review. Retain the override until Solana adopts the compatible upgrade upstream; rerun these transport tests when changing it.
 
 Upstream references: [Jayson 5 changelog](https://github.com/tedeh/jayson#changelog-only-notable-milestoneschanges), [Jayson package and Node requirement](https://github.com/tedeh/jayson/blob/master/package.json), [stream-json advisory](https://github.com/advisories/GHSA-528h-pc64-c93x), [UUID affected APIs](https://github.com/advisories/GHSA-w5hq-g745-h8pq). The earlier undici, legacy bn.js and Prisma-scoped deepmerge overrides remain; [deepmerge 8 compatibility](https://github.com/RebeccaStevens/deepmerge-ts/releases/tag/v8.0.0) is covered by Prisma generation/build and integration checks.
 
@@ -122,7 +122,7 @@ Production adds an optional `editor-worker` container using the server image, no
 
 Tests cover composition isolation, API-only queued admission/cancellation, independent worker discovery through real MCP, health/error/shutdown behavior, five-slot scheduling and release/rollback shell behavior with mocked Docker. The separate-process browser test caught an idle exit caused by an unreferenced timer; the worker poll timer now keeps the process alive between jobs. Provider discovery still uses matching keys in API and worker; this is execution isolation, not removal of provider credentials from the API. API-side draft validation remains an independent security check and uses shared host resources.
 
-Verification on 2026-10-16:
+Verification on:
 - Root `npm run check` passed, including **2,080 server tests across 348 files**, builds/typechecks and client, landing, MCP and media checks.
 - Full PostgreSQL integration passed: **522 tests across 46 files**, using only `freightchain_entity_editor_review_test`.
 - Separate API/worker processes with real MCP and a scripted provider passed queue/cancel/discovery tests and the real Chrome editor suite; all seven screenshots were inspected.

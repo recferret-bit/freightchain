@@ -1,8 +1,8 @@
 # Security of admin and privileged endpoints — spec and test plan
 
-> Owner decision 17.10.2026: "add a check and protection of the admin endpoints to the test". The source of truth for `/api/admin/*`, `/api/editor/*` (the storybook 3D editor), MCP callbacks, the chain webhook, health, administrator CLI commands, and the future moderation endpoints (decision 53). `set_pool_rules` has no HTTP route (decision 70).
+> Owner decision: "add a check and protection of the admin endpoints to the test". The source of truth for `/api/admin/*`, `/api/editor/*` (the storybook 3D editor), MCP callbacks, the chain webhook, health, administrator CLI commands, and the future moderation endpoints (decision 53). `set_pool_rules` has no HTTP route (decision 70).
 >
-> The code was checked after the merge of PR #3 (`origin/main` `e8f338ad`). The merge did not add HTTP for `set_pool_rules` and did not add a TEN4 admin, so registry 1.2 did not change. Any later privileged route must enter registry 1.2 and the matrix ADM-T-01…12 from the first commit (ADM-M-21). Decisions 59–66 were accepted by the owner on 17.10.2026 ([`DECISIONS.md`](DECISIONS.md)); the rules below are the final norms, and "Role (target)" in 1.2 is the required role. Related rules: [`backend_contract.md`](backend_contract.md) API-M-03/04/07/13, [`replays_streams.md`](replays_streams.md) RPL-M-16/17/27, [`legal.md`](legal.md) LEG-M-04.
+> The code was checked after the merge of PR #3 (`origin/main` `e8f338ad`). The merge did not add HTTP for `set_pool_rules` and did not add a TEN4 admin, so registry 1.2 did not change. Any later privileged route must enter registry 1.2 and the matrix ADM-T-01…12 from the first commit (ADM-M-21). Decisions 59–66 were accepted by the owner on ([`DECISIONS.md`](DECISIONS.md)); the rules below are the final norms, and "Role (target)" in 1.2 is the required role. Related rules: [`backend_contract.md`](backend_contract.md) API-M-03/04/07/13, [`replays_streams.md`](replays_streams.md) RPL-M-16/17/27, [`legal.md`](legal.md) LEG-M-04.
 
 ## Part 1. Spec
 ### 1.1 How it is protected now (`origin/main`)
@@ -23,60 +23,60 @@
 **Roles:** three independent allowlists — `ADMIN_WALLETS`, `EDITOR_WALLETS`, and MCP jobs. There are no roles inside the admin: any admin can do everything.
 
 ### 1.2 Registry of privileged routes
-Legend. **Guard:** `AG` = `AdminGuard` on the controller class, `EG` = `EditorGuard`, `MG` = `McpJobGuard`, `WG` = `WebhookSecretGuard`, `pub` = `@AdminPublic()`/`@EditorPublic()` (host/IP/header — yes, session — no). **Signed** — a signed action (1.1 item 5). **Strict** — `.strict()` in the zod input schema: in `origin/main` it is **nowhere** (zod drops extra fields by default). **Role (target)** — the required role per decision 59.
+Legend. **Guard:** `AG` = `AdminGuard` on the controller class, `EG` = `EditorGuard`, `MG` = `McpJobGuard`, `WG` = `WebhookSecretGuard`, `pub` = `@AdminPublic()`/`@EditorPublic()` (host/IP/header — yes, session — no). **Signed** — a signed action (1.1 item 5). **Strict** — `.strict` in the zod input schema: in `origin/main` it is **nowhere** (zod drops extra fields by default). **Role (target)** — the required role per decision 59.
 
-#### Admin — `admin.http.controller.ts` (class `AG` :37)
+#### Admin — `admin.http.controller.ts` (class `AG`:37)
 | # | Method and path | Line | Input | Effect | Money | Audit | Role (target) |
 |---|---|---|---|---|---|---|---|
-| A01 | POST `/api/admin/auth/nonce` (pub) | :45 | `challengeBodySchema` | sign-in text | — | no | all roles |
-| A02 | POST `/api/admin/auth/verify` (pub) | :51 | `verifyBodySchema` | cookie `fc_admin` | — | `auth.signin` (success); a failure — a warn log only | all roles |
-| A03 | POST `/api/admin/auth/logout` (pub) | :57 | — | clears the cookie (the token lives until the TTL) | — | no | all roles |
-| A04 | GET `/api/admin/overview` | :62 | — | read | — | no | admin, moderator |
-| A05 | GET `/api/admin/rides` | :68 | `adminRidesQuerySchema` | review queue | — | no | admin, moderator |
-| A06 | GET `/api/admin/replays` | :73 | `adminReplaysQuerySchema` | replays, including training ones and `rejected` | — | no | admin, moderator |
-| A07 | GET `/api/admin/rides/:id` | :78 | `rideIdParamsSchema` | detail with input (RPL-M-07) | — | no | admin, moderator |
-| A08 | POST `/api/admin/rides/:id/challenge` | :84 | `actionChallengeBodySchema` | signature text | — | no | admin |
-| A09 | POST `/api/admin/rides/:id/verdict` (signed) | :91 | `overrideBodySchema` | manual verdict | **yes** (prize eligibility) | `verdict.override` from/to | admin |
-| A10 | POST `/api/admin/rides/:id/rejudge` (signed) | :99 | `rejudgeBodySchema` | rejudge | **yes** | `verdict.rejudge` from/to | admin |
-| A11 | GET `/api/admin/signins` | :104 | `signInsQuerySchema` | IPs and browsers (personal data) | — | no | admin |
-| A12 | GET `/api/admin/actions` | :109 | `actionsQuerySchema` | audit log | — | no | admin |
-| A13 | GET `/api/admin/logs` | :115 | `logsQuerySchema` | 5000 log lines (wallet, IP, paths) | — | no | admin |
+| A01 | POST `/api/admin/auth/nonce` (pub) |:45 | `challengeBodySchema` | sign-in text | — | no | all roles |
+| A02 | POST `/api/admin/auth/verify` (pub) |:51 | `verifyBodySchema` | cookie `fc_admin` | — | `auth.signin` (success); a failure — a warn log only | all roles |
+| A03 | POST `/api/admin/auth/logout` (pub) |:57 | — | clears the cookie (the token lives until the TTL) | — | no | all roles |
+| A04 | GET `/api/admin/overview` |:62 | — | read | — | no | admin, moderator |
+| A05 | GET `/api/admin/rides` |:68 | `adminRidesQuerySchema` | review queue | — | no | admin, moderator |
+| A06 | GET `/api/admin/replays` |:73 | `adminReplaysQuerySchema` | replays, including training ones and `rejected` | — | no | admin, moderator |
+| A07 | GET `/api/admin/rides/:id` |:78 | `rideIdParamsSchema` | detail with input (RPL-M-07) | — | no | admin, moderator |
+| A08 | POST `/api/admin/rides/:id/challenge` |:84 | `actionChallengeBodySchema` | signature text | — | no | admin |
+| A09 | POST `/api/admin/rides/:id/verdict` (signed) |:91 | `overrideBodySchema` | manual verdict | **yes** (prize eligibility) | `verdict.override` from/to | admin |
+| A10 | POST `/api/admin/rides/:id/rejudge` (signed) |:99 | `rejudgeBodySchema` | rejudge | **yes** | `verdict.rejudge` from/to | admin |
+| A11 | GET `/api/admin/signins` |:104 | `signInsQuerySchema` | IPs and browsers (personal data) | — | no | admin |
+| A12 | GET `/api/admin/actions` |:109 | `actionsQuerySchema` | audit log | — | no | admin |
+| A13 | GET `/api/admin/logs` |:115 | `logsQuerySchema` | 5000 log lines (wallet, IP, paths) | — | no | admin |
 
-#### Directory — `admin-directory.http.controller.ts` (class `AG` :20)
+#### Directory — `admin-directory.http.controller.ts` (class `AG`:20)
 | # | Method and path | Line | Input | Effect | Money | Audit | Role (target) |
 |---|---|---|---|---|---|---|---|
-| A14 | GET `/api/admin/queue/count` | :25 | — | read | — | no | admin, moderator |
-| A15 | GET `/api/admin/players` | :30 | `playersQuerySchema` | read | — | no | admin, moderator |
-| A16 | GET `/api/admin/players/:wallet` | :35 | `walletParamsSchema` | player profile (personal data) | — | no | admin |
-| A17 | GET `/api/admin/pools` | :40 | `poolsQuerySchema` | read | — | no | admin |
-| A18 | GET `/api/admin/pools/:id` | :45 | `poolIdParamsSchema` | read | — | no | admin |
-| A19 | GET `/api/admin/stats` | :50 | `adminStatsQuerySchema` | read | — | no | admin |
-| A20 | GET `/api/admin/sessions` | :55 | `sessionsQuerySchema` | sessions (personal data) | — | no | admin |
+| A14 | GET `/api/admin/queue/count` |:25 | — | read | — | no | admin, moderator |
+| A15 | GET `/api/admin/players` |:30 | `playersQuerySchema` | read | — | no | admin, moderator |
+| A16 | GET `/api/admin/players/:wallet` |:35 | `walletParamsSchema` | player profile (personal data) | — | no | admin |
+| A17 | GET `/api/admin/pools` |:40 | `poolsQuerySchema` | read | — | no | admin |
+| A18 | GET `/api/admin/pools/:id` |:45 | `poolIdParamsSchema` | read | — | no | admin |
+| A19 | GET `/api/admin/stats` |:50 | `adminStatsQuerySchema` | read | — | no | admin |
+| A20 | GET `/api/admin/sessions` |:55 | `sessionsQuerySchema` | sessions (personal data) | — | no | admin |
 
-#### Pool payouts — `admin-pools.http.controller.ts` (class `AG` :18)
+#### Pool payouts — `admin-pools.http.controller.ts` (class `AG`:18)
 | # | Method and path | Line | Input | Effect | Money | Audit | Role (target) |
 |---|---|---|---|---|---|---|---|
-| A21 | GET `/api/admin/pool-payouts` | :25 | — | pool winners | — | no | admin |
-| A22 | POST `/api/admin/pools/:id/hold/challenge` | :30 | `poolHoldChallengeBodySchema` | signature text | — | no | admin |
-| A23 | POST `/api/admin/pools/:id/hold` (signed) | :35 | `poolHoldBodySchema` | stop or release the autopayout | **yes** | `pool.hold`/`pool.release` (without a "before" state) | admin (+ a second, decision 60) |
+| A21 | GET `/api/admin/pool-payouts` |:25 | — | pool winners | — | no | admin |
+| A22 | POST `/api/admin/pools/:id/hold/challenge` |:30 | `poolHoldChallengeBodySchema` | signature text | — | no | admin |
+| A23 | POST `/api/admin/pools/:id/hold` (signed) |:35 | `poolHoldBodySchema` | stop or release the autopayout | **yes** | `pool.hold`/`pool.release` (without a "before" state) | admin (+ a second, decision 60) |
 
-#### Promo codes — `admin-promos.http.controller.ts` (class `AG` :22, prefix `api/admin/promos`)
+#### Promo codes — `admin-promos.http.controller.ts` (class `AG`:22, prefix `api/admin/promos`)
 | # | Method and path | Line | Input | Effect | Money | Audit | Role (target) |
 |---|---|---|---|---|---|---|---|
-| A24 | GET `/api/admin/promos` | :30 | `promosQuerySchema` | read | — | no | admin |
-| A25 | GET `/api/admin/promos/redemptions` | :36 | `promoRedemptionsQuerySchema` | who redeemed (personal data) | — | no | admin |
-| A26 | POST `/api/admin/promos/challenge` | :42 | `promoChallengeBodySchema` | signature text | — | no | admin |
-| A27 | POST `/api/admin/promos` (signed) | :49 | `createPromoBodySchema` | a new code: `tickets` (tickets into a paid pool), `free_rides`, `cosmetic` | **yes** (`tickets`) | `promo.create` | admin (+ a second for `tickets`, decision 60) |
-| A28 | POST `/api/admin/promos/:code/disable` (signed) | :54 | `disablePromoBodySchema` | disable the code | indirectly | `promo.disable` (without "before") | admin |
+| A24 | GET `/api/admin/promos` |:30 | `promosQuerySchema` | read | — | no | admin |
+| A25 | GET `/api/admin/promos/redemptions` |:36 | `promoRedemptionsQuerySchema` | who redeemed (personal data) | — | no | admin |
+| A26 | POST `/api/admin/promos/challenge` |:42 | `promoChallengeBodySchema` | signature text | — | no | admin |
+| A27 | POST `/api/admin/promos` (signed) |:49 | `createPromoBodySchema` | a new code: `tickets` (tickets into a paid pool), `free_rides`, `cosmetic` | **yes** (`tickets`) | `promo.create` | admin (+ a second for `tickets`, decision 60) |
+| A28 | POST `/api/admin/promos/:code/disable` (signed) |:54 | `disablePromoBodySchema` | disable the code | indirectly | `promo.disable` (without "before") | admin |
 
-#### Settings and free rides — `admin-settings.http.controller.ts` (class `AG` :20)
+#### Settings and free rides — `admin-settings.http.controller.ts` (class `AG`:20)
 | # | Method and path | Line | Input | Effect | Money | Audit | Role (target) |
 |---|---|---|---|---|---|---|---|
-| A29 | GET `/api/admin/settings` | :27 | — | read | — | no | admin |
-| A30 | POST `/api/admin/settings/challenge` | :32 | `settingChallengeBodySchema` (key = `z.string()`, value = `z.number().int()`; the domain checks `SETTING_KEYS`/`SETTING_BOUNDS`) | signature text | — | no | admin |
-| A31 | POST `/api/admin/settings` (signed) | :37 | `updateSettingBodySchema` | changes `GameSettings`, including the money keys `referral_referrer_part_bps`, `referral_ride_cap_lamports`, `referral_donation_share_bps` (0…10,000), `referral_donation_cap_lamports` (`game-settings.ts:4-9,53-56`) | **yes** | `setting.update` | admin (+ a second for money keys, decision 60) |
-| A32 | POST `/api/admin/players/free-rides/challenge` | :42 | `freeRidesChallengeBodySchema` | signature text | — | no | admin |
-| A33 | POST `/api/admin/players/free-rides` (signed) | :47 | `adjustFreeRidesBodySchema` | ± free rides | — | `free_rides.adjust` | admin |
+| A29 | GET `/api/admin/settings` |:27 | — | read | — | no | admin |
+| A30 | POST `/api/admin/settings/challenge` |:32 | `settingChallengeBodySchema` (key = `z.string()`, value = `z.number().int`; the domain checks `SETTING_KEYS`/`SETTING_BOUNDS`) | signature text | — | no | admin |
+| A31 | POST `/api/admin/settings` (signed) |:37 | `updateSettingBodySchema` | changes `GameSettings`, including the money keys `referral_referrer_part_bps`, `referral_ride_cap_lamports`, `referral_donation_share_bps` (0…10,000), `referral_donation_cap_lamports` (`game-settings.ts:4-9,53-56`) | **yes** | `setting.update` | admin (+ a second for money keys, decision 60) |
+| A32 | POST `/api/admin/players/free-rides/challenge` |:42 | `freeRidesChallengeBodySchema` | signature text | — | no | admin |
+| A33 | POST `/api/admin/players/free-rides` (signed) |:47 | `adjustFreeRidesBodySchema` | ± free rides | — | `free_rides.adjust` | admin |
 
 In total the admin has **33 routes** in five controllers. Chat moderation (decision 53) and `set_pool_rules` (B8) are absent from `origin/main` — those are rows P01–P04 below.
 
@@ -101,13 +101,13 @@ In total the admin has **33 routes** in five controllers. Chat moderation (decis
 | E16 | GET `/api/editor/jobs/:id/events` | `editor-jobs…:43` | `jobEventsQuerySchema` | read | — | no | editor |
 | E17 | POST `/api/editor/jobs/:id/cancel` | `editor-jobs…:48` | `jobIdParamsSchema` | cancel | — | no | editor |
 
-#### MCP callbacks — `editor-mcp.http.controller.ts` (class `MG` :16, internal network only)
+#### MCP callbacks — `editor-mcp.http.controller.ts` (class `MG`:16, internal network only)
 | # | Method and path | Line | Input | Effect | Audit |
 |---|---|---|---|---|---|
-| M01 | GET `/api/editor/mcp/entities` | :23 | — | read | no |
-| M02 | GET `/api/editor/mcp/entities/:id` | :28 | id | read | no |
-| M03 | GET `/api/editor/mcp/configs` | :33 | — | read | no |
-| M04 | POST `/api/editor/mcp/entities/:id/drafts` | :38 | `mcpDraftBodySchema` | a draft on behalf of the job | a revision |
+| M01 | GET `/api/editor/mcp/entities` |:23 | — | read | no |
+| M02 | GET `/api/editor/mcp/entities/:id` |:28 | id | read | no |
+| M03 | GET `/api/editor/mcp/configs` |:33 | — | read | no |
+| M04 | POST `/api/editor/mcp/entities/:id/drafts` |:38 | `mcpDraftBodySchema` | a draft on behalf of the job | a revision |
 
 #### Service
 | # | Method and path | File:line | Guard | Effect | Note |
@@ -126,7 +126,7 @@ There are no metrics (`/metrics`) and no dev/debug routes in `origin/main`. Stre
 |---|---|---|---|---|
 | P01 | POST `/api/admin/chat/:eventId/hide` | decision 53, RPL-M-27 | moderator, admin | — |
 | P02 | POST `/api/admin/players/:wallet/chat-ban` (to lift — the same path with `{ban:false}`) | decision 53, RPL-M-27 | moderator, admin | — |
-| P03 | No HTTP route. `set_pool_rules` is `pool-admin.mjs set-pool-rules`, and on mainnet Squads (decision 70, 24.10.2026). Backend decision 8's HTTP pair is withdrawn. | decision 60, decision 70 | admin key, off HTTP | **yes** (chain, CLI) |
+| P03 | No HTTP route. `set_pool_rules` is `pool-admin.mjs set-pool-rules`, and on mainnet Squads (decision 70, ). Backend decision 8's HTTP pair is withdrawn. | decision 60, decision 70 | admin key, off HTTP | **yes** (chain, CLI) |
 | P04 | POST `/api/admin/config/challenge` + POST `/api/admin/config` (`set_config` of the program, `pool-program.idl.ts:33`), if it appears over HTTP | IDL v5 | Squads only (decision 60) | **yes** (chain) |
 
 ### 1.3 Findings (`origin/main`)
@@ -138,7 +138,7 @@ Unguarded routes under `/api/admin/*` and `/api/editor/*` were **not found**: al
 | F03 | Medium | All startup and protection checks turn on only when `NODE_ENV === 'production'`, strictly (`env.service.ts:22`, `env.schema.ts:163`). On `staging`/`prod`, `localSignIn` turns on (`rules-config.adapter.ts:21`), the admin-host wall comes down (no `COOKIE_DOMAIN`), the cookie has no `Secure`, and `EDITOR_FAKE_LLM` is allowed | same place | ADM-M-13 |
 | F04 | Medium | `ADMIN_JWT_SECRET` and `EDITOR_JWT_SECRET` are optional and are derived from `JWT_SECRET` (`env.service.ts:36`). A leak of the game secret = a forged admin session for any allowlist wallet: reading personal data and logs. Changes are still closed by the action signature | `env.schema.ts:105,111` | ADM-M-05 |
 | F05 | Medium | There is no global default-deny: the guard is set on the class by hand. A new controller under `api/admin` without `@UseGuards` will be open. There is no guard-coverage meta-test (there are `admin.guard.spec.ts` and `admin-host.spec.ts`, but no enumeration of routes) | all controllers, `app.module.ts:48` | ADM-M-02 |
-| F06 | Medium | There is no `.strict()` in the admin and editor schemas: extra fields are dropped silently. Contradicts B3 / API-M-03. The setting key is a free string | `presentation/admin/dto/*.ts`, `admin-settings.dto.ts:6-7` | ADM-M-09 |
+| F06 | Medium | There is no `.strict` in the admin and editor schemas: extra fields are dropped silently. Contradicts B3 / API-M-03. The setting key is a free string | `presentation/admin/dto/*.ts`, `admin-settings.dto.ts:6-7` | ADM-M-09 |
 | F07 | Medium | There is no role split inside the admin: anyone in `ADMIN_WALLETS` both changes money and sees IPs. There is no moderator role for decision 53 | `admin.guard.ts:41` | ADM-M-03 |
 | F08 | Medium | Money and chain actions (A09/A10 on a paid ride, A23, A27 `tickets`, A31 money keys) — one signature of one admin, with no second confirmation and no delay | 1.2 | ADM-M-07 |
 | F09 | Medium | Audit: "append-only" is only in words (no trigger and no revocation of `UPDATE`/`DELETE` for the DB role). There is no "before" state for `pool.hold`/`promo.disable`. Failed sign-ins are only in the log. Not audited: logout, E13 (LLM spend), E17, money CLI commands | `admin.prisma:2-13`, `verify-admin-signin.handler.ts:37-39` | ADM-M-11, ADM-M-19 |
@@ -156,84 +156,84 @@ Unguarded routes under `/api/admin/*` and `/api/editor/*` were **not found**: al
 - **ADM-M-01** MUST: every privileged route has a row in registry 1.2 and in the route registry of [`backend_contract.md`](backend_contract.md) §4.2 (surface, role, guard, input schema, effect, money, audit). A route without a row fails CI (ADM-T-40).
 - **ADM-M-02** MUST (decision 61): **default-deny by prefix**. The global `APP_GUARD` `PrivilegedSurfaceGuard` requires an admin session for `/api/admin/*`, an editor session for `/api/editor/*` (except `mcp/`), and a job token for `/api/editor/mcp/*`. The guard on the class remains the second lock. There are exactly 6 public exceptions: A01–A03 and E01–E03, by an explicit list. A route under the prefix without a guard → the application does not start.
 - **ADM-M-03** MUST (decision 59): **least-privilege roles** — `admin`, `moderator`, `editor` (allowlists `ADMIN_WALLETS`, `MODERATOR_WALLETS`, `EDITOR_WALLETS`; one wallet may be in several). The role for a route is the "Role (target)" column in 1.2; on the route, an `@Roles()` decorator:
-  - `moderator`: A01–A07, A14, A15, and chat moderation P01/P02 (decision 53). In A15 and A07, personal data (IP, browser, sessions) is hidden;
-  - `admin`: everything in `/api/admin/*`;
-  - `editor`: only `/api/editor/*`.
-  
-  The `editor` role does not open the admin, and `admin` and `moderator` do not open the editor.
+ - `moderator`: A01–A07, A14, A15, and chat moderation P01/P02 (decision 53). In A15 and A07, personal data (IP, browser, sessions) is hidden;
+ - `admin`: everything in `/api/admin/*`;
+ - `editor`: only `/api/editor/*`.
+
+ The `editor` role does not open the admin, and `admin` and `moderator` do not open the editor.
 - **ADM-M-04** MUST: sign-in is an SIWS message with the `domain` and `URI` of its own surface, a nonce of ≥ 16 bytes, and a TTL of ≤ 5 min. The nonce is single-use and is consumed atomically on the first attempt. The allowlist is checked on issue, on verification, and on every request. The `auth/nonce` response does not distinguish an admin wallet from a foreign one: always `200`; for a foreign one the nonce is a dummy and verification returns `401` (decision 65). Pending nonces are stored by the key (wallet, client), so a foreign request does not consume the admin's sign-in.
 - **ADM-M-05** MUST (decisions 62, 63): the session is a separate cookie of the surface (`httpOnly`, `SameSite=Strict`, `Secure`, `Path` of the surface, no `Domain`). `ADMIN_JWT_SECRET` and `EDITOR_JWT_SECRET` are required in production and are equal neither to `JWT_SECRET` nor to each other. The session TTL is ≤ 60 min, with no renewal. The token has a `jti`; logout and removal from the allowlist revoke it on the server (a revocation list).
 - **ADM-M-06** MUST: **every change is signed separately:**
-  - `…/challenge` issues text that describes exactly this change (the action, the target, the new values, the surface domain, a nonce, an expiry);
-  - one pending signature per admin;
-  - the signature is consumed on the first attempt;
-  - expiry, a repeat, another wallet's signature, text about a different change, or a signature from another surface → `401`, and there is no change.
+ - `…/challenge` issues text that describes exactly this change (the action, the target, the new values, the surface domain, a nonce, an expiry);
+ - one pending signature per admin;
+ - the signature is consumed on the first attempt;
+ - expiry, a repeat, another wallet's signature, text about a different change, or a signature from another surface → `401`, and there is no change.
 - **ADM-M-07** MUST (decision 60): **money and the chain — two steps.** The mode is set by `ADMIN_APPROVAL_MODE=single|dual`: in strict mode, when `PAYMENT_MODE=program` with paid pools, or on mainnet, only `dual` is allowed. The action is marked `money` in 1.2 (A09/A10 on a paid ride, A23, A27 `tickets`, A31 with a money key, P03, P04). On the devnet launch — one admin's signature plus an alert (ADM-M-12). For paid pools and mainnet — a second admin confirms their signature over the same text within 30 min (`pending_approval` → `applied`). One cannot confirm one's own request. `set_config` and `set_pool_rules` on the chain are Squads multisig only (`team_recipient`, [`OPEN.md`](OPEN.md)).
 - **ADM-M-08** MUST: **idempotency and races.** A change is applied at most once: a repeat of the same signature → `401` with no effect; parallel changes of one target → one is applied, the other is `409 conflict` (per B4, API-M-04). The `requestId` and the signature in the audit are unique.
-- **ADM-M-09** MUST: **strict input** (B3, API-M-03): every admin and editor schema is `.strict()` (an extra field → `400`). A setting `key` is `z.enum(SETTING_KEYS)`. Texts (note, message) have a length limit. The key `referral_donation_share_bps` is removed (decision 50, RPL-M-16). For money keys the bounds are tightened, and ADM-M-07 applies.
+- **ADM-M-09** MUST: **strict() input** (B3, API-M-03): every admin and editor schema is `.strict` (an extra field → `400`). A setting `key` is `z.enum(SETTING_KEYS)`. Texts (note, message) have a length limit. The key `referral_donation_share_bps` is removed (decision 50, RPL-M-16). For money keys the bounds are tightened, and ADM-M-07 applies.
 - **ADM-M-10** MUST (decision 65): **limits:**
-  - `/api/admin/auth/*` — the `auth` budget (30/min + 5/s per IP);
-  - changes — ≤ 30/min per admin;
-  - reads — `default`;
-  - nginx `limit_req` on the admin site, as on storybook.
-  
-  Exceeding → `429` with `Retry-After`.
+ - `/api/admin/auth/*` — the `auth` budget (30/min + 5/s per IP);
+ - changes — ≤ 30/min per admin;
+ - reads — `default`;
+ - nginx `limit_req` on the admin site, as on storybook.
+
+ Exceeding → `429` with `Retry-After`.
 - **ADM-M-11** MUST (decision 64): **audit.** An `AdminAction` row for:
-  - every change: who, the action, the target, **before**, **after**, the signature, requestId, IP, time;
-  - every sign-in (successful and failed) and logout;
-  - personal-data reads: A11, A13, A16, A20, A25 (`read.*`, without the response body).
-  
-  The table is append-only at the DB level: the application role has no `UPDATE`/`DELETE`, plus a deny trigger. Retention is ≥ 2 years. Sent and unsent alerts (ADM-M-12) live in the same schema, table `admin.AlertOutbox`.
+ - every change: who, the action, the target, **before**, **after**, the signature, requestId, IP, time;
+ - every sign-in (successful and failed) and logout;
+ - personal-data reads: A11, A13, A16, A20, A25 (`read.*`, without the response body).
+
+ The table is append-only at the DB level: the application role has no `UPDATE`/`DELETE`, plus a deny trigger. Retention is ≥ 2 years. Sent and unsent alerts (ADM-M-12) live in the same schema, table `admin.AlertOutbox`.
 - **ADM-M-12** MUST (decision 64): **alerts to Telegram.**
-  - **Channel:** the Telegram Bot API `sendMessage` into the owner's chat. Secrets only via env: `ADMIN_ALERT_TELEGRAM_BOT_TOKEN` and `ADMIN_ALERT_TELEGRAM_CHAT_ID` (in `deploy/.env` on the server; empty in `deploy/.env.example`). The token is absent from the repository, the logs, the API responses, and the send itself (except the request URL to `api.telegram.org`).
-  - **Events:**
-    - a sign-in and a failed sign-in of an admin, a moderator, or an editor;
-    - 5 failed sign-ins in 10 min from one IP or against one wallet;
-    - any change (A09/A10/A23/A27/A28/A31/A33, E12, P01–P04, CLI per ADM-M-19); with `money` — marked `💰 MONEY`;
-    - `pending_approval` and its outcome;
-    - session revocation.
-  - **Text:** the environment (`devnet`/`mainnet`), the action, the target, a short wallet (`Abcd…wxyz`), "before → after" for settings, `requestId`, the time in UTC. No full IP (only /24), no signatures, tokens, cookies, or player notes longer than 80 characters.
-  - **Delivery:** first a row in `admin.AlertOutbox` in the same transaction as the audit; then a send with a timeout of 5 s.
-  - **Fallback if Telegram is unavailable** (a network error, `5xx`, `429` with `retry_after`, a bad token):
-    - the change is **not blocked**;
-    - the row stays `pending` and is retried with an exponential pause (30 s → 30 min) for up to 24 h, then marked `undelivered`;
-    - every failure is an `error` log `admin-alert.undelivered` (without the token); it is visible in `npm run ops -- logs` and in A13;
-    - the admin page shows the banner "N alerts undelivered" (a new field `undeliveredAlerts` in A04 `overview`);
-    - for `pending_approval` (ADM-M-07), confirmation stays possible even without delivery.
-  - **Startup:** in strict mode, with non-empty `ADMIN_WALLETS`/`MODERATOR_WALLETS`/`EDITOR_WALLETS`, startup fails without both variables (ADM-M-13).
+ - **Channel:** the Telegram Bot API `sendMessage` into the owner's chat. Secrets only via env: `ADMIN_ALERT_TELEGRAM_BOT_TOKEN` and `ADMIN_ALERT_TELEGRAM_CHAT_ID` (in `deploy/.env` on the server; empty in `deploy/.env.example`). The token is absent from the repository, the logs, the API responses, and the send itself (except the request URL to `api.telegram.org`).
+ - **Events:**
+ - a sign-in and a failed sign-in of an admin, a moderator, or an editor;
+ - 5 failed sign-ins in 10 min from one IP or against one wallet;
+ - any change (A09/A10/A23/A27/A28/A31/A33, E12, P01–P04, CLI per ADM-M-19); with `money` — marked `💰 MONEY`;
+ - `pending_approval` and its outcome;
+ - session revocation.
+ - **Text:** the environment (`devnet`/`mainnet`), the action, the target, a short wallet (`Abcd…wxyz`), "before → after" for settings, `requestId`, the time in UTC. No full IP (only /24), no signatures, tokens, cookies, or player notes longer than 80 characters.
+ - **Delivery:** first a row in `admin.AlertOutbox` in the same transaction as the audit; then a send with a timeout of 5 s.
+ - **Fallback if Telegram is unavailable** (a network error, `5xx`, `429` with `retry_after`, a bad token):
+ - the change is **not blocked**;
+ - the row stays `pending` and is retried with an exponential pause (30 s → 30 min) for up to 24 h, then marked `undelivered`;
+ - every failure is an `error` log `admin-alert.undelivered` (without the token); it is visible in `npm run ops -- logs` and in A13;
+ - the admin page shows the banner "N alerts undelivered" (a new field `undeliveredAlerts` in A04 `overview`);
+ - for `pending_approval` (ADM-M-07), confirmation stays possible even without delivery.
+ - **Startup:** in strict mode, with non-empty `ADMIN_WALLETS`/`MODERATOR_WALLETS`/`EDITOR_WALLETS`, startup fails without both variables (ADM-M-13).
 - **ADM-M-13** MUST NOT (decision 62): **no dev bypasses in production.** Strict mode turns on for any `NODE_ENV` other than `development` and `test`. Startup fails if:
-  - `DEMO_WALLETS` is non-empty;
-  - `EDITOR_FAKE_LLM=1`;
-  - `LIVE_FREE_DONATIONS=on`;
-  - `LIVE_EFFECTS≠off` (RPL-M-17);
-  - there is no `COOKIE_DOMAIN` when the allowlists are non-empty;
-  - there is no `ADMIN_JWT_SECRET`/`EDITOR_JWT_SECRET`, or they match `JWT_SECRET`;
-  - there is no `TRUST_PROXY`;
-  - there is no `ADMIN_ALERT_TELEGRAM_BOT_TOKEN`/`ADMIN_ALERT_TELEGRAM_CHAT_ID` when the allowlists are non-empty (ADM-M-12);
-  - `ADMIN_SESSION_TTL_MINUTES` > 60 (decision 63);
-  - `ADMIN_APPROVAL_MODE=single` with paid pools (ADM-M-07);
-  - on mainnet there is no `ADMIN_IP_ALLOWLIST` (ADM-M-17).
-  
-  `localSignIn` is always off in strict mode.
+ - `DEMO_WALLETS` is non-empty;
+ - `EDITOR_FAKE_LLM=1`;
+ - `LIVE_FREE_DONATIONS=on`;
+ - `LIVE_EFFECTS≠off` (RPL-M-17);
+ - there is no `COOKIE_DOMAIN` when the allowlists are non-empty;
+ - there is no `ADMIN_JWT_SECRET`/`EDITOR_JWT_SECRET`, or they match `JWT_SECRET`;
+ - there is no `TRUST_PROXY`;
+ - there is no `ADMIN_ALERT_TELEGRAM_BOT_TOKEN`/`ADMIN_ALERT_TELEGRAM_CHAT_ID` when the allowlists are non-empty (ADM-M-12);
+ - `ADMIN_SESSION_TTL_MINUTES` > 60 (decision 63);
+ - `ADMIN_APPROVAL_MODE=single` with paid pools (ADM-M-07);
+ - on mainnet there is no `ADMIN_IP_ALLOWLIST` (ADM-M-17).
+
+ `localSignIn` is always off in strict mode.
 - **ADM-M-14** MUST: **refusal codes** (aligned with B9 / API-M-07):
-  - no session, a foreign host, a game session, a wallet outside the allowlist, an expired or forged token → `404` with an identical body;
-  - a surface session exists, but the role is wrong → `403 forbidden_role`;
-  - no `X-FC-Admin`/`X-FC-Editor`, or a foreign `Origin` → `403`;
-  - the action signature is wrong, expired, or repeated → `401`;
-  - the body does not match the schema → `400`;
-  - a race → `409`;
-  - a limit → `429`.
+ - no session, a foreign host, a game session, a wallet outside the allowlist, an expired or forged token → `404` with an identical body;
+ - a surface session exists, but the role is wrong → `403 forbidden_role`;
+ - no `X-FC-Admin`/`X-FC-Editor`, or a foreign `Origin` → `403`;
+ - the action signature is wrong, expired, or repeated → `401`;
+ - the body does not match the schema → `400`;
+ - a race → `409`;
+ - a limit → `429`.
 - **ADM-M-15** MUST: **CORS/CSRF.** On the admin and storybook hosts there is no `Access-Control-Allow-*` for any foreign Origin. A change requires the surface header. `Origin: null` → `403`. A foreign `Origin` → `403`. A request without `Origin` passes only with the surface header and a `SameSite=Strict` cookie.
 - **ADM-M-16** MUST NOT: **leaks:**
-  - responses never contain secrets, tokens, keys, or a stack trace;
-  - a `500` is a generic `problem+json` with `requestId`;
-  - the log does not write a cookie, `Authorization`, `x-fc-job`, `x-webhook-secret`, signatures, or `ADMIN_ALERT_TELEGRAM_BOT_TOKEN` (including in Telegram HTTP-client error URLs);
-  - `GET /api/admin/logs` masks the IP to /24 (IPv6 /48) — except the `admin` role with an explicit `?full=1`, which is audited.
+ - responses never contain secrets, tokens, keys, or a stack trace;
+ - a `500` is a generic `problem+json` with `requestId`;
+ - the log does not write a cookie, `Authorization`, `x-fc-job`, `x-webhook-secret`, signatures, or `ADMIN_ALERT_TELEGRAM_BOT_TOKEN` (including in Telegram HTTP-client error URLs);
+ - `GET /api/admin/logs` masks the IP to /24 (IPv6 /48) — except the `admin` role with an explicit `?full=1`, which is audited.
 - **ADM-M-17** MUST (decision 66): **network.** The admin is reachable only through `admin.<apex>` behind nginx basic auth. The application listens on loopback. A direct request to the application with `Host: admin.<apex>` from a non-loopback address → `404`. On mainnet, `ADMIN_IP_ALLOWLIST` (IP/CIDR, like `EDITOR_IP_ALLOWLIST`) is required: without it startup fails; an IP outside the list → `404`. On devnet it is optional.
 - **ADM-M-18** MUST: **machine routes:**
-  - webhook: a secret of ≥ 16 characters, constant-time comparison; no secret → `404`, a wrong one → `401`;
-  - MCP: internal network only, the job is `running`, the wallet is in `EDITOR_WALLETS`; otherwise `404`;
-  - health returns only the status and the latency, with no versions, hosts, or error text.
+ - webhook: a secret of ≥ 16 characters, constant-time comparison; no secret → `404`, a wrong one → `401`;
+ - MCP: internal network only, the job is `running`, the wallet is in `EDITOR_WALLETS`; otherwise `404`;
+ - health returns only the status and the latency, with no versions, hosts, or error text.
 - **ADM-M-19** MUST: **CLI.** A mutating or money CLI command writes an `AdminAction` with `wallet = cli:<OS user>` and the arguments. Dev commands (`pool:seed`, `db:reset`) refuse in strict mode. Money CLI commands (`pool:payout`, `tickets:grant`) follow ADM-M-07 on mainnet.
 - **ADM-M-20** MUST (decision 59): **editor.** Publication is signed separately and is audited with `previous`. On devnet — one editor signature plus an alert. Before mainnet a review is required: the publication moves to `pending_review` and is applied after a second editor's or an admin's signature; one cannot confirm one's own publication. Creating and cancelling an AI job are audited; the job is limited by the settings `editor_jobs_per_day`/`editor_jobs_parallel`. An editor session does not open the admin, and vice versa (ADM-T-04).
 - **ADM-M-21** MUST: **new privileged routes** (P01–P04 and everything that arrives with PR #3 and later) enter with a guard, a role, a registry row, and the ADM-T-01…12 matrix in the same PR. The gate of [`backend_contract.md`](backend_contract.md) API-M-04 for them: ≥ 4 negatives + ≥ 1 race or repeat test.
@@ -361,7 +361,7 @@ The test generator takes the route list from `route-manifest` (API-T, [`backend_
 | ADM-M-06 | T-12, T-30 … T-32 | — (present) |
 | ADM-M-07 | T-33 … T-35, T-39, T-65, M-ADM-02 | there is no second confirmation (F08) |
 | ADM-M-08 | T-38, T-60 … T-65 | check `409` on races |
-| ADM-M-09 | T-08, T-36, T-37 | no `.strict()` (F06), the donation-share key exists (F01) |
+| ADM-M-09 | T-08, T-36, T-37 | no `.strict` (F06), the donation-share key exists (F01) |
 | ADM-M-10 | T-11, T-79 | no `auth` budget for the admin, no `limit_req` (F12) |
 | ADM-M-11 | T-10, T-28, T-70, T-71, T-91 | no "before", no refused sign-ins, no reads, no DB protection (F09) |
 | ADM-M-12 | T-72, T-88 … T-91 | there are no alerts (F10); the owner sets up the Telegram bot and chat |

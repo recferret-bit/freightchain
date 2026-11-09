@@ -3,13 +3,13 @@
 > **DRAFT TEMPLATE — NOT LEGAL ADVICE. Must be reviewed and adapted by a qualified lawyer (gaming/contest, consumer, crypto/securities, sanctions) before publication.**
 > Repo path: `docs/legal/TERMS.md` (published at `[PLACEHOLDER: https://freightchain.fun/terms]`).
 > Replace every `[PLACEHOLDER: …]`. Every **[LAWYER]** marks a legal choice to be confirmed before Season 1 publication (list in "Notes for the team" at the end).
-> Status: drafted 17.10.2026 from `docs/plan/MASTER_PLAN.md`, `docs/legal/PRIVACY.md` and `docs/legal/OFFICIAL_RULES.md`. Numbers match the plans; if a plan changes, update this file.
+> Status: draft from `docs/plan/MASTER_PLAN.md`, `docs/legal/PRIVACY.md` and `docs/legal/OFFICIAL_RULES.md`. Numbers match the plans; if a plan changes, update this file.
 
 ---
 
 **Version:** `1.0` (stored as `termsVersion` when you accept)
-**Effective date:** [PLACEHOLDER: January 11, 2027]
-**Last updated:** [PLACEHOLDER: January 11, 2027]
+**Effective date:** [PLACEHOLDER: effective date]
+**Last updated:** [PLACEHOLDER: last updated]
 
 These Terms of Service ("**Terms**") are a binding agreement between you and [PLACEHOLDER: Company legal name], a [PLACEHOLDER: entity type and jurisdiction] with its address at [PLACEHOLDER: registered address] ("**FreightChain**", "**we**", "**us**", "**our**"). They govern your use of the FreightChain game, websites (including [PLACEHOLDER: freightchain.fun]), APIs, smart-contract interfaces, prize contests, referral program, airdrops and related services (the "**Services**").
 
@@ -101,7 +101,7 @@ The Services are in active development. We may add, change, suspend or remove fe
 ## 7. Game modes, rides and tickets
 
 7.1. **Free modes.**
-- **Training rides** (EASY, MEDIUM, HARD) are unlimited and free. They are not ranked, not part of any prize contest, and do not earn TEN4. **[CHANGED 2026-10-17]** No ride of any kind can be watched live (Section 14.4).
+- **Training rides** (EASY, MEDIUM, HARD) are unlimited and free. They are not ranked, not part of any prize contest, and do not earn TEN4. No ride of any kind can be watched live (Section 14.4).
 - **EASY** is a free introductory ride that guests and new players can start without a ticket or wallet.
 - Free modes may offer levels, tutorials and assists.
 
@@ -160,7 +160,7 @@ The Services are in active development. We may add, change, suspend or remove fe
 
 10.3. **Tax forms.** At your **first payout of any size** you must complete a **Form W-9** (US persons) or **Form W-8BEN** (non-US persons) in the payout flow. Without a valid form we do not pay.
 
-10.4. **Tax reporting.** We track prizes per recipient per calendar year, including the fair market value of TEN4 or other non-cash prizes at the time of award. If your total reaches the IRS reporting threshold (currently **$2,000** for 2026) we will issue a Form 1099-MISC. We may withhold tax where the law requires [LAWYER/TAX: withholding for non-US persons — currently not applied pending tax advice]. **You are solely responsible for all taxes** on prizes and rewards.
+10.4. **Tax reporting.** We track prizes per recipient per calendar year, including the fair market value of TEN4 or other non-cash prizes at the time of award. If your total reaches the IRS reporting threshold (currently **$2,000**; the threshold is indexed after that) we will issue a Form 1099-MISC. We may withhold tax where the law requires [LAWYER/TAX: withholding for non-US persons — currently not applied pending tax advice]. **You are solely responsible for all taxes** on prizes and rewards.
 
 10.5. **Hold and review.** Payouts are held for review (currently at least 72 hours) after results are final. We may delay a payout while we investigate.
 
@@ -210,13 +210,13 @@ The Services are in active development. We may add, change, suspend or remove fe
 
 13.6. **Availability.** TEN4 features or claims may be restricted in some locations, and third-party exchanges may impose their own restrictions.
 
-## 14. Donations, tips and viewer interaction **[CHANGED 2026-10-17]**
+## 14. Donations, tips and viewer interaction
 
 14.1. **No effect on any ride.** Donations, tips and any other paid or free action by a viewer **never affect any ride** — not the road, obstacles or holes, traffic, weather, day or night, damage, speed, timing, mini-games or anything else in the game — and never affect results, rankings, verification or prizes.
 
 14.2. **Where viewers can interact.** Viewer interaction is limited to **chat and cosmetic reactions** on the **replay of a player's previous completed ride**. There is no viewer interaction with a ride that is in progress.
 
-14.3. **Donations and tips (peer-to-peer on completed replays only).** Where available, viewers may send a voluntary peer-to-peer donation or tip to a driver while viewing a completed ride replay. **100% of the donation amount goes directly to the driver's wallet** (0% platform cut, 0% referrer cut; blockchain network fees apply). Donations are voluntary gifts, **immediately final and non-refundable**, and create no obligation for the driver or us. Peer-to-peer per-kilometre spectator pledges (`create_pledge`) on live or upcoming rides are disabled and prohibited. Do not use donations for payment for services, money transfers, wagering, or to influence contest results. Donations and replay chat are enabled at the devnet launch for testing; on devnet any tokens used have no monetary value. [CHANGED 2026-10-20] [LAWYER: confirm treatment of peer-to-peer gifts (consumer, tax and payment-services rules) in target locations.]
+14.3. **Donations and tips (peer-to-peer on completed replays only).** Where available, viewers may send a voluntary peer-to-peer donation or tip to a driver while viewing a completed ride replay. **100% of the donation amount goes directly to the driver's wallet** (0% platform cut, 0% referrer cut; blockchain network fees apply). Donations are voluntary gifts, **immediately final and non-refundable**, and create no obligation for the driver or us. Peer-to-peer per-kilometre spectator pledges (`create_pledge`) on live or upcoming rides are disabled and prohibited. Do not use donations for payment for services, money transfers, wagering, or to influence contest results. Donations and replay chat are enabled at the devnet launch for testing; on devnet any tokens used have no monetary value. [LAWYER: confirm treatment of peer-to-peer gifts (consumer, tax and payment-services rules) in target locations.]
 
 14.4. **No live watching; when replays become public.** Rides in progress are **not publicly watchable**. A player's ride replay becomes public only after that ride is completed and, for a ride in a prize pool, only **after the pool's validation (review) window ends**; the same applies to the pool's road plan. Replays show positions reconstructed by our servers and do not show your raw, per-frame inputs.
 
@@ -224,7 +224,7 @@ The Services are in active development. We may add, change, suspend or remove fe
 
 ## 15. Seasons
 
-15.1. Contests run in Seasons of Prize Weeks (Season 1: 7 weeks starting [PLACEHOLDER: January 11, 2027], with the final in the last week, followed by a break). Each Season's rules version is published before it starts.
+15.1. Contests run in Seasons of Prize Weeks (Season 1: seven weeks once public opens, with the final in the last week, followed by a break). No start date is set. Each Season's rules version is published before it starts.
 
 15.2. We may **modify, postpone, pause, shorten or cancel** a Season, a Prize Week or a final for operational, security, legal or fair-play reasons, or if fraud or technical failure affects the integrity of a contest. If we cancel a running contest, we will handle announced prize money as described in the Official Rules [LAWYER: define fallback — e.g. award on standings at cancellation or roll over].
 
@@ -238,7 +238,7 @@ The Services are in active development. We may add, change, suspend or remove fe
 
 16.3. **Moderation.** We may filter, remove or hide content, mute or ban users, and report illegal content. We are not obliged to monitor content.
 
-16.4. **Retention.** **[CHANGED 2026-10-17]** Chat messages (on replays) are deleted after 90 days (Privacy Policy).
+16.4. **Retention.** Chat messages (on replays) are deleted after 90 days (Privacy Policy).
 
 16.5. **Feedback.** If you send ideas or feedback, we may use them without obligation.
 
@@ -309,7 +309,7 @@ Support: [PLACEHOLDER: support email] · Legal notices and arbitration opt-out: 
 
 ## Notes for the team (delete before publishing)
 
-**Scope (17.10.2026):** these Terms apply from Season 1 (mainnet, 11.01.2027) once the operator entity exists. The devnet Pre-season (November 2026) is run by an individual organizer under separate short event rules — `docs/legal/PRESEASON_RULES.md` (EN) and `docs/legal/PRESEASON_RULES_RU.md` (RU).
+**Scope:** these Terms apply from public Season 1 once the operator entity exists. The devnet beta is run by an individual organizer under separate short event rules — `docs/legal/PRESEASON_RULES.md` (EN) and `docs/legal/PRESEASON_RULES_RU.md` (RU).
 
 
 **[LAWYER] items to decide:**
@@ -335,25 +335,25 @@ Support: [PLACEHOLDER: support email] · Legal notices and arbitration opt-out: 
 
 ## Validation checklist (before publishing)
 
-- [ ] Every `[PLACEHOLDER: …]` replaced; every `[LAWYER: …]` decided and removed (tracked in `docs/plan/OWNER_TASKS.md` §4).
-- [ ] Geo lists match `geo_block_countries`, `geo_block_regions`, `geo_block_us_states_paid` and the Cloudflare WAF rule.
-- [ ] Numbers match current settings: weekly ticket tiers/intervals, free-ticket cap (`free_prize_board_cap_bps`), KYC threshold (`payout_kyc_paid_season_cents`), hold (`payout_hold_hours`), 1099 threshold (`tax_1099_threshold_usd`), referral caps (`referral_ten4_*`), airdrop cap and claim window, chat retention (`LIVE_CHAT_RETENTION_DAYS`).
-- [ ] Refund flow exists for our-outage case (ticket restored or refunded) and matches §7.5.
-- [ ] First sign-in shows 18+ confirmation and Terms acceptance; `termsVersion` stored per wallet; version bump forces re-accept before paid/prize/reward features.
-- [ ] Terms, Privacy Policy and Official Rules link to each other; footer links on all pages.
-- [ ] Third-party list in §19 matches Privacy Policy processors.
-- [ ] TEN4 wording reviewed against whitepaper, landing and pitch deck (no profit or price language anywhere).
-- [ ] `docs/legal/OFFICIAL_RULES.md` reviewed by counsel and published before Season 1.
+- Every `[PLACEHOLDER: …]` replaced; every `[LAWYER: …]` decided and removed (tracked in `docs/plan/OWNER_TASKS.md` §4).
+- Geo lists match `geo_block_countries`, `geo_block_regions`, `geo_block_us_states_paid` and the Cloudflare WAF rule.
+- Numbers match current settings: weekly ticket tiers/intervals, free-ticket cap (`free_prize_board_cap_bps`), KYC threshold (`payout_kyc_paid_season_cents`), hold (`payout_hold_hours`), 1099 threshold (`tax_1099_threshold_usd`), referral caps (`referral_ten4_*`), airdrop cap and claim window, chat retention (`LIVE_CHAT_RETENTION_DAYS`).
+- Refund flow exists for our-outage case (ticket restored or refunded) and matches §7.5.
+- First sign-in shows 18+ confirmation and Terms acceptance; `termsVersion` stored per wallet; version bump forces re-accept before paid/prize/reward features.
+- Terms, Privacy Policy and Official Rules link to each other; footer links on all pages.
+- Third-party list in §19 matches Privacy Policy processors.
+- TEN4 wording reviewed against whitepaper, landing and pitch deck (no profit or price language anywhere).
+- `docs/legal/OFFICIAL_RULES.md` reviewed by counsel and published before Season 1.
 
-## Sources (reviewed 17.10.2026)
+## Sources
 
-- Skillz Terms of Service — prohibited jurisdictions, location confirmation, arbitration, class waiver, one-year limit: https://www.skillz.com/legal/ ; legality of skill gaming: https://support.skillz.com/hc/en-us/articles/200620348
-- Gostev v. Skillz Platform (Cal. Ct. App. 2023) — arbitration clause held unconscionable: https://law.justia.com/cases/california/court-of-appeal/2023/a164407.html ; D. Nev. order severing fee-splitting: https://storage.courtlistener.com/recap/gov.uscourts.nvd.143371/gov.uscourts.nvd.143371.42.0.pdf
-- Triumph Arcade Terms of Use and regulatory FAQ — eligible locations, entry fees are not wagers, VPN ban, 18+ ID scan: https://docs.triumpharcade.com/terms-of-use-triumph-arcade , https://docs.triumpharcade.com/frequently-asked-questions-regulatory-and-legal , https://intercom.help/triumph/en/articles/9750284-supported-states
-- Epic Games Terms of Service and FNCS Official Rules — cheats, disqualification, prize forfeiture, eligibility verification: https://legal.epicgames.com/epicgames/tos , https://www.fortnite.com/news/fncs-2025-official-rules
+- Skillz Terms of Service — prohibited jurisdictions, location confirmation, arbitration, class waiver, one-year limit: https://www.skillz.com/legal/; legality of skill gaming: https://support.skillz.com/hc/en-us/articles/200620348
+- Gostev v. Skillz Platform (Cal. Ct. App. 2023) — arbitration clause held unconscionable: https://law.justia.com/cases/california/court-of-appeal/2023/a164407.html; D. Nev. order severing fee-splitting: https://storage.courtlistener.com/recap/gov.uscourts.nvd.143371/gov.uscourts.nvd.143371.42.0.pdf
+- Triumph Arcade Terms of Use and regulatory FAQ — eligible locations, entry fees are not wagers, VPN ban, 18+ ID scan: https://docs.triumpharcade.com/terms-of-use-triumph-arcade, https://docs.triumpharcade.com/frequently-asked-questions-regulatory-and-legal, https://intercom.help/triumph/en/articles/9750284-supported-states
+- Epic Games Terms of Service and FNCS Official Rules — cheats, disqualification, prize forfeiture, eligibility verification: https://legal.epicgames.com/epicgames/tos, https://www.fortnite.com/news/fncs-2025-official-rules
 - Riot Games Terms of Service and Esports Global Code of Conduct — cheating, termination, prize forfeiture: https://www.riotgames.com/en/terms-of-service
 - Phantom Terms of Use — self-custody, keys, "as is": https://phantom.com/terms
-- Magic Eden Terms — 60-day informal resolution, mass-filing batching, small claims: https://magiceden.io/legal-policies/terms , https://magiceden.us/legal-policies/us/terms
+- Magic Eden Terms — 60-day informal resolution, mass-filing batching, small claims: https://magiceden.io/legal-policies/terms, https://magiceden.us/legal-policies/us/terms
 - Star Atlas Terms — consumptive use, not investment, assumption of risks: https://experience.staratlas.com/terms-of-service
 - PrizePicks Terms — informal dispute resolution, small-claims exception: https://www.prizepicks.com/help-center/terms-of-service
-- Underdog — one account per person, VPN ban, prize revocation: https://help.underdogfantasy.com/en/articles/10779640-are-vpn-s-allowed , https://legal.underdogsports.com/
+- Underdog — one account per person, VPN ban, prize revocation: https://help.underdogfantasy.com/en/articles/10779640-are-vpn-s-allowed, https://legal.underdogsports.com/

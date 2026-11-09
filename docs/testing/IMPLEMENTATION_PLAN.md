@@ -108,5 +108,5 @@ Chrome, the validator, and `program:test` stay as local commands until they are 
 
 - It will not call the app 100% covered while a contract row is open.
 - It will not move money on devnet or mainnet.
-- It will not treat the 2026-10-18 line-coverage figure (about 82%) as the goal.
+- It will not treat the line-coverage figure (about 82%) as the goal.
 - It will not rewrite the Russian decision text. Conflicts stay visible in `PRODUCT.md`.

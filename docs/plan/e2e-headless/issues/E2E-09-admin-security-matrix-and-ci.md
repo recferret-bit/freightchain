@@ -15,32 +15,32 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
 
 ### `E2E-09.1` — Build Automated Privileged Surface Matrix Runner (`ADM-T-01..12` × 54+ Routes)
 
-- **Status:** `[x] Done` — as-built matrix on main: every privileged route except the four public nonce/verify routes returns `404 not_found` with no session; a moderator can read the review queue and gets `403` on settings. HTTP vitest config, 2026-10-20, exit 0. The written `401` columns below are the target spec; the shipped assertion matches the product (`404`, same body as a missing route).
+- **Status:** `[x] Done` — as-built matrix on main: every privileged route except the four public nonce/verify routes returns `404 not_found` with no session; a moderator can read the review queue and gets `403` on settings. HTTP vitest config, exit 0. The written `401` columns below are the target spec; the shipped assertion matches the product (`404`, same body as a missing route).
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `ADM-T-01..12`, `ADM-M-01..06`
 - **Target Files:**
-  - `backend/server/test/security/admin-surface-matrix.spec.ts`
+ - `backend/server/test/security/admin-surface-matrix.spec.ts`
 - **Depends On:** `SPC-02.1`, `SPC-02.2`, `SPC-02.3`
 
 #### Definition of Ready (DoR)
-- [ ] `PrivilegedSurfaceGuard`, 3-role RBAC (`admin`, `moderator`, `editor`), and separate `ADMIN_JWT_SECRET` / `EDITOR_JWT_SECRET` (`SPC-02.1..3`) are implemented.
-- [ ] All 54+ privileged routes (`A01..A33` Admin, `E01..E17` Editor, `M01..M04` MCP, `S01..S03` Dev/Sim, `P01..P04` Moderation) are cataloged with their required host, role, and Ed25519 action-signature policy.
+- `PrivilegedSurfaceGuard`, 3-role RBAC (`admin`, `moderator`, `editor`), and separate `ADMIN_JWT_SECRET` / `EDITOR_JWT_SECRET` (`SPC-02.1..3`) are implemented.
+- All 54+ privileged routes (`A01..A33` Admin, `E01..E17` Editor, `M01..M04` MCP, `S01..S03` Dev/Sim, `P01..P04` Moderation) are cataloged with their required host, role, and Ed25519 action-signature policy.
 
 #### Definition of Done (DoD)
-- [ ] `admin-surface-matrix.spec.ts` automatically executes all 12 matrix columns (`ADM-T-01..12`) against every privileged route:
-  - `ADM-T-01`: Anonymous request → `401`.
-  - `ADM-T-02`: Player `fc_session` cookie on privileged route → `401`.
-  - `ADM-T-03`: Editor `fc_editor` cookie on `/api/admin/*` → `401` (separate JWT secret).
-  - `ADM-T-04`: Admin `fc_admin` cookie on wrong `Host` (`freightchain.localhost`) → `403`.
-  - `ADM-T-05`: `X-Forwarded-Host: admin...` spoofing with non-admin `Host` → `403`.
-  - `ADM-T-06`: Moderator role on admin-only route (`A01..A33`) → `403`.
-  - `ADM-T-07`: Mutating admin route without `adminSig` → `401`.
-  - `ADM-T-08`: Replayed `adminSig` nonce → `401`.
-  - `ADM-T-09`: Expired `adminSig` timestamp (> 5 min) → `401`.
-  - `ADM-T-10`: `adminSig` signed over different payload/path → `401`.
-  - `ADM-T-11`: Revoked `jti` session token after logout → `401`.
-  - `ADM-T-12`: Valid role + valid host + valid `adminSig` → `200/201` + `AdminAction` audit row created.
-- [ ] Meta-test asserts that adding any new route under `/api/admin`, `/api/editor`, `/api/dev`, or `/api/mcp` without an entry in `admin-surface-matrix.spec.ts` fails the build.
+- `admin-surface-matrix.spec.ts` automatically executes all 12 matrix columns (`ADM-T-01..12`) against every privileged route:
+ - `ADM-T-01`: Anonymous request → `401`.
+ - `ADM-T-02`: Player `fc_session` cookie on privileged route → `401`.
+ - `ADM-T-03`: Editor `fc_editor` cookie on `/api/admin/*` → `401` (separate JWT secret).
+ - `ADM-T-04`: Admin `fc_admin` cookie on wrong `Host` (`freightchain.localhost`) → `403`.
+ - `ADM-T-05`: `X-Forwarded-Host: admin...` spoofing with non-admin `Host` → `403`.
+ - `ADM-T-06`: Moderator role on admin-only route (`A01..A33`) → `403`.
+ - `ADM-T-07`: Mutating admin route without `adminSig` → `401`.
+ - `ADM-T-08`: Replayed `adminSig` nonce → `401`.
+ - `ADM-T-09`: Expired `adminSig` timestamp (> 5 min) → `401`.
+ - `ADM-T-10`: `adminSig` signed over different payload/path → `401`.
+ - `ADM-T-11`: Revoked `jti` session token after logout → `401`.
+ - `ADM-T-12`: Valid role + valid host + valid `adminSig` → `200/201` + `AdminAction` audit row created.
+- Meta-test asserts that adding any new route under `/api/admin`, `/api/editor`, `/api/dev`, or `/api/mcp` without an entry in `admin-surface-matrix.spec.ts` fails the build.
 - [x] Passes in the security vitest config (`test/security/vitest.security.config.mjs`). `npm test` does not collect `test/security/`.
 - [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
@@ -52,19 +52,19 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `ADM-T-20..32`, `F01..F18`, `ADM-M-08..14`
 - **Target Files:**
-  - `backend/server/test/security/admin-findings-regression.spec.ts`
+ - `backend/server/test/security/admin-findings-regression.spec.ts`
 - **Depends On:** `SPC-02.4`, `SPC-02.5`, `SPC-02.6`
 
 #### Definition of Ready (DoR)
-- [ ] Fixes for `F01..F18` (`SPC-02.4..6`) are implemented.
+- Fixes for `F01..F18` (`SPC-02.4..6`) are implemented.
 
 #### Definition of Done (DoD)
-- [ ] `admin-findings-regression.spec.ts` verifies `ADM-T-20` through `ADM-T-32`:
-  - `NODE_ENV=staging` or `NODE_ENV=production` refuses startup when `DEMO_WALLETS`, `EDITOR_FAKE_LLM=1`, `LIVE_FREE_DONATIONS=on`, or `LIVE_EFFECTS!=off` is set (`F03`, `ADM-T-20..22`).
-  - Admin session TTL is capped at ≤ 60 minutes (`ADM-T-23`).
-  - `/api/admin/auth/nonce` and `/api/admin/auth/verify` enforce strict rate-limiting, return indistinguishable dummy nonces for non-admin wallets (no wallet enumeration, `F09`), and key challenges by `(wallet, clientFingerprint)` so one client cannot overwrite another's challenge (`F10`, `ADM-T-24..27`).
-  - `ADMIN_IP_ALLOWLIST` blocks non-allowlisted IPs with `403` (`ADM-T-28..29`).
-  - Application logs mask client IPv4 addresses to `/24` and IPv6 to `/48` (`ADM-T-30..32`).
+- `admin-findings-regression.spec.ts` verifies `ADM-T-20` through `ADM-T-32`:
+ - `NODE_ENV=staging` or `NODE_ENV=production` refuses startup when `DEMO_WALLETS`, `EDITOR_FAKE_LLM=1`, `LIVE_FREE_DONATIONS=on`, or `LIVE_EFFECTS!=off` is set (`F03`, `ADM-T-20..22`).
+ - Admin session TTL is capped at ≤ 60 minutes (`ADM-T-23`).
+ - `/api/admin/auth/nonce` and `/api/admin/auth/verify` enforce strict rate-limiting, return indistinguishable dummy nonces for non-admin wallets (no wallet enumeration, `F09`), and key challenges by `(wallet, clientFingerprint)` so one client cannot overwrite another's challenge (`F10`, `ADM-T-24..27`).
+ - `ADMIN_IP_ALLOWLIST` blocks non-allowlisted IPs with `403` (`ADM-T-28..29`).
+ - Application logs mask client IPv4 addresses to `/24` and IPv6 to `/48` (`ADM-T-30..32`).
 - [x] Passes in the security vitest config (`test/security/vitest.security.config.mjs`). `npm test` does not collect `test/security/`.
 - [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
@@ -72,22 +72,22 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
 
 ### `E2E-09.3` — Implement Append-Only `AdminAction` Audit, Dual Approval & Telegram `AlertOutbox` E2E (`ADM-T-33..44`)
 
-- **Status:** `[x] Done` — PostgreSQL spec on `freightchain_agent1_test`: `UPDATE` and `DELETE` of `admin.AdminAction` raise `admin_action_append_only`, and a `verdict.override` insert writes a pending `admin.AlertOutbox` row. Lead re-run of `vitest.security.integration.config.mjs` on 2026-10-20: 1 test, exit 0.
+- **Status:** `[x] Done` — PostgreSQL spec on `freightchain_agent1_test`: `UPDATE` and `DELETE` of `admin.AdminAction` raise `admin_action_append_only`, and a `verdict.override` insert writes a pending `admin.AlertOutbox` row. Lead re-run of `vitest.security.integration.config.mjs` on: 1 test, exit 0.
 - **Track:** Track B (Target)
 - **Spec / Contract Ref:** `ADM-T-33..44`, `ADM-M-15..21`
 - **Target Files:**
-  - `backend/server/test/security/admin-audit-alerts.integration.spec.ts`
+ - `backend/server/test/security/admin-audit-alerts.integration.spec.ts`
 - **Depends On:** `SPC-02.7`, `SPC-02.8`, `SPC-02.9`
 
 #### Definition of Ready (DoR)
-- [ ] DB-level append-only trigger on `admin.AdminAction` (`SPC-02.7`), `admin.AlertOutbox` + Telegram worker (`SPC-02.8`), and dual-admin approval (`ADMIN_APPROVAL_MODE=dual`, `SPC-02.9`) are implemented.
+- DB-level append-only trigger on `admin.AdminAction` (`SPC-02.7`), `admin.AlertOutbox` + Telegram worker (`SPC-02.8`), and dual-admin approval (`ADMIN_APPROVAL_MODE=dual`, `SPC-02.9`) are implemented.
 
 #### Definition of Done (DoD)
-- [ ] `admin-audit-alerts.integration.spec.ts` verifies `ADM-T-33` through `ADM-T-44` against real PostgreSQL:
-  - `prisma.adminAction.update(...)` and `prisma.adminAction.delete(...)` fail at the PostgreSQL trigger/permission level (`ADM-T-33..34`).
-  - Every mutating action and PII read (`GET /api/admin/wallets/:wallet`, sample export) records `beforeState`, `afterState`, `role`, `ipSubnet`, and `sigHash` (`ADM-T-35..37`).
-  - High-risk actions in `ADMIN_APPROVAL_MODE=dual` create a pending proposal on admin #1's signature, reject self-approval by admin #1 (`403`), execute upon admin #2's signature within 30 minutes, and expire after 30 minutes (`ADM-T-38..41`).
-  - Critical events (verdict override, setting change, failed admin login spike, payout root commit) insert into `admin.AlertOutbox`, dispatch to the mocked Telegram Bot API, and surface in the `GET /api/admin/overview` alert banner (`ADM-T-42..44`).
+- `admin-audit-alerts.integration.spec.ts` verifies `ADM-T-33` through `ADM-T-44` against real PostgreSQL:
+ - `prisma.adminAction.update(...)` and `prisma.adminAction.delete(...)` fail at the PostgreSQL trigger/permission level (`ADM-T-33..34`).
+ - Every mutating action and PII read (`GET /api/admin/wallets/:wallet`, sample export) records `beforeState`, `afterState`, `role`, `ipSubnet`, and `sigHash` (`ADM-T-35..37`).
+ - High-risk actions in `ADMIN_APPROVAL_MODE=dual` create a pending proposal on admin #1's signature, reject self-approval by admin #1 (`403`), execute upon admin #2's signature within 30 minutes, and expire after 30 minutes (`ADM-T-38..41`).
+ - Critical events (verdict override, setting change, failed admin login spike, payout root commit) insert into `admin.AlertOutbox`, dispatch to the mocked Telegram Bot API, and surface in the `GET /api/admin/overview` alert banner (`ADM-T-42..44`).
 - [x] Passes in `test/security/vitest.security.integration.config.mjs` on `freightchain_agent1_test` (lane exit 0; lead re-run recorded in the orchestrator).
 - [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
@@ -95,21 +95,21 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
 
 ### `E2E-09.4` — Wire PR Fast-Gate & Nightly Full-Stack CI (`E2E-T-01..07`)
 
-- **Status:** `[x] Done` — 2026-10-23. `npm run test:ci:fast` exited 0 in 153.29 s (check, PostgreSQL integration, block 1, and the security suite, no retry). `npm run test:ci:full` exited 0 in 2954 s and ran block 2, block 3, localnet, `honk-suite`, and `e2e.sh`. `PLT-T-10` passes as 429 `rate_limited` on a Redis-down editor job (shipped; the old failure was status 0). `PLT-T-12` and `RPL-T-30..60` passed. `negative-matrix` still runs inside `npm run check`.
+- **Status:** `[x] Done` —. `npm run test:ci:fast` exited 0 in 153.29 s (check, PostgreSQL integration, block 1, and the security suite, no retry). `npm run test:ci:full` exited 0 in 2954 s and ran block 2, block 3, localnet, `honk-suite`, and `e2e.sh`. `PLT-T-10` passes as 429 `rate_limited` on a Redis-down editor job (shipped; the old failure was status 0). `PLT-T-12` and `RPL-T-30..60` passed. `negative-matrix` still runs inside `npm run check`.
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `E2E-T-01..07`, `docs/spec/e2e.md`, `COVERAGE_CONTRACT` §4
 - **Target Files:**
-  - `package.json`
-  - `.claude/skills/run-tests/e2e.sh`
-- **Depends On:** `E2E-01` .. `E2E-08`
+ - `package.json`
+ - `.claude/skills/run-tests/e2e.sh`
+- **Depends On:** `E2E-01`.. `E2E-08`
 
 #### Definition of Ready (DoR)
 - [x] All suites (`npm run check`, `npm run server:integration`, `npm run test:e2e:block1`, `npm run test:e2e:block2`, `npm run test:e2e:block3`, `bash .claude/skills/run-tests/e2e.sh`) are green locally.
 
 #### Definition of Done (DoD)
 - [x] Root `package.json` exposes standardized scripts:
-  - `npm run test:ci:fast` (`npm run check` + `npm run server:integration` + `npm run test:e2e:block1` + `negative-matrix` + `admin-surface-matrix`) completing in < 5 minutes.
-  - `npm run test:ci:full` (adds `test:e2e:block2`, `test:e2e:block3`, `test:localnet`, `honk-suite`, and `bash .claude/skills/run-tests/e2e.sh`).
+ - `npm run test:ci:fast` (`npm run check` + `npm run server:integration` + `npm run test:e2e:block1` + `negative-matrix` + `admin-surface-matrix`) completing in < 5 minutes.
+ - `npm run test:ci:full` (adds `test:e2e:block2`, `test:e2e:block3`, `test:localnet`, `honk-suite`, and `bash .claude/skills/run-tests/e2e.sh`).
 - [x] Both commands exit `0` with deterministic output and zero flaky retries.
 - [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).
 
@@ -117,12 +117,12 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
 
 ### `E2E-09.5` — Final `census.mjs` 100% Green Audit
 
-- **Status:** `[x] Done` — 2026-10-23. `census.mjs --self-test` and `node docs/build-wiki.mjs` exited 0. The self-test computed 0 zero-scenario routes, 0 single-scenario routes, 178/178 HTTP routes on both flow runners, 9/9 HTML pages (the no-build `frontend/client/index.html` is excluded), 30/30 Anchor instructions, and 81/81 still-required spec ids. Withdrawn ids `E2E-T-01` and `E2E-T-06` are not counted as passes. The older headline of 12 pages, 19 instructions, and 211 rules is not what the self-test counts.
+- **Status:** `[x] Done` —. `census.mjs --self-test` and `node docs/build-wiki.mjs` exited 0. The self-test computed 0 zero-scenario routes, 0 single-scenario routes, 178/178 HTTP routes on both flow runners, 9/9 HTML pages (the no-build `frontend/client/index.html` is excluded), 30/30 Anchor instructions, and 81/81 still-required spec ids. Withdrawn ids `E2E-T-01` and `E2E-T-06` are not counted as passes. The older headline of 12 pages, 19 instructions, and 211 rules is not what the self-test counts.
 - **Track:** Track A + B
 - **Spec / Contract Ref:** `COVERAGE_CONTRACT` §2–4
 - **Target Files:**
-  - `.claude/skills/test-census/census.mjs`
-  - `docs/testing/COVERAGE_CONTRACT.md`
+ - `.claude/skills/test-census/census.mjs`
+ - `docs/testing/COVERAGE_CONTRACT.md`
 - **Depends On:** `E2E-09.1`, `E2E-09.2`, `E2E-09.3`, `E2E-09.4`
 
 #### Definition of Ready (DoR)
@@ -130,10 +130,10 @@ Implements the exhaustive privileged security matrix (`ADM-T-01..12` executed ac
 
 #### Definition of Done (DoD)
 - [x] `node .claude/skills/test-census/census.mjs --self-test` reports:
-  - `0` zero-scenario HTTP routes
-  - `0` single-scenario HTTP routes
-  - `100%` of routes covered on both In-Memory and PostgreSQL
-  - `100%` of HTML pages covered in Headless Chrome (`e2e.sh`)
-  - `100%` of Anchor instructions covered on the local validator (the self-test counts the IDL: `30/30`, not a fixed `19/19`)
-  - `100%` of `*-T-*` and `AC-*` spec test IDs mapped to passing test files.
+ - `0` zero-scenario HTTP routes
+ - `0` single-scenario HTTP routes
+ - `100%` of routes covered on both In-Memory and PostgreSQL
+ - `100%` of HTML pages covered in Headless Chrome (`e2e.sh`)
+ - `100%` of Anchor instructions covered on the local validator (the self-test counts the IDL: `30/30`, not a fixed `19/19`)
+ - `100%` of `*-T-*` and `AC-*` spec test IDs mapped to passing test files.
 - [x] Status updated in [`docs/plan/e2e-headless/STATUS.md`](../STATUS.md).

@@ -2,9 +2,9 @@
 
 > **DRAFT — NOT LEGAL ADVICE.** Short rules for one free promotional skill event run by an **individual organizer** (no company). Full `TERMS.md` / `PRIVACY.md` apply from Season 1, once an operator entity exists (a short summary is set out in Part C below).
 > Replace every `[PLACEHOLDER: …]` before publication. If the Russian and English versions differ (`docs/legal/PRESEASON_RULES.md`), the English version controls [LAWYER: confirm the priority of the English version].
-> Status: drafted 17.10.2026 from `docs/legal/PRESEASON_RULES.md` and `docs/plan/DEVNET_PRESEASON.md` (D1–D13, Round 19).
+> Status: draft from `docs/legal/PRESEASON_RULES.md` and `docs/plan/DEVNET_PRESEASON.md` (D1–D13, Round 19).
 
-**Version:** `PS-1.0` · **Published:** [PLACEHOLDER: publication date, on or before 2 November 2026]
+**Version:** `PS-1.0` · **Published:** [PLACEHOLDER: publication date]
 
 ---
 
@@ -14,7 +14,7 @@
 
 **2. No purchase necessary. Entry only by completing tasks.** Nothing can be bought in the Event and no payment is required. The only way to receive the ranked attempt is to complete the mandatory tasks in Section 5; there is no other method of entry. Buying anything elsewhere does not improve your chance to win. [LAWYER: confirm the classification of mandatory social-media actions in the target jurisdictions.]
 
-**3. Dates (UTC).** Registration and tasks open Monday 2 November 2026. The prize week runs from Monday 9 November 2026 00:00 to Sunday 15 November 2026 12:00 (an attempt must start by Sunday 11:00 to finish in time). Review until Monday 16 November 12:00; appeals until Tuesday 17 November 12:00; payouts start Tuesday 17 November 2026. The game runs on the Solana **devnet** test network; devnet tokens have no value.
+**3. Order (UTC).** No calendar date is set. Registration and tasks open first. The prize week is the one week the organizer sets: it opens Monday 00:00 UTC and closes Sunday 12:00 UTC (an attempt must start by Sunday 11:00 UTC to finish in time). Review runs until the next Monday 12:00 UTC; appeals until the next Tuesday 12:00 UTC; payouts start after appeals close. The game runs on the Solana **devnet** test network; devnet tokens have no value.
 
 **4. Eligibility.** You must be **18 or older** (or the age of majority where you live, if higher) and a real person playing for yourself.
 - **Prize-eligible:** residents of and persons located in Kazakhstan, Uzbekistan, Kyrgyzstan, Armenia, Azerbaijan, Georgia, Moldova, Ukraine (except the occupied Crimea, Donetsk and Luhansk regions) and other locations not excluded below.
@@ -44,13 +44,13 @@
 
 One prize per person. Prizes are paid to the wallet address you played with. If a player in the Top 20 is disqualified or fails verification, eligible verified finishers below move up. Places that remain unawarded (fewer than 20 eligible finishers after review) are not paid out and remain with the Organizer.
 
-**9. Verification before payout.** Winners must: confirm their country of residence and age (18+); pass the Organizer's manual review of their accounts and entry (linked Telegram and X accounts, network signals, ride replay and telemetry); identity documents are not collected by default [optional: an identity check may be added if announced before 9 November 2026]; pass a sanctions screening of their wallet (Chainalysis) and name; and keep their Telegram account linked and their membership in the channel and chat. A winner who does not complete verification or does not respond to the Organizer's request within **14 days** of notice forfeits the prize.
+**9. Verification before payout.** Winners must: confirm their country of residence and age (18+); pass the Organizer's manual review of their accounts and entry (linked Telegram and X accounts, network signals, ride replay and telemetry); identity documents are not collected by default [optional: an identity check may be added if announced before the prize week]; pass a sanctions screening of their wallet (Chainalysis) and name; and keep their Telegram account linked and their membership in the channel and chat. A winner who does not complete verification or does not respond to the Organizer's request within **14 days** of notice forfeits the prize.
 
 **10. Taxes.** Winners are solely responsible for any taxes on their prizes in their country. The Organizer does not withhold tax or issue tax forms [LAWYER: confirm the Porez na dohodak građana regime in Serbia under `docs/plan/research/operator_entity_options.md` §7.5].
 
 **11. Payout.** Prizes are sent from the Organizer's announced prize wallet [PLACEHOLDER: Solana mainnet wallet address]. Links to the Solana mainnet payout transactions are published in a public report after payout. Blockchain transactions are final and irreversible; the Organizer is not responsible for loss of access to your wallet, compromised keys, or network fees.
 
-**12. Review, appeals and disqualification.** The Organizer reviews the Top 20 (ride replays, 10 Hz telemetry, account links, network and cluster signals). Appeals: [PLACEHOLDER: form / email / Telegram contact for appeals] until Tuesday 17 November 12:00 UTC. The Organizer may disqualify entries that break these Rules and void results affected by cheating or technical failure.
+**12. Review, appeals and disqualification.** The Organizer reviews the Top 20 (ride replays, 10 Hz telemetry, account links, network and cluster signals). Appeals: [PLACEHOLDER: form / email / Telegram contact for appeals] until Tuesday 12:00 UTC after the prize week. The Organizer may disqualify entries that break these Rules and void results affected by cheating or technical failure.
 
 **13. Outages.** If a server outage on our side longer than **30 minutes** interrupts your ranked attempt, you may receive a replacement attempt or the prize week may be extended; this will be announced in the Telegram channel.
 
@@ -60,7 +60,7 @@ One prize per person. Prizes are paid to the wallet address you played with. If 
 
 **16. Publicity.** Wallet addresses (or public handles), places, ride recordings, and links to winners' payout transactions are published.
 
-**16a. Viewers, donations and replays.** **[NEW 2026-10-17]** Ranked attempts are **not watchable live**. Replays of ranked attempts become public only **after the review ends** ([PLACEHOLDER: Monday, 16 November 2026, 12:00 UTC], i.e. the end of the pool's validation window). Donations, tips or any other viewer action **never affect any attempt** (no obstacles, holes, weather, day/night, damage, speed or anything else), are not an entry, give no prize advantage and are not linked to ranking. The Event has no paid entry (Section 2). Replay chat and donations are enabled during the Event for testing; on devnet they have no monetary value.
+**16a. Viewers, donations and replays.** Ranked attempts are **not watchable live**. Replays of ranked attempts become public only **after the review ends** ([PLACEHOLDER: when the review ends], i.e. the end of the pool's validation window). Donations, tips or any other viewer action **never affect any attempt** (no obstacles, holes, weather, day/night, damage, speed or anything else), are not an entry, give no prize advantage and are not linked to ranking. The Event has no paid entry (Section 2). Replay chat and donations are enabled during the Event for testing; on devnet they have no monetary value.
 
 **17. Contact.** [PLACEHOLDER: Organizer's Telegram @handle / email].
 

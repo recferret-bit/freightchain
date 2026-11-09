@@ -3,9 +3,9 @@
 > **DRAFT — NOT LEGAL ADVICE.** Short rules for one free promotional skill event run by an **individual organizer** (no company). Full `TERMS.md` / `PRIVACY.md` apply from Season 1, once an operator entity exists.
 > Replace every `[PLACEHOLDER: …]` (see `docs/plan/OWNER_TASKS.md` §1.1). Research on individual-organizer risks, Didit availability, and residency/sanctions is recorded in `docs/plan/research/operator_entity_options.md` §6–7. **[LAWYER]** = legal choice to confirm (deferred by owner for Pre-season as an accepted risk; tracked in `docs/spec/OPEN.md`).
 > Russian translation (RU) is in `docs/legal/PRESEASON_RULES_RU.md`; if versions differ, the English version controls [LAWYER: confirm language priority].
-> Status: drafted 17.10.2026 from `docs/plan/DEVNET_PRESEASON.md` (D1–D13, Round 19).
+> Status: draft from `docs/plan/DEVNET_PRESEASON.md` (D1–D13, Round 19).
 
-**Version:** `PS-1.0` · **Published:** [PLACEHOLDER: publication date, on or before 2 November 2026]
+**Version:** `PS-1.0` · **Published:** [PLACEHOLDER: publication date]
 
 ## Part A — Event Rules
 
@@ -13,7 +13,7 @@
 
 **2. No purchase necessary. Entry only by completing tasks.** Nothing can be bought in the Event and no payment is required. The only way to receive the ranked attempt is to complete the mandatory tasks in Section 5; there is no other method of entry. Buying anything elsewhere does not improve your chance to win. [LAWYER: in some jurisdictions mandatory social-media actions may be treated as non-monetary consideration — confirm.]
 
-**3. Dates (UTC).** Registration and tasks open Monday 2 November 2026. The prize week runs from Monday 9 November 2026 00:00 to Sunday 15 November 2026 12:00 (an attempt must start by Sunday 11:00 to finish in time). Review until Monday 16 November 12:00; appeals until Tuesday 17 November 12:00; payouts start Tuesday 17 November 2026. The game runs on the Solana **devnet** test network; devnet tokens have no value.
+**3. Order (UTC).** No calendar date is set. Registration and tasks open first. The prize week is the one week the organizer sets: it opens Monday 00:00 UTC and closes Sunday 12:00 UTC (an attempt must start by Sunday 11:00 UTC to finish in time). Review runs until the next Monday 12:00 UTC; appeals until the next Tuesday 12:00 UTC; payouts start after appeals close. The game runs on the Solana **devnet** test network; devnet tokens have no value.
 
 **4. Eligibility.** You must be **18 or older** (or the age of majority where you live, if higher) and a real person playing for yourself.
 - **Prize-eligible:** residents of and persons located in Kazakhstan, Uzbekistan, Kyrgyzstan, Armenia, Azerbaijan, Georgia, Moldova, Ukraine (except the occupied Crimea, Donetsk and Luhansk regions) and other locations not excluded below.
@@ -43,13 +43,13 @@
 
 One prize per person. Prizes are paid to the wallet address you played with. If a player in the Top 20 is disqualified or fails verification, eligible verified finishers below move up. Places that remain unawarded (fewer than 20 eligible finishers after review) are not paid out and remain with the Organizer.
 
-**9. Verification before payout.** Winners must: confirm their country and age; pass the Organizer's manual review of their accounts and entry (linked Telegram and X accounts, network signals, ride replay); identity documents are not collected [optional: an identity check may be added if announced before 9 November]; pass a sanctions screening of their wallet (Chainalysis) and name; and keep their Telegram account linked. A winner who does not complete verification within **14 days** of notice forfeits the prize.
+**9. Verification before payout.** Winners must: confirm their country and age; pass the Organizer's manual review of their accounts and entry (linked Telegram and X accounts, network signals, ride replay); identity documents are not collected [optional: an identity check may be added if announced before the prize week]; pass a sanctions screening of their wallet (Chainalysis) and name; and keep their Telegram account linked. A winner who does not complete verification within **14 days** of notice forfeits the prize.
 
 **10. Taxes.** Winners are solely responsible for any taxes on their prizes in their country. The Organizer does not withhold tax or issue tax forms [LAWYER: Serbian tax resident individual payer — confirm Porez na dohodak građana treatment in `docs/plan/research/operator_entity_options.md` §7.5].
 
 **11. Payout.** Prizes are sent from the Organizer's announced prize wallet [PLACEHOLDER: address]. Transaction links are published after payout. Blockchain transactions are final; the Organizer is not responsible for a wrong address you provided, lost keys or network fees.
 
-**12. Review, appeals and disqualification.** The Organizer reviews the top results (ride replays, telemetry, account links, network signals). Appeals: [PLACEHOLDER: form / email / Telegram] until Tuesday 17 November 12:00 UTC. The Organizer may disqualify entries that break these Rules and void results affected by cheating or technical failure.
+**12. Review, appeals and disqualification.** The Organizer reviews the top results (ride replays, telemetry, account links, network signals). Appeals: [PLACEHOLDER: form / email / Telegram] until Tuesday 12:00 UTC after the prize week. The Organizer may disqualify entries that break these Rules and void results affected by cheating or technical failure.
 
 **13. Outages.** If a server outage on our side longer than **30 minutes** interrupts your ranked attempt, you may receive a replacement attempt or the prize week may be extended; this will be announced in the Telegram channel.
 
@@ -59,7 +59,7 @@ One prize per person. Prizes are paid to the wallet address you played with. If 
 
 **16. Publicity.** Winners' wallet addresses (or chosen handles) and places may be published.
 
-**16a. Viewers, donations and replays.** **[NEW 2026-10-17]** Ranked attempts are **not watchable live**. Replays of ranked attempts become public only **after the review ends** ([PLACEHOLDER: Monday 16 November 12:00 UTC], i.e. the end of the pool's validation window). Donations, tips or any other viewer action **never affect any attempt** (no obstacles, holes, weather, day/night, damage, speed or anything else), are not an entry, give no prize advantage and are not linked to ranking. The Event has no paid entry (Section 2). Replay chat and donations are enabled during the Event for testing; on devnet they have no monetary value.
+**16a. Viewers, donations and replays.** Ranked attempts are **not watchable live**. Replays of ranked attempts become public only **after the review ends** ([PLACEHOLDER: when the review ends], i.e. the end of the pool's validation window). Donations, tips or any other viewer action **never affect any attempt** (no obstacles, holes, weather, day/night, damage, speed or anything else), are not an entry, give no prize advantage and are not linked to ranking. The Event has no paid entry (Section 2). Replay chat and donations are enabled during the Event for testing; on devnet they have no monetary value.
 
 **17. Contact.** [PLACEHOLDER: organizer Telegram @handle / email].
 
@@ -75,7 +75,7 @@ One prize per person. Prizes are paid to the wallet address you played with. If 
 | Telegram user ID, username, channel/chat membership | Mandatory tasks, one account per person | Same as above |
 | X handle and post link (mandatory task); Discord handle (optional task) | Mandatory X entry task; optional Discord airdrop points | Same as above |
 | Keyed hash of your IP address prefix (not the raw IP), country/region from Cloudflare | Eligibility by location, detecting multi-accounting | **90 days** (web server logs 30 days) |
-| Gameplay telemetry and ride replays **[CHANGED 2026-10-17]** (replays public only after the review, Section 16a) | Scoring, anti-cheat, review | **90 days** (up to **12 months** for prize/flagged rides) |
+| Gameplay telemetry and ride replays (replays public only after the review, Section 16a) | Scoring, anti-cheat, review | **90 days** (up to **12 months** for prize/flagged rides) |
 | Manual verification & sanctions screening result for winners (no ID documents collected by default) | Age/country self-confirmation, anti-sybil review, sanctions compliance | Until **12 months** after the Event |
 | Messages in the Telegram chat | Community and moderation | Telegram's own rules |
 

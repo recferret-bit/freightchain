@@ -130,7 +130,7 @@ ${matrix()}
 
 - HTTP referral scenarios stop at bind and gift. They do not assert the free-ride grant after a verified MEDIUM ride. The unit spec does.
 - Promo create and redeem are on main (\`docs/spec/promocodes.md\`).
-- \`docs/agents/verifying.md\` records that \`e2e-tickets-stub\` RETRY CONFIRM and the stub's missing \`/reconcile\` route fail on main (2026-10-13).
+- \`docs/agents/verifying.md\` records that \`e2e-tickets-stub\` RETRY CONFIRM and the stub's missing \`/reconcile\` route fail on main.
 - \`set_pool_rules\` has no admin HTTP route. Operators use the CLI.
 - The existing compose file has no Solana service. Localnet uses a host \`solana-test-validator\`. This suite does the same and does not pull a validator image.
 - Chrome scripts (\`server/scripts/e2e-*.mjs\`, \`client/tools/e2e-chrome.mjs\`, \`landing/tools/e2e-wallet.mjs\`) are the browser pass. This suite does not call them.

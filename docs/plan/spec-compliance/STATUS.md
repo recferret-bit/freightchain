@@ -1,21 +1,21 @@
 # Plan 2 Status Board — Make All Code Follow Specs
 
 > **Master Plan:** [`docs/plan/SPEC_COMPLIANCE_PLAN.md`](../SPEC_COMPLIANCE_PLAN.md)
-> **Status Legend:** `[ ] Todo` · `[~] In Progress` · `[x] Done` · `[!] Blocked (awaiting owner decision)`
+> **Status Legend:** ` Todo` · `[~] In Progress` · `[x] Done` · `[!] Blocked (awaiting owner decision)`
 
 ---
 
 ## Summary Progress
 
-**28 October:** counts unchanged. The Pre-season $500 fixed-table settlement (ranking, review flags, mocked sanctions port, lock, manual payout record, admin tab, public table) is built locally and has unit, PostgreSQL and HTTP evidence, but it is not a separate task here; SPC-08.4 stays In Progress (live providers owner-gated) and no task moved to done.
+**:** counts unchanged. The Pre-season $500 fixed-table settlement (ranking, review flags, mocked sanctions port, lock, manual payout record, admin tab, public table) is built locally and has unit, PostgreSQL and HTTP evidence, but it is not a separate task here; SPC-08.4 stays In Progress (live providers owner-gated) and no task moved to done.
 
-**27 October:** counts unchanged (50/53). Integrated local gate evidence is in [LOCAL_READINESS](../../testing/LOCAL_READINESS.md); it is split across runs and excludes the 1h paid ride.
+**:** counts unchanged (50/53). Integrated local gate evidence is in [LOCAL_READINESS](../../testing/LOCAL_READINESS.md); it is split across runs and excludes the 1h paid ride.
 
-The 24 October [local readiness audit](../../testing/LOCAL_READINESS.md) reopened six implementation tasks. The 26 October Convoy follow-up closes SPC-08.1..3 with PostgreSQL, local-chain and Chrome evidence. **51/53 tasks are marked done; SPC-08.4 and SPC-08.5 remain in progress (live providers, physical Seeker and trust-policy decisions are owner-gated).** Final merged acceptance and the full-duration paid-ride proof remain pending. Scheduler/database-outage and host-log-retention follow-ups have separate branch evidence pending integration. Other checked entries retain their earlier task status; they are not certification that every feature passed the current runtime gate.
+The [local readiness audit](../../testing/LOCAL_READINESS.md) reopened six implementation tasks. The Convoy follow-up closes SPC-08.1..3 with PostgreSQL, local-chain and Chrome evidence. **51/53 tasks are marked done; SPC-08.4 and SPC-08.5 remain in progress (live providers, physical Seeker and trust-policy decisions are owner-gated).** Final merged acceptance and the full-duration paid-ride proof remain pending. Scheduler/database-outage and host-log-retention follow-ups have separate branch evidence pending integration. Other checked entries retain their earlier task status; they are not certification that every feature passed the current runtime gate.
 
 | Epic | Domain | Spec Docs | Total Tasks | Todo | In Progress | Done | Blocked |
 |---|---|---|---|---|---|---|---|
-| [`SPC-01`](./issues/SPC-01-backend-contract-and-validation.md) | Backend Contract, `@ZodResponse`, `.strict()` & Geo/Hero Fixes | `backend_contract.md`, `legal.md` | 6 | 0 | 0 | 6 | 0 |
+| [`SPC-01`](./issues/SPC-01-backend-contract-and-validation.md) | Backend Contract, `@ZodResponse`, `.strict` & Geo/Hero Fixes | `backend_contract.md`, `legal.md` | 6 | 0 | 0 | 6 | 0 |
 | [`SPC-02`](./issues/SPC-02-admin-and-privileged-security.md) | Admin & Privileged Security (`F01..F18`) | `admin_security.md` | 9 | 0 | 0 | 9 | 0 |
 | [`SPC-03`](./issues/SPC-03-rides-dynamic-finish-and-ride-result.md) | Rides, Dynamic 65 km/h Finish & `stats.RideResult` | `rides.md` | 6 | 0 | 0 | 6 | 0 |
 | [`SPC-04`](./issues/SPC-04-replays-streams-donations-and-i18n.md) | Replays, Tip-Only Donations, Controls `C1..C36`, Chat & EN/RU i18n | `replays_streams.md`, `legal.md` | 9 | 0 | 0 | 9 | 0 |
@@ -29,13 +29,13 @@ The 24 October [local readiness audit](../../testing/LOCAL_READINESS.md) reopene
 
 ## Task-by-Task Status Tracker
 
-### Epic SPC-01 — Backend Contract, `@ZodResponse`, `.strict()` & Validation ([`issues/SPC-01-backend-contract-and-validation.md`](./issues/SPC-01-backend-contract-and-validation.md))
+### Epic SPC-01 — Backend Contract, `@ZodResponse`, `.strict` & Validation ([`issues/SPC-01-backend-contract-and-validation.md`](./issues/SPC-01-backend-contract-and-validation.md))
 
 | Task ID | Title | Spec Rules | Paired Plan 1 Test | Depends On | Status |
 |---|---|---|---|---|---|
 | `SPC-01.1` | Implement `@ZodResponse(schema)` decorator, `ZodResponseInterceptor` (`RESPONSE_SCHEMA_CHECK`), and attach schemas to all 151+ routes | `API-M-01`, `API-M-02`, `API-M-06..09` | `E2E-02.1`, `E2E-02.2` | — | `[x] Done` |
 | `SPC-01.2` | Build OpenAPI 3.1 generator (`npm --prefix backend/server run openapi:generate` → `openapi.json`) from controller + Zod metadata | `API-M-03` | `E2E-02.6` | `SPC-01.1` | `[x] Done` |
-| `SPC-01.3` | Enforce `.strict()` on all Admin, Editor, Auth, Ticket, Pool, Promo, and Money request Zod schemas | `API-M-04`, `ADM-M-12` | `E2E-02.4` | — | `[x] Done` |
+| `SPC-01.3` | Enforce `.strict` on all Admin, Editor, Auth, Ticket, Pool, Promo, and Money request Zod schemas | `API-M-04`, `ADM-M-12` | `E2E-02.4` | — | `[x] Done` |
 | `SPC-01.4` | Standardize foreign resource `:id` ownership checks to return `404` across all player-scoped endpoints | `API-M-05`, `API-M-10` | `E2E-02.5` | — | `[x] Done` |
 | `SPC-01.5` | Enforce fail-closed geo eligibility when `CF-IPCountry` is absent in production (`PRIZE_DEV_DEFAULT_COUNTRY` dev-only) | `API-M-11`, `LEG-M-04..06` | `E2E-06.3` | — | `[x] Done` |
 | `SPC-01.6` | Fix `frontend/landing` `paintHero` null-pool crash when `GET /api/pools/current` returns `null` | `API-M-12`, `API-M-13` | `E2E-04.9` | — | `[x] Done` |
@@ -87,15 +87,15 @@ The 24 October [local readiness audit](../../testing/LOCAL_READINESS.md) reopene
 | `SPC-05.2` | Enforce `409 pool_last_start_passed` on ride start & `409 pool_schedule_mismatch` on DB vs on-chain PDA timestamp drift | `POOL-M-05`, `POOL-M-06`, `POOL-M-11` | `E2E-08.5` | `SPC-05.1` | `[x] Done` |
 | `SPC-05.3` | Add non-refundable ticket burn rule after `last_start_at` + lobby purchase warning modal & mandatory confirmation checkbox | `POOL-M-07` | `E2E-08.5` | `SPC-05.2` | `[x] Done` |
 | `SPC-05.4` | Implement pool validation & appeals workflow (`POST /api/rides/:id/appeal`, admin review queue, block `commit_winners_root` until `validation_until` & 0 open appeals) | `POOL-M-08`, `POOL-M-09` | `E2E-08.5` | `SPC-05.1` | `[x] Done` |
-| `SPC-05.5` | Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`) | `POOL-M-10`, `POOL-M-13, 14` | `E2E-08.5` | `SPC-05.1` | `[x] Done` — merged-`main` gate 28 Oct (`222d5c2d`): 204 Rust tests, pinned-validator `test:localnet`, IDL drift and server checks passed; see LOCAL_READINESS. No deployment. |
-| `SPC-05.6` | Resolve `set_pool_rules` governance conflict (`POOL-M-12`/`B8` Admin HTTP vs `ADM-M-07`/Decision 60 Squads multisig-only) | `POOL-M-12` vs `ADM-M-07` | `E2E-08.5`, `E2E-09.1` | Decision 70 | `[x] Done` — Decision 70 (24.10.2026): no admin HTTP route. `pool-admin.mjs set-pool-rules` sends it. On mainnet, Squads. |
+| `SPC-05.5` | Update `freightchain_pools` program: `Config.min_finish_secs <= 7200` + v6 schedule fields (`opens_at`, `last_start_at`, `period_secs`) | `POOL-M-10`, `POOL-M-13, 14` | `E2E-08.5` | `SPC-05.1` | `[x] Done` — merged-`main` gate (`222d5c2d`): 204 Rust tests, pinned-validator `test:localnet`, IDL drift and server checks passed; see LOCAL_READINESS. No deployment. |
+| `SPC-05.6` | Resolve `set_pool_rules` governance conflict (`POOL-M-12`/`B8` Admin HTTP vs `ADM-M-07`/Decision 60 Squads multisig-only) | `POOL-M-12` vs `ADM-M-07` | `E2E-08.5`, `E2E-09.1` | Decision 70 | `[x] Done` — Decision 70: no admin HTTP route. `pool-admin.mjs set-pool-rules` sends it. On mainnet, Squads. |
 
 ### Epic SPC-06 — Anti-Cheat v2.1, 30 Hz Server Re-Sim & Humanness `F1..F10` ([`issues/SPC-06-anticheat-v2-and-30hz-resim.md`](./issues/SPC-06-anticheat-v2-and-30hz-resim.md))
 
 | Task ID | Title | Spec Rules | Paired Plan 1 Test | Depends On | Status |
 |---|---|---|---|---|---|
 | `SPC-06.1` | Implement Telemetry v2.1 wire protocol (`sessionKey` per-batch HMAC-SHA256, deflate streams `inp`/`clk`/`chk`/`mg`/`env`, `batch-mac-invalid`) | `ACH-M-02`, `ACH-M-03`, `ACH-M-05` | `E2E-07.3` | — | `[x] Done` — Enforce mode has named deflate streams `inp`/`clk`/`chk`/`mg`/`env` and the HMAC-before-inflate. Default `TELEMETRY_V21` stays `off`. `off` and `shadow` do not require the streams. |
-| `SPC-06.2` | Upgrade client & server `ReplayEngine` to 30 Hz fixed-step deterministic simulation (`dt = 1/30s`) + incremental per-batch server re-sim & background final verdict | `ACH-M-01`, `ACH-M-08..10`, `ACH-M-12` | `E2E-07.1`, `E2E-07.2` | `SPC-06.1` | `[x] Done` — Decision 69 (24.10.2026): the live `ReplayEngine` stays at 10 Hz. `stepAt30Hz` is not the judge. |
+| `SPC-06.2` | Upgrade client & server `ReplayEngine` to 30 Hz fixed-step deterministic simulation (`dt = 1/30s`) + incremental per-batch server re-sim & background final verdict | `ACH-M-01`, `ACH-M-08..10`, `ACH-M-12` | `E2E-07.1`, `E2E-07.2` | `SPC-06.1` | `[x] Done` — Decision 69: the live `ReplayEngine` stays at 10 Hz. `stepAt30Hz` is not the judge. |
 | `SPC-06.3` | Enforce pause (`≤3` pauses, `≤5 min` cumulative) and slow-motion (`dt` / wall-clock drift) anti-cheat bounds | `ACH-M-04` | `E2E-07.6` | `SPC-06.2` | `[x] Done` — A fourth pause, more than five minutes paused, or sustained slow-motion: `off` adds no reasons, `shadow` flags, and `enforce` rejects. `RULES_VERSION` stays 7. |
 | `SPC-06.4` | Implement shared pool `roadSeed` + per-ride `trafficSalt` & `holeSalt` commit–reveal (`HMAC-SHA256`) and `worldDigest32` verification | `ACH-M-05`, `ACH-M-11` | `E2E-07.4` | `SPC-06.2` | `[x] Done` — Start stores traffic and hole salt commitments and enforce compares `worldDigest32` of spawned holes, junctions, and traffic. A short mismatch flags; one that lasts at least 10 seconds after three points rejects. The 10 Hz road rebuild does not read the salts. |
 | `SPC-06.5` | Implement mechanical input humanness classifier (`F1..F10` → `humannessScore`), 5 physical-impossibility auto-reject rules, and `isTrusted=false` tracking | `ACH-M-06`, `ACH-M-07`, `ACH-M-14..16` | `E2E-07.5`, `E2E-07.7` | `SPC-06.2` | `[x] Done` — F1–F10 score 0–100. The five physical-impossibility cases reject. A borderline score or `isTrusted=false` is `flagged_for_review`. No browser fingerprint. |
@@ -118,6 +118,6 @@ The 24 October [local readiness audit](../../testing/LOCAL_READINESS.md) reopene
 | `SPC-08.1` | Implement Convoy Referral state machine (`pending` 72h expiry delete → `active` 60d window on first verified MEDIUM/HARD ride → `qualified` / `expired`) & dynamic pending slot cap `min(100, 5 + 2*A)` | `REF-M-01..07`, `REF-M-15` | `E2E-05.7` | — | `[x] Done` — local lifecycle, public cutover, saved policy and Chrome acceptance; merged/devnet gate separate. |
 | `SPC-08.2` | Implement Convoy invitee 1h promo ride gift on activation with `3/day`, `10/week` per-referrer and `500/week` global caps + M1 (`100 TEN4` @ 2 ISO weeks) & M2 (`50 TEN4` @ 5 ISO weeks) rewards | `REF-M-08..12`, `REF-M-15` | `E2E-05.7` | `SPC-08.1` | `[x] Done` — usable promo caps, milestone rules, 48h hold and local-chain settlement/recovery; saved configurable promises. |
 | `SPC-08.3` | Implement 25-row Convoy leaderboard (`GET /api/referrals/leaderboard`) & `convoyHidden` privacy toggle (`PATCH /api/me/privacy`) | `REF-M-13`, `REF-M-14`, `REF-M-15` | `E2E-05.7` | `SPC-08.2` | `[x] Done` — Profile capacity/progress/leaderboard/privacy with HTTP/PG and Chrome evidence. |
-| `SPC-08.4` | Implement Pre-Season TEN4 Airdrop campaign engine (MEDIUM/HARD ride gate, Telegram check, X verification via `twitterapi.io`, Turnstile, unique social ID binding) | `TEN-M-01..11`, `DEVNET_PRESEASON` | `E2E-05.8` | `SPC-08.1` | `[~] In Progress` — local EN/RU tasks and single event attempt complete. The fixed-table event settlement (28 Oct) is local-only. Live providers/event configuration and future economic point weights remain open; future TGE payout is separate. |
+| `SPC-08.4` | Implement Pre-Season TEN4 Airdrop campaign engine (MEDIUM/HARD ride gate, Telegram check, X verification via `twitterapi.io`, Turnstile, unique social ID binding) | `TEN-M-01..11`, `DEVNET_PRESEASON` | `E2E-05.8` | `SPC-08.1` | `[~] In Progress` — local EN/RU tasks and single event attempt complete. The fixed-table event settlement is local-only. Live providers/event configuration and future economic point weights remain open; future TGE payout is separate. |
 | `SPC-08.5` | Implement Anti-Sybil `TrustScore` service (subnet privacy, SGT, optional ASN/funding review evidence, `<50` payout block, 48h reward hold queue) | `anticheat.md` Appendix D, `REF-M-15` | `E2E-05.7`, `E2E-05.8`, `E2E-07.8` | `SPC-06.5` | `[~] In Progress` — finish/social/paid/SGT trust, subnet HMAC retention and optional default-off ASN/funding evidence implemented. Live providers/physical Seeker and automatic policy decisions open; no login points, fingerprinting or evidence-driven penalties. |
 | `SPC-08.6` | Implement `TermsGuard` (`CURRENT_TERMS_VERSION` re-consent enforcement on all write routes) & scrub banned gambling terms across `frontend/` | `LEG-M-01..11` | `E2E-06.3` | `SPC-01.5` | `[x] Done` — TermsGuard: a player write whose terms or privacy version is missing or older is `403 terms_acceptance_required`. UI copy has no `bet`, `wager`, `gamble`, `jackpot`, `casino`, `lottery`, or `raffle`. The only hit is a landing test that forbids those words. No separate scrub pass. |

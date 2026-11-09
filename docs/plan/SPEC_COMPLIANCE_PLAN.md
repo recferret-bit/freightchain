@@ -13,16 +13,16 @@
 Every task in this plan obeys the hard rules in [`AGENTS.md`](../../AGENTS.md) and [`docs/spec/PROCESS.md`](../spec/PROCESS.md):
 
 1. **Atomic Spec + Code + Test Update:** When a task changes product behavior to match a target `*-M-*` rule, the same commit/PR MUST update:
-   - The implementation in `frontend/`, `backend/`, or `infra/`.
-   - The as-built ledger in [`docs/spec/PRODUCT.md`](../spec/PRODUCT.md) (moving the item from "Target / Planned" to "Shipped").
-   - The corresponding Track B test task in [`docs/plan/E2E_HEADLESS_PLAN.md`](./E2E_HEADLESS_PLAN.md).
+ - The implementation in `frontend/`, `backend/`, or `infra/`.
+ - The as-built ledger in [`docs/spec/PRODUCT.md`](../spec/PRODUCT.md) (moving the item from "Target / Planned" to "Shipped").
+ - The corresponding Track B test task in [`docs/plan/E2E_HEADLESS_PLAN.md`](./E2E_HEADLESS_PLAN.md).
 2. **Clean Architecture & Invariants (`backend/server`):**
-   - `domain` pure, `application` = ports + CQRS handlers, `infrastructure` = adapters, `presentation` thin (`≤ 500` lines per file).
-   - Time only via `ClockPort`; env only via `EnvService` (new env keys updated in all 4 places: `env.schema.ts`, `backend/server/.env.example`, `infra/deploy/.env.example`, `infra/deploy/docker-compose.prod.yml`).
-   - All wallet mutations run under `findByWalletForUpdate` with lock ordering `player → pool → tickets / pledges`.
-   - Prisma schema changes include a forward-only migration in `backend/server/prisma/migrations/`.
+ - `domain` pure, `application` = ports + CQRS handlers, `infrastructure` = adapters, `presentation` thin (`≤ 500` lines per file).
+ - Time only via `ClockPort`; env only via `EnvService` (new env keys updated in all 4 places: `env.schema.ts`, `backend/server/.env.example`, `infra/deploy/.env.example`, `infra/deploy/docker-compose.prod.yml`).
+ - All wallet mutations run under `findByWalletForUpdate` with lock ordering `player → pool → tickets / pledges`.
+ - Prisma schema changes include a forward-only migration in `backend/server/prisma/migrations/`.
 3. **Owner Conflict Gates (`PRODUCT.md` Conflicts Table):**
-   - Where two spec documents have an explicit conflict documented in [`docs/spec/PRODUCT.md`](../spec/PRODUCT.md) (e.g., `POOL-M-12` / `B8` Admin HTTP `set_pool_rules` vs `ADM-M-07` / Decision 60 Squads multisig-only), the task's **Definition of Ready (DoR)** includes an explicit **Owner Decision Gate** so code is never changed on an unresolved conflict.
+ - Where two spec documents have an explicit conflict documented in [`docs/spec/PRODUCT.md`](../spec/PRODUCT.md) (e.g., `POOL-M-12` / `B8` Admin HTTP `set_pool_rules` vs `ADM-M-07` / Decision 60 Squads multisig-only), the task's **Definition of Ready (DoR)** includes an explicit **Owner Decision Gate** so code is never changed on an unresolved conflict.
 
 ---
 
@@ -32,7 +32,7 @@ All tasks are tracked in [`docs/plan/spec-compliance/STATUS.md`](./spec-complian
 
 | Epic ID | Issue File | Spec Document(s) | Summary | Tasks | Spec Rules Covered |
 |---|---|---|---|---|---|
-| **SPC-01** | [`SPC-01-backend-contract-and-validation.md`](./spec-compliance/issues/SPC-01-backend-contract-and-validation.md) | `backend_contract.md`, `legal.md` | `@ZodResponse` decorator & interceptor, OpenAPI generator, `.strict()` DTOs, `404` foreign resources, fail-closed geo without `CF-IPCountry`, `paintHero` null-pool fix | `SPC-01.1` – `SPC-01.6` | `API-M-01..13`, `LEG-M-04..06` |
+| **SPC-01** | [`SPC-01-backend-contract-and-validation.md`](./spec-compliance/issues/SPC-01-backend-contract-and-validation.md) | `backend_contract.md`, `legal.md` | `@ZodResponse` decorator & interceptor, OpenAPI generator, `.strict` DTOs, `404` foreign resources, fail-closed geo without `CF-IPCountry`, `paintHero` null-pool fix | `SPC-01.1` – `SPC-01.6` | `API-M-01..13`, `LEG-M-04..06` |
 | **SPC-02** | [`SPC-02-admin-and-privileged-security.md`](./spec-compliance/issues/SPC-02-admin-and-privileged-security.md) | `admin_security.md` | `PrivilegedSurfaceGuard` default-deny, 3 roles (`admin`, `moderator`, `editor`), separate JWT secrets, strict startup check, 60m TTL + Redis `jti` revoke, auth throttle + dummy nonce, IP allowlist + `/24` masking, DB append-only `AdminAction`, Telegram `AlertOutbox`, dual-admin approval | `SPC-02.1` – `SPC-02.9` | `ADM-M-01..21`, Findings `F01..F18` |
 | **SPC-03** | [`SPC-03-rides-dynamic-finish-and-ride-result.md`](./spec-compliance/issues/SPC-03-rides-dynamic-finish-and-ride-result.md) | `rides.md` | Remove 4h/8h creation, server `finishFor(roadSeed, trip, FINISH_RULES_VERSION)` at `65 km/h` with `(RX, RZ, RT)` curvature & `snapSafe`, 1h finish line (`finish: true`), 90m `T_cap`, damage by source, server red-light counting, `stats.RideResult` migration & worker, versioned pool ranking formula & `GET /api/pools/:id/results` | `SPC-03.1` – `SPC-03.6` | `RID-M-01..21` |
 | **SPC-04** | [`SPC-04-replays-streams-donations-and-i18n.md`](./spec-compliance/issues/SPC-04-replays-streams-donations-and-i18n.md) | `replays_streams.md`, `legal.md` | Disable live watch of running rides, hide training rides, gate pool replays until `payout_at`, strip `SAMPLE_INPUT_COL`, remove gameplay donation/HONK effects, replay-only SOL tips (`0.01/0.05/0.1`, min/max, 15m expiry, ≤3 orders, 0% referral share, `GET /api/me/donations`), disable pledges (`403 pledges_disabled`), replay controls `C3/C6/C7/C8/C15..19/C36` & remove `C9/C26/C27/C32`, replay chat (`replayT`, filter, `P01/P02`, 90d retention), EN/RU `i18n.js` | `SPC-04.1` – `SPC-04.9` | `RPL-M-01..34`, `LEG-M-01..11` |
@@ -47,12 +47,12 @@ All tasks are tracked in [`docs/plan/spec-compliance/STATUS.md`](./spec-complian
 
 ```mermaid
 flowchart TD
-  SPC01["SPC-01: Backend Contract, @ZodResponse, .strict() & 404s"] --> SPC02["SPC-02: Admin & Privileged Security (F01..F18)"]
-  SPC01 --> SPC03["SPC-03: Dynamic 65 km/h Finish, RideResult & Pool Ranking"]
-  SPC01 --> SPC04["SPC-04: Replays, Tip-Only Donations, Controls C1..C36 & EN/RU i18n"]
-  SPC03 --> SPC05["SPC-05: Pool Schedule, last_start_at, Appeals & Program v6"]
-  SPC03 --> SPC06["SPC-06: Telemetry v2.1, 30 Hz Re-Sim, Salts & Humanness F1..F10"]
-  SPC06 --> SPC07["SPC-07: Minigame Captchas, Parking Pocket & Noisy PNG"]
-  SPC03 --> SPC08["SPC-08: Referral Convoy, TEN4 Airdrop, TrustScore & TermsGuard"]
-  SPC06 --> SPC08
+ SPC01["SPC-01: Backend Contract, @ZodResponse .strict & 404s"] --> SPC02["SPC-02: Admin & Privileged Security (F01..F18)"]
+ SPC01 --> SPC03["SPC-03: Dynamic 65 km/h Finish, RideResult & Pool Ranking"]
+ SPC01 --> SPC04["SPC-04: Replays, Tip-Only Donations, Controls C1..C36 & EN/RU i18n"]
+ SPC03 --> SPC05["SPC-05: Pool Schedule, last_start_at, Appeals & Program v6"]
+ SPC03 --> SPC06["SPC-06: Telemetry v2.1, 30 Hz Re-Sim, Salts & Humanness F1..F10"]
+ SPC06 --> SPC07["SPC-07: Minigame Captchas, Parking Pocket & Noisy PNG"]
+ SPC03 --> SPC08["SPC-08: Referral Convoy, TEN4 Airdrop, TrustScore & TermsGuard"]
+ SPC06 --> SPC08
 ```

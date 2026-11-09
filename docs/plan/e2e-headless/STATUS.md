@@ -1,7 +1,7 @@
 # Plan 1 Status Board — Full Set of E2E Headless Tests
 
 > **Master Plan:** [`docs/plan/E2E_HEADLESS_PLAN.md`](../E2E_HEADLESS_PLAN.md)
-> **Status Legend:** `[ ] Todo` · `[~] In Progress` · `[x] Done` · `[!] Blocked (awaiting owner decision or Plan 2 dependency)`
+> **Status Legend:** ` Todo` · `[~] In Progress` · `[x] Done` · `[!] Blocked (awaiting owner decision or Plan 2 dependency)`
 
 ---
 
@@ -40,7 +40,7 @@
 | `E2E-02.1` | Build `routes.manifest.ts` + meta-test asserting 100% NestJS controller route registration | `API-T-01`, `API-M-01` | Track A + B | `E2E-01.3` | `[x] Done` |
 | `E2E-02.2` | Enforce `@ZodResponse` schema validation (`RESPONSE_SCHEMA_CHECK=strict`) across all 151+ routes | `API-T-02..05`, `API-M-02` | Track A + B | `SPC-01.1`, `E2E-02.1` | `[x] Done` |
 | `E2E-02.3` | Implement `expectDbDelta(prisma, tables, fn)` helper and instrument mutating route tests | `COVERAGE_CONTRACT` §2.2 | Track A | `E2E-02.1` | `[x] Done` |
-| `E2E-02.4` | Build table-driven `negative-matrix.spec.ts` — Matrix A (unauth `401`, forbidden `403`, bad DTO `400`, `.strict()` unknown key `400`) | `API-T-06..09`, `API-M-04` | Track A + B | `SPC-01.3`, `E2E-02.1` | `[x] Done` |
+| `E2E-02.4` | Build table-driven `negative-matrix.spec.ts` — Matrix A (unauth `401`, forbidden `403`, bad DTO `400`, `.strict` unknown key `400`) | `API-T-06..09`, `API-M-04` | Track A + B | `SPC-01.3`, `E2E-02.1` | `[x] Done` |
 | `E2E-02.5` | Build table-driven `negative-matrix.spec.ts` — Matrix B (foreign resource `:id` returns `404` on all player-owned endpoints) | `API-T-10`, `API-M-05` | Track A + B | `SPC-01.4`, `E2E-02.4` | `[x] Done` |
 | `E2E-02.6` | Add `fast-check` DTO property fuzzing & OpenAPI `schemathesis` contract test | `API-T-11..13`, `API-M-03` | Track B | `SPC-01.2`, `E2E-02.2` | `[x] Done` |
 

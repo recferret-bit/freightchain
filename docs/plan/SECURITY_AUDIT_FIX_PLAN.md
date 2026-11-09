@@ -1,7 +1,7 @@
-# Security audit 2026-10-28: fix plan
+# Security audit: fix plan
 
 Source: SolSwarm report `~/work/SolSwarm/reports/2026-10-28-182903-freightchain/` (`findings-and-scores.json`, `verified-safe.json`, `auditors/*.md`).
-Audited commit `b500a3a89d09` (current `main` HEAD on 29 Oct). Auditors: Claude (S1 auth, S5 deps), Grok (S2 input, S6 client), AGY/Gemini (S3 logic), Codex (S4 config). The other three cross-checked each finding.
+Audited commit `b500a3a89d09` (current `main` HEAD ). Auditors: Claude (S1 auth, S5 deps), Grok (S2 input, S6 client), AGY/Gemini (S3 logic), Codex (S4 config). The other three cross-checked each finding.
 
 ## 1. Summary
 
@@ -24,7 +24,7 @@ Two of these can move value wrongly: **SEC-01** (wrong `commit_winners` set) and
 
 ## 3. Priority order
 
-| # | item | clusters | report → consensus sev. | Solana | live in prod | decided (29 Oct, §4) |
+| # | item | clusters | report → consensus sev. | Solana | live in prod | decided (§4) |
 |---|---|---|---|---|---|---|
 | 1 | SEC-01 Pool ranking: stale RideResult, top-20 pre-cut | 10 | high → medium/high | yes | first payout | best single ride; formula v2 for new pools |
 | 2 | SEC-02 TEN4 burn signature replay + visual desync | 12 | medium → medium | yes | no (chain off) | preflight + balance hold with TTL |
@@ -51,7 +51,7 @@ Two of these can move value wrongly: **SEC-01** (wrong `commit_winners` set) and
 
 Suggested lanes: **A (pool money):** SEC-01 → SEC-05 → SEC-06. **B (TEN4):** SEC-02. **C (auth/privacy):** SEC-03, 04, 09, 10, 11, 12, 13. **D (client/supply chain):** SEC-07 → SEC-08, then 16, 17. **E (anti-bot):** SEC-15 (telemetry v2, devnet soak) → SEC-14 (needs the v2 session key for its HMAC) → MG-V2. SEC-18/19 are bookkeeping.
 
-## 4. Owner decisions (answered 29 Oct)
+## 4. Owner decisions (answered )
 
 1. **SEC-01 ranking:** best single verified ride by effective time across **all** eligible wallets of the pool, then the top 20. Finishers rank first; non-finishers follow, ordered by distance. This is `rankRideResults` as written.
 2. **SEC-01 rollout (POOL-M-13):** bump `SCORE_FORMULA_VERSION` to 2 and stamp it on pools that open after the release. Pools already open keep v1 until they close. Ship to devnet first, then production. **v2 has no minigame time:** passing every minigame is mandatory, and a failure rejects the ride instead of adding seconds (decision 9).
@@ -62,11 +62,11 @@ Suggested lanes: **A (pool money):** SEC-01 → SEC-05 → SEC-06. **B (TEN4):**
 7. **SEC-13:** shorten the wallets on `/api/live` (plus the SNS name when one exists).
 8. **SEC-14:** fix the minigame plumbing in this round (lock race, real HMAC, results reach the verdict). The new rules belong to the separate **MG-V2** project (§6).
 9. **SEC-15 / MG-V2 anti-bot rule:**
-   - Paid/ranked rides require telemetry v2 (`TELEMETRY_V21=enforce`, protocol 2 + session MAC).
-   - **A rider must pass every minigame received during the ride.** Any failure rejects the ride at the end (`mg-failed`, which includes the "none passed" case). Failures are: 3 wrong codes, or the on-screen timer running out. The ride itself continues.
-   - Paid rides go to admin review (an admin can override) and can be appealed.
-   - The timer starts when the phone buzzes. Each kind has its own window, set as a `GameSetting` row through the signed admin API; the `more-time` mode doubles it.
-   - The gas station task is triggered by **real fuel burn** in the shared physics.
+ - Paid/ranked rides require telemetry v2 (`TELEMETRY_V21=enforce`, protocol 2 + session MAC).
+ - **A rider must pass every minigame received during the ride.** Any failure rejects the ride at the end (`mg-failed`, which includes the "none passed" case). Failures are: 3 wrong codes, or the on-screen timer running out. The ride itself continues.
+ - Paid rides go to admin review (an admin can override) and can be appealed.
+ - The timer starts when the phone buzzes. Each kind has its own window, set as a `GameSetting` row through the signed admin API; the `more-time` mode doubles it.
+ - The gas station task is triggered by **real fuel burn** in the shared physics.
 10. **SEC-17:** exact `eslint`/`esbuild` versions as **root workspace** devDependencies (root lockfile). The client calls them with `npx --no-install`, so `frontend/client` keeps zero dependencies.
 
 **Grill findings folded into the plan (no decision needed):**
@@ -103,9 +103,9 @@ Suggested lanes: **A (pool money):** SEC-01 → SEC-05 → SEC-06. **B (TEN4):**
 2. Also refresh `RideResult.verdictTier` in `override()` and `addAttention()` inside the same `tx`, so stats and boards agree.
 3. Remove the pre-cut. Rank all eligible verified wallets of the pool by their best single ride (`rankRideResults`), then `slice(0, TOP20_SIZE)`. Apply the same change in `GetPayoutTransactionsHandler`, ideally through one shared `rankPoolWallets()`.
 4. Formula v2 (decision §4.2):
-   - `SCORE_FORMULA_VERSION = 2` with both minigame weights at 0.
-   - Stamp the version on the pool at creation. If `economy.Pool` has no column for it, add one with a migration; existing pools default to 1.
-   - `rankRideResults(rows, pool.scoreFormulaVersion)` keeps v1 for pools opened before the release.
+ - `SCORE_FORMULA_VERSION = 2` with both minigame weights at 0.
+ - Stamp the version on the pool at creation. If `economy.Pool` has no column for it, add one with a migration; existing pools default to 1.
+ - `rankRideResults(rows, pool.scoreFormulaVersion)` keeps v1 for pools opened before the release.
 5. Add a one-off reconcile script that rebuilds `verdictTier` for existing rows (dry run by default) and run it against local/devnet.
 6. `planDrift` must use the new ranking, so an existing uncommitted plan is re-checked.
 
@@ -131,10 +131,10 @@ Suggested lanes: **A (pool money):** SEC-01 → SEC-05 → SEC-06. **B (TEN4):**
 1. Add a migration: `HonkBurn.chainSignature String? @unique`, and `@unique` on `HonkVisual.chainSignature` if it is not already unique. `insertBurn` stores the signature. A duplicate becomes a `409 signature_used`, checked inside the same player-locked tx (`findByWalletForUpdate`).
 2. Bind the burn to its purpose. The ride id or memo must be in the tx, or `ref` must be checked, so a burn for ride A cannot pay for ride B.
 3. Visual (decision §4.3):
-   - Add `POST /api/honk/visual/hold`. Under the player lock it checks the off-chain balance and writes a hold (wallet, item, price, `expiresAt` = now + `HONK_HOLD_TTL`) that reduces the spendable balance. A short balance returns 409, so the wallet is never asked to sign.
-   - `MintHonkVisualHandler` consumes the matching hold with the confirmed `buy_part` signature.
-   - A sweeper releases expired holds. All balance reads subtract live holds.
-   - The TTL is a `GameSetting` row (runtime knob), not env.
+ - Add `POST /api/honk/visual/hold`. Under the player lock it checks the off-chain balance and writes a hold (wallet, item, price, `expiresAt` = now + `HONK_HOLD_TTL`) that reduces the spendable balance. A short balance returns 409, so the wallet is never asked to sign.
+ - `MintHonkVisualHandler` consumes the matching hold with the confirmed `buy_part` signature.
+ - A sweeper releases expired holds. All balance reads subtract live holds.
+ - The TTL is a `GameSetting` row (runtime knob), not env.
 4. Client (`site/honk-sign.js`): take the hold before building the tx, and show "hold expired, try again" if it lapsed.
 
 **DoR.** Decision §4.3 made. Read `docs/spec/ten4.md` + `docs/agents/ten4-localnet.md`. Confirm no historical rows need a backfill (the column is nullable). List every reader of the TEN4 balance (garage, burn, stream, swap UI), since all of them must subtract holds.
@@ -143,9 +143,9 @@ Suggested lanes: **A (pool money):** SEC-01 → SEC-05 → SEC-06. **B (TEN4):**
 - Migration in the same commit.
 - Integration spec: the same signature twice → the second is refused.
 - **Concurrency tests:**
-  - two parallel `BurnHonk` calls with one signature → exactly one succeeds;
-  - a hold racing a spend in another tab → never a negative balance;
-  - two holds on the same balance → the second gets 409.
+ - two parallel `BurnHonk` calls with one signature → exactly one succeeds;
+ - a hold racing a spend in another tab → never a negative balance;
+ - two holds on the same balance → the second gets 409.
 - Integration spec for the hold sweeper.
 - Unit specs for both handlers.
 - HTTP scenario for the 409.
@@ -163,7 +163,7 @@ Suggested lanes: **A (pool money):** SEC-01 → SEC-05 → SEC-06. **B (TEN4):**
 - The nonce replay set is in-memory, so it is per instance.
 
 **Fix steps.**
-1. Add an `AdminProofService` intent `proposal_approve {proposalId, payloadHash}`. `admin.js` asks the approver's wallet to sign it, and `approve()` verifies it.
+1. Add an `AdminProofService` intent `proposal_approve {proposalId, payloadHash}`. `admin.js` asks the approve()r's wallet to sign it, and `approve()` verifies it.
 2. Require an intent-bound proof on chat hide, chat ban, `pools/rules` and `config` (decision §4.4). Other admin routes stay cookie + `X-FC-Admin`.
 3. Move the nonce replay set to Redis (`SET NX` + TTL). If Redis is down in production, signed mutations return `503` and read-only routes keep working (decision §4.4).
 4. Update `admin.js` to sign these actions and to show the 503 clearly. Run the `admin-coverage` skill.
@@ -172,9 +172,9 @@ Suggested lanes: **A (pool money):** SEC-01 → SEC-05 → SEC-06. **B (TEN4):**
 
 **DoD.**
 - `privileged-surface.guard.spec.ts`:
-  - no signature on a covered route → 403;
-  - a replayed nonce → 403 across two guard instances sharing Redis;
-  - Redis down → 503 on a signed mutation and 200 on a GET.
+ - no signature on a covered route → 403;
+ - a replayed nonce → 403 across two guard instances sharing Redis;
+ - Redis down → 503 on a signed mutation and 200 on a GET.
 - HTTP scenario: approve without a proof → 403; with the approver's proof → 200 and audited.
 - The admin page is checked in Chrome (approve flow with a fake wallet).
 - `admin-coverage` is green.
@@ -196,7 +196,7 @@ Suggested lanes: **A (pool money):** SEC-01 → SEC-05 → SEC-06. **B (TEN4):**
 2. Minimize the DTO: drop `fullWallet`, `paymentSignature` and the free-text `reason`. Return `seed` only when the gate opens. Update `publicRideResponse` in `wire.ts`.
 3. Make all public denials one `not_found` code and message (cluster 8). The driver's "locked until payout" state moves to an authenticated driver route.
 4. Pledge reads: return only pledges of watchable rides, or accept them as public on-chain data and record that in `docs/spec/pool.md`.
-5. Check the client callers (`r.html`, lobby, viewer) for fields they relied on.
+5. Check the client callers (`r.html`, lobby, viewer) for fields they relied .
 
 **DoR.** List the consumers of `/api/rides/:id/public` (`grep` client + landing). Read `docs/spec/replays_streams.md` replay visibility.
 
@@ -485,7 +485,7 @@ Suggested lanes: **A (pool money):** SEC-01 → SEC-05 → SEC-06. **B (TEN4):**
 
 ## SEC-19 — Dev treasury secret key in the audit snapshot
 **Clusters:** 16 · **Analysis.**
-- `backend/server/data/treasury.json` is **gitignored** (`.gitignore:80`) and not in git. The SolSwarm snapshot copied the working tree, and the auditors read the file. Checked on 29 Oct by matching only, with nothing printed: the secret key appears in 5 report files (`harness/sandbox-run/crosscheck-claude.log`, `agent-codex-s4-config.log`, `crosscheck-grok.log`, and two Grok session files under `sessions/crosscheck-grok/`). It therefore also went to the Claude, Codex and Grok providers. **Treat the key as disclosed.**
+- `backend/server/data/treasury.json` is **gitignored** (`.gitignore:80`) and not in git. The SolSwarm snapshot copied the working tree, and the auditors read the file. Checked on by matching only, with nothing printed: the secret key appears in 5 report files (`harness/sandbox-run/crosscheck-claude.log`, `agent-codex-s4-config.log`, `crosscheck-grok.log`, and two Grok session files under `sessions/crosscheck-grok/`). It therefore also went to the Claude, Codex and Grok providers. **Treat the key as disclosed.**
 - The server reads only `publicKey`, and only outside production/test. Production uses `infra/deploy/secrets/treasury.json`.
 
 **Fix steps.**
@@ -508,10 +508,10 @@ Closes the anti-bot side of clusters 6 and 9 (decision §4.9). **Full plan: [`MI
 2. **Timer.** The window starts when the phone buzzes, and an on-screen countdown is shown in the cab and on the phone. There is one window per kind, as `GameSetting` rows (e.g. `mg.window.phone-sms`, `mg.window.gas`) changed through the signed admin API. The `more-time` mode doubles it. Retries stay at 3 codes per window.
 3. **No unanswerable task.** The scheduler never arms a task whose window can cross the finish line or the end pad. The "cancelled unopened" state (MGM-M-05) goes away, because a timer that ran out is a fail.
 4. **Gas station.**
-   - Real fuel burn goes into `frontend/client/shared/physics.js` (rate from throttle/rpm/load; tunables in `js/config.js` + the shared module).
-   - Low fuel arms a server-issued `gas` task at the next GULP bay. An empty tank stops the engine (the ride can still be finished by refuelling only if a bay is reachable; decide in the spec).
-   - The GULP code becomes server-issued, replacing the local `gulp-state.js` digits.
-   - GULP bay placement must be computed on the **server road** (port `site(ci)` for `gulp` into `@freightchain/shared`), so that the server can judge the task.
+ - Real fuel burn goes into `frontend/client/shared/physics.js` (rate from throttle/rpm/load; tunables in `js/config.js` + the shared module).
+ - Low fuel arms a server-issued `gas` task at the next GULP bay. An empty tank stops the engine (the ride can still be finished by refuelling only if a bay is reachable; decide in the spec).
+ - The GULP code becomes server-issued, replacing the local `gulp-state.js` digits.
+ - GULP bay placement must be computed on the **server road** (port `site(ci)` for `gulp` into `@freightchain/shared`), so that the server can judge the task.
 5. **Ranking.** Formula v2 has no minigame time (SEC-01). Passing every task is a precondition of `verified`, not a time bonus.
 6. **Scope.** Applies to `1h` only. `4h`/`8h` must be covered before they go on sale.
 

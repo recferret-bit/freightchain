@@ -28,11 +28,11 @@ Everything in Freight Chain that can be configured, where it lives, and what to 
 
 - **Local**: `server/.env`. Only `DATABASE_URL` is required. Everything else has a dev default.
 - **Production**: `deploy/.env` holds *both* deploy settings and the app's environment in one file.
-  - Keys starting with `DEPLOY_` stay on your machine.
-  - Everything else is uploaded as the server's `.env`.
-  - `APP_DOMAIN`, `APP_ORIGIN`, `APP_PORT`, `COOKIE_DOMAIN`, `CORS_ORIGINS` are **derived** from `DEPLOY_DOMAIN` (`deploy/scripts/lib.sh` → `app_env`). Don't type them into `deploy/.env`.
-  - Values starting with `CHANGE_ME` block the deploy until replaced. `npm run deploy:init` generates the secrets.
-  - Before every deploy the production env is validated by the server's own schema in production mode (`deploy/scripts/validate-env.mjs`). It also refuses a non-devnet `SOLANA_RPC` (override for tests only: `ALLOW_NON_DEVNET=1`).
+ - Keys starting with `DEPLOY_` stay on your machine.
+ - Everything else is uploaded as the server's `.env`.
+ - `APP_DOMAIN`, `APP_ORIGIN`, `APP_PORT`, `COOKIE_DOMAIN`, `CORS_ORIGINS` are **derived** from `DEPLOY_DOMAIN` (`deploy/scripts/lib.sh` → `app_env`). Don't type them into `deploy/.env`.
+ - Values starting with `CHANGE_ME` block the deploy until replaced. `npm run deploy:init` generates the secrets.
+ - Before every deploy the production env is validated by the server's own schema in production mode (`deploy/scripts/validate-env.mjs`). It also refuses a non-devnet `SOLANA_RPC` (override for tests only: `ALLOW_NON_DEVNET=1`).
 
 ### ⚠ The compose pass-through trap
 
@@ -52,11 +52,11 @@ Table `player.GameSetting` (`key` text, `value` integer). The migration seeds th
 |---|---|---|
 | `free_on_signup` | 10 | Free rides a **new** wallet starts with. Wallets that already exist are not topped up. |
 | `free_rides_daily_max` | 5 | The +1 at 00:00 UTC stops here. A balance already above it (signup, a promo, an admin grant) stays. |
-| `weekly_ticket_1h_enabled` | 1 | Granted 1h ticket. 0 off, 1 on. Not a purchase. Does not mint TEN4. |
+| `weekly_ticket_1h_enabled` | 1 | Granted 1h ticket. 0 off, 1 . Not a purchase. Does not mint TEN4. |
 | `weekly_ticket_1h_days` | 7 | Days between 1h grants. Integer, at least 1. 7 starts on a prize-week Monday. |
-| `weekly_ticket_4h_enabled` | 0 | Granted 4h ticket. 0 off, 1 on. |
+| `weekly_ticket_4h_enabled` | 0 | Granted 4h ticket. 0 off, 1 . |
 | `weekly_ticket_4h_days` | 7 | Days between 4h grants. Integer, at least 1. Stored while the flag is off. |
-| `weekly_ticket_8h_enabled` | 0 | Granted 8h ticket. 0 off, 1 on. |
+| `weekly_ticket_8h_enabled` | 0 | Granted 8h ticket. 0 off, 1 . |
 | `weekly_ticket_8h_days` | 7 | Days between 8h grants. Integer, at least 1. Stored while the flag is off. |
 | `referral_max` | 30 | Most invites one wallet can hold (1..1000). |
 | `referral_invite_start` / `referral_invite_step` / `referral_shifts_per_step` | 3 / 3 / 5 | Invites at the start, added every N verified paid shifts. |
@@ -119,7 +119,7 @@ Change one with the signed admin API (`GET /api/admin/settings`, then the challe
 
 ### Live streams (spectators – feature flags)
 
-Enforced by the server (a refused post is `403 live_feature_off`) and sent to the pages per ride (`features` in `GET /api/watch/:id` and the driver's inbox), so the watch panel and the driver's CB show only what is on. How the feature works: [`docs/tech/replay-and-donations/index.html`](./replay-and-donations/index.html).
+Enforced by the server (a refused post is `403 live_feature_off`) and sent to the pages per ride (`features` in `GET /api/watch/:id` and the driver's inbox), so the watch panel and the driver's CB show only what is . How the feature works: [`docs/tech/replay-and-donations/index.html`](./replay-and-donations/index.html).
 
 | Key | Default | Notes |
 |---|---|---|
@@ -213,7 +213,7 @@ The editor API additionally requires: host = `storybook.<apex>` (nginx proxies o
 | `POSTHOG_HOST` | `https://eu.i.posthog.com` | Ingest. Capture posts to `{host}/batch/`. Project 297915 is EU Cloud. The US ingest host accepts the token and the events never appear on the board. |
 | `POSTHOG_PROJECT_ID` | `297915` | Notes only. Not a secret. Not sent on capture. |
 | `POSTHOG_ENABLED` | off when unset | Global opt-in. Only `1` or `true` may send. Unset, empty, `0`, or `false` stays off even when `POSTHOG_KEY` is a project token. An enum, not a coerced boolean. Local `server/.env` and `server/.env.example` set `0`. Production `deploy/.env` and `deploy/.env.example` set `1`. The local compose file does not run the API and does not set this. |
-| `POSTHOG_DISABLED` | unset | Kill switch. `1` or `true` forces capture off even when `POSTHOG_ENABLED` is on. `0`, `false`, or empty does not turn capture on. An enum, not a coerced boolean (`"false"` must not stick the switch on). |
+| `POSTHOG_DISABLED` | unset | Kill switch. `1` or `true` forces capture off even when `POSTHOG_ENABLED` is . `0`, `false`, or empty does not turn capture . An enum, not a coerced boolean (`"false"` must not stick the switch ). |
 
 ## Deploy-only keys (`deploy/.env`, never reach the app)
 
@@ -248,19 +248,19 @@ DNS: six A records (apex, `ride`, `api`, `storybook`, `whitepaper`, `admin`) →
 
 Typical local setup:
 ```sh
-cp server/.env.example server/.env   # edit nothing for a first run
+cp server/.env.example server/.env # edit nothing for a first run
 npm run db:up && npm run db:migrate
-npm run treasury:init                # dev treasury key → server/data/treasury.json
-npm run server:dev                   # :3000, behind http://freightchain.localhost (npm run infra:local)
+npm run treasury:init # dev treasury key → server/data/treasury.json
+npm run server:dev #:3000, behind http://freightchain.localhost (npm run infra:local)
 ```
 
 ## Client settings
 
 - **`client/js/config.js` (`CFG`)** – every gameplay constant, with comments. Deliberate values not to touch without asking: `SHAKE_START 0.45`, `SHAKE_MOVING 0.09`, `SHAKE_RPM 0.315`, `START_ENGINE_OFF true`.
-  `RIDE_MIN_SECONDS` is **300 (a test value); production = 1800**. Tuning requests are relative to the current value. Which constant to touch, which mirror must move with it, and the check to run: the `gameplay-balance` skill (`cd client && npm run check`).
+ `RIDE_MIN_SECONDS` is **300 (a test value); production = 1800**. Tuning requests are relative to the current value. Which constant to touch, which mirror must move with it, and the check to run: the `gameplay-balance` skill (`cd client && npm run check`).
 - **Hosts** – never hard-code `/api/…` or `/play.html`; use `API_BASE` / `GAME_BASE` / `SITE_BASE` / `STORYBOOK_BASE` / `WHITEPAPER_BASE` / `ADMIN_BASE` from `client/js/hosts.js`. On a bare localhost, an IP or `file://` they are `''` (one origin). `freightchain.localhost` splits like production.
 - **Browser `localStorage` keys** (per player, not config you ship): `freightchain.truck` (F2 handling tuning), `freightchain.radio`, `freightchain.assist` (the lobby's ASSIST checkbox), `freightchain.level` (the free level picked in the lobby: 1 EASY · 2 MEDIUM · 3 HARD), `freightchain.admin`. The analytics branch also writes `freightchain.anon` (`anon_<uuid v4>`).
-  A stale value is the first suspect for "works in a fresh browser only" – clear them.
+ A stale value is the first suspect for "works in a fresh browser only" – clear them.
 - **In-game F2 panel** – live sliders for truck handling. (The route and the time of day are not settings: the server assigns them to each ride.)
 - Server rules that mirror the client (`MAX_SPEED`, `COMPLETE_DIST_K`, route ids) live in `server/src/domain/rides/ride-rules.ts` – change both together.
 
@@ -282,7 +282,7 @@ npm run server:dev                   # :3000, behind http://freightchain.localho
 
 ## Known drift
 
-- `POSTHOG_*` in the gitignored env files is intentional and the two files differ. Local `server/.env` pins `POSTHOG_ENABLED=0` (the local compose file is Postgres only and must not turn capture on). Production `deploy/.env` sets `POSTHOG_ENABLED=1`, EU host, project 297915, token not tracked. The live site sends when the running image includes this code. Do not point the host at `us.i.posthog.com`. Do not delete the keys to “clean up”. `POSTHOG_DISABLED=1` still wins.
+- `POSTHOG_*` in the gitignored env files is intentional and the two files differ. Local `server/.env` pins `POSTHOG_ENABLED=0` (the local compose file is Postgres only and must not turn capture ). Production `deploy/.env` sets `POSTHOG_ENABLED=1`, EU host, project 297915, token not tracked. The live site sends when the running image includes this code. Do not point the host at `us.i.posthog.com`. Do not delete the keys to “clean up”. `POSTHOG_DISABLED=1` still wins.
 - `deploy/.env.example` omits `CRANK_SECRET` / `PAYOUT_SECRET` / `POSTHOG_KEY` real values on purpose (dummies and an empty token) and does not list `COOKIE_DOMAIN` / `CORS_ORIGINS` / `APP_*` (derived).
 
 The MCP container receives `REDIS_URL=redis://fc-mcp@redis:6379`; it authenticates the restricted `fc-mcp` ACL user with `EDITOR_MCP_TOKEN`. This user can only increment and expire `fc:mcp-rl:*` counters. Its Redis healthcheck gates release success. Output-token settings are cumulative across an entire job, rather than a fresh allowance each turn.

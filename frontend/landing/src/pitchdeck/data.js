@@ -23,7 +23,7 @@ const CHAIN = [
   { c: '#b98cff', st: 'DEVNET', h: 'Soulbound NFTs', big: '44 BADGES', p: 'Earned from verified rides across 12 ladders (incl. TEN4 & Convoy). Compressed NFTs, frozen in your wallet.', extra: ACH_ICON,
     why: 'Reputation you cannot buy. A badge proves what you actually drove, and it cannot be sold or lent.',
     fit: 'Unlocks are append-only. A separate key mints them after a 1 h re-check that skips rejected rides.' },
-  { c: '#ffffff', st: 'LOCAL · TGE NO EARLIER THAN MAR 2027', h: 'TEN4', big: '100M CAP', p: 'Fixed 100M supply (55M rides, 15M liquidity, 10M treasury, 8M airdrop, 8M team, 4M Convoy); rides mint at 20 / 50 / 100 % checkpoints.', small: 'Points until TGE · cab-part burns',
+  { c: '#ffffff', st: 'LOCAL · NO DATE', h: 'TEN4', big: '100M CAP', p: 'Fixed 100M supply (55M rides, 15M liquidity, 10M treasury, 8M airdrop, 8M team, 4M Convoy); rides mint at 20 / 50 / 100 % checkpoints.', small: 'Points until a public launch · cab-part burns',
     why: 'A reason to drive beyond the prize pool: a score that is yours, and a currency for the 9-slot cab Garage.',
     fit: 'Only verified paid rides mint (1 h, era 0: 100 TEN4, paid 15 / 25 / 60% at the checkpoints). Until TGE the balance is a PostgreSQL ledger of points.' },
   { c: '#6fb0ff', st: 'DEVNET · PUBLIC', h: 'Blinks & Convoy', big: 'BUY IN A LINK', p: 'Solana Actions turn a link into a ticket buy, and Convoy ?ref= links reward inviters with capped promo gifts and TEN4 milestones.', small: '/actions.json · Convoy invites',
@@ -47,42 +47,38 @@ export const ACH = [
 const TIER = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
 export const achTier = id => id.startsWith('free-') ? 'LICENCE' : TIER[(id.match(/-(\d)$/)?.[1] ?? 1) - 1];
 
-/* slide 6 – the plan: four windows (Nov – Mar), one lane each; a bar spans the months it runs. `more` shows on hover / tap. It is a plan, not a promise: the audit gates the mainnet, the mainnet gates the token. */
-const MONTHS = [['NOV', 'PRE-SEASON · 2026'], ['DEC', 'AUDIT & LEGAL'], ['JAN', 'SEASON 1 · 2027'], ['FEB–MAR', 'TEN4 TGE']];
+/* slide 6 – the plan: three stops, no dates. `more` shows on hover / tap. It is a plan, not a promise. */
+const MONTHS = [['NOW', 'POLISH & TEST'], ['NEXT', 'SOFT LAUNCH'], ['THEN', 'PUBLIC']];
 const PLAN = [
-  { k: 'PRE-SEASON', sub: 'Nov 2–17 · event', c: '#ff5a4d', from: 1, to: 1, t: '$500 event · Top 20', n: '1 h board · one attempt · free entry',
-    more: 'Nov 2–17 Pre-season: one attempt per wallet on a 1 h board, $500 organizer prize table for the Top 20 ($100 to $12, equal ties). Rules are a draft; paid manually by the organizer (the app sends no USDC).' },
-  { k: 'LOAD · AUDIT', sub: 'legal, security, program', c: '#ffcf5a', from: 1, to: 2, t: 'Legal review → program audit', n: 'server + freightchain_pools',
-    more: 'Skill-contest legal opinion, KYC/geo gates, load test and a security audit of the escrow program before any mainnet money.' },
-  { k: 'COMMUNITY', sub: 'streamers & Convoy', c: '#b98cff', from: 1, to: 4, t: 'Streamers · Convoy invites', n: 'build in public, every week',
-    more: 'Streamer runs of finished-ride replays, Convoy invites (capped promo gifts and TEN4 milestones), Discord and weekly cups.' },
-  { k: 'SEASON 1', sub: 'Jan 11 – Feb 28 · 7 wk', c: '#14f195', from: 3, to: 4, t: 'Season 1 · target', n: '85 / 5 / 10 · 1 h weekly boards',
-    more: 'Target: a 7-week season on the 1 h tier with the 85 / 5 / 10 split and a 2M TEN4 points airdrop. Not built for mainnet yet; it follows the audit.' },
-  { k: 'TOKEN LAUNCH', sub: 'TEN4 · Mar 2027 or later', c: '#ffffff', from: 4, to: 4, t: 'TEN4 TGE · 100M fixed cap', n: '15M liquidity · 8M airdrop · 55M rides',
-    more: 'Target: TGE no earlier than March 2027: 100M supply (55M rides, 15M liquidity, 10M treasury, 8M airdrop, 8M team, 4M Convoy) + cab-part burns.' },
-  { k: 'AI MODS', sub: '3D editor + MCP', c: '#ff9ad5', from: 3, to: 4, t: 'AI-built mods via MCP', n: 'vehicles, props, landmarks',
-    more: 'Describe a vehicle, prop or landmark to an AI; our MCP server builds it in the 3D editor with signed publishing.' },
-  { k: 'NEW GAME MODES', sub: 'convoys & fixed-point', c: '#6fb0ff', from: 3, to: 4, t: 'Team convoys · fixed-point', n: 'same road, same verification',
-    more: 'Ideas, not built: team convoys sharing a side pot, and an input-only fixed-point replay core.' },
+  { k: 'POLISH', sub: 'feel, suite, load', c: '#ffcf5a', from: 1, to: 1, t: 'Polish and test', n: 'the work in front of a launch',
+    more: 'Driving feel, copy, real Chrome, the local chain, replays, and the anti-cheat checks. A load pass before anyone calls it a launch.' },
+  { k: 'SOFT LAUNCH', sub: 'beta · limited', c: '#ff5a4d', from: 2, to: 2, t: 'Soft launch · beta', n: 'free rides · weekly ticket · devnet',
+    more: 'A limited beta. Free rides, the weekly ticket, invited drivers. Devnet and practice money. No prize paid out.' },
+  { k: 'PUBLIC', sub: 'after the beta', c: '#14f195', from: 3, to: 3, t: 'Public', n: 'open play · boards when they hold',
+    more: 'Open play once the beta holds. Ranked boards and pools when they are ready. A third-party audit before any public money.' },
+  { k: 'COMMUNITY', sub: 'streamers & Convoy', c: '#b98cff', from: 1, to: 3, t: 'Streamers · Convoy invites', n: 'build in public',
+    more: 'Replays of finished rides, Convoy invites, and a public build log through every stop.' },
+  { k: 'THE COIN', sub: 'TEN4 · no date', c: '#ffffff', from: 3, to: 3, t: 'TEN4 · after public', n: '100M cap · ledger points until then',
+    more: 'TEN4 stays ledger points until a public launch. 100M fixed supply. No date on the coin.' },
 ];
 
 /* the storybook sneak peek: real screenshots of the model viewer (client/viewer.html#<id>) – shown one after another while the card is hovered / tapped */
 export const STORY = [['storybook.webp', 'car'], ['storybook-truck.webp', 'truck'], ['storybook-police.webp', 'police car'], ['storybook-fire.webp', 'fire truck'], ['storybook-diner.webp', 'roadside diner'], ['storybook-truckstop.webp', 'truck stop'], ['storybook-cactus.webp', 'desert cactus']];
 
-/* slide 8 – go to market as six highway exits, in the order they come up (the months match the plan slide); `more` is the back of the sign (hover / tap) */
+/* slide 8 – go to market as six highway exits, in the order they come up; `more` is the back of the sign (hover / tap) */
 const EXITS = [
-  { t: 'Co-driver wanted', s: 'co-founder: growth & partners', when: 'NOW',
-    more: 'Built solo so far. The next leg needs a second seat: growth, partners and community, while I keep the game and chain.' },
-  { t: '$500 Pre-season', s: 'Nov 2–17 · Top-20 table', when: 'NOV',
-    more: 'Zero-entry 1 h Pre-season: one attempt per wallet, $500 organizer prize table for the Top 20. Rules are a draft; paid manually by the organizer, no USDC from the app.' },
-  { t: 'Streamers & Convoy', s: 'CB replays + Convoy invites', when: 'NOV',
+  { t: 'Polish & test', s: 'feel, suite, load', when: 'NOW',
+    more: 'Driving feel, copy, real Chrome, the local chain, replays, and the anti-cheat checks. This is the work in front of a launch.' },
+  { t: 'Soft launch', s: 'beta · limited drivers', when: 'BETA',
+    more: 'A limited beta. Free rides, the weekly ticket, invited drivers. Devnet and practice money. No prize paid out.' },
+  { t: 'Public', s: 'open play · after the beta', when: 'THEN',
+    more: 'Open play once the beta holds. Ranked boards and pools when they are ready. No date on this stop.' },
+  { t: 'Streamers & Convoy', s: 'replays + Convoy invites', when: 'LIVE',
     more: 'Replays of finished rides with chat and SOL tips; Convoy invites give capped promo gifts and TEN4 milestones.' },
-  { t: 'Audit & compliance', s: 'legal · KYC/geo · audit', when: 'DEC',
-    more: 'Skill-contest legal opinion, weekly free-entry tickets, equal ties, KYC/geo gates and a program audit before mainnet.' },
-  { t: 'Season 1 Mainnet', s: 'target · 7 weeks · after audit', when: 'JAN',
-    more: 'Target Jan 11 – Feb 28: weekly 1 h boards with the 85 / 5 / 10 split and a 2M TEN4 points airdrop. A plan, not a promise.' },
-  { t: 'TEN4 TGE & Garage', s: '100M fixed cap · cab-part burns', when: 'MAR', sol: true,
-    more: 'Target: no earlier than March 2027, 100M TEN4 launch (15M liquidity, 8M airdrop, 55M rides, 4M Convoy), spent on cab parts in the Garage.' },
+  { t: 'Audit', s: 'before any public money', when: 'GATE',
+    more: 'A third-party look at the program and the API before public money. Weekly free-entry tickets and equal ties stay.' },
+  { t: 'TEN4 & Garage', s: '100M cap · no date', when: 'LATER', sol: true,
+    more: 'TEN4 stays ledger points until a public launch. 100M fixed supply, spent on cab parts in the Garage. No date on the coin.' },
 ];
 /* the truck that drives to the exit you look at: a side view facing right (trailer, red cab with an exhaust stack, four wheels with a spoke each, so they visibly turn) */
 const TRUCK = `<svg viewBox="0 0 184 74" aria-hidden="true"><rect x="2" y="6" width="118" height="46" rx="5" fill="#ece6d3"/><text x="61" y="35" text-anchor="middle" font-family="Anton,Impact,sans-serif" font-size="15" fill="#050505" letter-spacing="1">FREIGHT CHAIN</text><rect x="127" y="0" width="5" height="17" rx="2" fill="#9a9a9a"/><path d="M124 54V22a7 7 0 0 1 7-7h23l22 22v17z" fill="#ff3b2f"/><path d="M154 20h-19v15h33z" fill="#bfe6ff"/><rect x="0" y="52" width="178" height="6" rx="2" fill="#2b2b2b"/>${[22, 48, 140, 164].map(x => `<g class="wh"><circle cx="${x}" cy="60" r="10" fill="#111" stroke="#777" stroke-width="3"/><path d="M${x} 52v16" stroke="#777" stroke-width="2"/></g>`).join('')}</svg>`;
@@ -131,7 +127,7 @@ export const SLIDES = [
       <div class="copy">
         <div class="lbl">03 · Play</div>
         <h1>Free<br>tonight.</h1>
-        ${pts(['Unlimited training · no download', 'Weekly granted 1 h ticket (free entry)', 'Watch a replay · no wallet', 'Nov 2–17: $500 Pre-season event', '1-click SIWS or QR phone pairing'])}
+        ${pts(['Unlimited training · no download', 'Weekly granted 1 h ticket (free entry)', 'Watch a replay · no wallet', 'Polish, then a beta, then public', '1-click SIWS or QR phone pairing'])}
         <div class="ladders"><ol class="ladder">
           <li class="on"><b>FREE</b><span>3–30 min</span></li>
           <li class="on"><b>1 H</b><span>Sprint</span></li>
@@ -174,14 +170,14 @@ export const SLIDES = [
     html: `
       <div class="copy">
         <div class="lbl">06 · The plan</div>
-        <h1>The next <em>5 months.</em></h1>
+        <h1>Three stops. <em>No dates.</em></h1>
       </div>
       <div class="vis peek">
         <figure class="shot peek-card"><span class="pk-imgs">${STORY.map(([f, n], i) => `<img class="${i ? '' : 'on'}" data-src="${A}${f}" alt="Storybook sneak peek: ${n}" decoding="async">`).join('')}</span><i class="pk-flash"></i><em class="pk-name">${STORY[0][1]}</em></figure>
         <div class="badge live peekb"><i class="dot"></i>SNEAK PEEK · STORYBOOK · AI + MCP</div>
       </div>
       <div class="plan">
-        <div class="pr today"><span class="pin"><i></i>TODAY · NOV 2</span></div>
+        <div class="pr today"><span class="pin"><i></i>TODAY</span></div>
         ${MONTHS.map((m, i) => `<div class="pr mo" style="--m:${i + 1}"><b>${m[0]}</b><small>${m[1]}</small></div>`).join('')}
         ${PLAN.map((l, i) => `<div class="pl" style="--c:${l.c};--i:${i};grid-row:${i + 2}"><b>${l.k}</b><small>${l.sub}</small></div>
         <div class="bar${l.from === l.to ? ' n1' : ''}" style="--c:${l.c};--i:${i};grid-row:${i + 2};grid-column:${l.from + 1} / ${l.to + 2}"><b>${l.t}</b><small>${l.n}</small><p>${l.more}</p></div>`).join('')}
@@ -191,7 +187,7 @@ export const SLIDES = [
     html: `
       <div class="copy">
         <div><div class="lbl">07 · Go to market</div><h1>Six exits <em>to market.</em></h1></div>
-        <p class="gfine">Revenue · 10 % pool fee + TEN4 cab-part burns<br>A plan, not a promise · Nov Pre-season → Dec audit → Jan Season 1 → Mar 2027 or later TEN4 TGE</p>
+        <p class="gfine">Revenue · 10 % pool fee + TEN4 cab-part burns<br>A plan, not a promise · polish and test → soft launch (beta) → public</p>
       </div>
       <div class="exits">
         <div class="row">${EXITS.map((x, i) => `<div class="exit${x.sol ? ' sol' : ''}" style="--i:${i}"><div class="sign"><div class="f"><span class="tab">EXIT ${i + 1}</span><b>${x.t}</b><small>${x.s}</small><em><i>↗</i>${x.when}</em></div><div class="bk"><span class="tab">EXIT ${i + 1}</span><p>${x.more}</p></div></div><i class="post"></i><i class="post"></i></div>`).join('')}</div>
@@ -216,7 +212,7 @@ export const FACTS = [
   ['code', 'HOLE_CHANCE = 0.045 · HOLE_FIRST = 150 · OFFROAD_FAIL_SECONDS = 20'],
   ['code', 's = (s + 0x6D2B79F5) | 0   // mulberry32: the same road in your browser and on the server'],
   'Vanilla ES modules · three.js r160 · no build step · no framework', 'NestJS · Prisma · PostgreSQL', 'Prize pool split 85 / 5 / 10 (pool v6, local)',
-  'Solana devnet pools v3 · Pre-season Nov 2–17 · TEN4 100M cap', ['code', 'program id 8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p'], 'Anchor escrow program · Merkle payouts',
+  'Solana devnet pools v3 · polish, then beta, then public · TEN4 100M cap', ['code', 'program id 8No42h2QXb9opgp3pJfNXL2o77o288SsF8o7CwJGCA1p'], 'Anchor escrow program · Merkle payouts',
   'Built solo in Belgrade'];
 
 /* donations on slide 3 (a show, not the game's own effect prices) and the real SOL price: a snapshot, not a feed – the deck makes no request of its own.

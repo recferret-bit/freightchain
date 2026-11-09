@@ -1,8 +1,8 @@
 # Coverage contract
 
-Decision 68 (2026-10-18). This is the bar for "tested." A line-coverage percentage is not the bar. [`docs/spec/e2e.md`](../spec/e2e.md) E2E-M-01 (no browser) and E2E-M-06 (delete the live-watch Chrome scripts) do not apply. The phased work is [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
+Decision 68. This is the bar for "tested." A line-coverage percentage is not the bar. [`docs/spec/e2e.md`](../spec/e2e.md) E2E-M-01 (no browser) and E2E-M-06 (delete the live-watch Chrome scripts) do not apply. The phased work is [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
-The audit behind the gap list is the 2026-10-18 page [`docs/testing/test-coverage/index.html`](./test-coverage/index.html) (and `test-coverage.css`) in the main checkout. That page is a snapshot. This file is the rule. Numbers below are from that snapshot plus the suites the repo already runs.
+The audit behind the gap list is the page [`docs/testing/test-coverage/index.html`](./test-coverage/index.html) (and `test-coverage.css`) in the main checkout. That page is a snapshot. This file is the rule. Numbers below are from that snapshot plus the suites the repo already runs.
 
 ## What 100% means
 
@@ -44,15 +44,15 @@ These are real Chrome or a real validator. Keep them. Do not replace them with t
 
 ## Gaps that keep the bar red
 
-From the 2026-10-18 audit, except the three commands below. Those three were green in the 2026-10-23 local `npm run test:ci:full` log. Close the holes that remain before calling the app covered. The order is [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
+From the audit, except the three commands below. Those three were green in the local `npm run test:ci:full` log. Close the holes that remain before calling the app covered. The order is [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
-**Gates green on 2026-10-23**
+**Gates green on **
 
 - `npm --prefix frontend/client run test:parity` — 11668 objects compared against golden.txt: identical.
 - `npm --prefix frontend/client run test:tickets-stub` — 20/20.
 - `node .claude/skills/test-census/census.mjs --self-test` — zero-scenario routes: 0, single-scenario routes: 0, http routes on both flow runners: 178/178, then self-test ok.
 
-The 2026-10-23 census self-test reported 0 zero-scenario routes and 0 single-scenario routes. The routes that the 2026-10-18 audit listed as uncovered now have an HTTP scenario in `backend/server/test/scenarios/http-gaps-public.scenarios.ts`, `http-gaps-live.scenarios.ts`, `http-gaps-economy.scenarios.ts`, or `http-gaps-editor.scenarios.ts`. Do not list them as a zero-scenario gap. A Chrome run is still a separate cell where the holes below say so.
+The census self-test reported 0 zero-scenario routes and 0 single-scenario routes. The routes that the audit listed as uncovered now have an HTTP scenario in `backend/server/test/scenarios/http-gaps-public.scenarios.ts`, `http-gaps-live.scenarios.ts`, `http-gaps-economy.scenarios.ts`, or `http-gaps-editor.scenarios.ts`. Do not list them as a zero-scenario gap. A Chrome run is still a separate cell where the holes below say so.
 
 `GET` and `POST /api/solana-pay/rides/:id` already have a scenario in `server/test/scenarios/payments.scenarios.ts`, including the wrong-account 404. They still have no Chrome run.
 
@@ -105,9 +105,9 @@ The negatives are the ones a person can hit, not a fuzz list. Add a row when a n
 
 ## Current score, so the bar is not claimed early
 
-The 2026-10-18 audit ran the pyramid and recorded about 82.5% lines and 83.1% branches across 940 JS/TS files, 197 Rust tests, and a large Chrome harness. That is not this contract.
+The audit ran the pyramid and recorded about 82.5% lines and 83.1% branches across 940 JS/TS files, 197 Rust tests, and a large Chrome harness. That is not this contract.
 
-A route is open until memory and PostgreSQL both assert the positive and each applicable negative. The 2026-10-23 census self-test reported 0 zero-scenario routes and 0 single-scenario routes. That does not fill the Chrome cell.
+A route is open until memory and PostgreSQL both assert the positive and each applicable negative. The census self-test reported 0 zero-scenario routes and 0 single-scenario routes. That does not fill the Chrome cell.
 
 Three calls exist and do not fill the Chrome cell:
 

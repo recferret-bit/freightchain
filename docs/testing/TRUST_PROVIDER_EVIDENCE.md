@@ -12,7 +12,7 @@ Owner follow-up before enabling: configure `IPINFO_TOKEN` with Core access and `
 
 Automatic policy remains undecided: cluster membership count/window, meaningful transfer threshold, independent second signal, graph depth/page budget and exclusions beyond known mobile networks and exchanges. Wallet API network coverage for the intended devnet test population has not been established. Keep evidence review-only until those decisions and owner live checks are complete. Optional Discord remains disabled; SGT is a separate implementation.
 
-Primary contracts consulted 26 October 2026:
+Primary contracts consulted:
 
 - [IPinfo Core](https://ipinfo.io/developers/core-api) documents ASN plus boolean mobile/hosting/anonymous fields; detailed VPN/Tor distinctions are not inferred from Core.
 - [IPinfo authentication](https://ipinfo.io/developers) supports bearer credentials.

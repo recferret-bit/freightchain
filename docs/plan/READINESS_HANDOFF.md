@@ -1,4 +1,4 @@
-# Readiness handoff — 26 October 2026
+# Readiness handoff
 
 **Paused at the owner's request to change agents and save credits. Do not restart automatically.** This is the continuation entry point for replacement agents. It supersedes the historical wave ordering in `EXECUTION_ORCHESTRATOR.md` for the remaining readiness work; it does not replace the product specifications.
 
@@ -36,18 +36,18 @@ See [local readiness](../testing/LOCAL_READINESS.md) for detailed historical evi
 
 | Owner for restart | Worktree / branch | State and ownership |
 |---|---|---|
-| Backend consent | `/private/tmp/fc-explicit-consent` · `readiness/explicit-consent` · base `cf8d503d` | Uncommitted API, guard, player model, repository, append-only audit migration `20261122000000_explicit_terms_acceptance`, OpenAPI/routes, unit/HTTP/PG fixtures. Own `backend/server/src/`, `prisma/`, `test/`, `openapi.json` for this feature. |
+| Backend consent | `/private/tmp/fc-explicit-consent` · `readiness/explicit-consent` · base `cf8d503d` | Uncommitted API, guard, player model, repository, append-only audit migration `explicit_terms_acceptance`, OpenAPI/routes, unit/HTTP/PG fixtures. Own `backend/server/src/`, `prisma/`, `test/`, `openapi.json` for this feature. |
 | Frontend consent | `/private/tmp/fc-identity-acceptance` · `readiness/identity-acceptance` · base `4ab6517b` | Uncommitted consent modal, EN/RU text, legal pages, wallet/phone fixture updates; `backend/server/scripts/e2e-i18n-legal.mjs`; lobby child invocation in `.claude/skills/run-tests/e2e.sh`; map updates. Own these files. |
 | Driving acceptance | `/private/tmp/fc-normal-free-levels` · `readiness/normal-free-levels` · commit `a53c89b4` | Committed, **not merged**: EASY/MEDIUM/HARD selection, full-course guards and helper tests; edits normal-drive script and shell runner. Combine with driver work below, preserving main's consent helper. |
 | Driving acceptance | `/private/tmp/fc-normal-resilient` · `readiness/normal-resilient` · `c7ad4235` | Clean. Harness isolation/restart/watchdog/TCP startup fixes already integrated into main (`33122ec3`, `66e4cfe3`, `cf8d503d`). **Prospective-lane driver fix was not implemented.** |
-| Integration coordinator | Main checkout | Uncommitted explicit-acceptance fixtures across 30+ local browser/chain scripts, `sim-rides.mjs`, `seed-landing.mjs`, `stub-api.mjs`, `tests/e2e/harness/{api,fixtures}.mjs`, and `infra/deploy/scripts/local-production-rpc-scenario.mjs`. New `backend/server/scripts/local-test-terms{,.test}.mjs`. Do not overwrite these with older worktree versions. |
+| Integration coordinator | Main checkout | Uncommitted explicit-acceptance fixtures across 30+ local browser/chain scripts, `sim-rides.mjs`, `seed-landing.mjs`, `stub-api.mjs`, `tests/e2e/harness/{api,fixtures}.mjs`, and `infra/deploy/scripts/local-production-rpc-scenario.mjs`. New `backend/server/scripts/local-test-terms{.test}.mjs`. Do not overwrite these with older worktree versions. |
 
 The older campaign/production/controls worktrees contain historical commits already integrated; do not blindly merge them again. Use `git log`/patch comparison to establish what is new.
 
 ### Consent contract to preserve
 
-- `GET /api/profile/terms` → `{ required, termsVersion, privacyVersion, acceptedTermsVersion, acceptedPrivacyVersion }`.
-- `POST /api/profile/terms` strictly accepts `{ termsVersion, privacyVersion, age18: true, accepted: true }` for the signed-in wallet.
+- `GET /api/profile/terms` → `{ required, termsVersion privacyVersion acceptedTermsVersion acceptedPrivacyVersion }`.
+- `POST /api/profile/terms` strictly accepts `{ termsVersion privacyVersion age18: true, accepted: true }` for the signed-in wallet.
 - Existing automatic version stamps must not count as informed consent. Migration resets them; minimal append-only audit records wallet/version pair/time, no IP/UA/fingerprint.
 - New paid starts/purchases and reward actions require current consent (`428`). Training, identity, ongoing ride recording/end and reconciliation of already-sent funds remain usable.
 - Explicit consent sets `age18At`; the separate paid-loss agreement remains required. Legacy `profile/agreements` must never silently grant version consent.

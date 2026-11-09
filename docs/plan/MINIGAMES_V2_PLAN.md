@@ -1,12 +1,12 @@
 # Minigames v2: mandatory tasks, timers and real fuel (plan)
 
-Origin: the security audit of 28 Oct, clusters 6 and 9 ([`SECURITY_AUDIT_2026-10-28_FIX_PLAN.md`](SECURITY_AUDIT_2026-10-28_FIX_PLAN.md) §4.9 and §6), plus the owner's decisions of 29 Oct.
+Origin: the security audit of, clusters 6 and 9 ([`SECURITY_AUDIT_2026-10-28_FIX_PLAN.md`](SECURITY_AUDIT_2026-10-28_FIX_PLAN.md) §4.9 and §6), plus the owner's decisions of.
 
 **The goal is an anti-bot gate on paid rides.** A ride counts only if the driver passed every task the cab gave them, inside a timer, using the phone, and refuelled at a gas bay when the truck ran low.
 
 This is a plan, not as-built behaviour. As-built stays [`docs/spec/minigames.md`](../spec/minigames.md) Part 1 until MG2-12 ships.
 
-## 0. Where we start (as-built, verified 29 Oct)
+## 0. Where we start (as-built, verified )
 
 | area | today | file |
 |---|---|---|
@@ -24,7 +24,7 @@ This is a plan, not as-built behaviour. As-built stays [`docs/spec/minigames.md`
 | replay | the 10 Hz sample row carries `gas`, `gear`, `engineOn`, `v`, input bits; `ReplayPhysics` integrates the shared force law | `domain/verdict/replay-physics.ts`, `replay-engine.ts` |
 | runtime knobs | `player.GameSetting` integer rows (`SETTING_KEYS`) changed by the signed admin API | `domain/settings/game-settings.ts` |
 
-## 1. Rules decided by the owner (29 Oct)
+## 1. Rules decided by the owner
 
 1. **Mandatory.** A paid/ranked ride must pass **every** minigame it receives. Each failure is recorded. Failures are three wrong codes, the timer running out, or no stop for a gas task. Any failure, including "passed none", rejects the ride at the end with `mg-failed`. **The ride keeps going.** Paid rides go to admin review (admin override) and can be appealed. A failed task never adds time.
 2. **Timer.** Each task has its own window, which **starts when the phone buzzes**. A countdown shows in the cab and on the phone. Windows are runtime `GameSetting` rows set through the signed admin API, and `more-time` multiplies them.
@@ -33,7 +33,7 @@ This is a plan, not as-built behaviour. As-built stays [`docs/spec/minigames.md`
 5. **Telemetry.** Paid/ranked rides run `TELEMETRY_V21=enforce`, which provides the session key the minigame HMAC needs (SEC-14/15).
 6. **Rollout.** `shadow` on devnet first, then `enforce` on devnet, then production only when the owner explicitly asks for a deploy.
 
-## 2. Decisions D1–D8 (answered 29 Oct; MG2-00 done)
+## 2. Decisions D1–D8 (answered; MG2-00 done)
 
 | # | question | decision |
 |---|---|---|
@@ -58,13 +58,13 @@ Common DoD (every issue):
 - Shared road/physics changes ship with the server port in the same commit.
 - No deploy.
 
-### MG2-00 — Owner decisions D1–D8 ✅ (29 Oct)
+### MG2-00 — Owner decisions D1–D8 ✅
 All eight are answered and written into §2.
 
 ### MG2-01 — Spec first (target decisions)
 **Analysis.** The current spec says the opposite on three points: "a minigame never fails the ride" (MGM-M-06), "a miss adds no time", and "unopened = cancelled" (MGM-M-05). Tests lock as-built until the target's own change, so the target is written as a decision block, not as as-built text.
 **Steps.**
-1. `docs/spec/minigames.md`: add a "Part 0 — v2 target (decided 29 Oct)" section with §1 rules + §2 decisions and new `MGM-T2-*` test ids. Mark Part 1 as "as-built until MG2-12".
+1. `docs/spec/minigames.md`: add a "Part 0 — v2 target (decided )" section with §1 rules + §2 decisions and new `MGM-T2-*` test ids. Mark Part 1 as "as-built until MG2-12".
 2. `docs/spec/anticheat.md`: reason `mg-failed` (reject, admin-overridable, appealable). `out-of-fuel` ride end. Fuel-derivation checks (MG2-07). Retire the challenge channel (D8).
 3. `docs/agents/gameplay.md`: fuel model, tank, refuel, engine death.
 4. `docs/agents/world.md`: functional GULP bays from `shared/fuel-stops.js`.
@@ -105,20 +105,20 @@ All eight are answered and written into §2.
 
 **Steps.**
 1. `RideMiniGame` status model:
-   - `armed → revealed` happens on the **first heartbeat response that carries the task**. It stores `revealedDriveS`, and the response sends `deadlineDriveS` (D6: game time, a pause stops it);
-   - then `→ passed | failed(wrong) | failed(timeout) | void` (`void` only for an honest completion inside the window, step 6);
-   - remove `cancelled`; old rows keep their value, so readers must still accept it.
+ - `armed → revealed` happens on the **first heartbeat response that carries the task**. It stores `revealedDriveS`, and the response sends `deadlineDriveS` (D6: game time, a pause stops it);
+ - then `→ passed | failed(wrong) | failed(timeout) | void` (`void` only for an honest completion inside the window, step 6);
+ - remove `cancelled`; old rows keep their value, so readers must still accept it.
 2. The scheduler fits windows against **distance**, because a shift completes the moment the line is reached (`completeDist`), not on a clock:
-   - arm a phone-SMS only while `(completeDist − s) / governor speed` still exceeds the full window (stamped, × `more-time`) plus the end pad;
-   - never arm a gas task for a bay at or past the finish line;
-   - if a task does not fit, do not arm it, rather than arming and cancelling.
+ - arm a phone-SMS only while `(completeDist − s) / governor speed` still exceeds the full window (stamped, × `more-time`) plus the end pad;
+ - never arm a gas task for a bay at or past the finish line;
+ - if a task does not fit, do not arm it, rather than arming and cancelling.
 3. `close.ts` / `sync`: expire `revealed` tasks whose heartbeat drive-seconds passed `deadlineDriveS` (plus `mg_net_grace_s` of wall time for the answer in flight) → `failed(timeout)`, under the player lock (SEC-14).
 4. `score.ts`: three wrong → `failed(wrong)`, with **no `penaltyS`** (the v2 rules version).
 5. `verdict.ts`: `minigameVerdictDelta` in `enforce` returns `mg-failed` (severity `reject`) when any task is `failed`. The evidence lists `{ordinal, kind, outcome}`. `shadow` adds the same reason as `flag`, so false positives can be measured.
 6. Ride-end close-out:
-   - An honest completion (the line reached) marks a task still **inside its window** as `void`: not counted, not failed. Tasks already past their deadline are `failed(timeout)`.
-   - The stale-ride sweeper and an abandoned ride close every open task as `failed(timeout)`.
-   - Every path that ends a ride runs this close-out before `judge`.
+ - An honest completion (the line reached) marks a task still **inside its window** as `void`: not counted, not failed. Tasks already past their deadline are `failed(timeout)`.
+ - The stale-ride sweeper and an abandoned ride close every open task as `failed(timeout)`.
+ - Every path that ends a ride runs this close-out before `judge`.
 7. Bump `MG_RULES_VERSION` to `mg:v2`, stamped per ride. A v1 ride is judged by v1 rules.
 
 **DoR.** MG2-01, 02, 03 are done.
@@ -127,16 +127,16 @@ All eight are answered and written into §2.
 - Unit specs: schedule fit, status machine, scoring with no penalty, verdict for all passed, one wrong-fail, one timeout, none passed, and `shadow` → flag.
 - **Concurrency tests:** heartbeat expiry ∥ a correct answer inside the grace; two answers in parallel.
 - HTTP scenarios:
-  - an answer after the deadline + grace → `410 mg_expired`;
-  - completion with a task inside its window → `void`, ride `verified`;
-  - an abandoned or swept ride with an open task → `mg-failed`.
+ - an answer after the deadline + grace → `410 mg_expired`;
+ - completion with a task inside its window → `void`, ride `verified`;
+ - an abandoned or swept ride with an open task → `mg-failed`.
 - The stale-ride sweeper closes tasks.
 - Admin override of an `mg-failed` ride → `verified`, and `RideResult` is refreshed.
 
 ### MG2-05 — Client: buzz, countdown, phone-SMS under a timer
 **Analysis.** The driver must see the time left at a glance while looking for a place to stop. The cab and the phone show the same deadline.
 **Steps.**
-1. Heartbeat client (`js/net/…` / `online.js`): read `minigames[].deadlineDriveS` and count down against the game's own drive-time, which freezes on pause. Hide the phone/task view while paused (D6).
+1. Heartbeat client (`js/net/…` / `online.js`): read `minigames.deadlineDriveS` and count down against the game's own drive-time, which freezes on pause. Hide the phone/task view while paused (D6).
 2. Phone: on a new task, vibrate + play a sound (the `game-audio` skill for the sfx) and show a countdown badge on the Messages icon and a timer bar in the SMS thread.
 3. Cab: a small countdown chip on the binnacle/HUD while any task is open, red under 15 s. Read the canvas size from the `view` object.
 4. The answer POST carries the HMAC (SEC-14) and `submitStep`. Show passed / wrong-tries-left / failed in EN and RU.
@@ -154,20 +154,20 @@ All eight are answered and written into §2.
 **Analysis.** Fuel must be physics, not a gauge, so that the server can derive it. `shared/physics.js` is the shared force law, and fuel joins it as a separate pure module so the force law stays untouched.
 **Steps.**
 1. `frontend/client/shared/fuel.js` (pure, re-exported by `@freightchain/shared`):
-   - `burn(state, dt)`: litres from `gas × rpm` plus idle while `engineOn`;
-   - `TANK_L`, `FUEL_RESERVE`, `refill(level, choice)`;
-   - `FUEL_RULES_VERSION`.
+ - `burn(state, dt)`: litres from `gas × rpm` plus idle while `engineOn`;
+ - `TANK_L`, `FUEL_RESERVE`, `refill(level, choice)`;
+ - `FUEL_RULES_VERSION`.
 2. `frontend/client/shared/fuel-stops.js` (D1), modelled on `toll.js`: `FUEL_STOP_FIRST = 80`, `FUEL_STOP_EVERY`, `nextFuelStop(s)`, `fuelStopsBetween(s0, s1)`, plus the bay's lateral extent for the "at the bay" test.
-   - **Every bay apron is road, on both sides.** Today only the pinned bay is road:
-     - client: `shared/road-network.js:181` (`s 57–103, 0 < d ≤ 10.2`);
-     - server: the pinned bay is covered only because `s < knownFrom` returns `null`. `backend/server/src/domain/road/road-layout.ts` `onRoad` has no apron rule.
-   - Add one `onBay(s, d)` to `fuel-stops.js`, and call it from both `RoadNetwork.onRoad` and `RoadLayout.onRoad` in the same commit (the off-road rule is a port change). Otherwise a 60 s honest refuel is off-road and trips `OFFROAD_FAIL_SECONDS = 20`.
+ - **Every bay apron is road, on both sides.** Today only the pinned bay is road:
+ - client: `shared/road-network.js:181` (`s 57–103, 0 < d ≤ 10.2`);
+ - server: the pinned bay is covered only because `s < knownFrom` returns `null`. `backend/server/src/domain/road/road-layout.ts` `onRoad` has no apron rule.
+ - Add one `onBay(s, d)` to `fuel-stops.js`, and call it from both `RoadNetwork.onRoad` and `RoadLayout.onRoad` in the same commit (the off-road rule is a port change). Otherwise a 60 s honest refuel is off-road and trips `OFFROAD_FAIL_SECONDS = 20`.
 3. Client:
-   - `state.js` keeps the real level in `st.fuel`, burning in the sim step;
-   - an empty tank sets `engineOn = false`, and the key cannot restart it (D2);
-   - the gauge reads `st.fuel`, and `tankBonus` is removed;
-   - the landmarks force a GULP at `fuelStopsBetween` and turn random `gulp` rolls into `gas` decor;
-   - `chunks.js` keeps props off the bay apron.
+ - `state.js` keeps the real level in `st.fuel`, burning in the sim step;
+ - an empty tank sets `engineOn = false`, and the key cannot restart it (D2);
+ - the gauge reads `st.fuel`, and `tankBonus` is removed;
+ - the landmarks force a GULP at `fuelStopsBetween` and turn random `gulp` rolls into `gas` decor;
+ - `chunks.js` keeps props off the bay apron.
 4. Tunables in `js/config.js` (mirrored in `shared/simulation-config.js` where the server needs them). Size them with the `gameplay-balance` skill to D4. The `trip-design` skill checks that the free levels need no refuel.
 
 5. Stamp `WORLD_RULES_VERSION` / `FUEL_RULES_VERSION` per ride. Bays at fixed `s` and the demoted random `gulp` rolls change the landmark layout of existing seeds, so a ride started before the release keeps the old layout and rules. Historical replays render with their stamped version.
@@ -190,11 +190,11 @@ All eight are answered and written into §2.
 
 **Steps.**
 1. `domain/verdict/fuel-replay.ts`:
-   - integrate `burn` over the 10 Hz rows, using a **lower bound** of burn (so the driver gets the benefit of the doubt);
-   - apply refuels only from `passed` gas tasks at their bay `s`.
+ - integrate `burn` over the 10 Hz rows, using a **lower bound** of burn (so the driver gets the benefit of the doubt);
+ - apply refuels only from `passed` gas tasks at their bay `s`.
 2. Checks (in `world-checks.ts` or a new module):
-   - `fuel-empty-running`: derived fuel ≤ 0 while `engineOn` or `v > 0.5` for ≥ 3 s. **Reject** in `enforce`, flag in `shadow`.
-   - `refuel-off-bay`: a refuel claim not at a bay, or not stopped.
+ - `fuel-empty-running`: derived fuel ≤ 0 while `engineOn` or `v > 0.5` for ≥ 3 s. **Reject** in `enforce`, flag in `shadow`.
+ - `refuel-off-bay`: a refuel claim not at a bay, or not stopped.
 3. `ReplayEngine` output gains `fuelMinL` and the refuel points, so admins see them in the review UI.
 4. Ride end `out-of-fuel` (D2): the client ends the shift and the server accepts this reason only when derived fuel ≤ reserve.
 
@@ -222,7 +222,7 @@ All eight are answered and written into §2.
 - Unit specs: arming, open refused off-bay or moving, scoring, refuel amount.
 - HTTP scenarios: open while moving → 409; the right code → refuel.
 - **Concurrency test:** a gas open ∥ a heartbeat.
-- Chrome `controls` suite: low fuel → buzz → stop at the bay → pump code → tank full → drive on.
+- Chrome `controls` suite: low fuel → buzz → stop at the bay → pump code → tank full → drive .
 
 ### MG2-09 — Admin review and appeals
 **Analysis.** Mandatory rejects on paid rides go to admin review. Admins need the evidence, and a human who failed by accident needs a path back.
@@ -251,10 +251,10 @@ All eight are answered and written into §2.
 ### MG2-11 — End-to-end acceptance
 **Steps.**
 1. `verified-play-test`:
-   - a person in Chrome passes every task → `verified`;
-   - a metronome bot that ignores tasks → `mg-failed`;
-   - an API bot with a valid physics recording and no answers → `mg-failed`;
-   - a no-refuel bot → `fuel-empty-running`.
+ - a person in Chrome passes every task → `verified`;
+ - a metronome bot that ignores tasks → `mg-failed`;
+ - an API bot with a valid physics recording and no answers → `mg-failed`;
+ - a no-refuel bot → `fuel-empty-running`.
 2. The E2E-08 minigame suite is updated to v2 (`MGM-T2-*`).
 3. `bash .claude/skills/run-tests/e2e.sh normal-drive`: a full MEDIUM 1 h shift with 2–4 SMS + 1 refuel.
 4. `node backend/server/scripts/normal-drive-localnet.mjs` (paid 1 h on a scratch validator) gets the PIKE-style direct handlers for SMS and gas.

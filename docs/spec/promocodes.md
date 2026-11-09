@@ -9,37 +9,37 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
 ## 1. Domain Model & Effect Kinds (`promo-code.entity.ts` & `promo.types.ts`)
 
 ### 1.1 Code Normalization & Bounds (`PromoCode`)
-- **Normalization (`PromoCode.normalize`)**: `code.replace(/\s+/g, '').toUpperCase()` — strips all leading, trailing, and inner whitespace and converts to uppercase.
+- **Normalization (`PromoCode.normalize`)**: `code.replace(/\s+/g, '').toUpperCase` — strips all leading, trailing, and inner whitespace and converts to uppercase.
 - **Format (`CODE_RE`)**: Must match `/^[A-Z0-9_-]{3,32}$/` (`3..32` uppercase letters, digits, `'-'`, or `'_'`). Invalid codes throw `BadRequestError('bad_promo_code')` (`400`).
 - **Text Bounds**:
-  - `description`: Trimmed; `null` if empty; at most `MAX_DESCRIPTION = 200` characters (`400 bad_promo_code`).
-  - `note`: Private admin note; trimmed; `null` if empty; at most `MAX_NOTE = 500` characters (`400 bad_promo_code`).
+ - `description`: Trimmed; `null` if empty; at most `MAX_DESCRIPTION = 200` characters (`400 bad_promo_code`).
+ - `note`: Private admin note; trimmed; `null` if empty; at most `MAX_NOTE = 500` characters (`400 bad_promo_code`).
 - **Usage & Time Window Bounds**:
-  - `perWallet`: Integer `>= 1` (`400 bad_promo_code`). Forced to `perWallet === 1` when `effect.kind === 'ride'`.
-  - `maxRedemptions`: `null` (unlimited) or integer `>= 1` (`400 bad_promo_code`).
-  - `startsAt`: Defaults to `now` when `null` on creation.
-  - `expiresAt`: `null` (never expires) or a `Date` strictly in the future (`expiresAt > now` and `expiresAt > startsAt`, else `400 bad_promo_code`).
-  - **Immutability**: Once created, a `PromoCode` row's `effect` and parameters are immutable except for `redeemed` increments and `disabledAt` (`POST /api/admin/promos/:code/disable`), guaranteeing the redemption audit trail always matches the granted effect.
+ - `perWallet`: Integer `>= 1` (`400 bad_promo_code`). Forced to `perWallet === 1` when `effect.kind === 'ride'`.
+ - `maxRedemptions`: `null` (unlimited) or integer `>= 1` (`400 bad_promo_code`).
+ - `startsAt`: Defaults to `now` when `null` on creation.
+ - `expiresAt`: `null` (never expires) or a `Date` strictly in the future (`expiresAt > now` and `expiresAt > startsAt`, else `400 bad_promo_code`).
+ - **Immutability**: Once created, a `PromoCode` row's `effect` and parameters are immutable except for `redeemed` increments and `disabledAt` (`POST /api/admin/promos/:code/disable`), guaranteeing the redemption audit trail always matches the granted effect.
 
 **Convoy system grant:** `SYSTEM-CONVOY-1H` is reserved from public/admin code creation and is disabled for public redemption. Capped Convoy activation issues its 1h `PromoRideGrant` directly inside the same transaction; ordering consumes it through the normal promo path.
 
 ### 1.2 The Four `PromoEffect` Kinds (`PROMO_KINDS`)
 1. **Free Paid-Tier Shift (`{ kind: 'ride', tier: '1h' | '4h' | '8h' }`) — Active**:
-   - Grants one free shift of `tier` (`player.PromoRideGrant` row for `(wallet, code, tier)`), redeemable once per wallet (`perWallet === 1`).
-   - When the player orders a ride of `tier` (`POST /api/rides`), an unspent promo ride grant is claimed before the weekly free ticket grant, leaving the weekly grant unspent.
-   - A promo ride does **not** mint TEN4 (`pays: '0'`). If started as `{ ranked: true }`, it uses the weekly promo ranked slot (`+1` per week).
+ - Grants one free shift of `tier` (`player.PromoRideGrant` row for `(wallet, code, tier)`), redeemable once per wallet (`perWallet === 1`).
+ - When the player orders a ride of `tier` (`POST /api/rides`), an unspent promo ride grant is claimed before the weekly free ticket grant, leaving the weekly grant unspent.
+ - A promo ride does **not** mint TEN4 (`pays: '0'`). If started as `{ ranked: true }`, it uses the weekly promo ranked slot (`+1` per week).
 2. **Sponsored Pool Tickets (`{ kind: 'tickets', tier: '1h' | '4h' | '8h', poolId: number | null, credits: number }`) — Active**:
-   - Grants `credits` (`>= 1` integer) off-chain paid-ride ticket credits into a pool of `tier`:
-     - If `poolId !== null` (`>= 0` integer), pinned to that specific pool (validated at creation time to be an existing pool of `tier`).
-     - If `poolId === null`, resolves at redemption time to the currently selling live pool of `tier` (`409` if no pool of `tier` is currently selling).
-   - Sponsored promo tickets do **not** count toward the on-chain pool's `min_tickets` threshold, but rides started from them are paid starts and **can** earn TEN4.
+ - Grants `credits` (`>= 1` integer) off-chain paid-ride ticket credits into a pool of `tier`:
+ - If `poolId !== null` (`>= 0` integer), pinned to that specific pool (validated at creation time to be an existing pool of `tier`).
+ - If `poolId === null`, resolves at redemption time to the currently selling live pool of `tier` (`409` if no pool of `tier` is currently selling).
+ - Sponsored promo tickets do **not** count toward the on-chain pool's `min_tickets` threshold, but rides started from them are paid starts and **can** earn TEN4.
 3. **Extra Free Rides (`{ kind: 'free_rides', count: number }`) — Retired**:
-   - Creating or redeeming a `free_rides` code throws `ConflictError('promo_retired')` (`409`).
-   - `PromoCode.restore` and `assertEffect` (`1 <= count <= MAX_FREE_RIDES_PER_CODE = 20`) remain so historical redemption rows still deserialize cleanly.
+ - Creating or redeeming a `free_rides` code throws `ConflictError('promo_retired')` (`409`).
+ - `PromoCode.restore` and `assertEffect` (`1 <= count <= MAX_FREE_RIDES_PER_CODE = 20`) remain so historical redemption rows still deserialize cleanly.
 4. **Cab Cosmetic (`{ kind: 'cosmetic', slot: CosmeticSlot, item: string }`) — Refused**:
-   - Cab visuals are minted exclusively by burning TEN4 (or earned via the 3 referral paints).
-   - Creating or redeeming a `cosmetic` promo code throws `ConflictError('visuals_are_honk')` (`409`).
-   - Existing cosmetics unlocked by historical promo codes remain stored in `player.CosmeticUnlock` and stay wearable via `/api/wardrobe` and `/api/garage`.
+ - Cab visuals are minted exclusively by burning TEN4 (or earned via the 3 referral paints).
+ - Creating or redeeming a `cosmetic` promo code throws `ConflictError('visuals_are_honk')` (`409`).
+ - Existing cosmetics unlocked by historical promo codes remain stored in `player.CosmeticUnlock` and stay wearable via `/api/wardrobe` and `/api/garage`.
 
 ---
 
@@ -66,18 +66,18 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
 
 ### 3.1 Player Promo & Wardrobe Endpoints
 - **`POST /api/promo/redeem`** (`PoolsHttpController`, `@UseGuards(PlayerAuthGuard)`):
-  - Dedicated per-IP throttle budget (`THROTTLE_PROMO_LIMIT`) separate from general read endpoints.
-  - Normalizes `body.code` (`400 bad_promo_code` if invalid). A promo link (`?promo=CODE` or `#promo`) in the lobby (`client/site/lobby-promo.js`) only pre-fills the input — the player still clicks `REDEEM`.
-  - Guest wallets are rejected (`409 guest_easy_only` / `401`).
-  - Runs inside a single database transaction locking the player row (`findByWalletForUpdate`) and the promo row (`FOR UPDATE`):
-    - Rejects missing codes (`404 promo_not_found`), retired `'free_rides'` (`409 promo_retired`), refused `'cosmetic'` (`409 visuals_are_honk`), and non-redeemable states (`409 promo_not_redeemable` / state conflict).
-    - Increments `PromoCode.redeemed`, inserts `PromoRedemption`, and creates the `PromoRideGrant` (`kind: 'ride'`) or pool ticket credits (`kind: 'tickets'`).
-  - Promo analytics events never carry free text (`description`, `note`).
+ - Dedicated per-IP throttle budget (`THROTTLE_PROMO_LIMIT`) separate from general read endpoints.
+ - Normalizes `body.code` (`400 bad_promo_code` if invalid). A promo link (`?promo=CODE` or `#promo`) in the lobby (`client/site/lobby-promo.js`) only pre-fills the input — the player still clicks `REDEEM`.
+ - Guest wallets are rejected (`409 guest_easy_only` / `401`).
+ - Runs inside a single database transaction locking the player row (`findByWalletForUpdate`) and the promo row (`FOR UPDATE`):
+ - Rejects missing codes (`404 promo_not_found`), retired `'free_rides'` (`409 promo_retired`), refused `'cosmetic'` (`409 visuals_are_honk`), and non-redeemable states (`409 promo_not_redeemable` / state conflict).
+ - Increments `PromoCode.redeemed`, inserts `PromoRedemption`, and creates the `PromoRideGrant` (`kind: 'ride'`) or pool ticket credits (`kind: 'tickets'`).
+ - Promo analytics events never carry free text (`description`, `note`).
 - **`GET /api/promo/mine`** (`PromosHttpController`, `@UseGuards(PlayerAuthGuard)`):
-  - Returns `MyPromosDto`: the wallet's past promo redemptions and unspent promo ride grants.
+ - Returns `MyPromosDto`: the wallet's past promo redemptions and unspent promo ride grants.
 - **`GET /api/wardrobe` & `POST /api/wardrobe/equip`** (`PromosHttpController`, `@UseGuards(PlayerAuthGuard)`):
-  - `GET /api/wardrobe`: Returns `WardrobeDto` (owned cosmetics + currently equipped `Loadout` across all 9 `COSMETIC_SLOTS`).
-  - `POST /api/wardrobe/equip` (body `{ slot, item }`): Equips a single `(slot, item)` if valid (`400` if unknown slot/item) and owned (`409` if not owned).
+ - `GET /api/wardrobe`: Returns `WardrobeDto` (owned cosmetics + currently equipped `Loadout` across all 9 `COSMETIC_SLOTS`).
+ - `POST /api/wardrobe/equip` (body `{ slot, item }`): Equips a single `(slot, item)` if valid (`400` if unknown slot/item) and owned (`409` if not owned).
 
 ### 3.2 Signed Admin Promo Endpoints (`AdminPromosHttpController` at `/api/admin/promos`)
 Guarded by `@UseGuards(AdminGuard)` (enforces `admin.<COOKIE_DOMAIN>` host, `fc_admin` session cookie, and `X-FC-Admin` header on mutations):

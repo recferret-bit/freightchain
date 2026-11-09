@@ -13,12 +13,12 @@
 Per [`docs/spec/PROCESS.md`](../spec/PROCESS.md) and [`docs/spec/DECISIONS.md`](../spec/DECISIONS.md) (Decisions 67 & 68), Freight Chain separates **As-Built** verification from **Target Spec** verification so the test suite stays green on `main` at every commit:
 
 1. **Track A — As-Built Coverage (`docs/spec/PRODUCT.md` & `docs/testing/COVERAGE_CONTRACT.md`):**
-   - Locks 100% of the currently shipped product across all 151 HTTP routes, 28 database tables, 12 HTML pages, 19 Anchor instructions (`freightchain_pools` + `freightchain_honk`), and 15 background workers.
-   - Executed immediately against current code (`E2E-01` through `E2E-05`).
-   - No target spec test may delete or weaken an As-Built test until the corresponding code change in [Plan 2](./SPEC_COMPLIANCE_PLAN.md) lands.
+ - Locks 100% of the currently shipped product across all 151 HTTP routes, 28 database tables, 12 HTML pages, 19 Anchor instructions (`freightchain_pools` + `freightchain_honk`), and 15 background workers.
+ - Executed immediately against current code (`E2E-01` through `E2E-05`).
+ - No target spec test may delete or weaken an As-Built test until the corresponding code change in [Plan 2](./SPEC_COMPLIANCE_PLAN.md) lands.
 2. **Track B — Target Spec Compliance (`docs/spec/*.md` `*-T-*` & `AC-*` Catalogs):**
-   - Implements the full test matrices defined across all 14 specification documents (`RID-T-*`, `ACH-T-*`/`AC-*`, `MGM-T-*`, `POOL-T-*`, `REF-T-*`, `PRM-T-*`, `TEN-T-*`, `SOL-T-*`, `PLT-T-*`, `RPL-T-*`, `ADM-T-*`, `API-T-*`, `LEG-T-*`, `E2E-T-*`).
-   - Organized in `E2E-06` through `E2E-09` (plus target extensions in `E2E-02` and `E2E-05`), co-merged in lockstep with their corresponding `SPC-*` implementation tasks in [Plan 2](./SPEC_COMPLIANCE_PLAN.md).
+ - Implements the full test matrices defined across all 14 specification documents (`RID-T-*`, `ACH-T-*`/`AC-*`, `MGM-T-*`, `POOL-T-*`, `REF-T-*`, `PRM-T-*`, `TEN-T-*`, `SOL-T-*`, `PLT-T-*`, `RPL-T-*`, `ADM-T-*`, `API-T-*`, `LEG-T-*`, `E2E-T-*`).
+ - Organized in `E2E-06` through `E2E-09` (plus target extensions in `E2E-02` and `E2E-05`), co-merged in lockstep with their corresponding `SPC-*` implementation tasks in [Plan 2](./SPEC_COMPLIANCE_PLAN.md).
 
 ### What "Headless E2E" Covers (Decision 68)
 
@@ -40,7 +40,7 @@ All tasks are tracked in [`docs/plan/e2e-headless/STATUS.md`](./e2e-headless/STA
 | Epic ID | Issue File | Track | Summary | Tasks | Spec Test IDs Covered |
 |---|---|---|---|---|---|
 | **E2E-01** | [`E2E-01-gates-and-census.md`](./e2e-headless/issues/E2E-01-gates-and-census.md) | Track A (As-Built) | Fix 3 red gates (`test:parity`, `test:tickets-stub`, `census.mjs --self-test`) & wire automated coverage census | `E2E-01.1` – `E2E-01.4` | `COVERAGE_CONTRACT` §2.5, Phase 1 |
-| **E2E-02** | [`E2E-02-http-contract-and-zod-schemas.md`](./e2e-headless/issues/E2E-02-http-contract-and-zod-schemas.md) | Track A + B | Route manifest (`151+` routes), `@ZodResponse` strict validation, `expectDbDelta`, Matrix A/B negative generator, OpenAPI & `fast-check` fuzzing | `E2E-02.1` – `E2E-02.6` | `API-T-01` .. `API-T-13` |
+| **E2E-02** | [`E2E-02-http-contract-and-zod-schemas.md`](./e2e-headless/issues/E2E-02-http-contract-and-zod-schemas.md) | Track A + B | Route manifest (`151+` routes), `@ZodResponse` strict validation, `expectDbDelta`, Matrix A/B negative generator, OpenAPI & `fast-check` fuzzing | `E2E-02.1` – `E2E-02.6` | `API-T-01`.. `API-T-13` |
 | **E2E-03** | [`E2E-03-http-zero-and-single-scenario-routes.md`](./e2e-headless/issues/E2E-03-http-zero-and-single-scenario-routes.md) | Track A (As-Built) | Close all 17 zero-scenario routes and 47 single-scenario routes in both `flows.spec.ts` (memory) and `flows.integration.spec.ts` (PostgreSQL) | `E2E-03.1` – `E2E-03.7` | `COVERAGE_CONTRACT` §2.1, Phase 2 |
 | **E2E-04** | [`E2E-04-headless-chrome-as-built.md`](./e2e-headless/issues/E2E-04-headless-chrome-as-built.md) | Track A (As-Built) | 12 Headless Chrome scripts covering guest/training 409s, weekly 1h grant, tickets reconcile, Solana Pay, live negative, referral qualify, prize board, whitepaper, landing empty pool, editor logout, achievements, admin negative | `E2E-04.1` – `E2E-04.12` | `COVERAGE_CONTRACT` §2.3, Phase 3 |
 | **E2E-05** | [`E2E-05-local-validator-and-chain-e2e.md`](./e2e-headless/issues/E2E-05-local-validator-and-chain-e2e.md) | Track A + B | `freightchain_honk` IDL drift pin, `test:localnet` SOL + pledge settle/refund, `honk-suite` negatives, Block 1/2 pending items (`B1-REF-04`, `B2-*`), `SOL-T-*`, `TEN-T-*`, `PRM-T-*`, `REF-T-*` | `E2E-05.1` – `E2E-05.8` | `SOL-T-01..16`, `TEN-T-01..15`, `PRM-T-01..14`, `REF-T-01..22`, `E2E-T-02..07` |
@@ -72,14 +72,14 @@ Every task in [`docs/plan/e2e-headless/issues/`](./e2e-headless/issues/) enforce
 
 ```mermaid
 flowchart TD
-  E2E01["E2E-01: Fix 3 Red Gates & Census Self-Test"] --> E2E02["E2E-02: Route Manifest, @ZodResponse & Negative Matrix"]
-  E2E02 --> E2E03["E2E-03: Close 17 Zero + 47 Single-Scenario Routes (Mem + PG)"]
-  E2E01 --> E2E04["E2E-04: 12 Headless Chrome Scripts (As-Built Phase 3)"]
-  E2E01 --> E2E05["E2E-05: Local Validator, HONK IDL Pin & Block 1/2 Completion"]
-  E2E03 --> E2E06["E2E-06: Mock-RPC + Replays, Streams, Controls C1..C36 & i18n"]
-  E2E03 --> E2E07["E2E-07: Block 3 Anti-Cheat Driver Bots (30 Hz Re-Sim & #1..#58)"]
-  E2E07 --> E2E08["E2E-08: Dynamic Finish, RideResult, Minigames & Pool Appeals"]
-  E2E02 --> E2E09["E2E-09: Admin Security Matrix (54+ Routes) & CI Gate"]
-  E2E06 --> E2E09
-  E2E08 --> E2E09
+ E2E01["E2E-01: Fix 3 Red Gates & Census Self-Test"] --> E2E02["E2E-02: Route Manifest, @ZodResponse & Negative Matrix"]
+ E2E02 --> E2E03["E2E-03: Close 17 Zero + 47 Single-Scenario Routes (Mem + PG)"]
+ E2E01 --> E2E04["E2E-04: 12 Headless Chrome Scripts (As-Built Phase 3)"]
+ E2E01 --> E2E05["E2E-05: Local Validator, HONK IDL Pin & Block 1/2 Completion"]
+ E2E03 --> E2E06["E2E-06: Mock-RPC + Replays, Streams, Controls C1..C36 & i18n"]
+ E2E03 --> E2E07["E2E-07: Block 3 Anti-Cheat Driver Bots (30 Hz Re-Sim & #1..#58)"]
+ E2E07 --> E2E08["E2E-08: Dynamic Finish, RideResult, Minigames & Pool Appeals"]
+ E2E02 --> E2E09["E2E-09: Admin Security Matrix (54+ Routes) & CI Gate"]
+ E2E06 --> E2E09
+ E2E08 --> E2E09
 ```

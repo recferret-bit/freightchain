@@ -8,31 +8,31 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
 
 ## 1. Historical implementation (retained records and compatibility reference)
 
-**26 October Convoy cutover:** §2 now governs the public bind/view and stored-link flow. Legacy rows and balances are immutable history; new +2/+3 awards are retired. Historical paint unlocks are not re-awarded when a qualified relationship enters Convoy. Qualified historical ownership is retained and fresh MEDIUM/HARD training starts the new 60-day window, without backfill. A still-valid legacy pending owner is retained until `min(stored expiry, boundAt + 72h)`; expired pending/tombstone history may rebind. Existing activated Convoy expiry is final. Repeated activation cannot repeat the lifetime promo or milestone IDs. Badge progress is the distinct union of legacy `badgeCounted` friends and new M1 friends. New tips already pay 95% driver / 5% treasury / 0% referrer; historical orders retain their original amounts and recipients. No migration rewrites balances, unlocks, invites or payouts during this cutover. The profile renders activation, task/week progress, deadlines, promo cap outcomes, held/paid/capped/historical rewards and privacy. Earning requires referrer trust ≥50; chain settlement rechecks after the 48h hold. The section below documents the retired implementation solely to interpret historical data; it is not current runtime behavior.
+** Convoy cutover:** §2 now governs the public bind/view and stored-link flow. Legacy rows and balances are immutable history; new +2/+3 awards are retired. Historical paint unlocks are not re-awarded when a qualified relationship enters Convoy. Qualified historical ownership is retained and fresh MEDIUM/HARD training starts the new 60-day window, without backfill. A still-valid legacy pending owner is retained until `min(stored expiry, boundAt + 72h)`; expired pending/tombstone history may rebind. Existing activated Convoy expiry is final. Repeated activation cannot repeat the lifetime promo or milestone IDs. Badge progress is the distinct union of legacy `badgeCounted` friends and new M1 friends. New tips already pay 95% driver / 5% treasury / 0% referrer; historical orders retain their original amounts and recipients. No migration rewrites balances, unlocks, invites or payouts during this cutover. The profile renders activation, task/week progress, deadlines, promo cap outcomes, held/paid/capped/historical rewards and privacy. Earning requires referrer trust ≥50; chain settlement rechecks after the 48h hold. The section below documents the retired implementation solely to interpret historical data; it is not current runtime behavior.
 
 ### 1.1 Data Model & Storage (`server/prisma/player/player.prisma` & `cosmetics.ts`)
 - **`player.ReferralCode` (`@@map("referral_codes")`, `ReferralCodeRecord`)**:
-  - `wallet` (`String`, `@id`): Referrer wallet address (1:1 per player, FK to `player.Player`).
-  - `code` (`String`, `@unique`): **8-character** uppercase alphanumeric invite code from `REFERRAL_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'` (`REFERRAL_CODE_LENGTH = 8`; omits ambiguous `0`, `O`, `1`, `I`).
-  - `gift` (`String`, `@default("convoy")`): Selected gift paint (`GIFT_ITEMS = ['convoy', 'signal', 'amber']`, `DEFAULT_GIFT = 'convoy'`).
-  - `createdAt` (`DateTime`, `@default(now())`).
+ - `wallet` (`String`, `@id`): Referrer wallet address (1:1 per player, FK to `player.Player`).
+ - `code` (`String`, `@unique`): **8-character** uppercase alphanumeric invite code from `REFERRAL_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'` (`REFERRAL_CODE_LENGTH = 8`; omits ambiguous `0`, `O`, `1`, `I`).
+ - `gift` (`String`, `@default("convoy")`): Selected gift paint (`GIFT_ITEMS = ['convoy', 'signal', 'amber']`, `DEFAULT_GIFT = 'convoy'`).
+ - `createdAt` (`DateTime`, `@default(now())`).
 - **`player.ReferralInvite` (`@@map("referral_invites")`, `ReferralRecord`)**:
-  - `referee` (`String`, `@id`): Invitee wallet address (each player can be referred at most once; on `main`, an `'expired'` row acts as a permanent tombstone).
-  - `referrer` (`String`): Referrer wallet address. Indexed by `(referrer, boundAt)` and by partial index `player_referral_invites_referrer_open_idx ON player.referral_invites(referrer, status) WHERE status IN ('pending', 'qualified')`.
-  - `status` (`ReferralStatus`): `'pending' | 'qualified' | 'expired'`.
-  - `boundAt` (`DateTime`), `expiresAt` (`DateTime`), `qualifiedAt` (`DateTime?`), `rideId` (`String?`).
-  - `freeGranted` (`Boolean`, `@default(false)`): Whether the one-time free-ride bonus was granted on this referral row.
-  - `badgeCounted` (`Boolean`, `@default(false)`): Whether this referral counted toward the referrer's Convoy achievement progression (`1 / 5 / 20 / 100`).
+ - `referee` (`String`, `@id`): Invitee wallet address (each player can be referred at most once; on `main`, an `'expired'` row acts as a permanent tombstone).
+ - `referrer` (`String`): Referrer wallet address. Indexed by `(referrer, boundAt)` and by partial index `player_referral_invites_referrer_open_idx ON player.referral_invites(referrer, status) WHERE status IN ('pending', 'qualified')`.
+ - `status` (`ReferralStatus`): `'pending' | 'qualified' | 'expired'`.
+ - `boundAt` (`DateTime`), `expiresAt` (`DateTime`), `qualifiedAt` (`DateTime?`), `rideId` (`String?`).
+ - `freeGranted` (`Boolean`, `@default(false)`): Whether the one-time free-ride bonus was granted on this referral row.
+ - `badgeCounted` (`Boolean`, `@default(false)`): Whether this referral counted toward the referrer's Convoy achievement progression (`1 / 5 / 20 / 100`).
 - **Referral Exclusive Paints (`server/src/domain/economy/cosmetics.ts` & `client/shared/referral-paints.js`)**:
-  - Stored in `slot: 'truck_color'` with `referralOnly: true` (refused by `POST /api/garage/buy` with `409 referral_only`, unlocked with `code: 'referral'`):
-    - `'convoy'` — **Convoy Green** (`#2e5e4e`)
-    - `'signal'` — **Signal Orange** (`#d85a1a`)
-    - `'amber'` — **Night Amber** (`#d89a2b`)
+ - Stored in `slot: 'truck_color'` with `referralOnly: true` (refused by `POST /api/garage/buy` with `409 referral_only`, unlocked with `code: 'referral'`):
+ - `'convoy'` — **Convoy Green** (`#2e5e4e`)
+ - `'signal'` — **Signal Orange** (`#d85a1a`)
+ - `'amber'` — **Night Amber** (`#d89a2b`)
 - **Convoy Achievement Ladder (`server/src/domain/achievements/achievements.ts`)**:
-  - `convoy` — **Convoy** (`Bronze`, `1` qualified friend with `badgeCounted = true`)
-  - `convoy-2` — **Road Crew** (`Silver`, `5` qualified friends with `badgeCounted = true`)
-  - `convoy-3` — **Fleet** (`Gold`, `20` qualified friends with `badgeCounted = true`)
-  - `convoy-4` — **Haulmaster** (`Platinum`, `100` qualified friends with `badgeCounted = true`)
+ - `convoy` — **Convoy** (`Bronze`, `1` qualified friend with `badgeCounted = true`)
+ - `convoy-2` — **Road Crew** (`Silver`, `5` qualified friends with `badgeCounted = true`)
+ - `convoy-3` — **Fleet** (`Gold`, `20` qualified friends with `badgeCounted = true`)
+ - `convoy-4` — **Haulmaster** (`Platinum`, `100` qualified friends with `badgeCounted = true`)
 
 ### 1.2 Runtime Settings & Constants (`referral-rules.ts` & `game-settings.ts`)
 
@@ -41,7 +41,7 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
 | `REFERRAL_CODE_ALPHABET` | `'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'` | — | 32 unambiguous uppercase letters/digits |
 | `REFERRAL_CODE_LENGTH` | `8` | — | Exact invite code length (`mintCode(entropy.hex(8))`) |
 | `GIFT_ITEMS` / `DEFAULT_GIFT` | `['convoy', 'signal', 'amber']` / `'convoy'` | — | Exclusive referral paint items in `slot: 'truck_color'` |
-| `DONATION_RENT_MIN` | `890_880` lamports | — | `Rent::minimum_balance(0)`; donation shares below this stay with the driver |
+| `DONATION_RENT_MIN` | `890_880` lamports | — | `Rent:minimum_balance(0)`; donation shares below this stay with the driver |
 | `DONATION_SHARE_TTL_MS` | `15 * 60 * 1000` (15 min) | — | Reservation hold window for pending donation orders (`sumReferredLamports`) |
 | `referral_max` (`referralMax`) | `30` | `1..1000` | Maximum total invite capacity ceiling per referrer |
 | `referral_invite_start` (`referralInviteStart`) | `3` | `0..1000` | Base invite slots for a new referrer (`0` verified paid shifts) |
@@ -60,57 +60,57 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
 ### 1.3 Lifecycle, Endpoints & Qualification Rules (`ReferralsHttpController` & `ReferralService`)
 
 1. **View & Lazy Code Minting (`GET /api/referrals`)**:
-   - Guarded by `PlayerAuthGuard` (authenticated wallet required; guest sessions are rejected with `401`/`409`).
-   - `ensureCode(wallet)` lazily mints an 8-character `ReferralCodeRecord` (`mintCode(entropy.hex(8))`, `gift: 'convoy'`) under the player row lock (`findByWalletForUpdate`), retrying up to 5 times in fresh transactions on unique code collisions (`409 code_exhausted` if all 5 collide).
-   - Sweeps overdue pending invites for `wallet` (`referrals.expireDue(wallet, now)`).
-   - Computes `capacity = inviteCapacity(settings, verifiedPaidShifts)`, `used` (`qualified` count), `pending` (`pending` count), `available = max(0, capacity - used - pending)`, and returns `ReferralView`:
-     `{ code, capacity, used, pending, available, max, gift, referredBy, invites: [{ wallet, status, at }] }` (up to 30 most recent invites).
+ - Guarded by `PlayerAuthGuard` (authenticated wallet required; guest sessions are rejected with `401`/`409`).
+ - `ensureCode(wallet)` lazily mints an 8-character `ReferralCodeRecord` (`mintCode(entropy.hex(8))`, `gift: 'convoy'`) under the player row lock (`findByWalletForUpdate`), retrying up to 5 times in fresh transactions on unique code collisions (`409 code_exhausted` if all 5 collide).
+ - Sweeps overdue pending invites for `wallet` (`referrals.expireDue(wallet, now)`).
+ - Computes `capacity = inviteCapacity(settings, verifiedPaidShifts)`, `used` (`qualified` count), `pending` (`pending` count), `available = max(0, capacity - used - pending)`, and returns `ReferralView`:
+ `{ code, capacity, used, pending, available, max, gift, referredBy, invites: [{ wallet, status, at }] }` (up to 30 most recent invites).
 
 2. **Gift Selection (`POST /api/referrals/gift`, body `{ item }`)**:
-   - Validates `isGiftItem(item)` (`'convoy' | 'signal' | 'amber'`), rejecting invalid items with `400 bad_gift`.
-   - Ensures the caller has a `ReferralCode` row, locks `[wallet]` via `findByWalletForUpdate`, updates `ReferralCode.gift = item`, and returns the updated `ReferralView`.
+ - Validates `isGiftItem(item)` (`'convoy' | 'signal' | 'amber'`), rejecting invalid items with `400 bad_gift`.
+ - Ensures the caller has a `ReferralCode` row, locks `[wallet]` via `findByWalletForUpdate`, updates `ReferralCode.gift = item`, and returns the updated `ReferralView`.
 
 3. **Binding (`POST /api/referrals/bind`, body `{ code }`)**:
-   - Normalizes `code = raw.trim().toUpperCase()` and validates `isReferralCode(code)` (8 chars from `REFERRAL_CODE_ALPHABET`), throwing `400 bad_code` if malformed.
-   - Calls `settleExpired(referee, code)` in its own transaction first so overdue `'pending'` rows become `'expired'` tombstones and are not rolled back if `bind` subsequently throws `409`.
-   - In the main transaction, locks `[referee, referrer]` in **sorted wallet address order** (`[...new Set(wallets)].sort()`) via `findByWalletForUpdate` to prevent deadlocks.
-   - Evaluates `bindRefusal({ known, referee, referrer, existing, available, started })` in strict priority order (with exact `bindRefusalMessage` strings):
-     1. `!known || !referrer` → `409 unknown_code` (`'unknown referral code'`)
-     2. `referrer === referee` → `409 own_code` (`'cannot use your own referral code'`)
-     3. `existing && existing.referrer === referrer && existing.status !== 'expired'` → **idempotent `200` no-op** (decided *before* `no_slots` and `ride_started` so an already-bound friend can safely retry)
-     4. `existing?.status === 'expired'` → `409 expired` (`'your referral invite expired'` — permanent tombstone on `main`: wallet can never bind again)
-     5. `existing` (bound to another referrer) → `409 already_bound` (`'already referred by another driver'`)
-     6. `available <= 0` → `409 no_slots` (`'referrer has no invite slots left'`)
-     7. `started` (`referrals.hasStartedRide(referee, tx) === true`, i.e., any ride has `startedAt !== null`; an ordered-but-unstarted ride does not block binding) → `409 ride_started` (`'referral code must be entered before your first ride'`)
-   - Inserts `ReferralRecord` with `status: 'pending'`, `boundAt: now`, `expiresAt: now + referralInviteTtlDays * 86_400_000` (14 days), `freeGranted: false`, `badgeCounted: false` (schema migration `20261029000000_referrals`).
+ - Normalizes `code = raw.trim().toUpperCase` and validates `isReferralCode(code)` (8 chars from `REFERRAL_CODE_ALPHABET`), throwing `400 bad_code` if malformed.
+ - Calls `settleExpired(referee, code)` in its own transaction first so overdue `'pending'` rows become `'expired'` tombstones and are not rolled back if `bind` subsequently throws `409`.
+ - In the main transaction, locks `[referee, referrer]` in **sort()ed wallet address order** (`[...new Set(wallets)].sort`) via `findByWalletForUpdate` to prevent deadlocks.
+ - Evaluates `bindRefusal({ known, referee, referrer, existing, available, started })` in strict priority order (with exact `bindRefusalMessage` strings):
+ 1. `!known || !referrer` → `409 unknown_code` (`'unknown referral code'`)
+ 2. `referrer === referee` → `409 own_code` (`'cannot use your own referral code'`)
+ 3. `existing && existing.referrer === referrer && existing.status !== 'expired'` → **idempotent `200` no-op** (decided *before* `no_slots` and `ride_started` so an already-bound friend can safely retry)
+ 4. `existing?.status === 'expired'` → `409 expired` (`'your referral invite expired'` — permanent tombstone on `main`: wallet can never bind again)
+ 5. `existing` (bound to another referrer) → `409 already_bound` (`'already referred by another driver'`)
+ 6. `available <= 0` → `409 no_slots` (`'referrer has no invite slots left'`)
+ 7. `started` (`referrals.hasStartedRide(referee, tx) === true`, i.e., any ride has `startedAt !== null`; an ordered-but-unstarted ride does not block binding) → `409 ride_started` (`'referral code must be entered before your first ride'`)
+ - Inserts `ReferralRecord` with `status: 'pending'`, `boundAt: now`, `expiresAt: now + referralInviteTtlDays * 86_400_000` (14 days), `freeGranted: false`, `badgeCounted: false` (schema migration `referrals`).
 
 4. **Client Capture & Profile UI (`landing/src/main.js`, `client/site/referral.js`, `client/site/lobby.js`, `client/site/lobby-profile.js`)**:
-   - **URL Capture (`client/site/referral.js`)**: Visiting `/?ref=CODE` or `lobby.html?ref=CODE` validates `CODE` against `/^[A-HJ-NP-Z2-9]{8}$/i` and stores it in `localStorage['freightchain.ref']`.
-   - **Post-Sign-In Auto-Bind**: Immediately after `signInWallet()` succeeds, the client reads `localStorage['freightchain.ref']` and calls `POST /api/referrals/bind`. On `200 OK` or any terminal refusal (`400`/`409`), the stored key is cleared.
-   - **Profile UI (`lobby.html#profile`)**:
-     - `INVITE A DRIVER` card displays `${SITE_BASE}/?ref=${code}`, `COPY LINK` / `COPY CODE`, slot usage (`${used} qualified · ${pending} pending · ${available} left of ${capacity}`), the 3 paint swatches (`Convoy Green`, `Signal Orange`, `Night Amber`) wired to `POST /api/referrals/gift`, and the invites table.
-     - `REFERRED BY` card shows a manual 8-char code input + `APPLY` button when `referredBy === null`, or the shortened referrer wallet once bound.
+ - **URL Capture (`client/site/referral.js`)**: Visiting `/?ref=CODE` or `lobby.html?ref=CODE` validates `CODE` against `/^[A-HJ-NP-Z2-9]{8}$/i` and stores it in `localStorage['freightchain.ref']`.
+ - **Post-Sign-In Auto-Bind**: Immediately after `signInWallet()` succeeds, the client reads `localStorage['freightchain.ref']` and calls `POST /api/referrals/bind`. On `200 OK` or any terminal refusal (`400`/`409`), the stored key is cleared.
+ - **Profile UI (`lobby.html#profile`)**:
+ - `INVITE A DRIVER` card displays `${SITE_BASE}/?ref=${code}`, `COPY LINK` / `COPY CODE`, slot usage (`${used} qualified · ${pending} pending · ${available} left of ${capacity}`), the 3 paint swatches (`Convoy Green`, `Signal Orange`, `Night Amber`) wired to `POST /api/referrals/gift`, and the invites table.
+ - `REFERRED BY` card shows a manual 8-char code input + `APPLY` button when `referredBy === null`, or the shortened referrer wallet once bound.
 
 5. **Qualification After Verified Ride (`VerdictService.afterVerified` → `ReferralService.onVerified(rideId)`)**:
-   - Invoked after a ride's verdict commits with `ride.status === 'completed'` and `verdict.status === 'verified'`.
-   - Locks `[row.referrer, row.referee]` in sorted wallet order via `findByWalletForUpdate`.
-   - If `row.status === 'pending'` and `now > row.expiresAt`, transitions row to `status = 'expired'` and returns.
-   - Otherwise evaluates `qualifyDecision(QualifyInput)`:
-     - **Status transition (`qualify`)**: On the **first verified completion of any ride** (free EASY/MEDIUM/HARD or paid), `status` transitions from `'pending'` to `'qualified'` (`qualifiedAt = now`, `rideId = ride.id`).
-     - **Gift Paint Unlock (`colour: first`)**: On that first qualification (`decision.colour === true`), `paint(referrer, now, tx)` unlocks the referrer's chosen `code.gift` (`'convoy' | 'signal' | 'amber'` in `slot: 'truck_color'`, `code: 'referral'`) for the **referrer** and equips it if the referrer still wears the default `'red'` or nothing.
-     - **Free-Ride Grant (`freeRides`)**: Granted **only** when the first qualifying completion is a verified **MEDIUM free run (`level === 2`, `free-2c`, `!paid`)** within `referralFreeRideWindowDays` (7 days) of `boundAt`, `!alreadyFreeGranted`, and the referrer's `weeklyGranted < referralFreeRideWeeklyCap` (10). Grants `referralFreeRidesReferrer` (**2**) free rides to the referrer and `referralFreeRidesReferee` (**3**) free rides to the referee (`freeGranted = true`; `grantFreeRides` may exceed the daily cap, and setting `0` on one side grants only the other). A later MEDIUM run after qualifying on EASY does not grant them.
-     - **Convoy Badge Progression (`badge`)**: Set once (`badgeCounted = true`) when the referee completes a **verified paid shift (`paid === true`)** OR a **verified HARD free run (`level === 3`, `free-3c`) with `assist === false`**. Unlike `freeRides`, `badgeCounted` can be set on a subsequent ride if the first qualifying ride was EASY or MEDIUM. Feeds the 4 Convoy achievement tiers (`convoy`, `convoy-2`, `convoy-3`, `convoy-4` at `1 / 5 / 20 / 100`); the referrer's Convoy badge is evaluated on their next profile read or ride end (never inside the friend's `/end` transaction).
+ - Invoked after a ride's verdict commits with `ride.status === 'completed'` and `verdict.status === 'verified'`.
+ - Locks `[row.referrer, row.referee]` in sorted wallet order via `findByWalletForUpdate`.
+ - If `row.status === 'pending'` and `now > row.expiresAt`, transitions row to `status = 'expired'` and returns.
+ - Otherwise evaluates `qualifyDecision(QualifyInput)`:
+ - **Status transition (`qualify`)**: On the **first verified completion of any ride** (free EASY/MEDIUM/HARD or paid), `status` transitions from `'pending'` to `'qualified'` (`qualifiedAt = now`, `rideId = ride.id`).
+ - **Gift Paint Unlock (`colour: first`)**: On that first qualification (`decision.colour === true`), `paint(referrer, now, tx)` unlocks the referrer's chosen `code.gift` (`'convoy' | 'signal' | 'amber'` in `slot: 'truck_color'`, `code: 'referral'`) for the **referrer** and equips it if the referrer still wears the default `'red'` or nothing.
+ - **Free-Ride Grant (`freeRides`)**: Granted **only** when the first qualifying completion is a verified **MEDIUM free run (`level === 2`, `free-2c`, `!paid`)** within `referralFreeRideWindowDays` (7 days) of `boundAt`, `!alreadyFreeGranted`, and the referrer's `weeklyGranted < referralFreeRideWeeklyCap` (10). Grants `referralFreeRidesReferrer` (**2**) free rides to the referrer and `referralFreeRidesReferee` (**3**) free rides to the referee (`freeGranted = true`; `grantFreeRides` may exceed the daily cap, and setting `0` on one side grants only the other). A later MEDIUM run after qualifying on EASY does not grant them.
+ - **Convoy Badge Progression (`badge`)**: Set once (`badgeCounted = true`) when the referee completes a **verified paid shift (`paid === true`)** OR a **verified HARD free run (`level === 3`, `free-3c`) with `assist === false`**. Unlike `freeRides`, `badgeCounted` can be set on a subsequent ride if the first qualifying ride was EASY or MEDIUM. Feeds the 4 Convoy achievement tiers (`convoy`, `convoy-2`, `convoy-3`, `convoy-4` at `1 / 5 / 20 / 100`); the referrer's Convoy badge is evaluated on their next profile read or ride end (never inside the friend's `/end` transaction).
 
 6. **Spectator Donation Share (`donationShare` in `referral-rules.ts` & `PrismaLiveDonationOrderRepository`)**:
-   - When a spectator tips a driver whose referral is `'qualified'` and `spectator !== referrer`:
-     - `already = sumReferredLamports(referrer, driver, holdSince)` sums all `'paid'` donation orders plus `'pending'` donation orders created within `DONATION_SHARE_TTL_MS` (last 15 minutes) so concurrent unpaid checkouts cannot race past the lifetime cap.
-     - `room = max(0, cap - max(0, already))` (default lifetime `cap = 500_000_000` lamports = `0.5 SOL` per pair).
-     - `share = min(floor(price * bps / 10_000), room)` (default `bps = 1000` = `10%`).
-     - If `share < DONATION_RENT_MIN` (`890_880` lamports) or `price - share <= 0`, `share` is `0` (100% goes to the driver).
+ - When a spectator tips a driver whose referral is `'qualified'` and `spectator !== referrer`:
+ - `already = sumReferredLamports(referrer, driver, holdSince)` sums all `'paid'` donation orders plus `'pending'` donation orders created within `DONATION_SHARE_TTL_MS` (last 15 minutes) so concurrent unpaid checkouts cannot race past the lifetime cap.
+ - `room = max(0, cap - max(0, already))` (default lifetime `cap = 500_000_000` lamports = `0.5 SOL` per pair).
+ - `share = min(floor(price * bps / 10_000), room)` (default `bps = 1000` = `10%`).
+ - If `share < DONATION_RENT_MIN` (`890_880` lamports) or `price - share <= 0`, `share` is `0` (100% goes to the driver).
 
 7. **Pool Referral Pot Split (`ReferralPayoutService` & `allocatePoolShares` in `referral-split.ts`) & TEN4 Referral Emissions (`tokenomics.ts`)**:
-   - **On-chain pools v5**: `referralBps = 0` (`8500/500/1000` split; no on-chain referral pot leg, so `ReferralPayoutService` plans rider leaves only and `referralBound` is `0`; promo tickets with no on-chain `bought` are not sponsored). For legacy v3/v4 pools with `referralPot > 0`, `allocatePoolShares` attributes `referralPot` by top-20 rank weight, gives a sponsored winner's referrer `referrerPartBps` (`8000` = 80%) up to `rideCap` (`1 SOL`), and redistributes the remainder across the other top-20 finishers.
-   - **TEN4 Referral Bucket (`HONK_REFERRAL = 4,000,000 TEN4`, `4%`)**: Halving eras of `2M → 1M → 500k…` (`referralQuoteUnits` scaled by `>> max(era_ref, era_ride)`), clipped by `clipReferralPayout` against `HONK_REFERRAL`, the monthly global cap (`30,000 TEN4/mo` for the first 3 months after TGE, then `60,000 TEN4/mo`), and the monthly per-wallet cap (`1,000 TEN4/mo`).
+ - **On-chain pools v5**: `referralBps = 0` (`8500/500/1000` split; no on-chain referral pot leg, so `ReferralPayoutService` plans rider leaves only and `referralBound` is `0`; promo tickets with no on-chain `bought` are not sponsored). For legacy v3/v4 pools with `referralPot > 0`, `allocatePoolShares` attributes `referralPot` by top-20 rank weight, gives a sponsored winner's referrer `referrerPartBps` (`8000` = 80%) up to `rideCap` (`1 SOL`), and redistributes the remainder across the other top-20 finishers.
+ - **TEN4 Referral Bucket (`HONK_REFERRAL = 4,000,000 TEN4`, `4%`)**: Halving eras of `2M → 1M → 500k…` (`referralQuoteUnits` scaled by `>> max(era_ref, era_ride)`), clipped by `clipReferralPayout` against `HONK_REFERRAL`, the monthly global cap (`30,000 TEN4/mo` for the first 3 months after TGE, then `60,000 TEN4/mo`), and the monthly per-wallet cap (`1,000 TEN4/mo`).
 
 ---
 
@@ -120,62 +120,62 @@ Related specs: [Rides](./rides.md) · [Pool & Escrow](./pool.md) · [TEN4 Token 
 
 ### 2.1 Target State Machine (`pending → active → qualified → expired`)
 1. **`pending` (72-Hour TTL — Deleted on Expiry)**:
-   - Created on `POST /api/referrals/bind` with `expiresAt = boundAt + referral_pending_ttl_hours * 3_600_000` (default **72 hours**).
-   - If `now > expiresAt` before the referee completes the test ride, the `pending` row is **deleted** (not tombstoned), immediately freeing the referrer's pending slot and allowing the referee to bind again later.
+ - Created on `POST /api/referrals/bind` with `expiresAt = boundAt + referral_pending_ttl_hours * 3_600_000` (default **72 hours**).
+ - If `now > expiresAt` before the referee completes the test ride, the `pending` row is **deleted** (not tombstoned), immediately freeing the referrer's pending slot and allowing the referee to bind again later.
 2. **`active` (60-Day Qualification Window)**:
-   - Transition `pending → active` occurs when the referee completes a **verified MEDIUM or HARD training ride (`free-2c` or `free-3c`, `verdict.status === 'verified'`; EASY `free-1c` / `free-g` does NOT activate)**.
-   - Sets `activatedAt = now` and `qualifyExpiresAt = now + referral_qualify_window_days * 86_400_000` (default **60 days**).
-   - Unlocks the referrer's selected gift paint (`'convoy' | 'signal' | 'amber'`) on the referrer's first activated/qualified friend.
+ - Transition `pending → active` occurs when the referee completes a **verified MEDIUM or HARD training ride (`free-2c` or `free-3c`, `verdict.status === 'verified'`; EASY `free-1c` / `free-g` does NOT activate)**.
+ - Sets `activatedAt = now` and `qualifyExpiresAt = now + referral_qualify_window_days * 86_400_000` (default **60 days**).
+ - Unlocks the referrer's selected gift paint (`'convoy' | 'signal' | 'amber'`) on the referrer's first activated/qualified friend.
 3. **`qualified` (Milestone M1 Reached)**:
-   - Transition `active → qualified` occurs when the referee completes **Milestone M1** within the 60-day window (`now <= qualifyExpiresAt`).
-   - Once `qualified`, the referee remains eligible to complete **Milestone M2** until the same 60-day window (`qualifyExpiresAt`) closes, and increments the referrer's Convoy badge counter (`convoy` / `convoy-2` / `convoy-3` / `convoy-4`).
+ - Transition `active → qualified` occurs when the referee completes **Milestone M1** within the 60-day window (`now <= qualifyExpiresAt`).
+ - Once `qualified`, the referee remains eligible to complete **Milestone M2** until the same 60-day window (`qualifyExpiresAt`) closes, and increments the referrer's Convoy badge counter (`convoy` / `convoy-2` / `convoy-3` / `convoy-4`).
 4. **`expired` (60-Day Window Elapsed Without M1)**:
-   - Transition `active → expired` occurs when `now > qualifyExpiresAt` and M1 was not reached. An `expired` row after activation is final (the referee cannot re-bind).
+ - Transition `active → expired` occurs when `now > qualifyExpiresAt` and M1 was not reached. An `expired` row after activation is final (the referee cannot re-bind).
 
 ### 2.2 Referee Gift: 1h Promo Ride Grant (`PromoRideGrant`)
 - When a referee transitions `pending → active` (verified MEDIUM/HARD test ride), the referee is granted **one free `1h` promo shift (`PromoRideGrant` with `tier: '1h'`)**, at most **once per referee wallet lifetime**:
-  - By default **unranked** (`referral_referee_promo_ranked = 0`) and emits **0 TEN4**.
-  - Subject to three rate-limit caps (if any cap is reached, activation still succeeds, the slot activates, and the UI informs the player that the promo ride gift cap was reached):
-    - Per-referrer daily cap: `referral_referee_promo_per_referrer_day = 3` per UTC day.
-    - Per-referrer weekly cap: `referral_referee_promo_per_referrer_week = 10` per ISO week.
-    - Global weekly cap: `referral_referee_promo_global_week = 500` per ISO week.
+ - By default **unranked** (`referral_referee_promo_ranked = 0`) and emits **0 TEN4**.
+ - Subject to three rate-limit caps (if any cap is reached, activation still succeeds, the slot activates, and the UI informs the player that the promo ride gift cap was reached):
+ - Per-referrer daily cap: `referral_referee_promo_per_referrer_day = 3` per UTC day.
+ - Per-referrer weekly cap: `referral_referee_promo_per_referrer_week = 10` per ISO week.
+ - Global weekly cap: `referral_referee_promo_global_week = 500` per ISO week.
 
 ### 2.3 Referrer TEN4 Milestones (M1 = 100 TEN4, M2 = 50 TEN4) & Counted Rides
 - **Definition of a Counted Ride**:
-  - A ride on a paid tier (`1h`, or `4h`/`8h` when enabled) that finishes (`status === 'completed'`), is **`verdict.status === 'verified'`**, and is **ranked (`ranked === true`)**.
-  - A ride started with a purchased ticket or sponsored ticket (`kind: 'tickets'`) always counts.
-  - A ride started with the weekly free 1h ticket grant counts **if and only if** `referral_count_weekly_grant = 1` (default `1`) **AND** the referee's `TrustScore >= 100` (`trust_threshold = 100`).
-  - A ride started from a `PromoRideGrant` (`kind: 'ride'` or the referee gift ride) never counts as a counted ride.
+ - A ride on a paid tier (`1h`, or `4h`/`8h` when enabled) that finishes (`status === 'completed'`), is **`verdict.status === 'verified'`**, and is **ranked (`ranked === true`)**.
+ - A ride started with a purchased ticket or sponsored ticket (`kind: 'tickets'`) always counts.
+ - A ride started with the weekly free 1h ticket grant counts **if and only if** `referral_count_weekly_grant = 1` (default `1`) **AND** the referee's `TrustScore >= 100` (`trust_threshold = 100`).
+ - A ride started from a `PromoRideGrant` (`kind: 'ride'` or the referee gift ride) never counts as a counted ride.
 - **Milestone M1 (`referral_ten4_m1_amount = 100` TEN4 base)**:
-  - Requires within the 60-day window (`now <= qualifyExpiresAt`):
-    1. Referee has completed all **required tasks of the current airdrop campaign** (`requiredTasks`; between campaigns, the most recent campaign's required tasks act as the "Convoy steps").
-    2. Referee has completed `>= 1` counted ride in at least **`referral_ten4_m1_weeks = 2` distinct ISO weeks**.
+ - Requires within the 60-day window (`now <= qualifyExpiresAt`):
+ 1. Referee has completed all **required tasks of the current airdrop campaign** (`requiredTasks`; between campaigns, the most recent campaign's required tasks act as the "Convoy steps").
+ 2. Referee has completed `>= 1` counted ride in at least **`referral_ten4_m1_weeks = 2` distinct ISO weeks**.
 - **Milestone M2 (`referral_ten4_m2_amount = 50` TEN4 base)**:
-  - Requires within the 60-day window (`now <= qualifyExpiresAt`):
-    1. M1 is completed.
-    2. Referee has completed `>= 1` counted ride in at least **`referral_ten4_m2_weeks = 5` distinct ISO weeks**.
-  - Maximum base reward per referred friend: **`100 + 50 = 150 TEN4`**.
+ - Requires within the 60-day window (`now <= qualifyExpiresAt`):
+ 1. M1 is completed.
+ 2. Referee has completed `>= 1` counted ride in at least **`referral_ten4_m2_weeks = 5` distinct ISO weeks**.
+ - Maximum base reward per referred friend: **`100 + 50 = 150 TEN4`**.
 - **Referrer Eligibility, Halving, Caps & 48h Hold**:
-  - **Referrer Trust Gate**: Referrer must have `TrustScore >= referral_min_trust_referrer` (**`50`**) at the time the milestone is evaluated.
-  - **Era Scaling (`referralQuoteUnits`)**: Base milestone units (`100e6` or `50e6`) are right-shifted by `max(era_ref, era_ride)` (`era >= 8 → 0`).
-  - **Cap Clipping (`clipReferralPayout`)**: Clipped against remaining `HONK_REFERRAL` (`4,000,000 TEN4`), the global monthly cap (`referral_ten4_soft_start_monthly = 30,000 TEN4/mo` for the first `referral_ten4_soft_start_months = 3` months after `tge_at`, then `referral_ten4_global_monthly = 60,000 TEN4/mo`), and the referrer's personal monthly cap (`referral_ten4_referrer_monthly = 1,000 TEN4/mo`). If a cap is reached, the reward is clipped/skipped with a UI status message — **no backlog queue**.
-  - **48-Hour Review Hold & On-Chain Settlement**: Credited milestone rewards are held for **48 hours** before the worker submits `pay_referral(reward_id, base_amount, month_index)` to `programs/freightchain_honk` (which initializes `ReferralMint` PDA `[b"referral-mint", &reward_id]` to prevent double-payment). After Era 8, any unminted tail in `referral_vault` is burned via `burn_referral_tail`.
+ - **Referrer Trust Gate**: Referrer must have `TrustScore >= referral_min_trust_referrer` (**`50`**) at the time the milestone is evaluated.
+ - **Era Scaling (`referralQuoteUnits`)**: Base milestone units (`100e6` or `50e6`) are right-shifted by `max(era_ref, era_ride)` (`era >= 8 → 0`).
+ - **Cap Clipping (`clipReferralPayout`)**: Clipped against remaining `HONK_REFERRAL` (`4,000,000 TEN4`), the global monthly cap (`referral_ten4_soft_start_monthly = 30,000 TEN4/mo` for the first `referral_ten4_soft_start_months = 3` months after `tge_at`, then `referral_ten4_global_monthly = 60,000 TEN4/mo`), and the referrer's personal monthly cap (`referral_ten4_referrer_monthly = 1,000 TEN4/mo`). If a cap is reached, the reward is clipped/skipped with a UI status message — **no backlog queue**.
+ - **48-Hour Review Hold & On-Chain Settlement**: Credited milestone rewards are held for **48 hours** before the worker submits `pay_referral(reward_id, base_amount, month_index)` to `programs/freightchain_honk` (which initializes `ReferralMint` PDA `[b"referral-mint", &reward_id]` to prevent double-payment). After Era 8, any unminted tail in `referral_vault` is burned via `burn_referral_tail`.
 
 ### 2.4 Dynamic Pending Slots & Convoy Leaderboard
 - **Pending Slot Formula**:
-  - `pendingCapacity = min(referral_pending_max, referral_pending_base + referral_pending_per_active * A) = min(100, 5 + 2 * A)`
-  - Where `A` is the number of the referrer's friends who completed `>= 1` counted ride within the rolling `referral_active_window_days = 30` days.
+ - `pendingCapacity = min(referral_pending_max, referral_pending_base + referral_pending_per_active * A) = min(100, 5 + 2 * A)`
+ - Where `A` is the number of the referrer's friends who completed `>= 1` counted ride within the rolling `referral_active_window_days = 30` days.
 - **Convoy Leaderboard (`GET /api/referrals/leaderboard` & `POST /api/referrals/visibility`)**:
-  - Returns the top **25** referrers ordered by qualified friends count (tie-broken by total M1+M2 milestones, then earliest achievement timestamp), displaying wallet address or resolved `.sol` SNS name, plus the authenticated caller's own row (`me`).
-  - Players can toggle `Player.convoyHidden` (`Boolean`, `@default(false)`): when `convoyHidden = true`, the player is omitted from the public top-25 rows.
+ - Returns the top **25** referrers ordered by qualified friends count (tie-broken by total M1+M2 milestones, then earliest achievement timestamp), displaying wallet address or resolved `.sol` SNS name, plus the authenticated caller's own row (`me`).
+ - Players can toggle `Player.convoyHidden` (`Boolean`, `@default(false)`): when `convoyHidden = true`, the player is omitted from the public top-25 rows.
 - **Zero-Cash & Single-Tier Rules**:
-  - Strictly **1 level** deep (no multi-level/MLM chains).
-  - **0%** of prize pools (`Pool v5` has no referral leg) and **0%** of spectator donations (`referral_donation_share_bps = 0`, Decision 50; the `also` transfer leg in donation orders is removed).
-  - No separate streamer referral tier, and no TEN4 commission on a friend's ticket purchases.
+ - Strictly **1 level** deep (no multi-level/MLM chains).
+ - **0%** of prize pools (`Pool v5` has no referral leg) and **0%** of spectator donations (`referral_donation_share_bps = 0`, Decision 50; the `also` transfer leg in donation orders is removed).
+ - No separate streamer referral tier, and no TEN4 commission on a friend's ticket purchases.
 
 ### 2.5 Operational `GameSetting` keys and immutable program limits (`MASTER_PLAN.md` §12)
 
-The lifecycle, capacity/activity, milestone amount/week, minimum referrer trust, promo-cap/ranking and weekly-grant keys below are signed/audited runtime `GameSetting` rows. Pending expiry is fixed when bound; qualification expiry is fixed when activated. Activation freezes M1/M2 amounts and week requirements, referrer trust minimum and promo ranking into `ConvoyInvite.policy`; changes affect later activations. Award rows retain their amount and minimum trust through retries and settlement. Migration `20261117000000_convoy_policy` preserves existing active/qualified promises using the literal prior defaults; balances and badge tiers stay unchanged. Capacity/activity and promo budgets remain live per transaction. Historical referral-only settings are labelled retired in the admin UI.
+The lifecycle, capacity/activity, milestone amount/week, minimum referrer trust, promo-cap/ranking and weekly-grant keys below are signed/audited runtime `GameSetting` rows. Pending expiry is fixed when bound; qualification expiry is fixed when activated. Activation freezes M1/M2 amounts and week requirements, referrer trust minimum and promo ranking into `ConvoyInvite.policy`; changes affect later activations. Award rows retain their amount and minimum trust through retries and settlement. Migration `convoy_policy` preserves existing active/qualified promises using the literal prior defaults; balances and badge tiers stay unchanged. Capacity/activity and promo budgets remain live per transaction. Historical referral-only settings are labelled retired in the admin UI.
 
 The four monthly/soft-start rows are **program constants, not editable GameSettings**: the deployed ABI enforces 1,000 per wallet, 30,000 global for three 30-day program months then 60,000. Exposing an app-only knob could misrepresent or race those limits, so no ineffective controls are provided. Changing those caps requires a separately reviewed program/config change. The fixed 48h hold, 50-point payout safety floor and top-25 size remain constants. Editable minimum trust is 50–100. Milestone base amounts are whole TEN4 in 1–1,000; the adapter checks this before signing, while the program still applies era and cap clipping. Token units use six decimals.
 
@@ -212,7 +212,7 @@ The four monthly/soft-start rows are **program constants, not editable GameSetti
 | **REF-M-02** | Valid gift items are strictly `['convoy', 'signal', 'amber']` (`GIFT_ITEMS` in `slot: 'truck_color'`, `referralOnly: true`, refused in `/api/garage/buy`). `POST /api/referrals/gift` rejects any other value with `400 bad_gift`. | `isGiftItem`, `ReferralService.gift`, `BuyCosmeticHandler` | `REF-T-03` |
 | **REF-M-03** | On `main`, invite capacity is `min(referralMax, referralInviteStart + referralInviteStep * floor(verifiedPaidShifts / referralShiftsPerStep))` (default `min(30, 3 + 3 * floor(paidShifts / 5))`), and `available = max(0, capacity - used - pending)`. | `inviteCapacity`, `invitesAvailable` | `REF-T-04` |
 | **REF-M-04** | `POST /api/referrals/bind` trims and uppercases `code`, rejects malformed codes with `400 bad_code`, and settles overdue `'pending'` rows before evaluating bind refusal. | `ReferralService.bind`, `ReferralService.settleExpired` | `REF-T-05`, `REF-T-06` |
-| **REF-M-05** | Multi-wallet referral transactions always lock wallets in lexicographical address order (`[...new Set(wallets)].sort()`) via `findByWalletForUpdate` so concurrent binds and qualifications never deadlock. | `ReferralService.lock` | `REF-T-07`, `REF-T-18` |
+| **REF-M-05** | Multi-wallet referral transactions always lock wallets in lexicographical address order (`[...new Set(wallets)].sort`) via `findByWalletForUpdate` so concurrent binds and qualifications never deadlock. | `ReferralService.lock` | `REF-T-07`, `REF-T-18` |
 | **REF-M-06** | `bindRefusal` enforces strict precedence: `unknown_code` (409) → `own_code` (409) → idempotent same-referrer re-bind (`200` no-op, even if slots filled or a ride started) → `expired` (409) → `already_bound` to another referrer (409) → `no_slots` (409) → `ride_started` (`startedAt !== null`, 409). | `bindRefusal`, `ReferralService.bind` | `REF-T-08`, `REF-T-09` |
 | **REF-M-07** | On `main`, a new bind creates a `'pending'` `ReferralRecord` with `expiresAt = boundAt + referralInviteTtlDays * 86_400_000` (14d), and once `'expired'` it is a permanent tombstone. (In target Convoy §2.1, `pending` TTL is `72h` and expired `pending` rows are deleted.) | `ReferralService.bind`, `bindRefusal` | `REF-T-10`, `REF-T-21` |
 | **REF-M-08** | Qualification (`ReferralService.onVerified`) triggers only when `ride.status === 'completed'` and `verdict.status === 'verified'`. Overdue pending rows (`now > expiresAt`) expire without granting rewards. | `ReferralService.onVerified`, `qualifyDecision` | `REF-T-11` |
@@ -254,7 +254,7 @@ The four monthly/soft-start rows are **program constants, not editable GameSetti
 - **`REF-T-21 (Target Convoy Lifecycle & Promo Gift)`**: Verify `pending` 72h expiry deletes the row (allowing re-bind); EASY completion leaves row `pending`; verified MEDIUM/HARD transitions `pending → active` (60d window) and grants 1 unranked 1h `PromoRideGrant` to the referee while enforcing the `3/day`, `10/week`, and `500/week` global caps; dynamic pending slots follow `min(100, 5 + 2*A)`.
 - **`REF-T-22 (Target Convoy Milestones M1/M2 & Leaderboard)`**: Verify counted ride rules (paid verified ranked shift, or weekly free 1h ticket when `referral_count_weekly_grant = 1` and referee `trust >= 100`; promo ride never counts), M1 (`100 TEN4` at 2 distinct ISO weeks + campaign `requiredTasks`), M2 (`50 TEN4` at 5 distinct ISO weeks), referrer `trust >= 50` gate, 48h payout hold, and 25-row Convoy leaderboard with `convoyHidden` opt-out.
 
-### Convoy settlement recovery (25 October)
+### Convoy settlement recovery
 
 Qualification timestamps record when M1/M2 was earned; a payout hold does not cause an otherwise qualified invite to expire at day 60. The minute scheduler processes up to 50 due rewards, locks both players in wallet order, checks the 48-hour hold/trust/rejection gate and claims a two-minute lease. RPC runs outside the transaction. A signed transaction and its last valid block height are persisted under that lease before broadcast. A replacement worker checks the receipt/signature before any resend; an unknown signature is replaceable only after finalized block-height expiry.
 
