@@ -1,6 +1,6 @@
 import type { LlmTool } from './llm-provider.port.js';
 
-/* The entity MCP (mcp/: the 3d-assets skill as tools), one connection per job. The job's capability token rides along on every request, so every
+/* The entity MCP (mcp/: the model-geometry-validator skill as tools), one connection per job. The job's capability token rides along on every request, so every
    write the MCP makes comes back to /api/editor/mcp/* as THIS job. */
 
 export interface McpToolResult {

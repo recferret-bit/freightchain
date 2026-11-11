@@ -7,7 +7,7 @@ Not trees: cactus, bush, rock, tuft, termite, cairn, drift. The validator return
 ## Before a mesh or a generated model
 
 ```sh
-node .claude/skills/3d-assets/validate.mjs "the user's sentence"
+node .claude/skills/model-geometry-validator/validate.mjs "the user's sentence"
 ```
 
 Exit 1: stop. Quote `errors`. Do not edit an entity. A passing run prints `expect`. One trunk. No wheels. Canopy follows `expect.canopy` (`required` or `forbidden`). Birch is bare: a leaf canopy on a birch is rejected, and a leafless birch is valid.

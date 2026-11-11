@@ -14,7 +14,7 @@ import { CreateEditorJobCommand, type JobCreatedDto } from './create-editor-job.
 /**
  * The bridge's gate, in order (the guard and the Zod body ran before): the AI editor is on and the provider / model is offered → the entity and its base
  * (a base that is not the head is a 409 stale_base) → the wallet's daily cap (`editor_jobs_per_day`, 429) → one open job per wallet and per entity (409
- * job_running – atomic shared admission) → the 3d-assets skill's spec gate on the words (the MCP's /spec: an impossible car / tree / building is a 422 spec_invalid with the
+ * job_running – atomic shared admission) → the model-geometry-validator skill's spec gate on the words (the MCP's /spec: an impossible car / tree / building is a 422 spec_invalid with the
  * validator's errors, and NO model is called, no job is stored) → a queued job for the runner (202).
  */
 @CommandHandler(CreateEditorJobCommand)

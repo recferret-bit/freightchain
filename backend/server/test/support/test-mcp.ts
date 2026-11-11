@@ -7,9 +7,9 @@ import { parseSource, validateEntity, type EntityConfig } from '../../src/domain
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 
-/** the 3d-assets skill's own validator (the real MCP's /spec uses it the same way – mcp/src/server.js specVerdict) */
+/** the model-geometry-validator skill's own validator (the real MCP's /spec uses it the same way – mcp/src/server.js specVerdict) */
 type Evaluate = (phrase: string) => { ok: boolean; skipped?: boolean; kind?: string; errors?: string[]; expect?: unknown };
-const VALIDATOR = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..', '..', '..', '.claude', 'skills', '3d-assets', 'validate.mjs');
+const VALIDATOR = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..', '..', '..', '.claude', 'skills', 'model-geometry-validator', 'validate.mjs');
 let evaluate: Evaluate | null = null;
 
 const SPEC_KINDS = new Set(['car', 'tree', 'building']);

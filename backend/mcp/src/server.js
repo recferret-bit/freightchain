@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { core } from './backend.js';
 import { SKILL, FORMAT } from './paths.js';
 
-/* The entity MCP: the 3d-assets skill (.claude/skills/3d-assets) turned into tools over one backend (backend.js).
+/* The entity MCP: the model-geometry-validator skill (.claude/skills/model-geometry-validator) turned into tools over one backend (backend.js).
    Every write goes through check_entity's validator first, and the backend re-validates (the app server does it again on its side). */
 const validator = await import(pathToFileURL(join(SKILL, 'validate.mjs')).href);
 const read = p => readFileSync(p, 'utf8');
@@ -37,7 +37,7 @@ export async function checkSource(backend, source) {
 }
 
 const KIND_FILES = { car: 'car.md', tree: 'tree.md', building: 'building.md' };
-/** which 3d-assets kind rules apply: a vehicle is a car, a landmark a building, a prop the game places as a tree a tree (from the roster when no kind is given) */
+/** which model-geometry-validator kind rules apply: a vehicle is a car, a landmark a building, a prop the game places as a tree a tree (from the roster when no kind is given) */
 export function kindDocOf(entityId, kind) {
   const lock = entityId ? core.rosterOf(entityId) : null, k = kind ?? lock?.kind ?? null;
   return k === 'vehicle' ? 'car' : k === 'landmark' ? 'building' : k === 'prop' && lock?.lock?.kind === 'tree' ? 'tree' : null;
@@ -57,7 +57,7 @@ export function systemPrompt({ entityId = null, kind = null } = {}) {
     'Change only what was asked. Never invent gameplay (collision, sizes in VEHICLES, footprints): those keys are refused. If the request cannot be done in this format, say so instead of saving.',
     entityId ? `The request is about the entity '${entityId}'.` : 'The request may create a new entity: choose a short id that is not taken (list_entities).',
     '', '---', read(FORMAT),
-    kindDoc ? `\n---\nRules for a ${kindDoc} (3d-assets skill):\n${read(join(SKILL, 'kinds', KIND_FILES[kindDoc]))}` : '',
+    kindDoc ? `\n---\nRules for a ${kindDoc} (model-geometry-validator skill):\n${read(join(SKILL, 'kinds', KIND_FILES[kindDoc]))}` : '',
   ].join('\n');
 }
 
@@ -70,7 +70,7 @@ export function buildServer(backend, { name = 'freightchain-entities' } = {}) {
     async ({ id }) => { try { const e = await backend.get(id), lock = core.rosterOf(id); return json({ id, kind: e.row.kind, headSeq: e.row.headSeq, publishedSeq: e.row.publishedSeq, gameplayLock: lock ?? null, source: e.source }); } catch (x) { return fail(x.message); } });
   server.registerTool('get_format', { title: 'Entity format', description: 'The full entity format reference (parts, expressions, materials, limits, gameplay rules).', inputSchema: {}, annotations: { readOnlyHint: true, openWorldHint: false } },
     async () => ({ content: [{ type: 'text', text: read(FORMAT) }] }));
-  server.registerTool('validate_spec', { title: 'Check a request', description: "The 3d-assets skill's spec gate on the user's sentence: a car / tree / building with an impossible count (a car with 2 wheels) is rejected. Other requests are not specs.", inputSchema: { phrase: z.string().max(4000) }, annotations: { readOnlyHint: true, openWorldHint: false } },
+  server.registerTool('validate_spec', { title: 'Check a request', description: "The model-geometry-validator skill's spec gate on the user's sentence: a car / tree / building with an impossible count (a car with 2 wheels) is rejected. Other requests are not specs.", inputSchema: { phrase: z.string().max(4000) }, annotations: { readOnlyHint: true, openWorldHint: false } },
     async ({ phrase }) => json(specVerdict(phrase)));
   server.registerTool('check_entity', { title: 'Validate a source', description: 'Parse and validate a full entity source (shape, expressions, every param at its min and max, the gameplay contract) and measure it: size, tags, roles, floating parts. Call before save_draft.', inputSchema: { source: z.string().max(64 * 1024) }, annotations: { readOnlyHint: true, openWorldHint: false } },
     async ({ source }) => json(await checkSource(backend, source)));
@@ -87,8 +87,8 @@ export function buildServer(backend, { name = 'freightchain-entities' } = {}) {
 
   server.registerResource('entity-format', 'entity://format', { title: 'Entity format', mimeType: 'text/markdown' }, async uri => ({ contents: [{ uri: uri.href, text: read(FORMAT) }] }));
   server.registerResource('roster', 'entity://roster', { title: 'Gameplay roster (read-only)', mimeType: 'application/json' }, async uri => ({ contents: [{ uri: uri.href, text: JSON.stringify(core.ROSTER, null, 1) }] }));
-  server.registerResource('skill', 'skill://3d-assets/SKILL.md', { title: '3d-assets skill', mimeType: 'text/markdown' }, async uri => ({ contents: [{ uri: uri.href, text: read(join(SKILL, 'SKILL.md')) }] }));
-  for (const f of readdirSync(join(SKILL, 'kinds'))) server.registerResource(`kind-${f}`, `skill://3d-assets/kinds/${f}`, { title: `3d-assets: ${f}`, mimeType: 'text/markdown' }, async uri => ({ contents: [{ uri: uri.href, text: read(join(SKILL, 'kinds', f)) }] }));
+  server.registerResource('skill', 'skill://model-geometry-validator/SKILL.md', { title: 'model-geometry-validator skill', mimeType: 'text/markdown' }, async uri => ({ contents: [{ uri: uri.href, text: read(join(SKILL, 'SKILL.md')) }] }));
+  for (const f of readdirSync(join(SKILL, 'kinds'))) server.registerResource(`kind-${f}`, `skill://model-geometry-validator/kinds/${f}`, { title: `model-geometry-validator: ${f}`, mimeType: 'text/markdown' }, async uri => ({ contents: [{ uri: uri.href, text: read(join(SKILL, 'kinds', f)) }] }));
 
   server.registerPrompt('entity-editor', { title: 'Entity editor', description: 'System prompt for an AI that edits one entity (or makes a new one) through these tools.', argsSchema: { entityId: ID.optional(), kind: z.enum(core.KINDS).optional() } },
     ({ entityId, kind }) => ({ messages: [{ role: 'user', content: { type: 'text', text: systemPrompt({ entityId: entityId || null, kind: kind || null }) } }] }));

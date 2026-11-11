@@ -2,7 +2,7 @@
 // an observer sees the viewer and a sign-in box; a wallet NOT on EDITOR_WALLETS is refused; the editor signs in (a fake Phantom holding a real keypair),
 // edits an entity by hand (SOURCE: check → save draft), finds it in HISTORY, previews it, PUBLISHES it with a signature – and the public bundle the game
 // loads now carries it; then a CHAT job (the server's fake model, EDITOR_FAKE_LLM=1) runs through the MCP's tools and saves a draft the viewer previews;
-// a request the 3d-assets spec gate rejects ("a car with 2 wheels") never reaches a model. Screenshots in $SHOTS (fc-editor-shots).
+// a request the model-geometry-validator spec gate rejects ("a car with 2 wheels") never reaches a model. Screenshots in $SHOTS (fc-editor-shots).
 // Easiest via `bash .claude/skills/run-tests/e2e.sh editor` (starts the MCP + the server with the right env).
 //   EDITOR_KEYPAIR=<path to a JSON array secret key> BASE=http://localhost:<port> CHROME_PORT=… node scripts/e2e-editor.mjs
 import { readFileSync } from 'node:fs';
@@ -118,7 +118,7 @@ check('the job\'s draft is the new head (the fake model\'s note)', await until((
 // the spec gate: an impossible car never reaches a model
 await E.ev(`__viewer.select('sedan')`); await tab('CHAT');
 await E.ev(`document.querySelector('#editor .ed-prompt').value = 'a car with 2 wheels'`); await click('SEND');
-check('the 3d-assets spec gate refuses "a car with 2 wheels" before any model runs', await until(() => probe(E, `/wheels must be 4/.test(document.querySelector('#editor .ed-log')?.textContent || '')`)));
+check('the model-geometry-validator spec gate refuses "a car with 2 wheels" before any model runs', await until(() => probe(E, `/wheels must be 4/.test(document.querySelector('#editor .ed-log')?.textContent || '')`)));
 await E.shot('06-spec-refused');
 
 // sign out: the httpOnly fc_editor cookie goes away, the drawer asks for a wallet again, and the next draft is refused

@@ -7,7 +7,7 @@ A subordinate parked car or "two cruisers" does not give the building wheels and
 ## Before a mesh or a generated model
 
 ```sh
-node .claude/skills/3d-assets/validate.mjs "the user's sentence"
+node .claude/skills/model-geometry-validator/validate.mjs "the user's sentence"
 ```
 
 Exit 1: stop. Quote `errors`. Do not edit an entity. A passing run prints `expect`. Wheels stay 0. Roof and walls follow `expect` (`required` or `optional`). A stated storey count must meet `minStoreys`. Footprint `hl` and `hd` are positive half-extents.

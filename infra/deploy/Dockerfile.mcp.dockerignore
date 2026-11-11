@@ -5,4 +5,4 @@
 !backend/mcp/src/
 !frontend/client/shared/
 !frontend/client/tools/entity-seed-index.mjs
-!.claude/skills/3d-assets/
+!.claude/skills/model-geometry-validator/

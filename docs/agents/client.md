@@ -56,7 +56,7 @@ js/world/depot.js the start: yard, warehouse + docks, parked trailers, exit / sp
 js/world/trailer.js the trailer (only visible in mirrors)
 js/world/holes.js road holes + warning signs: the meshes (+ the red ring of a replay's NO IMPACT hole); re-exports net/obstacles.js; see "Road holes"
 js/world/vehicles.js `buildVehicle` (entity of the type's id; VEHICLES table re-exported from client/shared/traffic.js); `vehicleMats` feed FLIP_MATS
-js/viewer.js model viewer (`viewer.html`, storybook); its catalogue is js/catalogue.js (the same entities, DOM-free) — skill `3d-assets`
+js/viewer.js model viewer (`viewer.html`, storybook); its catalogue is js/catalogue.js (the same entities, DOM-free) — skill `model-geometry-validator`
 js/sim/traffic.js traffic: main road + crossroads side roads, spawn zones, AI PRESETS (IDM car-following + lanes + signals), truck contact (aligned: scratch / bump / direct hit; at an angle: closing speed)
 js/world/render.js per-frame 3D render, camera shake, trailer hitch, mirror passes, resize()
 js/sim/physics.js longitudinal & lateral dynamics, steering, body sway, trailer articulation, ride end conditions; re-exports `sim/engine.js`

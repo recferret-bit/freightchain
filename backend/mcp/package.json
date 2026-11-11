@@ -2,7 +2,7 @@
   "name": "@freightchain/mcp",
   "private": true,
   "type": "module",
-  "description": "Freight Chain entity MCP server: the 3d-assets skill as tools over the entity API (HTTP for the editor bridge) or the repo's seed files (stdio for Claude Code)",
+  "description": "Freight Chain entity MCP server: the model-geometry-validator skill as tools over the entity API (HTTP for the editor bridge) or the repo's seed files (stdio for Claude Code)",
   "scripts": {
     "start": "node src/http.js",
     "stdio": "node src/stdio.js",

@@ -354,7 +354,7 @@ services:
       EDITOR_FAKE_LLM: "0"   # test switch – the server refuses 1 in production
       EDITOR_OPEN: "0"   # local switch – the server refuses 1 in production
 
-  # The entity MCP (mcp/, docs/spec/platform_services.md): the 3d-assets skill as tools for the AI model editor. Internal network only, no published port,
+  # The entity MCP (mcp/, docs/spec/platform_services.md): the model-geometry-validator skill as tools for the AI model editor. Internal network only, no published port,
   # no AI or wallet key – only the shared EDITOR_MCP_TOKEN. Started by release.sh only when EDITOR_MCP_TOKEN is set (without it the process refuses to run).
   mcp:
     image: freightchain-mcp:${RELEASE:-latest}
