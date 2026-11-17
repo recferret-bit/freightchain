@@ -5,19 +5,19 @@
     "subtypes": [
       {
         "id": "passenger",
-        "aliases": ["police car", "sedan", "car"],
+        "aliases": ["police car", "patrol car", "cruiser", "sedan", "car"],
         "wheels": 4,
         "axles": 2
       },
       {
         "id": "truck",
-        "aliases": ["fire truck", "ambulance", "medic", "bus", "truck"],
+        "aliases": ["fire truck", "fire engine", "delivery truck", "box truck", "motorcoach", "coach", "ambulance", "medic", "bus", "truck"],
         "wheels": 4,
         "axles": 2
       },
       {
         "id": "freighter",
-        "aliases": ["freighter", "semi"],
+        "aliases": ["tractor trailer", "semi trailer", "freighter", "semi"],
         "wheels": 6,
         "axles": 3
       }
@@ -30,7 +30,7 @@
     "styles": [
       { "id": "birch", "aliases": ["birch"], "canopy": "forbidden" },
       { "id": "gum", "aliases": ["gum tree", "gum"], "canopy": "required" },
-      { "id": "broadleaf", "aliases": ["broadleaf tree", "broadleaf", "oak"], "canopy": "required" },
+      { "id": "broadleaf", "aliases": ["broadleaf tree", "round tree", "broadleaf", "oak"], "canopy": "required" },
       { "id": "spruce", "aliases": ["spruce", "pine"], "canopy": "required" },
       { "id": "tree", "aliases": ["tree"], "canopy": "required" }
     ]
@@ -47,16 +47,27 @@
       "speedtrap",
       "police station",
       "police checkpoint",
+      "gulp station",
+      "gulp bay",
+      "truck stop",
+      "truckstop",
       "gas station",
+      "fast food",
+      "fastfood",
       "roadhouse",
       "restaurant",
       "landmark",
       "building",
       "motel",
       "hotel",
+      "resort",
       "diner",
+      "kiosk",
+      "cabin",
+      "tower",
       "garage",
-      "house"
+      "house",
+      "gulp"
     ]
   },
   "other": {
@@ -70,6 +81,18 @@
       "termite",
       "snow drift",
       "drift",
+      "lamp post",
+      "street lamp",
+      "utility pole",
+      "delineator post",
+      "delineator",
+      "guardrail",
+      "guard rail",
+      "guard",
+      "gantry",
+      "lamp",
+      "pole",
+      "post",
       "bush",
       "cairn",
       "rock"

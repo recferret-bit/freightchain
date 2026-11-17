@@ -36,7 +36,7 @@ function ser(root) {
     const g = o.geometry, pool = meshPool.owned.has(o) ? 'P' : groupPool.owned.has(o) ? 'G' : '-';
     const r = o.rotation, s = o.scale, q = o.position;
     let line = `${p} ${o.type}${pool} '${o.name}' v=${o.visible} ro=${o.renderOrder} fc=${o.frustumCulled} p=${n(q.x)},${n(q.y)},${n(q.z)} r=${n(r.x)},${n(r.y)},${n(r.z)},${r.order} s=${n(s.x)},${n(s.y)},${n(s.z)}`;
-    if (g) line += ` g=${g.kind}(${g.args.map(n).join(',')})${g.ops.length ? JSON.stringify(g.ops) : ''}`;
+    if (g) line += ` g=${g.name || g.kind}(${g.args.map(n).join(',')})${g.ops.length ? JSON.stringify(g.ops) : ''}`;
     if (o.material) line += ` mat=${Array.isArray(o.material) ? '[' + o.material.map(mat).join(',') + ']' : mat(o.material)}`;
     const keys = Object.keys(o.userData); if (keys.length) line += ` ud=${ud(o.userData)}`;
     out.push(line);

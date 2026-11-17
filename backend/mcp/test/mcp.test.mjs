@@ -59,6 +59,10 @@ test('tools: list, read, check, save a valid edit, refuse an invalid one and gam
   assert.equal(proto.ok, false); assert.match(proto.errors.join(' '), /unknown entity 'constructor'/);
   const many = await call('check_entity', { source: `export default { id: 'many-x', kind: 'part', v: 1, ${Array.from({ length: 60 }, (_, i) => `k${i}: 1`).join(', ')}, parts: [] };` });
   assert.equal(many.errors.length, 41); assert.match(many.errors.at(-1), /more$/);   // capped for the model's context
+  const zfight = await call('check_entity', { source: "export default { id: 'zf-prop', kind: 'prop', v: 1, slots: { a: {}, b: {} }, debris: 'a', parts: [{ geo: 'box', tag: 'wall', mat: 'a', s: [2, 2, 2], at: [0, 1, 0] }, { geo: 'box', tag: 'stripe', mat: 'b', s: [1, 0.4, 2], at: [0, 1, 0] }] };" });
+  assert.equal(zfight.ok, true);
+  assert.ok(zfight.warnings.some(w => /\[COPLANAR_Z_FIGHT\]/.test(w)), zfight.warnings.join('; '));
+  assert.ok(zfight.warnings.some(w => /\[FEW_PARTS\]/.test(w)), zfight.warnings.join('; '));
   await client.close();
 });
 

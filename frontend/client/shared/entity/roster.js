@@ -26,7 +26,7 @@ export const ROSTER = {
     post: { kind: 'post', size: 1, params: [], slots: ['body', 'cap'] },
     lamp: { kind: 'lamp', size: 1, params: ['h', 'arm', 'sd', 'light'], slots: ['mast', 'bulb'], roles: ['glow'] },
     pole: { kind: 'pole', size: 1, params: [], slots: ['m'] },
-    guard: { kind: 'guard', size: 1, params: [], slots: ['rail', 'post'] },
+    guard: { kind: 'guard', size: 1, params: ['sd'], slots: ['rail', 'post'] },
   },
   landmark: {
     motel: [{ id: 'motel-strip', hl: 13, hd: 5 }, { id: 'motel-cabins', hl: 13, hd: 5 }, { id: 'motel-twostory', hl: 12, hd: 5 }],

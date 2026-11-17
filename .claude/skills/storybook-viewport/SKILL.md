@@ -1,63 +1,76 @@
 ---
 name: storybook-viewport
 description: >
-  Review Freight Chain models in the storybook viewer: three catalogue
-  shots, ground contact, and parts that sit off the body. The page is
-  frontend/client/viewer.html (production storybook.<apex>). Trigger words:
-  storybook, viewer, screenshot, three views. Leave the camera at
-  fov 45. Use when the user runs /storybook-viewport.
+  Pillar 4 — Storybook Viewport & Visual QA Auditor. Capture and audit 4-angle
+  orthographic/3-quarter renders (right, front, top, threeq) in viewer.html
+  plus live highway/mirror frames via e2e-chrome.mjs. Use when inspecting
+  models, verifying visual quality, or running /storybook-viewport.
 ---
 
-# Storybook viewport
+# Storybook Viewport & Visual QA Auditor (Pillar 4)
 
-`frontend/client/viewer.html` is the model viewer. Production host is `storybook.<apex>`. The catalogue is `frontend/client/js/catalogue.js`. It builds the same entities as the game. Ids are `<vehicle>`, `sedan#<paint>`, `<route>/<entity>`, and `<route>/<entity>~<n>`.
+Numeric bounding-box checks catch structural bugs, but **visual inspection of rendered PNGs is mandatory** before declaring any 3D model or texture upgrade finished.
 
-The camera is a `PerspectiveCamera`, fov 45, near 0.05, far 600 (`frontend/client/js/viewer.js`). It is not a 28° isometric camera. Do not change the fov to 28.
+Freight Chain's live model stage is `frontend/client/viewer.html` (production `storybook.<apex>`), backed by `frontend/client/js/viewer.js` (`PerspectiveCamera`, `fov = 45`, `near = 0.05`, `far = 600` — keep `fov = 45`) and `frontend/client/js/catalogue.js`.
 
-## Shots
+---
 
-Shots belong to `model-geometry-validator`. Do not add another capture path.
+## 1. Automated 4-View Capture (`shot.mjs`)
+
+Use `model-geometry-validator/shot.mjs` (never create duplicate Puppeteer/Playwright screenshot harnesses):
 
 ```sh
-node .claude/skills/model-geometry-validator/shot.mjs <id>
+# Print all catalogue IDs (<vehicle>, sedan#<paint>, <route>/<entity>, <route>/<entity>~<n>)
+node .claude/skills/model-geometry-validator/shot.mjs
+
+# Measure and capture 4 views (<slug>-{right,front,top,threeq}.png)
+node .claude/skills/model-geometry-validator/shot.mjs freighter bus fire police route66/diner-chrome route66/gas-canopy
 ```
 
-No arguments prints the catalogue. Each id is saved as `right`, `front`, and `threeq`.
+- `shot.mjs` auto-detects `http://127.0.0.1:8765` or `:3000` (or `BASE=http://127.0.0.1:<port>`), hides UI chrome and black wireframe edge helpers so true `formShade` bevels and material contrasts are visible, keeps the `1 m` ground grid (`y = 0`), and exits `1` on any page/console error.
+- **Orientation-Aware Camera Angles**:
+  - **Vehicles / Props / Furniture** (forward = `-z`):
+    - `right` (`yaw = +π/2`): side profile, axle spacing, wheel protrusion past body.
+    - `front` (`yaw = π`): `-z` front grille, headlamp symmetry, windshield rake, roof height.
+    - `top` (`pitch = 1.48`): roof equipment (AC pods, ladders, exhaust stacks, fairing taper).
+    - `threeq` (`yaw = π - 0.6, pitch = 0.35`): **front-right 3/4 hero view**.
+  - **Gantry** (`gantry` / `*/gantry`, banner faces approaching player along **`+z`**):
+    - `front` (`yaw = 0`): straight at the `+z` guide sign so typography reads left-to-right unobstructed by rear chords.
+    - `threeq` (`yaw = 0.55, pitch = 0.35`): **front-right 3/4 approach view**.
+  - **Landmarks** (`group` starts with `'Landmarks'`, front faces **`-x`** toward the road):
+    - `front` (`yaw = -π/2`): straight into the `-x` storefront, pumps, colonnade, and entry doors.
+    - `right` (`yaw = 0`): `+z` lot side profile & apron join.
+    - `top` (`yaw = -π/2, pitch = 1.48`): lot layout, island spacing, roof mechanicals.
+    - `threeq` (`yaw = -π/2 + 0.55, pitch = 0.35`): **front-right 3/4 road-approach view**.
+- Interactive `viewer.html` uses the same orientation-aware `frame()`, displays `meshes / tris` and `ground minY` in `#info`, and binds keys `1` (`threeq`), `2` (`front`), `3` (`right`), and `4` (`top`).
 
-- `right` — camera on +x. Wheels sit outside the hull. A sign is edge-on.
-- `front` — symmetry and the head-lamp pair.
-- `threeq` — body style only. Not the clearance verdict.
+---
 
-Read the script's legend line, then read every PNG. `pastWidestBox` is not "past the painted hull". `gaps` is a candidate. `minY` is the lowest mesh. The grid is y = 0.
+## 2. Visual Audit Rubric (Read Every Captured PNG)
 
-`shot.mjs` uses the first of `http://127.0.0.1:8765` and `:3000` that serves `/viewer.html`, or `BASE`. `file://` cannot load modules. Do not kill a server already serving this `frontend/client/`. `PORT` defaults to 9336. Do not start a second server on the same port.
+Open the saved PNGs with `read_file` and verify every item on this checklist:
 
-## Not in the viewer
+1. **Silhouette & Anti-Cube Check (`threeq` + `right`)**:
+   - Does the model immediately read as its real-world highway archetype (sleeper semi, motorcoach, fire pumper, chrome diner, truckstop canopy, saguaro cactus) rather than a plain rectangular box?
+   - Do `rbox` chamfers, `wedge` windshields/hoods, and `gable`/`barrel` roofs catch distinct shading steps under `F8` `formShade`?
+2. **Ground Seating & Support Continuity (`right` + `front`)**:
+   - `minY` sits cleanly on the `y = 0` grid (no floating tyres, hovering posts, or sunken wheels).
+   - No disconnected lightbars, floating mirrors, unbraced signs, or hovering roof details.
+3. **Wheel & Axle Readability (`right` + `front`)**:
+   - Tyres (`TYRE`) and stepped silver rims (`RIM`) protrude visibly outside the painted fender line and sit inside proper dark wheel-arch housings.
+4. **Contrast & Livery Legibility (`front` + `threeq`)**:
+   - Grilles, windows, doors, and trim separate crisply from body/wall colours — especially on black/dark vehicles (`police`, dark `sedan` variants).
+   - `sign`, `disk`, and `gantry` `banner` typography is un-clipped, right-side-up, and framed by clean bezels.
 
-The viewer shows the rest pose. Blinkers, crashes, and spawns are not in it (`traffic-motion`, `road-particles-3d`). A road hole, the depot, the trailer, and the 2D cab are not in the catalogue. From `frontend/client/`, shoot those with `node tools/e2e-chrome.mjs`. Do not clone them into the viewer.
+---
 
-## Form shade
+## 3. Non-Catalogue & Full-Corridor Verification
 
-Day form shade in the viewer is F8 (`CFG.FORM_SHADE`), implemented in `frontend/client/js/world/nightlight.js`. It is a review aid. Upward faces stay flat. Open `highway-lighting` and `shader-texture-tuning`. Do not restate the shader.
+Models built directly on the highway scene (`world/trailer.js`, `depot.js`, `junctions.js`, `toll.js`, `holes.js`, `road-texture.js`, and 2D `cockpit/*`) are **not** in `viewer.html`. Verify them in real Chrome:
 
-## Checklist
+```sh
+PORT=9333 node frontend/client/tools/e2e-chrome.mjs
+PORT=9334 node frontend/client/tools/e2e-viewer.mjs http://127.0.0.1:8765/viewer.html?editor=off
+```
 
-Read the three PNGs against this list.
-
-- Ground contact: `minY` about 0. A trunk or a tyre is not floating.
-- No part hovering off the body. Use the legend's `gaps`, then the PNG.
-- Wheels are outside the hull on `right`.
-- Lamps are brighter lenses, not body paint.
-- A sign is readable and not through the roof.
-- A landmark does not stick into the lane.
-- One route's materials do not make a prop a black blob.
-
-Then quote the number that moved and the PNG name.
-
-## Cards
-
-`frontend/landing/src/dash-live.js` crops the 2D cockpit. A viewport review of a 3D entity does not verify a card. If the change was cockpit drawing, say the card was or was not opened.
-
-## Viewer page
-
-From `frontend/client/`, `npm run test:viewer` only when `viewer.js` or `viewer.html` changed.
+Read the resulting gameplay screenshots (check asphalt wear/markings, oncoming traffic, depot/toll/junction geometry, and the player trailer in the left/right mirrors).

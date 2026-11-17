@@ -13,15 +13,15 @@ const mat = hex => { let m = matCache.get(hex); if (!m) { m = new THREE.MeshBasi
 const lampCache = new Map();
 const lampMat = hex => { let m = lampCache.get(hex); if (!m) { m = new THREE.MeshBasicMaterial({ color: hex, toneMapped: false }); lampCache.set(hex, m); vehicleMats.push(m); } return m; };
 const AMBER = 0xff9a10;
-const GLASS = 0x1d2a36, TYRE = 0x151515, RIM = 0xc4c8ce, TAIL = 0x8a1410, BRAKE = 0xff3020, HEAD = 0xfff2c0, RED = 0xe02020, BLUE = 0x2a5cff, WHITE = 0xf0f0ea;
+const GLASS = 0x293d52, TYRE = 0x151515, RIM = 0xc4c8ce, TAIL = 0x9e1612, BRAKE = 0xff3020, HEAD = 0xfff2c0, RED = 0xe02020, BLUE = 0x2a5cff, WHITE = 0xf0f0ea;
 import { CAR_COLORS, VEHICLES } from '../../shared/traffic.js';
 export { VEHICLES };
 
 /* the meshes are entities (client/shared/entity/seed/vehicle/<type>.js + the veh-* parts): every colour they name comes from these caches */
 const ctx = { slot: () => null, color: (hex, lamp) => (lamp ? lampMat(hex) : mat(hex)) };
 // create every material up front so FLIP_MATS (snapshotted by render.js at load) is complete
-for (const c of [HEAD, TAIL, BRAKE, RED, BLUE, AMBER]) lampMat(c);
-for (const c of [GLASS, TYRE, RIM, 0x6a7078, 0x8a5a14, RED, WHITE, 0x15191f, 0x4a5a6a, 0xd8d4c8, 0xc8c8c0, 0xe8c020, 0xd89a20, 0x20406a, 0xe3e1d9, 0x1d3a5c, ...CAR_COLORS]) mat(c);
+for (const c of [HEAD, TAIL, BRAKE, RED, BLUE, AMBER, 0xffb830, 0xf0f4ff]) lampMat(c);
+for (const c of [GLASS, 0x1d2a36, TYRE, RIM, 0xdce2e8, 0xd0d4da, 0x4a525d, 0x2b3038, 0x22262c, 0x1e2228, 0x181b20, 0x16191e, 0x2a2e35, 0xf0ece0, 0x6a7078, 0x8a5a14, RED, WHITE, AMBER, 0x15191f, 0x4a5a6a, 0xd8d4c8, 0xc8c8c0, 0xe8c020, 0xd89a20, 0x20406a, 0xe3e1d9, 0x1d3a5c, ...CAR_COLORS]) mat(c);
 
 export const activeVehicles = new Set();
 /* builds a vehicle group in the scene; `pick` selects the sedan colour */

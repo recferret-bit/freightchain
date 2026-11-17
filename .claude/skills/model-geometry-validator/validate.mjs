@@ -6,6 +6,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runAuditCli, selfTestAudit } from "./audit-entities.mjs";
 
 const rules = JSON.parse(
   readFileSync(join(dirname(fileURLToPath(import.meta.url)), "rules.json"), "utf8"),
@@ -18,7 +19,13 @@ const WORD = {
 const WORD_RE = "zero|none|one|two|three|four|five|six|seven|eight|nine|ten";
 const NUM = String.raw`(?:-?\d+\.\d+|-?\.\d+|-?\d+|${WORD_RE}|a|an)`;
 const GAP = String.raw`(?:\s+(?:total|of|the|exactly|only|just))*\s+`;
-const QUAL = new Set(["big", "small", "large", "old", "new", "little", "tall", "short", "huge", "tiny", "red", "blue", "green", "wooden", "parked", "roadside", "police", "winter", "bare", "leafless", "roofless", "wallless", "wheeled"]);
+const QUAL = new Set([
+  "big", "small", "large", "old", "new", "little", "tall", "short", "huge", "tiny",
+  "red", "blue", "green", "yellow", "white", "black", "silver", "grey", "gray", "orange", "amber", "chrome",
+  "wooden", "steel", "brick", "concrete", "parked", "roadside", "highway", "freeway", "desert", "alpine", "arctic", "outback",
+  "police", "emergency", "civilian", "heavy", "light", "medium", "sleeper", "box", "cargo", "modern", "vintage", "classic", "retro",
+  "winter", "snowy", "bare", "leafless", "roofless", "wallless", "wheeled",
+]);
 const TAIL = new Set(["tree", "truck", "car", "vehicle", "building"]);
 
 function normalize(s) {
@@ -420,7 +427,8 @@ function done(spec, errors) {
 }
 
 export function evaluate(phrase, flags = {}) {
-  const spec = phrase ? specFromPhrase(phrase) : emptySpec();
+  const trimmed = typeof phrase === "string" ? phrase.trim() : "";
+  const spec = trimmed || !flags.kind ? specFromPhrase(trimmed) : emptySpec();
   return judge(applyFlags(spec, flags));
 }
 
@@ -538,6 +546,21 @@ const CASES = [
   ["generate police-speedtrap with no roof", true],
   ["generate police speed trap with no roof", true],
   ["generate house with no walls and with walls", false, /contradicts itself/],
+  ["a 4-wheel highway sedan", true],
+  ["generate chrome diner", true],
+  ["generate sleeper freighter with 6 wheels", true],
+  ["generate box truck with 4 wheels", true],
+  ["generate guardrail", true],
+  ["generate gantry", true],
+  ["generate gulp bay", true],
+  ["generate gulp bay with 4 wheels", false, /cannot have wheels/],
+  ["generate round-tree with no canopy", false, /requires a canopy/],
+  ["generate round-tree", true],
+  ["generate pole", true],
+  ["generate lamp", true],
+  ["generate post", true],
+  ["", false, /expected a car, tree, or building/],
+  ["   ", false, /expected a car, tree, or building/],
 ];
 
 function rulesHold() {
@@ -595,14 +618,19 @@ function parseArgs(argv) {
 }
 
 function main() {
-  const args = parseArgs(process.argv.slice(2));
+  const rawArgs = process.argv.slice(2);
+  if (rawArgs.includes("--all") || rawArgs.includes("--entity") || rawArgs.includes("--category")) {
+    process.exit(runAuditCli(rawArgs));
+  }
+  const args = parseArgs(rawArgs);
   if (args.selfTest) {
-    const failures = selfTest();
+    const auditFailures = selfTestAudit();
+    const failures = [...selfTest(), ...auditFailures];
     if (failures.length) {
       console.log(JSON.stringify({ ok: false, failures }, null, 2));
       process.exit(1);
     }
-    console.log(JSON.stringify({ ok: true, selfTest: CASES.length }));
+    console.log(JSON.stringify({ ok: true, selfTest: CASES.length + 6 + (auditFailures.count ?? 0) }));
     return;
   }
   if (args.json) {
@@ -616,7 +644,7 @@ function main() {
     process.exit(result.ok ? 0 : 1);
   }
   if (!args.phrase.length && !args.flags.kind) {
-    console.error("usage: validate.mjs \"generate car with 2 wheels\" | --kind car --wheels 2 | --self-test");
+    console.error("usage: validate.mjs \"generate car with 2 wheels\" | --kind car --wheels 2 | --entity <id> | --category <kind> | --all [--strict] | --self-test");
     process.exit(2);
   }
   const result = evaluate(args.phrase.join(" "), args.flags);

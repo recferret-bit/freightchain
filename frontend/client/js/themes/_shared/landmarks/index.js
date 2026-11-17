@@ -31,9 +31,13 @@ export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weigh
   const signMat = (style, text) => tex(style + text, () => {
     const [bg, fg] = SIGN[style];
     return trackMat(new THREE.MeshBasicMaterial({ map: canvasTex(256, 128, (g, w, h) => {
-      g.fillStyle = bg; g.fillRect(0, 0, w, h); g.strokeStyle = fg; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16);
-      let px = 70; do g.font = `bold ${px -= 4}px sans-serif`; while (px > 14 && g.measureText(text).width > w - 44);
-      g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2 + 4);
+      g.fillStyle = bg; g.fillRect(0, 0, w, h);
+      g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(0, h - 10, w, 10); g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(0, 0, w, 8);
+      g.strokeStyle = fg; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16);
+      g.lineWidth = 2; g.strokeRect(15, 15, w - 30, h - 30);
+      let px = 70; do g.font = `bold ${px -= 4}px sans-serif`; while (px > 14 && g.measureText(text).width > w - 48);
+      g.fillStyle = 'rgba(0,0,0,.35)'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2 + 2, h / 2 + 6);
+      g.fillStyle = fg; g.fillText(text, w / 2, h / 2 + 4);
     }, false) }));
   });
   const signEdge = style => tex('edge' + style, () => basic(SIGN[style][0]));
@@ -46,15 +50,27 @@ export function createLandmarks({ pal = {}, chance = .22, near = [12, 16], weigh
       g.save();
       if (back) { g.translate(w, h); g.scale(-1, -1); }
       g.strokeStyle = fg; g.lineWidth = 8; g.beginPath(); g.arc(w / 2, h / 2, w * .44, 0, Math.PI * 2); g.stroke();
+      g.lineWidth = 3; g.beginPath(); g.arc(w / 2, h / 2, w * .39, 0, Math.PI * 2); g.stroke();
       let px = Math.floor(h * .34); do g.font = `bold ${px -= 2}px sans-serif`; while (px > 16 && g.measureText(text).width > w * .6);
-      g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2);
+      g.fillStyle = 'rgba(0,0,0,.3)'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2 + 2, h / 2 + 2);
+      g.fillStyle = fg; g.fillText(text, w / 2, h / 2);
       g.restore();
     }, false) }));
   });
   const flagPair = id => ['px', 'nx'].map(side => tex('flag:' + id + ':' + side, () => trackMat(new THREE.MeshBasicMaterial({ map: canvasTex(256, 160, (g, w, h) => drawFlag(g, w, h, id, side), false) }))));
-  const facadeMat = (wi, cols, rows) => tex(`f${wi}.${cols}.${rows}`, () => trackMat(new THREE.MeshBasicMaterial({ map: canvasTex(256, 256, (g, w, h) => {   // window grid (some lit)
+  const facadeMat = (wi, cols, rows) => tex(`f${wi}.${cols}.${rows}`, () => trackMat(new THREE.MeshBasicMaterial({ map: canvasTex(256, 256, (g, w, h) => {   // window grid with spandrels, mullions & warm lit rooms
     g.fillStyle = P.walls[wi]; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) { g.fillStyle = rnd(i * 13 + j * 7 + wi) < .25 ? '#ffe9a0' : P.glass; g.fillRect((i + .2) * w / cols, (j + .2) * h / rows, w / cols * .6, h / rows * .55); }
+    const cw = w / cols, rh = h / rows;
+    for (let j = 0; j < rows; j++) { g.fillStyle = 'rgba(0,0,0,.09)'; g.fillRect(0, j * rh, w, Math.max(2, rh * .12)); }
+    for (let i = 0; i < cols; i++) { g.fillStyle = 'rgba(0,0,0,.06)'; g.fillRect(i * cw, 0, Math.max(1.5, cw * .08), h); }
+    for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+      const lit = rnd(i * 13 + j * 7 + wi) < .28, wx = (i + .17) * cw, wy = (j + .18) * rh, ww = cw * .66, wh = rh * .58;
+      g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(wx - 1.5, wy - 1.5, ww + 3, wh + 3);
+      g.fillStyle = lit ? (rnd(i * 5 + j * 19 + wi) < .5 ? '#ffe9a0' : '#ffd27d') : P.glass; g.fillRect(wx, wy, ww, wh);
+      g.fillStyle = lit ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.12)'; g.fillRect(wx, wy, ww, wh * .28);
+      g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(wx + ww * .48, wy, Math.max(1, ww * .05), wh);   // centre mullion
+      g.fillStyle = P.trim; g.fillRect(wx - 1, wy + wh, ww + 2, Math.max(1.5, rh * .06));   // window sill
+    }
   }, false) })));
 
   /* Which landmark (if any) sits in chunk `ci`; chunks.js asks first so it can keep ordinary props out of the footprint.

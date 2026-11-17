@@ -46,7 +46,7 @@ const MEASURE = `(() => {
   });
   const outer = list => list.reduce((m, r) => Math.max(m, Math.abs(r.world.min[0]), Math.abs(r.world.max[0])), 0);
   const wheels = rows.filter(r => r.type === 'CylinderGeometry' && Math.abs(Math.abs(r.rotZ) - Math.PI / 2) < 0.2);
-  const boxes = rows.filter(r => r.type === 'BoxGeometry');
+  const boxes = rows.filter(r => r.type === 'BoxGeometry' || r.type === 'BufferGeometry');
   const tyreOuter = wheels.length ? n(outer(wheels)) : null;
   const widestBox = boxes.length ? n(outer(boxes)) : null;
   const foot = w => Math.max(0, w.max[0] - w.min[0]) * Math.max(0, w.max[2] - w.min[2]);
@@ -137,17 +137,21 @@ try {
     console.log('count ' + await ev('__viewer.items.length'));
   } else {
     console.log(LEGEND);
-    const views = [['right', Math.PI / 2, 0.12], ['front', Math.PI, 0.12], ['threeq', 0.6, 0.35]];
+    const defaultViews = [['right', Math.PI / 2, 0.12], ['front', Math.PI, 0.12], ['top', 0, 1.48], ['threeq', Math.PI - 0.6, 0.35]];
+    const landmarkViews = [['right', 0, 0.12], ['front', -Math.PI / 2, 0.12], ['top', -Math.PI / 2, 1.48], ['threeq', -Math.PI / 2 + 0.55, 0.35]];
+    const gantryViews = [['right', Math.PI / 2, 0.12], ['front', 0, 0.12], ['top', 0, 1.48], ['threeq', 0.55, 0.35]];
     for (const id of ids) {
       const sel = await ev(`(() => { try { __viewer.select(${JSON.stringify(id)}); return 'ok'; } catch (e) { return 'ERR ' + e.message; } })()`);
       if (sel !== 'ok') { console.error(id + ': ' + sel); failed = true; continue; }
       await ev(`__viewer.obj.traverse(c => { if (c.isLineSegments) c.visible = false; })`);
       const data = await ev(MEASURE);
       if (!data || typeof data !== 'object') { console.error(id + ': measure failed: ' + data); failed = true; continue; }
-      const label = await ev('__viewer.items.find(i => i.id === ' + JSON.stringify(id) + ').label');
-      console.log([id, label, 'size', (data.size || []).join('x'), 'minY', data.minY, 'tyre', data.tyreOuter, 'widestBox', data.widestBox, 'pastWidestBox', data.pastWidestBox, 'gaps', data.gaps.length + (data.gapsMore || 0), 'faces', data.faces.length].join(' '));
+      const meta = await ev('(() => { const it = __viewer.items.find(i => i.id === ' + JSON.stringify(id) + '); return { label: it.label, group: it.group }; })()');
+      console.log([id, meta.label, 'size', (data.size || []).join('x'), 'minY', data.minY, 'tyre', data.tyreOuter, 'widestBox', data.widestBox, 'pastWidestBox', data.pastWidestBox, 'gaps', data.gaps.length + (data.gapsMore || 0), 'faces', data.faces.length].join(' '));
       console.log(JSON.stringify(data));
       const slug = id.replace(/[^\w.-]+/g, '_');
+      const isGantry = id === 'gantry' || id.endsWith('/gantry');
+      const views = String(meta.group).startsWith('Landmarks') ? landmarkViews : isGantry ? gantryViews : defaultViews;
       for (const [name, yaw, pitch] of views) {
         await ev(`__viewer.cam.yaw = ${yaw}; __viewer.cam.pitch = ${pitch}; __viewer.opts.spin = false;`);
         await sleep(350);

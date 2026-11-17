@@ -1,45 +1,39 @@
 ---
 name: particle-effect-validator
 description: >
-  Checklist for Freight Chain debris and cab overlays: material, pool
-  release, dust share, and no scene import. Read the code; watch a smash
-  or a wiper pass when the change is visible. No particle CLI. Trigger
-  words: debris, smash, snow, exhaust, wiper. Use when the user runs
-  /particle-effect-validator.
+  Audit checklist and real-Chrome verification for Freight Chain 3D smash
+  debris (`sim/damage.js`) and 2D cockpit weather/wiper/exhaust pools
+  (`cockpit/glass-fx.js`, `windscreen.js`). Use for /particle-effect-validator.
 ---
 
-# Particle effect validator
+# Highway Particle & Pool Hygiene Validator
 
-No CLI. There is no `npm run validate:particles` and no preset registry. Open the files below, check each row, and say which files you opened. A code read does not replace watching a smash or a wiper pass when the change is visible.
+Audit [road-particles-3d](../road-particles-3d/SKILL.md) changes across `frontend/client/js/sim/damage.js`, `frontend/client/js/world/pool.js`, `frontend/client/js/cockpit/glass-fx.js`, and `frontend/client/js/cockpit/windscreen.js`.
 
-The system you are checking is [road-particles-3d](../road-particles-3d/SKILL.md): `burst()` in `frontend/client/js/sim/damage.js`, pools in `frontend/client/js/world/pool.js`, cab overlays in `frontend/client/js/cockpit/glass-fx.js` and `frontend/client/js/cockpit/windscreen.js`.
+---
 
-## Debris
+## 1. 3D Smash Debris Checklist (`sim/damage.js` + `entity/seed/**`)
 
-Read `burst()` and `updateFX()`.
+1. **Entity Slot Binding**: Every breakable prop seed defines `debris` (`schema.js` validates slot existence); `burst()` reads `c.obj.userData.debris` with `MAT.dust` only for the trailing 4 dust cubes and missing-slot fallback. No hard-coded prop hex inside `burst()`.
+2. **Majority Material Ratio**: Prop chunks (`8`, `10`, or `6 + round(size * 4)`) outnumber `MAT.dust` (`4`), and dust is never brighter than the prop's chunks.
+3. **Zero Pool Leaks**: Every `mesh()` acquired in `burst()` is released via `meshPool.release()` on `life <= 0`, `st.s - d.s > BEHIND`, and `clearDebris()`.
+4. **Ground Floor Clamp**: Bounce logic snaps `y = q / 2` and damps `vy *= -0.3`, `vx/vz *= 0.6` so debris never sinks under `y = 0`.
+5. **Anticheat Safety**: `hitHoles()` damage/steering math is unchanged, and slender furniture (`post`, `pole`, `lamp`, `sign`, `guard`) uses `falls` topple rather than `burst()`.
 
-- Material comes from `userData.debris` (the entity debris slot). `MAT.dust` is only the fallback and the last four pieces. A colour hard-coded in `burst()` fails.
-- Counts stay in the existing bands unless the user asked to change them: rock `6 + round(size * 4)`, tree 10, other 8, plus 4 dust. Dust stays the minority. A dust colour this change introduces is not brighter than that prop's chunks. A tree must not read as a grey explosion.
-- Every box comes from `mesh()` and goes back through `meshPool.release` (end of life, the `BEHIND` cull, and `clearDebris`). A mesh left in the scene fails.
-- `life` still counts down. The `BEHIND` cull (`st.s - d.s > BEHIND`) is still there.
-- The bounce snaps `y` to `q/2` when it crosses that floor, then damps. It must not tunnel under `y = 0`. It may bounce again, weaker.
-- Boxes stay boxes. A `THREE.Sprite` billboard, a second pool, or a preset table fails.
-- `hitHoles()` is still a jolt, hull, and a steering pull. Dust added by editing that rule fails. Topple (`post`, `pole`, `lamp`, `sign`, `guard`) is not a particle.
+---
 
-## Cab overlay
+## 2. 2D Cockpit Overlay Checklist (`cockpit/*`)
 
-Read the cockpit file that changed, and its imports.
+1. **Acyclic Layering**: `cockpit/*` has zero imports from `three` or `world/*` (verified by `npm run landing:build` and `npm --prefix frontend/client run check`).
+2. **Pool Release**: `resetGlassFX()` and `resetScreen()` return every active item to `flakePool`, `smokePool`, `sprayPool`, and `dropPool`.
 
-- `cockpit/*` does not import `world/scene.js` or three.js. The landing dash cards replay this code (`frontend/landing/src/dash-live.js`).
-- Snow still uses `flakePool` and `CFG.SNOW_FLAKES * weather.snow`. Exhaust still follows rpm and throttle and uses `smokePool`. Washer spray uses `sprayPool`, drops use `dropPool`, and both are released. Snow specks stay on the grime canvas in `windscreen.js`.
-- `resetGlassFX` / `resetScreen` still return every borrowed object.
+---
 
-## Watch, when it is visible
-
-From `frontend/client/`:
+## 3. Execution & Visual Check
 
 ```sh
-node tools/e2e-chrome.mjs
+npm --prefix frontend/client run check
+PORT=9333 node frontend/client/tools/e2e-chrome.mjs
 ```
 
-`PORT` if 9333 is taken. Read the screenshots. Say what they show (chunks on a smash, snow, a wiper pass). Smoke density and other feel is for the user to eyeball. Do not claim you felt it. Do not deploy.
+Read the captured Chrome screenshots and verify `0` console/page errors and intact pool accounting. Never deploy unless asked.

@@ -1,51 +1,56 @@
 ---
 name: highway-lighting
 description: >
-  Day, night, and glare on the Freight Chain road. The clock, headlights,
-  the twelve lamp-post pools, the cab lamp, and paid NIGHT / DAY donations.
-  Trigger words: headlight, night, lamp, lightning, glare. Lightning is not
-  in the game; this is how a strike would be built from the frame that
-  already runs, with no new light. Use when the user runs /highway-lighting.
+  Day/night cycle, route solar curves, dual headlight cone, 12-lamp roadside
+  pool, emissive traffic lamps, cab glare/dome wash, and NIGHT/DAY live effects
+  on the Freight Chain highway. Use when running /highway-lighting.
 ---
 
-# Highway lighting
+# Highway Lighting & Day/Night Pipeline
 
-The scene is `MeshBasicMaterial`. There is no light pool, no `PointLight`, no `SpotLight`, no bloom pass, and no second shadow map. Night is one shader patch plus a few self-lit meshes. The patch rules are [shader-texture-tuning](../shader-texture-tuning/SKILL.md). Do not copy the shader into this skill or into a new file.
+Freight Chain lights an endless 3D highway at 60 fps with **zero** `THREE.Light` objects. All world illumination runs through the single `MeshBasicMaterial` `onBeforeCompile` shader in `frontend/client/js/world/nightlight.js` driven per-frame by `frontend/client/js/world/daynight.js`, paired with `toneMapped: false` self-lit lamp lenses and additive `glow.js` sprites.
 
-## Clock
+For shader math and material tracking rules, see [shader-texture-tuning](../shader-texture-tuning/SKILL.md).
 
-`dn` in `frontend/client/js/state.js`: `t` hour 0..24, `phase` `day|dusk|night|dawn`, `k` fade 0..1, `head`, `cab`. `updateDayNight` in `frontend/client/js/world/daynight.js` runs every frame from `main.js`. A ride starts at the server's `Ride.startHour` (dawn 6.5, noon 12, dusk 18.5, night 22) via `setClock(..., assigned)`. `dn.scale` is 20. There is no night key (N is the phone map). Headlights are L. The cab lamp is C.
+---
 
-A paid NIGHT or DAY donation may move the clock. The catalogue is `frontend/client/js/live-effects.js`. `frontend/client/js/ui/live-feed.js` calls `setNight(on, false, true)`. `assigned` is the only way past `lockClock()`. That pair is the light's weather. There is no sandstorm, blizzard, or radiation state.
+## 1. Clock & Route Daylight Curves
 
-## Sun
+- **State (`dn` in `frontend/client/js/state.js`)**: `t` (`0..24` h), `phase` (`day | dusk | night | dawn`), `k` (`0..1` night factor), `head` (headlights `L`), `cab` (cab dome lamp `C`), `blind` (oncoming glare).
+- **Server-Assigned Start Hour**: Rides lock `Ride.startHour` (`dawn = 6.5`, `noon = 12`, `dusk = 18.5`, `night = 22`) via `setClock(..., assigned)` (`dn.scale = 20`). Paid live-stream `NIGHT` / `DAY` effects (`live-effects.js` → `ui/live-feed.js`) are the only runtime override past `lockClock()`.
+- **Per-Route Solar Envelopes (`themes/<route>/index.js` `daylight`)**: `{ rise, set, tw, peak, warm, stars }`:
+  - `siberia`: low sub-arctic sun (`rise: 9.5, set: 15.5, peak: 0.22`).
+  - `stuart`: harsh outback noon (`peak: 0.95`, short twilight).
+  - `sky-dome.js` and `scene.fog.color` share **one** computed horizon colour in `updateDayNight()` so distant mountains/props dissolve seamlessly into the sky at dusk, dawn, and night.
 
-Each route sets `theme.daylight` `{ rise, set, tw, peak, warm, stars }` in `frontend/client/js/themes/<id>/index.js`. Siberia is a short low day (`rise` 9.5, `set` 15.5, `peak` 0.22). Stuart is a harsh sun (`peak` 0.95, short `tw`). The sky shader and `scene.fog` share one horizon colour inside `updateDayNight`. Do not give the fog its own dusk.
+---
 
-## What lights the road
+## 2. World Illumination Sources
 
-Darkness is `frontend/client/js/world/nightlight.js`. Headlights off leaves `CFG.NIGHT_AMBIENT` (0.002): the world reads black. The headlight cone is that patch (`nlBeam*`). It scales with `dn.k`, so it does not light a sunlit road. The additive halo is `updateBeam` (`CFG.HEADLIGHT_*`, `toneMapped: false`).
+1. **Ambient Floor (`CFG.NIGHT_AMBIENT = 0.002`)**: With headlights off (`L`) on an unlit desert/taiga stretch, the unlit world drops to near-total darkness (`0.2%`).
+2. **Player Truck Headlight Cone (`nlBeam*` uniforms + `updateBeam`)**:
+   - Projected forward cone in `nightlight.js` scaled by `dn.k` (invisible at noon, crisp beam throw on asphalt, guardrails, signs, and traffic ahead at night).
+   - Paired with `updateBeam` additive halo (`toneMapped: false`).
+3. **12-Nearest Roadside Street Lamps (`LAMPS` uniform array)**:
+   - `themes/_shared/furniture.js` exposes pure `lampAt(ci)` station lookup.
+   - Every frame, `daynight.js` populates the fixed 12-slot `LAMPS` uniform array (`CFG.LAMP_RADIUS`, `CFG.LAMP_GAIN`) around the camera without allocating objects or requiring distant chunks to be built.
+   - Smashing a `KINDS.lamp` post in `sim/damage.js` hides its `userData.glow` role and extinguishes that post.
+4. **Self-Lit Traffic & Corridor Emissives (`toneMapped: false`)**:
+   - Vehicle lenses (`lampMat` in `world/vehicles.js`: `HEAD`, `TAIL`, `BRAKE`, `REVERSE`, `AMBER`, `RED`, `BLUE`), billboard `glow()` sprites (`opacity` tracks `dn.k`), ground `beam()` decals, and the overhead `gantry` banner bypass `nightlight.js` darkening so tail-lights and emergency beacons punch cleanly from `300 m` at midnight.
 
-Traffic lamps: `lampMat()` in `frontend/client/js/world/vehicles.js`, plus `glow()` sprites in `frontend/client/js/world/glow.js`. Sprite opacity follows `dn.k`. Brake glows live in the `userData.brake` group; siren halves are `userData.flash`. Vehicles' road pools are `beam()`. Those groups belong to [vehicle-animation-3d](../vehicle-animation-3d/SKILL.md). Do not retune them here.
+---
 
-Lamp posts: `lamp: { color, light, every, side, h?, arm? }` in `frontend/client/js/themes/_shared/furniture.js`, set per route in `themes/*/index.js`. `KINDS.lamp` is destructible; `damage.js` hides `userData.glow` when the post is smashed. `furniture.lampAt(ci)` is pure, so `daynight.js` fills the nearest 12 (`LAMPS`, `CFG.LAMP_RADIUS`, `CFG.LAMP_GAIN`) without the chunk being built. The pool is fixed at 12. Do not allocate lights. Do not grow the array.
+## 3. Cockpit Glare & Interior Wash (`cockpit/effects.js`)
 
-A bulb, glow, beam, or banner that must stay bright sets `toneMapped: false`. Leaving tone mapping on drops that material into the night multiply, so the lamp vanishes. A new `THREE.PointLight`, `SpotLight`, or any other light constructor is a bug: those lights do not light `MeshBasicMaterial`, and creating one recompiles shaders.
+- **Oncoming Glare**: `updateGlare()` computes `dn.blind` (`dn.bx`, `dn.by`) from opposing traffic headlamps; `blindEffect()` renders the windshield bloom wash in 2D Canvas.
+- **Interior Night Grade**: `nightGrade()` uses `source-atop` compositing so only opaque dashboard/pillar pixels darken at night while windshield glass and mirror cutouts stay transparent to the 3D WebGL canvas underneath.
+- **Cab Dome Lamp (`C`)**: `overhead.js` lens + `cabGlow()` warm tungsten wash (`CFG.CAB_DAY` fraction during daylight).
 
-## Cab
+---
 
-`updateGlare()` writes `dn.blind` (and `dn.bx` / `dn.by`). `blindEffect()` in `frontend/client/js/cockpit/effects.js` draws it (`CFG.GLARE_*`), called from `frontend/client/js/cockpit/index.js`. The cab lamp is the glowing dome lens in `frontend/client/js/cockpit/overhead.js` plus `cabGlow()` at `CFG.CAB_DAY` of the night wash by day. `nightGrade()` darkens opaque cab pixels only (`source-atop`). Glass and mirror holes stay clear.
+## 4. Anti-Patterns (Never Introduce)
 
-## Lightning is not in the game
-
-No strike, no storm flash, no `LightningStrikeSystem`. Say that before adding one. Build a single flash from pieces that already update every frame. One strike, one flash.
-
-- A short pulse of the sky/fog horizon `updateDayNight` already writes (the shared horizon colour).
-- A short pulse of `dn.blind`, or of the cab grade, so `blindEffect` / `nightGrade` draw it. Do not add a pass.
-- One pooled bolt: `mesh()` from `frontend/client/js/world/pool.js`, a jagged tube or a few boxes, `toneMapped: false`, life under a quarter second, then `meshPool.release`. A ground ring, if any, is a decal in that same pool, just above the road. Its polygon offset must be less aggressive than the lane marks (marks are −4 in `frontend/client/js/themes/_shared/road-texture.js`) so the marks stay on top.
-
-Do not spawn `THREE.PointLight` or `SpotLight`. Do not add a shadow map. Do not add a module, a preset, or a uniform block in `nightlight.js`. Files a strike would touch: `world/daynight.js` (horizon pulse and the bolt step), `js/state.js` only if the flash rides `dn.blind`, `cockpit/effects.js` only if the grade itself must change, and `world/pool.js` only as the existing `mesh` / `release`.
-
-## Review
-
-Headlights off is a black world. A lamp with `toneMapped` left on is invisible at night. A new light constructor is a bug. Do not deploy.
+- Never instantiate `THREE.PointLight`, `SpotLight`, `DirectionalLight`, or `HemisphereLight`.
+- Never leave `toneMapped: true` (the default) on a lamp bulb, beacon, or emissive banner — `nightlight.js` will multiply it by `0.002` at night and turn it black.
+- Never grow `LAMPS` without changing both `daynight.js` and the GLSL array bound in `nightlight.js`.
+- If asked for transient weather flashes (e.g., lightning), pulse the existing shared sky/fog horizon + `dn.blind` + a short-lived pooled `mesh()` bolt (`toneMapped: false`) — never add a post-processing pass or scene light.

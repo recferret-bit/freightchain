@@ -144,7 +144,13 @@ function part(p, at, err, e, depth) {
   if (p.at != null) vec(p.at, `${at}.at`, err);
   if (p.rot != null) vec(p.rot, `${at}.rot`, err);
   if (p.order != null && !ORDERS.includes(p.order)) err(`${at}.order`, `one of ${ORDERS.join(', ')}`);
-  if (type === 'geo') { if (!GEOS.includes(p.geo)) err(`${at}.geo`, `one of ${GEOS.join(', ')}`); vec(p.s, `${at}.s`, err); mat(p.mat, `${at}.mat`, err, e); if (p.anchor != null && !['center', 'base'].includes(p.anchor)) err(`${at}.anchor`, "'center' or 'base'"); }
+  const GEO_GROUPS = { box: 6, rbox: 6, cyl: 3, cyl16: 3, wheel20: 3, wheel48: 3, barrel: 3, cone: 2, pyr: 2, wedge: 1, gable: 1, oct: 1, rock: 0 };
+  if (type === 'geo') {
+    if (!GEOS.includes(p.geo)) err(`${at}.geo`, `one of ${GEOS.join(', ')}`);
+    else if (Array.isArray(p.mat) && p.mat.length > (GEO_GROUPS[p.geo] ?? 1)) err(`${at}.mat`, `geometry '${p.geo}' has ${GEO_GROUPS[p.geo] ?? 0} material group(s), got ${p.mat.length}`);
+    vec(p.s, `${at}.s`, err); mat(p.mat, `${at}.mat`, err, e);
+    if (p.anchor != null && !['center', 'base'].includes(p.anchor)) err(`${at}.anchor`, "'center' or 'base'");
+  }
   if (type === 'glow') { for (const k of ['color', 'size', 'gain']) expr(p.glow?.[k], `${at}.glow.${k}`, err); if (p.role != null && !ROLES.includes(p.role)) err(`${at}.role`, `one of ${ROLES.join(', ')}`); }
   if (type === 'beam') for (const k of ['color', 'gain', 'w', 'l', 'z0']) expr(p.beam?.[k], `${at}.beam.${k}`, err);
   if (type === 'sign' || type === 'disk') {

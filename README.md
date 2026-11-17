@@ -300,7 +300,7 @@ Run `npm run install:landing` and `npm run install:media` once before `npm run c
 
 ## Skills
 
-Skills live in `.claude/skills/<name>/SKILL.md` (`game-audio` is also linked in `.agents/skills/`). Read-only skills never deploy or write to production. A new, renamed, or removed skill updates this table in the same change ([`AGENTS.md`](AGENTS.md) → "Maps stay current").
+Skills live in `.claude/skills/<name>/SKILL.md` (`game-audio` and the 13 3D/texture/shader/lighting/particle/viewport/traffic skills are also linked in `.agents/skills/`). Read-only skills never deploy or write to production. A new, renamed, or removed skill updates this table in the same change ([`AGENTS.md`](AGENTS.md) → "Maps stay current").
 
 | Skill | What it is for | Run |
 | --- | --- | --- |
@@ -333,19 +333,19 @@ Skills live in `.claude/skills/<name>/SKILL.md` (`game-audio` is also linked in 
 | `level-check` | Verify `EASY / MEDIUM / HARD` road geometry and finish rates with a human-paced driver across seeds and routes | `node .claude/skills/level-check/check.mjs` |
 | `trip-design` | Measure road tiers (`free` levels, `1h`) and capture route screenshots in Chrome | `node .claude/skills/trip-design/measure.mjs` · `node .claude/skills/trip-design/shots.mjs` |
 | `verified-play-test` | End-to-end anti-cheat suite: honest & bot runs in Chrome, traffic-proof attacks, API tamper codes, and signed admin review | `bash .claude/skills/verified-play-test/run.sh` · `bash .claude/skills/run-tests/e2e.sh traffic` |
-| `model-geometry-validator` | Review, add, or generate a 3D entity, and reject a car, tree, or building spec with a bad count. Replaces `3d-assets`. The entity MCP loads this folder | `node .claude/skills/model-geometry-validator/validate.mjs --self-test` · `node .claude/skills/model-geometry-validator/validate.mjs "<spec>"` · `node .claude/skills/model-geometry-validator/shot.mjs <id>` |
-| `roadside-kitbash-3d` | Assemble a catalogue mesh from entity parts: ground, body, one naming feature, then lamps and signs | `/roadside-kitbash-3d` |
-| `traffic-vehicle-3d` | Truck, car, bus, freighter, police, medic, and fire anatomy inside the `VEHICLES` box | `/traffic-vehicle-3d` |
-| `road-scene-3d` | Landmarks, route props, lamp posts, and the apron where the lot meets the asphalt | `/road-scene-3d` |
-| `vehicle-animation-3d` | Blinkers, brake lights, siren flash, and the 2D cab. Wheels do not spin | `/vehicle-animation-3d` |
-| `traffic-motion` | How a vehicle on the road brakes, indicates, flashes, and smashes a prop. The sim owns the position | `/traffic-motion` |
-| `storybook-viewport` | Read the storybook `right` / `front` / `threeq` shots. Camera stays at fov 45 | `/storybook-viewport` |
-| `shader-texture-tuning` | Choose the surface: a `MeshBasicMaterial`, the night-shade patch, a canvas, or a cab pixel the dash cards crop | `/shader-texture-tuning` |
-| `road-texture-synthesis` | Paint asphalt, the mark atlas, a sign, a facade, or a flag on a canvas | `/road-texture-synthesis` |
-| `highway-lighting` | Day and night, headlights, the 12 lamp pools, glare, and the cab lamp. Lightning is not in the game; the skill says how a flash would use the current frame | `/highway-lighting` |
-| `road-particles-3d` | Smash debris, cab snow, exhaust, and the washer. 3D bursts stay pooled boxes | `/road-particles-3d` |
-| `particle-effect-validator` | Read-and-watch checklist for debris and cab overlays. No particle CLI | `/particle-effect-validator` |
-| `ai-mesh-pipeline` | Turn a request or a reference image into entity source. The game does not load a `.glb` | `node .claude/skills/model-geometry-validator/validate.mjs "<spec>"` |
+| `model-geometry-validator` | Numeric 3D entity geometry, support-graph connectivity, anti-cube, and CIE `L*a*b*` contrast validator + natural-language spec gate + 4-view Chrome capture (`backend/mcp` loads this folder) | `node .claude/skills/model-geometry-validator/validate.mjs --self-test` · `node .claude/skills/model-geometry-validator/audit-entities.mjs --all --strict` · `node .claude/skills/model-geometry-validator/shot.mjs <id>` |
+| `roadside-kitbash-3d` | Pillar 1 highway kitbashing: 4-layer sculpted assembly (`rbox`, `wedge`, `gable`, `oct`, `cyl16`, `barrel`, `wheel20`/`48`), 60/30/10 material hierarchy, and reusable highway greebles | `/roadside-kitbash-3d` |
+| `traffic-vehicle-3d` | Sculpted highway anatomy & collision-envelope rules for `sedan`, `police`, `truck`, `medic`, `fire`, `bus`, `freighter`, and player trailer | `/traffic-vehicle-3d` |
+| `road-scene-3d` | 15 roadside landmarks, overhead truss gantry, guardrails/lamps/poles, biome flora, and non-catalogue depot/junctions/toll/holes | `/road-scene-3d` |
+| `vehicle-animation-3d` | Role-driven blinkers, brake lights, 6 Hz emergency flashers, and 2D cockpit kinematics | `/vehicle-animation-3d` |
+| `traffic-motion` | Runtime AI vehicle braking, lane-change blinkers, 4-way crash hazards, prop topple, and shatter bursts | `/traffic-motion` |
+| `storybook-viewport` | Pillar 4 visual QA: orientation-aware `right` / `front` / `top` / `threeq` shots in `viewer.html` (`fov 45`) + live road/mirror check | `/storybook-viewport` |
+| `shader-texture-tuning` | Pillar 3 surface tuning: `MeshBasicMaterial` daytime `formShade` (hemisphere lift, bevel shading, contact AO) + night headlight/lamp shader | `/shader-texture-tuning` |
+| `road-texture-synthesis` | Pillar 2 procedural `CanvasTexture` generators: wheel-rutted asphalt, thermoplastic mark atlas, mullioned facades, double-bezel signs, DOT trailer livery | `/road-texture-synthesis` |
+| `highway-lighting` | Day/night route solar curves, dual headlight cone, 12-lamp roadside pool, self-lit `toneMapped: false` lamps, and cab glare | `/highway-lighting` |
+| `road-particles-3d` | Pooled 3D smash debris (`sim/damage.js` `burst()`) and 2D cockpit snow/exhaust/washer pools | `/road-particles-3d` |
+| `particle-effect-validator` | Pool hygiene, debris slot binding, and acyclic cockpit overlay audit checklist | `/particle-effect-validator` |
+| `ai-mesh-pipeline` | End-to-end prompt/reference-to-declarative-entity workflow (spec gate → kitbash → numeric 3D audit → 4-view visual QA; no `.glb` runtime imports) | `node .claude/skills/model-geometry-validator/validate.mjs "<spec>"` · `node .claude/skills/model-geometry-validator/audit-entities.mjs --entity <id> --strict` |
 | `security-audit` | Multi-agent Docker sandbox + MCP security review (`claude`, `codex`, `grok`, `agy`) and selected-file `review-with-cli` | `./tests/audit/bin/audit setup-agents` · `./tests/audit/bin/audit check-agents --live` · `./tests/audit/bin/audit run --repo <path>` · `node --test tests/audit/scripts/*.test.mjs` |
 | `grill-fix` | Challenge business value, run three sequential multi-model code reviews, fix bugs/security gaps, and verify tests | `/grill-fix` |
 | `coin-grill` | Three-pass Solana token & tokenomics stress-test generating a scored HTML audit report | `node .claude/skills/coin-grill/grill.mjs <path> [--out <report.html>]` · `node .claude/skills/coin-grill/grill.mjs --self-test` |

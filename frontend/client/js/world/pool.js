@@ -6,7 +6,7 @@ export { ObjectPool };
    Sizes and shapes of props are continuous, so whole props are NOT pooled – the primitives they are made of are: every `mk()` mesh and every prop `group()`.
    Builders keep building exactly as before; chunks.js hands the whole tree back (`releaseTree`) when a chunk scrolls out of range. */
 /* Back to factory state: builders set rotation/scale/userData/name freely and damage.js topples props with rotateX/Z. */
-const wipe = o => { o.position.set(0, 0, 0); o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); o.visible = true; o.name = ''; o.userData = {}; };
+const wipe = o => { o.position.set(0, 0, 0); o.rotation.set(0, 0, 0, 'XYZ'); o.scale.set(1, 1, 1); o.visible = true; o.name = ''; o.userData = {}; };
 export const meshPool = new ObjectPool('mesh', () => new THREE.Mesh(), m => { wipe(m); m.geometry = null; m.material = null; m.frustumCulled = true; m.renderOrder = 0; });   // theme materials must not outlive a route switch
 export const groupPool = new ObjectPool('group', () => new THREE.Group(), g => { while (g.children.length) g.remove(g.children[0]); wipe(g); });
 

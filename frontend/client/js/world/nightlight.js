@@ -43,8 +43,11 @@ vec3 nlLight(vec3 p) {
 float formShade() {
   float len2 = dot(nlN, nlN);
   vec3 n = len2 > 1e-6 ? nlN * inversesqrt(len2) : vec3(0.0, 1.0, 0.0);
-  float shade = mix(0.62, 1.0, clamp(dot(n, formSun) * 0.5 + 0.5, 0.0, 1.0));   // soft half-Lambert: a hard one facets the 7-sided props
-  shade = mix(shade, 1.0, smoothstep(0.45, 0.9, n.y));   // upward faces stay at the painted colour (the road must not dip when the sun is low)
+  float sun = clamp(dot(n, formSun) * 0.5 + 0.5, 0.0, 1.0);
+  float hemi = mix(0.92, 1.05, clamp(n.y * 0.5 + 0.5, 0.0, 1.0));   // sky hemisphere lift vs underside bounce
+  float ao = mix(0.91, 1.0, smoothstep(0.0, 0.9, max(nlP.y, 0.0)));   // subtle ground-contact grounding on low vertical faces
+  float shade = mix(0.56, 1.04, sun) * hemi * ao;
+  shade = mix(shade, 1.0, smoothstep(0.94, 0.995, n.y));   // flat upward faces (road, aprons, flat roofs) stay at the painted colour; sloped hoods & gables keep form shade
   float seam = 1.0;
   if (nlLh.x > 0.0) {   // metres to the nearest edge of this face; computed here so a shared corner (distance 0) does not paint the whole face
     vec3 e = nlLh - abs(nlLm); float lo = min(e.x, min(e.y, e.z)), hi = max(e.x, max(e.y, e.z)), mid = e.x + e.y + e.z - lo - hi;

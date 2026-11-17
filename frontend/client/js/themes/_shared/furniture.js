@@ -36,7 +36,7 @@ export function createFurniture({ post = null, pole = null, guard = null, lamp =
       }
       if (gm) for (let k = 0; k < 8; k++) for (const side of [-1, 1]) {
         const s = s0 + k * 4 + 2, id = ci + ':g' + k + side; if (destroyed.has(id) || gap(s, side)) continue;
-        const g = prop('guard', {}, { rail: gm, post: gp }); place(g, s, side * 6.9); reg(g, id, s, side * 6.9);
+        const g = prop('guard', { sd: side }, { rail: gm, post: gp }); place(g, s, side * 6.9); reg(g, id, s, side * 6.9);
       }
     },
   };

@@ -36,20 +36,33 @@ export function updateSignals() {
 
 /* a mast at spine (s, lat) facing traffic with heading h (model: lenses on +z, arm along -x = over the lanes to the driver's left) */
 function mast(arm) {
-  const g = group(), H = 6.2, lamps = [];
-  g.add(mk(GEO.box, SIG.pole, .22, H, .22, 0, H / 2, 0)); g.add(mk(GEO.box, SIG.pole, arm, .14, .14, -arm / 2, H - .15, 0));
-  for (const [x, y, sc] of [[-arm, H - 1, 1], [-.32, 3.3, .8]]) {   // overhead head + a low one on the mast
-    g.add(mk(GEO.box, SIG.plate, .75 * sc, 1.6 * sc, .04, x, y, -.18)); g.add(mk(GEO.box, SIG.housing, .46 * sc, 1.3 * sc, .3, x, y, 0));
+  const g = group(), H = 6.2, lamps = [], bl = Math.min(arm * .5, 1.6);
+  g.add(mk(GEO.oct, SIG.plate, .46, .36, .46, 0, .18, 0));   // bolted concrete/cast base pedestal
+  g.add(mk(GEO.cyl16, SIG.pole, .13, H, .13, 0, H / 2, 0));
+  g.add(mk(GEO.rbox, SIG.pole, arm + .16, .15, .15, -arm / 2 + .08, H - .15, 0));
+  const brace = mk(GEO.box, SIG.pole, bl, .08, .08, -bl * .43, H - .15 - bl * .24, 0); brace.rotation.z = -.52; g.add(brace);
+  g.add(mk(GEO.box, SIG.pole, .1, .28, .1, -arm, H - .26, 0));   // overhead signal hanger stem
+  g.add(mk(GEO.box, SIG.pole, .36, .1, .1, -.18, 3.3, 0));       // low mast-head bracket
+  for (const [x, y, sc] of [[-arm, H - 1, 1], [-.34, 3.3, .8]]) {   // overhead head + a low one on the mast
+    g.add(mk(GEO.rbox, SIG.plate, .78 * sc, 1.64 * sc, .05, x, y, -.16));
+    g.add(mk(GEO.rbox, SIG.housing, .48 * sc, 1.34 * sc, .3, x, y, 0));
     lamps.push([0, 1, 2].map(i => {
-      const m = mk(GEO.box, SIG.off[i], .28 * sc, .28 * sc, .06, x, y + (1 - i) * .4 * sc, .17), gl = glow(GLOW[i], 2.2 * sc, 1, x, y + (1 - i) * .4 * sc, .35);   // the glow only shows at night (glow.js)
+      const ly = y + (1 - i) * .4 * sc;
+      g.add(mk(GEO.box, SIG.housing, .32 * sc, .05 * sc, .16 * sc, x, ly + .14 * sc, .2));   // sun visor hood above each lens
+      const m = mk(GEO.wheel20, SIG.off[i], .14 * sc, .07, .14 * sc, x, ly, .16); m.rotation.x = Math.PI / 2;
+      const gl = glow(GLOW[i], 2.2 * sc, 1, x, ly, .35);   // the glow only shows at night (glow.js)
       gl.visible = false; g.add(m, gl); return { m, gl };
     }));
   }
   g.userData = { kind: 'pole', size: 1, debris: SIG.pole }; return { g, lamps };
 }
 function stopSign() {
-  const g = group(); g.add(mk(GEO.box, MAT.steel, .08, 2.2, .08, 0, 1.1, 0));
-  const p = mesh(SIGN_GEO, STOP_MAT); p.scale.set(.9, .9, 1); p.position.set(0, 2.25, .05); g.add(p);
+  const g = group();
+  g.add(mk(GEO.oct, SIG.plate, .24, .14, .24, 0, .07, 0));
+  g.add(mk(GEO.cyl16, MAT.steel, .05, 2.35, .05, 0, 1.175, 0));
+  g.add(mk(GEO.box, SIG.plate, .16, .48, .05, 0, 2.25, .045));
+  const back = mk(GEO.oct, MAT.steel, .9, .03, .9, 0, 2.25, .075); back.rotation.x = Math.PI / 2; g.add(back);
+  const p = mesh(SIGN_GEO, STOP_MAT); p.scale.set(.9, .9, 1); p.position.set(0, 2.25, .1); g.add(p);
   g.userData = { kind: 'sign', size: 1, debris: MAT.steel }; return g;
 }
 

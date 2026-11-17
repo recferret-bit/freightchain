@@ -12,6 +12,7 @@ import { vehicleMats, setBehindVehiclesVisible } from './vehicles.js';
 import { junctionMats } from './junctions.js';
 import { depotMats } from './depot.js';
 import { holeMats } from './holes.js';
+import { tollMats } from './toll.js';
 import { roadObjects } from './chunks.js';
 import { cv, view, mirrorRects } from '../cockpit/canvas.js';
 import { updateBeam } from './daynight.js';
@@ -30,7 +31,7 @@ addEventListener('resize', resize);
 
 /* mirror pass flips the projection, so every single-sided material must swap its culling side for that pass */
 /* (the route's own materials come from themes/_shared/mats.js and change when another route is selected, so the list is rebuilt per frame) */
-const flipMats = () => [...new Set([...themeMats, ...Object.values(MAT), ...trailerMats, ...vehicleMats, ...junctionMats, ...depotMats, ...holeMats])];   // a Set: a material listed twice would be flipped twice (= not at all)
+const flipMats = () => [...new Set([...themeMats, ...Object.values(MAT), ...trailerMats, ...vehicleMats, ...junctionMats, ...depotMats, ...holeMats, ...tollMats])];   // a Set: a material listed twice would be flipped twice (= not at all)
 
 const mirrorCam = new THREE.PerspectiveCamera(50, 1, 0.3, 3500); mirrorCam.rotation.order = 'YXZ';   // far must reach the sky dome (r 2500, fog:false) or it is clipped to black
 function renderMirrors(px, pz, th, shake) {

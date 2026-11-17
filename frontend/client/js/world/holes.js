@@ -15,8 +15,8 @@ const CH = CFG.CHUNK_LEN, SIGN_LAT = 7.6;   // CH = chunks.js CH (not imported: 
 /* ───────────────────────── meshes ───────────────────────── */
 /* Route-independent materials, DoubleSide (so the mirror pass leaves them alone). Drawn just above the road ribbon (y .03) with a polygon offset against z-fighting. */
 const dec = (color, up = 0, lit = false) => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -5 - up, polygonOffsetUnits: -5 - up, toneMapped: !lit });   // lit: self-lit, the night does not darken it
-const M = { flag: dec(0xff1f1f, -1, true), rim: dec(0x68625a), crumb: dec(0x4a4540, 1), pit: dec(0x0f0d0c, 2), deep: dec(0x000000, 3), cone: new THREE.MeshBasicMaterial({ color: 0xff6a1a }), band: new THREE.MeshBasicMaterial({ color: 0xf2f2ea }), gravel: new THREE.MeshBasicMaterial({ color: 0x6b6258 }) };
-export const holeMats = [M.cone, M.band, M.gravel];   // single-sided: the mirror pass must flip them (render.js)
+const M = { flag: dec(0xff1f1f, -1, true), rim: dec(0x68625a), crumb: dec(0x4a4540, 1), pit: dec(0x0f0d0c, 2), deep: dec(0x000000, 3), cone: new THREE.MeshBasicMaterial({ color: 0xff6a1a }), band: new THREE.MeshBasicMaterial({ color: 0xf2f2ea }), gravel: new THREE.MeshBasicMaterial({ color: 0x6b6258 }), base: new THREE.MeshBasicMaterial({ color: 0x1d1d1f }) };
+export const holeMats = [M.cone, M.band, M.gravel, M.base];   // single-sided: the mirror pass must flip them (render.js)
 const DISC = new THREE.CircleGeometry(1, 20);
 const disc = (g, mat, x, z, a, b, y) => { const m = mesh(DISC, mat); m.rotation.x = -Math.PI / 2; m.scale.set(b, a, 1); m.position.set(x, y, z); g.add(m); };   // lies flat: local x = across the road, local z = backwards
 const slab = (g, mat, x, z, w, l, y) => { const m = mesh(GEO.box, mat); m.scale.set(w, .01, l); m.position.set(x, y, z); g.add(m); };
@@ -35,8 +35,9 @@ function makeHole(h) {
   }
   if (flagged.has(h.id)) for (const e of T.ells) disc(g, M.flag, e.dl, -e.ds, e.a * 1.9 + .6, e.b * 1.9 + .6, .036);   // a replay's NO IMPACT mark: the truck drove through this one untouched
   if (T.cones) for (const [x, z] of [[-2.7, -2.7], [2.7, -2.7], [-2.7, 2.7], [2.7, 2.7]]) {   // traffic cones at the corners
-    const c = mesh(GEO.cone, M.cone); c.scale.set(.2, .7, .2); c.position.set(x, .35, z); g.add(c);
-    const b = mesh(GEO.cone, M.band); b.scale.set(.145, .22, .145); b.position.set(x, .42, z); g.add(b);
+    const pad = mesh(GEO.rbox, M.base); pad.scale.set(.44, .05, .44); pad.position.set(x, .045, z); g.add(pad);
+    const c = mesh(GEO.cone, M.cone); c.scale.set(.2, .68, .2); c.position.set(x, .38, z); g.add(c);
+    const b = mesh(GEO.cyl16, M.band); b.scale.set(.12, .14, .12); b.position.set(x, .44, z); g.add(b);
   }
   return g;
 }
@@ -61,8 +62,15 @@ function signMat(type) {
 const SIGN_GEO = new THREE.PlaneGeometry(1.5, 2.06);
 function makeSign(h) {
   const g = group();
-  const pole = mesh(GEO.box, MAT.steel); pole.scale.set(.09, 2.5, .09); pole.position.set(0, 1.25, 0); g.add(pole);
-  const p = mesh(SIGN_GEO, signMat(h.type)); p.position.set(0, 2.4, .06); p.rotation.y = -.18; g.add(p);   // front faces back along the road (towards the approaching truck), turned slightly in
+  const col = mesh(GEO.oct, M.base); col.scale.set(.24, .14, .24); col.position.set(0, .07, 0); g.add(col);
+  const pole = mesh(GEO.cyl16, MAT.steel); pole.scale.set(.055, 2.55, .055); pole.position.set(0, 1.275, 0); g.add(pole);
+  const clamp = mesh(GEO.box, M.base); clamp.scale.set(.13, .98, .06); clamp.position.set(-.01, 2.08, .055); clamp.rotation.y = -.18; g.add(clamp);
+  for (const by of [2.52, 1.66]) {
+    const bar = mesh(GEO.rbox, MAT.steel); bar.scale.set(.92, .07, .04); bar.position.set(-.015, by, .082); bar.rotation.y = -.18; g.add(bar);
+  }
+  const db = mesh(GEO.box, MAT.steel); db.scale.set(1.01, 1.01, .02); db.position.set(-.018, 2.681, .098); db.rotation.order = 'YXZ'; db.rotation.set(0, -.18, Math.PI / 4); g.add(db);
+  const pb = mesh(GEO.rbox, MAT.steel); pb.scale.set(1.41, .485, .02); pb.position.set(-.018, 1.657, .098); pb.rotation.y = -.18; g.add(pb);
+  const p = mesh(SIGN_GEO, signMat(h.type)); p.position.set(-.021, 2.4, .116); p.rotation.y = -.18; g.add(p);   // front faces back along the road (towards the approaching truck), turned slightly in
   g.userData = { kind: 'sign', size: 1, debris: MAT.steel }; return g;
 }
 

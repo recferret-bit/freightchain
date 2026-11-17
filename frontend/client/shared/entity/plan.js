@@ -10,7 +10,7 @@ import { Scope, compileExpr } from './expr.js';
      push({ role, visible, at, rot, order, ref })   pop()        ref = { id, kind, label, params, debris } of a referenced entity
    Material descriptors: { slot } { color, lamp } { global } { facade: [cols, rows] } { sign, text } { edge } { disk, text, back } { flag, side }. */
 
-export const GEOS = ['box', 'cyl', 'cone', 'rock', 'pyr', 'wheel20', 'wheel48', 'barrel'];
+export const GEOS = ['box', 'rbox', 'wedge', 'gable', 'oct', 'cyl', 'cyl16', 'cone', 'rock', 'pyr', 'wheel20', 'wheel48', 'barrel'];
 export const ROLES = ['brake', 'ind.l', 'ind.r', 'flash.0', 'flash.1', 'glow'];
 export const SIGN_STYLES = ['neon', 'red', 'blue', 'cream'];
 export const GLOBAL_MATS = ['red', 'steel', 'dust'];

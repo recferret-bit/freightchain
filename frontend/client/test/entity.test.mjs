@@ -132,4 +132,19 @@ test('malformed and hostile model data is refused without throwing or entering u
   assert.equal(tagged.measures.tags.__proto__, 1);
   const params = Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`p${i}`, { default: 1, enum: Array(32).fill(1) }]));
   assert.match(validateEntity({ ...box, params }).errors.join(' '), /more than 96 corners/);
+  // Multi-material face arrays must not exceed the geometry's group count (prevents 0-triangle invisible Three.js meshes)
+  const sixMats = Array.from({ length: 6 }, () => ({ color: 0x888888 }));
+  assert.equal(validateEntity({ ...box, parts: [{ geo: 'rbox', mat: sixMats, s: [1, 1, 1], at: [0, 0.5, 0] }] }).ok, true);
+  assert.match(validateEntity({ ...box, parts: [{ geo: 'wedge', mat: sixMats.slice(0, 2), s: [1, 1, 1], at: [0, 0.5, 0] }] }).errors.join(' '), /material group/);
+  assert.match(validateEntity({ ...box, parts: [{ geo: 'rock', mat: [{ color: 1 }], s: [1, 1, 1], at: [0, 1, 0] }] }).errors.join(' '), /material group/);
+  // Ground-rooted BFS in measure() catches mutually-touching airborne clusters
+  const cluster = validateEntity({
+    id: 'air-cluster', kind: 'prop', v: 1, slots: { m: {} }, debris: 'm',
+    parts: [
+      { geo: 'box', mat: 'm', s: [1, 1, 1], at: [0, 0.5, 0] },
+      { geo: 'box', mat: 'm', s: [0.5, 0.5, 0.5], at: [0, 3, 0] },
+      { geo: 'box', mat: 'm', s: [0.5, 0.5, 0.5], at: [0, 3.4, 0] },
+    ],
+  });
+  assert.deepEqual(cluster.measures.floating, [1, 2]);
 });

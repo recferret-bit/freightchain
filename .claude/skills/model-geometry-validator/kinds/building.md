@@ -1,29 +1,32 @@
-# Buildings
+# Roadside Buildings & Landmarks (`kinds/building.md`)
 
-Roadside landmarks. The collider kind is `building`. Aliases, the wheel ban, and the roof and wall exceptions live in `rules.json`. `house` and `garage` are not catalogue ids; the words still classify as this kind. `barn` is not a kind.
+Roadside landmarks (`motel-*`, `hotel-*`, `diner-chrome`, `roadhouse-porch`, `fastfood-drive`, `gas-*`, `gulp-bay`, `police-*`). Collider kind is `building`.
 
-A subordinate parked car or "two cruisers" does not give the building wheels and does not change the kind. Only a wheel count, `wheels`, `wheeled`, or `on wheels` does. Cruisers in `police-checkpoint`, `police-speedtrap`, and `police-station` are the `cruiser` part (`seed/part/cruiser.js`), placed with `ref`.
+## 1. Spec Gate & Numeric 3D Audit
 
-## Before a mesh or a generated model
+Before building from a prompt that states storeys, roofs, walls, or wheels:
 
 ```sh
 node .claude/skills/model-geometry-validator/validate.mjs "the user's sentence"
 ```
 
-Exit 1: stop. Quote `errors`. Do not edit an entity. A passing run prints `expect`. Wheels stay 0. Roof and walls follow `expect` (`required` or `optional`). A stated storey count must meet `minStoreys`. Footprint `hl` and `hd` are positive half-extents.
+Wheels are always `0` (parked `cruiser` sub-entities placed via `ref` do not make a building wheeled). Roof and walls are required except for the open `police-speedtrap` billboard/radar site. After editing:
 
-The speed trap alias is the optional case: a billboard, a radar, and a cruiser, not a roofed booth. Every other landmark spec keeps its roof and its walls.
+```sh
+node --test frontend/client/test/entity.test.mjs
+node .claude/skills/model-geometry-validator/audit-entities.mjs <id> --strict
+```
 
-## Edit
+## 2. Architectural Massing & Lot Rules (No Shoebox Cubes!)
 
-`client/shared/entity/seed/landmark/<id>.js` (`anchor: 'base'`: `at.y` is the bottom of a box). A new implementation = a new entity + a row `{ id, hl, hd }` at the END of its type in `ROSTER.landmark` (`client/shared/entity/roster.js`). Shared pieces are `part` entities (`cruiser`, `lm-pump`, `lm-cones`).
+- **Frame & Footprint:** `anchor: 'base'`, `y` up (`minY = 0`), front (entrance/road side) faces **`-x`**, highway runs along **`z`**. Footprint `(hl, hd)` and order live in `ROSTER.landmark` (`roster.js`). Keep all parts inside `x >= -(hd + 2.6)` so pylons and canopies stand on the tarmac apron and never intrude into the lane.
+- **Tarmac Apron:** `createLandmarks` automatically generates the polygonOffset `-3` asphalt apron linking the lot across `SHOULDER` to tuck `0.5 m` under the highway. Never add a giant ground box inside the entity to fake an apron.
+- **4-Layer Architectural Kitbashing (`>= 14` meshes):**
+  1. **Foundation & Islands (`y = 0`):** Dark masonry `plinth` under walls, raised walkway slabs, curbed `lot` pump islands, `oct` column pedestals, and `cyl16` safety bollards.
+  2. **Primary Mass & Roofline:** Chamfered `rbox` walls or mullioned `{ facade: [cols, rows] }` blocks, overhanging `rbox` parapet roofs, `pyr` hip roofs, `gable` pitched crowns, or `barrel` diner vaults—topped with `metal` HVAC units, vents, cupolas, or stone chimneys.
+  3. **Framed Openings & Canopies (Zero Z-Fighting!):** Doors (`door`) with frames/porticos/awnings (`wedge`/`rbox`), windows (`glass`) with `trim` sills and proud `mullion` dividers, wall AC units, solid overlapping stair stringers, and columned forecourt canopies (`lm-pump`, `lm-cones`, `cruiser`). Never leave two different-material `box`/`rbox` faces sharing the exact same coordinate (`>= 5 mm` proud offset).
+  4. **Signage & Night Lighting:** `sign` (`at.y` = bottom of board) or `disk` (`at.y` = centre) mounted cleanly on `cyl16`/`rbox` pylons or roof mounts without slicing through eaves, plus under-canopy `lamp: true` fixtures and `glow`s where appropriate.
 
-Frame: origin on the ground at the footprint centre, y up, front faces −x, the road runs along z. Parts stay inside the footprint: nothing past local x = −hd, or it stands in the lane.
+## 3. 4-View Visual QA (`shot.mjs`)
 
-## Apron
-
-The tarmac between the road and the building is not a part of the entity. `createLandmarks` `model()` adds one slab. It has to cross the shoulder (the grass or dirt strip in the road ribbon, `SHOULDER` in `client/shared/road.js`) and tuck 0.5 m under the asphalt. It is drawn at polygon offset −3, over the road surface (−2) and under the lane marks (−4). If grass shows in that join, extend this slab. Do not add a ground box in the entity to hide it.
-
-## Review
-
-Shoot `right`, `front`, and `threeq`. Read the sign notes already in `police-station.js` and `roadhouse-porch.js` before moving a board: a `sign` part's `at.y` is the bottom of the board, a `disk`'s is the centre, and a board must not float above the eave or run through the roof slab. Roof meshes sit on the walls. The front face stays −x.
+Shoot `<route>/<id>` with `shot.mjs` and inspect `right`, `front`, `top`, and `threeq`: verify `minY = 0`, readable unclipped signs, grounded cones/cruisers/stairs, and clear separation between wall, plinth, roof, glass, and neon/accent trim.

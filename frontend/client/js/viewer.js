@@ -46,14 +46,16 @@ function select(item, keepCam) {
   const made = item.make();   // build first: a draft that will not compile must not wipe the model already on stage
   clearStage(); cur = item; item.obj = obj = made; stage.add(obj);
   bounds = measureBounds(obj);   // measured before the helper lines are added
-  obj.traverse(c => { if (!c.isMesh) return; for (const m of [].concat(c.material)) if (!wireMats.includes(m)) wireMats.push(m);
+  let meshCount = 0, triCount = 0;
+  obj.traverse(c => { if (!c.isMesh) return; if (!isGlowNode(c)) { meshCount++; const g0 = c.geometry; triCount += g0.index ? g0.index.count / 3 : (g0.attributes.position?.count ?? 0) / 3; }
+    for (const m of [].concat(c.material)) if (!wireMats.includes(m)) wireMats.push(m);
     let g = edgeCache.get(c.geometry); if (!g) edgeCache.set(c.geometry, g = new THREE.EdgesGeometry(c.geometry, 25));
     const l = new THREE.LineSegments(g, edgeMat); c.add(l); edgeLines.push(l); });
   boxHelper = new THREE.Box3Helper(bounds, 0xffcf5a); stage.add(boxHelper);
   const sz = bounds.getSize(new THREE.Vector3());
   const info = $('info'), b = document.createElement('b'), g = document.createElement('div'), t = document.createElement('table'); info.textContent = '';
   b.textContent = item.label; g.textContent = item.group; g.style.color = '#7d8187';
-  for (const [k, v] of [['size (x × y × z)', `${f(sz.x)} × ${f(sz.y)} × ${f(sz.z)} m`], ...item.info()]) { const r = t.insertRow(); r.insertCell().textContent = k; r.insertCell().textContent = String(v); }
+  for (const [k, v] of [['size (x × y × z)', `${f(sz.x)} × ${f(sz.y)} × ${f(sz.z)} m`], ['meshes / tris', `${meshCount} / ${Math.round(triCount)}`], ['ground minY', `${f(bounds.min.y, 3)} m`], ...item.info()]) { const r = t.insertRow(); r.insertCell().textContent = k; r.insertCell().textContent = String(v); }
   info.append(b, g, t);
   for (const cb of selectHooks) cb(item);
   const det = [...document.querySelectorAll('details')].find(d => d.dataset.g === item.group); if (det) det.open = true;
@@ -86,10 +88,25 @@ $('list').addEventListener('click', e => { const it = items.find(i => i.id === e
 const step = d => select(items[(items.indexOf(cur) + d + items.length) % items.length]);
 
 /* ---------- orbit camera ---------- */
-const cam = { target: new THREE.Vector3(), yaw: .6, pitch: .35, dist: 10, min: 1, max: 100 };
+const cam = { target: new THREE.Vector3(), yaw: Math.PI - .6, pitch: .35, dist: 10, min: 1, max: 100 };
+function frontAngles(item = cur) {
+  const grp = String(item?.group ?? '');
+  if (grp.startsWith('Landmarks')) return { front: -Math.PI / 2, right: 0, top: -Math.PI / 2, threeq: -Math.PI / 2 + .55 };
+  if (item?.entity === 'gantry' || String(item?.id ?? '').endsWith('/gantry')) return { front: 0, right: Math.PI / 2, top: 0, threeq: .55 };
+  return { front: Math.PI, right: Math.PI / 2, top: 0, threeq: Math.PI - .6 };
+}
+function setView(preset = 'threeq') {
+  const a = frontAngles();
+  if (preset === 'front') { cam.yaw = a.front; cam.pitch = .12; }
+  else if (preset === 'right') { cam.yaw = a.right; cam.pitch = .12; }
+  else if (preset === 'top') { cam.yaw = a.top; cam.pitch = 1.48; }
+  else { cam.yaw = a.threeq; cam.pitch = .35; }
+  opts.spin = false; applyOpts();
+}
 function frame() {
   const s = bounds.getBoundingSphere(new THREE.Sphere());
-  cam.target.copy(s.center); cam.dist = Math.max(s.radius, .3) / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 1.4; cam.min = s.radius * .2; cam.max = cam.dist * 8; cam.yaw = .6; cam.pitch = .35;
+  cam.target.copy(s.center); cam.dist = Math.max(s.radius, .3) / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 1.4; cam.min = s.radius * .2; cam.max = cam.dist * 8;
+  cam.yaw = frontAngles().threeq; cam.pitch = .35;
 }
 function place() {
   const cp = Math.cos(cam.pitch); camera.position.set(cam.target.x + cam.dist * Math.sin(cam.yaw) * cp, cam.target.y + cam.dist * Math.sin(cam.pitch), cam.target.z + cam.dist * Math.cos(cam.yaw) * cp);
@@ -124,7 +141,9 @@ addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key.toLowerCase();
   if ('wasd'.includes(k)) { keys.add(k); return; }
   const flip = { e: 'edges', g: 'grid', x: 'box', v: 'wire' }[k];
+  const preset = { 1: 'threeq', 2: 'front', 3: 'right', 4: 'top' }[k];
   if (k === 'arrowright' || k === 'arrowdown') step(1); else if (k === 'arrowleft' || k === 'arrowup') step(-1); else if (k === 'f' || k === 'r') frame();
+  else if (preset) setView(preset);
   else if (k === ' ') { opts.spin = !opts.spin; applyOpts(); e.preventDefault(); } else if (k === 'f8') { opts.form = !opts.form; setFormShade(opts.form); applyOpts(); }
   else if (flip) { opts[flip] = !opts[flip]; applyOpts(); }
 });

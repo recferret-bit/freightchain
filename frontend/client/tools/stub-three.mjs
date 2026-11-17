@@ -7,7 +7,7 @@ export class Group extends Obj {} export class Scene extends Obj { constructor()
 export class Mesh extends Obj { constructor(g,m){super();this.geometry=g||{dispose(){}};this.material=Array.isArray(m)?m[0]:m;} }
 export class PerspectiveCamera extends Obj { constructor(){super();this.projectionMatrix={elements:new Array(16).fill(1)};this.projectionMatrixInverse={copy(){return this;},invert(){return this;}};} updateProjectionMatrix(){} setViewOffset(){} }
 export class WebGLRenderer { constructor(){this.calls=0;} setPixelRatio(){} setSize(){} setViewport(){} setScissor(){} setScissorTest(){} render(){this.calls++;} }
-const geo = class { dispose(){} rotateY(){return this;} setAttribute(){} setIndex(){} setDrawRange(){} };
+const geo = class { dispose(){} rotateY(){return this;} setAttribute(){} setIndex(){} setDrawRange(){} addGroup(){} };
 export const BoxGeometry=geo, ConeGeometry=geo, CylinderGeometry=geo, DodecahedronGeometry=geo, CircleGeometry=geo, PlaneGeometry=geo, SphereGeometry=geo, BufferGeometry=geo, BufferAttribute=class{};
 export class MeshBasicMaterial { constructor(o={}){Object.assign(this,{side:0,userData:{}},o);} } export class ShaderMaterial extends MeshBasicMaterial {}
 export class CanvasTexture { constructor(){this.repeat={set(){}};this.offset={set(){}};} }

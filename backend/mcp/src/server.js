@@ -9,6 +9,7 @@ import { SKILL, FORMAT } from './paths.js';
 /* The entity MCP: the model-geometry-validator skill (.claude/skills/model-geometry-validator) turned into tools over one backend (backend.js).
    Every write goes through check_entity's validator first, and the backend re-validates (the app server does it again on its side). */
 const validator = await import(pathToFileURL(join(SKILL, 'validate.mjs')).href);
+const auditor = await import(pathToFileURL(join(SKILL, 'audit-entities.mjs')).href);
 const read = p => readFileSync(p, 'utf8');
 const json = v => ({ content: [{ type: 'text', text: JSON.stringify(v, null, 1) }] });
 /** a long list for the model: the first n and a count of the rest (thousands of errors would only burn its context) */
@@ -31,9 +32,11 @@ export async function checkSource(backend, source) {
   let config;
   try { config = core.parseSource(source); } catch (e) { return { ok: false, errors: [e.message], warnings: [] }; }
   const heads = new Map(Object.entries(await backend.configs()));   // a Map: never a prototype member ('constructor')
-  const r = core.validateEntity(config, { lookup: id => (id === config.id ? config : heads.get(id) ?? null) });
+  const lookup = id => (id === config.id ? config : heads.get(id) ?? null);
+  const r = core.validateEntity(config, { lookup });
+  const auditWarnings = r.ok ? auditor.auditEntity(config, { lookup }).issues.map(i => `[${i.code}] ${i.message} (fix: ${i.fix})`) : [];
   const lock = core.rosterOf(config.id);
-  return { ok: r.ok, id: config.id, kind: config.kind, errors: head(r.errors), warnings: head(r.warnings), gameplay: lock ? { placedBy: lock.kind, lock: lock.lock } : 'not placed by the game (viewer only until a roster row and a call site exist)', summary: r.measures && { meshes: r.measures.meshes, glows: r.measures.glows, sizeXYZ: r.measures.size, bounds: r.measures.bounds, tags: r.measures.tags, roles: r.measures.roles, floatingParts: r.measures.floating.length } };
+  return { ok: r.ok, id: config.id, kind: config.kind, errors: head(r.errors), warnings: head([...r.warnings, ...auditWarnings]), gameplay: lock ? { placedBy: lock.kind, lock: lock.lock } : 'not placed by the game (viewer only until a roster row and a call site exist)', summary: r.measures && { meshes: r.measures.meshes, glows: r.measures.glows, sizeXYZ: r.measures.size, bounds: r.measures.bounds, tags: r.measures.tags, roles: r.measures.roles, floatingParts: r.measures.floating.length } };
 }
 
 const KIND_FILES = { car: 'car.md', tree: 'tree.md', building: 'building.md' };

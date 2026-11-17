@@ -1,62 +1,67 @@
 ---
 name: road-texture-synthesis
 description: >
-  Paint a Freight Chain canvas for asphalt, shoulder, a road marking, a sign,
-  a facade, or a flag. Triggers on texture, asphalt, road marking, material,
-  shader, pixel, and night shade only to send night work elsewhere. No normal
-  map and no PBR set. Use when the user runs /road-texture-synthesis.
+  Pillar 2 — Highway Procedural Texture Synthesis. Author deterministic HTML5
+  CanvasTexture maps for Freight Chain asphalt (wheel-rut polish, tar cracks,
+  edge lips, coarse shoulders), thermoplastic lane-marking atlases, mullioned
+  building facades, double-bezel highway signs, flags, gantry banners, and
+  corrugated DOT-taped trailer liveries. Use for /road-texture-synthesis.
 ---
 
-# Road texture synthesis
+# Highway Procedural Texture Synthesis (Pillar 2)
 
-Paint a canvas. Height-to-normal and PBR sets (roughness, metalness, triplanar) do not exist. Do not build them. Night shade is `shader-texture-tuning`. A wrong mesh is `model-geometry-validator` first. Debris materials are `road-particles-3d`.
+Freight Chain uses procedural 2D HTML5 `CanvasTexture` maps (`SRGBColorSpace`) on `MeshBasicMaterial` — zero external PNG/JPG/WebP texture assets on the 3D road, zero normal/roughness/metalness PBR maps. Night lighting and daytime form-shading come from `nightlight.js` (`shader-texture-tuning`).
 
-## Shared helper
+Detailed pixel recipes and UV contracts: see [references/highway-texture-recipes.md](references/highway-texture-recipes.md).
 
-`canvasTex(w, h, draw, repeat = true)` in `frontend/client/js/world/scene.js` builds a `CanvasTexture`, sets `SRGBColorSpace`, and (when `repeat`) sets wrap S and T to `RepeatWrapping`. These canvases are colours. Do not gamma-correct a data array that is not a colour, and do not push a non-colour buffer through `canvasTex`.
+---
 
-Theme materials go through `trackMat` (`frontend/client/js/themes/_shared/mats.js`) inside `create*()`, so a route switch disposes them and the mirror pass can flip single-sided ones. `mesh.position.set()`; never assign `position`.
+## 1. Shared Canvas & Material Lifecycle Rules
 
-## Asphalt and shoulder
+- **`canvasTex(w, h, draw, repeat = true)`** (`frontend/client/js/world/scene.js`): Creates the offscreen `<canvas>`, runs `draw(ctx, w, h)`, sets `SRGBColorSpace`, and sets `RepeatWrapping` when `repeat === true`.
+- **Theme Tracking & Mirror Flip**: Every single-sided theme material must be created inside `create*()` via `basic()` / `trackMat()` (`frontend/client/js/themes/_shared/mats.js`) or exported into `flipMats()` (`frontend/client/js/world/render.js`) so route teardown disposes GPU textures cleanly and the truck's mirror pass flips winding without rendering inside-out.
+- **PRNG Determinism**: Never consume `Math.random()` inside new procedural texture loops when existing scene/headless RNG call counts matter — use a local deterministic integer hash / `mulberry32`-style helper (like `rnd()` in `road-texture.js` and `landmarks/index.js`) so `headless-test.mjs` and `trace:diff` stay deterministic.
 
-`roadMaterial()` in `frontend/client/js/themes/_shared/road-texture.js`. Each route only passes colours from `frontend/client/js/themes/<route>/road.js` `createRoadMaterial()`.
+---
 
-One 256×256 tile. Across **u**:
+## 2. Highway Asphalt & Shoulder (`themes/_shared/road-texture.js`)
 
-| u | band |
-| --- | --- |
-| 0–0.125 | shoulder |
-| 0.125–0.875 | asphalt (this band stretches with the lane count) |
-| 0.875–1 | shoulder |
+`roadMaterial(c)` paints a `256 × 256` tile mapped across road width `u` and repeated every **`9 m`** along station `s` (`v = s / 9`, `wrapS = ClampToEdgeWrapping`, `wrapT = RepeatWrapping`):
 
-`surfCols` in `frontend/client/js/world/roadmesh.js` pins those two asphalt edges. Change the bands in both files or a wide road samples shoulder.
+| `u` range | Band | Procedural Micro-Surface Layers |
+|---|---|---|
+| `0.000 – 0.125` | Left shoulder | Base shoulder fill, coarse gravel clasts + shadow specks, soft outer verge transition |
+| `0.125 – 0.875` | Travelled asphalt | Base asphalt, fine bitumen aggregate grain (dark + bright mineral specks), subtle **dual wheel-rut tyre polish bands** in both lane halves, faint **centre longitudinal paver joint**, crisp **paved-edge shoulder drop lips** (`u = 0.125` & `0.875`), and meandering **tar-sealed micro-cracks** |
+| `0.875 – 1.000` | Right shoulder | Mirrors left shoulder (`surfCols` in `world/roadmesh.js` pins `0.125` and `0.875` to road edges regardless of lane count) |
 
-Along the road, **v = s / 9** (`spineStations`, `altStations`). The tile repeats every 9 m. After `canvasTex`, set `wrapS` to `ClampToEdgeWrapping` so the shoulder does not wrap into the lane. Leave `wrapT` as `RepeatWrapping`.
+Each route (`themes/<route>/road.js`) supplies only route palette colours (`asphalt`, `speck`, `shoulder`, `shoulderSpeck`, `crack`) to `roadMaterial()`. Never paint lane stripes into `roadMaterial()` — `u` stretches when lanes split or widen.
 
-Grain is 1-2 px specks (`fillRect`), already in `roadMaterial` (`speck`, optional `shoulderSpeck`). `Math.random()` while the texture is drawn is allowed for visuals. Reordering theme drawing changes the headless trace. Never use `Math.random()` in gameplay. Do not drop in a photo.
+---
 
-## Mark atlas
+## 3. Thermoplastic Road-Marking Atlas (`marksMat` / `MARK`)
 
-Markings are a separate mesh, not pixels in the asphalt. `MARK = { edge: 0, solid: 1, dash: 2, lane: 3, stop: 4 }`, `MARK_COLS = 8`. Atlas is `MARK_COLS * 16` by 64. A quad samples the column centre `(c + 0.5) / MARK_COLS` (`ucol` in `roadmesh.js`). Dash paints the top third of the column; the atlas repeats, so a dash is 3 m painted in every 9 m.
+Markings are separate ribbon quads (`markLines` in `world/roadmesh.js`, `0.13–0.16 m` wide) hovering over the road via `polygonOffset (-4, -4)`:
+- **Atlas**: `(MARK_COLS * 16) × 64` (`MARK_COLS = 8`), `MARK = { edge: 0, solid: 1, dash: 2, lane: 3, stop: 4 }`.
+- **Crisp Filtering**: `wrapS = ClampToEdgeWrapping`, `generateMipmaps = false`, `minFilter = LinearFilter`, `alphaTest: 0.5`.
+- **Thermoplastic Texture**: Painted strips carry subtle glass-bead micro-grain so markings read as thick highway paint rather than flat plastic, while `dash` / `lane` paint the top third (`3 m` stripe per `9 m` cycle).
 
-`wrapS` is `ClampToEdgeWrapping`. `generateMipmaps = false` and `minFilter = LinearFilter` so dashes stay crisp. Material is alpha-tested (`alphaTest: 0.5`).
+---
 
-`markLines` places centre, edge, and lane quads by lateral metres (`edgeOf`), about 0.13–0.16 m wide. A line painted at a fixed **u** inside the asphalt band stretches when lanes are added and can slide into the shoulder. A new pattern is a free atlas column plus a branch in `markLines`, not a stripe in `roadMaterial`.
+## 4. Architectural, Signage & Trailer Painters
 
-Polygon offsets (factor and units): ground 0, surface −2, apron / junction pad −3, marks −4, hole decals −5 and more negative (`world/holes.js`). At 500 m the depth buffer steps about 5 cm. Offset is what keeps a marking on top. Do not flatten these to 0.
+- **`facadeMat` (`themes/_shared/landmarks/index.js`, `256 × 256`)**: Horizontal spandrel shadow bands, vertical pier shading, dark outer window frames, recessed window panes (`rnd()` selects unlit sky-tinted glass vs two-tone warm incandescent rooms with curtain/ceiling falloff), and projecting stone sills.
+- **`signMat` (`256 × 128`) & `diskFace` (`256 × 256`)**: Outer casing rim, inset contrasting inner bezel, subtle vertical background gradient, and drop-shadowed bold highway typography auto-fitted to width. Remember: `diskFace(..., flip = true)` mirrors the `-x`/`+x` back face intentionally so text reads left-to-right from both directions — never remove `flip`.
+- **`banner` (`world/gantry.js`, `1024 × 192`)**: Overhead highway guide-sign green panel, outer silver/white double border, corner rivets, route subtitle, and drop-shadowed destination legend (`toneMapped: false`, `DoubleSide` — self-lit at night, mounted proud of truss chords at `z = +0.56`).
+- **`setLivery` (`world/trailer.js`, `1024 × 256`)**: Vertical aluminum rib corrugation shading, top/bottom rub-rail strips, bold freighter wordmark + accent stripe, and alternating red/white **DOT-C2 retroreflective conspicuity tape** along the lower sill.
 
-## Sign, facade, flag
+---
 
-Painters live in `frontend/client/js/themes/_shared/landmarks/index.js`, cached in the `Map` inside `createLandmarks`, `canvasTex(..., false)` so they do not tile.
+## 5. Verification
 
-- Sign: `signMat`, 256×128, border and text fitted down. A sign part's `at.y` is the bottom of the board (`frontend/client/shared/entity/plan.js`). Text defaults to the site name.
-- Round board: `diskFace`. `at.y` is the centre. The back face is drawn flipped; do not "fix" that or the word is upside down from the road.
-- Facade: `facadeMat`, 256×256 window grid. Cols and rows are capped at 32. Lit windows use `rnd`, not `Math.random`.
-- Flag: `drawFlag` in `landmarks/flags.js`, 256×160, one material per side (`px` / `nx`).
-- Finish banner: `banner()` in `frontend/client/js/world/gantry.js`. `toneMapped: false`, `DoubleSide`. It is self-lit; do not run it through the night patch.
+```sh
+npm --prefix frontend/client run check
+npm --prefix frontend/client run trace:save   # only when updating intentional baseline
+PORT=9333 node frontend/client/tools/e2e-chrome.mjs
+```
 
-A new pattern is a function next to `roadMaterial`, or a painter beside `signMat` / `banner`, keyed in that cache, `trackMat`'d, shared, and disposed with the theme (`disposeMats`). No image file.
-
-## Check
-
-From `frontend/client/`: eslint on the files you touched, then `npm run check`. If drawing order or the pixels of a shared texture change: `npm run trace:diff`. Do not deploy. Leave the shake constants alone.
+Visually inspect the Chrome gameplay screenshots (`02-driving.png`, `04-mirror-view.png`, etc.) and landmark shots (`shot.mjs`) to confirm crisp mip-free markings, natural asphalt wear without obvious `9 m` tile seams, and readable signs.

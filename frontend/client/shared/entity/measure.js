@@ -2,7 +2,8 @@
    the validator see what the game builds. Every mesh is its geometry's local bounds → scale → Euler rotation → position, then each parent group's transform. */
 
 const UNIT = {   // local bounds of each GEO entry at scale 1 (client/js/world/props.js)
-  box: [-.5, -.5, -.5, .5, .5, .5], cyl: [-1, -.5, -1, 1, .5, 1], cone: [-1, -.5, -1, 1, .5, 1], rock: [-1, -1, -1, 1, 1, 1],
+  box: [-.5, -.5, -.5, .5, .5, .5], rbox: [-.5, -.5, -.5, .5, .5, .5], wedge: [-.5, -.5, -.5, .5, .5, .5], gable: [-.5, -.5, -.5, .5, .5, .5], oct: [-.5, -.5, -.5, .5, .5, .5],
+  cyl: [-1, -.5, -1, 1, .5, 1], cyl16: [-1, -.5, -1, 1, .5, 1], cone: [-1, -.5, -1, 1, .5, 1], rock: [-1, -1, -1, 1, 1, 1],
   pyr: [-.5, -.5, -.5, .5, .5, .5], wheel20: [-1, -.5, -1, 1, .5, 1], wheel48: [-1, -.5, -1, 1, .5, 1], barrel: [-1, -.5, -1, 1, .5, 0],
 };
 
@@ -41,10 +42,13 @@ const touch = (a, b, eps) => a[0] <= b[3] + eps && b[0] <= a[3] + eps && a[1] <=
 export function measure(parts, { eps = .03 } = {}) {
   const bs = boxes(parts), bounds = union(bs);
   const tags = Object.create(null); for (const { part } of bs) if (part.tag) tags[part.tag] = (tags[part.tag] ?? 0) + 1;
-  const floating = [];
-  for (const a of bs) {
-    if (a.box[1] <= eps) continue;   // on the ground
-    if (!bs.some(b => b !== a && touch(a.box, b.box, eps))) floating.push(a.i);
+  const floating = [], grounded = new Set(), q = [];
+  bs.forEach((b, k) => { if (b.box[1] <= eps) { grounded.add(k); q.push(k); } });
+  if (grounded.size) {
+    while (q.length) { const u = q.shift(); bs.forEach((b, k) => { if (!grounded.has(k) && touch(bs[u].box, b.box, eps)) { grounded.add(k); q.push(k); } }); }
+    bs.forEach((b, k) => { if (!grounded.has(k)) floating.push(b.i); });
+  } else {
+    for (const a of bs) if (!bs.some(b => b !== a && touch(a.box, b.box, eps))) floating.push(a.i);
   }
   const nums = []; for (const p of parts) for (const v of [...(p.s ?? []), ...(p.p ?? []), ...(p.r ?? []), p.size, p.gain, p.w, p.l, p.z0, p.color]) if (v !== undefined && v !== null) nums.push(v);
   return { meshes: bs.length, glows: parts.filter(p => p.t === 'glow').length, bounds: bounds.map(v => Math.round(v * 1000) / 1000), size: [bounds[3] - bounds[0], bounds[4] - bounds[1], bounds[5] - bounds[2]].map(v => Math.round(v * 1000) / 1000), tags, floating, finite: nums.every(Number.isFinite), roles: parts.filter(p => p.role).map(p => p.role) };
