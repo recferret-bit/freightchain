@@ -1,19 +1,19 @@
 {
-  "fetchedAt": "2026-11-16T10:00:16.465Z",
+  "fetchedAt": "2026-11-17T14:42:17.073Z",
   "stats": {
-    "rides": 36,
-    "ridesFree": 33,
+    "rides": 37,
+    "ridesFree": 34,
     "ridesPaid": 3,
     "ridesCompleted": 6,
-    "seconds": 4419,
-    "metres": 27875,
+    "seconds": 4515,
+    "metres": 28017,
     "crashes": 5,
     "crashesVehicle": 5,
     "crashesBuilding": 0,
     "donations": 0,
     "donationLamports": 0,
-    "drivers": 5,
-    "updatedAt": 1794445038345
+    "drivers": 6,
+    "updatedAt": 1794921656872
   },
   "insights": {
     "audit": {
@@ -37,15 +37,15 @@
         "signinsReal": 54
       },
       {
-        "label": "8 Oct 2026 through 2026-11-16 UTC",
-        "landingPeople": 410,
-        "landingEvents": 695,
-        "whitepaperPeople": 42,
-        "startsReal": 7,
+        "label": "8 Oct 2026 through 2026-11-17 UTC",
+        "landingPeople": 415,
+        "landingEvents": 700,
+        "whitepaperPeople": 44,
+        "startsReal": 8,
         "completesReal": 0,
         "startsDemo": 29,
         "completesDemo": 6,
-        "signinsReal": 89
+        "signinsReal": 92
       }
     ],
     "error": null,
