@@ -99,8 +99,6 @@ const profile = async (lang, w, h, mobile, shot) => {
 // ── public table: nothing before the review end
 let p = await profile('en', 1100, 900, false, 'profile-pending-en');
 check('public (before the review end): "EVENT TOP-20" + the publication note, no rows', p.text === 'EVENT TOP-20' && /published after the review/.test(p.box) && p.rows === 0, p.box.slice(0, 120));
-p = await profile('ru', 1100, 900, false, 'profile-pending-ru');
-check('public RU (before the review end): translated heading and note', p.text === 'ТОП-20 СОБЫТИЯ' && /публикуется после проверки/.test(p.box), p.text);
 
 // ── the review end passes → preliminary table
 await schedule(now - 50, now + 1200);
@@ -112,12 +110,8 @@ check('API: the tied wallets share one rank and the same (split) amount', tieRow
 check('API: no full wallet leaks', !JSON.stringify(board).includes(byTag.p2.wallet) && !JSON.stringify(board).includes(byTag.ru.wallet));
 p = await profile('en', 1100, 1100, false, 'profile-prelim-en');
 check('public EN: preliminary note with the appeals date, rows, RU row "outside the prize standings"', /Preliminary table/.test(p.box) && p.rows >= 20 && /outside the prize standings/.test(p.box) && p.overflow <= 0, `rows ${p.rows} overflow ${p.overflow}`);
-p = await profile('ru', 1100, 1100, false, 'profile-prelim-ru');
-check('public RU: translated note, headers and "outside" label; no English left in the table', /Предварительная таблица/.test(p.box) && /вне призового зачёта/.test(p.box) && /Кошелёк/.test(await V.ev('document.getElementById("event-board-table").tHead.textContent')) && !/Preliminary|outside the prize|Wallet|Prize \(USDC\)/.test(p.box), p.box.slice(0, 160));
 p = await profile('en', 390, 844, true, 'profile-prelim-phone-en');
 check('phone 390 px (EN): the page does not scroll sideways', p.overflow <= 0, `overflow ${p.overflow}`);
-p = await profile('ru', 390, 844, true, 'profile-prelim-phone-ru');
-check('phone 390 px (RU): the page does not scroll sideways', p.overflow <= 0, `overflow ${p.overflow}`);
 
 // ── the admin
 await size(A, 1500, 1000, false);
@@ -197,12 +191,8 @@ p = await profile('en', 1100, 1200, false, 'profile-final-en');
 check('public EN (final): "EVENT RESULTS", final note, places start at 1 (not the overall rank), one transaction link', (await V.ev('document.querySelector("#event-board-table tbody tr td").textContent')) === '1' && p.text === 'EVENT RESULTS' && /Final list/.test(p.box) && (await V.ev('document.querySelectorAll("#event-board a[href^=\\"https://solscan.io/tx/\\"]").length')) === 1, p.text);
 const finalBoard = await (await fetch(`${BASE}/api/event/board`)).json();
 check('API (final): only the locked paid places, amounts follow the saved table, the paid row carries its Solscan URL', finalBoard.phase === 'final' && finalBoard.rows.every(r => r.prizeEligible) && finalBoard.rows[0].amountCents === 20000 && finalBoard.rows.filter(r => r.solscanUrl).length === 1, `${finalBoard.phase} ${finalBoard.rows.slice(0, 4).map(r => r.amountCents)}`);
-p = await profile('ru', 1100, 1200, false, 'profile-final-ru');
-check('public RU (final): ИТОГИ СОБЫТИЯ + translated final note + link text', p.text === 'ИТОГИ СОБЫТИЯ' && /Итоговый список/.test(p.box) && /транзакция/.test(p.box), p.text);
 p = await profile('en', 390, 844, true, 'profile-final-phone-en');
 check('phone 390 px (final): no sideways page scroll', p.overflow <= 0, `overflow ${p.overflow}`);
-p = await profile('ru', 390, 844, true, 'profile-final-phone-ru');
-check('phone 390 px (final, RU): no sideways page scroll', p.overflow <= 0, `overflow ${p.overflow}`);
 
 await cleanup();
 await prisma.$disconnect();

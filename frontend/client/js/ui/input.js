@@ -13,6 +13,9 @@ import { answerPrompt } from '../prompt.js';
 import { toggleMap } from './map.js';
 import { mgCapture } from '../minigames/capture.js';
 import { toggleFormShade } from '../world/nightlight.js';
+import { togglePixelArt } from '../world/pixel-pass.js';
+import { toggleCrt } from './crt.js';
+import { toggleVisualLab, isVisualLabOpen } from './visual-lab.js';
 import { online } from '../online.js';
 import { fmt } from '../util.js';
 import { SITE_BASE } from '../hosts.js';
@@ -59,9 +62,20 @@ const KEY_ACTIONS = {
 };
 
 addEventListener('keydown', e => {
+  if (e.code === 'Escape' && !e.repeat && isVisualLabOpen()) {
+    e.preventDefault(); e.stopImmediatePropagation(); toggleVisualLab(false);
+  }
+}, true);
+
+addEventListener('keydown', e => {
   if (!st.watch && isMobileDevice()) return;
-  const inField = e.target?.closest?.('input, textarea');
-  if (e.code === 'F8' && !e.repeat && !inField) { e.preventDefault(); toast(toggleFormShade() ? 'Form shade on' : 'Form shade off', 1200); return; }   // not recorded: a look switch, not a driving input
+  const inField = e.target?.closest?.('input, textarea, select');
+  if (!e.repeat && !inField) {
+    if (e.code === 'F8') { e.preventDefault(); toggleVisualLab(); return; }
+    if (e.code === 'F9') { e.preventDefault(); toast(toggleCrt() ? 'CRT on' : 'CRT off', 1200); return; }
+    if (e.code === 'F10') { e.preventDefault(); toast(togglePixelArt() ? 'Pixel shader on' : 'Pixel shader off', 1200); return; }
+    if (e.code === 'F7') { e.preventDefault(); toast(toggleFormShade() ? 'Form shade on' : 'Form shade off', 1200); return; }
+  }   // look / shader switches are not recorded as driving inputs
   if (st.watch) {   // a spectator drives nothing: keys belong to the watch panel (chat box), only M mutes and N opens the map
     if (e.code === 'KeyM' && !inField) toggleMute();
     if (e.code === 'KeyN' && !e.repeat && !inField) toggleMap();

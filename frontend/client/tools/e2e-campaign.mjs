@@ -60,15 +60,12 @@ try {
   await until("document.querySelector('#campaign-attempt').textContent.includes('ATTEMPT ISSUED')");
   assert.equal(calls.filter(c => c.path.endsWith('/claim-attempt')).length, 1);
   await chrome.ev('window.scrollTo(0,0)'); await chrome.shot('01-campaign-en');
-  await click('campaign-language');
-  await until("document.querySelector('#campaign').textContent === 'КАМПАНИЯ'");
-  assert.equal(await chrome.ev("document.querySelector('#campaign-box').lang"), 'ru');
-  assert.equal(await chrome.ev("document.querySelector('#campaign-attempt').textContent.includes('ПОПЫТКА ВЫДАНА')"), true);
-  await chrome.shot('02-campaign-ru');
+  assert.equal(await chrome.ev("document.querySelector('#campaign-language') === null"), true);
+  assert.equal(await chrome.ev("document.querySelector('#campaign-box').lang"), 'en');
   await chrome.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await chrome.ev('window.scrollTo(0,0)'); await chrome.shot('03-campaign-mobile');
   await chrome.ev('window.scrollTo(0,document.documentElement.scrollHeight)'); await chrome.shot('04-campaign-mobile-actions');
   assert.equal(await chrome.ev('document.documentElement.scrollWidth <= window.innerWidth'), true);
   assert.deepEqual(chrome.filt().filter(p => !p.includes('503 (Service Unavailable)') || !p.includes('/api/airdrop/verify-x')), []);
-  console.log('PASS campaign Chrome: task progress, X validation/retry, Telegram callback, event consent/idempotence, EN/RU, mobile.');
+  console.log('PASS campaign Chrome: task progress, X validation/retry, Telegram callback, event consent/idempotence, EN, mobile.');
 } finally { await chrome.close(); await new Promise(resolve => server.close(resolve)); }

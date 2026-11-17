@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { registerHooks } from 'node:module';
 
 const stubThreeUrl = new URL('../tools/stub-three.mjs', import.meta.url).href;
@@ -26,19 +27,30 @@ globalThis.addEventListener ??= () => {};
 globalThis.localStorage ??= { getItem: () => null, setItem() {}, removeItem() {} };
 
 const { en } = await import('../js/minigames/i18n/en.js');
-const { ru } = await import('../js/minigames/i18n/ru.js');
+const { t } = await import('../js/minigames/i18n/index.js');
 const { machine } = await import('../js/minigames/machine.js');
 const { smsModel } = await import('../js/minigames/play.js');
 const { homeLayout } = await import('../js/phone/home.js');
+const { paintGlyph } = await import('../js/phone/icons.js');
+const { APPS } = await import('../js/phone/catalog.js');
 const { mgCapture } = await import('../js/minigames/capture.js');
 const { os } = await import('../js/phone/os.js');
 const { phone } = await import('../js/phone.js');
 const { closesApp } = await import('../js/phone/swipe.js');
 
-test('minigame copy has the same keys in English and Russian', () => {
-  assert.deepEqual(Object.keys(en).sort(), Object.keys(ru).sort());
+test('minigame copy is English-only and interpolates variables', () => {
+  assert.equal(fs.existsSync(new URL('../js/minigames/i18n/ru.js', import.meta.url)), false);
+  for (const [k, v] of Object.entries(en)) {
+    assert.equal(typeof v, 'string', k);
+    assert.ok(v.length > 0, k);
+  }
   assert.equal(en['sim.badge'], 'SIMULATION. Game coins — not real money or addresses');
-  assert.equal(ru['sim.badge'], 'СИМУЛЯЦИЯ. Игровые монеты, ненастоящие деньги и адреса');
+  assert.equal(t('sms.wrong', { n: 2 }), 'Wrong — 2 left');
+});
+
+test('every phone app icon renders cleanly without throwing', () => {
+  assert.equal(APPS.length, 14);
+  for (const app of APPS) paintGlyph(ctxStub, app.id);
 });
 
 test('the client model of an SMS keeps permutations and drops the answer', () => {

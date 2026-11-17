@@ -46,7 +46,7 @@ These are real Chrome or a real validator. Keep them. Do not replace them with t
 
 From the audit, except the three commands below. Those three were green in the local `npm run test:ci:full` log. Close the holes that remain before calling the app covered. The order is [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
-**Gates green on **
+**Gates green on 2026-10-23**
 
 - `npm --prefix frontend/client run test:parity` — 11668 objects compared against golden.txt: identical.
 - `npm --prefix frontend/client run test:tickets-stub` — 20/20.

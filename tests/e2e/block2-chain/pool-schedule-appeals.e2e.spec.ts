@@ -40,7 +40,7 @@ apiTest(test, 'POOL-T-01..16 pool schedule, last start, burn checkbox, mismatch 
   const dialog = readFileSync(join(root, 'frontend/client/site/ticket-dialog.js'), 'utf8');
   assert.match(dialog, /id: 'burn-warning'/);
   assert.match(dialog, /burns with no refund/);
-  assert.match(dialog, /сгорает без возврата/);
+  assert.doesNotMatch(dialog, /burn-warning-ru/);
   const rules = readFileSync(join(root, 'backend/programs/freightchain_pools/src/constants.rs'), 'utf8');
   assert.match(rules, /7_200/);
   assert.equal(readFileSync(join(root, 'backend/server/src/presentation/admin/admin-appeals.http.controller.ts'), 'utf8').includes('set_pool_rules'), true);

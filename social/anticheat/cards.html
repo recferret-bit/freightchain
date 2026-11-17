@@ -1,0 +1,175 @@
+<!doctype html>
+<!-- Verified-play cards. ?card=pipeline|verdict (1600×900) or ?card=square (1080×1080). Rendered by render.mjs. -->
+<html><head><meta charset="utf-8"><title>Freight Chain verified play</title>
+<script>
+document.documentElement.classList.add(new URLSearchParams(location.search).get('card') === 'square' ? 'sq' : 'wide');
+</script>
+<style>
+@font-face{font-family:SFM;src:url(file:///System/Library/Fonts/SFNSMono.ttf);font-weight:100 900}
+:root{--bg:#0b0a09;--amber:#ffcf5a;--cream:#e8e2cf;--dim:#9d957f;--lcd:#7cff7c;--lcd-bg:#0d2410;--red:#ff5a4a;--s1:#9945FF;--s2:#14F195;
+  --sol:linear-gradient(90deg,var(--s1),var(--s2));--mono:SFM,Menlo,ui-monospace,monospace}
+*{box-sizing:border-box;margin:0}
+html.wide,html.wide body{width:1600px;height:900px}
+html.sq,html.sq body{width:1080px;height:1080px}
+html,body{overflow:hidden;background:var(--bg);color:var(--cream);font:400 28px/1.25 var(--mono)}
+.card{display:none;position:relative;width:100%;height:100%;overflow:hidden;background:var(--bg)}
+.card.on{display:block}
+.bg{position:absolute;inset:-6%;background-size:cover;background-position:center 40%;filter:saturate(1.05) brightness(.55)}
+.veil{position:absolute;inset:0}
+.solbar{position:absolute;left:0;right:0;top:0;height:8px;background:var(--sol);box-shadow:0 0 24px #9945ffaa;z-index:6}
+.grain{position:absolute;inset:0;pointer-events:none;z-index:4;background:repeating-linear-gradient(0deg,#0000 0 2px,#00000018 2px 3px)}
+.top,.foot{position:absolute;left:56px;right:56px;z-index:5;display:flex;align-items:center;justify-content:space-between}
+.top{top:28px}
+.foot{bottom:26px;font-size:20px;letter-spacing:1.5px;color:var(--dim)}
+.foot b{color:var(--cream);font-weight:700}
+.foot i{font-style:normal;color:var(--amber)}
+.logo{display:flex;align-items:center;gap:12px;color:var(--amber);font-weight:800;letter-spacing:3px;font-size:22px}
+.logo svg{width:44px;height:44px;flex:none}
+.pill{border:2px solid #1e4a22;background:var(--lcd-bg);color:var(--lcd);border-radius:999px;padding:6px 14px;font-size:18px;font-weight:800;letter-spacing:2px;text-shadow:0 0 10px #7cff7c88}
+.pill.am{border-color:#ffcf5a88;background:#1b1408ee;color:var(--amber);text-shadow:0 0 10px #ffb02e66}
+.kicker{font-size:20px;font-weight:800;letter-spacing:4px;color:var(--dim)}
+.kicker em{font-style:normal;color:var(--lcd)}
+h1{font-weight:900;color:var(--amber);line-height:.92;letter-spacing:-1.5px;text-shadow:0 4px 0 #7a4a00,0 0 28px #ffb02e44}
+h1 b{color:var(--cream);font-weight:900;text-shadow:0 4px 0 #3a3428}
+
+/* pipeline */
+#c-pipeline .veil{background:linear-gradient(90deg,#0b0a09f6 0,#0b0a09ee 42%,#0b0a09c4 68%,#0b0a09e8 100%)}
+#c-pipeline .stage{position:absolute;z-index:3;left:56px;right:56px;top:108px;bottom:78px;display:grid;grid-template-columns:560px 1fr;gap:36px}
+#c-pipeline h1{font-size:68px;margin:14px 0 18px;max-width:540px}
+#c-pipeline .deck{font-size:26px;font-weight:700;color:var(--cream);line-height:1.35;max-width:520px}
+#c-pipeline .facts{margin-top:28px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+#c-pipeline .facts span{display:block;background:#0b0a09e6;border:2px solid #ffffff18;border-radius:12px;padding:10px 14px;font-size:20px;font-weight:750;letter-spacing:.4px;color:var(--cream)}
+#c-pipeline .facts i{font-style:normal;color:var(--amber)}
+#c-pipeline .steps{list-style:none;margin:0;padding:4px 0 4px 0;display:flex;flex-direction:column;justify-content:space-between;height:100%;position:relative}
+#c-pipeline .steps::before{content:"";position:absolute;left:27px;top:28px;bottom:28px;width:4px;border-radius:2px;background:linear-gradient(#14F195,#9945FF)}
+#c-pipeline .steps li{display:grid;grid-template-columns:58px 1fr;gap:16px;align-items:center;position:relative;z-index:1}
+#c-pipeline .steps i{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#0d0c0b;border:3px solid var(--lcd);color:var(--lcd);font-style:normal;font-weight:800;font-size:18px;letter-spacing:0}
+#c-pipeline .steps li:nth-child(5) i{border-color:var(--amber);color:var(--amber)}
+#c-pipeline .steps li:nth-child(6) i{border-color:#d7b6ff;color:#d7b6ff}
+#c-pipeline .steps b{display:block;color:var(--amber);font-size:26px;letter-spacing:2px}
+#c-pipeline .steps span{display:block;margin-top:2px;font-size:21px;font-weight:650;line-height:1.25;color:var(--cream)}
+
+/* verdict */
+#c-verdict .veil{background:linear-gradient(180deg,#0b0a09f4 0,#0b0a09d8 28%,#0b0a09ee 100%)}
+#c-verdict .stage{position:absolute;z-index:3;left:56px;right:56px;top:108px}
+#c-verdict h1{font-size:68px;margin:8px 0 8px}
+#c-verdict .deck{font-size:24px;font-weight:700;color:var(--dim);margin-bottom:22px}
+#c-verdict .deck em{font-style:normal;color:var(--cream)}
+#c-verdict .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+#c-verdict .tile{background:#0b0a09ee;border:2px solid #1e4a22;border-radius:16px;padding:22px 24px 18px;min-height:300px;display:flex;flex-direction:column}
+#c-verdict .tile.flag{border-color:#ffcf5a88}
+#c-verdict .tile.no{border-color:#ff5a4a88}
+#c-verdict .tag{font-size:18px;font-weight:800;letter-spacing:3px;color:var(--lcd);margin-bottom:12px}
+#c-verdict .tile.flag .tag{color:var(--amber)}
+#c-verdict .tile.no .tag{color:var(--red)}
+#c-verdict .tile h2{font-size:40px;letter-spacing:-.5px;color:var(--cream);margin-bottom:16px;text-shadow:none}
+#c-verdict .tile p{font-size:26px;font-weight:700;line-height:1.3;color:var(--cream)}
+#c-verdict .tile p i{font-style:normal;color:var(--dim);font-weight:650}
+#c-verdict .end{margin-top:auto;padding-top:16px;border-top:1px solid #ffffff18;font-size:18px;font-weight:800;letter-spacing:2px;color:var(--dim)}
+#c-verdict .note{margin-top:18px;font-size:22px;font-weight:700;color:var(--cream);background:#0b0a09e6;border:2px solid #ffffff16;border-radius:12px;padding:14px 16px}
+#c-verdict .note span{color:var(--dim);font-weight:600}
+
+/* square */
+#c-square .veil{background:linear-gradient(180deg,#0b0a09f2 0,#0b0a09e0 46%,#0b0a09f4 100%)}
+#c-square .top,#c-square .foot{left:48px;right:48px}
+#c-square .stage{position:absolute;z-index:3;left:48px;right:48px;top:108px}
+#c-square h1{font-size:68px;margin:10px 0 22px}
+#c-square .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+#c-square .cell{background:#0b0a09ee;border:2px solid #ffffff16;border-radius:14px;padding:16px 18px 14px;min-height:168px}
+#c-square .cell.v{border-color:#ffcf5a66}
+#c-square .cell.r{border-color:#9945ff88}
+#c-square .n{font-size:18px;font-weight:800;letter-spacing:2px;color:var(--lcd)}
+#c-square .cell.v .n{color:var(--amber)}
+#c-square .cell.r .n{color:#d7b6ff}
+#c-square .cell b{display:block;margin:6px 0 4px;font-size:32px;letter-spacing:1px;color:var(--amber)}
+#c-square .cell span{display:block;font-size:22px;font-weight:650;line-height:1.25;color:var(--cream)}
+</style></head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="mk" viewBox="0 0 512 512"><defs><clipPath id="c"><rect width="512" height="512" rx="112"/></clipPath><radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#9945FF" stop-opacity=".9"/><stop offset="1" stop-color="#9945FF" stop-opacity="0"/></radialGradient><linearGradient id="lane" x1="0" y1="206" x2="0" y2="512" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="#0b0a09"/><g clip-path="url(#c)"><ellipse cx="256" cy="206" rx="300" ry="120" fill="url(#glow)"/><polygon points="256,206 36,512 476,512" fill="#26221d"/><polygon points="256,206 36,512 70,512" fill="url(#lane)"/><polygon points="256,206 442,512 476,512" fill="url(#lane)"/><g fill="url(#lane)"><polygon points="252,250 260,250 263,286 249,286"/><polygon points="246,320 266,320 273,380 239,380"/><polygon points="234,420 278,420 290,512 222,512"/></g></g></symbol></svg>
+
+<section class="card" id="c-pipeline">
+  <div class="bg" style="background-image:url(../../frontend/design/youtube-banner/shots/r66-night.jpg)"></div>
+  <div class="veil"></div><div class="solbar"></div><div class="grain"></div>
+  <div class="top"><div class="logo"><svg><use href="#mk"/></svg>FREIGHT CHAIN</div><span class="pill">RULES v7</span></div>
+  <div class="stage">
+    <div>
+      <div class="kicker">VERIFIED PLAY</div>
+      <h1>THE BROWSER<br><b>DOES NOT JUDGE.</b></h1>
+      <p class="deck">The cab records the drive. The server rebuilds the road and resimulates it.</p>
+      <div class="facts">
+        <span><i>10 Hz</i> samples, one shared physics</span>
+        <span><i>Hash chain</i> on every batch</span>
+        <span>Boards still rank the finish. <i>A prize waits until the ride is decided.</i></span>
+      </div>
+    </div>
+    <ol class="steps">
+      <li><i>01</i><div><b>RECORD</b><span>Ten samples a second. Speed, steer, gear, damage, the fork.</span></div></li>
+      <li><i>02</i><div><b>SEAL</b><span>Each batch is hashed to the one before it. A changed batch fails.</span></div></li>
+      <li><i>03</i><div><b>REBUILD</b><span>The server grows the road and the holes from the ride seed.</span></div></li>
+      <li><i>04</i><div><b>REPLAY</b><span>Resimulated at 10 Hz. New rides attach a traffic-frame proof.</span></div></li>
+      <li><i>05</i><div><b>VERDICT</b><span>Verified, flagged, or rejected. The ride keeps its own rules.</span></div></li>
+      <li><i>06</i><div><b>REVIEW</b><span>A paid reject stays open until a wallet-signed admin decides.</span></div></li>
+    </ol>
+  </div>
+  <div class="foot"><b>FREIGHTCHAIN.FUN</b><span>SOLANA · DEVNET</span></div>
+</section>
+
+<section class="card" id="c-verdict">
+  <div class="bg" style="background-image:url(../../frontend/design/youtube-banner/shots/stuart-night.jpg)"></div>
+  <div class="veil"></div><div class="solbar"></div><div class="grain"></div>
+  <div class="top"><div class="logo"><svg><use href="#mk"/></svg>FREIGHT CHAIN</div><span class="pill am">PAID FINISH</span></div>
+  <div class="stage">
+    <div class="kicker">WHAT THE RIDER IS TOLD</div>
+    <h1>THREE LABELS.<br><b>THEN A PRIZE.</b></h1>
+    <p class="deck">The machine says <em>verified</em>, <em>flagged</em>, or <em>rejected</em>. A paid finish is labeled from that.</p>
+    <div class="grid">
+      <div class="tile">
+        <div class="tag">CAN TAKE A PRIZE</div>
+        <h2>ACCEPTED</h2>
+        <p>The replay verified the ride, or an admin did. <i>It can be paid.</i></p>
+        <div class="end">MACHINE · VERIFIED</div>
+      </div>
+      <div class="tile flag">
+        <div class="tag">A PERSON LOOKS</div>
+        <h2>UNDER REVIEW</h2>
+        <p>Flagged, still judging, or rejected by the machine. <i>Not final until an admin signs.</i></p>
+        <div class="end">WAITS FOR AN ADMIN</div>
+      </div>
+      <div class="tile no">
+        <div class="tag">SIGNED OFF</div>
+        <h2>REJECTED</h2>
+        <p>An admin rejected it. <i>It does not take a prize.</i></p>
+        <div class="end">ADMIN DECISION</div>
+      </div>
+    </div>
+    <div class="note">Free rides are judged and sit outside this review. <span>Today a completed finish still ranks. The label says when a person has to look first.</span></div>
+  </div>
+  <div class="foot"><b>FREIGHTCHAIN.FUN</b><span>SHADOW ON THE BOARDS</span></div>
+</section>
+
+<section class="card" id="c-square">
+  <div class="bg" style="background-image:url(../../frontend/design/youtube-banner/shots/r66-night.jpg)"></div>
+  <div class="veil"></div><div class="solbar"></div><div class="grain"></div>
+  <div class="top"><div class="logo"><svg><use href="#mk"/></svg>FREIGHT CHAIN</div><span class="pill">RULES v7</span></div>
+  <div class="stage">
+    <div class="kicker">VERIFIED PLAY</div>
+    <h1>THE SERVER<br><b>REPLAYS THE RIDE.</b></h1>
+    <div class="grid">
+      <div class="cell"><div class="n">01</div><b>RECORD</b><span>Ten samples a second from the cab.</span></div>
+      <div class="cell"><div class="n">02</div><b>SEAL</b><span>Each batch hashed to the one before it.</span></div>
+      <div class="cell"><div class="n">03</div><b>REBUILD</b><span>Road and holes from the ride seed.</span></div>
+      <div class="cell"><div class="n">04</div><b>REPLAY</b><span>10 Hz on the shared physics. Traffic frames attached.</span></div>
+      <div class="cell v"><div class="n">05</div><b>VERDICT</b><span>Verified, flagged, or rejected.</span></div>
+      <div class="cell r"><div class="n">06</div><b>REVIEW</b><span>A paid reject waits for a signed admin.</span></div>
+    </div>
+  </div>
+  <div class="foot"><b>FREIGHTCHAIN.FUN</b><span>SOLANA · DEVNET</span></div>
+</section>
+
+<script>
+const id = new URLSearchParams(location.search).get('card') || 'pipeline';
+const card = document.getElementById('c-' + id);
+if (card) card.classList.add('on');
+document.fonts.ready.then(() => { window.__ready = true; });
+</script>
+</body></html>

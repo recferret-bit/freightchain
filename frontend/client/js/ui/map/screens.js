@@ -4,6 +4,7 @@ import { clamp, MONO } from '../../util.js';
 import { view } from './state.js';
 import { ease, lerp } from './power-fsm.js';
 import { paintMap } from './canvas-map.js';
+import { paintGlyph } from '../../phone/icons.js';
 
 /* Phone OS screen components: boot animation, home screen launcher + app icons, and status bar icons. */
 
@@ -57,19 +58,7 @@ export function homeLayout(X, Y, W, H, thumb) {
 }
 
 function appGlyph(g, id, x, y, s) {
-  g.save(); g.translate(x + s / 2, y + s / 2); const k = s / 40; g.scale(k, k); g.strokeStyle = g.fillStyle = '#fff'; g.lineWidth = 3; g.lineCap = g.lineJoin = 'round'; g.beginPath();
-  if (id === 'maps') { g.moveTo(-14, -8); g.lineTo(-5, -12); g.lineTo(5, -8); g.lineTo(14, -12); g.lineTo(14, 10); g.lineTo(5, 14); g.lineTo(-5, 10); g.lineTo(-14, 14); g.closePath(); g.stroke(); g.beginPath(); g.moveTo(-5, -12); g.lineTo(-5, 10); g.moveTo(5, -8); g.lineTo(5, 14); g.stroke(); g.fillStyle = '#ea4335'; g.beginPath(); g.arc(2, -2, 4.5, 0, 7); g.fill(); }
-  else if (id === 'wallet') { g.roundRect(-14, -9, 28, 20, 4); g.stroke(); g.beginPath(); g.moveTo(-14, -3); g.lineTo(14, -3); g.stroke(); g.beginPath(); g.arc(8, 4, 2, 0, 7); g.fill(); }
-  else if (id === 'radio') { g.roundRect(-14, -6, 28, 18, 4); g.stroke(); g.beginPath(); g.arc(-5, 3, 4, 0, 7); g.stroke(); g.moveTo(3, 0); g.lineTo(10, 0); g.moveTo(3, 5); g.lineTo(10, 5); g.stroke(); g.beginPath(); g.moveTo(-8, -6); g.lineTo(8, -14); g.stroke(); }
-  else if (id === 'weather') { g.arc(-3, -3, 7, 0, 7); g.fill(); g.beginPath(); g.roundRect(-13, 3, 26, 9, 4.5); g.fill(); }
-  else if (id === 'truck') { g.roundRect(-15, -9, 18, 14, 2); g.stroke(); g.beginPath(); g.moveTo(3, -4); g.lineTo(10, -4); g.lineTo(15, 2); g.lineTo(15, 5); g.lineTo(3, 5); g.stroke(); g.beginPath(); g.arc(-8, 8, 3, 0, 7); g.arc(9, 8, 3, 0, 7); g.fill(); }
-  else if (id === 'chat') { g.roundRect(-14, -11, 28, 19, 6); g.stroke(); g.beginPath(); g.moveTo(-6, 8); g.lineTo(-9, 14); g.lineTo(0, 8); g.stroke(); }
-  else if (id === 'cam') { g.roundRect(-14, -8, 28, 19, 4); g.stroke(); g.beginPath(); g.arc(0, 2, 6, 0, 7); g.stroke(); }
-  else if (id === 'cog') { g.arc(0, 0, 8, 0, 7); g.stroke(); for (let a = 0; a < 8; a++) { g.beginPath(); g.moveTo(Math.cos(a * .785) * 11, Math.sin(a * .785) * 11); g.lineTo(Math.cos(a * .785) * 14, Math.sin(a * .785) * 14); g.stroke(); } }
-  else if (id === 'calls') { g.arc(0, 0, 11, .6, 2.5); g.stroke(); g.beginPath(); g.arc(0, 0, 11, 3.8, 5.6); g.stroke(); }
-  else if (id === 'web') { g.arc(0, 0, 12, 0, 7); g.stroke(); g.beginPath(); g.ellipse(0, 0, 5, 12, 0, 0, 7); g.stroke(); g.beginPath(); g.moveTo(-12, 0); g.lineTo(12, 0); g.stroke(); }
-  else { g.arc(-5, 8, 4, 0, 7); g.fill(); g.beginPath(); g.moveTo(-1, 8); g.lineTo(-1, -10); g.lineTo(10, -7); g.stroke(); }
-  g.restore();
+  g.save(); g.translate(x + s / 2, y + s / 2); g.scale(s / 40, s / 40); paintGlyph(g, id); g.restore();
 }
 
 export function paintHome(g, X, Y, W, H, t, thumb, o) {

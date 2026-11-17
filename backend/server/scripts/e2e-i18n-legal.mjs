@@ -1,4 +1,4 @@
-// Real API + PostgreSQL + Chrome acceptance of explicit versioned consent and existing EN/RU legal surfaces.
+// Real API + PostgreSQL + Chrome acceptance of explicit versioned consent and English-only legal surfaces.
 // BASE and DATABASE_URL must identify the disposable runner. Chrome failure is a failure, never a skip.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -36,15 +36,14 @@ try {
   check('first authenticated lobby opens explicit consent', await until('!!document.querySelector("#terms-dialog[open]")'));
   check('age is unchecked and acceptance disabled', await chrome.ev('!document.querySelector("#terms-age").checked && document.querySelector("#terms-accept").disabled'));
   check('review links and visible draft label exist', await chrome.ev('document.querySelectorAll("#terms-dialog a").length === 2 && /draft/i.test(document.querySelector("#terms-dialog").textContent)'));
-  await chrome.ev('document.querySelector("[data-terms-lang=ru]").click()');
-  check('Russian consent meaning includes age, privacy and training', await chrome.ev('/18/.test(document.querySelector("#terms-dialog").textContent) && /конфиденциальности/.test(document.querySelector("#terms-dialog").textContent) && /Тренировки/.test(document.querySelector("#terms-dialog").textContent)'));
-  await chrome.shot('consent-ru');
+  check('no language switch buttons exist on consent or lobby', await chrome.ev('!document.querySelector("[data-terms-lang]") && !document.querySelector("[data-set-lang]")'));
+  await chrome.shot('consent-en');
   await chrome.ev('document.querySelector("#terms-decline").click()');
   check('refusal persists no consent or audit', (await get('profile/terms')).json.required && await count() === 0);
   const training = await call('POST', 'rides', { tier: 'free', level: 1 }, cookie);
   check('training remains available after refusal', training.status === 200, JSON.stringify(training.json));
-  check('profile legal copy follows Russian', await until('/МНЕ ИСПОЛНИЛОСЬ 18 ЛЕТ/.test(document.querySelector("#offer")?.textContent || "")'));
-  await chrome.ev('void import("/site/wallet.js").then(m => m.api("airdrop/claim", {}, { method: "POST", report: false })).catch(() => {})');   // a real protected write (agreements are consent-exempt by design); never awaited, the review waits on the modal
+  check('profile legal copy is English', await until('/BEFORE A PAID SHIFT/.test(document.querySelector("#offer")?.textContent || "")'));
+  await chrome.ev('void import("/site/wallet.js").then(m => m.api("airdrop/claim", {}, { method: "POST", report: false })).catch(() => {})');
   check('a protected write opens consent again without silently accepting', await until('!!document.querySelector("#terms-dialog[open]")') && await count() === 0);
   await chrome.ev('document.querySelector("#terms-age").click(); document.querySelector("#terms-accept").click()');
   check('explicit acceptance closes the modal', await until('!document.querySelector("#terms-dialog")'));
@@ -52,37 +51,34 @@ try {
   const accepted = { termsVersion: status.termsVersion, privacyVersion: status.privacyVersion, age18: true, accepted: true };
   const repeated = await call('POST', 'profile/terms', accepted, cookie);
   check('duplicate acceptance is idempotent', repeated.status === 200 && await count() === 1);
-  await open('/lobby.html#profile');
-  check('saved language survives navigation', await until('document.documentElement.lang === "ru" && /ПОВТОРЫ/.test(document.querySelector("[data-i18n=\\"lobby.tab.replays\\"]")?.textContent || "")'), 'ПОВТОРЫ');
+  await open('/lobby.html?lang=ru#profile');
+  check('lang=ru still resolves to English', await until('document.documentElement.lang === "en" && /REPLAYS/.test(document.querySelector("[data-i18n=\\"lobby.tab.replays\\"]")?.textContent || "")'), 'REPLAYS');
   check('accepted wallet is not asked on reload', !(await chrome.ev('!!document.querySelector("#terms-dialog")')));
   const untranslated = await chrome.ev('[...document.querySelectorAll("[data-i18n]")].filter(n => !n.textContent.trim() || n.textContent.trim() === n.dataset.i18n).length');
   check('chrome data-i18n nodes are translated', untranslated === 0, `untranslated ${untranslated}`);
-  await chrome.ev('document.querySelector("[data-set-lang=en]").click()');
-  check('agreement card switches back to English', await until('/BEFORE A PAID SHIFT/.test(document.querySelector("#offer")?.textContent || "")'));
+  check('agreement card stays in English', await until('/BEFORE A PAID SHIFT/.test(document.querySelector("#offer")?.textContent || "")'));
   await chrome.ev('document.querySelector("#agree-loss").click()');
   check('loss agreement saves through the real API after consent', await until('document.querySelector("#agree-loss")?.checked && document.querySelector("#agree-loss")?.disabled'));
   check('both profile agreements persist', (await get('profile')).json.agreements.loss === true && (await get('profile')).json.agreements.age18 === true);
   await prisma.$executeRaw`UPDATE player."Player" SET "termsVersion"=0 WHERE wallet=${wallet}`;
-  await open('/lobby.html?lang=en&stale=1#profile');   // a distinct query: the language switch already left ?lang=en in the URL, and a fragment-only navigation would not reload
+  await open('/lobby.html?stale=1#profile');
   check('an older stored version requires consent again', await until('!!document.querySelector("#terms-dialog[open]")'));
   await chrome.ev('document.querySelector("#terms-decline").click()');
   const refused = await call('POST', 'airdrop/claim', {}, cookie);
   check('stale version refuses protected writes with 428 terms_required', refused.status === 428 && refused.json.code === 'terms_required');
-  await open('/lobby.html?lang=ru#profile');
+  await open('/lobby.html?reconsent=1#profile');
   assert(await until('!!document.querySelector("#terms-dialog[open]")'));
   await chrome.ev('document.querySelector("#terms-age").click(); document.querySelector("#terms-accept").click()');
   check('re-consent restores current versions without duplicating their immutable audit', await until('!document.querySelector("#terms-dialog")') && !(await get('profile/terms')).json.required && await count() === 1);
-  for (const lang of ['en', 'ru']) {
-    const source = readFileSync(new URL(`../../../docs/legal/PRESEASON_RULES${lang === 'ru' ? '_RU' : ''}.md`, import.meta.url), 'utf8');
-    for (const page of ['terms', 'privacy', 'rules']) {
-      await open(`/${page}/?lang=${lang}`);
-      check(`${page} ${lang} preserves the full draft source and placeholders`, await until('!!document.querySelector("#legal-text")?.textContent') && await chrome.ev('document.querySelector("#legal-text").textContent') === source);
-    }
+  const source = readFileSync(new URL('../../../docs/legal/PRESEASON_RULES.md', import.meta.url), 'utf8');
+  for (const page of ['terms', 'privacy', 'rules']) {
+    await open(`/${page}/`);
+    check(`${page} en preserves the full draft source and placeholders`, await until('!!document.querySelector("#legal-text")?.textContent') && await chrome.ev('document.querySelector("#legal-text").textContent') === source);
   }
   await chrome.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   check('legal text fits phone width', await chrome.ev('document.documentElement.scrollWidth <= innerWidth + 1'));
-  await chrome.shot('legal-ru-phone');
+  await chrome.shot('legal-en-phone');
   const problems = chrome.filt().filter(x => !(/status of 428/.test(x) && /\/api\/airdrop\/claim/.test(x)));
   check('no unexpected browser errors', !problems.length, problems.join(' | '));
-  console.log('PASS explicit consent, refusal, re-consent, EN/RU and draft legal documents');
+  console.log('PASS explicit consent, refusal, re-consent, English-only UI and draft legal documents');
 } finally { if (chrome) await chrome.close(); await prisma.$disconnect(); }

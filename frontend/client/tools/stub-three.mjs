@@ -6,12 +6,14 @@ class Obj { constructor(){this.position=new V();this.scale=new V(1,1,1);this.rot
 export class Group extends Obj {} export class Scene extends Obj { constructor(){super();this.fog=null;} }
 export class Mesh extends Obj { constructor(g,m){super();this.geometry=g||{dispose(){}};this.material=Array.isArray(m)?m[0]:m;} }
 export class PerspectiveCamera extends Obj { constructor(){super();this.projectionMatrix={elements:new Array(16).fill(1)};this.projectionMatrixInverse={copy(){return this;},invert(){return this;}};} updateProjectionMatrix(){} setViewOffset(){} }
-export class WebGLRenderer { constructor(){this.calls=0;} setPixelRatio(){} setSize(){} setViewport(){} setScissor(){} setScissorTest(){} render(){this.calls++;} }
+export class OrthographicCamera extends Obj { constructor(){super();} updateProjectionMatrix(){} }
+export class WebGLRenderer { constructor(){this.calls=0;this.autoClear=true;this.domElement={width:1280,height:720,style:{},dataset:{}};} setPixelRatio(){} setSize(){} setViewport(){} setScissor(){} setScissorTest(){} setRenderTarget(){} copyFramebufferToTexture(){} render(){this.calls++;} }
 const geo = class { dispose(){} rotateY(){return this;} setAttribute(){} setIndex(){} setDrawRange(){} addGroup(){} };
 export const BoxGeometry=geo, ConeGeometry=geo, CylinderGeometry=geo, DodecahedronGeometry=geo, CircleGeometry=geo, PlaneGeometry=geo, SphereGeometry=geo, BufferGeometry=geo, BufferAttribute=class{};
 export class MeshBasicMaterial { constructor(o={}){Object.assign(this,{side:0,userData:{}},o);} } export class ShaderMaterial extends MeshBasicMaterial {}
-export class CanvasTexture { constructor(){this.repeat={set(){}};this.offset={set(){}};} }
-export class Fog { constructor(_c,n,f){this.color={setRGB(){return this;}};this.near=n;this.far=f;} } export { V as Vector3 }; export class Vector4 { constructor(x=0,y=0,z=0,w=0){Object.assign(this,{x,y,z,w});} set(x,y,z,w){Object.assign(this,{x,y,z,w});return this;} }
+export class CanvasTexture { constructor(){this.repeat={set(){}};this.offset={set(){}};this.premultiplyAlpha=false;this.needsUpdate=false;} dispose(){} }
+export class FramebufferTexture { constructor(w=1,h=1){this.image={width:w,height:h};this.minFilter=1006;this.magFilter=1006;this.generateMipmaps=false;this.colorSpace='';} dispose(){} }
+export class Fog { constructor(_c,n,f){this.color={setRGB(){return this;}};this.near=n;this.far=f;} } export { V as Vector3 }; export class Vector2 { constructor(x=0,y=0){this.x=x;this.y=y;} set(x,y){this.x=x;this.y=y;return this;} } export class Vector4 { constructor(x=0,y=0,z=0,w=0){Object.assign(this,{x,y,z,w});} set(x,y,z,w){Object.assign(this,{x,y,z,w});return this;} }
 export class Sprite extends Obj { constructor(m){super();this.material=m;} } export class SpriteMaterial extends MeshBasicMaterial {}
-export const AdditiveBlending=2, LinearToneMapping=1;
-export const BackSide=1, FrontSide=0, DoubleSide=2, RepeatWrapping=1000, ClampToEdgeWrapping=1001, LinearFilter=1006, SRGBColorSpace='srgb';
+export const AdditiveBlending=2, LinearToneMapping=1, REVISION='160';
+export const BackSide=1, FrontSide=0, DoubleSide=2, RepeatWrapping=1000, ClampToEdgeWrapping=1001, NearestFilter=1003, LinearFilter=1006, SRGBColorSpace='srgb', NoColorSpace='';

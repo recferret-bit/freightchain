@@ -2,7 +2,7 @@ import { MONO } from '../../util.js';
 import { PhoneApp } from '../app.js';
 import { t } from '../../minigames/i18n/index.js';
 import { machine } from '../../minigames/machine.js';
-import { INSET, TOP, FOOT, fill, caption, wrap } from '../kit.js';
+import { INSET, TOP, FOOT, fill, caption, wrap, fitFont } from '../kit.js';
 import { pike, sendPike, pushPike, backPike, confirmPike } from '../pike-state.js';
 
 /* PIKE toll. The four digits are never drawn here — they live in Messages until the arm is up. */
@@ -23,13 +23,13 @@ function button(g, h, on, label) {
   g.beginPath(); g.roundRect(h.x, h.y, h.w, h.h, 12); g.fill();
   if (!on) { g.strokeStyle = '#8a4a32'; g.lineWidth = 1.5; g.stroke(); }
   g.fillStyle = on ? INK : '#f6edd4';
-  g.font = `700 16px ${MONO}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(label, h.x + h.w / 2, h.y + h.h / 2);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(fitFont(g, label, h.w - 12, 700, 16, 11), h.x + h.w / 2, h.y + h.h / 2);
 }
 
-function status(g, W, text, color = '#e6d2c4') {
+function status(g, W, text, color = '#e6d2c4', maxLines = 3) {
   g.fillStyle = color; g.font = `600 13px ${MONO}`; g.textAlign = 'left'; g.textBaseline = 'middle';
-  wrap(g, text, W - 32).slice(0, 3).forEach((line, i) => g.fillText(line, INSET, TOP + 78 + i * 18));
+  wrap(g, text, W - 32).slice(0, maxLines).forEach((line, i) => g.fillText(line, INSET, TOP + 78 + i * 18));
 }
 
 export class PikeApp extends PhoneApp {
@@ -40,7 +40,7 @@ export class PikeApp extends PhoneApp {
     g.fillStyle = ORANGE; g.fillRect(0, 34, W, 52);
     g.fillStyle = INK; g.font = `800 26px ${MONO}`; g.textAlign = 'left'; g.textBaseline = 'middle';
     g.fillText('PIKE', INSET, 52);
-    g.font = `600 12px ${MONO}`; g.fillText(t('pike.tag'), INSET, 74);
+    g.fillText(fitFont(g, t('pike.tag'), W - 32, 600, 12, 9), INSET, 74);
     if (pike.phase === 'open') return this.paintOpen(g, W, H);
     if (pike.phase === 'code') return this.paintCode(g, W);
     const line = pike.at ? t('pike.here') : t('pike.find');
@@ -56,7 +56,7 @@ export class PikeApp extends PhoneApp {
   }
 
   paintCode(g, W) {
-    status(g, W, pike.at ? t('pike.remember') : t('pike.away'), pike.wrong ? '#e07060' : '#e6d2c4');
+    status(g, W, pike.at ? t('pike.remember') : t('pike.away'), pike.wrong ? '#e07060' : '#e6d2c4', 2);
     if (pike.wrong) caption(g, t('pike.wrong'), INSET, TOP + 112, '#e07060', 12);
     const slots = padHits(W);
     const boxW = 36, gap = 10, x0 = (W - (boxW * 4 + gap * 3)) / 2, y = TOP + 132;

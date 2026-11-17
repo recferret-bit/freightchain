@@ -113,10 +113,15 @@ try {
   await chrome.ev(`(() => { const s = document.getElementById('w-seek'); s.value = 2; s.dispatchEvent(new Event('input', { bubbles: true })); })()`);
   const sought = await until(`Math.abs(__game.watch.wt - 2) < 0.6`, 8000);
   check('seek lands on the recorded second', sought, `wt ${await chrome.ev('__game.watch.wt')}`);
-  const shade0 = await chrome.ev('__game.CFG.FORM_SHADE');
+  const lab0 = await chrome.ev('document.getElementById("pixel-dlg")?.classList.contains("open")');
   await chrome.ev(`window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8', bubbles: true, cancelable: true }))`);
+  const lab1 = await chrome.ev('document.getElementById("pixel-dlg")?.classList.contains("open")');
+  check('C12 F8 toggles visual shader lab', lab0 !== lab1, `${lab0} -> ${lab1}`);
+  await chrome.ev(`window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8', bubbles: true, cancelable: true }))`);
+  const shade0 = await chrome.ev('__game.CFG.FORM_SHADE');
+  await chrome.ev(`window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F7', bubbles: true, cancelable: true }))`);
   const shade1 = await chrome.ev('__game.CFG.FORM_SHADE');
-  check('C12 F8 toggles form shade', shade0 !== shade1, `${shade0} -> ${shade1}`);
+  check('F7 toggles form shade', shade0 !== shade1, `${shade0} -> ${shade1}`);
   const play0 = await chrome.ev('!!__game.watch.playing');
   await chrome.ev(`window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }))`);
   const play1 = await chrome.ev('!!__game.watch.playing');

@@ -1,6 +1,6 @@
 /* Consent never signs a transaction or retries an interrupted purchase. The server owns accepted versions. */
 import { el } from './dom.js';
-import { currentLang, t, saveLang, applyI18n } from './i18n.js';
+import { t } from './i18n.js';
 import { SITE_BASE } from '../js/hosts.js';
 
 let pending = null;
@@ -18,14 +18,8 @@ export function reviewTerms(api) {
       const accept = text('button', 'consent.accept', { id: 'terms-accept', type: 'button', disabled: true });
       const refuse = text('button', 'consent.decline', { id: 'terms-decline', type: 'button' });
       const note = el('p', { id: 'terms-status', role: 'status' });
-      const link = (path, key) => text('a', key, { href: `${SITE_BASE}/${path}/?lang=${currentLang()}`, target: '_blank', rel: 'noopener', style: 'color:#c9adff' });
+      const link = (path, key) => text('a', key, { href: `${SITE_BASE}/${path}/`, target: '_blank', rel: 'noopener', style: 'color:#c9adff' });
       const rules = link('terms', 'consent.rules'), privacy = link('privacy', 'consent.privacy');
-      const lang = el('div', {}, ...['en', 'ru'].map(code => el('button', { type: 'button', 'data-terms-lang': code, onclick: () => {
-        saveLang(code);
-        const url = new URL(location.href); url.searchParams.set('lang', code); history.replaceState(null, '', url);
-        rules.href = `${SITE_BASE}/terms/?lang=${code}`; privacy.href = `${SITE_BASE}/privacy/?lang=${code}`;
-        applyI18n(document);
-      } }, code.toUpperCase())));
       const finish = ok => { dialog.close(); dialog.remove(); resolve(ok); };
       age.onchange = () => { accept.disabled = !age.checked; };
       refuse.onclick = () => finish(false);
@@ -39,7 +33,7 @@ export function reviewTerms(api) {
           finish(true);
         } catch { note.textContent = t('consent.error'); accept.disabled = refuse.disabled = age.disabled = false; }
       };
-      dialog.append(lang, text('h2', 'consent.title', { id: 'terms-title' }), text('p', 'consent.intro'), text('p', 'consent.draft'), el('p', {}, rules, ' · ', privacy), el('p', { id: 'terms-versions' }, `v${status.termsVersion} / v${status.privacyVersion}`), el('label', { style: 'display:block;margin:20px 0' }, age, ' ', text('span', 'consent.age')), accept, ' ', refuse, note);
+      dialog.append(text('h2', 'consent.title', { id: 'terms-title' }), text('p', 'consent.intro'), text('p', 'consent.draft'), el('p', {}, rules, ' · ', privacy), el('p', { id: 'terms-versions' }, `v${status.termsVersion} / v${status.privacyVersion}`), el('label', { style: 'display:block;margin:20px 0' }, age, ' ', text('span', 'consent.age')), accept, ' ', refuse, note);
       document.body.append(dialog); dialog.showModal(); age.focus();
     });
   })().catch(() => false).finally(() => { pending = null; });

@@ -2,7 +2,7 @@ import { MONO } from '../../util.js';
 import { PhoneApp } from '../app.js';
 import { t } from '../../minigames/i18n/index.js';
 import { hosts, paintJob } from '../../minigames/play.js';
-import { INSET, TOP, fill, title, card, wrap, caption } from '../kit.js';
+import { INSET, TOP, fill, title, card, wrap } from '../kit.js';
 import { gulp } from '../gulp-state.js';
 import { pike } from '../pike-state.js';
 
@@ -47,9 +47,12 @@ export class MessagesApp extends PhoneApp {
       card(g, INSET, y, W - 32, h, '#2a2416', 18);
       g.fillStyle = p.color; g.font = `700 13px ${MONO}`; g.textAlign = 'left'; g.textBaseline = 'middle';
       g.fillText(p.brand, INSET + 16, y + 22);
-      g.font = `700 ${pays.length > 1 ? 32 : 40}px ${MONO}`; g.textAlign = 'center';
-      g.fillText(p.code, W / 2, y + (pays.length > 1 ? 62 : 78));
-      caption(g, p.body, INSET + 16, y + h - 18, '#d9cba6', 12);
+      g.font = `700 ${pays.length > 1 ? 30 : 38}px ${MONO}`; g.textAlign = 'center';
+      g.fillText(p.code, W / 2, y + (pays.length > 1 ? 54 : 68));
+      g.fillStyle = '#d9cba6'; g.font = `600 12px ${MONO}`; g.textAlign = 'left'; g.textBaseline = 'middle';
+      const lines = wrap(g, p.body, W - 64).slice(0, 2);
+      const baseY = lines.length > 1 ? y + h - 28 : y + h - 18;
+      lines.forEach((ln, li) => g.fillText(ln, INSET + 16, baseY + li * 15));
     });
   }
 }

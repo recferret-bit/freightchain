@@ -59,6 +59,9 @@ js/world/vehicles.js `buildVehicle` (entity of the type's id; VEHICLES table re-
 js/viewer.js model viewer (`viewer.html`, storybook); its catalogue is js/catalogue.js (the same entities, DOM-free) — skill `model-geometry-validator`
 js/sim/traffic.js traffic: main road + crossroads side roads, spawn zones, AI PRESETS (IDM car-following + lanes + signals), truck contact (aligned: scratch / bump / direct hit; at an angle: closing speed)
 js/world/render.js per-frame 3D render, camera shake, trailer hitch, mirror passes, resize()
+js/world/pixel-pass.js post-process Bayer-dithered pixel-art shader pass (`OUT OF COCKPIT` / `WHOLE GAME` scope, persisted in `freightchain.pixel*`)
+js/ui/crt.js old-TV / VHS scanline, roll, noise, flicker, vignette & glitch-wave overlay (`F9`)
+js/ui/visual-lab.js F8 Visual Shader Lab dialog (`PIXEL` scope/palette/sliders, `CRT` sliders, `SHADE` toggle)
 js/sim/physics.js longitudinal & lateral dynamics, steering, body sway, trailer articulation, ride end conditions; re-exports `sim/engine.js`
 js/sim/engine.js engine & ignition state machine (`ENGINE_STATES`, `engineStateOf`, `ignition`, `keySwitch`, `releaseKey`, `engineOff`, `stepEngine`), manual gearbox (`tryShift`), parking brake (`toggleParkingBrake`)
 js/sim/damage.js collisions, prop destruction, pooled 3D debris, road hole impacts; js/sim/glass-damage.js = windscreen crack & bug-splat generators
@@ -132,7 +135,7 @@ Don't assume a ride can be replayed or validated by re-running the sim:
 - Tunables go in `config.js`; derived constants next to the code that owns them.
 
 ### Rendering gotchas
-- Everything is `MeshBasicMaterial` (no scene lights) + fog. `CFG.FORM_SHADE` (F8) adds a daytime sun shade from the world normal and a 2 cm edge on boxes (`world/nightlight.js`); upward faces stay at the flat colour, and the term fades out at night. Canvas textures are sRGB. The sky `ShaderMaterial` writes raw colours (no colour-space conversion) – don't "fix" that.
+- Everything is `MeshBasicMaterial` (no scene lights) + fog. `CFG.FORM_SHADE` (F7, or F8 Visual Shader Lab) adds a daytime sun shade from the world normal and a 2 cm edge on boxes (`world/nightlight.js`); upward faces stay at the flat colour, and the term fades out at night. Canvas textures are sRGB. The sky `ShaderMaterial` writes raw colours (no colour-space conversion) – don't "fix" that. `world/pixel-pass.js` (`F10`) copies `#world` after `renderWorld()` and renders the pixelated quad (optionally compositing `#cockpit` when scope is `all` = `WHOLE GAME`); `ui/crt.js` (`F9`) overlays scanlines/noise/vignette above `#world` + `#cockpit`.
 - `Object3D.position` is read-only: use `.position.set(...)`, never `Object.assign(mesh, { position })` (throws in strict mode).
 - **Mirrors are a second render pass** with the projection x-flipped, so culling is inverted. The flip list (`flipMats()` in `world/render.js`) = the route's tracked materials (`themes/_shared/mats.js`) + `MAT` + trailer + `vehicleMats`; **every shared single-sided
  material** in the scene must be in one of those or it renders inside-out in the mirrors. `DoubleSide` materials are skipped.
@@ -161,4 +164,4 @@ no props/furniture along side roads and the main road behind the depot · no flo
 
 ### Campaign tasks in Profile
 
-`site/lobby-campaign.js` renders the EN/RU campaign task panel; `campaign.js` validates X post identifiers and derives task state, and `campaign-copy.js` holds its Russian copy. The server owns progress, points, consent and the event attempt. External provider widgets provide ownership/challenge proofs only. `node frontend/client/tools/e2e-campaign.mjs` runs inert HTTP fixtures in real Chrome, blocks outbound provider traffic, and captures desktop/mobile screenshots. Real Telegram/X/Turnstile acceptance remains an owner check.
+`site/lobby-campaign.js` renders the English campaign task panel; `campaign.js` validates X post identifiers and derives task state. The server owns progress, points, consent and the event attempt. External provider widgets provide ownership/challenge proofs only. `node frontend/client/tools/e2e-campaign.mjs` runs inert HTTP fixtures in real Chrome, blocks outbound provider traffic, and captures desktop/mobile screenshots. Real Telegram/X/Turnstile acceptance remains an owner check.

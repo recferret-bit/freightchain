@@ -1,4 +1,4 @@
-/* EN/RU for the lobby, the replay panel, receipts and the error codes the server sends. Order: ?lang= → fc_lang → freightchain.lang → navigator → en. */
+/* English strings for the lobby, the replay panel, receipts and the error codes the server sends. */
 import { store } from '../js/util.js';
 
 const en = {
@@ -21,7 +21,6 @@ const en = {
   "offer.loss": "SOL SPENT ON A SHIFT CAN BE LOST",
   "offer.lossHint": "A prize is not guaranteed. This is not a deposit or an investment. This build is Solana devnet.",
   'lang.en': 'EN',
-  'lang.ru': 'RU',
   'lobby.tab.new': 'NEW RIDE',
   'lobby.tab.live': 'LIVE',
   'lobby.tab.replays': 'REPLAYS',
@@ -92,154 +91,42 @@ const en = {
   'error.not_found': 'Not found.',
 };
 
-const ru = {
-  "consent.title": "ПРОЧИТАЙТЕ ПРАВИЛА",
-  "consent.intro": "Перед платными поездками, призами или наградами прочитайте правила Pre-season и уведомление о конфиденциальности. Тренировки и EASY доступны без согласия.",
-  "consent.draft": "Локальная версия devnet: тексты из репозитория — черновики; сведения для публикации ещё не заполнены.",
-  "consent.rules": "Правила Pre-season / условия",
-  "consent.privacy": "Уведомление о конфиденциальности",
-  "consent.age": "Мне исполнилось 18 лет",
-  "consent.accept": "ПРИНЯТЬ ЭТИ ВЕРСИИ",
-  "consent.decline": "ПРОДОЛЖИТЬ БЕЗ СОГЛАСИЯ",
-  "consent.saving": "Сохраняем согласие…",
-  "consent.error": "Не удалось сохранить согласие. Попробуйте ещё раз.",
-  "consent.retry": "Согласие сохранено. Повторите действие, чтобы продолжить.",
-  "offer.title": "ПЕРЕД ПЛАТНОЙ ПОЕЗДКОЙ",
-  "offer.off": "Отметьте оба пункта перед платной поездкой. Иначе кнопка поездки вернёт вас сюда.",
-  "offer.on": "Оба пункта отмечены. Потраченные на поездку SOL можно потерять. Приз не гарантирован.",
-  "offer.age": "МНЕ ИСПОЛНИЛОСЬ 18 ЛЕТ",
-  "offer.ageHint": "Обязательно перед любой поездкой с расходованием SOL.",
-  "offer.loss": "ПОТРАЧЕННЫЕ НА ПОЕЗДКУ SOL МОЖНО ПОТЕРЯТЬ",
-  "offer.lossHint": "Приз не гарантирован. Это не вклад и не инвестиция. Эта версия работает в Solana devnet.",
-  'lang.en': 'EN',
-  'lang.ru': 'RU',
-  'lobby.tab.new': 'НОВАЯ ПОЕЗДКА',
-  'lobby.tab.live': 'В ПУТИ',
-  'lobby.tab.replays': 'ПОВТОРЫ',
-  'lobby.tab.board': 'ТАБЛИЦА',
-  'lobby.tab.achievements': 'ДОСТИЖЕНИЯ',
-  'lobby.tab.garage': 'ГАРАЖ',
-  'event.title': 'ТОП-20 СОБЫТИЯ',
-  'event.final': 'ИТОГИ СОБЫТИЯ',
-  'event.pending': 'Таблица публикуется после проверки: ',
-  'event.notScheduled': 'не назначено',
-  'event.finalNote': 'Итоговый список. Призы выплачиваются вручную в USDC; ссылка на транзакцию появится после записи.',
-  'event.prelimNote': 'Предварительная таблица, проверка продолжается. Апелляции до: ',
-  'event.wallet': 'Кошелёк',
-  'event.clean': 'Чистая дистанция',
-  'event.prize': 'Приз (USDC)',
-  'event.outside': 'вне призового зачёта',
-  'event.tx': 'транзакция',
-  'lobby.tab.profile': 'ПРОФИЛЬ',
-  'lobby.signOut': 'ВЫЙТИ',
-  'lobby.training.badge': 'ТРЕНИРОВКА · НЕТ В ПОВТОРАХ',
-  'lobby.training.hint': 'Тренировки личные: без рейтинга, без TEN4, их нет в повторах.',
-  'lobby.tier.free': 'ТРЕНИРОВКА',
-  'lobby.training.result': 'Тренировка — повтор не публикуется.',
-  'lobby.replays.footer': 'Повторы завершённых часовых поездок. Тренировок здесь нет. Поездки пула появляются после проверки.',
-  'lobby.replays.emptyMine': 'Повторов пока нет. Тренировки сюда не попадают.',
-  'lobby.replays.poolLocked': 'Станет публичным после проверки',
-  'lobby.live.count': 'на дороге',
-  'replay.play': 'Пуск',
-  'replay.pause': 'Пауза',
-  'replay.restart': 'Сначала',
-  'replay.back': '−10 с',
-  'replay.forward': '+10 с',
-  'replay.share': 'Ссылка',
-  'replay.mute': 'Звук',
-  'replay.fullscreen': 'На весь экран',
-  'replay.camera': 'Камера',
-  'replay.speed': 'Скорость',
-  'replay.gear': 'Передача',
-  'replay.damage': 'Урон',
-  'replay.progress': 'Маршрут',
-  'replay.driver': 'Водитель',
-  'replay.chat': 'Написать…',
-  'replay.send': 'ОТПРАВИТЬ',
-  'replay.tip': 'Чаевые водителю',
-  'replay.nothing': 'СМОТРЕТЬ НЕЧЕГО',
-  'replay.lobby': 'НАЗАД В ЛОББИ',
-  'receipt.watch': 'СМОТРЕТЬ ПОВТОР',
-  'receipt.drive': 'ЗА РУЛЬ',
-  'receipt.loading': 'ЗАГРУЗКА ПОЕЗДКИ',
-  'blink.show': 'ПОКАЗАТЬ',
-  'blink.connect': 'КОШЕЛЁК',
-  'home.lobby': 'В лобби',
-  'home.lead': 'Повтор длинного рейса. Тренировка остаётся личной. Чаевые идут водителю.',
-  'legal.notice': 'Devnet SOL не имеет денежной стоимости. Подпись только через ваш кошелёк.',
-  'error.replay_not_available': 'Этот повтор недоступен.',
-  'error.replay_locked_until_payout': 'Повтор откроется после выплаты пула.',
-  'error.donation_too_small': 'Чаевые не меньше 0,001 SOL.',
-  'error.donation_too_large': 'Чаевые не больше 1 SOL.',
-  'error.too_many_open_orders': 'Уже ждут три чаевых. Сначала завершите одно.',
-  'error.pledges_disabled': 'Обещания отключены.',
-  'error.chat_banned': 'Чат для этого кошелька закрыт.',
-  'error.chat_link_forbidden': 'Ссылки в чате запрещены.',
-  'error.chat_word_forbidden': 'Это слово в чате запрещено.',
-  'error.live_rate_limited': 'Медленнее — пять сообщений в минуту.',
-  'error.own_ride': 'На своей поездке это недоступно.',
-  'error.bad_message': 'Такое сообщение отправить нельзя.',
-  'error.donation_expired': 'Чаевые истекли. Начните снова.',
-  'error.not_found': 'Не найдено.',
-};
+export const DICT = { en };
 
-export const DICT = { en, ru };
-
-export function resolveLang({ query, stored, storedLegacy, language } = {}) {
-  if (query === 'ru' || query === 'en') return query;
-  if (stored === 'ru' || stored === 'en') return stored;
-  if (storedLegacy === 'ru' || storedLegacy === 'en') return storedLegacy;
-  return String(language || '').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+export function resolveLang() {
+  return 'en';
 }
 
 export function currentLang() {
-  let query = null;
-  try { query = new URL(location.href).searchParams.get('lang'); } catch { /* no location in a worker */ }
-  const lang = resolveLang({ query, stored: store.get('fc_lang'), storedLegacy: store.get('freightchain.lang'), language: typeof navigator === 'undefined' ? '' : navigator.language });
-  if (query === 'ru' || query === 'en') saveLang(lang);
-  return lang;
+  return 'en';
 }
 
-export function saveLang(lang) {
-  store.set('fc_lang', lang);
-  store.set('freightchain.lang', lang);
+export function saveLang() {
+  store.set('fc_lang', 'en');
+  store.set('freightchain.lang', 'en');
 }
 
-export function t(key, lang = currentLang()) {
-  const table = DICT[lang] || DICT.en;
-  return table[key] || DICT.en[key] || key;
+export function t(key) {
+  return DICT.en[key] || key;
 }
 
-export function errorText(code, lang = currentLang()) {
-  return t(`error.${code}`, lang);
+export function errorText(code) {
+  return t(`error.${code}`);
 }
 
 export function applyI18n(root = typeof document === 'undefined' ? null : document) {
-  if (!root) return currentLang();
-  const lang = currentLang();
-  if (root.documentElement) root.documentElement.lang = lang;
+  if (!root) return 'en';
+  if (root.documentElement) root.documentElement.lang = 'en';
   const nodes = root.querySelectorAll ? root.querySelectorAll('[data-i18n]') : [];
   for (const node of nodes) {
-    const value = t(node.getAttribute('data-i18n'), lang);
+    const value = t(node.getAttribute('data-i18n'));
     const attr = node.getAttribute('data-i18n-attr');
     if (attr) node.setAttribute(attr, value);
     else node.textContent = value;
   }
-  return lang;
+  return 'en';
 }
 
 export function bootI18n(root = typeof document === 'undefined' ? null : document) {
-  if (!root?.addEventListener) return applyI18n(root);
-  root.addEventListener('click', (event) => {
-    const button = event.target?.closest?.('[data-set-lang]');
-    if (!button) return;
-    const lang = button.getAttribute('data-set-lang');
-    if (lang !== 'en' && lang !== 'ru') return;
-    saveLang(lang);
-    const url = new URL(location.href);
-    url.searchParams.set('lang', lang);
-    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
-    applyI18n(root);
-  });
   return applyI18n(root);
 }

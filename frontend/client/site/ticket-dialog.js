@@ -34,7 +34,6 @@ export function confirmBurnWarning(pool) {
       el('div', { class: 'tt-copy' },
         el('b', { class: 'tt-title', id: 'burn-title' }, 'THIS TICKET CAN BURN'),
         el('p', { id: 'burn-warning-en' }, `If you do not play by ${local} the ticket burns with no refund.`),
-        el('p', { id: 'burn-warning-ru' }, `Если вы не начнёте поездку до ${local}, билет сгорает без возврата.`),
         el('p', { class: 'tt-detail', id: 'burn-warning-countdown', 'data-at': String(when.getTime()), 'data-iso': when.toISOString() }, `Last start ${when.toISOString()} · ${Math.ceil(left / 1000)}s`),
         el('label', { for: 'burn-warning' }, box, ' I understand the ticket is non-refundable and burns if I do not start by the last start.'),
         el('div', { class: 'td-actions' }, go, el('button', { type: 'button', class: 'td-close', onclick: cancel }, 'CANCEL'))));

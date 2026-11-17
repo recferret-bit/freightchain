@@ -1,12 +1,13 @@
 import { MONO } from '../util.js';
 import { t } from '../minigames/i18n/index.js';
+import { fitFont } from './kit.js';
 
 export function button(g, x, y, w, h, label, primary) {
   g.fillStyle = primary ? '#f4f7fb' : 'rgba(255,255,255,.1)';
   g.beginPath(); g.roundRect(x, y, w, h, 12); g.fill();
   g.fillStyle = primary ? '#15191f' : '#f4f7fb';
-  g.font = `700 15px ${MONO}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(label, x + w / 2, y + h / 2 + 1);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(fitFont(g, label, w - 16, 700, 15, 10), x + w / 2, y + h / 2 + 1);
 }
 
 export function paintImage(g, img, x, y, w, h) {
@@ -29,6 +30,6 @@ export function simBar(g, W) {
 }
 
 export function heading(g, W, text, y) {
-  g.fillStyle = '#f4f7fb'; g.font = `700 16px ${MONO}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(text, W / 2, y);
+  g.fillStyle = '#f4f7fb'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(fitFont(g, text, W - 32, 700, 16, 11), W / 2, y);
 }

@@ -1,0 +1,21 @@
+X — attach pipeline.jpg, then verdict.jpg
+
+The browser does not judge the ride.
+
+Freight Chain records the cab at 10 Hz, hash-chains every batch, rebuilds the road from the seed, and resimulates the drive on the shared physics. Rules v7. A paid reject stays under review until a wallet-signed admin decides.
+
+Boards still rank a completed finish. A prize is ranked from verified rides only.
+
+freightchain.fun
+
+#Solana #Colosseum #SolanaGaming
+
+---
+
+Colosseum — project images
+
+square.jpg is the directory graphic. pipeline.jpg and verdict.jpg are the gallery.
+
+Short description:
+
+Verified play. The server rebuilds the road and resimulates every ride at 10 Hz. Batches are hash-chained. New rides carry a traffic-frame proof. The machine says verified, flagged, or rejected. A paid finish the machine rejects stays under review until an admin signs. In production the boards still rank a completed finish, and a prize is ranked from verified rides only.

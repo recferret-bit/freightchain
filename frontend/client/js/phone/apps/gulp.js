@@ -3,7 +3,7 @@ import { disp, driveHull } from '../../state.js';
 import { PhoneApp } from '../app.js';
 import { t } from '../../minigames/i18n/index.js';
 import { machine } from '../../minigames/machine.js';
-import { INSET, TOP, FOOT, fill, caption, bar, wrap } from '../kit.js';
+import { INSET, TOP, FOOT, fill, caption, bar, wrap, fitFont } from '../kit.js';
 import { gulp, toggleGas, toggleFix, sendCode, pushDigit, backDigit, confirmCode } from '../gulp-state.js';
 
 /* GULP station. The four digits are never drawn here — they live in Messages until the bay is done. */
@@ -36,8 +36,8 @@ function button(g, h, on, label) {
   g.beginPath(); g.roundRect(h.x, h.y, h.w, h.h, 12); g.fill();
   if (!on) { g.strokeStyle = '#6b5a28'; g.lineWidth = 1.5; g.stroke(); }
   g.fillStyle = on ? INK : '#f6edd4';
-  g.font = `700 15px ${MONO}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(label, h.x + h.w / 2, h.y + h.h / 2);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(fitFont(g, label, h.w - 12, 700, 15, 10), h.x + h.w / 2, h.y + h.h / 2);
 }
 
 function status(g, W, text, color = '#d9cba6') {
@@ -53,7 +53,7 @@ export class GulpApp extends PhoneApp {
     g.fillStyle = YEL; g.fillRect(0, 34, W, 52);
     g.fillStyle = INK; g.font = `800 26px ${MONO}`; g.textAlign = 'left'; g.textBaseline = 'middle';
     g.fillText('GULP', INSET, 52);
-    g.font = `600 12px ${MONO}`; g.fillText(t('gulp.tag'), INSET, 74);
+    g.fillText(fitFont(g, t('gulp.tag'), W - 32, 600, 12, 9), INSET, 74);
     if (gulp.phase === 'done') return this.paintDone(g, W, H);
     if (gulp.phase === 'code') return this.paintCode(g, W, H);
     this.paintPick(g, W, H);

@@ -1,5 +1,4 @@
 import { SITE_BASE } from '../js/hosts.js';
-import { store } from '../js/util.js';
 import { campaignText } from './campaign-copy.js';
 import { el } from './dom.js';
 import { campaignSteps, telegramUrl, xPostId } from './campaign.js';
@@ -19,7 +18,7 @@ function loadTurnstile() {
 
 /** Real provider widgets only sign ownership/challenges; the API remains authoritative for every task. */
 export function campaignSection({ api, alive = () => true }) {
-  let language = store.get('freightchain.campaignLanguage', navigator.language?.startsWith('ru') ? 'ru' : 'en');
+  const language = 'en';
   const t = text => campaignText(language, text);
   const heading = el('h2', { id: 'campaign' });
   const box = el('div', { class: 'card', id: 'campaign-box' }, t("Loading campaign…"));
@@ -66,7 +65,6 @@ export function campaignSection({ api, alive = () => true }) {
     const post = el('input', { id: 'campaign-x-post', 'aria-label': t("X post URL or ID"), placeholder: t("Post URL or ID"), maxlength: 256, value: postValue, disabled: !enabled, oninput: e => { postValue = e.target.value; } });
     const accept = el('input', { type: 'checkbox', id: 'campaign-rules', checked: rulesAccepted, disabled: busy, onchange: e => { rulesAccepted = e.target.checked; } });
     box.replaceChildren(
-      el('button', { type: 'button', class: 'ghost', id: 'campaign-language', 'aria-label': 'Campaign language: English / Русский', onclick: () => { language = language === 'ru' ? 'en' : 'ru'; store.set('freightchain.campaignLanguage', language); paint(); } }, language === 'ru' ? 'ENGLISH' : 'РУССКИЙ'),
       el('p', {}, `${row.completedTasks} ${t('of 3 task categories completed. Evidence carries into Season 1; the points allocation is pending. No TEN4 is minted or claimable here.')}`),
       el('ol', {}, steps.map(([label, done]) => el('li', { class: done ? 'good' : 'dim' }, `${done ? '✓' : '○'} ${t(label)}`))),
       el('p', {}, t("Personal X code: "), el('code', { id: 'campaign-code', style: 'overflow-wrap:anywhere' }, row.code)),
@@ -84,7 +82,7 @@ export function campaignSection({ api, alive = () => true }) {
         el('p', {}, `${t('One ranked 1h event attempt. Starts:')} ${row.event.startsAt ?? t('not scheduled')}; ${t('last start:')} ${row.event.lastStartAt ?? t('not scheduled')}.`),
         el('p', { class: 'dim' }, t("One person, one attempt. The attempt is consumed when you order its ride. Only verified, eligible rides may qualify; there is no guaranteed prize. Free training remains available.")),
         el('label', { class: 'opt' }, accept, t(" I am 18 or older and accept these event rules.")),
-        external(`${SITE_BASE}/rules/?lang=${language}`, language === 'ru' ? 'Правила / конфиденциальность' : 'Rules / privacy notice'),
+        external(`${SITE_BASE}/rules/`, 'Rules / privacy notice'),
         el('button', { type: 'button', id: 'campaign-attempt', disabled: busy || row.event.attemptGranted || !row.tasksComplete || !row.telegram.active, onclick: () => {
           if (!rulesAccepted) { say(t("Accept the event rules first."), true); return; }
           submit('airdrop/preseason/claim-attempt', { acceptedRules: true });

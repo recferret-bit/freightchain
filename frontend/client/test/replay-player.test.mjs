@@ -27,15 +27,10 @@ test('timeline marks damage, honk and minigame, and the chart follows the sample
   assert.equal(series.at(-1).hull, 80);
 });
 
-test('EN and RU dictionaries match and the language order is query, store, navigator', () => {
-  assert.deepEqual(Object.keys(DICT.en).sort(), Object.keys(DICT.ru).sort());
-  for (const key of Object.keys(DICT.en)) {
-    assert.ok(DICT.en[key]);
-    assert.ok(DICT.ru[key]);
-  }
-  assert.equal(resolveLang({ query: 'ru', stored: 'en', language: 'en-US' }), 'ru');
-  assert.equal(resolveLang({ stored: 'ru', language: 'en-US' }), 'ru');
-  assert.equal(resolveLang({ storedLegacy: 'en', language: 'ru-RU' }), 'en');
-  assert.equal(resolveLang({ language: 'ru-RU' }), 'ru');
+test('dictionary is English-only and resolveLang always resolves to en', () => {
+  assert.deepEqual(Object.keys(DICT), ['en']);
+  for (const key of Object.keys(DICT.en)) assert.ok(DICT.en[key]);
+  assert.equal(resolveLang({ query: 'ru', stored: 'ru', language: 'ru-RU' }), 'en');
+  assert.equal(resolveLang({ storedLegacy: 'ru', language: 'en-US' }), 'en');
   assert.equal(resolveLang({ language: 'en-US' }), 'en');
 });

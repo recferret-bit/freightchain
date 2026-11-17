@@ -1,5 +1,6 @@
 import { MONO } from '../util.js';
 import { button, heading, paintImage, simBar } from '../phone/chrome.js';
+import { fitFont } from '../phone/kit.js';
 import { t } from './i18n/index.js';
 
 /* Screens for a revealed minigame. Pictures come from job.images. Labels are chrome, never the secret. */
@@ -48,7 +49,8 @@ function resultLine(g, W, H, job) {
   if (!job.result) return;
   const text = job.result.outcome === 'correct' ? t('sms.ok') : job.result.final ? t('sms.timeout') : t('sms.wrong', { n: job.result.attemptsLeft ?? 0 });
   g.fillStyle = job.result.outcome === 'correct' ? '#9be7b3' : '#ffb4a8';
-  g.font = `700 14px ${MONO}`; g.textAlign = 'center'; g.fillText(text, W / 2, H - 78);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(fitFont(g, text, W - 24, 700, 14, 10), W / 2, H - 78);
 }
 
 export function paintJob(g, W, H, job) {
@@ -93,26 +95,26 @@ function paintSms(g, W, H, job) {
   const m = smsModel(job.layout ?? {});
   const ui = job.ui || 'list';
   if (ui === 'keys') {
-    heading(g, W, t('sms.reply'), 28);
-    dots(g, W, job.draft || '', 78);
+    heading(g, W, t('sms.reply'), 48);
+    dots(g, W, job.draft || '', 84);
     keyGrid(g, W, H, m.keys, m.sendSlot, false);
     return;
   }
   if (ui === 'body') {
     const th = m.threads.find(row => row.id === job.threadId) ?? m.threads[0];
     const img = pic(job, th?.bodyAsset ?? m.smsAsset);
-    const box = imageBox(img, W - 36, H * 0.46);
-    g.fillStyle = '#c5ced8'; g.font = `600 12px ${MONO}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(t('sms.type_these'), W / 2, 22);
-    paintImage(g, img, (W - box.dw) / 2, 40, box.dw, box.dh);
+    const box = imageBox(img, W - 36, H * 0.42);
+    g.fillStyle = '#c5ced8'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(fitFont(g, t('sms.type_these'), W - 32, 600, 12, 9), W / 2, 48);
+    paintImage(g, img, (W - box.dw) / 2, 64, box.dw, box.dh);
     button(g, 16, H - 120, W - 32, 48, t('sms.reply'), true);
     return;
   }
-  heading(g, W, t('sms.role.dispatch'), 28);
-  g.fillStyle = '#c5ced8'; g.font = `600 12px ${MONO}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(t('sms.type_these'), W / 2, 48);
+  heading(g, W, t('sms.role.dispatch'), 46);
+  g.fillStyle = '#c5ced8'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(fitFont(g, t('sms.type_these'), W - 32, 600, 12, 9), W / 2, 66);
   if (!m.threads.length) { g.fillStyle = '#c5ced8'; g.font = `600 13px ${MONO}`; g.textAlign = 'center'; g.fillText(t('sms.empty'), W / 2, H / 2); return; }
-  let y = 64;
+  let y = 82;
   m.threads.forEach(th => {
     const img = pic(job, th.previewAsset);
     const box = imageBox(img, W - 48, 84);
@@ -195,7 +197,15 @@ export function hitsJob(W, H, job) {
   const add = (id, x, y, w, h) => hits.push({ id, x, y, w, h });
   if (job.kind === 'phone-sms') {
     const m = smsModel(job.layout ?? {}), ui = job.ui || 'list';
-    if (ui === 'list') m.threads.forEach((th, i) => add('mg:thread:' + (th.id ?? i), 12, 56 + i * 78, W - 24, 70));
+    if (ui === 'list') {
+      let y = 82;
+      m.threads.forEach((th, i) => {
+        const box = imageBox(pic(job, th.previewAsset), W - 48, 84);
+        const rowH = 30 + box.dh;
+        add('mg:thread:' + (th.id ?? i), 12, y, W - 24, rowH);
+        y += rowH + 8;
+      });
+    }
     else if (ui === 'body') add('mg:reply', 16, H - 120, W - 32, 48);
     else {
       const s = Math.min(64, (W - 48) / 3), gap = 8, x0 = (W - (3 * s + 2 * gap)) / 2, y0 = 110;

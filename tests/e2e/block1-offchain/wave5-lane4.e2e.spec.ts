@@ -27,13 +27,13 @@ function runChrome(script, chromePort) {
   return out;
 }
 
-test('RPL-T-30..60 and RPL-T-16..29 a recorded ride drives clock, camera, and seek, and the lobby shows Russian', { timeout: 260_000 }, () => {
+test('RPL-T-30..60 and RPL-T-16..29 a recorded ride drives clock, camera, and seek, and the lobby stays English', { timeout: 260_000 }, () => {
   const replay = runChrome('e2e-replay-controls.mjs', '9374');
   for (const line of ['clock advances while playing', 'camera changes – cabin -> chase', 'seek lands on the recorded second', 'C9 absent', 'C26 absent', 'C27 absent', 'C32 absent', 'C1 #w-play', 'C36 #w-react']) {
     assert.match(replay, new RegExp(line));
   }
   const i18n = runChrome('e2e-i18n-legal.mjs', '9375');
-  assert.match(i18n, /ПОВТОРЫ/);
+  assert.match(i18n, /REPLAYS/);
   assert.match(i18n, /chrome data-i18n nodes are translated/);
   assert.match(i18n, /untranslated 0/);
 });

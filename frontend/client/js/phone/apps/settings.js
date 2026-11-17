@@ -1,7 +1,6 @@
 import { MONO } from '../../util.js';
 import { st } from '../../state.js';
 import { radio } from '../../sim/radio.js';
-import { phone } from '../../phone.js';
 import { t } from '../../minigames/i18n/index.js';
 import { PhoneApp } from '../app.js';
 import { INSET, TOP, fill, title, card, wrap } from '../kit.js';
@@ -18,7 +17,7 @@ export class SettingsApp extends PhoneApp {
       ['Radio', radio.on ? 'ON' : 'OFF'],
       ['Brake', st.park ? 'PARK' : 'OFF'],
       ['Engine', st.engineOn ? 'RUN' : 'OFF'],
-      ['Language', phone.lang === 'ru' ? 'RU' : 'EN'],
+      ['Language', 'EN'],
     ];
     const y0 = TOP + 24, rh = 48;
     card(g, INSET, y0, W - 32, rh * rows.length, 'rgba(255,255,255,.06)', 14);

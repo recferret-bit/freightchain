@@ -9,6 +9,7 @@ import { telemetryUs } from '../telemetry.js';
 import { t } from '../minigames/i18n/index.js';
 import { bindPhone } from '../minigames/runtime.js';
 import { MONO } from '../util.js';
+import { wrap } from './kit.js';
 import { gulp } from './gulp-state.js';
 import { pike } from './pike-state.js';
 
@@ -78,8 +79,11 @@ export class PhoneOS {
     g.fillStyle = 'rgba(255,255,255,.16)'; g.beginPath(); g.roundRect(W / 2 - 46, H - 28, 92, 18, 9); g.fill();
     g.fillStyle = '#f4f7fb'; g.font = `700 10px ${MONO}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t('os.home'), W / 2, H - 19);
     if (this.lesson && performance.now() < this.lesson.until) {
-      g.fillStyle = 'rgba(12,16,22,.9)'; g.fillRect(8, 8, W - 16, 36);
-      g.fillStyle = '#f4f7fb'; g.font = `600 11px ${MONO}`; g.fillText(t(this.lesson.id), W / 2, 26);
+      g.font = `600 11px ${MONO}`;
+      const lines = wrap(g, t(this.lesson.id), W - 32).slice(0, 4);
+      g.fillStyle = 'rgba(12,16,22,.92)'; g.beginPath(); g.roundRect(8, 38, W - 16, lines.length * 15 + 14, 10); g.fill();
+      g.fillStyle = '#f4f7fb'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      lines.forEach((ln, li) => g.fillText(ln, W / 2, 38 + 14.5 + li * 15));
     }
   }
 

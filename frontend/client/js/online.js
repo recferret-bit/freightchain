@@ -50,10 +50,8 @@ export async function beginOnline(opts = {}) {
   online.started = true;
   const ranked = opts.ranked === true;
   const mgMode = store.get('freightchain.mgMode') === 'more-time' ? 'more-time' : 'normal';
-  const nav = typeof navigator !== 'undefined' ? navigator.language : '';
-  const storedLang = store.get('freightchain.lang');
-  const lang = storedLang === 'ru' || storedLang === 'en' ? storedLang : (/^ru/i.test(nav || '') ? 'ru' : 'en');
-  phone.lang = lang;
+  const lang = 'en';
+  phone.lang = 'en';
   let started;
   try { started = await api(`rides/${online.ride.id}/start`, { trip: online.ride.trip ?? 'classic', mgMode, lang, ...(ranked ? { ranked: true } : {}) }); }   // (null = a ride from before trips = 'classic' – trips.js tripOf)
   catch (e) { online.started = false; if (e.status === 409 && e.code === RECHOSEN) { location.reload(); return new Promise(() => {}); } throw e; }   // re-chosen elsewhere: load it as it is now. Any other refusal can be retried.

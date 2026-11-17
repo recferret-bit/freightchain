@@ -9,6 +9,12 @@ import { spawn, cars, setTrafficRecorder } from './sim/traffic.js';
 import { audio } from './sim/audio.js';
 import { radio } from './sim/radio.js';
 import { resize, renderWorld } from './world/render.js';
+import {
+  renderPixelPass, isPixelArtOn, setPixelArt, togglePixelArt,
+  getPixelScope, setPixelScope, getPixelArtParams, setPixelArtParams,
+} from './world/pixel-pass.js';
+import { initCrt, isCrtOn, setCrt, toggleCrt, getCrtParams, setCrtParams } from './ui/crt.js';
+import { initVisualLab, toggleVisualLab, isVisualLabOpen } from './ui/visual-lab.js';
 import { roadObjects, chunks } from './world/chunks.js';
 import * as spacing from './world/spacing.js';
 import { roads } from './net/orchestrator.js';
@@ -48,6 +54,8 @@ import { isMobileDevice, showMobileBlocker } from './mobile.js';
 setTrafficRecorder(beginTrafficFrame, endTrafficFrame);
 import './ui/input.js';
 import './ui/tuning.js';
+initCrt();
+initVisualLab();
 
 function frame(now) {
   requestAnimationFrame(frame);
@@ -57,7 +65,7 @@ function frame(now) {
   updateRoadPlan(st.s);   // eligible replays fetch the server plan; drivers use the same seeded local hole rules
   roads.update(dt); updateDayNight(dt); updateDisp(dt); updateFX(dt); audio.update(true); radio.update();   // road world: generation, streaming, signals
   if (guide.tutorial || guide.assist) updateGuide();   // the free ride's tutorial dialog + assist tips (guide.js)
-  renderWorld(); drawCockpit();
+  renderWorld(); drawCockpit(); renderPixelPass();
 }
 await loadEntities();   // every 3D model is an entity from the API's bundle (world/entities.js); nothing below may build one before it
 selectTheme(THEMES[0].id, true); setClock(12, true, true);   // the prototype's world: Route 66 at noon (no picker, nothing remembered). A real ride gets the SERVER's route + start hour just below
@@ -105,6 +113,6 @@ function devRun(id = '1h') {
   CFG.RIDE_MIN_SECONDS = trip.seconds ?? shift0.s; CFG.COMPLETE_DIST = trip.seconds ? trip.k * CFG.MAX_SPEED * trip.seconds : shift0.d; resetRide();
   if (!looping) { looping = true; requestAnimationFrame(frame); }   // the mobile blocker never started the loop; a second one would step every frame twice
 }
-window.__game = { isMobileBlocked: !isWatching && isMobileDevice(), devRun, forkRules: FORK, toggleMap, phone, pike, guide, setGuide, endTutorial, advanceTutorial, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, cabChain, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, screenClimate, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
+window.__game = { isMobileBlocked: !isWatching && isMobileDevice(), devRun, forkRules: FORK, toggleMap, phone, pike, guide, setGuide, endTutorial, advanceTutorial, hurt, trip, setTrip, offlineRide, audio, cosmetics, online, telemetry, prompt, watch, roadPlan, liveFeed, cabChain, radio, roadObjects, chunks, spacing, roads, net, st, disp, CFG, input, tryShift, ignition, startRide, curv, spawn, traffic: cars, THEMES, screenClimate, fx: { isCrtOn, setCrt, toggleCrt, getCrtParams, setCrtParams, isPixelArtOn, setPixelArt, togglePixelArt, getPixelScope, setPixelScope, getPixelArtParams, setPixelArtParams, toggleVisualLab, isVisualLabOpen }, ...(realRide ? {} : { selectTheme, setNight, setPhase, setClock }), dn, weather, uiBtns, inputBits, holes: { HOLES, holeAt, holesNear, clearHoleCache, plan, flagged } };   // handy for console debugging
 
  

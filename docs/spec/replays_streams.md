@@ -96,7 +96,7 @@ Inventory from the code (`client/js/ui/watch-panel.js`, `client/js/watch.js`, `c
 | C9 | ● LIVE (catch up to the live broadcast) | `#w-live` | **remove** | there is no live broadcast (RPL-M-03) |
 | C10 | Engine sound | `#w-sound` (🔇/🔊), key `M` | present | `audio.start()` on the first press, then mute/unmute |
 | C11 | Map (phone) | key `N`, the `map` button on the panel | present | `toggleMap()`; does not fire in the chat input |
-| C12 | Form shade | `F8` | present | a view toggle, not recorded |
+| C12 | Visual Shader Lab / Form shade | `F8` (Visual Shader Lab), `F7` (form shade), `F9` (CRT), `F10` (pixel) | present | view toggles, not recorded |
 | C13 | Collapse / expand the panel | `.w-fold` (⇥ / ⇤) | present | the `folded` class on `#watch` |
 | C14 | Exit | `#watch-yard` "I MISS THE YARD" → lobby, `#watch-done` "I'M DONE" → landing | present | navigation via `SITE_BASE` |
 | C15 | Camera (cab / outside) | `C` (`toggleCab`) — driving mode only | build | allow `C` in the replay |
@@ -212,7 +212,7 @@ Environment: E1 (`watch-panel.js` and `watch.js` under happy-dom, `fetch` mocked
 | RPL-T-38 | C9 LIVE removed | — | — | `#w-live` is not in the DOM for any replay |
 | RPL-T-39 | C10 sound | the first press starts `audio`, the second — mute; `M` does the same | `M` does not fire in the chat field | — |
 | RPL-T-40 | C11 map | `N` and the `map` button open and close the map | `N` with autorepeat (`e.repeat`) — once | `N` in the chat field — no |
-| RPL-T-41 | C12 F8 | toggles the form shade, a toast | — | it is not written to telemetry (a replay writes nothing) |
+| RPL-T-41 | C12 F8 / F7 | `F8` opens the Visual Shader Lab; `F7` toggles form shade with a toast | — | it is not written to telemetry (a replay writes nothing) |
 | RPL-T-42 | C13 fold | the `folded` class, icon ⇤/⇥ | — | — |
 | RPL-T-43 | C14 exit | `#watch-yard` → `/lobby.html`, `#watch-done` → `/` | when `SITE_BASE` ≠ origin | — |
 | RPL-T-44 | C15 camera | `C` toggles cab / outside view in the replay | during a seek | — |
