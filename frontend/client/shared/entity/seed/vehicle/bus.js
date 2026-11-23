@@ -6,11 +6,16 @@ export default {
   parts: [
     { geo: 'rbox', tag: 'chassis', mat: { color: 0x1e2228 }, s: ['w * 0.84', 0.32, 'len * 0.92'], at: [0, 0.52, 0] },
     { geo: 'rbox', tag: 'body', mat: { color: 'BODY' }, s: ['w * 0.95', 1.28, 'len * 0.96'], at: [0, 1.14, 0] },
-    { geo: 'rbox', tag: 'glass', mat: { color: 'GLASS' }, s: ['w * 0.94', 0.92, 'len * 0.86'], at: [0, 2.16, 'len * 0.03'] },
-    { geo: 'wedge', tag: 'glass', mat: { color: 'GLASS' }, s: ['w * 0.9', 0.96, 0.56], at: [0, 2.14, '-len * 0.45'] },
-    { geo: 'rbox', tag: 'roof', mat: { color: 'CROWN' }, s: ['w * 0.93', 0.38, 'len * 0.94'], at: [0, 2.78, 0] },
-    { geo: 'rbox', tag: 'header', mat: { color: 'DARK' }, s: ['w * 0.72', 0.24, 0.14], at: [0, 2.82, '-len * 0.47'] },
-    { geo: 'box', tag: 'headlamp', mat: { color: 'DEST', lamp: true }, s: ['w * 0.58', 0.14, 0.06], at: [0, 2.82, '-len * 0.47 - 0.06'] },
+    { geo: 'rbox', tag: 'glass', mat: { color: 'GLASS' }, s: ['w * 0.94', 0.92, 'len * 0.893'], at: [0, 2.16, 'len * 0.003'] },
+    // Steep coach pane: bottom on the cowl, top tucked into the roof lip. A long shallow wedge read as a hood.
+    { geo: 'rbox', tag: 'cowl', mat: { color: 'DARK' }, s: ['w * 0.9', 0.22, 0.34], at: [0, 1.9, '-len * 0.468'] },
+    { geo: 'wedge', tag: 'glass', mat: { color: 'GLASS' }, s: ['w * 0.9', 0.72, 0.42], at: [0, 2.36, '-len * 0.456'] },
+    { for: 'x', in: [-1, 1], do: [
+      { geo: 'wedge', tag: 'pillar', mat: { color: 'PILLAR' }, s: [0.08, 0.78, 0.48], at: ['x * w * 0.46', 2.36, '-len * 0.456'] },
+    ] },
+    { geo: 'rbox', tag: 'roof', mat: { color: 'CROWN' }, s: ['w * 0.93', 0.38, 'len * 0.91'], at: [0, 2.78, 'len * 0.012'] },
+    { geo: 'rbox', tag: 'header', mat: { color: 'DARK' }, s: ['w * 0.62', 0.16, 0.1], at: [0, 2.8, '-len * 0.44'] },
+    { geo: 'box', tag: 'headlamp', mat: { color: 'DEST', lamp: true }, s: ['w * 0.4', 0.1, 0.04], at: [0, 2.8, '-len * 0.44 - 0.06'] },
     { geo: 'box', tag: 'stripe', mat: { color: 'TRIM' }, s: ['w * 0.966', 0.2, 'len * 0.92'], at: [0, 1.58, 0] },
     { geo: 'box', tag: 'sill', mat: { color: 'DARK' }, s: ['w * 0.962', 0.14, 'len * 0.88'], at: [0, 0.62, 0] },
     { geo: 'rbox', tag: 'bumper', mat: { color: 'DARK' }, s: ['w * 0.98', 0.32, 0.24], at: [0, 0.64, '-len * 0.48'] },
@@ -28,8 +33,8 @@ export default {
       { geo: 'box', tag: 'pillar', mat: { color: 'PILLAR' }, s: ['w * 0.952', 0.9, 0.12], at: [0, 2.16, 'pz'] },
     ] },
     { for: 'x', in: [-1, 1], do: [
-      { geo: 'box', tag: 'mirror', mat: { color: 'DARK' }, s: [0.18, 0.06, 0.22], at: ['x * (w * 0.44)', 2.38, '-len * 0.43'] },
-      { geo: 'rbox', tag: 'mirror', mat: { color: 'DARK' }, s: [0.11, 0.38, 0.16], at: ['x * (w * 0.495)', 2.22, '-len * 0.44'] },
+      { geo: 'box', tag: 'mirror', mat: { color: 'DARK' }, s: [0.2, 0.08, 0.16], at: ['x * (w * 0.49)', 2.34, '-len * 0.34'] },
+      { geo: 'rbox', tag: 'mirror', mat: { color: 'DARK' }, s: [0.14, 0.46, 0.14], at: ['x * (w * 0.47)', 2.14, '-len * 0.34'] },
       { for: 'z', in: ['-len / 2 + 1.85', 'len / 2 - 2.5'], do: [
         { geo: 'rbox', tag: 'fender', mat: { color: 'DARK' }, s: [0.07, 0.2, 1.05], at: ['x * (w * 0.476)', 0.82, 'z'] },
       ] },
